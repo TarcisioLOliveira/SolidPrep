@@ -1,0 +1,8 @@
+{
+    "name": "topology-optimization",
+    "version": "1.0.0",
+    "author": "Tarcisio Ladeia de Oliveira",
+    "author_email": "tarcisio.oliveira@usp.br",
+    "description": "Preprocessing 2D topologies for topology optimization",
+    "url": "https://github.com/TarcLO/topy"
+}
