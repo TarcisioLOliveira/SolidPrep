@@ -20,11 +20,24 @@
 
 #include <iostream>
 #include "STEPCAFControl_Reader.hxx"
+#include "BRepClass3d_SolidClassifier.hxx"
 
 int main(int argc, char* argv[]){
     STEPControl_Reader reader;
     IFSelect_ReturnStatus stat = reader.ReadFile("tmp/square.step");
     reader.PrintCheckLoad(true, IFSelect_ItemsByEntity);
+
+    Standard_Integer NbRoots = reader.NbRootsForTransfer();
+    Standard_Integer num = reader.TransferRoots();
+    reader.PrintCheckTransfer(true, IFSelect_ItemsByEntity);
+    TopoDS_Shape result = reader.OneShape();
+
+    gp_Pnt p(0.0, 0.0, 0.0);
+    BRepClass3d_SolidClassifier insider(result);
+    insider.Perform(p, 0);
+    if(insider.State() == TopAbs_IN || insider.State() == TopAbs_ON){
+        std::cout << "inside" << std::endl;
+    }
 
     return 0;
 }
