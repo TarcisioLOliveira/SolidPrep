@@ -1,4 +1,4 @@
-set(PROJECT_NAME 2DPrepTO)
+set(PROJECT_NAME SolidPrep)
 
 set(SOURCES
     main.cpp
