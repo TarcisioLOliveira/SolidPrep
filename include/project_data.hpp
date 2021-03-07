@@ -24,6 +24,9 @@
 #include <vector>
 #include "STEPCAFControl_Reader.hxx"
 
+/**
+ * Reads and stores project data.
+ */
 class ProjectData {
     public:
 
@@ -32,6 +35,11 @@ class ProjectData {
         TYPE_3D
     };
 
+    /**
+     * Loads project data file.
+     *
+     * @param project_file Path to file.
+     */
     ProjectData(std::string project_file);
 
     double step;
