@@ -17,29 +17,33 @@
  *   along with SolidPrep.  If not, see <https://www.gnu.org/licenses/>.
  *
  */
-#include "project_data.hpp"
-#include "rapidjson/document.h"
-#include "rapidjson/filereadstream.h"
-#include "rapidjson/error/error.h"
-#include "rapidjson/error/en.h"
-#include "logger.hpp"
 
+#ifndef LOGGER_HPP
+#define LOGGER_HPP
 
-ProjectData::ProjectData(std::string project_file){
-#ifdef _WIN32
-    FILE* fp = fopen(project_file.c_str(), "rb");
-#else
-    FILE* fp = fopen(project_file.c_str(), "r");
-#endif
+#include <string>
 
-    char readBuffer[65536];
-    rapidjson::FileReadStream is(fp, readBuffer, sizeof(readBuffer));
+namespace logger{
 
-    rapidjson::Document doc;
-    rapidjson::ParseResult ok = doc.ParseStream<rapidjson::kParseCommentsFlag>(is);
-    logger::log_assert(ok, logger::ERROR, "JSON parse error: %s (%lu) \n", rapidjson::GetParseError_En(ok.Code()), ok.Offset());
+    enum Type{
+        WARNING,
+        ERROR
+    };
 
-
-
-    fclose(fp);
+    template<typename ... Args>
+    static void log_assert(bool expr, Type t, std::string message, Args ... args){
+        if(!expr){
+            if(t == WARNING){
+                message = "WARNING: "+message;
+            } else if(t == ERROR){
+                message = "ERROR: "+message;
+            }
+            fprintf(stderr, message.c_str(), args ...);
+            if(t == ERROR){
+                exit(EXIT_FAILURE);
+            }
+        }
+    }
 }
+
+#endif
