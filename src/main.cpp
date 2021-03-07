@@ -40,7 +40,7 @@ int main(int argc, char* argv[]){
     //     std::cout << "inside" << std::endl;
     // }
     
-    ProjectData proj(argv[0]);
+    ProjectData proj(argv[1]);
 
     return 0;
 }

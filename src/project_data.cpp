@@ -19,10 +19,32 @@
  */
 #include "project_data.hpp"
 #include "rapidjson/document.h"
+#include "rapidjson/filereadstream.h"
+#include "rapidjson/error/error.h"
+#include "rapidjson/error/en.h"
 
 
 ProjectData::ProjectData(std::string project_file){
-    rapidjson::Document doc;
-    doc.Parse(project_file.c_str());
+#ifdef _WIN32
+    FILE* fp = fopen(project_file.c_str(), "rb");
+#else
+    FILE* fp = fopen(project_file.c_str(), "r");
+#endif
 
+    char readBuffer[65536];
+    rapidjson::FileReadStream is(fp, readBuffer, sizeof(readBuffer));
+
+    rapidjson::Document doc;
+    rapidjson::ParseResult ok = doc.ParseStream<rapidjson::kParseCommentsFlag>(is);
+    if (!ok) {
+        fprintf(stderr, "JSON parse error: %s (%lu) \n",
+                rapidjson::GetParseError_En(ok.Code()), ok.Offset());
+        exit(EXIT_FAILURE);
+    }
+    assert(doc.IsObject());
+
+
+
+
+    fclose(fp);
 }
