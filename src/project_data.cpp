@@ -64,7 +64,7 @@ bool ProjectData::log_data(const rapidjson::Document& doc, std::string name, Pro
             correct_type = logger::log_assert(doc[name.c_str()].IsInt(), error, "Value of key \"{}\" has wrong type, must be an integer.", name);
             break;
         case TYPE_DOUBLE:
-            correct_type = logger::log_assert(doc[name.c_str()].IsDouble(), error, "Value of key \"{}\" has wrong type, must be a number.", name);
+            correct_type = logger::log_assert(doc[name.c_str()].IsNumber(), error, "Value of key \"{}\" has wrong type, must be a number.", name);
             break;
         case TYPE_STRING:
             correct_type = logger::log_assert(doc[name.c_str()].IsString(), error, "Value of key \"{}\" has wrong type, must be a string.", name);
