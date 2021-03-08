@@ -55,7 +55,8 @@ class ProjectData {
     ProjectData(std::string project_file);
 
     double step;
-    std::vector<double> angles;
+    std::vector<double> angles2D;
+    std::vector<std::array<double,2>> angles3D;
     double restriction;
     double scale;
     double thickness;

@@ -22,7 +22,11 @@
 #include "rapidjson/filereadstream.h"
 #include "rapidjson/error/error.h"
 #include "rapidjson/error/en.h"
+#include "STEPCAFControl_Reader.hxx"
+#include "BRepClass3d_SolidClassifier.hxx"
 #include "logger.hpp"
+#define _USE_MATH_DEFINES
+#include <cmath>
 
 
 ProjectData::ProjectData(std::string project_file){
@@ -42,9 +46,88 @@ ProjectData::ProjectData(std::string project_file){
 
     logger::log_assert(doc.HasMember("solid_type"), logger::ERROR, "Missing member: ");
     if(this->log_data(doc, "solid_type", TYPE_STRING, true)){
+        std::string solid_type = doc["solid_type"].GetString();
+        if(solid_type == "2D"){
+            this->type = TYPE_2D;
+        } else if(solid_type == "3D"){
+            this->type = TYPE_3D;
+        } else {
+            logger::log_assert(false, logger::ERROR,  "Solid type incorrectly specified, must be \"2D\" or \"3D\".");
+        }
+    }
+    if(this->log_data(doc, "geometry_path", TYPE_STRING, true)){
+        STEPControl_Reader reader;
+        IFSelect_ReturnStatus stat = reader.ReadFile("tmp/square.step");
+        if(stat != IFSelect_RetDone){
+            reader.PrintCheckLoad(false, IFSelect_ItemsByEntity);
+            exit(EXIT_FAILURE);
+        }
 
+        Standard_Integer NbRoots = reader.NbRootsForTransfer();
+        Standard_Integer num = reader.TransferRoots();
+        this->solid = reader.OneShape();
+        if(this->solid.IsNull()){
+            reader.PrintCheckTransfer(true, IFSelect_ItemsByEntity);
+            exit(EXIT_FAILURE);
+        }
+    }
+    if(this->log_data(doc, "step", TYPE_DOUBLE, true)){
+        this->step = doc["step"].GetDouble();
+    }
+    if(this->log_data(doc, "restriction_size", TYPE_DOUBLE, true)){
+        this->restriction = doc["restriction_size"].GetDouble();
+    }
+    if(this->log_data(doc, "scale", TYPE_DOUBLE, true)){
+        this->scale = doc["scale"].GetDouble();
+    }
+    if(this->type == TYPE_2D){
+        if(this->log_data(doc, "thickness", TYPE_DOUBLE, true)){
+            this->thickness = doc["thickness"].GetDouble();
+        }
+    }
+    double angle = 0;
+    int choices = 0;
+    if(this->log_data(doc, "max_turn_angle", TYPE_DOUBLE, true)){
+        angle = doc["max_turn_angle"].GetDouble();
+    }
+    if(this->log_data(doc, "turn_options", TYPE_INT, true)){
+        choices = doc["turn_options"].GetInt();
+    }
+    if(this->type == TYPE_2D){
+        double angle_step = (M_PI/360)*2*angle/(choices-1);
+        for(int i = 0; i < choices; ++i){
+            this->angles2D.push_back(-angle + i*angle_step);
+        }
+    } else if(this->type == TYPE_3D){
+        double angle_step = (M_PI/360)*2*angle/(choices-1);
+        double spin_step = 2*M_PI/(choices-1);
+        bool odd = (choices % 2) == 1;
+        if(odd){
+            std::array<double, 2> arr = {0, 0};
+            this->angles3D.push_back(arr);
+            for(int j = 0; j < choices - 1; ++j){
+                for(int i = 0; i < choices; ++i){
+                    arr[0] = -angle + i*angle_step;
+                    if(arr[0] != 0){
+                        arr[1] = j*spin_step;
+                        this->angles3D.push_back(arr);
+                    }
+                }
+            }
+        } else {
+            std::array<double, 2> arr = {0, 0};
+            for(int j = 0; j < choices+1; ++j){
+                for(int i = 0; i < choices; ++i){
+                    arr[0] = -angle + i*angle_step;
+                    arr[1] = j*spin_step;
+                    this->angles3D.push_back(arr);
+                }
+            }
+        }
     }
 
+    // Get forces
+    // Get supports
 
     fclose(fp);
 }
