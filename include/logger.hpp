@@ -22,27 +22,43 @@
 #define LOGGER_HPP
 
 #include <string>
+#include <iostream>
+#include <utility>
+#include "utils.hpp"
 
 namespace logger{
 
-    enum Type{
+    enum AssertType{
+        SILENT,
         WARNING,
         ERROR
     };
 
+    /**
+     * Logs a message to stderror based on an assertion.
+     *
+     * @param expr Truth to assert.
+     * @param t Message type.
+     * @param message The message (with formatting).
+     * @param args Arguments for message formatting.
+     *
+     * @returns expr itself.
+     */
     template<typename ... Args>
-    static void log_assert(bool expr, Type t, std::string message, Args ... args){
-        if(!expr){
+    static bool log_assert(bool expr, AssertType t, std::string message, Args&& ... args){
+        if(!expr && t != SILENT){
             if(t == WARNING){
                 message = "WARNING: "+message;
             } else if(t == ERROR){
                 message = "ERROR: "+message;
             }
-            fprintf(stderr, message.c_str(), args ...);
+            //fprintf(stderr, message.c_str(), args ...);
+            std::cout << utils::format(message, std::forward<Args>(args) ...) << std::endl;
             if(t == ERROR){
                 exit(EXIT_FAILURE);
             }
         }
+        return expr;
     }
 }
 

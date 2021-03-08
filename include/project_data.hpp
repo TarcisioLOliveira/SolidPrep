@@ -22,7 +22,9 @@
 
 #include <string>
 #include <vector>
+#include "rapidjson/document.h"
 #include "STEPCAFControl_Reader.hxx"
+#include "logger.hpp"
 
 /**
  * Reads and stores project data.
@@ -33,6 +35,16 @@ class ProjectData {
     enum ProjectType{
         TYPE_2D,
         TYPE_3D
+    };
+
+    enum DataType{
+        TYPE_NULL,
+        TYPE_BOOL,
+        TYPE_INT,
+        TYPE_DOUBLE,
+        TYPE_STRING,
+        TYPE_ARRAY,
+        TYPE_OBJECT
     };
 
     /**
@@ -51,8 +63,20 @@ class ProjectData {
     TopoDS_Shape solid;
     // std::vector<Force> forces;
     // std::vector<Support> supports;
+    
+    private:
+    /**
+     * Checks for existence and type of data in JSON file.
+     *
+     * @param doc Document being used.
+     * @param name JSON key.
+     * @param type Data type to be checked for.
+     * @param required Whether the parameter is required or optional;
+     *
+     * @return Whether the key exists and has the correct type.
+     */
+    bool log_data(const rapidjson::Document& doc, std::string name, DataType type, bool required);
 };
-
 
 
 #endif
