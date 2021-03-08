@@ -26,10 +26,29 @@
 
 namespace utils{
 
+    /**
+     * Formats string, replacing each "{}" with one of the arguments. Fails
+     * silently if number of "{}" is different from the number of arguments.
+     * Overload for lack of arguments, just returns the string.
+     *
+     * @param str String to be formatted.
+     *
+     * @return Formatted string.
+     */
     static std::string format(std::string str){
         return str;
     }
 
+    /**
+     * Formats string, replacing each "{}" with one of the arguments. Fails
+     * silently if number of "{}" is different from the number of arguments.
+     * Overload for single argument.
+     *
+     * @param str String to be formatted.
+     * @param a Argument to be added to string.
+     *
+     * @return Formatted string.
+     */
     template <typename Arg1>
     static std::string format(std::string str, Arg1&& a){
         size_t pos = str.find("{}");
@@ -74,11 +93,20 @@ namespace utils{
         }
     }
 
+    /**
+     * Formats string, replacing each "{}" with one of the arguments. Fails
+     * silently if number of "{}" is different from the number of arguments.
+     *
+     * @param str String to be formatted.
+     * @param a1 Argument to be added to string.
+     * @param args Other arguments to be added to string.
+     *
+     * @return Formatted string.
+     */
     template <typename Arg1, typename ... Args>
     static std::string format(std::string str, Arg1&& a1, Args&& ... args){
         return format(format(str, std::forward<Arg1>(a1)), std::forward<Args>(args) ...);
     }
-
 
 }
 
