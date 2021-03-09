@@ -3,6 +3,7 @@ set(PROJECT_NAME SolidPrep)
 set(SOURCES
     main.cpp
     project_data.cpp
+    force.cpp
 )
 
 add_executable(${PROJECT_NAME} ${SOURCES})
