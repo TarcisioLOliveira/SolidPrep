@@ -45,13 +45,14 @@ class Force{
      */
     Force(std::vector<std::array<double, 3>> vertices,  std::array<double, 3> force);
 
-
     bool is_inside(gp_Pnt p) const;
+    double get_moment_of_inertia(int i, int j);
+
 
     private:
     gp_Pnt centroid;
     gp_Mat inertia;
-    gp_Vec normal;
+    gp_Dir normal;
     gp_Vec force;
     Standard_Real max_dim;
     TopoDS_Shape shape;

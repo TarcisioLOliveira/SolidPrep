@@ -23,6 +23,8 @@
 #include <BRepBuilderAPI_MakeWire.hxx>
 #include <BRepBuilderAPI_MakeFace.hxx>
 #include <BRepBuilderAPI_Transform.hxx>
+#include <BRep_Tool.hxx>
+#include <BOPTools_AlgoTools3D.hxx>
 #include <TopoDS_Wire.hxx>
 #include <TopoDS.hxx>
 #include <GProp_GProps.hxx>
@@ -33,6 +35,7 @@
 Force::Force(std::vector<std::array<double, 2>> vertices, double thickness, std::array<double, 2> force){
     this->force = gp_Vec(force[0], force[1], 0);
 
+    // Calculation of properties
     size_t size = vertices.size();
     logger::log_assert(size > 1, logger::ERROR, "Forces must have two or more vertices.");
     logger::log_assert(vertices[0] != vertices[size-1], logger::ERROR, "Force's vertices must not form a closed polygon.");
@@ -59,7 +62,12 @@ Force::Force(std::vector<std::array<double, 2>> vertices, double thickness, std:
     BRepGProp::SurfaceProperties(face, props);
 
     this->inertia = props.MatrixOfInertia();
+    gp_Pnt cm = props.CentreOfMass();
 
+    Handle(Geom_Surface) surf = BRep_Tool::Surface(face);
+    BOPTools_AlgoTools3D::GetNormalToSurface(surf, cm.X(), cm.Y(), this->normal);
+
+    // Shape creation.
     gp_Pnt p(vertices[0][0], vertices[0][1], 0.0);
     gp_Pnt pi(vertices[1][0], vertices[1][1], 0.0);
     TopoDS_Edge e = BRepBuilderAPI_MakeEdge(p, pi);
