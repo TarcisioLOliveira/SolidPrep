@@ -46,8 +46,7 @@ class Force{
     Force(std::vector<std::array<double, 3>> vertices,  std::array<double, 3> force);
 
 
-    bool isInside(gp_Pnt p) const;
-
+    bool is_inside(gp_Pnt p) const;
 
     private:
     gp_Pnt centroid;
