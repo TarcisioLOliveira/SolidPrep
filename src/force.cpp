@@ -92,5 +92,5 @@ Force::Force(std::vector<std::array<double, 3>> vertices,  std::array<double, 3>
 bool Force::is_inside(gp_Pnt p) const{
     BRepClass3d_SolidClassifier insider(this->shape);
     insider.Perform(p, 0);
-    return insider.State() == TopAbs_IN || insider.State() == TopAbs_ON;
+    return insider.State() == TopAbs_ON;
 }
