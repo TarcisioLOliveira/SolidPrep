@@ -27,6 +27,7 @@
 #include "logger.hpp"
 #define _USE_MATH_DEFINES
 #include <cmath>
+#include "force.hpp"
 
 
 ProjectData::ProjectData(std::string project_file){
@@ -125,6 +126,43 @@ ProjectData::ProjectData(std::string project_file){
             }
         }
     }
+    if(this->log_data(doc, "loads", TYPE_ARRAY, true)){
+        if(this->type == TYPE_2D){
+            for(auto& f : doc["loads"].GetArray()){
+                logger::log_assert(f.IsObject(), logger::ERROR, "Each load must be stored as a JSON object");
+                this->log_data(f, "vertices", TYPE_ARRAY, true);
+                this->log_data(f, "load", TYPE_ARRAY, true);
+                auto vertices = f["vertices"].GetArray();
+                auto loads = f["load"].GetArray();
+                logger::log_assert(loads.Size() == 2, logger::ERROR, "Load vector must have exactly two dimensions in 2D problems");
+
+                std::array<double, 2> l{loads[0].GetDouble(), loads[1].GetDouble()};
+                std::vector<std::array<double, 2>> vlist;
+                for(auto& v : vertices){
+                    logger::log_assert(v.Size() == 2, logger::ERROR, "Vertices must have exactly two dimensions in 2D problems");
+                    vlist.push_back({v[0].GetDouble(), v[1].GetDouble()});
+                }
+                this->forces.emplace_back(vlist, this->thickness, l);
+            }
+        } else if(this->type == TYPE_3D) {
+            for(auto& f : doc["loads"].GetArray()){
+                logger::log_assert(f.IsObject(), logger::ERROR, "Each load must be stored as a JSON object");
+                this->log_data(f, "vertices", TYPE_ARRAY, true);
+                this->log_data(f, "load", TYPE_ARRAY, true);
+                auto vertices = f["vertices"].GetArray();
+                auto loads = f["load"].GetArray();
+                logger::log_assert(loads.Size() == 2, logger::ERROR, "Load vector must have exactly three dimensions in 3D problems");
+
+                std::array<double, 3> l{loads[0].GetDouble(), loads[1].GetDouble(), loads[2].GetDouble()};
+                std::vector<std::array<double, 3>> vlist;
+                for(auto& v : vertices){
+                    logger::log_assert(v.Size() == 2, logger::ERROR, "Vertices must have exactly three dimensions in 3D problems");
+                    vlist.push_back({v[0].GetDouble(), v[1].GetDouble(), v[2].GetDouble()});
+                }
+                this->forces.emplace_back(vlist, l);
+            }
+        }
+    }
 
     // Get forces
     // Get supports
@@ -132,32 +170,3 @@ ProjectData::ProjectData(std::string project_file){
     fclose(fp);
 }
 
-bool ProjectData::log_data(const rapidjson::Document& doc, std::string name, ProjectData::DataType type, bool required){
-    logger::AssertType error = (required) ? logger::ERROR : logger::SILENT;
-    bool exists = logger::log_assert(doc.HasMember(name.c_str()), error, "Missing member: {}", name);
-    bool correct_type = false;
-    switch (type){
-        case TYPE_NULL:
-            correct_type = logger::log_assert(doc[name.c_str()].IsNull(), error, "Value of key \"{}\" has wrong type, must be null.", name);
-            break;
-        case TYPE_BOOL:
-            correct_type = logger::log_assert(doc[name.c_str()].IsBool(), error, "Value of key \"{}\" has wrong type, must be boolean.", name);
-            break;
-        case TYPE_INT:
-            correct_type = logger::log_assert(doc[name.c_str()].IsInt(), error, "Value of key \"{}\" has wrong type, must be an integer.", name);
-            break;
-        case TYPE_DOUBLE:
-            correct_type = logger::log_assert(doc[name.c_str()].IsNumber(), error, "Value of key \"{}\" has wrong type, must be a number.", name);
-            break;
-        case TYPE_STRING:
-            correct_type = logger::log_assert(doc[name.c_str()].IsString(), error, "Value of key \"{}\" has wrong type, must be a string.", name);
-            break;
-        case TYPE_ARRAY:
-            correct_type = logger::log_assert(doc[name.c_str()].IsArray(), error, "Value of key \"{}\" has wrong type, must be an array.", name);
-            break;
-        case TYPE_OBJECT:
-            correct_type = logger::log_assert(doc[name.c_str()].IsObject(), error, "Value of key \"{}\" has wrong type, must be an object.", name);
-            break;
-    }
-    return exists && correct_type;
-}

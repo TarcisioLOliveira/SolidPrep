@@ -25,6 +25,7 @@
 #include "rapidjson/document.h"
 #include "STEPCAFControl_Reader.hxx"
 #include "logger.hpp"
+#include "force.hpp"
 
 /**
  * Reads and stores project data.
@@ -62,7 +63,7 @@ class ProjectData {
     double thickness;
     ProjectType type;
     TopoDS_Shape solid;
-    // std::vector<Force> forces;
+    std::vector<Force> forces;
     // std::vector<Support> supports;
     
     private:
@@ -76,8 +77,39 @@ class ProjectData {
      *
      * @return Whether the key exists and has the correct type.
      */
-    bool log_data(const rapidjson::Document& doc, std::string name, DataType type, bool required);
+    template<typename A, typename B>
+    bool log_data(const rapidjson::GenericValue<A, B>& doc, std::string name, DataType type, bool required);
 };
 
+template<typename A, typename B>
+bool ProjectData::log_data(const rapidjson::GenericValue<A, B>& doc, std::string name, ProjectData::DataType type, bool required){
+    logger::AssertType error = (required) ? logger::ERROR : logger::SILENT;
+    bool exists = logger::log_assert(doc.HasMember(name.c_str()), error, "Missing member: {}", name);
+    bool correct_type = false;
+    switch (type){
+        case TYPE_NULL:
+            correct_type = logger::log_assert(doc[name.c_str()].IsNull(), error, "Value of key \"{}\" has wrong type, must be null.", name);
+            break;
+        case TYPE_BOOL:
+            correct_type = logger::log_assert(doc[name.c_str()].IsBool(), error, "Value of key \"{}\" has wrong type, must be boolean.", name);
+            break;
+        case TYPE_INT:
+            correct_type = logger::log_assert(doc[name.c_str()].IsInt(), error, "Value of key \"{}\" has wrong type, must be an integer.", name);
+            break;
+        case TYPE_DOUBLE:
+            correct_type = logger::log_assert(doc[name.c_str()].IsNumber(), error, "Value of key \"{}\" has wrong type, must be a number.", name);
+            break;
+        case TYPE_STRING:
+            correct_type = logger::log_assert(doc[name.c_str()].IsString(), error, "Value of key \"{}\" has wrong type, must be a string.", name);
+            break;
+        case TYPE_ARRAY:
+            correct_type = logger::log_assert(doc[name.c_str()].IsArray(), error, "Value of key \"{}\" has wrong type, must be an array.", name);
+            break;
+        case TYPE_OBJECT:
+            correct_type = logger::log_assert(doc[name.c_str()].IsObject(), error, "Value of key \"{}\" has wrong type, must be an object.", name);
+            break;
+    }
+    return exists && correct_type;
+}
 
 #endif
