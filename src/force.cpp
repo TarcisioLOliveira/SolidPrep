@@ -27,14 +27,19 @@
 #include <TopoDS.hxx>
 #include <GProp_GProps.hxx>
 #include <BRepGProp.hxx>
+#include "logger.hpp"
 
 
 Force::Force(std::vector<std::array<double, 2>> vertices, double thickness, std::array<double, 2> force){
     this->force = gp_Vec(force[0], force[1], 0);
 
     size_t size = vertices.size();
+    logger::log_assert(size > 1, logger::ERROR, "Forces must have two or more vertices.");
+    logger::log_assert(vertices[0] != vertices[size-1], logger::ERROR, "Force's vertices must not form a closed polygon.");
+
     gp_Pnt p1(vertices[0][0], vertices[0][1], 0);
     gp_Pnt p2(vertices[size-1][0], vertices[size-1][1], 0);
+    this->max_dim = p1.Distance(p2);
     this->centroid = p1;
     this->centroid.BaryCenter(1, p2, 1);
 
