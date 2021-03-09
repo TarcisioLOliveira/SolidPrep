@@ -46,8 +46,25 @@ class Force{
     Force(std::vector<std::array<double, 3>> vertices,  std::array<double, 3> force);
 
     bool is_inside(gp_Pnt p) const;
-    double get_moment_of_inertia(int i, int j);
 
+    inline double get_moment_of_inertia(int i, int j){
+        return this->inertia(i, j);
+    }
+    inline gp_Mat get_moment_of_inertia(){
+        return this->inertia;
+    }
+    inline gp_Pnt get_centroid(){
+        return this->centroid;
+    }
+    inline gp_Dir get_normal(){
+        return this->normal;
+    }
+    inline gp_Vec get_force(){
+        return this->force;
+    }
+    inline double get_dimension(){
+        return this->max_dim;
+    }
 
     private:
     gp_Pnt centroid;
