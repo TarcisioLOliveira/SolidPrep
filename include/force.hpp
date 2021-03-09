@@ -47,22 +47,22 @@ class Force{
 
     bool is_inside(gp_Pnt p) const;
 
-    inline double get_moment_of_inertia(int i, int j){
+    inline double get_moment_of_inertia(int i, int j) const{
         return this->inertia(i, j);
     }
-    inline gp_Mat get_moment_of_inertia(){
+    inline gp_Mat get_moment_of_inertia() const{
         return this->inertia;
     }
-    inline gp_Pnt get_centroid(){
+    inline gp_Pnt get_centroid() const{
         return this->centroid;
     }
-    inline gp_Dir get_normal(){
+    inline gp_Dir get_normal() const{
         return this->normal;
     }
-    inline gp_Vec get_force(){
+    inline gp_Vec get_force() const{
         return this->force;
     }
-    inline double get_dimension(){
+    inline double get_dimension() const{
         return this->max_dim;
     }
 

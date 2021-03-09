@@ -78,11 +78,11 @@ class ProjectData {
      * @return Whether the key exists and has the correct type.
      */
     template<typename A, typename B>
-    bool log_data(const rapidjson::GenericValue<A, B>& doc, std::string name, DataType type, bool required);
+    bool log_data(const rapidjson::GenericValue<A, B>& doc, std::string name, DataType type, bool required) const;
 };
 
 template<typename A, typename B>
-bool ProjectData::log_data(const rapidjson::GenericValue<A, B>& doc, std::string name, ProjectData::DataType type, bool required){
+bool ProjectData::log_data(const rapidjson::GenericValue<A, B>& doc, std::string name, ProjectData::DataType type, bool required) const{
     logger::AssertType error = (required) ? logger::ERROR : logger::SILENT;
     bool exists = logger::log_assert(doc.HasMember(name.c_str()), error, "Missing member: {}", name);
     bool correct_type = false;
