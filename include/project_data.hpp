@@ -26,6 +26,7 @@
 #include "STEPCAFControl_Reader.hxx"
 #include "logger.hpp"
 #include "force.hpp"
+#include "support.hpp"
 
 /**
  * Reads and stores project data.
@@ -64,7 +65,7 @@ class ProjectData {
     ProjectType type;
     TopoDS_Shape solid;
     std::vector<Force> forces;
-    // std::vector<Support> supports;
+    std::vector<Support> supports;
     
     private:
     /**

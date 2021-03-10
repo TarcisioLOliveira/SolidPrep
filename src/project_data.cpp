@@ -163,9 +163,46 @@ ProjectData::ProjectData(std::string project_file){
             }
         }
     }
+    if(this->log_data(doc, "supports", TYPE_ARRAY, true)){
+        if(this->type == TYPE_2D){
+            for(auto& f : doc["supports"].GetArray()){
+                logger::log_assert(f.IsObject(), logger::ERROR, "Each support must be stored as a JSON object");
+                this->log_data(f, "vertices", TYPE_ARRAY, true);
+                this->log_data(f, "X", TYPE_BOOL, true);
+                this->log_data(f, "Y", TYPE_BOOL, true);
+                bool X = f["X"].GetBool();
+                bool Y = f["Y"].GetBool();
 
-    // Get forces
-    // Get supports
+                auto vertices = f["vertices"].GetArray();
+                std::vector<std::array<double, 2>> vlist;
+                for(auto& v : vertices){
+                    logger::log_assert(v.Size() == 2, logger::ERROR, "Vertices must have exactly two dimensions in 2D problems");
+                    vlist.push_back({v[0].GetDouble(), v[1].GetDouble()});
+                }
+                this->supports.emplace_back(X, Y, vlist);
+            }
+        } else if(this->type == TYPE_3D) {
+            for(auto& f : doc["supports"].GetArray()){
+                logger::log_assert(f.IsObject(), logger::ERROR, "Each support must be stored as a JSON object");
+                this->log_data(f, "vertices", TYPE_ARRAY, true);
+                this->log_data(f, "X", TYPE_BOOL, true);
+                this->log_data(f, "Y", TYPE_BOOL, true);
+                this->log_data(f, "Z", TYPE_BOOL, true);
+                bool X = f["X"].GetBool();
+                bool Y = f["Y"].GetBool();
+                bool Z = f["Z"].GetBool();
+
+                auto vertices = f["vertices"].GetArray();
+                std::vector<std::array<double, 3>> vlist;
+                for(auto& v : vertices){
+                    logger::log_assert(v.Size() == 2, logger::ERROR, "Vertices must have exactly three dimensions in 3D problems");
+                    vlist.push_back({v[0].GetDouble(), v[1].GetDouble(), v[2].GetDouble()});
+                }
+                this->supports.emplace_back(X, Y, Z, vlist);
+            }
+        }
+    }
+
 
     fclose(fp);
 }
