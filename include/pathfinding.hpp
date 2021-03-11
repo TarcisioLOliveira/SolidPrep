@@ -24,17 +24,11 @@
 #include <vector>
 #include <TopoDS_Shape.hxx>
 
-struct PathPoint{
-    gp_Pnt point;
-    double cost;
-    PathPoint* prev;
-};
-
 class Pathfinding{
     public:
     virtual ~Pathfinding();
 
-    virtual std::vector<gp_Pnt> find_path(gp_Pnt p, TopoDS_Shape dest) = 0;
+    virtual std::vector<gp_Pnt> find_path(gp_Pnt p, const TopoDS_Shape& dest, gp_Dir initial_direction) = 0;
 };
 
 #endif
