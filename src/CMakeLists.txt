@@ -7,9 +7,11 @@ set(SOURCES
     support.cpp
 )
 
-add_executable(${PROJECT_NAME} ${SOURCES})
+add_subdirectory(pathfinding)
 
-target_link_libraries(${PROJECT_NAME} ${OpenCASCADE_LIBRARIES})
+add_executable(${PROJECT_NAME} ${SOURCES} ${SOURCES_PATHFINDING})
+
+target_link_libraries(${PROJECT_NAME} ${OpenCASCADE_LIBRARIES} pathfinding)
 
 install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION .
                                 LIBRARY DESTINATION .
