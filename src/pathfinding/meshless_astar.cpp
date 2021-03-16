@@ -36,6 +36,7 @@
 #include <TopoDS_Wire.hxx>
 #include <TopoDS_Solid.hxx>
 #include <TopoDS.hxx>
+#include <IntCurvesFace_ShapeIntersector.hxx>
 #include <vector>
 #include <queue>
 #include <algorithm>
@@ -82,7 +83,8 @@ std::vector<gp_Pnt> MeshlessAStar::find_path(gp_Pnt p, const TopoDS_Shape& dest,
         TopoDS_Solid solid_topo = TopoDS::Solid(this->topology);
 
         gp_Trsf translation;
-        while(this->get_distance(current->point, dest) > this->step && !point_queue.empty()){
+        bool reached_obj = false;
+        while(!reached_obj && !point_queue.empty()){
             if(this->is_inside(current->point, this->topology)){
                 translation.SetTranslation(gp::Origin(), current->point);
                 BRepBuilderAPI_Transform transf(cface, translation, true);
@@ -92,9 +94,18 @@ std::vector<gp_Pnt> MeshlessAStar::find_path(gp_Pnt p, const TopoDS_Shape& dest,
                 if(state == TopAbs_IN || current->point.Distance(point_list[0].point) <= this->restriction){
                     for(double a:this->angles2D){
                         gp_Dir dir = direction.Rotated(axis, a);
-                        gp_Pnt point = p.Translated(step*dir);
-                        point_list.emplace_back(point, this->get_distance(point, dest), &point_list[0]);
-                        point_queue.push(&point_list[point_list.size()-1]);
+                        std::pair<bool, gp_Pnt> intersec = this->get_intersection_point(current->point, dir, dest);
+                        if(intersec.first == false){
+                            gp_Pnt point = p.Translated(step*dir);
+                            point_list.emplace_back(point, this->get_distance(point, dest), &point_list[0]);
+                            point_queue.push(&point_list[point_list.size()-1]);
+                        } else {
+                            gp_Pnt point = intersec.second;
+                            point_list.emplace_back(point, this->get_distance(point, dest), &point_list[0]);
+                            point_queue.push(&point_list[point_list.size()-1]);
+                            reached_obj = true;
+                            break;
+                        }
                     }
                 }
             }
@@ -134,5 +145,18 @@ double MeshlessAStar::get_distance(gp_Pnt p, const TopoDS_Shape& t){
 
 }
 
+std::pair<bool, gp_Pnt> MeshlessAStar::get_intersection_point(gp_Pnt p, gp_Dir dir, const TopoDS_Shape& t){
+    gp_Lin line(p, dir);
+    gp_Pnt itsc(0,0,0);
+    IntCurvesFace_ShapeIntersector intersector;
+    intersector.Load(t, 0.001);
+    intersector.PerformNearest(line, 0.0, this->step);
+    if(intersector.State(0) == TopAbs_IN && intersector.State(0) == TopAbs_ON){
+        itsc = intersector.Pnt(0);
+        return std::pair<bool, gp_Pnt>(true, itsc);
+    } else {
+        return std::pair<bool, gp_Pnt>(false, itsc);
+    }
+}
 
 }

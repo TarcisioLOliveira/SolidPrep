@@ -63,6 +63,7 @@ class MeshlessAStar : public Pathfinding{
 
     bool is_inside(gp_Pnt p, const TopoDS_Shape& t);
     double get_distance(gp_Pnt p, const TopoDS_Shape& t);
+    std::pair<bool, gp_Pnt> get_intersection_point(gp_Pnt p, gp_Dir dir, const TopoDS_Shape& t);
 
 };
 
