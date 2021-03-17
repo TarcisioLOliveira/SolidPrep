@@ -47,6 +47,9 @@ class Support{
 
     bool is_inside(gp_Pnt p) const;
     double get_distance(gp_Pnt p) const;
+    inline TopoDS_Shape get_shape(){
+        return this->shape;
+    }
 
     private:
     TopoDS_Shape shape;
