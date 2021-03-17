@@ -126,7 +126,6 @@ std::vector<gp_Pnt> MeshlessAStar::find_path(gp_Pnt p, const TopoDS_Shape& dest,
         current = current->prev;
     }
 
-    std::reverse(path.begin(), path.end());
     return path;
 }
 
