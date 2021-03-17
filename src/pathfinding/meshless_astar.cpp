@@ -109,10 +109,8 @@ std::vector<gp_Pnt> MeshlessAStar::find_path(const Force& f, const TopoDS_Shape&
         TopTools_IndexedMapOfShape edges;
         TopExp::MapShapes(this->topology, TopAbs_EDGE, edges);
         Handle(IntTools_Context) context;
-        gp_Circ circle(gp::XOY(), this->restriction/2);
+        gp_Circ circle(gp::XOY(), this->restriction + f.get_dimension()/2);
         TopoDS_Edge cedge = BRepBuilderAPI_MakeEdge(circle);
-        TopoDS_Wire cwire = BRepBuilderAPI_MakeWire(cedge);
-        TopoDS_Face cface = BRepBuilderAPI_MakeFace(cwire);
         TopoDS_Solid solid_topo = TopoDS::Solid(this->topology);
 
         gp_Trsf translation;
@@ -120,10 +118,10 @@ std::vector<gp_Pnt> MeshlessAStar::find_path(const Force& f, const TopoDS_Shape&
         while(!reached_obj && !point_queue.empty()){
             if(this->is_inside(current->point, this->topology)){
                 translation.SetTranslation(gp::Origin(), current->point);
-                BRepBuilderAPI_Transform transf(cface, translation, true);
-                TopoDS_Face cface_t = TopoDS::Face(transf.Shape());
+                BRepBuilderAPI_Transform transf(cedge, translation, true);
+                TopoDS_Edge cedge_t = TopoDS::Edge(transf.Shape());
 
-                TopAbs_State state = BOPTools_AlgoTools::ComputeState(cface_t, solid_topo, 0.001, edges, context);
+                TopAbs_State state = BOPTools_AlgoTools::ComputeState(cedge_t, solid_topo, 0.001, context);
                 if(state == TopAbs_IN || current->point.Distance(point_list[0].point) <= this->restriction){
                     for(double a:this->angles2D){
                         gp_Dir dir = direction.Rotated(axis, a);
