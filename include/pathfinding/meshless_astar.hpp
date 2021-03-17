@@ -42,18 +42,17 @@ class PathPointCompare{
 
 class MeshlessAStar : public Pathfinding{
     public:
-
-    MeshlessAStar(TopoDS_Shape topology, double step, std::vector<double> angles2D, double restriction);
-    MeshlessAStar(TopoDS_Shape topology, double step, std::vector<std::array<double,2>> angles3D, double restriction);
-
-    virtual std::vector<gp_Pnt> find_path(gp_Pnt p, const TopoDS_Shape& dest, gp_Dir initial_direction) override;
-
-    private:
     enum ProbType{
         TYPE_2D,
         TYPE_3D
     };
 
+    MeshlessAStar(TopoDS_Shape topology, double step, double turn_angle, int choices, double restriction, ProbType type);
+    ~MeshlessAStar() = default;
+
+    virtual std::vector<gp_Pnt> find_path(gp_Pnt p, const TopoDS_Shape& dest, gp_Dir initial_direction) override;
+
+    private:
     double step;
     std::vector<double> angles2D;
     std::vector<std::array<double,2>> angles3D;

@@ -27,6 +27,7 @@
 #include "logger.hpp"
 #include "force.hpp"
 #include "support.hpp"
+#include "pathfinding.hpp"
 
 /**
  * Reads and stores project data.
@@ -56,12 +57,11 @@ class ProjectData {
      */
     ProjectData(std::string project_file);
 
-    double step;
-    std::vector<double> angles2D;
-    std::vector<std::array<double,2>> angles3D;
-    double restriction;
+    ~ProjectData();
+
     double scale;
     double thickness;
+    Pathfinding* pathfinder;
     ProjectType type;
     TopoDS_Shape solid;
     std::vector<Force> forces;

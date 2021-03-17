@@ -43,13 +43,42 @@
 
 namespace pathfinding{
 
-MeshlessAStar::MeshlessAStar(TopoDS_Shape topology, double step, std::vector<double> angles2D, double restriction):
-    step(step), angles2D(angles2D), angles3D(), restriction(restriction), type(TYPE_2D), topology(topology){
-
-}
-MeshlessAStar::MeshlessAStar(TopoDS_Shape topology, double step, std::vector<std::array<double,2>> angles3D, double restriction):
-    step(step), angles2D(), angles3D(angles3D), restriction(restriction), type(TYPE_3D), topology(topology){
-
+MeshlessAStar::MeshlessAStar(TopoDS_Shape topology, double step, double angle, int choices, double restriction, ProbType type){
+    this->step = step;
+    this->restriction = restriction;
+    this->type = type;
+    if(this->type == TYPE_2D){
+        double angle_step = (M_PI/360)*2*angle/(choices-1);
+        for(int i = 0; i < choices; ++i){
+            this->angles2D.push_back(-angle + i*angle_step);
+        }
+    } else if(this->type == TYPE_3D){
+        double angle_step = (M_PI/360)*2*angle/(choices-1);
+        double spin_step = 2*M_PI/(choices-1);
+        bool odd = (choices % 2) == 1;
+        if(odd){
+            std::array<double, 2> arr = {0, 0};
+            this->angles3D.push_back(arr);
+            for(int j = 0; j < choices - 1; ++j){
+                for(int i = 0; i < choices; ++i){
+                    arr[0] = -angle + i*angle_step;
+                    if(arr[0] != 0){
+                        arr[1] = j*spin_step;
+                        this->angles3D.push_back(arr);
+                    }
+                }
+            }
+        } else {
+            std::array<double, 2> arr = {0, 0};
+            for(int j = 0; j < choices+1; ++j){
+                for(int i = 0; i < choices; ++i){
+                    arr[0] = -angle + i*angle_step;
+                    arr[1] = j*spin_step;
+                    this->angles3D.push_back(arr);
+                }
+            }
+        }
+    }
 }
 
 std::vector<gp_Pnt> MeshlessAStar::find_path(gp_Pnt p, const TopoDS_Shape& dest, gp_Dir initial_direction){
