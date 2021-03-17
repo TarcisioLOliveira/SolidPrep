@@ -23,12 +23,13 @@
 #include <gp_Pnt.hxx>
 #include <vector>
 #include <TopoDS_Shape.hxx>
+#include "force.hpp"
 
 class Pathfinding{
     public:
     virtual ~Pathfinding() = default;
 
-    virtual std::vector<gp_Pnt> find_path(gp_Pnt p, const TopoDS_Shape& dest, gp_Dir initial_direction) = 0;
+    virtual std::vector<gp_Pnt> find_path(const Force& f, const TopoDS_Shape& dest) = 0;
 };
 
 #endif

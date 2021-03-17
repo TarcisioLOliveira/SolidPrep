@@ -81,9 +81,13 @@ MeshlessAStar::MeshlessAStar(TopoDS_Shape topology, double step, double angle, i
     }
 }
 
-std::vector<gp_Pnt> MeshlessAStar::find_path(gp_Pnt p, const TopoDS_Shape& dest, gp_Dir initial_direction){
+std::vector<gp_Pnt> MeshlessAStar::find_path(const Force& f, const TopoDS_Shape& dest){
     std::priority_queue<PathPoint*, std::vector<PathPoint*>, PathPointCompare> point_queue;
     std::vector<PathPoint> point_list;
+    gp_Pnt p = f.get_centroid();
+    gp_Dir initial_direction = f.get_normal();
+
+
     point_list.emplace_back(p, this->get_distance(p, dest), nullptr);
     point_queue.push(&point_list[0]);
 
