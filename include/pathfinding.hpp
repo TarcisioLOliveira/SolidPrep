@@ -26,7 +26,7 @@
 
 class Pathfinding{
     public:
-    virtual ~Pathfinding();
+    virtual ~Pathfinding() = default;
 
     virtual std::vector<gp_Pnt> find_path(gp_Pnt p, const TopoDS_Shape& dest, gp_Dir initial_direction) = 0;
 };
