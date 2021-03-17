@@ -74,8 +74,13 @@ ProjectData::ProjectData(std::string project_file){
             exit(EXIT_FAILURE);
         }
     }
-    if(this->log_data(doc, "scale", TYPE_DOUBLE, true)){
+    if(this->log_data(doc, "scale", TYPE_DOUBLE, false)){
         this->scale = doc["scale"].GetDouble();
+        gp_Trsf t;
+        t.SetScaleFactor(this->scale);
+        BRepBuilderAPI_Transform transf(this->solid, t);
+    } else {
+        this->scale = 1;
     }
     if(this->type == TYPE_2D){
         if(this->log_data(doc, "thickness", TYPE_DOUBLE, true)){
