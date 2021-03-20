@@ -114,10 +114,13 @@ std::vector<gp_Pnt> MeshlessAStar::find_path(const Force& f, const TopoDS_Shape&
     if(this->type == TYPE_2D){
         bool reached_obj = false;
         while(!reached_obj && !point_queue.empty()){
+            std::cout << current->point.X() << " " << current->point.Y() << std::endl;
             bool fully_inside_topology = this->shape_inside_2D(current->point, direction, this->restriction + f.get_dimension()/2, this->step, this->topology);
+            bool center_inside = this->is_inside(current->point, this->topology);
             bool close_to_start = current->point.Distance(point_list[0]->point) <= this->restriction + f.get_dimension()/2;
-            if(fully_inside_topology || close_to_start){
-                std::cout << current->point.X() << " " << current->point.Y() << std::endl;
+            bool close_to_end = this->get_distance(current->point, dest) <= this->restriction + f.get_dimension()/2;
+            if(center_inside && (fully_inside_topology || close_to_start || close_to_end)){
+                std::cout << "inside" << std::endl;
                 gp_Ax1 axis(current->point, gp_Dir(0.0,0.0,1.0));
                 for(double a:this->angles2D){
                     gp_Dir dir = direction.Rotated(axis, a);
@@ -134,6 +137,9 @@ std::vector<gp_Pnt> MeshlessAStar::find_path(const Force& f, const TopoDS_Shape&
                         break;
                     }
                 }
+            }
+            else {
+                std::cout << center_inside << " " << fully_inside_topology << " " << close_to_start << " " << close_to_end << std::endl;
             }
             current = point_queue.top();
             direction = gp_Vec(current->prev->point, current->point);
@@ -160,10 +166,7 @@ bool MeshlessAStar::shape_inside_2D(gp_Pnt center, gp_Dir dir, double restr, dou
                    gp_Pnt(center.X() + step/2, center.Y() - restr, 0)};
     gp_Ax1 axis(center, gp_Dir(0, 0, 1));
     double ang = dir.AngleWithRef(gp_Dir(1,0,0), gp_Dir(0,0,1));
-    bool inside = this->is_inside(center, t);
-    if(!inside){
-        return false;
-    }
+    bool inside = true;
     for(int i = 0; i < 4; ++i){
         p[i].Rotate(axis, ang);
         inside = inside && this->is_inside(p[i], t);
@@ -175,15 +178,14 @@ bool MeshlessAStar::shape_inside_2D(gp_Pnt center, gp_Dir dir, double restr, dou
 }
 
 bool MeshlessAStar::is_inside(gp_Pnt p, const TopoDS_Shape& t){
-    BRepClass3d_SolidClassifier insider(t, p, 0);
+    BRepClass3d_SolidClassifier insider(t, p, 0.001);
     return insider.State() == TopAbs_ON || insider.State() == TopAbs_IN;
 }
 
 double MeshlessAStar::get_distance(gp_Pnt p, const TopoDS_Shape& t){
     TopoDS_Vertex v = BRepBuilderAPI_MakeVertex(p);
 
-    BRepExtrema_DistShapeShape d(v, t, Extrema_ExtFlag_MIN, Extrema_ExtAlgo_Tree);
-    d.Perform();
+    BRepExtrema_DistShapeShape d(v, t, Extrema_ExtFlag_MIN, Extrema_ExtAlgo_Grad);
     return d.Value();
 
 }
@@ -192,13 +194,11 @@ std::pair<bool, gp_Pnt> MeshlessAStar::get_intersection_point(gp_Pnt p, gp_Dir d
     gp_Lin line(p, dir);
     gp_Pnt itsc(0,0,0);
     IntCurvesFace_ShapeIntersector intersector;
-    intersector.Load(t, 0.1);
-    intersector.Perform(line, 0, step);
+    intersector.Load(t, 0.001);
+    intersector.PerformNearest(line, 0, step);
     try{
-        if(intersector.State(1)){
-            itsc = intersector.Pnt(1);
-            return std::pair<bool, gp_Pnt>(true, itsc);
-        }
+        itsc = intersector.Pnt(1);
+        return std::pair<bool, gp_Pnt>(true, itsc);
     } catch(const Standard_OutOfRange& e){
         return std::pair<bool, gp_Pnt>(false, itsc);
     }
