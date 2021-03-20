@@ -32,14 +32,17 @@
 #include <gp_Circ.hxx>
 #include <TopExp.hxx>
 #include <BRepBuilderAPI_MakeFace.hxx>
+#include <BRepBuilderAPI_MakeSolid.hxx>
 #include <BOPTools_AlgoTools.hxx>
 #include <TopoDS_Wire.hxx>
 #include <TopoDS_Solid.hxx>
 #include <TopoDS.hxx>
 #include <IntCurvesFace_ShapeIntersector.hxx>
+#include <IntTools_Context.hxx>
 #include <vector>
 #include <queue>
 #include <algorithm>
+#include <memory>
 
 namespace pathfinding{
 
@@ -47,13 +50,19 @@ MeshlessAStar::MeshlessAStar(TopoDS_Shape topology, double step, double angle, i
     this->step = step;
     this->restriction = restriction;
     this->type = type;
+    angle = (M_PI/180)*angle;
+    if(type == TYPE_2D){
+        this->topology = BRepBuilderAPI_MakeSolid(TopoDS::Shell(topology));
+    } else {
+        this->topology = TopoDS::Solid(topology);
+    }
     if(this->type == TYPE_2D){
-        double angle_step = (M_PI/360)*2*angle/(choices-1);
+        double angle_step = 2*angle/(choices-1);
         for(int i = 0; i < choices; ++i){
             this->angles2D.push_back(-angle + i*angle_step);
         }
     } else if(this->type == TYPE_3D){
-        double angle_step = (M_PI/360)*2*angle/(choices-1);
+        double angle_step = 2*angle/(choices-1);
         double spin_step = 2*M_PI/(choices-1);
         bool odd = (choices % 2) == 1;
         if(odd){
@@ -83,60 +92,46 @@ MeshlessAStar::MeshlessAStar(TopoDS_Shape topology, double step, double angle, i
 
 std::vector<gp_Pnt> MeshlessAStar::find_path(const Force& f, const TopoDS_Shape& dest){
     std::priority_queue<PathPoint*, std::vector<PathPoint*>, PathPointCompare> point_queue;
-    std::vector<PathPoint> point_list;
+    std::vector<std::unique_ptr<PathPoint>> point_list;
     gp_Pnt p = f.get_centroid();
     gp_Dir initial_direction = f.get_normal();
 
-
-    point_list.emplace_back(p, this->get_distance(p, dest), nullptr);
-    point_queue.push(&point_list[0]);
+    point_list.emplace_back(new PathPoint(p, this->get_distance(p, dest), nullptr));
 
     // Forward direction
-    gp_Pnt point = p.Translated(step*initial_direction);
-    point_list.emplace_back(point, this->get_distance(point, dest), &point_list[0]);
-    point_queue.push(&point_list[point_list.size()-1]);
+    gp_Pnt point = p.Translated(this->step*initial_direction);
+    point_list.emplace_back(new PathPoint(point, this->get_distance(point, dest), point_list[0].get()));
+    point_queue.push(point_list[point_list.size()-1].get());
     // Backward direction
-    point = p.Translated(step*(-initial_direction));
-    point_list.emplace_back(point, this->get_distance(point, dest), &point_list[0]);
-    point_queue.push(&point_list[point_list.size()-1]);
+    point = p.Translated(this->step*(-initial_direction));
+    point_list.emplace_back(new PathPoint(point, this->get_distance(point, dest), point_list[0].get()));
+    point_queue.push(point_list[point_list.size()-1].get());
 
     PathPoint* current = point_queue.top();
-    gp_Dir direction = initial_direction; // GET DIRECTION FROM SUBTRACTING POINTS
+    gp_Dir direction = gp_Vec(current->prev->point, current->point);
     point_queue.pop();
 
     if(this->type == TYPE_2D){
-        gp_Ax1 axis(p, gp_Dir(0.0,0.0,1.0));
-        TopTools_IndexedMapOfShape edges;
-        TopExp::MapShapes(this->topology, TopAbs_EDGE, edges);
-        Handle(IntTools_Context) context;
-        gp_Circ circle(gp::XOY(), this->restriction + f.get_dimension()/2);
-        TopoDS_Edge cedge = BRepBuilderAPI_MakeEdge(circle);
-        TopoDS_Solid solid_topo = TopoDS::Solid(this->topology);
-
-        gp_Trsf translation;
         bool reached_obj = false;
         while(!reached_obj && !point_queue.empty()){
-            if(this->is_inside(current->point, this->topology)){
-                translation.SetTranslation(gp::Origin(), current->point);
-                BRepBuilderAPI_Transform transf(cedge, translation, true);
-                TopoDS_Edge cedge_t = TopoDS::Edge(transf.Shape());
-
-                TopAbs_State state = BOPTools_AlgoTools::ComputeState(cedge_t, solid_topo, 0.001, context);
-                if(state == TopAbs_IN || current->point.Distance(point_list[0].point) <= this->restriction){
-                    for(double a:this->angles2D){
-                        gp_Dir dir = direction.Rotated(axis, a);
-                        std::pair<bool, gp_Pnt> intersec = this->get_intersection_point(current->point, dir, dest);
-                        if(intersec.first == false){
-                            gp_Pnt point = p.Translated(step*dir);
-                            point_list.emplace_back(point, this->get_distance(point, dest), &point_list[0]);
-                            point_queue.push(&point_list[point_list.size()-1]);
-                        } else {
-                            gp_Pnt point = intersec.second;
-                            point_list.emplace_back(point, this->get_distance(point, dest), &point_list[0]);
-                            point_queue.push(&point_list[point_list.size()-1]);
-                            reached_obj = true;
-                            break;
-                        }
+            bool fully_inside_topology = this->shape_inside_2D(current->point, direction, this->restriction + f.get_dimension()/2, this->step, this->topology);
+            bool close_to_start = current->point.Distance(point_list[0]->point) <= this->restriction + f.get_dimension()/2;
+            if(fully_inside_topology || close_to_start){
+                std::cout << current->point.X() << " " << current->point.Y() << std::endl;
+                gp_Ax1 axis(current->point, gp_Dir(0.0,0.0,1.0));
+                for(double a:this->angles2D){
+                    gp_Dir dir = direction.Rotated(axis, a);
+                    std::pair<bool, gp_Pnt> intersec = this->get_intersection_point(current->point, dir, this->step, dest);
+                    if(intersec.first == false){
+                        gp_Pnt point = current->point.Translated(this->step*dir);
+                        point_list.emplace_back(new PathPoint(point, this->get_distance(point, dest), current));
+                        point_queue.push(point_list[point_list.size()-1].get());
+                    } else {
+                        gp_Pnt point = intersec.second;
+                        point_list.emplace_back(new PathPoint(point, this->get_distance(point, dest), current));
+                        point_queue.push(point_list[point_list.size()-1].get());
+                        reached_obj = true;
+                        break;
                     }
                 }
             }
@@ -145,14 +140,12 @@ std::vector<gp_Pnt> MeshlessAStar::find_path(const Force& f, const TopoDS_Shape&
             point_queue.pop();
         }
     } else if(this->type == TYPE_3D){
-        while(this->get_distance(current->point, dest) > this->step && !point_queue.empty()){
-            // TODO
-        }
+        // TODO
     }
 
     logger::log_assert(!point_queue.empty(), logger::ERROR, "Failed to find path. Initial point was ({},{},{})", p.X(), p.Y(), p.Z());
     std::vector<gp_Pnt> path;
-    while(current->prev != nullptr){
+    while(current != nullptr){
         path.push_back(current->point);
         current = current->prev;
     }
@@ -160,33 +153,56 @@ std::vector<gp_Pnt> MeshlessAStar::find_path(const Force& f, const TopoDS_Shape&
     return path;
 }
 
+bool MeshlessAStar::shape_inside_2D(gp_Pnt center, gp_Dir dir, double restr, double step, const TopoDS_Shape& t){
+    gp_Pnt p[4] = {gp_Pnt(center.X() + step/2, center.Y() + restr, 0), 
+                   gp_Pnt(center.X() - step/2, center.Y() + restr, 0), 
+                   gp_Pnt(center.X() - step/2, center.Y() - restr, 0), 
+                   gp_Pnt(center.X() + step/2, center.Y() - restr, 0)};
+    gp_Ax1 axis(center, gp_Dir(0, 0, 1));
+    double ang = dir.AngleWithRef(gp_Dir(1,0,0), gp_Dir(0,0,1));
+    bool inside = this->is_inside(center, t);
+    if(!inside){
+        return false;
+    }
+    for(int i = 0; i < 4; ++i){
+        p[i].Rotate(axis, ang);
+        inside = inside && this->is_inside(p[i], t);
+        if(!inside){
+            break;
+        }
+    }
+    return inside;
+}
+
 bool MeshlessAStar::is_inside(gp_Pnt p, const TopoDS_Shape& t){
-    BRepClass3d_SolidClassifier insider(t);
-    insider.Perform(p, 0);
+    BRepClass3d_SolidClassifier insider(t, p, 0);
     return insider.State() == TopAbs_ON || insider.State() == TopAbs_IN;
 }
 
 double MeshlessAStar::get_distance(gp_Pnt p, const TopoDS_Shape& t){
     TopoDS_Vertex v = BRepBuilderAPI_MakeVertex(p);
 
-    BRepExtrema_DistShapeShape d(v, t);
+    BRepExtrema_DistShapeShape d(v, t, Extrema_ExtFlag_MIN, Extrema_ExtAlgo_Tree);
     d.Perform();
     return d.Value();
 
 }
 
-std::pair<bool, gp_Pnt> MeshlessAStar::get_intersection_point(gp_Pnt p, gp_Dir dir, const TopoDS_Shape& t){
+std::pair<bool, gp_Pnt> MeshlessAStar::get_intersection_point(gp_Pnt p, gp_Dir dir, double step, const TopoDS_Shape& t){
     gp_Lin line(p, dir);
     gp_Pnt itsc(0,0,0);
     IntCurvesFace_ShapeIntersector intersector;
-    intersector.Load(t, 0.001);
-    intersector.PerformNearest(line, 0.0, this->step);
-    if(intersector.State(0) == TopAbs_IN && intersector.State(0) == TopAbs_ON){
-        itsc = intersector.Pnt(0);
-        return std::pair<bool, gp_Pnt>(true, itsc);
-    } else {
+    intersector.Load(t, 0.1);
+    intersector.Perform(line, 0, step);
+    try{
+        if(intersector.State(1)){
+            itsc = intersector.Pnt(1);
+            return std::pair<bool, gp_Pnt>(true, itsc);
+        }
+    } catch(const Standard_OutOfRange& e){
         return std::pair<bool, gp_Pnt>(false, itsc);
     }
+    return std::pair<bool, gp_Pnt>(false, itsc);
 }
 
 }

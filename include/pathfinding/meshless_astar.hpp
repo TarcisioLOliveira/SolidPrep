@@ -21,6 +21,7 @@
 #ifndef MESHLESS_ASTAR_HPP
 #define MESHLESS_ASTAR_HPP
 
+#include "TopoDS_Solid.hxx"
 #include "pathfinding.hpp"
 
 namespace pathfinding{
@@ -58,11 +59,12 @@ class MeshlessAStar : public Pathfinding{
     std::vector<std::array<double,2>> angles3D;
     double restriction;
     ProbType type;
-    TopoDS_Shape topology;
+    TopoDS_Solid topology;
 
+    bool shape_inside_2D(gp_Pnt center, gp_Dir dir, double restr, double step, const TopoDS_Shape& t);
     bool is_inside(gp_Pnt p, const TopoDS_Shape& t);
     double get_distance(gp_Pnt p, const TopoDS_Shape& t);
-    std::pair<bool, gp_Pnt> get_intersection_point(gp_Pnt p, gp_Dir dir, const TopoDS_Shape& t);
+    std::pair<bool, gp_Pnt> get_intersection_point(gp_Pnt p, gp_Dir dir, double step, const TopoDS_Shape& t);
 
 };
 

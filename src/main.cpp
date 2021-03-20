@@ -41,6 +41,10 @@ int main(int argc, char* argv[]){
     // }
     
     ProjectData proj(argv[1]);
+    auto path = proj.pathfinder->find_path(proj.forces[0], proj.supports[0].get_shape());
+    for(auto& p : path){
+        std::cout << "(" << p.X() << ", " << p.Y() << ")" << std::endl;
+    }
 
     return 0;
 }
