@@ -30,6 +30,10 @@
 #define _USE_MATH_DEFINES
 #include <cmath>
 #include "force.hpp"
+#include <BRepGProp.hxx>
+#include <GProp_GProps.hxx>
+#include <Bnd_Box.hxx>
+#include <BRepBndLib.hxx>
 
 
 ProjectData::ProjectData(std::string project_file){
@@ -77,8 +81,18 @@ ProjectData::ProjectData(std::string project_file){
     if(this->log_data(doc, "scale", TYPE_DOUBLE, false)){
         this->scale = doc["scale"].GetDouble();
         gp_Trsf t;
-        t.SetScaleFactor(this->scale);
-        BRepBuilderAPI_Transform transf(this->solid, t);
+        t.SetScale(gp_Pnt(0, 0, 0), this->scale);
+        BRepBuilderAPI_Transform transf(this->solid, t, true);
+        this->solid = transf.Shape();
+
+        // Geometry bounds calculation for debugging purposes.
+        //
+        // Bnd_Box bounds;
+        // BRepBndLib::Add(this->solid, bounds);
+        // bounds.SetGap(0.0);
+        // Standard_Real fXMin, fYMin, fZMin, fXMax, fYMax, fZMax;
+        // bounds.Get(fXMin, fYMin, fZMin, fXMax, fYMax, fZMax);
+        // std::cout << fXMax << " " << fXMin << " " << fYMax << " " << fYMin << std::endl;
     } else {
         this->scale = 1;
     }
