@@ -68,20 +68,28 @@ Force::Force(std::vector<std::array<double, 2>> vertices, double thickness, std:
     BOPTools_AlgoTools3D::GetNormalToSurface(surf, cm.X(), cm.Y(), this->normal);
 
     // Shape creation.
-    gp_Pnt p(vertices[0][0], vertices[0][1], 0.0);
-    gp_Pnt pi(vertices[1][0], vertices[1][1], 0.0);
+    gp_Pnt p(vertices[0][0], vertices[0][1], -thickness/2);
+    gp_Pnt pi(vertices[0][0], vertices[0][1], thickness/2);
     TopoDS_Edge e = BRepBuilderAPI_MakeEdge(p, pi);
-    TopoDS_Wire w2 = BRepBuilderAPI_MakeWire(e);
+    TopoDS_Wire w2 = BRepBuilderAPI_MakeWire(e1);
     p = pi;
 
-    for(auto i = vertices.begin()+2; i < vertices.end(); ++i){
-        pi = gp_Pnt((*i)[0], (*i)[1], 0);
-        e = BRepBuilderAPI_MakeEdge(p, pi);
+    for(auto i = vertices.begin()+1; i < vertices.end(); ++i){
+        gp_Pnt pp = gp_Pnt((*i)[0], (*i)[1], thickness/2);
+        e1 = BRepBuilderAPI_MakeEdge(pi, pp);
         w2 = BRepBuilderAPI_MakeWire(w2, e);
-        p = pi;
+        pi = pp;
+        pp.SetZ(-thickness/2);
+        e1 = BRepBuilderAPI_MakeEdge(p, pp);
+        w2 = BRepBuilderAPI_MakeWire(w2, e);
+        p = pp;
     }
+    p  = gp_Pnt(vertices[vertices.size()-1][0], vertices[vertices.size()-1][1], -thickness/2);
+    pi = gp_Pnt(vertices[vertices.size()-1][0], vertices[vertices.size()-1][1], thickness/2);
+    e1 = BRepBuilderAPI_MakeEdge(p, pi);
+    w2 = BRepBuilderAPI_MakeWire(w2, e);
 
-    this->shape = w2;
+    this->shape = BRepBuilderAPI_MakeFace(w2);
 }
 
 

@@ -159,7 +159,7 @@ ProjectData::ProjectData(std::string project_file){
                     logger::log_assert(v.Size() == 2, logger::ERROR, "Vertices must have exactly two dimensions in 2D problems");
                     vlist.push_back({v[0].GetDouble(), v[1].GetDouble()});
                 }
-                this->supports.emplace_back(X, Y, vlist);
+                this->supports.emplace_back(X, Y, this->thickness, vlist);
             }
         } else if(this->type == TYPE_3D) {
             for(auto& f : doc["supports"].GetArray()){

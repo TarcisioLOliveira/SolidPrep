@@ -34,7 +34,7 @@ class Support{
      * @param Y Whether it supports the Y axis.
      * @param vertices Vertices of the support geometry.
      */
-    Support(bool X, bool Y, std::vector<std::array<double, 2>> vertices);
+    Support(bool X, bool Y, double thickness, std::vector<std::array<double, 2>> vertices);
     /**
      * Creates a Support object for 3D problems.
      *
