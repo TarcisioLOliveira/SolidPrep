@@ -113,14 +113,15 @@ std::vector<gp_Pnt> MeshlessAStar::find_path(const Force& f, const TopoDS_Shape&
 
     if(this->type == TYPE_2D){
         bool reached_obj = false;
-        while(!reached_obj && !point_queue.empty()){
+        while(!reached_obj){
             std::cout << current->point.X() << " " << current->point.Y() << std::endl;
             bool fully_inside_topology = this->shape_inside_2D(current->point, direction, this->restriction + f.get_dimension()/2, this->step, this->topology);
             bool center_inside = this->is_inside(current->point, this->topology);
-            bool close_to_start = current->point.Distance(point_list[0]->point) <= this->restriction + f.get_dimension()/2;
-            bool close_to_end = this->get_distance(current->point, dest) <= this->restriction + f.get_dimension()/2;
+            bool close_to_start = current->point.Distance(point_list[0]->point) <= (this->restriction + f.get_dimension()/2);
+            bool close_to_end = this->get_distance(current->point, dest) <= (this->restriction + f.get_dimension()/2);
+            // REMOVE CLOSE TO END FOR SMOOTHER FINISH?
             if(center_inside && (fully_inside_topology || close_to_start || close_to_end)){
-                std::cout << "inside" << std::endl;
+                std::cout << center_inside << " " << fully_inside_topology << " " << close_to_start << " " << close_to_end << std::endl;
                 gp_Ax1 axis(current->point, gp_Dir(0.0,0.0,1.0));
                 for(double a:this->angles2D){
                     gp_Dir dir = direction.Rotated(axis, a);
@@ -140,6 +141,9 @@ std::vector<gp_Pnt> MeshlessAStar::find_path(const Force& f, const TopoDS_Shape&
             }
             else {
                 std::cout << center_inside << " " << fully_inside_topology << " " << close_to_start << " " << close_to_end << std::endl;
+            }
+            if(point_queue.empty()){
+                break;
             }
             current = point_queue.top();
             direction = gp_Vec(current->prev->point, current->point);
