@@ -63,8 +63,16 @@ ProjectData::ProjectData(std::string project_file){
         }
     }
     if(this->log_data(doc, "geometry_path", TYPE_STRING, true)){
+        std::string geom_path = doc["geometry_path"].GetString();
+#ifdef _WIN32
+        size_t last_slash = project_file.rfind("\\");
+#else
+        size_t last_slash = project_file.rfind("/");
+#endif
+        std::string absolute_path = project_file.substr(0, last_slash+1);
+        absolute_path.append(geom_path);
         STEPControl_Reader reader;
-        IFSelect_ReturnStatus stat = reader.ReadFile("tmp/square.step");
+        IFSelect_ReturnStatus stat = reader.ReadFile(absolute_path.c_str());
         if(stat != IFSelect_RetDone){
             reader.PrintCheckLoad(false, IFSelect_ItemsByEntity);
             exit(EXIT_FAILURE);
