@@ -67,9 +67,12 @@ Support::Support(bool X, bool Y, bool Z, std::vector<std::array<double, 3>> vert
 
 
 bool Support::is_inside(gp_Pnt p) const{
-    BRepClass3d_SolidClassifier insider(this->shape);
-    insider.Perform(p, 0);
-    return insider.State() == TopAbs_ON;
+    // BRepClass3d_SolidClassifier insider(this->shape);
+    // insider.Perform(p, 0);
+    // return insider.State() == TopAbs_ON;
+
+    // Another workaround to the Face problem.
+    return this->get_distance(p) <= 0.001;
 }
 
 
