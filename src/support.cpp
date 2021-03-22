@@ -31,6 +31,12 @@ Support::Support(bool X, bool Y, double thickness, std::vector<std::array<double
     this->X = X;
     this->Y = Y;
 
+    // THIS IS FAULTY. Need a better way to create the shape, otherwise
+    // SolidClassifier and IntCurvesFace_ShapeIntersector won't work properly.
+    // This workaround is sufficient for pathfinding but may cause problems
+    // later on.
+    thickness = 0.002;
+
     gp_Pnt p(vertices[0][0], vertices[0][1], -thickness/2);
     gp_Pnt pi(vertices[0][0], vertices[0][1], thickness/2);
     TopoDS_Edge e1 = BRepBuilderAPI_MakeEdge(p, pi);
