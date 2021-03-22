@@ -40,11 +40,37 @@
 #include <IntCurvesFace_ShapeIntersector.hxx>
 #include <IntTools_Context.hxx>
 #include <vector>
-#include <queue>
 #include <algorithm>
 #include <memory>
 
 namespace pathfinding{
+
+void PriorityQueue::push(PathPoint* p){
+    if(this->empty()){
+        this->c.push_back(p);
+    }
+    auto i = this->c.crbegin();
+    while(i < this->c.crend()){
+        if((*i)->cost > p->cost){
+            break;
+        }
+        ++i;
+    }
+    auto base = i.base();
+    if(base == this->c.end()){
+        this->c.push_back(p);
+    } else if(this->equal((*base)->point, p->point)){
+        return;
+    } else {
+        this->c.insert(base, p);
+    }
+}
+
+bool PriorityQueue::equal(gp_Pnt p1, gp_Pnt p2, double eps){
+    return ((p1.X() - p2.X()) < eps) && ((p2.X() - p1.X()) < eps) &&
+           ((p1.Y() - p2.Y()) < eps) && ((p2.Y() - p1.Y()) < eps) &&
+           ((p1.Z() - p2.Z()) < eps) && ((p2.Z() - p1.Z()) < eps);
+}
 
 MeshlessAStar::MeshlessAStar(TopoDS_Shape topology, double step, double angle, int choices, double restriction, ProbType type){
     this->step = step;
@@ -91,7 +117,7 @@ MeshlessAStar::MeshlessAStar(TopoDS_Shape topology, double step, double angle, i
 }
 
 std::vector<gp_Pnt> MeshlessAStar::find_path(const Force& f, const TopoDS_Shape& dest){
-    std::priority_queue<PathPoint*, std::vector<PathPoint*>, PathPointCompare> point_queue;
+    PriorityQueue point_queue;
     std::vector<std::unique_ptr<PathPoint>> point_list;
     gp_Pnt p = f.get_centroid();
     gp_Dir initial_direction = f.get_normal();

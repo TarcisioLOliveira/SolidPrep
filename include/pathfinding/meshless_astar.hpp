@@ -34,11 +34,30 @@ struct PathPoint{
     PathPoint* prev;
 };
 
-class PathPointCompare{
+/**
+ * Custom priority queue made to avoid inserting duplicates into the container.
+ * While it may look like it slows down the process, the number of duplicates
+ * actually tends to become considerably big the harder it is to find a path.
+ */
+class PriorityQueue{
     public:
-    inline bool operator() (PathPoint* p1, PathPoint* p2) const{
-        return p1->cost > p2->cost;
+
+    void push(PathPoint* p);
+    void pop(){
+        this->c.pop_back();
     }
+    inline PathPoint* top(){
+        return *this->c.rbegin();
+    }
+    inline bool empty(){
+        return this->c.empty();
+    }
+
+    private:
+
+    bool equal(gp_Pnt p1, gp_Pnt p2, double eps = 0.01);
+
+    std::vector<PathPoint*> c;
 };
 
 class MeshlessAStar : public Pathfinding{
