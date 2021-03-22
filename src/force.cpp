@@ -30,6 +30,8 @@
 #include <GProp_GProps.hxx>
 #include <BRepGProp.hxx>
 #include "logger.hpp"
+#include <BRepBuilderAPI_MakeVertex.hxx>
+#include <BRepExtrema_DistShapeShape.hxx>
 
 
 Force::Force(std::vector<std::array<double, 2>> vertices, double thickness, std::array<double, 2> force){
@@ -98,7 +100,18 @@ Force::Force(std::vector<std::array<double, 3>> vertices,  std::array<double, 3>
 }
 
 bool Force::is_inside(gp_Pnt p) const{
-    BRepClass3d_SolidClassifier insider(this->shape);
-    insider.Perform(p, 0);
-    return insider.State() == TopAbs_ON;
+    // BRepClass3d_SolidClassifier insider(this->shape);
+    // insider.Perform(p, 0);
+    // return insider.State() == TopAbs_ON;
+
+    // Workaround to Face problem.
+    return this->get_distance(p) <= 0.001;
+}
+
+double Force::get_distance(gp_Pnt p) const{
+    TopoDS_Vertex v = BRepBuilderAPI_MakeVertex(p);
+
+    BRepExtrema_DistShapeShape d(v, this->shape);
+    d.Perform();
+    return d.Value();
 }

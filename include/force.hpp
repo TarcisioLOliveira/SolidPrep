@@ -46,6 +46,7 @@ class Force{
     Force(std::vector<std::array<double, 3>> vertices,  std::array<double, 3> force);
 
     bool is_inside(gp_Pnt p) const;
+    double get_distance(gp_Pnt p) const;
 
     inline double get_moment_of_inertia(int i, int j) const{
         return this->inertia(i, j);
