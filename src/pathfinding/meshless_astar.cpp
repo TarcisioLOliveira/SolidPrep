@@ -141,7 +141,7 @@ std::vector<gp_Pnt> MeshlessAStar::find_path(const Force& f, const TopoDS_Shape&
         bool reached_obj = false;
         while(!reached_obj){
             bool fully_inside_topology = this->shape_inside_2D(current->point, direction, this->restriction + f.get_dimension()/2, this->step, this->topology);
-            bool center_inside = this->is_inside(current->point, this->topology);
+            bool center_inside = this->is_inside_2D(current->point, this->topology);
             bool close_to_start = current->point.Distance(point_list[0]->point) <= (this->restriction + f.get_dimension()/2);
             bool close_to_end = this->get_distance(current->point, dest) <= this->step;
             if(center_inside && (fully_inside_topology || close_to_start || close_to_end)){
@@ -193,7 +193,7 @@ bool MeshlessAStar::shape_inside_2D(gp_Pnt center, gp_Dir dir, double restr, dou
     bool inside = true;
     for(int i = 0; i < 4; ++i){
         p[i].Rotate(axis, ang);
-        inside = inside && this->is_inside(p[i], t);
+        inside = inside && this->is_inside_2D(p[i], t);
         if(!inside){
             break;
         }
@@ -201,9 +201,14 @@ bool MeshlessAStar::shape_inside_2D(gp_Pnt center, gp_Dir dir, double restr, dou
     return inside;
 }
 
-bool MeshlessAStar::is_inside(gp_Pnt p, const TopoDS_Shape& t){
+bool MeshlessAStar::is_inside_2D(gp_Pnt p, const TopoDS_Shape& t){
     BRepClass3d_SolidClassifier insider(t, p, 0.01);
-    return insider.State() == TopAbs_ON || insider.State() == TopAbs_IN;
+    return insider.State() == TopAbs_ON;
+}
+
+bool MeshlessAStar::is_inside_3D(gp_Pnt p, const TopoDS_Shape& t){
+    BRepClass3d_SolidClassifier insider(t, p, 0.01);
+    return insider.State() == TopAbs_IN;
 }
 
 double MeshlessAStar::get_distance(gp_Pnt p, const TopoDS_Shape& t){
@@ -214,6 +219,10 @@ double MeshlessAStar::get_distance(gp_Pnt p, const TopoDS_Shape& t){
 }
 
 std::pair<bool, gp_Pnt> MeshlessAStar::get_intersection_point(gp_Pnt p, gp_Dir dir, double step, const TopoDS_Shape& t){
+    gp_Pnt maxp = p.Translated(step*dir);
+    if(this->is_inside_2D(maxp, t)){
+        return std::pair<bool, gp_Pnt>(true, maxp);
+    }
     gp_Lin line(p, dir);
     gp_Pnt itsc(0,0,0);
     IntCurvesFace_ShapeIntersector intersector;
