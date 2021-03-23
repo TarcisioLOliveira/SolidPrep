@@ -32,6 +32,8 @@
 #include "logger.hpp"
 #include <BRepBuilderAPI_MakeVertex.hxx>
 #include <BRepExtrema_DistShapeShape.hxx>
+#include <TopoDS_Shell.hxx>
+#include <BRep_Builder.hxx>
 
 
 Force::Force(std::vector<std::array<double, 2>> vertices, double thickness, std::array<double, 2> force){
@@ -70,28 +72,26 @@ Force::Force(std::vector<std::array<double, 2>> vertices, double thickness, std:
     BOPTools_AlgoTools3D::GetNormalToSurface(surf, cm.X(), cm.Y(), this->normal);
 
     // Shape creation.
-    gp_Pnt p(vertices[0][0], vertices[0][1], -thickness/2);
-    gp_Pnt pi(vertices[0][0], vertices[0][1], thickness/2);
-    TopoDS_Edge e = BRepBuilderAPI_MakeEdge(p, pi);
-    TopoDS_Wire w2 = BRepBuilderAPI_MakeWire(e1);
-    p = pi;
+    TopoDS_Shell sh;
+    BRep_Builder builder;
+    builder.MakeShell(sh);
 
-    for(auto i = vertices.begin()+1; i < vertices.end(); ++i){
-        gp_Pnt pp = gp_Pnt((*i)[0], (*i)[1], thickness/2);
-        e1 = BRepBuilderAPI_MakeEdge(pi, pp);
-        w2 = BRepBuilderAPI_MakeWire(w2, e);
-        pi = pp;
-        pp.SetZ(-thickness/2);
-        e1 = BRepBuilderAPI_MakeEdge(p, pp);
-        w2 = BRepBuilderAPI_MakeWire(w2, e);
-        p = pp;
+    for(size_t i = 1; i < vertices.size(); ++i){
+        gp_Pnt p1(vertices[i-1][0], vertices[i-1][1], -thickness/2);
+        gp_Pnt p2(vertices[i-1][0], vertices[i-1][1], thickness/2);
+        gp_Pnt p3(vertices[i][0], vertices[i][1], thickness/2);
+        gp_Pnt p4(vertices[i][0], vertices[i][1], -thickness/2);
+
+        TopoDS_Edge e1 = BRepBuilderAPI_MakeEdge(p1, p2);
+        TopoDS_Edge e2 = BRepBuilderAPI_MakeEdge(p2, p3);
+        TopoDS_Edge e3 = BRepBuilderAPI_MakeEdge(p3, p4);
+        TopoDS_Edge e4 = BRepBuilderAPI_MakeEdge(p4, p1);
+        TopoDS_Wire w = BRepBuilderAPI_MakeWire(e1, e2, e3, e4);
+        TopoDS_Face f = BRepBuilderAPI_MakeFace(w);
+        builder.Add(sh, f);
     }
-    p  = gp_Pnt(vertices[vertices.size()-1][0], vertices[vertices.size()-1][1], -thickness/2);
-    pi = gp_Pnt(vertices[vertices.size()-1][0], vertices[vertices.size()-1][1], thickness/2);
-    e1 = BRepBuilderAPI_MakeEdge(p, pi);
-    w2 = BRepBuilderAPI_MakeWire(w2, e);
 
-    this->shape = BRepBuilderAPI_MakeFace(w2);
+    this->shape = sh;
 }
 
 
@@ -100,12 +100,9 @@ Force::Force(std::vector<std::array<double, 3>> vertices,  std::array<double, 3>
 }
 
 bool Force::is_inside(gp_Pnt p) const{
-    // BRepClass3d_SolidClassifier insider(this->shape);
-    // insider.Perform(p, 0);
-    // return insider.State() == TopAbs_ON;
-
-    // Workaround to Face problem.
-    return this->get_distance(p) <= 0.001;
+    BRepClass3d_SolidClassifier insider(this->shape);
+    insider.Perform(p, 0);
+    return insider.State() == TopAbs_ON;
 }
 
 double Force::get_distance(gp_Pnt p) const{

@@ -25,7 +25,12 @@
 #include <BRepBuilderAPI_MakeEdge.hxx>
 #include <BRepBuilderAPI_MakeWire.hxx>
 #include <BRepBuilderAPI_MakeFace.hxx>
+#include <BRepBuilderAPI_MakeSolid.hxx>
 #include <TopoDS_Wire.hxx>
+#include <TopoDS_Shell.hxx>
+#include <BRep_Builder.hxx>
+#include <STEPCAFControl_Writer.hxx>
+#include <STEPControl_StepModelType.hxx>
 
 Support::Support(bool X, bool Y, double thickness, std::vector<std::array<double, 2>> vertices){
     this->X = X;
@@ -35,30 +40,28 @@ Support::Support(bool X, bool Y, double thickness, std::vector<std::array<double
     // SolidClassifier and IntCurvesFace_ShapeIntersector won't work properly.
     // This workaround is sufficient for pathfinding but may cause problems
     // later on.
-    thickness = 0.002;
+    // thickness = 0.002;
+    
+    TopoDS_Shell sh;
+    BRep_Builder builder;
+    builder.MakeShell(sh);
 
-    gp_Pnt p(vertices[0][0], vertices[0][1], -thickness/2);
-    gp_Pnt pi(vertices[0][0], vertices[0][1], thickness/2);
-    TopoDS_Edge e1 = BRepBuilderAPI_MakeEdge(p, pi);
-    TopoDS_Wire w2 = BRepBuilderAPI_MakeWire(e1);
-    p = pi;
+    for(size_t i = 1; i < vertices.size(); ++i){
+        gp_Pnt p1(vertices[i-1][0], vertices[i-1][1], -thickness/2);
+        gp_Pnt p2(vertices[i-1][0], vertices[i-1][1], thickness/2);
+        gp_Pnt p3(vertices[i][0], vertices[i][1], thickness/2);
+        gp_Pnt p4(vertices[i][0], vertices[i][1], -thickness/2);
 
-    for(auto i = vertices.begin()+1; i < vertices.end(); ++i){
-        gp_Pnt pp = gp_Pnt((*i)[0], (*i)[1], thickness/2);
-        e1 = BRepBuilderAPI_MakeEdge(pi, pp);
-        w2 = BRepBuilderAPI_MakeWire(w2, e1);
-        pi = pp;
-        pp.SetZ(-thickness/2);
-        e1 = BRepBuilderAPI_MakeEdge(p, pp);
-        w2 = BRepBuilderAPI_MakeWire(w2, e1);
-        p = pp;
+        TopoDS_Edge e1 = BRepBuilderAPI_MakeEdge(p1, p2);
+        TopoDS_Edge e2 = BRepBuilderAPI_MakeEdge(p2, p3);
+        TopoDS_Edge e3 = BRepBuilderAPI_MakeEdge(p3, p4);
+        TopoDS_Edge e4 = BRepBuilderAPI_MakeEdge(p4, p1);
+        TopoDS_Wire w = BRepBuilderAPI_MakeWire(e1, e2, e3, e4);
+        TopoDS_Face f = BRepBuilderAPI_MakeFace(w);
+        builder.Add(sh, f);
     }
-    p  = gp_Pnt(vertices[vertices.size()-1][0], vertices[vertices.size()-1][1], -thickness/2);
-    pi = gp_Pnt(vertices[vertices.size()-1][0], vertices[vertices.size()-1][1], thickness/2);
-    e1 = BRepBuilderAPI_MakeEdge(p, pi);
-    w2 = BRepBuilderAPI_MakeWire(w2, e1);
 
-    this->shape = BRepBuilderAPI_MakeFace(w2);
+    this->shape = sh;
 }
 
 Support::Support(bool X, bool Y, bool Z, std::vector<std::array<double, 3>> vertices){
@@ -67,12 +70,9 @@ Support::Support(bool X, bool Y, bool Z, std::vector<std::array<double, 3>> vert
 
 
 bool Support::is_inside(gp_Pnt p) const{
-    // BRepClass3d_SolidClassifier insider(this->shape);
-    // insider.Perform(p, 0);
-    // return insider.State() == TopAbs_ON;
-
-    // Another workaround to the Face problem.
-    return this->get_distance(p) <= 0.001;
+    BRepClass3d_SolidClassifier insider(this->shape);
+    insider.Perform(p, 0.01);
+    return insider.State() == TopAbs_ON;
 }
 
 
