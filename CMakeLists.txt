@@ -8,7 +8,11 @@ set(VERSION_MINOR "0")
 set(VERSION_PATCH "0")
 set(VERSION ${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH})
 
+enable_language(CXX)
+enable_language(Fortran)
 set(CMAKE_CXX_STANDARD 11)
+
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
 find_package(OpenCASCADE REQUIRED)
 if(OpenCASCADE_FOUND)
@@ -16,11 +20,15 @@ if(OpenCASCADE_FOUND)
     message("-- OpenCASCADE include directory: ${OpenCASCADE_INCLUDE_DIR}")
     message("-- OpenCASCADE libraries: ${OpenCASCADE_LIBRARIES}")
 endif()
+find_package(MUMPS REQUIRED)
+find_package(LAPACK REQUIRED)
 
 include_directories(
     ${PROJECT_SOURCE_DIR}/include
     SYSTEM
     ${OpenCASCADE_INCLUDE_DIR}
+    ${MUMPS_INCLUDE_DIR}
+    ${LAPACK_INCLUDE_DIR}
 )
    
 add_subdirectory(src)

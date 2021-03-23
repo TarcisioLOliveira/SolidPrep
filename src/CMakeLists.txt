@@ -11,7 +11,7 @@ add_subdirectory(pathfinding)
 
 add_executable(${PROJECT_NAME} ${SOURCES} ${SOURCES_PATHFINDING})
 
-target_link_libraries(${PROJECT_NAME} ${OpenCASCADE_LIBRARIES} pathfinding)
+target_link_libraries(${PROJECT_NAME} ${OpenCASCADE_LIBRARIES} MUMPS::MUMPS ${LAPACK_LIBRARIES} pathfinding)
 
 install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION .
                                 LIBRARY DESTINATION .
