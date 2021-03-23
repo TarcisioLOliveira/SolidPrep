@@ -24,21 +24,17 @@
 #include "project_data.hpp"
 
 int main(int argc, char* argv[]){
-    // STEPControl_Reader reader;
-    // IFSelect_ReturnStatus stat = reader.ReadFile("tmp/square.step");
-    // reader.PrintCheckLoad(true, IFSelect_ItemsByEntity);
+    // Bnd_Box bounds;
+    // BRepBndLib::Add(this->shape, bounds);
+    // bounds.SetGap(0.0);
+    // Standard_Real fXMin, fYMin, fZMin, fXMax, fYMax, fZMax;
+    // bounds.Get(fXMin, fYMin, fZMin, fXMax, fYMax, fZMax);
+    // std::cout << fXMax << " " << fXMin << " " << fYMax << " " << fYMin << " " << fZMax << " " << fZMin << std::endl;
 
-    // Standard_Integer NbRoots = reader.NbRootsForTransfer();
-    // Standard_Integer num = reader.TransferRoots();
-    // reader.PrintCheckTransfer(true, IFSelect_ItemsByEntity);
-    // TopoDS_Shape result = reader.OneShape();
-
-    // gp_Pnt p(0.0, 0.0, 0.0);
-    // BRepClass3d_SolidClassifier insider(result);
-    // insider.Perform(p, 0);
-    // if(insider.State() == TopAbs_IN || insider.State() == TopAbs_ON){
-    //     std::cout << "inside" << std::endl;
-    // }
+    // STEPControl_Writer writer;
+    // STEPControl_StepModelType mode = STEPControl_ManifoldSolidBrep;
+    // IFSelect_ReturnStatus stat = writer.Transfer(this->shape,mode);
+    // IFSelect_ReturnStatus stat2 = writer.Write("test.step");
     
     ProjectData proj(argv[1]);
     auto path = proj.pathfinder->find_path(proj.forces[0], proj.supports[0].get_shape());
