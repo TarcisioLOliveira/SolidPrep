@@ -35,12 +35,6 @@
 Support::Support(bool X, bool Y, double thickness, std::vector<std::array<double, 2>> vertices){
     this->X = X;
     this->Y = Y;
-
-    // THIS IS FAULTY. Need a better way to create the shape, otherwise
-    // SolidClassifier and IntCurvesFace_ShapeIntersector won't work properly.
-    // This workaround is sufficient for pathfinding but may cause problems
-    // later on.
-    // thickness = 0.002;
     
     TopoDS_Shell sh;
     BRep_Builder builder;
