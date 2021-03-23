@@ -158,8 +158,10 @@ std::vector<gp_Pnt> MeshlessAStar::find_path(const Force& f, const TopoDS_Shape&
                         point_list.emplace_back(new PathPoint(point, this->get_distance(point, dest), current));
                         point_queue.push(point_list[point_list.size()-1].get());
                         reached_obj = true;
-                        break;
                     }
+                }
+                if(reached_obj){
+                    break;
                 }
             }
             if(point_queue.empty()){
