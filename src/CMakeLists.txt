@@ -5,6 +5,7 @@ set(SOURCES
     project_data.cpp
     force.cpp
     support.cpp
+    internal_force.cpp
 )
 
 add_subdirectory(pathfinding)
