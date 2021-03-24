@@ -29,6 +29,7 @@
 #include "force.hpp"
 #include "support.hpp"
 #include "pathfinding.hpp"
+#include "sizing.hpp"
 
 /**
  * Reads and stores project data.
@@ -61,6 +62,7 @@ class ProjectData {
     double scale;
     double thickness;
     std::unique_ptr<Pathfinding> pathfinder;
+    std::unique_ptr<Sizing> sizer;
     ProjectType type;
     TopoDS_Shape solid;
     std::vector<Force> forces;
