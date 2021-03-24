@@ -66,6 +66,9 @@ class Force{
     inline double get_dimension() const{
         return this->max_dim;
     }
+    inline double get_mass() const{
+        return this->mass;
+    }
 
     private:
     gp_Pnt centroid;
@@ -74,6 +77,7 @@ class Force{
     gp_Vec force;
     Standard_Real max_dim;
     TopoDS_Shape shape;
+    double mass;
 };
 
 #endif
