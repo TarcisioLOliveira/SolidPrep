@@ -125,7 +125,7 @@ ProjectData::ProjectData(std::string project_file){
             if(this->log_data(pathf, "restriction_size", TYPE_DOUBLE, false)){
                 restriction = pathf["restriction_size"].GetDouble();
             }
-            this->pathfinder = new MeshlessAStar(this->solid, step, angle, choices, restriction, MeshlessAStar::TYPE_2D);
+            this->pathfinder.reset(new MeshlessAStar(this->solid, step, angle, choices, restriction, MeshlessAStar::TYPE_2D));
         }
     }
     if(this->log_data(doc, "loads", TYPE_ARRAY, true)){
@@ -207,8 +207,4 @@ ProjectData::ProjectData(std::string project_file){
 
 
     fclose(fp);
-}
-
-ProjectData::~ProjectData(){
-    delete this->pathfinder;
 }

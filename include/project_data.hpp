@@ -20,6 +20,7 @@
 #ifndef PROJECT_DATA_HPP
 #define PROJECT_DATA_HPP
 
+#include <memory>
 #include <string>
 #include <vector>
 #include "rapidjson/document.h"
@@ -57,11 +58,9 @@ class ProjectData {
      */
     ProjectData(std::string project_file);
 
-    ~ProjectData();
-
     double scale;
     double thickness;
-    Pathfinding* pathfinder;
+    std::unique_ptr<Pathfinding> pathfinder;
     ProjectType type;
     TopoDS_Shape solid;
     std::vector<Force> forces;
