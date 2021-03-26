@@ -20,15 +20,15 @@ if(OpenCASCADE_FOUND)
     message("-- OpenCASCADE include directory: ${OpenCASCADE_INCLUDE_DIR}")
     message("-- OpenCASCADE libraries: ${OpenCASCADE_LIBRARIES}")
 endif()
-find_package(MUMPS REQUIRED)
 find_package(LAPACK REQUIRED)
+find_package(LAPACKE REQUIRED)
 
 include_directories(
     ${PROJECT_SOURCE_DIR}/include
     SYSTEM
     ${OpenCASCADE_INCLUDE_DIR}
-    ${MUMPS_INCLUDE_DIR}
     ${LAPACK_INCLUDE_DIR}
+    ${LAPACKE_INCLUDE_DIR}
 )
    
 add_subdirectory(src)

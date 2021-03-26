@@ -9,10 +9,13 @@ set(SOURCES
 )
 
 add_subdirectory(pathfinding)
+add_subdirectory(sizing)
 
-add_executable(${PROJECT_NAME} ${SOURCES} ${SOURCES_PATHFINDING})
+add_executable(${PROJECT_NAME} ${SOURCES} ${SOURCES_PATHFINDING} ${SOURCES_SIZING})
 
-target_link_libraries(${PROJECT_NAME} ${OpenCASCADE_LIBRARIES} MUMPS::MUMPS ${LAPACK_LIBRARIES} pathfinding)
+SET(CMAKE_EXE_LINKER_FLAGS ${LAPACKE_LINKER_FLAGS})
+
+target_link_libraries(${PROJECT_NAME} pathfinding sizing ${OpenCASCADE_LIBRARIES} ${LAPACKE_LIBRARIES} ${LAPACK_LIBRARIES})
 
 install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION .
                                 LIBRARY DESTINATION .
