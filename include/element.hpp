@@ -86,7 +86,6 @@ class Element{
 
     virtual ~Element() = default;
     virtual std::vector<double> get_k() const = 0;
-    virtual constexpr size_t get_k_dim() const = 0;
 
     protected:
     Element(std::vector<Node*> n, std::vector<long> u_pos):nodes(std::move(n)), u_pos(std::move(u_pos)){}
@@ -97,7 +96,6 @@ class BeamElement : public Element{
 
     virtual ~BeamElement() = default;
     virtual std::vector<double> get_k() const override = 0;
-    virtual inline size_t get_k_dim() const override = 0;
     virtual BeamNode* get_internal_loads(size_t node, const std::vector<double>& u) const = 0;
     virtual inline BeamNode* get_node(size_t node) const{ return static_cast<BeamNode*>(this->nodes[node]);}
 
@@ -110,7 +108,6 @@ class MeshElement : public Element{
 
     virtual ~MeshElement() = default;
     virtual std::vector<double> get_k() const override = 0;
-    virtual inline size_t get_k_dim() const override = 0;
     virtual MeshNode* get_stresses(size_t node, const std::vector<double>& u) const = 0;
 
     protected:

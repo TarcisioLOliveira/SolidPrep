@@ -28,12 +28,21 @@
 
 namespace sizing{
 
-TopoDS_Shape BeamSizing::run(){
-    this->graph.run();
-    if(this->data->type == ProjectData::TYPE_2D){
-        size_t graph_size = this->graph.size();
-        for(size_t i = 0; i < graph_size; ++i){
+BeamSizing::BeamSizing(ProjectData* data, double smax, double tmax, BeamElementFactory::BeamElementType t):
+    Sizing(data), sigma_max(smax), tau_max(tmax), type(t){
 
+}
+
+TopoDS_Shape BeamSizing::run(){
+    BeamGraph graph(this->data, this->type);
+    graph.run();
+    if(this->data->type == ProjectData::TYPE_2D){
+        size_t graph_size = graph.size();
+        for(size_t i = 0; i < graph_size; ++i){
+            BeamNode* n = graph.get(i);
+            double Fx = n->results[0];
+            double Fy = n->results[1];
+            double Mz = n->results[2];
         }
     }
 

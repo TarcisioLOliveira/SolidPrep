@@ -24,17 +24,18 @@
 #include "sizing.hpp"
 #include "beam_graph.hpp"
 #include <vector>
+#include "element_factory.hpp"
 
 namespace sizing{
 
 class BeamSizing : public Sizing{
     public:
-    BeamSizing(ProjectData* data):Sizing(data), graph(data){}
+    BeamSizing(ProjectData* data, double smax, double tmax, BeamElementFactory::BeamElementType t);
 
     virtual TopoDS_Shape run() override;
 
-    private:
-    BeamGraph graph;
+    double sigma_max, tau_max;
+    BeamElementFactory::BeamElementType type;
 };
 
 }

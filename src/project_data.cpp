@@ -27,6 +27,7 @@
 #include "BRepClass3d_SolidClassifier.hxx"
 #include "BRepBuilderAPI_Transform.hxx"
 #include "logger.hpp"
+#include "sizing/beam_sizing.hpp"
 #define _USE_MATH_DEFINES
 #include <cmath>
 #include "force.hpp"
@@ -109,23 +110,43 @@ ProjectData::ProjectData(std::string project_file){
             this->thickness = doc["thickness"].GetDouble();
         }
     }
-    if(this->log_data(doc, "pathfinding", TYPE_OBJECT, true)){
-        using namespace pathfinding;
+    if(this->log_data(doc, "sizing", TYPE_OBJECT, true)){
+        auto& sizing = doc["sizing"];
+        this->log_data(sizing, "type", TYPE_STRING, true);
+        if(sizing["type"] == "beam_sizing"){
+            if(this->log_data(sizing, "pathfinding", TYPE_OBJECT, true)){
+                using namespace pathfinding;
 
-        auto& pathf = doc["pathfinding"];
-        this->log_data(pathf, "type", TYPE_STRING, true);
-        if(pathf["type"] == "meshless_astar"){
-            this->log_data(pathf, "step", TYPE_DOUBLE, true);
-            this->log_data(pathf, "max_turn_angle", TYPE_DOUBLE, true);
-            this->log_data(pathf, "turn_options", TYPE_INT, true);
-            double step = pathf["step"].GetDouble();
-            double angle = pathf["max_turn_angle"].GetDouble();
-            int choices = pathf["turn_options"].GetInt();
-            double restriction = 0;
-            if(this->log_data(pathf, "restriction_size", TYPE_DOUBLE, false)){
-                restriction = pathf["restriction_size"].GetDouble();
+                auto& pathf = sizing["pathfinding"];
+                this->log_data(pathf, "type", TYPE_STRING, true);
+                if(pathf["type"] == "meshless_astar"){
+                    this->log_data(pathf, "step", TYPE_DOUBLE, true);
+                    this->log_data(pathf, "max_turn_angle", TYPE_DOUBLE, true);
+                    this->log_data(pathf, "turn_options", TYPE_INT, true);
+                    double step = pathf["step"].GetDouble();
+                    double angle = pathf["max_turn_angle"].GetDouble();
+                    int choices = pathf["turn_options"].GetInt();
+                    double restriction = 0;
+                    if(this->log_data(pathf, "restriction_size", TYPE_DOUBLE, false)){
+                        restriction = pathf["restriction_size"].GetDouble();
+                    }
+                    this->pathfinder.reset(new MeshlessAStar(this->solid, step, angle, choices, restriction, MeshlessAStar::TYPE_2D));
+                } else {
+                    logger::log_assert(false, logger::ERROR, "unknown pathfinding algorithm inserted: {}.", pathf["type"].GetString());
+                }
             }
-            this->pathfinder.reset(new MeshlessAStar(this->solid, step, angle, choices, restriction, MeshlessAStar::TYPE_2D));
+            this->log_data(sizing, "sigma_max", TYPE_DOUBLE, true);
+            this->log_data(sizing, "tau_max", TYPE_DOUBLE, true);
+            this->log_data(sizing, "element_type", TYPE_STRING, true);
+            double smax = sizing["sigma_max"].GetDouble();
+            double tmax = sizing["tau_max"].GetDouble();
+            BeamElementFactory::BeamElementType t = BeamElementFactory::NONE;
+            if(sizing["element_type"] == "beam_linear_2D"){
+                t = BeamElementFactory::BEAM_LINEAR_2D;
+            } else {
+                logger::log_assert(false, logger::ERROR, "unknown element type for sizing algorithm: {}.", sizing["element_type"].GetString());
+            }
+            this->sizer.reset(new sizing::BeamSizing(this, smax, tmax, t));
         }
     }
     if(this->log_data(doc, "loads", TYPE_ARRAY, true)){

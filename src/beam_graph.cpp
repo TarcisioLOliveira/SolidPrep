@@ -25,13 +25,15 @@ void BeamGraph::run(){
     // Uses UPLO=L lower symmetric band matrices
 
     std::vector<std::vector<gp_Pnt>> beams;
+    size_t k_dim = BeamElementFactory::get_k_dimension(this->type);
+
     int W = 0;
-    int N = 6;
+    int N = k_dim;
     int node_qnt = 0;
     for(auto& f:this->data->forces){
         for(auto& s:this->data->supports){
             std::vector<gp_Pnt> b(this->data->pathfinder->find_path(f, s.get_shape()));
-            W += 3*b.size() - s.DOF();
+            W += (k_dim/2)*b.size() - s.DOF();
             node_qnt += b.size();
             beams.push_back(std::move(b));
         }
@@ -44,7 +46,7 @@ void BeamGraph::run(){
     std::vector<BeamElement*> elems(node_qnt-1);
     this->nodes.resize(node_qnt);
 
-    BeamNodeFactory::BeamNodeType node_type = BeamElementFactory::get_node_type(BeamElementFactory::BEAM_LINEAR_2D);
+    BeamNodeFactory::BeamNodeType node_type = BeamElementFactory::get_node_type(this->type);
 
     size_t cur_id = 0;
     size_t pos_offset = 0;
@@ -62,43 +64,42 @@ void BeamGraph::run(){
             // Negative id indicates support, indexed at -(n+1) in this->data->supports
             this->nodes[0] = BeamNodeFactory::make_node(beam[0], -(1+sup_id), dim, node_type);
             this->nodes[1] = BeamNodeFactory::make_node(beam[1], cur_id, dim, node_type);
-            std::vector<long> pos(6);
-            if(this->data->supports[sup_id].X){
+            std::vector<long> pos(k_dim);
+            if(k_dim >= 2 && this->data->supports[sup_id].X){
                 pos[0] = -1;
             } else {
                 pos[0] = cur_id + pos_offset;
                 ++pos_offset;
             }
-            if(this->data->supports[sup_id].Y){
+            if(k_dim >= 4 && this->data->supports[sup_id].Y){
                 pos[1] = -1;
             } else {
                 pos[1] = cur_id + pos_offset + 1;
                 ++pos_offset;
             }
-            if(this->data->supports[sup_id].MZ){
+            if(k_dim >= 6 && this->data->supports[sup_id].MZ){
                 pos[2] = -1;
             } else {
                 pos[2] = cur_id + pos_offset + 2;
                 ++pos_offset;
             }
-            pos[3] = cur_id + pos_offset;
-            pos[4] = cur_id + pos_offset + 1;
-            pos[5] = cur_id + pos_offset + 2;
+            for(size_t j = k_dim/2; j < k_dim; ++j){
+                pos[j] = cur_id + pos_offset + (j-k_dim/2);
+            }
             elems[0] = BeamElementFactory::make_element(BeamElementFactory::BEAM_LINEAR_2D, this->nodes[0], this->nodes[1], pos, I, A, E);
-            // std::vector<int> pos({-1, -1, -1, 0, 1, 2});
             this->insert_element_matrix(K, elems[0]->get_k(), pos, W, N);
         }
         for(size_t j = 1; j < beam.size()-1; ++j){
             size_t true_pos = cur_id+sup_id+1;
             this->nodes[true_pos+1] = BeamNodeFactory::make_node(beam[j+1], cur_id+1, dim, node_type);
-            std::vector<long> pos(6);
+            std::vector<long> pos(k_dim);
             size_t id0 = this->nodes[true_pos]->id;
             size_t id1 = this->nodes[true_pos+1]->id;
-            for(size_t l = 0; l < 3; ++l){
-                pos[l] = id0*3+pos_offset+l;
+            for(size_t l = 0; l < k_dim/2; ++l){
+                pos[l] = id0*k_dim/2+pos_offset+l;
             }
-            for(size_t l = 0; l < 3; ++l){
-                pos[l+3] = id1*3+pos_offset+l;
+            for(size_t l = 0; l < k_dim/2; ++l){
+                pos[l+k_dim/2] = id1*k_dim/2+pos_offset+l;
             }
             elems[true_pos] = BeamElementFactory::make_element(BeamElementFactory::BEAM_LINEAR_2D, this->nodes[true_pos], this->nodes[true_pos+1], pos, I, A, E);
             this->insert_element_matrix(K, elems[true_pos]->get_k(), pos, W, N);
@@ -106,8 +107,12 @@ void BeamGraph::run(){
         }
         // Force
         {
-            F[cur_id*3 + pos_offset] = -f.get_force().X();
-            F[cur_id*3 + pos_offset + 1] = -f.get_force().Y();
+            if(k_dim >= 2){
+                F[cur_id*k_dim/2 + pos_offset] = -f.get_force().X();
+            }
+            if(k_dim >= 4){
+                F[cur_id*k_dim/2 + pos_offset + 1] = -f.get_force().Y();
+            }
         }
     }
 

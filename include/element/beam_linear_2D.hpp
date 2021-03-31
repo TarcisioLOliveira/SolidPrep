@@ -31,7 +31,6 @@ class BeamLinear2D : public BeamElement{
     BeamLinear2D(BeamNode* n1, BeamNode* n2, std::vector<long> u_pos, double I, double A, double E);
 
     virtual std::vector<double> get_k() const override;
-    virtual inline size_t get_k_dim() const override{ return 6;}
     virtual BeamNode* get_internal_loads(size_t node, const std::vector<double>& u) const override;
 
     const double I, A, E;

@@ -42,7 +42,7 @@ int main(int argc, char* argv[]){
     // for(auto& p : path){
     //     std::cout << "(" << p.X() << ", " << p.Y() << ")" << std::endl;
     // }
-    proj.sizer.reset(new sizing::BeamSizing(&proj));
+    // proj.sizer.reset(new sizing::BeamSizing(&proj));
 
     proj.sizer->run();
 

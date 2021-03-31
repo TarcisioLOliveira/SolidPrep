@@ -44,6 +44,12 @@ class BeamElementFactory{
         }
         return BeamNodeFactory::NONE;
     }
+    static size_t get_k_dimension(BeamElementType t){
+        if(t == BEAM_LINEAR_2D){
+            return 6;
+        }
+        return 0;
+    }
 };
 
 #endif

@@ -23,12 +23,13 @@
 
 #include "project_data.hpp"
 #include "element.hpp"
+#include "element_factory.hpp"
 #include "lapacke.h"
 
 // It's not really a mesh, so...
 class BeamGraph{
     public:
-    BeamGraph(ProjectData* data):data(data){}
+    BeamGraph(ProjectData* data, BeamElementFactory::BeamElementType t):data(data), type(t){}
     ~BeamGraph();
 
     void run();
@@ -42,6 +43,7 @@ class BeamGraph{
     private:
     ProjectData * const data;
     std::vector<BeamNode*> nodes;
+    BeamElementFactory::BeamElementType type;
     void insert_element_matrix(std::vector<double>& K, const std::vector<double>& k, const std::vector<long>& pos, int w, int& n) const;
 };
 
