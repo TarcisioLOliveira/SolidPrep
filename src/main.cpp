@@ -22,6 +22,7 @@
 #include "STEPCAFControl_Reader.hxx"
 #include "BRepClass3d_SolidClassifier.hxx"
 #include "project_data.hpp"
+#include "sizing/beam_sizing.hpp"
 
 int main(int argc, char* argv[]){
     // Bnd_Box bounds;
@@ -37,10 +38,13 @@ int main(int argc, char* argv[]){
     // IFSelect_ReturnStatus stat2 = writer.Write("test.step");
     
     ProjectData proj(argv[1]);
-    auto path = proj.pathfinder->find_path(proj.forces[0], proj.supports[0].get_shape());
-    for(auto& p : path){
-        std::cout << "(" << p.X() << ", " << p.Y() << ")" << std::endl;
-    }
+    // auto path = proj.pathfinder->find_path(proj.forces[0], proj.supports[0].get_shape());
+    // for(auto& p : path){
+    //     std::cout << "(" << p.X() << ", " << p.Y() << ")" << std::endl;
+    // }
+    proj.sizer.reset(new sizing::BeamSizing(&proj));
+
+    proj.sizer->run();
 
     return 0;
 }
