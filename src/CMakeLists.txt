@@ -6,6 +6,7 @@ set(SOURCES
     force.cpp
     support.cpp
     element.cpp
+    beam_graph.cpp
 )
 
 add_subdirectory(pathfinding)
