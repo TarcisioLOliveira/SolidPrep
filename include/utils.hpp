@@ -108,6 +108,23 @@ namespace utils{
         return format(format(str, std::forward<Arg1>(a1)), std::forward<Args>(args) ...);
     }
 
+
+    // Upper triangular
+    inline size_t to_triangular(size_t i, size_t j){
+        // i <= j
+        if(i <= j){
+            return (j+1)*j/2 + i;
+        } else {
+            return (i+1)*i/2 + j;
+        }
+    }
+
+    // Lower band
+    inline size_t to_band(size_t i, size_t j, int w){
+        // lower triangle
+        // i >= j
+        return (i-j)*w + j;
+    }
 }
 
 #endif
