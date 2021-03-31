@@ -34,7 +34,7 @@ class Support{
      * @param Y Whether it supports the Y axis.
      * @param vertices Vertices of the support geometry.
      */
-    Support(bool X, bool Y, double thickness, std::vector<std::array<double, 2>> vertices);
+    Support(bool X, bool Y, bool MZ, double thickness, std::vector<std::array<double, 2>> vertices);
     /**
      * Creates a Support object for 3D problems.
      *
@@ -43,17 +43,27 @@ class Support{
      * @param Z Whether it supports the Z axis.
      * @param vertices Vertices of the support geometry.
      */
-    Support(bool X, bool Y, bool Z, std::vector<std::array<double, 3>> vertices);
+    Support(bool X, bool Y, bool Z, bool MX, bool MY, bool MZ, std::vector<std::array<double, 3>> vertices);
 
     bool is_inside(gp_Pnt p) const;
     double get_distance(gp_Pnt p) const;
     inline TopoDS_Shape get_shape(){
         return this->shape;
     }
+    inline int F_DOF() const{
+        return this->fdof;
+    }
+    inline int M_DOF() const{
+        return this->mdof;
+    }
+    inline int DOF() const{
+        return this->fdof + this->mdof;
+    }
 
+    const bool X, Y, Z, MX, MY, MZ;
     private:
     TopoDS_Shape shape;
-    bool X, Y, Z;
+    int fdof, mdof;
 };
 
 #endif

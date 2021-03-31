@@ -172,8 +172,10 @@ ProjectData::ProjectData(std::string project_file){
                 this->log_data(f, "vertices", TYPE_ARRAY, true);
                 this->log_data(f, "X", TYPE_BOOL, true);
                 this->log_data(f, "Y", TYPE_BOOL, true);
+                this->log_data(f, "MZ", TYPE_BOOL, true);
                 bool X = f["X"].GetBool();
                 bool Y = f["Y"].GetBool();
+                bool MZ = f["MZ"].GetBool();
 
                 auto vertices = f["vertices"].GetArray();
                 std::vector<std::array<double, 2>> vlist;
@@ -181,7 +183,7 @@ ProjectData::ProjectData(std::string project_file){
                     logger::log_assert(v.Size() == 2, logger::ERROR, "Vertices must have exactly two dimensions in 2D problems");
                     vlist.push_back({v[0].GetDouble(), v[1].GetDouble()});
                 }
-                this->supports.emplace_back(X, Y, this->thickness, vlist);
+                this->supports.emplace_back(X, Y, MZ, this->thickness, vlist);
             }
         } else if(this->type == TYPE_3D) {
             for(auto& f : doc["supports"].GetArray()){
@@ -190,9 +192,15 @@ ProjectData::ProjectData(std::string project_file){
                 this->log_data(f, "X", TYPE_BOOL, true);
                 this->log_data(f, "Y", TYPE_BOOL, true);
                 this->log_data(f, "Z", TYPE_BOOL, true);
+                this->log_data(f, "MX", TYPE_BOOL, true);
+                this->log_data(f, "MY", TYPE_BOOL, true);
+                this->log_data(f, "MZ", TYPE_BOOL, true);
                 bool X = f["X"].GetBool();
                 bool Y = f["Y"].GetBool();
                 bool Z = f["Z"].GetBool();
+                bool MX = f["MX"].GetBool();
+                bool MY = f["MY"].GetBool();
+                bool MZ = f["MZ"].GetBool();
 
                 auto vertices = f["vertices"].GetArray();
                 std::vector<std::array<double, 3>> vlist;
@@ -200,7 +208,7 @@ ProjectData::ProjectData(std::string project_file){
                     logger::log_assert(v.Size() == 2, logger::ERROR, "Vertices must have exactly three dimensions in 3D problems");
                     vlist.push_back({v[0].GetDouble(), v[1].GetDouble(), v[2].GetDouble()});
                 }
-                this->supports.emplace_back(X, Y, Z, vlist);
+                this->supports.emplace_back(X, Y, Z, MX, MY, MZ, vlist);
             }
         }
     }

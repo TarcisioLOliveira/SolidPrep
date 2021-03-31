@@ -32,9 +32,11 @@
 #include <STEPCAFControl_Writer.hxx>
 #include <STEPControl_StepModelType.hxx>
 
-Support::Support(bool X, bool Y, double thickness, std::vector<std::array<double, 2>> vertices){
-    this->X = X;
-    this->Y = Y;
+Support::Support(bool X, bool Y, bool MZ, double thickness, std::vector<std::array<double, 2>> vertices):
+    X(X), Y(Y), Z(false), MX(false), MY(false), MZ(MZ), shape(){
+    if(X) ++this->fdof;
+    if(Y) ++this->fdof;
+    if(MZ) ++this->mdof;
     
     TopoDS_Shell sh;
     BRep_Builder builder;
@@ -58,7 +60,8 @@ Support::Support(bool X, bool Y, double thickness, std::vector<std::array<double
     this->shape = sh;
 }
 
-Support::Support(bool X, bool Y, bool Z, std::vector<std::array<double, 3>> vertices){
+Support::Support(bool X, bool Y, bool Z, bool MX, bool MY, bool MZ, std::vector<std::array<double, 3>> vertices):
+    X(X), Y(Y), Z(Z), MX(MX), MY(MY), MZ(MZ), shape(){
     // TODO
 }
 
