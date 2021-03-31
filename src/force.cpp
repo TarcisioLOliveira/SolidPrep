@@ -67,7 +67,7 @@ Force::Force(std::vector<std::array<double, 2>> vertices, double thickness, std:
 
     Handle(Geom_Surface) surf = BRep_Tool::Surface(face);
     BOPTools_AlgoTools3D::GetNormalToSurface(surf, this->centroid.X(), this->centroid.Y(), this->normal);
-    this->mass = props.Mass();
+    this->area = props.Mass()*1e-6;
 
     gp_Ax1 axis(this->centroid, gp_Dir(0, 0, 1));
     double ang = this->normal.AngleWithRef(gp_Dir(1,0,0), gp_Dir(0,0,1));
@@ -77,7 +77,7 @@ Force::Force(std::vector<std::array<double, 2>> vertices, double thickness, std:
     face = TopoDS::Face(transf.Shape());
     BRepGProp::SurfaceProperties(face, props);
 
-    this->inertia = props.MatrixOfInertia();
+    this->inertia = props.MatrixOfInertia()*1e-12;
 
     // Shape creation.
     TopoDS_Shell sh;

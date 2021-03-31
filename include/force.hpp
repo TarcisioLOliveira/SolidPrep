@@ -66,8 +66,8 @@ class Force{
     inline double get_dimension() const{
         return this->max_dim;
     }
-    inline double get_mass() const{
-        return this->mass;
+    inline double get_area() const{
+        return this->area;
     }
 
     private:
@@ -77,7 +77,7 @@ class Force{
     gp_Vec force;
     Standard_Real max_dim;
     TopoDS_Shape shape;
-    double mass;
+    double area;
 };
 
 #endif
