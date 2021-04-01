@@ -46,7 +46,7 @@ Force::Force(std::vector<std::array<double, 2>> vertices, double thickness, std:
 
     gp_Pnt p1(vertices[0][0], vertices[0][1], 0);
     gp_Pnt p2(vertices[size-1][0], vertices[size-1][1], 0);
-    this->max_dim = p1.Distance(p2);
+    this->max_dim = p1.Distance(p2)*1e-3;
     this->centroid = p1;
     this->centroid.BaryCenter(1, p2, 1);
 

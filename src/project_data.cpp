@@ -107,7 +107,7 @@ ProjectData::ProjectData(std::string project_file){
     }
     if(this->type == TYPE_2D){
         if(this->log_data(doc, "thickness", TYPE_DOUBLE, true)){
-            this->thickness = doc["thickness"].GetDouble();
+            this->thickness = doc["thickness"].GetDouble()*1e-3;
         }
     }
     if(this->log_data(doc, "sizing", TYPE_OBJECT, true)){
@@ -138,8 +138,8 @@ ProjectData::ProjectData(std::string project_file){
             this->log_data(sizing, "sigma_max", TYPE_DOUBLE, true);
             this->log_data(sizing, "tau_max", TYPE_DOUBLE, true);
             this->log_data(sizing, "element_type", TYPE_STRING, true);
-            double smax = sizing["sigma_max"].GetDouble();
-            double tmax = sizing["tau_max"].GetDouble();
+            double smax = sizing["sigma_max"].GetDouble()*1e6;
+            double tmax = sizing["tau_max"].GetDouble()*1e6;
             BeamElementFactory::BeamElementType t = BeamElementFactory::NONE;
             if(sizing["element_type"] == "beam_linear_2D"){
                 t = BeamElementFactory::BEAM_LINEAR_2D;
