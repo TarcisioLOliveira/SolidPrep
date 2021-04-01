@@ -38,14 +38,15 @@ class Node{
 class BeamNode : public Node{
     public:
     const double dim;
+    const gp_Dir normal;
     virtual ~BeamNode() = default;
     protected:
-    BeamNode(gp_Pnt p, long id, size_t res_n, double dim):Node(p, id, res_n),dim(dim){}
+    BeamNode(gp_Pnt p, long id, size_t res_n, double dim, gp_Dir n):Node(p, id, res_n),dim(dim), normal(n){}
 };
 
 class BeamNode2D : public BeamNode{
     public:
-    BeamNode2D(gp_Pnt p, long id, double dim):BeamNode(p, id, 3, dim){}
+    BeamNode2D(gp_Pnt p, long id, double dim, gp_Dir n):BeamNode(p, id, 3, dim, n){}
 };
 
 class BeamNodeFactory{
@@ -54,7 +55,7 @@ class BeamNodeFactory{
         NONE,
         BEAM_NODE_2D
     };
-    static BeamNode* make_node(gp_Pnt p, long id, double dim, BeamNodeType t);
+    static BeamNode* make_node(gp_Pnt p, long id, double dim, gp_Dir n, BeamNodeType t);
 };
 
 class MeshNode : public Node{

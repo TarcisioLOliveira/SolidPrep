@@ -62,8 +62,10 @@ void BeamGraph::run(){
         // Support
         {
             // Negative id indicates support, indexed at -(n+1) in this->data->supports
-            this->nodes[0] = BeamNodeFactory::make_node(beam[0], -(1+sup_id), dim, node_type);
-            this->nodes[1] = BeamNodeFactory::make_node(beam[1], cur_id, dim, node_type);
+            gp_Vec v1 = gp_Vec(beam[0], beam[1]);
+            this->nodes[0] = BeamNodeFactory::make_node(beam[0], -(1+sup_id), dim, v1, node_type);
+            gp_Vec v2 = gp_Vec(beam[0], beam[1]) + gp_Vec(beam[1], beam[2]);
+            this->nodes[1] = BeamNodeFactory::make_node(beam[1], cur_id, dim, v2, node_type);
             std::vector<long> pos(k_dim);
             if(k_dim >= 2 && this->data->supports[sup_id].X){
                 pos[0] = -1;
@@ -91,7 +93,11 @@ void BeamGraph::run(){
         }
         for(size_t j = 1; j < beam.size()-1; ++j){
             size_t true_pos = cur_id+sup_id+1;
-            this->nodes[true_pos+1] = BeamNodeFactory::make_node(beam[j+1], cur_id+1, dim, node_type);
+            gp_Vec v = gp_Vec(beam[true_pos], beam[true_pos+1]);
+            if(true_pos+2 != beam.size()){
+                v += gp_Vec(beam[true_pos+1], beam[true_pos+2]);
+            }
+            this->nodes[true_pos+1] = BeamNodeFactory::make_node(beam[j+1], cur_id+1, dim, v, node_type);
             std::vector<long> pos(k_dim);
             size_t id0 = this->nodes[true_pos]->id;
             size_t id1 = this->nodes[true_pos+1]->id;
