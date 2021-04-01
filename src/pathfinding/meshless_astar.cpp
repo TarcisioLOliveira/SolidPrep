@@ -137,12 +137,14 @@ std::vector<gp_Pnt> MeshlessAStar::find_path(const Force& f, const TopoDS_Shape&
     gp_Dir direction = gp_Vec(current->prev->point, current->point);
     point_queue.pop();
 
+    double f_dim = f.get_dimension()*1e3;
+
     if(this->type == TYPE_2D){
         bool reached_obj = false;
         while(!reached_obj){
-            bool fully_inside_topology = this->shape_inside_2D(current->point, direction, this->restriction + f.get_dimension()/2, this->step, this->topology);
+            bool fully_inside_topology = this->shape_inside_2D(current->point, direction, this->restriction + f_dim/2, this->step, this->topology);
             bool center_inside = this->is_inside_2D(current->point, this->topology);
-            bool close_to_start = current->point.Distance(point_list[0]->point) <= (this->restriction + f.get_dimension()/2);
+            bool close_to_start = current->point.Distance(point_list[0]->point) <= (this->restriction + f_dim/2);
             bool close_to_end = this->get_distance(current->point, dest) <= this->step;
             if(center_inside && (fully_inside_topology || close_to_start || close_to_end)){
                 gp_Ax1 axis(current->point, gp_Dir(0.0,0.0,1.0));
@@ -200,6 +202,7 @@ bool MeshlessAStar::shape_inside_2D(gp_Pnt center, gp_Dir dir, double restr, dou
             break;
         }
     }
+
     return inside;
 }
 
