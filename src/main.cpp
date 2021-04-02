@@ -19,8 +19,8 @@
  */
 
 #include <iostream>
-#include "STEPCAFControl_Reader.hxx"
-#include "BRepClass3d_SolidClassifier.hxx"
+#include <STEPCAFControl_Writer.hxx>
+#include <STEPControl_StepModelType.hxx>
 #include "project_data.hpp"
 #include "sizing/beam_sizing.hpp"
 
@@ -32,10 +32,6 @@ int main(int argc, char* argv[]){
     // bounds.Get(fXMin, fYMin, fZMin, fXMax, fYMax, fZMax);
     // std::cout << fXMax << " " << fXMin << " " << fYMax << " " << fYMin << " " << fZMax << " " << fZMin << std::endl;
 
-    // STEPControl_Writer writer;
-    // STEPControl_StepModelType mode = STEPControl_ManifoldSolidBrep;
-    // IFSelect_ReturnStatus stat = writer.Transfer(this->shape,mode);
-    // IFSelect_ReturnStatus stat2 = writer.Write("test.step");
     
     ProjectData proj(argv[1]);
     // auto path = proj.pathfinder->find_path(proj.forces[0], proj.supports[0].get_shape());
@@ -44,7 +40,11 @@ int main(int argc, char* argv[]){
     // }
     // proj.sizer.reset(new sizing::BeamSizing(&proj));
 
-    proj.sizer->run();
+    TopoDS_Shape s = proj.sizer->run();
+    STEPControl_Writer writer;
+    STEPControl_StepModelType mode = STEPControl_ManifoldSolidBrep;
+    IFSelect_ReturnStatus stat = writer.Transfer(s,mode);
+    IFSelect_ReturnStatus stat2 = writer.Write("test.step");
 
     return 0;
 }

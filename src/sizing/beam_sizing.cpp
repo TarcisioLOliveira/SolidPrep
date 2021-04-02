@@ -25,6 +25,22 @@
 #include <cmath>
 #include <cstring>
 #include <logger.hpp>
+#include <algorithm>
+#include <BRepAlgoAPI_Fuse.hxx>
+#include <BRepAlgoAPI_Common.hxx>
+#include <BRepAlgoAPI_Cut.hxx>
+#include <gp_Circ.hxx>
+#include <BRepBuilderAPI_MakeEdge.hxx>
+#include <BRepBuilderAPI_MakeWire.hxx>
+#include <BRepBuilderAPI_MakeFace.hxx>
+#include <BRepBuilderAPI_MakeSolid.hxx>
+#include <TopoDS_Wire.hxx>
+#include <TopoDS_Shell.hxx>
+#include <TopoDS_Shape.hxx>
+#include <BRep_Builder.hxx>
+#include <TopoDS.hxx>
+#include <BOPAlgo_BOP.hxx>
+#include <BRepBuilderAPI_Copy.hxx>
 
 namespace sizing{
 
@@ -37,16 +53,47 @@ TopoDS_Shape BeamSizing::run(){
     BeamGraph graph(this->data, this->type);
     graph.run();
     if(this->data->type == ProjectData::TYPE_2D){
+        TopoDS_Shape copy = BRepBuilderAPI_Copy(this->data->solid);
+
         size_t graph_size = graph.size();
         for(size_t i = 0; i < graph_size; ++i){
             BeamNode* n = graph.get(i);
             double Fx = n->results[0];
             double Fy = n->results[1];
             double Mz = n->results[2];
+
+            gp_Vec normal(n->normal);
+            gp_Vec F(Fx, Fy, 0);
+            double t = this->data->thickness;
+
+            // Bending
+            double h_f = std::sqrt(6*Mz/(t*this->sigma_max));
+            // Normal
+            double h_n = std::abs(normal.Dot(F))/(t*this->sigma_max);
+            // Shear
+            double h_c = (F - normal.Dot(F)*normal).Magnitude()*(3/(2*t*this->tau_max));
+            std::cout << h_f*1e3 << " " << h_n*1e3 << " " << h_c*1e3 << " " << n->dim*1e3 << std::endl;
+
+            // Using ceil() because we don't need so much precision.
+            double h = std::ceil(1e3*std::max({h_f, h_n, h_c, n->dim})); 
+            gp_Ax2 axis(n->point, gp_Dir(0,0,1));
+            gp_Circ circ(axis, h/2);
+            TopoDS_Edge edge = BRepBuilderAPI_MakeEdge(circ);
+            TopoDS_Wire wire = BRepBuilderAPI_MakeWire(edge);
+            TopoDS_Face face = BRepBuilderAPI_MakeFace(wire);
+
+            // Fastest method I managed to find, cut from original shape then
+            // inverse cut back into original shape.
+            // Still a bit slow though.
+            copy = BRepAlgoAPI_Cut(copy, face);
         }
+
+        copy = BRepAlgoAPI_Cut(this->data->solid, copy);
+
+        return copy;
     }
 
-    // return TopoDS_Shape();
+    return TopoDS_Shape();
 }
 
 }
