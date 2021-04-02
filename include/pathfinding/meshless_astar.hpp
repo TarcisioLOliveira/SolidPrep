@@ -83,7 +83,6 @@ class MeshlessAStar : public Pathfinding{
     bool shape_inside_2D(gp_Pnt center, gp_Dir dir, double restr, double step, const TopoDS_Shape& t);
     bool is_inside_2D(gp_Pnt p, const TopoDS_Shape& t);
     bool is_inside_3D(gp_Pnt p, const TopoDS_Shape& t);
-    double get_distance(gp_Pnt p, const TopoDS_Shape& t);
     std::pair<bool, gp_Pnt> get_intersection_point(gp_Pnt p, gp_Dir dir, double step, const TopoDS_Shape& t);
 
 };

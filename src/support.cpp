@@ -32,51 +32,21 @@
 #include <STEPCAFControl_Writer.hxx>
 #include <STEPControl_StepModelType.hxx>
 
-Support::Support(bool X, bool Y, bool MZ, double thickness, std::vector<std::array<double, 2>> vertices):
-    X(X), Y(Y), Z(false), MX(false), MY(false), MZ(MZ), shape(){
+Support::Support(bool X, bool Y, bool MZ, CrossSection cross_section):
+    X(X), Y(Y), Z(false), MX(false), MY(false), MZ(MZ), S(std::move(cross_section)){
     if(X) ++this->fdof;
     if(Y) ++this->fdof;
     if(MZ) ++this->mdof;
     
-    TopoDS_Shell sh;
-    BRep_Builder builder;
-    builder.MakeShell(sh);
-
-    for(size_t i = 1; i < vertices.size(); ++i){
-        gp_Pnt p1(vertices[i-1][0], vertices[i-1][1], -thickness/2);
-        gp_Pnt p2(vertices[i-1][0], vertices[i-1][1], thickness/2);
-        gp_Pnt p3(vertices[i][0], vertices[i][1], thickness/2);
-        gp_Pnt p4(vertices[i][0], vertices[i][1], -thickness/2);
-
-        TopoDS_Edge e1 = BRepBuilderAPI_MakeEdge(p1, p2);
-        TopoDS_Edge e2 = BRepBuilderAPI_MakeEdge(p2, p3);
-        TopoDS_Edge e3 = BRepBuilderAPI_MakeEdge(p3, p4);
-        TopoDS_Edge e4 = BRepBuilderAPI_MakeEdge(p4, p1);
-        TopoDS_Wire w = BRepBuilderAPI_MakeWire(e1, e2, e3, e4);
-        TopoDS_Face f = BRepBuilderAPI_MakeFace(w);
-        builder.Add(sh, f);
-    }
-
-    this->shape = sh;
 }
 
-Support::Support(bool X, bool Y, bool Z, bool MX, bool MY, bool MZ, std::vector<std::array<double, 3>> vertices):
-    X(X), Y(Y), Z(Z), MX(MX), MY(MY), MZ(MZ), shape(){
-    // TODO
+Support::Support(bool X, bool Y, bool Z, bool MX, bool MY, bool MZ, CrossSection cross_section):
+    X(X), Y(Y), Z(Z), MX(MX), MY(MY), MZ(MZ), S(std::move(cross_section)){
+    if(X) ++this->fdof;
+    if(Y) ++this->fdof;
+    if(Z) ++this->fdof;
+    if(MX) ++this->mdof;
+    if(MY) ++this->mdof;
+    if(MZ) ++this->mdof;
 }
 
-
-bool Support::is_inside(gp_Pnt p) const{
-    BRepClass3d_SolidClassifier insider(this->shape);
-    insider.Perform(p, 0.01);
-    return insider.State() == TopAbs_ON;
-}
-
-
-double Support::get_distance(gp_Pnt p) const{
-    TopoDS_Vertex v = BRepBuilderAPI_MakeVertex(p);
-
-    BRepExtrema_DistShapeShape d(v, this->shape);
-    d.Perform();
-    return d.Value();
-}

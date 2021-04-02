@@ -20,64 +20,23 @@
 
 #ifndef FORCE_HPP
 #define FORCE_HPP
-#include "BRepClass3d_SolidClassifier.hxx"
 #include <vector>
+#include <gp_Vec.hxx>
+#include "cross_section.hpp"
 
 class Force{
     public:
 
-    // MUST CHECK IF SHAPES ARE BEING CREATED PROPERLY.
-
     /**
-     * Creates a Force object for 2D problems.
+     * Creates a Force object.
      *
-     * @param vertices Vertices of the application geometry.
-     * @param thickness Thickness of the plate.
+     * @param cross_section Region of force application.
      * @param force Force vector.
      */
-    Force(std::vector<std::array<double, 2>> vertices, double thickness, std::array<double, 2> force);
+    Force(CrossSection cross_section, gp_Vec force);
 
-    /**
-     * Creates a Force object for 3D problems.
-     *
-     * @param vertices Vertices of the application geometry.
-     * @param force Force vector.
-     */
-    Force(std::vector<std::array<double, 3>> vertices,  std::array<double, 3> force);
-
-    bool is_inside(gp_Pnt p) const;
-    double get_distance(gp_Pnt p) const;
-
-    inline double get_moment_of_inertia(int i, int j) const{
-        return this->inertia(i, j);
-    }
-    inline gp_Mat get_moment_of_inertia() const{
-        return this->inertia;
-    }
-    inline gp_Pnt get_centroid() const{
-        return this->centroid;
-    }
-    inline gp_Dir get_normal() const{
-        return this->normal;
-    }
-    inline gp_Vec get_force() const{
-        return this->force;
-    }
-    inline double get_dimension() const{
-        return this->max_dim;
-    }
-    inline double get_area() const{
-        return this->area;
-    }
-
-    private:
-    gp_Pnt centroid;
-    gp_Mat inertia;
-    gp_Dir normal;
-    gp_Vec force;
-    Standard_Real max_dim;
-    TopoDS_Shape shape;
-    double area;
+    const CrossSection S;
+    const gp_Vec vec;
 };
 
 #endif

@@ -35,6 +35,8 @@
 #include <GProp_GProps.hxx>
 #include <Bnd_Box.hxx>
 #include <BRepBndLib.hxx>
+#include <gp_Pnt.hxx>
+#include <gp_Vec.hxx>
 
 
 ProjectData::ProjectData(std::string project_file){
@@ -159,13 +161,14 @@ ProjectData::ProjectData(std::string project_file){
                 auto loads = f["load"].GetArray();
                 logger::log_assert(loads.Size() == 2, logger::ERROR, "Load vector must have exactly two dimensions in 2D problems");
 
-                std::array<double, 2> l{loads[0].GetDouble(), loads[1].GetDouble()};
-                std::vector<std::array<double, 2>> vlist;
+                gp_Vec l(loads[0].GetDouble(), loads[1].GetDouble(), 0);
+                std::vector<gp_Pnt> vlist;
                 for(auto& v : vertices){
                     logger::log_assert(v.Size() == 2, logger::ERROR, "Vertices must have exactly two dimensions in 2D problems");
-                    vlist.push_back({v[0].GetDouble(), v[1].GetDouble()});
+                    vlist.emplace_back(v[0].GetDouble(), v[1].GetDouble(), 0);
                 }
-                this->forces.emplace_back(vlist, this->thickness, l);
+                CrossSection S(vlist, this->thickness);
+                this->forces.emplace_back(S, l);
             }
         } else if(this->type == TYPE_3D) {
             for(auto& f : doc["loads"].GetArray()){
@@ -176,13 +179,14 @@ ProjectData::ProjectData(std::string project_file){
                 auto loads = f["load"].GetArray();
                 logger::log_assert(loads.Size() == 2, logger::ERROR, "Load vector must have exactly three dimensions in 3D problems");
 
-                std::array<double, 3> l{loads[0].GetDouble(), loads[1].GetDouble(), loads[2].GetDouble()};
-                std::vector<std::array<double, 3>> vlist;
+                gp_Vec l(loads[0].GetDouble(), loads[1].GetDouble(), loads[2].GetDouble());
+                std::vector<gp_Pnt> vlist;
                 for(auto& v : vertices){
                     logger::log_assert(v.Size() == 2, logger::ERROR, "Vertices must have exactly three dimensions in 3D problems");
-                    vlist.push_back({v[0].GetDouble(), v[1].GetDouble(), v[2].GetDouble()});
+                    vlist.emplace_back(v[0].GetDouble(), v[1].GetDouble(), v[2].GetDouble());
                 }
-                this->forces.emplace_back(vlist, l);
+                CrossSection S(vlist);
+                this->forces.emplace_back(S, l);
             }
         }
     }
@@ -199,12 +203,13 @@ ProjectData::ProjectData(std::string project_file){
                 bool MZ = f["MZ"].GetBool();
 
                 auto vertices = f["vertices"].GetArray();
-                std::vector<std::array<double, 2>> vlist;
+                std::vector<gp_Pnt> vlist;
                 for(auto& v : vertices){
                     logger::log_assert(v.Size() == 2, logger::ERROR, "Vertices must have exactly two dimensions in 2D problems");
-                    vlist.push_back({v[0].GetDouble(), v[1].GetDouble()});
+                    vlist.emplace_back(v[0].GetDouble(), v[1].GetDouble(), 0);
                 }
-                this->supports.emplace_back(X, Y, MZ, this->thickness, vlist);
+                CrossSection S(vlist, this->thickness);
+                this->supports.emplace_back(X, Y, MZ, S);
             }
         } else if(this->type == TYPE_3D) {
             for(auto& f : doc["supports"].GetArray()){
@@ -224,12 +229,13 @@ ProjectData::ProjectData(std::string project_file){
                 bool MZ = f["MZ"].GetBool();
 
                 auto vertices = f["vertices"].GetArray();
-                std::vector<std::array<double, 3>> vlist;
+                std::vector<gp_Pnt> vlist;
                 for(auto& v : vertices){
                     logger::log_assert(v.Size() == 2, logger::ERROR, "Vertices must have exactly three dimensions in 3D problems");
-                    vlist.push_back({v[0].GetDouble(), v[1].GetDouble(), v[2].GetDouble()});
+                    vlist.emplace_back(v[0].GetDouble(), v[1].GetDouble(), v[2].GetDouble());
                 }
-                this->supports.emplace_back(X, Y, Z, MX, MY, MZ, vlist);
+                CrossSection S(vlist);
+                this->supports.emplace_back(X, Y, Z, MX, MY, MZ, S);
             }
         }
     }

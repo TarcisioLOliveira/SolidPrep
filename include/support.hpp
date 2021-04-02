@@ -22,6 +22,7 @@
 
 #include <memory>
 #include <vector>
+#include "cross_section.hpp"
 #include "BRepClass3d_SolidClassifier.hxx"
 
 class Support{
@@ -30,26 +31,26 @@ class Support{
     /**
      * Creates a Support object for 2D problems.
      *
-     * @param X Whether it supports the X axis.
-     * @param Y Whether it supports the Y axis.
-     * @param vertices Vertices of the support geometry.
+     * @param X Whether it resists displacement along X.
+     * @param Y Whether it resists displacement along Y.
+     * @param MZ Whether it resists bending perpendicular to Z.
+     * @param cross_section Maximum dimensions of the supporting face.
      */
-    Support(bool X, bool Y, bool MZ, double thickness, std::vector<std::array<double, 2>> vertices);
+    Support(bool X, bool Y, bool MZ, CrossSection cross_section);
+
     /**
      * Creates a Support object for 3D problems.
      *
-     * @param X Whether it supports the X axis.
-     * @param Y Whether it supports the Y axis.
-     * @param Z Whether it supports the Z axis.
-     * @param vertices Vertices of the support geometry.
+     * @param X Whether it resists displacement along X.
+     * @param Y Whether it resists displacement along Y.
+     * @param Z Whether it resists displacement along Z.
+     * @param MX Whether it resists bending perpendicular to X.
+     * @param MY Whether it resists bending perpendicular to Y.
+     * @param MZ Whether it resists bending perpendicular to Z.
+     * @param cross_section Maximum dimensions of the supporting face.
      */
-    Support(bool X, bool Y, bool Z, bool MX, bool MY, bool MZ, std::vector<std::array<double, 3>> vertices);
+    Support(bool X, bool Y, bool Z, bool MX, bool MY, bool MZ, CrossSection cross_section);
 
-    bool is_inside(gp_Pnt p) const;
-    double get_distance(gp_Pnt p) const;
-    inline TopoDS_Shape get_shape() const{
-        return this->shape;
-    }
     inline int F_DOF() const{
         return this->fdof;
     }
@@ -61,8 +62,8 @@ class Support{
     }
 
     const bool X, Y, Z, MX, MY, MZ;
+    CrossSection S;
     private:
-    TopoDS_Shape shape;
     int fdof, mdof;
 };
 

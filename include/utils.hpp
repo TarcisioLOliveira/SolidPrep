@@ -23,6 +23,7 @@
 
 #include <string>
 #include <utility>
+#include <gp_Pnt.hxx>
 
 namespace utils{
 
@@ -124,6 +125,21 @@ namespace utils{
         // lower triangle
         // i >= j
         return (i-j)*w + j;
+    }
+
+    /**
+     * Compares two gp_Pnt for equality based on specified precision.
+     *
+     * @param p1 One of the points.
+     * @param p2 The other point.
+     * @param eps Precision.
+     *
+     * @returns True if equal within precision, false otherwise.
+     */
+    inline bool equal(gp_Pnt p1, gp_Pnt p2, double eps=1e-3){
+        return ((p1.X() - p2.X()) < eps) && ((p2.X() - p1.X()) < eps) &&
+               ((p1.Y() - p2.Y()) < eps) && ((p2.Y() - p1.Y()) < eps) &&
+               ((p1.Z() - p2.Z()) < eps) && ((p2.Z() - p1.Z()) < eps);
     }
 }
 

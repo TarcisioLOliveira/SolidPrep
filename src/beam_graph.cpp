@@ -54,9 +54,9 @@ void BeamGraph::run(){
     for(size_t i = 0; i < beams.size(); ++i){
         const std::vector<gp_Pnt>& beam = beams[i];
         const Force& f = this->data->forces[i/this->data->supports.size()];
-        double A = f.get_area();
-        double I = f.get_moment_of_inertia(1, 1);
-        double dim = f.get_dimension();
+        double A = f.S.get_area();
+        double I = f.S.get_moment_of_inertia(1, 1);
+        double dim = f.S.get_dimension();
         size_t sup_id = i%this->data->supports.size();
 
         // Support
@@ -114,10 +114,10 @@ void BeamGraph::run(){
         // Force
         {
             if(k_dim >= 2){
-                F[cur_id*k_dim/2 + pos_offset] = -f.get_force().X();
+                F[cur_id*k_dim/2 + pos_offset] = -f.vec.X();
             }
             if(k_dim >= 4){
-                F[cur_id*k_dim/2 + pos_offset + 1] = -f.get_force().Y();
+                F[cur_id*k_dim/2 + pos_offset + 1] = -f.vec.Y();
             }
         }
     }

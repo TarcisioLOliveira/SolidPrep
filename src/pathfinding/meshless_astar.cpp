@@ -117,28 +117,28 @@ MeshlessAStar::MeshlessAStar(TopoDS_Shape topology, double step, double angle, i
 }
 
 std::vector<gp_Pnt> MeshlessAStar::find_path(const Force& f, const Support& s){
-    TopoDS_Shape dest = s.get_shape();
+    TopoDS_Shape dest = s.S.get_shape();
     PriorityQueue point_queue;
     std::vector<std::unique_ptr<PathPoint>> point_list;
-    gp_Pnt p = f.get_centroid();
-    gp_Dir initial_direction = f.get_normal();
+    gp_Pnt p = f.S.get_centroid();
+    gp_Dir initial_direction = f.S.get_normal();
 
-    point_list.emplace_back(new PathPoint(p, this->get_distance(p, dest), nullptr));
+    point_list.emplace_back(new PathPoint(p, s.S.get_distance(p), nullptr));
 
     // Forward direction
     gp_Pnt point = p.Translated(this->step*initial_direction);
-    point_list.emplace_back(new PathPoint(point, this->get_distance(point, dest), point_list[0].get()));
+    point_list.emplace_back(new PathPoint(point, s.S.get_distance(p), point_list[0].get()));
     point_queue.push(point_list[point_list.size()-1].get());
     // Backward direction
     point = p.Translated(this->step*(-initial_direction));
-    point_list.emplace_back(new PathPoint(point, this->get_distance(point, dest), point_list[0].get()));
+    point_list.emplace_back(new PathPoint(point, s.S.get_distance(p), point_list[0].get()));
     point_queue.push(point_list[point_list.size()-1].get());
 
     PathPoint* current = point_queue.top();
     gp_Dir direction = gp_Vec(current->prev->point, current->point);
     point_queue.pop();
 
-    double f_dim = f.get_dimension()*1e3;
+    double f_dim = f.S.get_dimension()*1e3;
 
     if(this->type == TYPE_2D){
         bool reached_obj = false;
@@ -146,7 +146,7 @@ std::vector<gp_Pnt> MeshlessAStar::find_path(const Force& f, const Support& s){
             bool fully_inside_topology = this->shape_inside_2D(current->point, direction, this->restriction + f_dim/2, this->step, this->topology);
             bool center_inside = this->is_inside_2D(current->point, this->topology);
             bool close_to_start = current->point.Distance(point_list[0]->point) <= (this->restriction + f_dim/2);
-            bool close_to_end = this->get_distance(current->point, dest) <= this->step;
+            bool close_to_end = s.S.get_distance(current->point) <= this->step;
             if(center_inside && (fully_inside_topology || close_to_start || close_to_end)){
                 gp_Ax1 axis(current->point, gp_Dir(0.0,0.0,1.0));
                 for(double a:this->angles2D){
@@ -154,11 +154,11 @@ std::vector<gp_Pnt> MeshlessAStar::find_path(const Force& f, const Support& s){
                     std::pair<bool, gp_Pnt> intersec = this->get_intersection_point(current->point, dir, this->step, dest);
                     if(intersec.first == false){
                         gp_Pnt point = current->point.Translated(this->step*dir);
-                        point_list.emplace_back(new PathPoint(point, this->get_distance(point, dest), current));
+                        point_list.emplace_back(new PathPoint(point, s.S.get_distance(point), current));
                         point_queue.push(point_list[point_list.size()-1].get());
                     } else {
                         gp_Pnt point = intersec.second;
-                        point_list.emplace_back(new PathPoint(point, this->get_distance(point, dest), current));
+                        point_list.emplace_back(new PathPoint(point, s.S.get_distance(point), current));
                         point_queue.push(point_list[point_list.size()-1].get());
                         reached_obj = true;
                     }
@@ -219,13 +219,6 @@ bool MeshlessAStar::is_inside_2D(gp_Pnt p, const TopoDS_Shape& t){
 bool MeshlessAStar::is_inside_3D(gp_Pnt p, const TopoDS_Shape& t){
     BRepClass3d_SolidClassifier insider(t, p, 0.01);
     return insider.State() == TopAbs_IN;
-}
-
-double MeshlessAStar::get_distance(gp_Pnt p, const TopoDS_Shape& t){
-    TopoDS_Vertex v = BRepBuilderAPI_MakeVertex(p);
-    BRepExtrema_DistShapeShape d(v, t, 0.001, Extrema_ExtFlag_MINMAX, Extrema_ExtAlgo_Grad);
-
-    return d.Value();
 }
 
 std::pair<bool, gp_Pnt> MeshlessAStar::get_intersection_point(gp_Pnt p, gp_Dir dir, double step, const TopoDS_Shape& t){
