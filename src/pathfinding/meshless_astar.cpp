@@ -45,7 +45,7 @@
 
 namespace pathfinding{
 
-void PriorityQueue::push(PathPoint* p){
+void MeshlessAStar::PriorityQueue::push(PathPoint* p){
     if(this->empty()){
         this->c.push_back(p);
     }
@@ -66,7 +66,7 @@ void PriorityQueue::push(PathPoint* p){
     }
 }
 
-bool PriorityQueue::equal(gp_Pnt p1, gp_Pnt p2, double eps){
+bool MeshlessAStar::PriorityQueue::equal(gp_Pnt p1, gp_Pnt p2, double eps){
     return ((p1.X() - p2.X()) < eps) && ((p2.X() - p1.X()) < eps) &&
            ((p1.Y() - p2.Y()) < eps) && ((p2.Y() - p1.Y()) < eps) &&
            ((p1.Z() - p2.Z()) < eps) && ((p2.Z() - p1.Z()) < eps);
@@ -116,7 +116,8 @@ MeshlessAStar::MeshlessAStar(TopoDS_Shape topology, double step, double angle, i
     }
 }
 
-std::vector<gp_Pnt> MeshlessAStar::find_path(const Force& f, const TopoDS_Shape& dest){
+std::vector<gp_Pnt> MeshlessAStar::find_path(const Force& f, const Support& s){
+    TopoDS_Shape dest = s.get_shape();
     PriorityQueue point_queue;
     std::vector<std::unique_ptr<PathPoint>> point_list;
     gp_Pnt p = f.get_centroid();
