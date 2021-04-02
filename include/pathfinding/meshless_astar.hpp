@@ -70,7 +70,7 @@ class MeshlessAStar : public Pathfinding{
     MeshlessAStar(TopoDS_Shape topology, double step, double turn_angle, int choices, double restriction, ProbType type);
     ~MeshlessAStar() = default;
 
-    virtual std::vector<gp_Pnt> find_path(const Force& f, const TopoDS_Shape& dest) override;
+    virtual std::vector<gp_Pnt> find_path(const Force& f, const Support& s) override;
 
     private:
     double step;

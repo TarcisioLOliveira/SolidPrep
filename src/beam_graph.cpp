@@ -32,7 +32,7 @@ void BeamGraph::run(){
     int node_qnt = 0;
     for(auto& f:this->data->forces){
         for(auto& s:this->data->supports){
-            std::vector<gp_Pnt> b(this->data->pathfinder->find_path(f, s.get_shape()));
+            std::vector<gp_Pnt> b(this->data->pathfinder->find_path(f, s));
             W += (k_dim/2)*b.size() - s.DOF();
             node_qnt += b.size();
             beams.push_back(std::move(b));
