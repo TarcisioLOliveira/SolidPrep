@@ -188,14 +188,18 @@ std::vector<gp_Pnt> MeshlessAStar::find_path(const Force& f, const TopoDS_Shape&
 }
 
 bool MeshlessAStar::shape_inside_2D(gp_Pnt center, gp_Dir dir, double restr, double step, const TopoDS_Shape& t){
-    gp_Pnt p[4] = {gp_Pnt(center.X() + step/2, center.Y() + restr, 0), 
-                   gp_Pnt(center.X() - step/2, center.Y() + restr, 0), 
-                   gp_Pnt(center.X() - step/2, center.Y() - restr, 0), 
-                   gp_Pnt(center.X() + step/2, center.Y() - restr, 0)};
+    std::vector<gp_Pnt> p({gp_Pnt(center.X() + step/2, center.Y() + restr, 0), 
+                           gp_Pnt(center.X() - step/2, center.Y() + restr, 0), 
+                           gp_Pnt(center.X() - step/2, center.Y() - restr, 0), 
+                           gp_Pnt(center.X() + step/2, center.Y() - restr, 0),
+                           gp_Pnt(center.X() - step/2, center.Y(), 0), 
+                           gp_Pnt(center.X() + step/2, center.Y(), 0), 
+                           gp_Pnt(center.X(), center.Y() + restr, 0), 
+                           gp_Pnt(center.X(), center.Y() - restr, 0)}); 
     gp_Ax1 axis(center, gp_Dir(0, 0, 1));
     double ang = dir.AngleWithRef(gp_Dir(1,0,0), gp_Dir(0,0,1));
     bool inside = true;
-    for(int i = 0; i < 4; ++i){
+    for(size_t i = 0; i < p.size(); ++i){
         p[i].Rotate(axis, ang);
         inside = inside && this->is_inside_2D(p[i], t);
         if(!inside){
