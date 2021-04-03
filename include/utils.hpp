@@ -27,6 +27,11 @@
 
 namespace utils{
 
+    enum ProblemType{
+        PROBLEM_TYPE_2D,
+        PROBLEM_TYPE_3D
+    };
+
     /**
      * Formats string, replacing each "{}" with one of the arguments. Fails
      * silently if number of "{}" is different from the number of arguments.

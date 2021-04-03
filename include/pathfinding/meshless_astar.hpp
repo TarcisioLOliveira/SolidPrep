@@ -23,6 +23,7 @@
 
 #include "TopoDS_Solid.hxx"
 #include "pathfinding.hpp"
+#include "utils.hpp"
 
 namespace pathfinding{
 
@@ -62,12 +63,7 @@ class MeshlessAStar : public Pathfinding{
         std::vector<PathPoint*> c;
     };
 
-    enum ProbType{
-        TYPE_2D,
-        TYPE_3D
-    };
-
-    MeshlessAStar(TopoDS_Shape topology, double step, double turn_angle, int choices, double restriction, ProbType type);
+    MeshlessAStar(TopoDS_Shape topology, double step, double turn_angle, int choices, double restriction, utils::ProblemType type);
     ~MeshlessAStar() = default;
 
     virtual std::vector<gp_Pnt> find_path(const Force& f, const Support& s) override;
@@ -77,7 +73,7 @@ class MeshlessAStar : public Pathfinding{
     std::vector<double> angles2D;
     std::vector<std::array<double,2>> angles3D;
     double restriction;
-    ProbType type;
+    utils::ProblemType type;
     TopoDS_Solid topology;
 
     bool shape_inside_2D(gp_Pnt center, gp_Dir dir, double restr, double step, const TopoDS_Shape& t);

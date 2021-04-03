@@ -37,11 +37,6 @@
 class ProjectData {
     public:
 
-    enum ProjectType{
-        TYPE_2D,
-        TYPE_3D
-    };
-
     enum DataType{
         TYPE_NULL,
         TYPE_BOOL,
@@ -63,8 +58,8 @@ class ProjectData {
     double thickness;
     std::unique_ptr<Pathfinding> pathfinder;
     std::unique_ptr<Sizing> sizer;
-    ProjectType type;
     TopoDS_Shape solid;
+    utils::ProblemType type;
     std::vector<Force> forces;
     std::vector<Support> supports;
     

@@ -28,6 +28,7 @@
 #include "BRepBuilderAPI_Transform.hxx"
 #include "logger.hpp"
 #include "sizing/beam_sizing.hpp"
+#include "utils.hpp"
 #define _USE_MATH_DEFINES
 #include <cmath>
 #include "force.hpp"
@@ -58,9 +59,9 @@ ProjectData::ProjectData(std::string project_file){
     if(this->log_data(doc, "solid_type", TYPE_STRING, true)){
         std::string solid_type = doc["solid_type"].GetString();
         if(solid_type == "2D"){
-            this->type = TYPE_2D;
+            this->type = utils::PROBLEM_TYPE_2D;
         } else if(solid_type == "3D"){
-            this->type = TYPE_3D;
+            this->type = utils::PROBLEM_TYPE_3D;
         } else {
             logger::log_assert(false, logger::ERROR,  "Solid type incorrectly specified, must be \"2D\" or \"3D\".");
         }
@@ -107,7 +108,7 @@ ProjectData::ProjectData(std::string project_file){
     } else {
         this->scale = 1;
     }
-    if(this->type == TYPE_2D){
+    if(this->type == utils::PROBLEM_TYPE_2D){
         if(this->log_data(doc, "thickness", TYPE_DOUBLE, true)){
             this->thickness = doc["thickness"].GetDouble()*1e-3;
         }
@@ -132,7 +133,7 @@ ProjectData::ProjectData(std::string project_file){
                     if(this->log_data(pathf, "restriction_size", TYPE_DOUBLE, false)){
                         restriction = pathf["restriction_size"].GetDouble();
                     }
-                    this->pathfinder.reset(new MeshlessAStar(this->solid, step, angle, choices, restriction, MeshlessAStar::TYPE_2D));
+                    this->pathfinder.reset(new MeshlessAStar(this->solid, step, angle, choices, restriction, utils::PROBLEM_TYPE_2D));
                 } else {
                     logger::log_assert(false, logger::ERROR, "unknown pathfinding algorithm inserted: {}.", pathf["type"].GetString());
                 }
@@ -152,7 +153,7 @@ ProjectData::ProjectData(std::string project_file){
         }
     }
     if(this->log_data(doc, "loads", TYPE_ARRAY, true)){
-        if(this->type == TYPE_2D){
+        if(this->type == utils::PROBLEM_TYPE_2D){
             for(auto& f : doc["loads"].GetArray()){
                 logger::log_assert(f.IsObject(), logger::ERROR, "Each load must be stored as a JSON object");
                 this->log_data(f, "vertices", TYPE_ARRAY, true);
@@ -170,7 +171,7 @@ ProjectData::ProjectData(std::string project_file){
                 CrossSection S(vlist, this->thickness);
                 this->forces.emplace_back(S, l);
             }
-        } else if(this->type == TYPE_3D) {
+        } else if(this->type == utils::PROBLEM_TYPE_3D) {
             for(auto& f : doc["loads"].GetArray()){
                 logger::log_assert(f.IsObject(), logger::ERROR, "Each load must be stored as a JSON object");
                 this->log_data(f, "vertices", TYPE_ARRAY, true);
@@ -191,7 +192,7 @@ ProjectData::ProjectData(std::string project_file){
         }
     }
     if(this->log_data(doc, "supports", TYPE_ARRAY, true)){
-        if(this->type == TYPE_2D){
+        if(this->type == utils::PROBLEM_TYPE_2D){
             for(auto& f : doc["supports"].GetArray()){
                 logger::log_assert(f.IsObject(), logger::ERROR, "Each support must be stored as a JSON object");
                 this->log_data(f, "vertices", TYPE_ARRAY, true);
@@ -211,7 +212,7 @@ ProjectData::ProjectData(std::string project_file){
                 CrossSection S(vlist, this->thickness);
                 this->supports.emplace_back(X, Y, MZ, S);
             }
-        } else if(this->type == TYPE_3D) {
+        } else if(this->type == utils::PROBLEM_TYPE_3D) {
             for(auto& f : doc["supports"].GetArray()){
                 logger::log_assert(f.IsObject(), logger::ERROR, "Each support must be stored as a JSON object");
                 this->log_data(f, "vertices", TYPE_ARRAY, true);

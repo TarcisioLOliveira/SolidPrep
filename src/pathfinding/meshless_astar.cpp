@@ -20,6 +20,7 @@
 
 #include "pathfinding/meshless_astar.hpp"
 #include "logger.hpp"
+#include "utils.hpp"
 #include <BRepBuilderAPI_MakeVertex.hxx>
 #include <BRepBuilderAPI_MakeEdge.hxx>
 #include <BRepBuilderAPI_MakeWire.hxx>
@@ -72,22 +73,22 @@ bool MeshlessAStar::PriorityQueue::equal(gp_Pnt p1, gp_Pnt p2, double eps){
            ((p1.Z() - p2.Z()) < eps) && ((p2.Z() - p1.Z()) < eps);
 }
 
-MeshlessAStar::MeshlessAStar(TopoDS_Shape topology, double step, double angle, int choices, double restriction, ProbType type){
+MeshlessAStar::MeshlessAStar(TopoDS_Shape topology, double step, double angle, int choices, double restriction, utils::ProblemType type){
     this->step = step;
     this->restriction = restriction;
     this->type = type;
     angle = (M_PI/180)*angle;
-    if(type == TYPE_2D){
+    if(type == utils::PROBLEM_TYPE_2D){
         this->topology = BRepBuilderAPI_MakeSolid(TopoDS::Shell(topology));
     } else {
         this->topology = TopoDS::Solid(topology);
     }
-    if(this->type == TYPE_2D){
+    if(this->type == utils::PROBLEM_TYPE_2D){
         double angle_step = 2*angle/(choices-1);
         for(int i = 0; i < choices; ++i){
             this->angles2D.push_back(-angle + i*angle_step);
         }
-    } else if(this->type == TYPE_3D){
+    } else if(this->type == utils::PROBLEM_TYPE_3D){
         double angle_step = 2*angle/(choices-1);
         double spin_step = 2*M_PI/(choices-1);
         bool odd = (choices % 2) == 1;
@@ -140,7 +141,7 @@ std::vector<gp_Pnt> MeshlessAStar::find_path(const Force& f, const Support& s){
 
     double f_dim = f.S.get_dimension()*1e3;
 
-    if(this->type == TYPE_2D){
+    if(this->type == utils::PROBLEM_TYPE_2D){
         bool reached_obj = false;
         while(!reached_obj){
             bool fully_inside_topology = this->shape_inside_2D(current->point, direction, this->restriction + f_dim/2, this->step, this->topology);
@@ -174,7 +175,7 @@ std::vector<gp_Pnt> MeshlessAStar::find_path(const Force& f, const Support& s){
             direction = gp_Vec(current->prev->point, current->point);
             point_queue.pop();
         }
-    } else if(this->type == TYPE_3D){
+    } else if(this->type == utils::PROBLEM_TYPE_3D){
         // TODO
     }
 

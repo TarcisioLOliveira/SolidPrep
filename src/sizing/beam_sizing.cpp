@@ -20,6 +20,7 @@
 
 #include "sizing/beam_sizing.hpp"
 #include "project_data.hpp"
+#include "utils.hpp"
 #include <lapacke.h>
 #include <vector>
 #include <cmath>
@@ -52,7 +53,7 @@ BeamSizing::BeamSizing(ProjectData* data, double smax, double tmax, BeamElementF
 TopoDS_Shape BeamSizing::run(){
     BeamGraph graph(this->data, this->type);
     graph.run();
-    if(this->data->type == ProjectData::TYPE_2D){
+    if(this->data->type == utils::PROBLEM_TYPE_2D){
         TopoDS_Shape copy = BRepBuilderAPI_Copy(this->data->solid);
 
         size_t graph_size = graph.size();
