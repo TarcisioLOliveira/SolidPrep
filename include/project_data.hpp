@@ -30,6 +30,7 @@
 #include "support.hpp"
 #include "pathfinding.hpp"
 #include "sizing.hpp"
+#include "ground_structure.hpp"
 
 /**
  * Reads and stores project data.
@@ -54,12 +55,11 @@ class ProjectData {
      */
     ProjectData(std::string project_file);
 
-    double scale;
     double thickness;
     std::unique_ptr<Pathfinding> pathfinder;
     std::unique_ptr<Sizing> sizer;
-    TopoDS_Shape solid;
     utils::ProblemType type;
+    std::unique_ptr<GroundStructure> ground_structure;
     std::vector<Force> forces;
     std::vector<Support> supports;
     

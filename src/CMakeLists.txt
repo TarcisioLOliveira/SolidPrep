@@ -8,6 +8,7 @@ set(SOURCES
     element.cpp
     beam_graph.cpp
     cross_section.cpp
+    ground_structure.cpp
 )
 
 add_subdirectory(pathfinding)

@@ -54,7 +54,7 @@ TopoDS_Shape BeamSizing::run(){
     BeamGraph graph(this->data, this->type);
     graph.run();
     if(this->data->type == utils::PROBLEM_TYPE_2D){
-        TopoDS_Shape copy = BRepBuilderAPI_Copy(this->data->solid);
+        TopoDS_Shape copy = BRepBuilderAPI_Copy(this->data->ground_structure->shape);
 
         size_t graph_size = graph.size();
         for(size_t i = 0; i < graph_size; ++i){
@@ -89,7 +89,7 @@ TopoDS_Shape BeamSizing::run(){
             copy = BRepAlgoAPI_Cut(copy, face);
         }
 
-        copy = BRepAlgoAPI_Cut(this->data->solid, copy);
+        copy = BRepAlgoAPI_Cut(this->data->ground_structure->shape, copy);
 
         return copy;
     }

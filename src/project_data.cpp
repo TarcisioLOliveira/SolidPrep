@@ -23,9 +23,6 @@
 #include "rapidjson/filereadstream.h"
 #include "rapidjson/error/error.h"
 #include "rapidjson/error/en.h"
-#include "STEPCAFControl_Reader.hxx"
-#include "BRepClass3d_SolidClassifier.hxx"
-#include "BRepBuilderAPI_Transform.hxx"
 #include "logger.hpp"
 #include "sizing/beam_sizing.hpp"
 #include "utils.hpp"
@@ -75,38 +72,13 @@ ProjectData::ProjectData(std::string project_file){
 #endif
         std::string absolute_path = project_file.substr(0, last_slash+1);
         absolute_path.append(geom_path);
-        STEPControl_Reader reader;
-        IFSelect_ReturnStatus stat = reader.ReadFile(absolute_path.c_str());
-        if(stat != IFSelect_RetDone){
-            reader.PrintCheckLoad(false, IFSelect_ItemsByEntity);
-            exit(EXIT_FAILURE);
+        double scale;
+        if(this->log_data(doc, "scale", TYPE_DOUBLE, false)){
+            scale = doc["scale"].GetDouble();
+        } else {
+            scale = 1;
         }
-
-        Standard_Integer NbRoots = reader.NbRootsForTransfer();
-        Standard_Integer num = reader.TransferRoots();
-        this->solid = reader.OneShape();
-        if(this->solid.IsNull()){
-            reader.PrintCheckTransfer(true, IFSelect_ItemsByEntity);
-            exit(EXIT_FAILURE);
-        }
-    }
-    if(this->log_data(doc, "scale", TYPE_DOUBLE, false)){
-        this->scale = doc["scale"].GetDouble();
-        gp_Trsf t;
-        t.SetScale(gp_Pnt(0, 0, 0), this->scale);
-        BRepBuilderAPI_Transform transf(this->solid, t, true);
-        this->solid = transf.Shape();
-
-        // Geometry bounds calculation for debugging purposes.
-        //
-        // Bnd_Box bounds;
-        // BRepBndLib::Add(this->solid, bounds);
-        // bounds.SetGap(0.0);
-        // Standard_Real fXMin, fYMin, fZMin, fXMax, fYMax, fZMax;
-        // bounds.Get(fXMin, fYMin, fZMin, fXMax, fYMax, fZMax);
-        // std::cout << fXMax << " " << fXMin << " " << fYMax << " " << fYMin << std::endl;
-    } else {
-        this->scale = 1;
+        this->ground_structure.reset(new GroundStructure(absolute_path, scale, this->type));
     }
     if(this->type == utils::PROBLEM_TYPE_2D){
         if(this->log_data(doc, "thickness", TYPE_DOUBLE, true)){
@@ -133,7 +105,7 @@ ProjectData::ProjectData(std::string project_file){
                     if(this->log_data(pathf, "restriction_size", TYPE_DOUBLE, false)){
                         restriction = pathf["restriction_size"].GetDouble();
                     }
-                    this->pathfinder.reset(new MeshlessAStar(this->solid, step, angle, choices, restriction, utils::PROBLEM_TYPE_2D));
+                    this->pathfinder.reset(new MeshlessAStar(this->ground_structure->shape, step, angle, choices, restriction, utils::PROBLEM_TYPE_2D));
                 } else {
                     logger::log_assert(false, logger::ERROR, "unknown pathfinding algorithm inserted: {}.", pathf["type"].GetString());
                 }
