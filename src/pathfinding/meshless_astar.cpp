@@ -159,7 +159,7 @@ std::vector<gp_Pnt> MeshlessAStar::find_path(const CrossSection& begin, const Cr
                         point_queue.push(point_list[point_list.size()-1].get());
                     } else {
                         gp_Pnt point = intersec.second;
-                        point_list.emplace_back(new PathPoint(point, end.get_distance(point), current));
+                        point_list.emplace_back(new PathPoint(point, current->point.Distance(point), current));
                         point_queue.push(point_list[point_list.size()-1].get());
                         reached_obj = true;
                     }
