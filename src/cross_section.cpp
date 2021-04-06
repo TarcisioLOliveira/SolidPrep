@@ -106,9 +106,7 @@ CrossSection::CrossSection(std::vector<gp_Pnt> vertices, double thickness){
 }
 
 CrossSection::CrossSection(gp_Pnt p):
-    centroid(p){
-    this->shape.Nullify();
-}
+    centroid(p), inertia(), normal(), max_dim(), shape(BRepBuilderAPI_MakeVertex(p)), area(){}
 
 CrossSection::CrossSection(std::vector<gp_Pnt> vertices){
     (void)vertices;
@@ -130,11 +128,9 @@ double CrossSection::get_distance(gp_Pnt p) const{
 }
 
 void CrossSection::set_centroid(gp_Pnt p){
-    if(!this->shape.IsNull()){
-        gp_Trsf t;
-        t.SetTranslation(this->centroid, p);
-        BRepBuilderAPI_Transform transf(this->shape, t, true);
-        this->shape = transf.Shape();
-    }
+    gp_Trsf t;
+    t.SetTranslation(this->centroid, p);
+    BRepBuilderAPI_Transform transf(this->shape, t, true);
+    this->shape = transf.Shape();
     this->centroid = p;
 }
