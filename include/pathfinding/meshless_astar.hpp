@@ -70,6 +70,7 @@ class MeshlessAStar : public Pathfinding{
 
     private:
     double step;
+    double turn_angle;
     std::vector<double> angles2D;
     std::vector<std::array<double,2>> angles3D;
     double restriction;

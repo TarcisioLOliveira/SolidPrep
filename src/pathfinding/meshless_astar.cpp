@@ -40,6 +40,7 @@
 #include <TopoDS.hxx>
 #include <IntCurvesFace_ShapeIntersector.hxx>
 #include <IntTools_Context.hxx>
+#include <BRep_Tool.hxx>
 #include <vector>
 #include <algorithm>
 #include <memory>
@@ -73,10 +74,8 @@ bool MeshlessAStar::PriorityQueue::equal(gp_Pnt p1, gp_Pnt p2, double eps){
            ((p1.Z() - p2.Z()) < eps) && ((p2.Z() - p1.Z()) < eps);
 }
 
-MeshlessAStar::MeshlessAStar(TopoDS_Shape topology, double step, double angle, int choices, double restriction, utils::ProblemType type){
-    this->step = step;
-    this->restriction = restriction;
-    this->type = type;
+MeshlessAStar::MeshlessAStar(TopoDS_Shape topology, double step, double angle, int choices, double restriction, utils::ProblemType type):
+    step(step), turn_angle(angle), angles2D(), angles3D(), restriction(restriction), type(type), topology(){
     angle = (M_PI/180)*angle;
     if(type == utils::PROBLEM_TYPE_2D){
         this->topology = BRepBuilderAPI_MakeSolid(TopoDS::Shell(topology));
@@ -220,20 +219,32 @@ bool MeshlessAStar::is_inside_3D(gp_Pnt p, const TopoDS_Shape& t){
 }
 
 std::pair<bool, gp_Pnt> MeshlessAStar::get_intersection_point(gp_Pnt p, gp_Dir dir, double step, const TopoDS_Shape& t){
-    gp_Pnt maxp = p.Translated(step*dir);
-    if(this->is_inside_2D(maxp, t)){
-        return std::pair<bool, gp_Pnt>(true, maxp);
-    }
-    gp_Lin line(p, dir);
-    gp_Pnt itsc(0,0,0);
-    IntCurvesFace_ShapeIntersector intersector;
-    intersector.Load(t, 0.01);
-    intersector.PerformNearest(line, 0, step);
-    if(intersector.NbPnt() > 0){
-        itsc = intersector.Pnt(1);
-        return std::pair<bool, gp_Pnt>(true, itsc);
+    if(t.ShapeType() == TopAbs_VERTEX){
+        gp_Pnt v = BRep_Tool::Pnt(TopoDS::Vertex(t));
+        if(v.Distance(p) < step){
+            gp_Vec vec(p, v);
+            double ang = dir.Angle(vec);
+            if(ang <= this->turn_angle){
+                return std::pair<bool, gp_Pnt>(true, v);
+            }
+        }
+        return std::pair<bool, gp_Pnt>(false, v);
     } else {
-        return std::pair<bool, gp_Pnt>(false, itsc);
+        gp_Pnt maxp = p.Translated(step*dir);
+        if(this->is_inside_2D(maxp, t)){
+            return std::pair<bool, gp_Pnt>(true, maxp);
+        }
+        gp_Lin line(p, dir);
+        gp_Pnt itsc(0,0,0);
+        IntCurvesFace_ShapeIntersector intersector;
+        intersector.Load(t, 0.01);
+        intersector.PerformNearest(line, 0, step);
+        if(intersector.NbPnt() > 0){
+            itsc = intersector.Pnt(1);
+            return std::pair<bool, gp_Pnt>(true, itsc);
+        } else {
+            return std::pair<bool, gp_Pnt>(false, itsc);
+        }
     }
 }
 

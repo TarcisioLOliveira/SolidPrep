@@ -106,9 +106,13 @@ CrossSection::CrossSection(std::vector<gp_Pnt> vertices, double thickness){
 
     this->shape = sh;
 }
+CrossSection::CrossSection(gp_Pnt p):
+    centroid(p), inertia(), normal(), max_dim(), shape(BRepBuilderAPI_MakeVertex(p)), area(){
+
+}
 
 CrossSection::CrossSection(gp_Pnt p, utils::ProblemType type, double radius):
-    centroid(p), inertia(), normal(), max_dim(), shape(), area(){
+    centroid(p), inertia(), normal(), max_dim(radius), shape(), area(){
     if(type == utils::PROBLEM_TYPE_2D){
         gp_Ax2 axis(p, gp_Dir(0,0,1));
         gp_Circ circ(axis, radius);

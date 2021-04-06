@@ -69,7 +69,14 @@ class CrossSection{
     CrossSection(Circle c);
 
     /**
-     * Creates a dummy cross section, for pathfinding for example.
+     * Creates a dummy point cross section, for pathfinding for example.
+     *
+     * @param p Point.
+     */
+    CrossSection(gp_Pnt p);
+
+    /**
+     * Creates a dummy cross section with size, for pathfinding for example.
      *
      * @param p Point.
      */
