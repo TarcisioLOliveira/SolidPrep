@@ -67,6 +67,13 @@ class CrossSection{
      */
     CrossSection(Circle c);
 
+    /**
+     * Creates a dummy cross section, for pathfinding for example.
+     *
+     * @param p Point.
+     */
+    CrossSection(gp_Pnt p);
+
     bool is_inside(gp_Pnt p) const;
     double get_distance(gp_Pnt p) const;
 
@@ -91,6 +98,11 @@ class CrossSection{
     inline TopoDS_Shape get_shape() const{
         return this->get_shape();
     }
+
+    inline void set_normal(gp_Dir n){
+        this->normal = n;
+    }
+    void set_centroid(gp_Pnt p);
 
     private:
     gp_Pnt centroid;
