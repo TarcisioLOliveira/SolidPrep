@@ -141,8 +141,8 @@ std::vector<gp_Pnt> MeshlessAStar::find_path(const CrossSection& begin, const Cr
 
     double f_dim = begin.get_dimension()*1e3;
 
+    bool reached_obj = false;
     if(this->type == utils::PROBLEM_TYPE_2D){
-        bool reached_obj = false;
         while(!reached_obj){
             bool fully_inside_topology = this->shape_inside_2D(current->point, direction, this->restriction + f_dim/2, this->step, this->topology);
             bool center_inside = this->is_inside_2D(current->point, this->topology);
@@ -164,9 +164,6 @@ std::vector<gp_Pnt> MeshlessAStar::find_path(const CrossSection& begin, const Cr
                         reached_obj = true;
                     }
                 }
-                if(reached_obj){
-                    break;
-                }
             }
             if(point_queue.empty()){
                 break;
@@ -179,7 +176,7 @@ std::vector<gp_Pnt> MeshlessAStar::find_path(const CrossSection& begin, const Cr
         // TODO
     }
 
-    logger::log_assert(!point_queue.empty(), logger::ERROR, "Failed to find path. Initial point was ({},{},{})", p.X(), p.Y(), p.Z());
+    logger::log_assert(reached_obj, logger::ERROR, "Failed to find path. Initial point was ({},{},{})", p.X(), p.Y(), p.Z());
     std::vector<gp_Pnt> path;
     while(current != nullptr){
         path.push_back(current->point);
@@ -232,13 +229,12 @@ std::pair<bool, gp_Pnt> MeshlessAStar::get_intersection_point(gp_Pnt p, gp_Dir d
     IntCurvesFace_ShapeIntersector intersector;
     intersector.Load(t, 0.01);
     intersector.PerformNearest(line, 0, step);
-    try{
+    if(intersector.NbPnt() > 0){
         itsc = intersector.Pnt(1);
         return std::pair<bool, gp_Pnt>(true, itsc);
-    } catch(const Standard_OutOfRange& e){
+    } else {
         return std::pair<bool, gp_Pnt>(false, itsc);
     }
-    return std::pair<bool, gp_Pnt>(false, itsc);
 }
 
 }
