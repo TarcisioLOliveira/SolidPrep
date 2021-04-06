@@ -19,6 +19,7 @@
  */
 #include "project_data.hpp"
 #include "pathfinding/meshless_astar.hpp"
+#include "pathfinding/visibility_graph.hpp"
 #include "rapidjson/document.h"
 #include "rapidjson/filereadstream.h"
 #include "rapidjson/error/error.h"
@@ -106,6 +107,18 @@ ProjectData::ProjectData(std::string project_file){
                         restriction = pathf["restriction_size"].GetDouble();
                     }
                     this->pathfinder.reset(new MeshlessAStar(this->ground_structure->shape, step, angle, choices, restriction, utils::PROBLEM_TYPE_2D));
+                } else if(pathf["type"] == "visibility_graph"){
+                    this->log_data(pathf, "step", TYPE_DOUBLE, true);
+                    this->log_data(pathf, "max_turn_angle", TYPE_DOUBLE, true);
+                    this->log_data(pathf, "turn_options", TYPE_INT, true);
+                    double step = pathf["step"].GetDouble();
+                    double angle = pathf["max_turn_angle"].GetDouble();
+                    int choices = pathf["turn_options"].GetInt();
+                    double restriction = 0;
+                    if(this->log_data(pathf, "restriction_size", TYPE_DOUBLE, false)){
+                        restriction = pathf["restriction_size"].GetDouble();
+                    }
+                    this->pathfinder.reset(new VisibilityGraph(this->ground_structure.get(), step, angle, choices, restriction, utils::PROBLEM_TYPE_2D));
                 } else {
                     logger::log_assert(false, logger::ERROR, "unknown pathfinding algorithm inserted: {}.", pathf["type"].GetString());
                 }
