@@ -20,6 +20,7 @@
 
 #include "beam_graph.hpp"
 #include "element_factory.hpp"
+#include "utils.hpp"
 
 void BeamGraph::run(){
     // Uses UPLO=L lower symmetric band matrices
@@ -44,6 +45,7 @@ void BeamGraph::run(){
     std::vector<double> K(W*N);
     std::vector<double> F(W);
     std::vector<BeamElement*> elems(node_qnt-1);
+    this->clear_nodes();
     this->nodes.resize(node_qnt);
 
     BeamNodeFactory::BeamNodeType node_type = BeamElementFactory::get_node_type(this->type);
@@ -164,14 +166,20 @@ void BeamGraph::insert_element_matrix(std::vector<double>& K, const std::vector<
     for(long i = first; i < last+1; ++i){
         for(long j = i; j < last+1; ++j){
             if(pos[i] > -1 && pos[j] > -1){
-                K[utils::to_band(pos[j], pos[i], w)] += k[utils::to_triangular(i,j)];
+                K[utils::to_band(pos[j], pos[i], w)] += k[utils::to_upper_triangular(i,j)];
             }
         }
     }
 }
 
 BeamGraph::~BeamGraph(){
-    for(auto& n:this->nodes){
-        delete n;
+    this->clear_nodes();
+}
+
+void BeamGraph::clear_nodes(){
+    while(!this->nodes.empty()){
+        delete this->nodes.back();
+        this->nodes.pop_back();
     }
 }
+

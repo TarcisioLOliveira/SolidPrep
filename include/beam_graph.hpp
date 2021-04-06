@@ -45,6 +45,7 @@ class BeamGraph{
     std::vector<BeamNode*> nodes;
     BeamElementFactory::BeamElementType type;
     void insert_element_matrix(std::vector<double>& K, const std::vector<double>& k, const std::vector<long>& pos, int w, int& n) const;
+    void clear_nodes();
 };
 
 #endif

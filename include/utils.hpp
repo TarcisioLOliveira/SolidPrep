@@ -115,7 +115,6 @@ namespace utils{
     }
 
 
-    // Upper triangular
     inline size_t to_triangular(size_t i, size_t j){
         // i <= j
         if(i <= j){
@@ -123,6 +122,10 @@ namespace utils{
         } else {
             return (i+1)*i/2 + j;
         }
+    }
+    inline size_t to_upper_triangular(size_t i, size_t j){
+        // i <= j
+        return (j+1)*j/2 + i;
     }
 
     // Lower band
