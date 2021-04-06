@@ -23,14 +23,13 @@
 #include <gp_Pnt.hxx>
 #include <vector>
 #include <TopoDS_Shape.hxx>
-#include "force.hpp"
-#include "support.hpp"
+#include <cross_section.hpp>
 
 class Pathfinding{
     public:
     virtual ~Pathfinding() = default;
 
-    virtual std::vector<gp_Pnt> find_path(const Force& f, const Support& s) = 0;
+    virtual std::vector<gp_Pnt> find_path(const CrossSection& begin, const CrossSection& end) = 0;
 };
 
 #endif
