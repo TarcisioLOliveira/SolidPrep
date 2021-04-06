@@ -96,7 +96,7 @@ class CrossSection{
         return this->area;
     }
     inline TopoDS_Shape get_shape() const{
-        return this->get_shape();
+        return this->shape;
     }
 
     inline void set_normal(gp_Dir n){
