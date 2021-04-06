@@ -21,6 +21,7 @@
 #ifndef CROSS_SECTION_HPP
 #define CROSS_SECTION_HPP
 
+#include "utils.hpp"
 #include <vector>
 #include <gp_Pnt.hxx>
 #include <TopoDS_Shape.hxx>
@@ -72,7 +73,7 @@ class CrossSection{
      *
      * @param p Point.
      */
-    CrossSection(gp_Pnt p);
+    CrossSection(gp_Pnt p, utils::ProblemType type, double radius = 10);
 
     bool is_inside(gp_Pnt p) const;
     double get_distance(gp_Pnt p) const;

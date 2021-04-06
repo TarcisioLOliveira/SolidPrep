@@ -36,6 +36,8 @@
 #include <BRep_Builder.hxx>
 #include <BRepClass3d_SolidClassifier.hxx>
 #include "utils.hpp"
+#include <gp_Circ.hxx>
+#include <BRepPrimAPI_MakeSphere.hxx>
 
 CrossSection::CrossSection(std::vector<gp_Pnt> vertices, double thickness){
     // Calculation of properties
@@ -105,8 +107,23 @@ CrossSection::CrossSection(std::vector<gp_Pnt> vertices, double thickness){
     this->shape = sh;
 }
 
-CrossSection::CrossSection(gp_Pnt p):
-    centroid(p), inertia(), normal(), max_dim(), shape(BRepBuilderAPI_MakeVertex(p)), area(){}
+CrossSection::CrossSection(gp_Pnt p, utils::ProblemType type, double radius):
+    centroid(p), inertia(), normal(), max_dim(), shape(), area(){
+    if(type == utils::PROBLEM_TYPE_2D){
+        gp_Ax2 axis(p, gp_Dir(0,0,1));
+        gp_Circ circ(axis, radius);
+        TopoDS_Edge edge = BRepBuilderAPI_MakeEdge(circ);
+        TopoDS_Wire wire = BRepBuilderAPI_MakeWire(edge);
+        TopoDS_Face face = BRepBuilderAPI_MakeFace(wire);
+        this->shape = face;
+    } else if(type == utils::PROBLEM_TYPE_3D){
+        this->shape = BRepPrimAPI_MakeSphere(radius);
+        gp_Trsf t;
+        t.SetTranslation(gp_Pnt(0,0,0), p);
+        BRepBuilderAPI_Transform transf(this->shape, t, true);
+        this->shape = transf.Shape();
+    } 
+}
 
 CrossSection::CrossSection(std::vector<gp_Pnt> vertices){
     (void)vertices;
