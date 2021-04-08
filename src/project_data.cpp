@@ -110,15 +110,13 @@ ProjectData::ProjectData(std::string project_file){
                 } else if(pathf["type"] == "visibility_graph"){
                     this->log_data(pathf, "step", TYPE_DOUBLE, true);
                     this->log_data(pathf, "max_turn_angle", TYPE_DOUBLE, true);
-                    this->log_data(pathf, "turn_options", TYPE_INT, true);
                     double step = pathf["step"].GetDouble();
                     double angle = pathf["max_turn_angle"].GetDouble();
-                    int choices = pathf["turn_options"].GetInt();
                     double restriction = 0;
                     if(this->log_data(pathf, "restriction_size", TYPE_DOUBLE, false)){
                         restriction = pathf["restriction_size"].GetDouble();
                     }
-                    this->pathfinder.reset(new VisibilityGraph(this->ground_structure.get(), step, angle, choices, restriction, utils::PROBLEM_TYPE_2D));
+                    this->pathfinder.reset(new VisibilityGraph(this->ground_structure.get(), step, angle, restriction, utils::PROBLEM_TYPE_2D));
                 } else {
                     logger::log_assert(false, logger::ERROR, "unknown pathfinding algorithm inserted: {}.", pathf["type"].GetString());
                 }

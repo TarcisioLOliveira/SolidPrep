@@ -51,8 +51,8 @@
 
 namespace pathfinding{
 
-VisibilityGraph::VisibilityGraph(GroundStructure* topology, double step, double turn_angle, int choices, double restriction, utils::ProblemType type):
-    step(step), restriction(restriction), astar(topology->shape, step, turn_angle, choices, restriction, type), topology(topology), type(type){}
+VisibilityGraph::VisibilityGraph(GroundStructure* topology, double step, double turn_angle, double restriction, utils::ProblemType type):
+    step(step), angle(turn_angle), restriction(restriction), topology(topology), type(type){}
 
 std::vector<gp_Pnt> VisibilityGraph::find_path(const CrossSection& begin, const CrossSection& end){
     struct Vertex{
@@ -206,42 +206,106 @@ std::vector<gp_Pnt> VisibilityGraph::find_path(const CrossSection& begin, const 
         return std::vector<gp_Pnt>();
     }
 
-    // Get final path using MeshlessAStar
+    // Get final path
 
+    this->angle = (M_PI/180)*this->angle;
     if(node_path.size() == 1){
-        return this->astar.find_path(begin, end);
+        std::vector<gp_Pnt> final_list(this->path_section(begin, end));
+        std::reverse(final_list.begin(), final_list.end());
+        return final_list;
     } else {
         gp_Pnt cur_point = node_list[*(node_path.end()-2)];
-        std::vector<gp_Pnt> final_list(this->astar.find_path(begin, CrossSection(cur_point)));
+        std::vector<gp_Pnt> final_list(this->path_section(begin, CrossSection(cur_point)));
+        std::reverse(final_list.begin(), final_list.end());
         for(auto i = node_path.rbegin()+2; i < node_path.rend(); ++i){
             cur_point = node_list[*i];
-            gp_Dir n(gp_Vec(*(final_list.end()-2), *(final_list.end()-1)));
+            gp_Dir n(gp_Vec(*(final_list.begin()+2), *(final_list.begin()+1)));
             gp_Pnt prev_point = final_list.front();
             CrossSection c = begin;
             c.set_centroid(prev_point);
             c.set_normal(n);
-            std::vector<gp_Pnt> cur_list(this->astar.find_path(c, CrossSection(cur_point)));
-            final_list.insert(final_list.begin(), cur_list.begin(), cur_list.end()-1);
+            std::vector<gp_Pnt> cur_list(this->path_section(c, CrossSection(cur_point)));
+            final_list.insert(final_list.begin(), cur_list.rbegin(), cur_list.rend()-1);
         }
-        gp_Dir n(gp_Vec(*(final_list.end()-2), *(final_list.end()-1)));
+        gp_Dir n(gp_Vec(*(final_list.begin()+2), *(final_list.begin()+1)));
         gp_Pnt prev_point = final_list.front();
         CrossSection c = begin;
         c.set_centroid(prev_point);
         c.set_normal(n);
-        std::vector<gp_Pnt> cur_list(this->astar.find_path(c, end));
-        final_list.insert(final_list.begin(), cur_list.begin(), cur_list.end()-1);
+        std::vector<gp_Pnt> cur_list(this->path_section(c, end));
+        final_list.insert(final_list.begin(), cur_list.rbegin(), cur_list.rend()-1);
 
         return final_list;
     }
 
     return std::vector<gp_Pnt>();
 }
+std::vector<gp_Pnt> VisibilityGraph::path_section(const CrossSection& begin, const CrossSection& end){
+    std::vector<gp_Pnt> list;
+    list.push_back(begin.get_centroid());
+    gp_Pnt b1 = begin.get_centroid().Translated(this->step*begin.get_normal());
+    gp_Pnt b2 = begin.get_centroid().Translated(-this->step*begin.get_normal());
+
+    gp_Pnt closest1 = this->get_closest_point(b1, end.get_shape());
+    gp_Pnt closest2 = this->get_closest_point(b2, end.get_shape());
+    double dist1 = b1.Distance(closest1);
+    double dist2 = b2.Distance(closest2);
+
+    double prev_dist = 0;
+    double curr_dist = 0;
+    if(dist1 < dist2){
+        list.push_back(b1);
+        curr_dist = dist1;
+    } else {
+        list.push_back(b2);
+        curr_dist = dist2;
+    }
+    do{
+        prev_dist = curr_dist;
+        gp_Pnt current = list.back();
+        gp_Pnt prev = *(list.end()-2);
+        gp_Pnt closest = this->get_closest_point(current, end.get_shape());
+        gp_Dir current_dir(gp_Vec(prev, current));
+        gp_Dir path_dir(gp_Vec(current, closest));
+        curr_dist = current.Distance(closest);
+        if(current_dir.Angle(path_dir) <= this->angle){
+            if(curr_dist <= this->step + 1e-3){
+                list.push_back(closest);
+                break;
+            } else {
+                list.push_back(current.Translated(this->step*path_dir));
+            }
+        } else {
+            if(this->type == utils::PROBLEM_TYPE_2D){
+                double needed_ang = current_dir.AngleWithRef(path_dir, gp_Dir(0,0,1));
+                double ang = this->angle*(needed_ang/std::abs(needed_ang));
+                gp_Ax1 axis(current, gp_Dir(0,0,1));
+                list.push_back(current.Translated(this->step*current_dir.Rotated(axis, ang)));
+            } else if(this->type == utils::PROBLEM_TYPE_3D){
+                // TODO
+            }
+        }
+    } while(curr_dist <= prev_dist);
+
+    logger::log_assert(curr_dist <= prev_dist, logger::ERROR, "pathfinding algorithm did not converge.");
+
+    return list;
+}
 
 gp_Pnt VisibilityGraph::get_closest_point(const gp_Pnt& p, const TopoDS_Shape& t) const{
-    TopoDS_Vertex v = BRepBuilderAPI_MakeVertex(p);
-    BRepExtrema_DistShapeShape d(v, t, 0.001, Extrema_ExtFlag_MINMAX, Extrema_ExtAlgo_Grad);
+    if(t.ShapeType() == TopAbs_VERTEX){
+        return BRep_Tool::Pnt(TopoDS::Vertex(t));
+    } else {
+        TopoDS_Vertex v = BRepBuilderAPI_MakeVertex(p);
+        BRepExtrema_DistShapeShape d(v, t, 0.0001, Extrema_ExtFlag_MINMAX, Extrema_ExtAlgo_Grad);
+        gp_Pnt p(d.PointOnShape2(1));
 
-    return d.PointOnShape2(0);
+        // Workaround
+        if(this->type == utils::PROBLEM_TYPE_2D){
+            p.SetZ(0);
+        }
+        return p;
+    }
 }
 
 bool VisibilityGraph::visible_from_here(const gp_Pnt& p1, const gp_Pnt& p2, bool starter, const std::vector<Edge>& edges, const std::vector<TopoDS_Face>& faces) const{

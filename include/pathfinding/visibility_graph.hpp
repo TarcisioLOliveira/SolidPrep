@@ -29,7 +29,6 @@
 #include "TopoDS_Face.hxx"
 #include <queue>
 #include <vector>
-#include "pathfinding/meshless_astar.hpp"
 
 namespace pathfinding{
 
@@ -60,19 +59,20 @@ class VisibilityGraph : public Pathfinding{
         double b;
     };
 
-    VisibilityGraph(GroundStructure* topology, double step, double turn_angle, int choices, double restriction, utils::ProblemType type);
+    VisibilityGraph(GroundStructure* topology, double step, double turn_angle, double restriction, utils::ProblemType type);
     ~VisibilityGraph() = default;
 
     virtual std::vector<gp_Pnt> find_path(const CrossSection& begin, const CrossSection& end) override;
 
     private:
     double step;
+    double angle;
     double restriction;
-    MeshlessAStar astar;
     GroundStructure* topology;
     utils::ProblemType type;
 
     gp_Pnt get_closest_point(const gp_Pnt& p, const TopoDS_Shape& t) const;
+    std::vector<gp_Pnt> path_section(const CrossSection& begin, const CrossSection& end);
 
     bool visible_from_here(const gp_Pnt& p1, const gp_Pnt& p2, bool starter, const std::vector<Edge>& edges, const std::vector<TopoDS_Face>& faces) const;
     bool intersects_edge_2D(const gp_Pnt& p1, const gp_Pnt& p2, bool starter, const std::vector<Edge>& edges) const;
