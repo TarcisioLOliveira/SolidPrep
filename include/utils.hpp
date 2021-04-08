@@ -152,14 +152,7 @@ namespace utils{
                ((p1.Z() - p2.Z()) < eps) && ((p2.Z() - p1.Z()) < eps);
     }
 
-    inline void shape_to_file(const std::string& s, const TopoDS_Shape& t){
-        STEPControl_Writer writer;
-        STEPControl_StepModelType mode = STEPControl_ManifoldSolidBrep;
-        IFSelect_ReturnStatus stat = writer.Transfer(t,mode);
-        IFSelect_ReturnStatus stat2 = writer.Write(s.c_str());
-        (void) stat;
-        (void) stat2;
-    }
+    void shape_to_file(const std::string& s, const TopoDS_Shape& t);
 }
 
 #endif
