@@ -24,6 +24,8 @@
 #include <string>
 #include <utility>
 #include <gp_Pnt.hxx>
+#include <STEPCAFControl_Writer.hxx>
+#include <STEPControl_StepModelType.hxx>
 
 namespace utils{
 
@@ -148,6 +150,15 @@ namespace utils{
         return ((p1.X() - p2.X()) < eps) && ((p2.X() - p1.X()) < eps) &&
                ((p1.Y() - p2.Y()) < eps) && ((p2.Y() - p1.Y()) < eps) &&
                ((p1.Z() - p2.Z()) < eps) && ((p2.Z() - p1.Z()) < eps);
+    }
+
+    inline void shape_to_file(const std::string& s, const TopoDS_Shape& t){
+        STEPControl_Writer writer;
+        STEPControl_StepModelType mode = STEPControl_ManifoldSolidBrep;
+        IFSelect_ReturnStatus stat = writer.Transfer(t,mode);
+        IFSelect_ReturnStatus stat2 = writer.Write(s.c_str());
+        (void) stat;
+        (void) stat2;
     }
 }
 

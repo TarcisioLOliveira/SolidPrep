@@ -23,6 +23,7 @@
 #include <STEPControl_StepModelType.hxx>
 #include "project_data.hpp"
 #include "sizing/beam_sizing.hpp"
+#include "utils.hpp"
 
 int main(int argc, char* argv[]){
     // Bnd_Box bounds;
@@ -41,10 +42,7 @@ int main(int argc, char* argv[]){
     // proj.sizer.reset(new sizing::BeamSizing(&proj));
 
     TopoDS_Shape s = proj.sizer->run();
-    STEPControl_Writer writer;
-    STEPControl_StepModelType mode = STEPControl_ManifoldSolidBrep;
-    IFSelect_ReturnStatus stat = writer.Transfer(s,mode);
-    IFSelect_ReturnStatus stat2 = writer.Write("test.step");
+    utils::shape_to_file("test.step", s);
 
     return 0;
 }
