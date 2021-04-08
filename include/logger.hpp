@@ -60,6 +60,17 @@ namespace logger{
         }
         return expr;
     }
+
+    template<typename T>
+    static void quick_log(T t){
+        std::cout << t << std::endl;
+    }
+
+    template<typename T, typename ... Args>
+    static void quick_log(T t, Args&& ... args){
+        std::cout << t << " ";
+        quick_log(args...);
+    }
 }
 
 #endif
