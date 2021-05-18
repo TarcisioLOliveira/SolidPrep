@@ -38,8 +38,8 @@ class Material{
      * values. Accounts for anisotropy (both for positive and negative stress
      * values) if so desired.
      *
-     * @param Smax Maximum normal stresses. Input either 1, 3, or 6 values.
-     * @param Tmax Maximum shear stresses. Input either 1, 3, or 6 values.
+     * @param Smax Maximum normal stresses. Input either 1 or 3 values.
+     * @param Tmax Maximum shear stresses. Input either 1 or 3 values.
      */
     Material(std::vector<double> Smax, std::vector<double> Tmax);
 
@@ -57,10 +57,6 @@ class Material{
     private:
     std::vector<double> Smax;
     std::vector<double> Tmax;
-};
-
-class LinearElasticOrthotropic : public Material{
-
 };
 
 #endif
