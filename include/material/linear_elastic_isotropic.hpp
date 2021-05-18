@@ -35,6 +35,8 @@ class LinearElasticIsotropic : public Material{
     virtual double beam_E_2D(gp_Dir d) const override;
     virtual double beam_E_3D(gp_Dir d) const override;
 
+    virtual Type get_type() const override{ return this->LINEAR_ELASTIC_ISOTROPIC; }
+
     private:
     const double E;
     const double nu;

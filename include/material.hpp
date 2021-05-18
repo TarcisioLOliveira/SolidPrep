@@ -26,6 +26,13 @@
 
 class Material{
     public:
+    enum Type{
+        NONE,
+        LINEAR_ELASTIC_ISOTROPIC,
+        LINEAR_ELASTIC_ORTHOTROPIC
+    };
+
+
     /**
      * Initializes a basic material function with only maximum design stress
      * values. Accounts for anisotropy (both for positive and negative stress
@@ -41,6 +48,8 @@ class Material{
 
     virtual double beam_E_2D(gp_Dir d) const = 0;
     virtual double beam_E_3D(gp_Dir d) const = 0;
+
+    virtual Type get_type() const{ return this->NONE; }
 
     inline double get_Smax(size_t i = 0) const{return this->Smax[i];}
     inline double get_Tmax(size_t i = 0) const{return this->Tmax[i];}
