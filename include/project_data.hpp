@@ -31,6 +31,7 @@
 #include "pathfinding.hpp"
 #include "sizing.hpp"
 #include "ground_structure.hpp"
+#include "material.hpp"
 
 /**
  * Reads and stores project data.
@@ -58,6 +59,7 @@ class ProjectData {
     double thickness;
     std::unique_ptr<Pathfinding> pathfinder;
     std::unique_ptr<Sizing> sizer;
+    std::unique_ptr<Material> material;
     utils::ProblemType type;
     std::unique_ptr<GroundStructure> ground_structure;
     std::vector<Force> forces;

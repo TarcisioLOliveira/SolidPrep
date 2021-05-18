@@ -20,11 +20,14 @@
 #include "project_data.hpp"
 #include "pathfinding/meshless_astar.hpp"
 #include "pathfinding/visibility_graph.hpp"
+#include "material/linear_elastic_isotropic.hpp"
+#include "material/linear_elastic_orthotropic.hpp"
 #include "rapidjson/document.h"
 #include "rapidjson/filereadstream.h"
 #include "rapidjson/error/error.h"
 #include "rapidjson/error/en.h"
 #include "logger.hpp"
+#include "rapidjson/rapidjson.h"
 #include "sizing/beam_sizing.hpp"
 #include "utils.hpp"
 #define _USE_MATH_DEFINES
@@ -36,6 +39,7 @@
 #include <BRepBndLib.hxx>
 #include <gp_Pnt.hxx>
 #include <gp_Vec.hxx>
+#include <cmath>
 
 
 ProjectData::ProjectData(std::string project_file){
@@ -84,6 +88,46 @@ ProjectData::ProjectData(std::string project_file){
     if(this->type == utils::PROBLEM_TYPE_2D){
         if(this->log_data(doc, "thickness", TYPE_DOUBLE, true)){
             this->thickness = doc["thickness"].GetDouble()*1e-3;
+        }
+    }
+    if(this->log_data(doc, "material", TYPE_OBJECT, true)){
+        auto& mat = doc["material"];
+        this->log_data(mat, "type", TYPE_STRING, true);
+        if(mat["type"] == "linear_elastic_orthotropic"){
+            std::vector<std::string> properties{"E", "nu", "G", "Smax", "Tmax"};
+            for(auto& s:properties){
+                logger::log_assert(mat.HasMember(s.c_str()), logger::ERROR, "missing material property: {}", s);
+                logger::log_assert(mat[s.c_str()].IsArray() || mat[s.c_str()].IsDouble(), logger::ERROR, "material property {} must be either a number or an array of numbers", s);
+            }
+            std::vector<std::vector<double>> values(5);
+            for(size_t i = 0; i < properties.size(); ++i){
+                if(mat[properties[i].c_str()].IsArray()){
+                    const auto& a = mat[properties[i].c_str()].GetArray();
+                    if(a.Size() == 1){
+                        values[i].resize(3, a[0].GetDouble());
+                    } else {
+                        values[i].resize(3, 0);
+                        for(size_t j = 0; j < std::min(a.Size(), (rapidjson::SizeType) 3); ++j){
+                            values[i][j] = a[j].GetDouble();
+                        }
+                    }
+                } else {
+                    values[i].resize(3, mat[properties[i].c_str()].GetDouble());
+                }
+            }
+            this->material.reset(new material::LinearElasticOrthotropic(values[0], values[1], values[2], values[3], values[4]));
+        } else if(mat["type"] == "linear_elastic_isotropic"){
+            std::vector<std::string> properties{"E", "nu", "Smax", "Tmax"};
+            for(auto& s:properties){
+                this->log_data(mat, s, TYPE_DOUBLE, true);
+            }
+            this->log_data(mat, "plane_stress", TYPE_BOOL, true);
+            double E = mat["E"].GetDouble();
+            double nu = mat["nu"].GetDouble();
+            double Smax = mat["Smax"].GetDouble();
+            double Tmax = mat["Tmax"].GetDouble();
+            bool plane_stress = mat["plane_stress"].GetBool();
+            this->material.reset(new material::LinearElasticIsotropic(E, nu, Smax, Tmax, plane_stress));
         }
     }
     if(this->log_data(doc, "sizing", TYPE_OBJECT, true)){
