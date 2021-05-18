@@ -46,17 +46,19 @@ class Material{
     virtual std::vector<double> stiffness_2D() const = 0;
     virtual std::vector<double> stiffness_3D() const = 0;
 
-    virtual double beam_E_2D(gp_Dir d) const = 0;
-    virtual double beam_E_3D(gp_Dir d) const = 0;
+    virtual double beam_E_2D(gp_Dir d = gp_Dir(1,0,0)) const = 0;
+    virtual double beam_E_3D(gp_Dir d = gp_Dir(1,0,0)) const = 0;
 
     virtual Type get_type() const{ return this->NONE; }
 
-    inline double get_Smax(size_t i = 0) const{return this->Smax[i];}
-    inline double get_Tmax(size_t i = 0) const{return this->Tmax[i];}
+    virtual gp_Mat get_max_stresses_2D(gp_Dir d) const;
+    virtual gp_Mat get_max_stresses_3D(gp_Dir d) const;
+    virtual double get_max_Von_Mises_2D() const;
+    virtual double get_max_Von_Mises_3D() const;
 
     private:
-    std::vector<double> Smax;
-    std::vector<double> Tmax;
+    gp_Mat max_stress;
+    
 };
 
 #endif
