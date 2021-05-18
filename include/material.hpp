@@ -22,6 +22,7 @@
 #define MATERIAL_HPP
 
 #include <vector>
+#include <gp_Dir.hxx>
 
 class Material{
     public:
@@ -37,6 +38,9 @@ class Material{
 
     virtual std::vector<double> stiffness_2D() const = 0;
     virtual std::vector<double> stiffness_3D() const = 0;
+
+    virtual double beam_E_2D(gp_Dir d) const = 0;
+    virtual double beam_E_3D(gp_Dir d) const = 0;
 
     inline double get_Smax(size_t i = 0) const{return this->Smax[i];}
     inline double get_Tmax(size_t i = 0) const{return this->Tmax[i];}

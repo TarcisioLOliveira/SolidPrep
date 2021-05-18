@@ -64,6 +64,12 @@ std::vector<double> LinearElasticOrthotropic::stiffness_3D() const{
     return this->D_3D;
 }
 
+double LinearElasticOrthotropic::beam_E_2D(gp_Dir d) const{
+    return this->E[0]*d.X() + this->E[1]*d.Y();
+}
+double LinearElasticOrthotropic::beam_E_3D(gp_Dir d) const{
+    return this->E[0]*d.X() + this->E[1]*d.Y() + this->E[2]*d.Z();
+}
 
 
 }

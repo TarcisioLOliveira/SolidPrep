@@ -32,6 +32,11 @@ class LinearElasticOrthotropic : public Material{
     virtual std::vector<double> stiffness_2D() const override;
     virtual std::vector<double> stiffness_3D() const override;
 
+    virtual double beam_E_2D(gp_Dir d) const override;
+    virtual double beam_E_3D(gp_Dir d) const override;
+
+
+    private:
     // x, y, z
     const std::vector<double> E;
     // xy, xz, yz
@@ -39,7 +44,6 @@ class LinearElasticOrthotropic : public Material{
     // xy, xz, yz
     const std::vector<double> G;
 
-    private:
     std::vector<double> D_2D;
     std::vector<double> D_3D;
 };

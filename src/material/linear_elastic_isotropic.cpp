@@ -63,6 +63,14 @@ std::vector<double> LinearElasticIsotropic::stiffness_3D() const{
     return this->D_3D;
 }
 
+double LinearElasticIsotropic::beam_E_2D(gp_Dir d) const{
+    (void)d;
+    return this->E;
+}
+double LinearElasticIsotropic::beam_E_3D(gp_Dir d) const{
+    (void)d;
+    return this->E;
+}
 
 
 }
