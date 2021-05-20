@@ -30,11 +30,10 @@ namespace sizing{
 
 class BeamSizing : public Sizing{
     public:
-    BeamSizing(ProjectData* data, double smax, double tmax, BeamElementFactory::BeamElementType t);
+    BeamSizing(ProjectData* data, BeamElementFactory::BeamElementType t);
 
     virtual TopoDS_Shape run() override;
 
-    double sigma_max, tau_max;
     BeamElementFactory::BeamElementType type;
 };
 

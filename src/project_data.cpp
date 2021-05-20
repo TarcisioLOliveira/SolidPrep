@@ -169,18 +169,14 @@ ProjectData::ProjectData(std::string project_file){
                     logger::log_assert(false, logger::ERROR, "unknown pathfinding algorithm inserted: {}.", pathf["type"].GetString());
                 }
             }
-            this->log_data(sizing, "sigma_max", TYPE_DOUBLE, true);
-            this->log_data(sizing, "tau_max", TYPE_DOUBLE, true);
             this->log_data(sizing, "element_type", TYPE_STRING, true);
-            double smax = sizing["sigma_max"].GetDouble()*1e6;
-            double tmax = sizing["tau_max"].GetDouble()*1e6;
             BeamElementFactory::BeamElementType t = BeamElementFactory::NONE;
             if(sizing["element_type"] == "beam_linear_2D"){
                 t = BeamElementFactory::BEAM_LINEAR_2D;
             } else {
                 logger::log_assert(false, logger::ERROR, "unknown element type for sizing algorithm: {}.", sizing["element_type"].GetString());
             }
-            this->sizer.reset(new sizing::BeamSizing(this, smax, tmax, t));
+            this->sizer.reset(new sizing::BeamSizing(this, t));
         }
     }
     if(this->log_data(doc, "loads", TYPE_ARRAY, true)){
