@@ -37,6 +37,9 @@ class LinearElasticIsotropic : public Material{
 
     virtual Type get_type() const override{ return this->LINEAR_ELASTIC_ISOTROPIC; }
 
+    virtual gp_Mat get_max_stresses_2D(gp_Dir d) const override;
+    virtual gp_Mat get_max_stresses_3D(gp_Dir d) const override;
+
     private:
     const double E;
     const double nu;

@@ -51,12 +51,13 @@ class Material{
 
     virtual Type get_type() const{ return this->NONE; }
 
-    virtual gp_Mat get_max_stresses_2D(gp_Dir d) const;
-    virtual gp_Mat get_max_stresses_3D(gp_Dir d) const;
+    virtual gp_Mat get_max_stresses_2D(gp_Dir d) const = 0;
+    virtual gp_Mat get_max_stresses_3D(gp_Dir d) const = 0;
+
     virtual double get_max_Von_Mises_2D() const;
     virtual double get_max_Von_Mises_3D() const;
 
-    private:
+    protected:
     gp_Mat max_stress;
     
 };

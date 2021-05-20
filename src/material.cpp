@@ -33,40 +33,6 @@ Material::Material(std::vector<double> Smax, std::vector<double> Tmax){
                               Tmax[1], Tmax[2], Smax[2]);
 }
 
-gp_Mat Material::get_max_stresses_2D(gp_Dir d) const{
-    gp_Dir z(0,0,1);
-    gp_Dir x(1,0,0);
-    if(d.IsEqual(x, 0.001)){
-        return this->max_stress;
-    }
-    double a = d.AngleWithRef(x, z);
-
-    gp_Mat rot;
-    rot.SetRotation(z.XYZ(), a);
-    gp_Mat result = rot*this->max_stress*rot.Transposed();
-
-    return result;
-}
-
-gp_Mat Material::get_max_stresses_3D(gp_Dir d) const{
-    gp_Dir z(0,0,1);
-    gp_Dir x(1,0,0);
-    if(d.IsEqual(x, 0.001)){
-        return this->max_stress;
-    }
-    double a = d.AngleWithRef(x, z);
-    gp_Dir cross(d.Crossed(z));
-    double b = M_PI/2 + d.AngleWithRef(z, cross);
-
-    gp_Mat rot1;
-    rot1.SetRotation(z.XYZ(), a);
-    gp_Mat rot2;
-    rot1.SetRotation(cross.XYZ(), b);
-    gp_Mat rot(rot1*rot2);
-    gp_Mat result = rot*this->max_stress*rot.Transposed();
-
-    return result;
-}
 
 double Material::get_max_Von_Mises_2D() const{
     return std::sqrt(0.5*(std::pow(max_stress(1,1)-max_stress(2,2), 2)

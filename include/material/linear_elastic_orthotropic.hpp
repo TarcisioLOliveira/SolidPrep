@@ -37,6 +37,9 @@ class LinearElasticOrthotropic : public Material{
 
     virtual Type get_type() const override{ return this->LINEAR_ELASTIC_ORTHOTROPIC; }
 
+    virtual gp_Mat get_max_stresses_2D(gp_Dir d) const override;
+    virtual gp_Mat get_max_stresses_3D(gp_Dir d) const override;
+
     private:
     // x, y, z
     const std::vector<double> E;
