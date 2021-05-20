@@ -36,7 +36,11 @@ Material::Material(std::vector<double> Smax, std::vector<double> Tmax){
 gp_Mat Material::get_max_stresses_2D(gp_Dir d) const{
     gp_Dir z(0,0,1);
     gp_Dir x(1,0,0);
+    if(d.IsEqual(x, 0.001)){
+        return this->max_stress;
+    }
     double a = d.AngleWithRef(x, z);
+
     gp_Mat rot;
     rot.SetRotation(z.XYZ(), a);
     gp_Mat result = rot.Transposed()*this->max_stress*rot;
@@ -47,6 +51,9 @@ gp_Mat Material::get_max_stresses_2D(gp_Dir d) const{
 gp_Mat Material::get_max_stresses_3D(gp_Dir d) const{
     gp_Dir z(0,0,1);
     gp_Dir x(1,0,0);
+    if(d.IsEqual(x, 0.001)){
+        return this->max_stress;
+    }
     double a = d.AngleWithRef(x, z);
     gp_Dir cross(d.Crossed(z));
     double b = M_PI/2 + d.AngleWithRef(z, cross);

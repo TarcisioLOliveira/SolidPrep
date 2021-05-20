@@ -21,6 +21,7 @@
 #include "material/linear_elastic_orthotropic.hpp"
 #include <cmath>
 #include <lapacke.h>
+#include <cblas.h>
 
 namespace material{
 
@@ -65,10 +66,30 @@ std::vector<double> LinearElasticOrthotropic::stiffness_3D() const{
 }
 
 double LinearElasticOrthotropic::beam_E_2D(gp_Dir d) const{
-    return this->E[0]*d.X() + this->E[1]*d.Y();
+    // (Jones, 2014), Mechanics of Composite Materials
+    return 1/(std::pow(d.X(),4)/D_2D[0] + (1/D_2D[8] - 2*D_2D[1]/D_2D[0])*std::pow(d.X(),2)*std::pow(d.Y(),2) + std::pow(d.Y(), 4)/D_2D[5]);
 }
 double LinearElasticOrthotropic::beam_E_3D(gp_Dir d) const{
-    return this->E[0]*d.X() + this->E[1]*d.Y() + this->E[2]*d.Z();
+    // (Zhao, Song, Liu, 2016)
+    gp_Dir z(0,0,1);
+    gp_Dir x(1,0,0);
+    if(d.IsEqual(x, 0.001)){
+        return this->D_3D[0];
+    }
+    double a = d.AngleWithRef(x, z);
+    gp_Dir cross(d.Crossed(z));
+    double b = M_PI/2 + d.AngleWithRef(z, cross);
+    double cz = std::cos(b);
+    double sz = std::sin(b);
+    double cx = std::cos(a);
+    double sx = std::sin(a);
+    double r_x[6] = {cz*cz, cx*cx*sz*sz, sz*sz*sx*sx, -2*sx*cx*sz*sz, 2*sz*cz*sx, -2*sz*cz*cx};
+    std::vector<double> out(6);
+
+    cblas_dgemv(CblasRowMajor, CblasNoTrans, 6, 6, 1, this->D_3D.data(), 6, r_x, 1, 0, out.data(), 1);
+    double Ex = cblas_ddot(6, r_x, 1, out.data(), 1);
+    
+    return Ex;
 }
 
 
