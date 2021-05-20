@@ -40,8 +40,6 @@ void BeamGraph::run(){
         }
     }
 
-    double E = 188*1e9; // Pa
-
     std::vector<double> K(W*N);
     std::vector<double> F(W);
     std::vector<BeamElement*> elems(node_qnt-1);
@@ -90,12 +88,18 @@ void BeamGraph::run(){
             for(size_t j = k_dim/2; j < k_dim; ++j){
                 pos[j] = cur_id + pos_offset + (j-k_dim/2);
             }
+            double E = 0;
+            if(data->type == utils::PROBLEM_TYPE_2D){
+                E = this->data->material->beam_E_2D(v1);
+            } else {
+                E = this->data->material->beam_E_3D(v1);
+            }
             elems[0] = BeamElementFactory::make_element(BeamElementFactory::BEAM_LINEAR_2D, this->nodes[0], this->nodes[1], pos, I, A, E);
             this->insert_element_matrix(K, elems[0]->get_k(), pos, W, N);
         }
         for(size_t j = 1; j < beam.size()-1; ++j){
             size_t true_pos = cur_id+sup_id+1;
-            gp_Vec v = gp_Vec(beam[true_pos], beam[true_pos+1]);
+            gp_Vec v(beam[true_pos], beam[true_pos+1]);
             if(true_pos+2 != beam.size()){
                 v += gp_Vec(beam[true_pos+1], beam[true_pos+2]);
             }
@@ -108,6 +112,12 @@ void BeamGraph::run(){
             }
             for(size_t l = 0; l < k_dim/2; ++l){
                 pos[l+k_dim/2] = id1*k_dim/2+pos_offset+l;
+            }
+            double E = 0;
+            if(data->type == utils::PROBLEM_TYPE_2D){
+                E = this->data->material->beam_E_2D(v);
+            } else {
+                E = this->data->material->beam_E_3D(v);
             }
             elems[true_pos] = BeamElementFactory::make_element(BeamElementFactory::BEAM_LINEAR_2D, this->nodes[true_pos], this->nodes[true_pos+1], pos, I, A, E);
             this->insert_element_matrix(K, elems[true_pos]->get_k(), pos, W, N);
