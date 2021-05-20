@@ -115,6 +115,10 @@ ProjectData::ProjectData(std::string project_file){
                     values[i].resize(3, mat[properties[i].c_str()].GetDouble());
                 }
             }
+            for(auto& i:values[0]) i *= 1e9; // E
+            for(auto& i:values[2]) i *= 1e9; // G
+            for(auto& i:values[3]) i *= 1e6; // Smax
+            for(auto& i:values[4]) i *= 1e6; // Tmax
             this->material.reset(new material::LinearElasticOrthotropic(values[0], values[1], values[2], values[3], values[4]));
         } else if(mat["type"] == "linear_elastic_isotropic"){
             std::vector<std::string> properties{"E", "nu", "Smax", "Tmax"};
@@ -127,7 +131,7 @@ ProjectData::ProjectData(std::string project_file){
             double Smax = mat["Smax"].GetDouble();
             double Tmax = mat["Tmax"].GetDouble();
             bool plane_stress = mat["plane_stress"].GetBool();
-            this->material.reset(new material::LinearElasticIsotropic(E, nu, Smax, Tmax, plane_stress));
+            this->material.reset(new material::LinearElasticIsotropic(E*1e9, nu, Smax*1e6, Tmax*1e6, plane_stress));
         }
     }
     if(this->log_data(doc, "sizing", TYPE_OBJECT, true)){
