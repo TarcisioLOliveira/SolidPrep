@@ -20,7 +20,7 @@ add_subdirectory(material)
 
 add_executable(${PROJECT_NAME} ${SOURCES} ${SOURCES_PATHFINDING} ${SOURCES_SIZING} ${SOURCES_ELEMENT})
 
-target_link_libraries(${PROJECT_NAME} sizing pathfinding element material ${OpenCASCADE_LIBRARIES} ${LAPACKE_LIBRARIES} ${LAPACK_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} sizing pathfinding element material ${OpenCASCADE_LIBRARIES} ${LAPACKE_LIBRARIES} ${LAPACK_LIBRARIES} cblas)
 
 install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION .
                                 LIBRARY DESTINATION .

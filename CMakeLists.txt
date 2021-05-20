@@ -22,6 +22,7 @@ if(OpenCASCADE_FOUND)
 endif()
 find_package(LAPACK REQUIRED)
 find_package(LAPACKE REQUIRED)
+find_package(CBLAS REQUIRED)
 
 include_directories(
     ${PROJECT_SOURCE_DIR}/include
