@@ -43,7 +43,7 @@ gp_Mat Material::get_max_stresses_2D(gp_Dir d) const{
 
     gp_Mat rot;
     rot.SetRotation(z.XYZ(), a);
-    gp_Mat result = rot.Transposed()*this->max_stress*rot;
+    gp_Mat result = rot*this->max_stress*rot.Transposed();
 
     return result;
 }
@@ -63,7 +63,7 @@ gp_Mat Material::get_max_stresses_3D(gp_Dir d) const{
     gp_Mat rot2;
     rot1.SetRotation(cross.XYZ(), b);
     gp_Mat rot(rot1*rot2);
-    gp_Mat result = rot.Transposed()*this->max_stress*rot;
+    gp_Mat result = rot*this->max_stress*rot.Transposed();
 
     return result;
 }
