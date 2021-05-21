@@ -41,13 +41,6 @@ class LinearElasticOrthotropic : public Material{
     virtual gp_Mat get_max_stresses_3D(gp_Dir d) const override;
 
     private:
-    // x, y, z
-    const std::vector<double> E;
-    // xy, xz, yz
-    const std::vector<double> nu;
-    // xy, xz, yz
-    const std::vector<double> G;
-
     std::vector<double> D_2D;
     std::vector<double> D_3D;
 };

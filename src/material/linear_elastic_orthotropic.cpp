@@ -26,7 +26,7 @@
 namespace material{
 
 LinearElasticOrthotropic::LinearElasticOrthotropic(std::vector<double> E, std::vector<double> nu, std::vector<double> G, std::vector<double> Smax, std::vector<double> Tmax):
-    Material(std::move(Smax), std::move(Tmax)), E(std::move(E)), nu(std::move(nu)), G(std::move(G)){
+    Material(std::move(Smax), std::move(Tmax)){
    
     std::vector<double> S_2D(9); 
     S_2D[0] = 1/E[0];
@@ -55,7 +55,7 @@ LinearElasticOrthotropic::LinearElasticOrthotropic(std::vector<double> E, std::v
     ipiv.resize(36);
     LAPACKE_dgetrf(LAPACK_ROW_MAJOR, 6, 6, S_3D.data(), 6, ipiv.data());
     LAPACKE_dgetri(LAPACK_ROW_MAJOR, 6, S_3D.data(), 6, ipiv.data());
-    this->D_2D = std::move(S_2D);
+    this->D_3D = std::move(S_3D);
 }
 
 std::vector<double> LinearElasticOrthotropic::stiffness_2D() const{
