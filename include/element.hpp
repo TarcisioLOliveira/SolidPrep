@@ -32,7 +32,7 @@ class Node{
     ~Node(){ delete[] results; }
 
     protected:
-    Node(gp_Pnt p, long id, size_t dim):point(p), id(id), results(new double[dim]){}
+    Node(gp_Pnt p, long id, size_t dim):point(p), id(id), results(new double[dim]()){}
 };
 
 class BeamNode : public Node{
