@@ -70,7 +70,9 @@ BeamNode* BeamLinear2D::get_internal_loads(size_t node, const std::vector<double
     BeamNode2D* n = static_cast<BeamNode2D*>(this->nodes[node]);
     for(int i = 0; i < 3; ++i){
         for(int j = 0; j < 6; ++j){
-            n->results[i] += k[utils::to_triangular(node*3+i, j)]*u[this->u_pos[j]];
+            if(this->u_pos[j] > -1){
+                n->results[i] += k[utils::to_triangular(node*3+i, j)]*u[this->u_pos[j]];
+            }
         }
         n->results[i] = std::abs(n->results[i]);
     }
