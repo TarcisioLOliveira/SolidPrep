@@ -72,13 +72,9 @@ double LinearElasticIsotropic::beam_E_3D(gp_Dir d) const{
     return this->E;
 }
 
-gp_Mat LinearElasticIsotropic::get_max_stresses_2D(gp_Dir d) const{
+gp_Vec LinearElasticIsotropic::get_max_stresses(gp_Dir d) const{
     (void)d;
-    return this->max_stress;
-}
-gp_Mat LinearElasticIsotropic::get_max_stresses_3D(gp_Dir d) const{
-    (void)d;
-    return this->max_stress;
+    return gp_Vec(this->max_stress.Column(1));
 }
 
 }

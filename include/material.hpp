@@ -51,8 +51,15 @@ class Material{
 
     virtual Type get_type() const{ return this->NONE; }
 
-    virtual gp_Mat get_max_stresses_2D(gp_Dir d) const = 0;
-    virtual gp_Mat get_max_stresses_3D(gp_Dir d) const = 0;
+    /**
+     * Considers each beam node as representing maximum stresses at its cross
+     * section. Therefore, returns stresses acting on the plane with normal
+     * d.
+     *
+     * @param d Cross section normal
+     * @returns Maximum stresses at the cross section plane
+     */
+    virtual gp_Vec get_max_stresses(gp_Dir d) const = 0;
 
     virtual double get_max_Von_Mises_2D() const;
     virtual double get_max_Von_Mises_3D() const;

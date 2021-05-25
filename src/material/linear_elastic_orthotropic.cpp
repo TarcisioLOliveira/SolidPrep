@@ -19,6 +19,7 @@
  */
 
 #include "material/linear_elastic_orthotropic.hpp"
+#include "logger.hpp"
 #include <cmath>
 #include <lapacke.h>
 #include <cblas.h>
@@ -92,37 +93,15 @@ double LinearElasticOrthotropic::beam_E_3D(gp_Dir d) const{
     return Ex;
 }
 
-gp_Mat LinearElasticOrthotropic::get_max_stresses_2D(gp_Dir d) const{
-    gp_Dir z(0,0,1);
-    gp_Dir x(1,0,0);
-    if(d.IsEqual(x, 0.001)){
-        return this->max_stress;
+gp_Vec LinearElasticOrthotropic::get_max_stresses(gp_Dir d) const{
+    gp_Vec result(0,0,0);
+    for(int i = 1; i < 4; ++i){
+        double s = 0;
+        for(int j = 1; j < 4; ++j){
+            s += this->max_stress(i,j)*std::abs(d.Coord(j));
+        }
+        result.SetCoord(i, std::abs(s));
     }
-    double a = d.AngleWithRef(x, z);
-
-    gp_Mat rot;
-    rot.SetRotation(z.XYZ(), a);
-    gp_Mat result = rot*this->max_stress*rot.Transposed();
-
-    return result;
-}
-
-gp_Mat LinearElasticOrthotropic::get_max_stresses_3D(gp_Dir d) const{
-    gp_Dir z(0,0,1);
-    gp_Dir x(1,0,0);
-    if(d.IsEqual(x, 0.001)){
-        return this->max_stress;
-    }
-    double a = d.AngleWithRef(x, z);
-    gp_Dir cross(d.Crossed(z));
-    double b = M_PI/2 + d.AngleWithRef(z, cross);
-
-    gp_Mat rot1;
-    rot1.SetRotation(z.XYZ(), a);
-    gp_Mat rot2;
-    rot1.SetRotation(cross.XYZ(), b);
-    gp_Mat rot(rot1*rot2);
-    gp_Mat result = rot*this->max_stress*rot.Transposed();
 
     return result;
 }
