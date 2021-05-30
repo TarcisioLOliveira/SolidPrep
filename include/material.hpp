@@ -38,7 +38,7 @@ class Material{
      * values. Accounts for anisotropy (both for positive and negative stress
      * values) if so desired.
      *
-     * @param Smax Maximum normal stresses. Input either 1 or 3 values.
+     * @param Smax Maximum normal stresses. Input either 1, 3 or 6 values.
      * @param Tmax Maximum shear stresses. Input either 1 or 3 values.
      */
     Material(std::vector<double> Smax, std::vector<double> Tmax);
@@ -54,19 +54,19 @@ class Material{
     /**
      * Considers each beam node as representing maximum stresses at its cross
      * section. Therefore, returns stresses acting on the plane with normal
-     * d.
+     * d (maximum traction, maximum compression, maximum shear, in this order).
      *
      * @param d Cross section normal
      * @returns Maximum stresses at the cross section plane
      */
-    virtual gp_Vec get_max_stresses(gp_Dir d) const = 0;
+    virtual std::vector<double> get_max_stresses(gp_Dir d) const = 0;
 
     virtual double get_max_Von_Mises_2D() const;
     virtual double get_max_Von_Mises_3D() const;
 
     protected:
-    gp_Mat max_stress;
-    
+    std::vector<double> Smax;
+    std::vector<double> Tmax;
 };
 
 #endif

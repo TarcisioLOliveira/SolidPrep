@@ -93,17 +93,67 @@ double LinearElasticOrthotropic::beam_E_3D(gp_Dir d) const{
     return Ex;
 }
 
-gp_Vec LinearElasticOrthotropic::get_max_stresses(gp_Dir d) const{
-    gp_Vec result(0,0,0);
-    for(int i = 1; i < 4; ++i){
-        double s = 0;
-        for(int j = 1; j < 4; ++j){
-            s += this->max_stress(i,j)*std::abs(d.Coord(j));
-        }
-        result.SetCoord(i, std::abs(s));
+std::vector<double> LinearElasticOrthotropic::get_max_stresses(gp_Dir d) const{
+    // Principles of Composite Material Mechanics (Gibson, 2016)
+    // (adapted from Tsai-Wu criteria)
+    // May have problems, as it is adapted from the calculation of principal
+    // stress for normal and shear stresses separately. Still, beam sizing was
+    // made assuming orthotropic materials, so it is not surprising it would
+    // be a bit hard to adapt one to the other.
+    //
+    // As sizing method looks for the greatest dimensions among the ones
+    // calculated, it *should* be fine most of the time (that is, most of the
+    // geometry). If it is to fail somewhere, it would probably be somewhere
+    // where shear and normal stress are close (that is, close to the place
+    // that the load is applied) and the geometry is not aligned to the axes.
+    // If it proves to be a problem, summing the greatest of the normal and
+    // shear dimensions obtained should probably be enough. This problem may
+    // be less noticeable in 3D problems though, as the geometry is not as 
+    // sensitive to the loads in those cases.
+
+    if(d.Z() == 0){
+        gp_Dir z(0,0,1);
+        gp_Dir x(1,0,0);
+        double alpha = d.AngleWithRef(x, z);
+        double s1 = std::pow(std::cos(alpha), 2);
+        double s2 = std::pow(std::sin(alpha), 2);
+        double s6 = -std::cos(alpha)*std::sin(alpha);
+
+        double a = std::pow(s1, 2)/(this->Smax[0]*this->Smax[3])
+                   + std::pow(s2, 2)/(this->Smax[1]*this->Smax[4])
+                   + std::pow(s6, 2)/(this->Tmax[0]*this->Tmax[0])
+                   + s1*s2/(-2*std::sqrt(this->Smax[0]*this->Smax[3]*this->Smax[1]*this->Smax[4]));
+        double b = s1*(1/this->Smax[0] - 1/this->Smax[3])
+                   + s2*(1/this->Smax[1] - 1/this->Smax[4]);
+        double c = -1;
+
+        double St = std::abs((-b + std::sqrt(b*b - 4*a*c))/(2*a));
+        double Sc = std::abs((-b - std::sqrt(b*b - 4*a*c))/(2*a));
+
+        s1 = 2*std::cos(alpha)*std::sin(alpha);
+        s2 = -2*std::cos(alpha)*std::sin(alpha);
+        s6 = std::pow(std::cos(alpha), 2) - std::pow(std::sin(alpha), 2);
+
+        a = std::pow(s1, 2)/(this->Smax[0]*this->Smax[3])
+            + std::pow(s2, 2)/(this->Smax[1]*this->Smax[4])
+            + std::pow(s6, 2)/(this->Tmax[0]*this->Tmax[0])
+            + s1*s2/(-2*std::sqrt(this->Smax[0]*this->Smax[3]*this->Smax[1]*this->Smax[4]));
+        b = s1*(1/this->Smax[0] - 1/this->Smax[3])
+            + s2*(1/this->Smax[1] - 1/this->Smax[4]);
+        c = -1;
+
+        double T1 = std::abs((-b + std::sqrt(b*b - 4*a*c))/(2*a));
+        double T2 = std::abs((-b - std::sqrt(b*b - 4*a*c))/(2*a));
+        double T = std::min(T1, T2);
+
+        return {St, Sc, T};
+    } else {
+        // TODO 3D implementation
+        // Need to find how to make that stress to principal stress transfor-
+        // mation for 3D.
     }
 
-    return result;
+    return std::vector<double>();
 }
 
 }

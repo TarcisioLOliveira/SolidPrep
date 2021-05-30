@@ -24,26 +24,36 @@
 Material::Material(std::vector<double> Smax, std::vector<double> Tmax){
     if(Smax.size() == 1){
         Smax = std::vector<double>(3, Smax[0]);
+    } else if(Smax.size() == 3){
+        Smax.insert(Smax.end(), Smax.begin(), Smax.end());
     }
+    this->Smax = std::move(Smax);
     if(Tmax.size() == 1){
         Tmax = std::vector<double>(3, Tmax[0]);
     }
-    this->max_stress = gp_Mat(Smax[0], Tmax[0], Tmax[1],
-                              Tmax[0], Smax[1], Tmax[2],
-                              Tmax[1], Tmax[2], Smax[2]);
+    this->Tmax = std::move(Tmax);
 }
 
 
 double Material::get_max_Von_Mises_2D() const{
-    return std::sqrt(0.5*(std::pow(max_stress(1,1)-max_stress(2,2), 2)
-                          + std::pow(max_stress(1,1), 2) + std::pow(max_stress(2,2),2)
-                          + 6*std::pow(max_stress(1,2), 2)));
+    double S11 = std::min(this->Smax[0], this->Smax[3]);
+    double S22 = std::min(this->Smax[1], this->Smax[4]);
+    double T12 = this->Tmax[0];
+    return std::sqrt(0.5*(std::pow(S11-S22, 2)
+                          + std::pow(S11, 2) + std::pow(S22,2)
+                          + 6*std::pow(T12, 2)));
 }
 double Material::get_max_Von_Mises_3D() const{
-    return std::sqrt(0.5*(std::pow(max_stress(1,1)-max_stress(2,2), 2)
-                          + std::pow(max_stress(2,2)-max_stress(3,3), 2)
-                          + std::pow(max_stress(1,1)-max_stress(3,3), 2)
-                          + 6*(std::pow(max_stress(1,2), 2)
-                               + std::pow(max_stress(1,3), 2)
-                               + std::pow(max_stress(2,3), 2))));
+    double S11 = std::min(this->Smax[0], this->Smax[3]);
+    double S22 = std::min(this->Smax[1], this->Smax[4]);
+    double S33 = std::min(this->Smax[2], this->Smax[5]);
+    double T12 = this->Tmax[0];
+    double T13 = this->Tmax[1];
+    double T23 = this->Tmax[2];
+    return std::sqrt(0.5*(std::pow(S11-S22, 2)
+                          + std::pow(S22-S33, 2)
+                          + std::pow(S11-S33, 2)
+                          + 6*(std::pow(T12, 2)
+                               + std::pow(T13, 2)
+                               + std::pow(T23, 2))));
 }

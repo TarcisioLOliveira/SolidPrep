@@ -67,14 +67,18 @@ TopoDS_Shape BeamSizing::run(){
             gp_Vec F(Fx, Fy, 0);
             double t = this->data->thickness;
 
-            gp_Vec S = this->data->material->get_max_stresses(normal);
+            std::vector<double> S = this->data->material->get_max_stresses(normal);
+
+            double S_f = std::min(S[0], S[1]);
+            double S_n = (normal.Dot(F) < 0) ? S[0] : S[1];
+            double S_c = S[2];
 
             // Bending
-            double h_f = std::sqrt(6*Mz/(t*S.X()));
+            double h_f = std::sqrt(6*Mz/(t*S_f));
             // Normal
-            double h_n = std::abs(normal.Dot(F))/(t*S.X());
+            double h_n = std::abs(normal.Dot(F))/(t*S_n);
             // Shear
-            double h_c = (F - normal.Dot(F)*normal).Magnitude()*(3/(2*t*S.Y()));
+            double h_c = (F - normal.Dot(F)*normal).Magnitude()*(3/(2*t*S_c));
 
             // debug
             std::cout << h_f*1e3 << " " << h_n*1e3 << " " << h_c*1e3 << " " << n->dim*1e3 << std::endl;
