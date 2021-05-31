@@ -23,6 +23,7 @@ endif()
 find_package(LAPACK REQUIRED)
 find_package(LAPACKE REQUIRED)
 find_package(CBLAS REQUIRED)
+find_library(GMSH_LIB gmsh REQUIRED)
 
 include_directories(
     ${PROJECT_SOURCE_DIR}/include
@@ -30,6 +31,7 @@ include_directories(
     ${OpenCASCADE_INCLUDE_DIR}
     ${LAPACK_INCLUDE_DIR}
     ${LAPACKE_INCLUDE_DIR}
+    ${GMSH_INC}
 )
    
 add_subdirectory(src)
