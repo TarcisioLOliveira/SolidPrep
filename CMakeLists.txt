@@ -24,6 +24,12 @@ find_package(LAPACK REQUIRED)
 find_package(LAPACKE REQUIRED)
 find_package(CBLAS REQUIRED)
 find_library(GMSH_LIB gmsh REQUIRED)
+find_path(GMSH_INC gmsh.h REQUIRED)
+
+if(WIN32 OR CYGWIN)
+    list(APPEND GMSH_LIB winmm wsock32 ws2_32 psapi)
+endif()
+
 
 include_directories(
     ${PROJECT_SOURCE_DIR}/include
