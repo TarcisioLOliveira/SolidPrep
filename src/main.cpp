@@ -24,6 +24,8 @@
 #include "project_data.hpp"
 #include "sizing/beam_sizing.hpp"
 #include "utils.hpp"
+#include <gmsh.h>
+#include <set>
 
 int main(int argc, char* argv[]){
     // Bnd_Box bounds;
@@ -33,16 +35,35 @@ int main(int argc, char* argv[]){
     // bounds.Get(fXMin, fYMin, fZMin, fXMax, fYMax, fZMax);
     // std::cout << fXMax << " " << fXMin << " " << fYMax << " " << fYMin << " " << fZMax << " " << fZMin << std::endl;
 
-    
-    ProjectData proj(argv[1]);
-    // auto path = proj.pathfinder->find_path(proj.forces[0], proj.supports[0].get_shape());
-    // for(auto& p : path){
-    //     std::cout << "(" << p.X() << ", " << p.Y() << ")" << std::endl;
-    // }
-    // proj.sizer.reset(new sizing::BeamSizing(&proj));
+    //ProjectData proj(argv[1]);
 
-    TopoDS_Shape s = proj.sizer->run();
-    utils::shape_to_file("test.step", s);
+    gmsh::initialize();
+
+    gmsh::model::add("show");
+
+    auto checkForEvent = [=]() -> bool {
+        std::vector<std::string> action;
+        gmsh::onelab::getString("ONELAB/Action", action);
+        if(action.size() && action[0] == "check") {
+            gmsh::onelab::setString("ONELAB/Action", {""});
+            gmsh::graphics::draw();
+        }
+        return true;
+    };
+
+    gmsh::fltk::initialize();
+    std::set<std::string> args(argv, argv + argc);
+    if(!args.count("-nogui")){
+        while(gmsh::fltk::isAvailable() && checkForEvent())
+            gmsh::fltk::wait();
+    }
+
+
+    gmsh::finalize();
+
+
+    // TopoDS_Shape s = proj.sizer->run();
+    // utils::shape_to_file("test.step", s);
 
     return 0;
 }
