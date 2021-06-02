@@ -32,15 +32,10 @@ struct ElementShape{
 class Meshing{
     public:
 
-    virtual void mesh(TopoDS_Shape s) = 0;
-
-    inline const std::vector<std::unique_ptr<ElementShape>>& get_shapes(){
-        return this->shapes;
-    } 
+    virtual std::vector<ElementShape> mesh(TopoDS_Shape s) = 0;
 
     protected:
     std::vector<std::unique_ptr<MeshNode>> node_list;
-    std::vector<std::unique_ptr<ElementShape>> shapes;
 };
 
 #endif
