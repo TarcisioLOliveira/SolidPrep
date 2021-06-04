@@ -32,21 +32,24 @@ class BeamElementFactory{
     };
     template<typename ... Args>
     static BeamElement* make_element(BeamElementType t, Args&& ... args){
-        if(t == BEAM_LINEAR_2D){
-            return new element::BeamLinear2D(args...);
+        switch(t){
+            case BEAM_LINEAR_2D: return new element::BeamLinear2D(args...);
+            case NONE: return nullptr;
         }
 
         return nullptr;
     }
     static BeamNodeFactory::BeamNodeType get_node_type(BeamElementType t){
-        if(t == BEAM_LINEAR_2D){
-            return BeamNodeFactory::BEAM_NODE_2D;
+        switch(t){
+            case BEAM_LINEAR_2D: return BeamNodeFactory::BEAM_NODE_2D;
+            case NONE: return BeamNodeFactory::NONE;
         }
         return BeamNodeFactory::NONE;
     }
     static size_t get_k_dimension(BeamElementType t){
-        if(t == BEAM_LINEAR_2D){
-            return 6;
+        switch(t){
+            case BEAM_LINEAR_2D: return 6;
+            case NONE: return 0;
         }
         return 0;
     }
