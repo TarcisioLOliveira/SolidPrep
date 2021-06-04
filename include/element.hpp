@@ -61,13 +61,15 @@ class BeamNodeFactory{
 class MeshNode : public Node{
     public:
     virtual ~MeshNode() = default;
+    double * const internal_loads;
     protected:
-    MeshNode(gp_Pnt p, long id, size_t res_n):Node(p, id, res_n){}
+    MeshNode(gp_Pnt p, long id, size_t res_n, size_t f_n):
+        Node(p, id, res_n), internal_loads(new double[f_n]()){}
 };
 
 class MeshNode2D : public MeshNode{
     public:
-    MeshNode2D(gp_Pnt p, long id):MeshNode(p, id, 3){}
+    MeshNode2D(gp_Pnt p, long id):MeshNode(p, id, 3, 3){}
 };
 
 class MeshNodeFactory{
