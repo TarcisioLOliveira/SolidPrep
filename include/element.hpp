@@ -112,6 +112,7 @@ class MeshElement : public Element{
     virtual ~MeshElement() = default;
     virtual std::vector<double> get_k() const override = 0;
     virtual MeshNode* get_stresses(size_t node, const std::vector<double>& u) const = 0;
+    virtual MeshNode* get_internal_loads(size_t node, const std::vector<double>& u) const = 0;
 
     protected:
     MeshElement(std::vector<MeshNode*> nodes, std::vector<long> u_pos):Element(std::vector<Node*>(nodes.begin(), nodes.end()), std::move(u_pos)){}
