@@ -81,6 +81,11 @@ class MeshNodeFactory{
     static MeshNode* make_node(gp_Pnt p, long id, MeshNodeType t);
 };
 
+
+struct ElementShape{
+    std::vector<MeshNode*> nodes;
+};
+
 class Element{
     public:
 

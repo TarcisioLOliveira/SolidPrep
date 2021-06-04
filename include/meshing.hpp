@@ -25,10 +25,6 @@
 #include "element.hpp"
 #include <vector>
 
-struct ElementShape{
-    std::vector<MeshNode*> nodes;
-};
-
 class Meshing{
     public:
 
