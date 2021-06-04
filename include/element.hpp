@@ -114,6 +114,8 @@ class MeshElement : public Element{
     virtual MeshNode* get_stresses(size_t node, const std::vector<double>& u) const = 0;
     virtual MeshNode* get_internal_loads(size_t node, const std::vector<double>& u) const = 0;
 
+    virtual inline MeshNode* get_node(size_t node) const{ return static_cast<MeshNode*>(this->nodes[node]);}
+
     protected:
     MeshElement(std::vector<MeshNode*> nodes, std::vector<long> u_pos):Element(std::vector<Node*>(nodes.begin(), nodes.end()), std::move(u_pos)){}
 };
