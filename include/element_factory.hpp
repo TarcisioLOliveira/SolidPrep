@@ -23,6 +23,7 @@
 
 #include "element.hpp"
 #include "element/beam_linear_2D.hpp"
+#include "element/GT9.hpp"
 
 class BeamElementFactory{
     public:
@@ -51,6 +52,39 @@ class BeamElementFactory{
             case BEAM_LINEAR_2D: return 6;
             case NONE: return 0;
         }
+        return 0;
+    }
+};
+
+class MeshElementFactory{
+    public:
+    enum MeshElementType{
+        NONE,
+        GT9
+    };
+    template<typename ... Args>
+    static MeshElement* make_element(MeshElementType t, Args&& ... args){
+        switch(t){
+            case GT9: return new element::GT9(args...);
+            case NULL: return nullptr;
+        }
+
+        return nullptr;
+    }
+    static MeshNodeFactory::MeshNodeType get_node_type(MeshElementType t){
+        switch(t){
+            case GT9: return MeshNodeFactory::MESH_NODE_2D;
+            case NULL: return MeshNodeFactory::NONE;
+        }
+
+        return MeshNodeFactory::NONE;
+    }
+    static size_t get_k_dimension(MeshElementType t){
+        switch(t){
+            case GT9: return 9;
+            case NULL: return 0;
+        }
+
         return 0;
     }
 };
