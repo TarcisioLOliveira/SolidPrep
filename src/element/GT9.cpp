@@ -169,6 +169,7 @@ MeshNode* GT9::get_stresses(size_t node, const std::vector<double>& u) const{
 
     MeshNode2D* n = static_cast<MeshNode2D*>(this->nodes[node]);
     for(size_t i = 0; i < 3; ++i){
+        n->results[i] = 0;
         for(size_t j = 0; j < 3*N; ++j){
             if(this->u_pos[j] > -1){
                 n->results[i] += DB[3*N*i + j]*u[this->u_pos[j]];
@@ -187,12 +188,13 @@ MeshNode* GT9::get_internal_loads(size_t node, const std::vector<double>& u) con
 
     MeshNode2D* n = static_cast<MeshNode2D*>(this->nodes[node]);
     for(int i = 0; i < 3; ++i){
+        n->results[i] = 0;
         for(int j = 0; j < 6; ++j){
             if(this->u_pos[j] > -1){
-                n->internal_loads[i] += k[utils::to_triangular(node*3+i, j)]*u[this->u_pos[j]];
+                n->results[i] += k[utils::to_triangular(node*3+i, j)]*u[this->u_pos[j]];
             }
         }
-        n->internal_loads[i] = std::abs(n->results[i]);
+        n->results[i] = std::abs(n->results[i]);
     }
 
     return this->get_node(node);
