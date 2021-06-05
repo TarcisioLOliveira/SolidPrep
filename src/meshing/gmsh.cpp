@@ -33,6 +33,7 @@ Gmsh::Gmsh(double size, int order, utils::ProblemType type, int algorithm):
 }
 
 std::vector<ElementShape> Gmsh::mesh(TopoDS_Shape s){
+    this->node_list.clear();
     gmsh::initialize();
 
     gmsh::model::add("base");
@@ -58,6 +59,7 @@ std::vector<ElementShape> Gmsh::mesh(TopoDS_Shape s){
     std::vector<std::vector<std::size_t> > elemTags, elemNodeTags;
     gmsh::model::mesh::getElements(elemTypes, elemTags, elemNodeTags, -1, -1);
 
+    this->node_list.reserve(nodeTags.size());
     for(auto n:nodeTags){
         gp_Pnt p(nodeCoords[n*3], nodeCoords[n*3+1], nodeCoords[n*3+2]);
         this->node_list.emplace_back(MeshNodeFactory::make_node(p, n, MeshNodeFactory::MESH_NODE_2D)); 
@@ -83,6 +85,7 @@ std::vector<ElementShape> Gmsh::mesh(TopoDS_Shape s){
     // Gets only tris/quads
     auto& e = elemNodeTags[this->dim-1];
     std::vector<ElementShape> list;
+    list.reserve(elemTags.size());
     int i = node_per_elem;
     for(auto n:e){
         if(i == node_per_elem){
