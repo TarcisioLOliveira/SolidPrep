@@ -11,6 +11,7 @@ set(SOURCES
     ground_structure.cpp
     utils.cpp
     material.cpp
+    meshing.cpp
 )
 
 add_subdirectory(pathfinding)
