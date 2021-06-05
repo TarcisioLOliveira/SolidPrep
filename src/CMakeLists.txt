@@ -12,6 +12,7 @@ set(SOURCES
     utils.cpp
     material.cpp
     meshing.cpp
+    finite_element.cpp
 )
 
 add_subdirectory(pathfinding)

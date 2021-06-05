@@ -27,7 +27,10 @@
 class FiniteElement{
     public:
 
-    virtual std::vector<double> calculate(std::vector<MeshElement*> mesh, std::vector<double> loads) const = 0;
+    virtual std::vector<double> calculate_displacements(const std::vector<MeshElement*>& mesh, const std::vector<double>& loads) const = 0;
+
+    virtual void calculate_stresses(const std::vector<MeshElement*>& mesh, const std::vector<double>& displacements) const;
+    virtual void calculate_forces(const std::vector<MeshElement*>& mesh, const std::vector<double>& displacements) const;
 };
 
 #endif
