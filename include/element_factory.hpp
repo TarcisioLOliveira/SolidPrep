@@ -24,6 +24,7 @@
 #include "element.hpp"
 #include "element/beam_linear_2D.hpp"
 #include "element/GT9.hpp"
+#include "utils.hpp"
 
 class BeamElementFactory{
     public:
@@ -84,8 +85,22 @@ class MeshElementFactory{
             case GT9: return 9;
             case NULL: return 0;
         }
-
         return 0;
+    }
+    static size_t get_dof_per_node(MeshElementType t){
+        switch(t){
+            case GT9: return 3;
+            case NULL: return 0;
+        }
+        return 0;
+    }
+    static utils::ProblemType get_problem_type(MeshElementType t){
+        switch(t){
+            case GT9:
+            case NULL: 
+                return utils::PROBLEM_TYPE_2D;
+        }
+        return utils::PROBLEM_TYPE_2D;
     }
 };
 
