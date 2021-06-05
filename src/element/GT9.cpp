@@ -21,11 +21,12 @@
 #include "element/GT9.hpp"
 #include "cblas.h"
 #include "logger.hpp"
+#include "project_data.hpp"
 
 namespace element{
 
-GT9::GT9(ElementShape s, Material* mat, std::vector<long> u_pos, double thickness):
-    MeshElement(s.nodes, std::move(u_pos)), mat(mat), t(thickness){}
+GT9::GT9(std::vector<long> u_pos, ElementShape s, ProjectData* data):
+    MeshElement(s.nodes, std::move(u_pos)), mat(data->material.get()), t(data->thickness){}
 
 std::vector<double> GT9::get_k() const{
     size_t N = this->nodes.size();

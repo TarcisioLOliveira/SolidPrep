@@ -24,11 +24,13 @@
 #include "element.hpp"
 #include "material.hpp"
 
+class ProjectData;
+
 namespace element{
 
 class GT9 : public MeshElement{
     public:
-    GT9(ElementShape s, Material* mat, std::vector<long> u_pos, double thickness);
+    GT9(std::vector<long> u_pos, ElementShape s, ProjectData* data);
 
     virtual std::vector<double> get_k() const override;
     virtual MeshNode* get_stresses(size_t node, const std::vector<double>& u) const override;

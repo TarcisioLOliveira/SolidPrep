@@ -25,6 +25,9 @@
 #include "element/beam_linear_2D.hpp"
 #include "element/GT9.hpp"
 #include "utils.hpp"
+#include <vector>
+
+class ProjectData;
 
 class BeamElementFactory{
     public:
@@ -64,9 +67,9 @@ class MeshElementFactory{
         GT9
     };
     template<typename ... Args>
-    static MeshElement* make_element(MeshElementType t, Args&& ... args){
+    static MeshElement* make_element(MeshElementType t, std::vector<long> u_pos, const ElementShape& shape, ProjectData* data){
         switch(t){
-            case GT9: return new element::GT9(args...);
+            case GT9: return new element::GT9(u_pos, shape, data);
             case NULL: return nullptr;
         }
 
