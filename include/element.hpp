@@ -61,6 +61,7 @@ class BeamNodeFactory{
 class MeshNode : public Node{
     public:
     virtual ~MeshNode() = default;
+    virtual size_t get_result_size() const = 0;
     protected:
     MeshNode(gp_Pnt p, long id, size_t res_n): Node(p, id, res_n){}
 };
@@ -68,6 +69,7 @@ class MeshNode : public Node{
 class MeshNode2D : public MeshNode{
     public:
     MeshNode2D(gp_Pnt p, long id):MeshNode(p, id, 3){}
+    virtual size_t get_result_size() const override{ return 3; }
 };
 
 class MeshNodeFactory{
