@@ -39,7 +39,7 @@ std::vector<double> DirectSolver::calculate_displacements(const std::vector<Mesh
     }
 
     int info = LAPACKE_dpbsv(LAPACK_ROW_MAJOR, 'L', W, N-1, 1, K.data(), W, U.data(), 1);
-    logger::log_assert(info == 0, logger::ERROR, "LAPACKE returned {} while calculating displacements during sizing step.", info);
+    logger::log_assert(info == 0, logger::ERROR, "LAPACKE returned {} while calculating displacements.", info);
    
     return U; 
 }
