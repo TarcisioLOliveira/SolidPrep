@@ -119,6 +119,14 @@ class MeshElement : public Element{
     virtual MeshNode* get_stresses(size_t node, const std::vector<double>& u) const = 0;
     virtual MeshNode* get_internal_loads(size_t node, const std::vector<double>& u) const = 0;
 
+    /**
+     * Necessary to use Gmsh's GUI. See:
+     * https://gmsh.info/doc/texinfo/gmsh.html#MSH-file-format
+     * 
+     * @return Gmsh element type number.
+     */
+    virtual size_t get_gmsh_element_type() const = 0;
+
     virtual inline MeshNode* get_node(size_t node) const{ return static_cast<MeshNode*>(this->nodes[node]);}
 
     protected:

@@ -35,6 +35,7 @@ class GT9 : public MeshElement{
     virtual std::vector<double> get_k() const override;
     virtual MeshNode* get_stresses(size_t node, const std::vector<double>& u) const override;
     virtual MeshNode* get_internal_loads(size_t node, const std::vector<double>& u) const override;
+    virtual size_t get_gmsh_element_type() const override{ return 2;};
 
     private:
     Material const * const mat;
