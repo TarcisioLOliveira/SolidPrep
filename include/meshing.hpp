@@ -32,6 +32,7 @@ class ProjectData;
 
 class Meshing{
     public:
+    friend class Visualization;
 
     /**
      * Just generates a mesh from a shape according to the child class's input
