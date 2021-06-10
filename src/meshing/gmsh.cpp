@@ -53,11 +53,11 @@ std::vector<ElementShape> Gmsh::mesh(TopoDS_Shape s){
 
     std::vector<std::size_t> nodeTags;
     std::vector<double> nodeCoords, nodeParams;
-    gmsh::model::mesh::getNodes(nodeTags, nodeCoords, nodeParams, -1, -1, true);
+    gmsh::model::mesh::getNodes(nodeTags, nodeCoords, nodeParams, this->dim, -1, true);
 
     std::vector<int> elemTypes;
     std::vector<std::vector<std::size_t> > elemTags, elemNodeTags;
-    gmsh::model::mesh::getElements(elemTypes, elemTags, elemNodeTags, -1, -1);
+    gmsh::model::mesh::getElements(elemTypes, elemTags, elemNodeTags, this->dim, -1);
 
     this->node_list.reserve(nodeTags.size());
     for(auto n:nodeTags){
@@ -82,12 +82,10 @@ std::vector<ElementShape> Gmsh::mesh(TopoDS_Shape s){
         }
     }
 
-    // Gets only tris/quads
-    auto& e = elemNodeTags[this->dim-1];
     std::vector<ElementShape> list;
     list.reserve(elemTags.size());
     int i = node_per_elem;
-    for(auto n:e){
+    for(auto n:elemNodeTags[0]){
         if(i == node_per_elem){
             list.emplace_back();
             i = 0;
