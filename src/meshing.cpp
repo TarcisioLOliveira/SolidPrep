@@ -50,12 +50,10 @@ void Meshing::prepare_for_FEM(const std::vector<ElementShape>& base_mesh,
 
     load_vector.resize(this->node_list.size()*dof);
 
-    long node_qnt = 0;
     for(auto& e : base_mesh){
         std::vector<long> u_pos(k_size);
         for(size_t i = 0; i < e.nodes.size(); ++i){
             auto& n = e.nodes[i];
-            node_qnt = std::max(n->id, node_qnt);
             for(size_t j = 0; j < dof; ++j){
                 u_pos[i*dof + j] = n->id*dof - offset + j;
             }

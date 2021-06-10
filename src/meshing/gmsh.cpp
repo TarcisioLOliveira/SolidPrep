@@ -21,6 +21,7 @@
 #include "meshing/gmsh.hpp"
 #include "utils.hpp"
 #include <gmsh.h>
+#include <algorithm>
 
 namespace meshing{
 Gmsh::Gmsh(double size, int order, utils::ProblemType type, int algorithm):
@@ -90,7 +91,9 @@ std::vector<ElementShape> Gmsh::mesh(TopoDS_Shape s){
             list.emplace_back();
             i = 0;
         }
-        list.back().nodes.push_back(this->node_list[n].get());
+        auto get_id = [n](const std::unique_ptr<MeshNode>& m)->bool{ return n == m->id; };
+        MeshNode* node = std::find_if(this->node_list.begin(), this->node_list.end(), get_id)->get();
+        list.back().nodes.push_back(node);
         ++i;
     }
 

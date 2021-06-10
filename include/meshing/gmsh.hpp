@@ -37,6 +37,8 @@ class Gmsh : public Meshing{
     int order;
     int dim;
     int algorithm;
+
+    MeshNode* find_node(size_t id) const;
 };
 
 }
