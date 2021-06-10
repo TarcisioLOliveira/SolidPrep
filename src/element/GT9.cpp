@@ -62,15 +62,15 @@ std::vector<double> GT9::get_k() const{
         double Ei = c[i]*b[k] + b[i]*c[k];
         double Fi = c[i]*b[j] + b[i]*c[j];
         
-        B[i*3*3] = (1/(4*Delta))*2*b[i];
-        B[i*3*3 + 1] = 0;
-        B[i*3*3 + 2] = (1/(4*Delta))*(Ai - Bi);
-        B[i*3*3 + 3*N] = 0;
-        B[i*3*3 + 3*N + 1] = (1/(4*Delta))*2*c[i];
-        B[i*3*3 + 3*N + 2] = (1/(4*Delta))*(Ci - Di);
-        B[i*3*3 + 3*N] = (1/(4*Delta))*2*c[i];
-        B[i*3*3 + 3*N + 1] = (1/(4*Delta))*2*b[i];
-        B[i*3*3 + 3*N + 2] = (1/(4*Delta))*(Ei - Fi);
+        B[i*3 + 0*3*N] = (1/(4*Delta))*2*b[i];
+        B[i*3 + 1*3*N] = 0;
+        B[i*3 + 2*3*N] = (1/(4*Delta))*2*c[i];
+        B[i*3 + 0*3*N + 1] = 0;
+        B[i*3 + 1*3*N + 1] = (1/(4*Delta))*2*c[i];
+        B[i*3 + 2*3*N + 1] = (1/(4*Delta))*2*b[i];
+        B[i*3 + 0*3*N + 2] = (1/(4*Delta))*(Ai - Bi);
+        B[i*3 + 1*3*N + 2] = (1/(4*Delta))*(Ci - Di);
+        B[i*3 + 2*3*N + 2] = (1/(4*Delta))*(Ei - Fi);
     }
 
     std::vector<double> DB(3*3*N, 0);
