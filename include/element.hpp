@@ -27,7 +27,7 @@
 class Node{
     public:
     const gp_Pnt point;
-    const long id;
+    long id;
     double * const results;
     ~Node(){ delete[] results; }
 
