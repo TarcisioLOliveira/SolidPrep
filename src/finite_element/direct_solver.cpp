@@ -23,6 +23,7 @@
 #include "lapacke.h"
 #include "logger.hpp"
 #include "utils.hpp"
+#include <limits>
 
 namespace finite_element{
 
@@ -45,25 +46,31 @@ std::vector<double> DirectSolver::calculate_displacements(const std::vector<Mesh
 }
 
 void DirectSolver::insert_element_matrix(std::vector<double>& K, const std::vector<double>& k, const std::vector<long>& pos, int w, int& n) const{
-    long first = -1;
-    long last = 0;
+    size_t min_i = 0;
+    size_t max_i = 0;
+    long min = std::numeric_limits<long>::max();
+    long max = -1;
     for(size_t i = 0; i < pos.size(); ++i){
-        if(first == -1 && pos[i] > -1){
-            first = i;
-        }
         if(pos[i] > -1){
-            last = i;
+            if(pos[i] < min){
+                min = pos[i];
+                min_i = i;
+            }
+        }
+        if(pos[i] > max){
+            max = pos[i];
+            max_i = i;
         }
     }
-    if(pos[last] - pos[first] > n){
-        n = pos[last] - pos[first];
+    if(pos[max_i] - pos[min_i] > n){
+        n = pos[max_i] - pos[min_i];
         K.resize(w*n);
     }
 
-    int W = pos.size();
+    size_t W = pos.size();
     
-    for(long i = first; i < last+1; ++i){
-        for(long j = i; j < last+1; ++j){
+    for(size_t i = 0; i < W; ++i){
+        for(size_t j = i; j < W; ++j){
             if(pos[i] > -1 && pos[j] > -1){
                 K[utils::to_band(pos[j], pos[i], w)] += k[W*i + j];
             }
