@@ -97,6 +97,10 @@ std::vector<ElementShape> Gmsh::mesh(TopoDS_Shape s){
         ++i;
     }
 
+    for(size_t n = 0; n < this->node_list.size(); ++n){
+        this->node_list[n]->id = n;
+    }
+
     gmsh::clear();
     gmsh::finalize();
 
