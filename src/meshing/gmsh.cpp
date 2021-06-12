@@ -24,6 +24,7 @@
 #include <algorithm>
 
 namespace meshing{
+
 Gmsh::Gmsh(double size, int order, utils::ProblemType type, int algorithm):
     size(size), order(order), dim(0), algorithm(algorithm){
     if(type == utils::PROBLEM_TYPE_2D){
@@ -85,17 +86,34 @@ std::vector<ElementShape> Gmsh::mesh(TopoDS_Shape s){
 
     std::vector<ElementShape> list;
     list.reserve(elemTags.size());
-    int i = node_per_elem;
+    list.emplace_back();
+    int i = 0;
     for(auto n:elemNodeTags[0]){
-        if(i == node_per_elem){
-            list.emplace_back();
-            i = 0;
-        }
         auto get_id = [n](const std::unique_ptr<MeshNode>& m)->bool{ return n == m->id; };
         MeshNode* node = std::find_if(this->node_list.begin(), this->node_list.end(), get_id)->get();
         list.back().nodes.push_back(node);
         ++i;
+
+        if(i == node_per_elem){
+            auto& nodes = list.back().nodes;
+            gp_Pnt p[3] = {nodes[0]->point, nodes[1]->point, nodes[2]->point};
+            double Delta = 0;
+
+            if(node_per_elem % 3 == 0){
+                gp_Mat deltaM(1, p[0].X(), p[0].Y(), 1, p[1].X(), p[1].Y(), 1, p[2].X(), p[2].Y());
+                Delta = std::abs(deltaM.Determinant());
+            } else {
+                // TODO: Checking for 3D
+            }
+            if(Delta < 1e-3){
+                list.pop_back();
+            }
+
+            list.emplace_back();
+            i = 0;
+        }
     }
+    list.pop_back();
 
     for(size_t n = 0; n < this->node_list.size(); ++n){
         this->node_list[n]->id = n;
