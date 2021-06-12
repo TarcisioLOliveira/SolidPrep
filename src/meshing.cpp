@@ -22,6 +22,7 @@
 #include "logger.hpp"
 #include "utils.hpp"
 #include "project_data.hpp"
+#include <algorithm>
 
 
 void Meshing::prepare_for_FEM(const std::vector<ElementShape>& base_mesh,
@@ -44,53 +45,72 @@ void Meshing::prepare_for_FEM(const std::vector<ElementShape>& base_mesh,
     this->element_list.reserve(base_mesh.size());
     final_mesh.reserve(base_mesh.size());
 
+    auto comp = [](const std::unique_ptr<MeshNode>& a, const std::unique_ptr<MeshNode>& b){ return a->id < b->id;};
+    std::sort(this->node_list.begin(), this->node_list.end(), comp);
+
     size_t dof = MeshElementFactory::get_dof_per_node(element_type);
     size_t k_size = MeshElementFactory::get_k_dimension(element_type);
-    size_t offset = 0;
 
-    load_vector.resize(this->node_list.size()*dof);
+    std::vector<long> world_pos;
+    world_pos.resize(this->node_list.size()*dof);
+
+    size_t current = 0;
+    for(size_t i = 0; i < this->node_list.size(); ++i){
+        auto& n = this->node_list[i];
+        bool supported = false;
+        size_t max_offset = 0;
+        for(auto& s : data->supports){
+            if(s.S.is_inside(n->point)){
+                size_t offset = 0;
+                std::vector<long> sup_pos = this->get_support_dof(offset, 0, s, element_type);
+                for(size_t j = 0; j < dof; ++j){
+                    if(sup_pos[j] > 0){
+                        if(world_pos[i*dof + j] >= 0){
+                            world_pos[i*dof + j] = sup_pos[j] + current;
+                        }
+                    } else {
+                        world_pos[i*dof + j] = sup_pos[j];
+                    }
+                }
+                max_offset = std::max(offset, max_offset);
+                supported = true;
+            }
+        }
+        if(!supported){
+            for(size_t j = 0; j < dof; ++j){
+                world_pos[i*dof + j] = j + current;
+            }
+            current += dof;
+        } else {
+            current += max_offset;
+        }
+    }
+
+    load_vector.resize(current+1);
+
+    current = 0;
+    for(size_t i = 0; i < this->node_list.size(); ++i){
+        auto& n = this->node_list[i];
+        for(auto& f : data->forces){
+            if(f.S.is_inside(n->point)){
+                std::vector<double> f_vec = this->get_force_dof(f, element_type);
+                for(size_t j = 0; j < dof; ++j){
+                    if(world_pos[current] >= 0){
+                        load_vector[world_pos[current]] += f_vec[j];
+                        ++current;
+                    }
+                }
+            }
+        }
+    }
+
 
     for(auto& e : base_mesh){
         std::vector<long> u_pos(k_size);
         for(size_t i = 0; i < e.nodes.size(); ++i){
             auto& n = e.nodes[i];
             for(size_t j = 0; j < dof; ++j){
-                u_pos[i*dof + j] = n->id*dof - offset + j;
-            }
-            for(auto& s : data->supports){
-                if(s.S.is_inside(n->point)){
-                    std::vector<long> sup_pos = this->get_support_dof(offset, n->id, s, element_type);
-                    for(size_t j = 0; j < dof; ++j){
-                        u_pos[i*dof + j] = sup_pos[j];
-                    }
-                    break;
-                }
-            }
-            bool checked = false;
-            for(auto& f : data->forces){
-                if(f.S.is_inside(n->point)){
-                    if(!checked){
-                        bool filled = false;
-                        for(size_t j = 0; j < dof; ++j){
-                            if(u_pos[i*dof + j] >= 0){
-                                if(load_vector[u_pos[i*dof + j]] != 0){
-                                    filled = true;
-                                    break;
-                                }
-                            }
-                        }
-                        if(filled){
-                            break;
-                        }
-                        checked = true;
-                    }
-                    std::vector<double> f_vec = this->get_force_dof(f, element_type);
-                    for(size_t j = 0; j < dof; ++j){
-                        if(u_pos[i*dof + j] >= 0){
-                            load_vector[u_pos[i*dof + j]] = f_vec[j];
-                        }
-                    }
-                }
+                u_pos[i*dof + j] = world_pos[n->id*dof + j];
             }
         }
 
