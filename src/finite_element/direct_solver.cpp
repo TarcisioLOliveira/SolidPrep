@@ -32,7 +32,7 @@ std::vector<double> DirectSolver::calculate_displacements(const std::vector<Mesh
 
     int W = loads.size();
     int N = k_dim;
-    std::vector<double> K(W*N);
+    std::vector<double> K(W*N, 0);
     std::vector<double> U(loads);
 
     for(auto& e : mesh){

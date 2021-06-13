@@ -86,7 +86,7 @@ void Meshing::prepare_for_FEM(const std::vector<ElementShape>& base_mesh,
         }
     }
 
-    load_vector.resize(current+1);
+    load_vector.resize(current);
 
     current = 0;
     for(size_t i = 0; i < this->node_list.size(); ++i){
