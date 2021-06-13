@@ -62,8 +62,8 @@ void DirectSolver::insert_element_matrix(std::vector<double>& K, const std::vect
             max_i = i;
         }
     }
-    if(pos[max_i] - pos[min_i] > n){
-        n = pos[max_i] - pos[min_i];
+    if(pos[max_i] - pos[min_i] + 1 > n){
+        n = pos[max_i] - pos[min_i] + 1;
         K.resize(w*n);
     }
 
