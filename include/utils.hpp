@@ -134,8 +134,11 @@ namespace utils{
     inline size_t to_band(size_t i, size_t j, int w){
         // lower triangle
         // i >= j
-        size_t diff = (i > j) ? i-j : j-i;
-        return diff*w + j;
+        if(i > j){
+            return (i-j)*w + j;
+        } else {
+            return (j-i)*w + i;
+        }
     }
 
     /**
