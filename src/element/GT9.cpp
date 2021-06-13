@@ -40,7 +40,7 @@ std::vector<double> GT9::get_k() const{
 
     gp_Mat deltaM(1, p[0].X(), p[0].Y(), 1, p[1].X(), p[1].Y(), 1, p[2].X(), p[2].Y());
 
-    double Delta = std::abs(deltaM.Determinant());
+    double Delta = 0.5*std::abs(deltaM.Determinant());
 
     std::vector<double> a, b, c;
     for(size_t i = 0; i < N; ++i){
@@ -93,17 +93,17 @@ std::vector<double> GT9::get_k() const{
             K[j + 3*N*i] *= 1.0/3;
         }
     }
-    K[2 + 3*N*2] *= 3.0/4;
-    K[5 + 3*N*2] *= 3.0/2;
-    K[8 + 3*N*2] *= 3.0/2;
+    K[2 + 3*N*2] *= 3.0/2;
+    K[5 + 3*N*2] *= 3.0/4;
+    K[8 + 3*N*2] *= 3.0/4;
 
-    K[2 + 3*N*5] *= 3.0/2;
-    K[5 + 3*N*5] *= 3.0/4;
-    K[8 + 3*N*5] *= 3.0/2;
+    K[2 + 3*N*5] *= 3.0/4;
+    K[5 + 3*N*5] *= 3.0/2;
+    K[8 + 3*N*5] *= 3.0/4;
 
-    K[2 + 3*N*8] *= 3.0/2;
-    K[5 + 3*N*8] *= 3.0/2;
-    K[8 + 3*N*8] *= 3.0/4;
+    K[2 + 3*N*8] *= 3.0/4;
+    K[5 + 3*N*8] *= 3.0/4;
+    K[8 + 3*N*8] *= 3.0/2;
 
     return K;
 }
