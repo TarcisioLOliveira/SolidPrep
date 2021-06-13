@@ -28,7 +28,7 @@ namespace meshing{
 
 class Gmsh : public Meshing{
     public:
-    Gmsh(double size, int order, utils::ProblemType type, int algorithm = 6);
+    Gmsh(double size, int order, utils::ProblemType type, int algorithm = 5);
 
     virtual std::vector<ElementShape> mesh(TopoDS_Shape s) override;
 
