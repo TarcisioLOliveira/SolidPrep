@@ -19,9 +19,11 @@
  */
 
 #include "visualization.hpp"
+#include "utils.hpp"
 #include <gmsh.h>
+#include <algorithm>
 
-void Visualization::load_mesh(Meshing* mesh){
+void Visualization::load_mesh(Meshing* mesh, utils::ProblemType type){
     gmsh::clear();
     gmsh::model::add(this->MODEL_NAME);
 
@@ -35,28 +37,39 @@ void Visualization::load_mesh(Meshing* mesh){
         coords.push_back(n->point.X());
         coords.push_back(n->point.Y());
         coords.push_back(n->point.Z());
-        node_tags.push_back(n->id);
-    }
-    gmsh::model::mesh::addNodes(-1, -1, node_tags, coords);
 
-    std::vector<size_t> types;
-    types.reserve(mesh->element_list.size());
+        // It looks like node tags have to begin at 1 for some reason.
+        node_tags.push_back(n->id+1);
+    }
+
+    if(type == utils::PROBLEM_TYPE_2D){
+        this->tag = gmsh::model::addDiscreteEntity(2);
+        gmsh::model::mesh::addNodes(2, this->tag, node_tags, coords);
+    } else if(type == utils::PROBLEM_TYPE_3D){
+        this->tag = gmsh::model::addDiscreteEntity(3);
+        gmsh::model::mesh::addNodes(3, this->tag, node_tags, coords);
+    }
+
     std::vector<size_t> elem_tags;
     elem_tags.reserve(mesh->element_list.size());
     std::vector<size_t> elem_nodes;
     elem_nodes.reserve(mesh->element_list.size()*mesh->element_list[0]->nodes.size());
-    size_t tag = 0;
+    size_t etag = 0;
     for(auto& e:mesh->element_list){
-        types.push_back(e->get_gmsh_element_type());
-        elem_tags.push_back(tag++);
+        elem_tags.push_back(etag++);
         for(auto& n:e->nodes){
-            elem_nodes.push_back(n->id);
+            elem_nodes.push_back(n->id+1);
         }
     }
+    gmsh::model::mesh::addElementsByType(this->tag, mesh->element_list[0]->get_gmsh_element_type(), elem_tags, elem_nodes);
 }
 
 void Visualization::update_view(){
-    gmsh::view::remove(1);
+    std::vector<int> tag_list;
+    gmsh::view::getTags(tag_list);
+    if(std::find(tag_list.begin(), tag_list.end(), 1) != tag_list.end()){
+        gmsh::view::remove(1);
+    }
     gmsh::view::add(this->STRESS_VIEW, 1);
 
     std::vector<std::vector<double>> stress;
@@ -64,7 +77,7 @@ void Visualization::update_view(){
     std::vector<size_t> node_tags;
     node_tags.reserve(mesh->node_list.size());
     for(auto& n:mesh->node_list){
-        node_tags.push_back(n->id);
+        node_tags.push_back(n->id+1);
         double* S = n->results;
         double s = std::sqrt(0.5*(S[0]*S[0] - S[0]*S[1] + S[1]*S[1] + 3*S[2]*S[2]));
         std::vector<double> tmp{s};

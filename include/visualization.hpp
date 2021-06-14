@@ -25,13 +25,14 @@
 #include "element.hpp"
 #include "meshing.hpp"
 #include <gmsh.h>
+#include "utils.hpp"
 
 class Visualization{
     public:
 
     inline void start() const {gmsh::initialize();}
 
-    void load_mesh(Meshing* mesh);
+    void load_mesh(Meshing* mesh, utils::ProblemType type);
     void update_view();
     void show();
     inline void hide(){
@@ -48,6 +49,7 @@ class Visualization{
     const std::string STRESS_VIEW = "stress_view";
     bool shown = false;
     Meshing* mesh = nullptr;
+    int tag = 0;
 };
 
 #endif
