@@ -45,7 +45,7 @@ std::vector<ElementShape> Gmsh::mesh(TopoDS_Shape s){
     gmsh::model::occ::importShapesNativePointer(static_cast<const void*>(&s), vec);
     gmsh::model::occ::synchronize();
 
-    gmsh::option::setNumber("Mesh.MeshSizeFactor", this->size);
+    gmsh::option::setNumber("Mesh.MeshSizeMax", this->size);
 
     gmsh::option::setNumber("Mesh.Algorithm", this->algorithm);
 
