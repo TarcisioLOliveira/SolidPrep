@@ -19,6 +19,7 @@
  */
 
 #include "meshing/gmsh.hpp"
+#include "logger.hpp"
 #include "utils.hpp"
 #include <gmsh.h>
 #include <algorithm>
@@ -49,7 +50,6 @@ std::vector<ElementShape> Gmsh::mesh(TopoDS_Shape s){
     gmsh::option::setNumber("Mesh.Algorithm", this->algorithm);
 
     gmsh::option::setNumber("Mesh.ElementOrder", this->order);
-    gmsh::option::setNumber("Mesh.HighOrderOptimize", this->order);
 
     gmsh::model::mesh::generate(this->dim);
 
@@ -62,9 +62,9 @@ std::vector<ElementShape> Gmsh::mesh(TopoDS_Shape s){
     gmsh::model::mesh::getElements(elemTypes, elemTags, elemNodeTags, this->dim, -1);
 
     this->node_list.reserve(nodeTags.size());
-    for(auto n:nodeTags){
-        gp_Pnt p(nodeCoords[n*3], nodeCoords[n*3+1], nodeCoords[n*3+2]);
-        this->node_list.emplace_back(MeshNodeFactory::make_node(p, n, MeshNodeFactory::MESH_NODE_2D)); 
+    for(size_t i = 0; i < nodeTags.size(); ++i){
+        gp_Pnt p(nodeCoords[i*3], nodeCoords[i*3+1], nodeCoords[i*3+2]);
+        this->node_list.emplace_back(MeshNodeFactory::make_node(p, nodeTags[i], MeshNodeFactory::MESH_NODE_2D)); 
     }
 
     int node_per_elem = 0;
@@ -96,10 +96,10 @@ std::vector<ElementShape> Gmsh::mesh(TopoDS_Shape s){
 
         if(i == node_per_elem){
             auto& nodes = list.back().nodes;
-            gp_Pnt p[3] = {nodes[0]->point, nodes[1]->point, nodes[2]->point};
             double Delta = 0;
 
             if(node_per_elem % 3 == 0){
+                gp_Pnt p[3] = {nodes[0]->point, nodes[1]->point, nodes[2]->point};
                 gp_Mat deltaM(1, p[0].X(), p[0].Y(), 1, p[1].X(), p[1].Y(), 1, p[2].X(), p[2].Y());
                 Delta = std::abs(deltaM.Determinant());
             } else {
