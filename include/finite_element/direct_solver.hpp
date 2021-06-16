@@ -27,10 +27,10 @@ namespace finite_element{
 
 class DirectSolver : public FiniteElement{
     public:
-    virtual std::vector<double> calculate_displacements(const std::vector<MeshElement*>& mesh, const std::vector<double>& loads) const override;
+    virtual std::vector<float> calculate_displacements(const std::vector<MeshElement*>& mesh, const std::vector<float>& loads) const override;
 
     private:
-    void insert_element_matrix(std::vector<double>& K, const std::vector<double>& k, const std::vector<long>& pos, int w, int& n) const;
+    void insert_element_matrix(std::vector<float>& K, const std::vector<float>& k, const std::vector<long>& pos, int w, int& n) const;
 };
 
 }

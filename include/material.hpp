@@ -41,13 +41,13 @@ class Material{
      * @param Smax Maximum normal stresses. Input either 1, 3 or 6 values.
      * @param Tmax Maximum shear stresses. Input either 1 or 3 values.
      */
-    Material(std::vector<double> Smax, std::vector<double> Tmax);
+    Material(std::vector<float> Smax, std::vector<float> Tmax);
 
-    virtual std::vector<double> stiffness_2D() const = 0;
-    virtual std::vector<double> stiffness_3D() const = 0;
+    virtual std::vector<float> stiffness_2D() const = 0;
+    virtual std::vector<float> stiffness_3D() const = 0;
 
-    virtual double beam_E_2D(gp_Dir d = gp_Dir(1,0,0)) const = 0;
-    virtual double beam_E_3D(gp_Dir d = gp_Dir(1,0,0)) const = 0;
+    virtual float beam_E_2D(gp_Dir d = gp_Dir(1,0,0)) const = 0;
+    virtual float beam_E_3D(gp_Dir d = gp_Dir(1,0,0)) const = 0;
 
     virtual Type get_type() const{ return this->NONE; }
 
@@ -59,14 +59,14 @@ class Material{
      * @param d Cross section normal
      * @returns Maximum stresses at the cross section plane
      */
-    virtual std::vector<double> get_max_stresses(gp_Dir d) const = 0;
+    virtual std::vector<float> get_max_stresses(gp_Dir d) const = 0;
 
-    virtual double get_max_Von_Mises_2D() const;
-    virtual double get_max_Von_Mises_3D() const;
+    virtual float get_max_Von_Mises_2D() const;
+    virtual float get_max_Von_Mises_3D() const;
 
     protected:
-    std::vector<double> Smax;
-    std::vector<double> Tmax;
+    std::vector<float> Smax;
+    std::vector<float> Tmax;
 };
 
 #endif

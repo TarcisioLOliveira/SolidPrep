@@ -40,8 +40,8 @@ void BeamGraph::run(){
         }
     }
 
-    std::vector<double> K(W*N);
-    std::vector<double> F(W);
+    std::vector<float> K(W*N);
+    std::vector<float> F(W);
     std::vector<BeamElement*> elems(node_qnt-1);
     this->clear_nodes();
     this->nodes.resize(node_qnt);
@@ -54,9 +54,9 @@ void BeamGraph::run(){
     for(size_t i = 0; i < beams.size(); ++i){
         const std::vector<gp_Pnt>& beam = beams[i];
         const Force& f = this->data->forces[i/this->data->supports.size()];
-        double A = f.S.get_area();
-        double I = f.S.get_moment_of_inertia(1, 1);
-        double dim = f.S.get_dimension();
+        float A = f.S.get_area();
+        float I = f.S.get_moment_of_inertia(1, 1);
+        float dim = f.S.get_dimension();
         size_t sup_id = i%this->data->supports.size();
 
         // Support
@@ -88,7 +88,7 @@ void BeamGraph::run(){
             for(size_t j = k_dim/2; j < k_dim; ++j){
                 pos[j] = cur_id + pos_offset + (j-k_dim/2);
             }
-            double E = 0;
+            float E = 0;
             if(data->type == utils::PROBLEM_TYPE_2D){
                 E = this->data->material->beam_E_2D(v1);
             } else {
@@ -113,7 +113,7 @@ void BeamGraph::run(){
             for(size_t l = 0; l < k_dim/2; ++l){
                 pos[l+k_dim/2] = id1*k_dim/2+pos_offset+l;
             }
-            double E = 0;
+            float E = 0;
             if(data->type == utils::PROBLEM_TYPE_2D){
                 E = this->data->material->beam_E_2D(v);
             } else {
@@ -141,7 +141,7 @@ void BeamGraph::run(){
     //  than what would be necessary to do in order to both accomodate
     //  column major and the possibility of expanding down the matrix band.
 
-    int info = LAPACKE_dpbsv(LAPACK_ROW_MAJOR, 'L', W, N-1, 1, K.data(), W, F.data(), 1);
+    int info = LAPACKE_spbsv(LAPACK_ROW_MAJOR, 'L', W, N-1, 1, K.data(), W, F.data(), 1);
     logger::log_assert(info == 0, logger::ERROR, "LAPACKE returned {} while calculating displacements during sizing step.", info);
     K.clear();
 
@@ -157,7 +157,7 @@ void BeamGraph::run(){
     }
 }
 
-void BeamGraph::insert_element_matrix(std::vector<double>& K, const std::vector<double>& k, const std::vector<long>& pos, int w, int& n) const{
+void BeamGraph::insert_element_matrix(std::vector<float>& K, const std::vector<float>& k, const std::vector<long>& pos, int w, int& n) const{
     long first = -1;
     long last = 0;
     for(size_t i = 0; i < pos.size(); ++i){

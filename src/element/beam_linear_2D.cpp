@@ -23,20 +23,20 @@
 
 namespace element{
 
-BeamLinear2D::BeamLinear2D(BeamNode* n1, BeamNode* n2, std::vector<long> u_pos, double I, double A, double E):
+BeamLinear2D::BeamLinear2D(BeamNode* n1, BeamNode* n2, std::vector<long> u_pos, float I, float A, float E):
     BeamElement(n1, n2, std::move(u_pos)), I(I), A(A), E(E){}
 
-std::vector<double> BeamLinear2D::get_k() const{
+std::vector<float> BeamLinear2D::get_k() const{
     // A First Course in the Finite Element Method, Daryl L. Logan, 6 ed. (2016).
     
-    double L = this->nodes[0]->point.Distance(this->nodes[1]->point)*1e-3;
+    float L = this->nodes[0]->point.Distance(this->nodes[1]->point)*1e-3;
     gp_Vec v(this->nodes[0]->point, this->nodes[1]->point);
     gp_Dir n(v);
-    double theta = n.AngleWithRef(gp_Dir(1,0,0), gp_Dir(0,0,1));
+    float theta = n.AngleWithRef(gp_Dir(1,0,0), gp_Dir(0,0,1));
 
-    double C = std::cos(theta);
-    double S = std::sin(theta);
-    std::vector<double> k(21);
+    float C = std::cos(theta);
+    float S = std::sin(theta);
+    std::vector<float> k(21);
     k[0]  = (E/L)*(A*C*C + (12*I/(L*L))*S*S);
     k[1]  = (E/L)*(A - (12*I/(L*L)))*C*S;
     k[2]  = (E/L)*(A*S*S + (12*I/(L*L))*C*C);
@@ -62,10 +62,10 @@ std::vector<double> BeamLinear2D::get_k() const{
     return k;
 }
 
-BeamNode* BeamLinear2D::get_internal_loads(size_t node, const std::vector<double>& u) const{
+BeamNode* BeamLinear2D::get_internal_loads(size_t node, const std::vector<float>& u) const{
     logger::log_assert(node == 0 || node == 1, logger::ERROR, "wrong value for BeamLinear2D node, must be either 0 or 1.");
 
-    std::vector<double> k = this->get_k();
+    std::vector<float> k = this->get_k();
 
     BeamNode2D* n = static_cast<BeamNode2D*>(this->nodes[node]);
     for(int i = 0; i < 3; ++i){

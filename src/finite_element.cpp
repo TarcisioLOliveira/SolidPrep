@@ -20,7 +20,7 @@
 
 #include "finite_element.hpp"
 
-void FiniteElement::calculate_stresses(const std::vector<MeshElement*>& mesh, const std::vector<double>& displacements) const{
+void FiniteElement::calculate_stresses(const std::vector<MeshElement*>& mesh, const std::vector<float>& displacements) const{
     for(auto& e:mesh){
         for(size_t n = 0; n < e->nodes.size(); ++n){
             MeshNode* node = e->get_node(n);
@@ -45,7 +45,7 @@ void FiniteElement::calculate_stresses(const std::vector<MeshElement*>& mesh, co
         }
     }
 }
-void FiniteElement::calculate_forces(const std::vector<MeshElement*>& mesh, const std::vector<double>& displacements) const{
+void FiniteElement::calculate_forces(const std::vector<MeshElement*>& mesh, const std::vector<float>& displacements) const{
     for(auto& e:mesh){
         for(size_t n = 0; n < e->nodes.size(); ++n){
             MeshNode* node = e->get_node(n);

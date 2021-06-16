@@ -59,32 +59,32 @@ TopoDS_Shape BeamSizing::run(){
         size_t graph_size = graph.size();
         for(size_t i = 0; i < graph_size; ++i){
             BeamNode* n = graph.get(i);
-            double Fx = n->results[0];
-            double Fy = n->results[1];
-            double Mz = n->results[2];
+            float Fx = n->results[0];
+            float Fy = n->results[1];
+            float Mz = n->results[2];
 
             gp_Vec normal(n->normal);
             gp_Vec F(Fx, Fy, 0);
-            double t = this->data->thickness;
+            float t = this->data->thickness;
 
-            std::vector<double> S = this->data->material->get_max_stresses(normal);
+            std::vector<float> S = this->data->material->get_max_stresses(normal);
 
-            double S_f = std::min(S[0], S[1]);
-            double S_n = (normal.Dot(F) < 0) ? S[0] : S[1];
-            double S_c = S[2];
+            float S_f = std::min(S[0], S[1]);
+            float S_n = (normal.Dot(F) < 0) ? S[0] : S[1];
+            float S_c = S[2];
 
             // Bending
-            double h_f = std::sqrt(6*Mz/(t*S_f));
+            float h_f = std::sqrt(6*Mz/(t*S_f));
             // Normal
-            double h_n = std::abs(normal.Dot(F))/(t*S_n);
+            float h_n = std::abs(normal.Dot(F))/(t*S_n);
             // Shear
-            double h_c = (F - normal.Dot(F)*normal).Magnitude()*(3/(2*t*S_c));
+            float h_c = (F - normal.Dot(F)*normal).Magnitude()*(3/(2*t*S_c));
 
             // debug
             std::cout << h_f*1e3 << " " << h_n*1e3 << " " << h_c*1e3 << " " << n->dim*1e3 << std::endl;
 
             // Using ceil() because we don't need so much precision.
-            double h = std::ceil(1e3*std::max({h_f, h_n, h_c, n->dim})); 
+            float h = std::ceil(1e3*std::max({h_f, h_n, h_c, n->dim})); 
             gp_Ax2 axis(n->point, gp_Dir(0,0,1));
             gp_Circ circ(axis, h/2);
             TopoDS_Edge edge = BRepBuilderAPI_MakeEdge(circ);

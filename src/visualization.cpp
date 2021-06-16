@@ -78,8 +78,8 @@ void Visualization::update_view(){
     node_tags.reserve(mesh->node_list.size());
     for(auto& n:mesh->node_list){
         node_tags.push_back(n->id+1);
-        double* S = n->results;
-        double s = std::sqrt(0.5*(S[0]*S[0] - S[0]*S[1] + S[1]*S[1] + 3*S[2]*S[2]));
+        float* S = n->results;
+        float s = std::sqrt(0.5*(S[0]*S[0] - S[0]*S[1] + S[1]*S[1] + 3*S[2]*S[2]));
         std::vector<double> tmp{s};
         stress.push_back(tmp);
     }

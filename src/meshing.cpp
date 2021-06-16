@@ -29,7 +29,7 @@ void Meshing::prepare_for_FEM(const std::vector<ElementShape>& base_mesh,
                               MeshElementFactory::MeshElementType element_type,
                               ProjectData* data,
                               std::vector<MeshElement*>& final_mesh,
-                              std::vector<double>& load_vector){
+                              std::vector<float>& load_vector){
     logger::log_assert(this->node_list.size() > 0, logger::ERROR, "the object's node list is empty. Ensure you are using the same Meshing instance as the one used to obtain the list of ElementShape instances");
     auto test = base_mesh[0].nodes[0];
     bool correct = false;
@@ -93,7 +93,7 @@ void Meshing::prepare_for_FEM(const std::vector<ElementShape>& base_mesh,
         auto& n = this->node_list[i];
         for(auto& f : data->forces){
             if(f.S.is_inside(n->point)){
-                std::vector<double> f_vec = this->get_force_dof(f, element_type);
+                std::vector<float> f_vec = this->get_force_dof(f, element_type);
                 for(size_t j = 0; j < dof; ++j){
                     if(world_pos[current] >= 0){
                         load_vector[world_pos[current]] += f_vec[j];
@@ -143,10 +143,10 @@ std::vector<long> Meshing::get_support_dof(size_t& offset, size_t id, const Supp
     return pos;
 }
 
-std::vector<double> Meshing::get_force_dof(const Force& force, MeshElementFactory::MeshElementType type) const{
+std::vector<float> Meshing::get_force_dof(const Force& force, MeshElementFactory::MeshElementType type) const{
     size_t size = MeshElementFactory::get_dof_per_node(type);
     utils::ProblemType prob_type = MeshElementFactory::get_problem_type(type);
-    std::vector<double> f(size);
+    std::vector<float> f(size);
     switch(size){
         case 6:
         case 3:

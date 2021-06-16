@@ -21,14 +21,14 @@
 #include "element.hpp"
 
 
-BeamNode* BeamNodeFactory::make_node(gp_Pnt p, long id, double dim, gp_Dir n, BeamNodeType t){
+BeamNode* BeamNodeFactory::make_node(gp_Pnt p, size_t id, float dim, gp_Dir n, BeamNodeType t){
     if(t == BEAM_NODE_2D){
         return new BeamNode2D(p, id, dim, n);
     }
     return nullptr;
 }
 
-MeshNode* MeshNodeFactory::make_node(gp_Pnt p, long id, MeshNodeType t){
+MeshNode* MeshNodeFactory::make_node(gp_Pnt p, size_t id, MeshNodeType t){
     if(t == MESH_NODE_2D){
         return new MeshNode2D(p, id);
     }

@@ -27,25 +27,25 @@
 
 namespace finite_element{
 
-std::vector<double> DirectSolver::calculate_displacements(const std::vector<MeshElement*>& mesh, const std::vector<double>& loads) const{
+std::vector<float> DirectSolver::calculate_displacements(const std::vector<MeshElement*>& mesh, const std::vector<float>& loads) const{
     size_t k_dim = std::sqrt(mesh[0]->get_k().size());
 
     int W = loads.size();
     int N = k_dim;
-    std::vector<double> K(W*N, 0);
-    std::vector<double> U(loads);
+    std::vector<float> K(W*N, 0);
+    std::vector<float> U(loads);
 
     for(auto& e : mesh){
         this->insert_element_matrix(K, e->get_k(), e->u_pos, W, N);
     }
 
-    int info = LAPACKE_dpbsv(LAPACK_ROW_MAJOR, 'L', W, N-1, 1, K.data(), W, U.data(), 1);
+    int info = LAPACKE_spbsv(LAPACK_ROW_MAJOR, 'L', W, N-1, 1, K.data(), W, U.data(), 1);
     logger::log_assert(info == 0, logger::ERROR, "LAPACKE returned {} while calculating displacements.", info);
    
     return U; 
 }
 
-void DirectSolver::insert_element_matrix(std::vector<double>& K, const std::vector<double>& k, const std::vector<long>& pos, int w, int& n) const{
+void DirectSolver::insert_element_matrix(std::vector<float>& K, const std::vector<float>& k, const std::vector<long>& pos, int w, int& n) const{
     size_t min_i = 0;
     size_t max_i = 0;
     long min = std::numeric_limits<long>::max();

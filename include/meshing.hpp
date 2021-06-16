@@ -68,14 +68,14 @@ class Meshing{
                                  MeshElementFactory::MeshElementType element_type,
                                  ProjectData* data,
                                  std::vector<MeshElement*>& final_mesh,
-                                 std::vector<double>& load_vector);
+                                 std::vector<float>& load_vector);
 
     protected:
     std::vector<std::unique_ptr<MeshNode>> node_list;
     std::vector<std::unique_ptr<MeshElement>> element_list;
 
     std::vector<long> get_support_dof(size_t& offset, size_t id, const Support& support, MeshElementFactory::MeshElementType type) const;
-    std::vector<double> get_force_dof(const Force& force, MeshElementFactory::MeshElementType type) const;
+    std::vector<float> get_force_dof(const Force& force, MeshElementFactory::MeshElementType type) const;
 };
 
 #endif

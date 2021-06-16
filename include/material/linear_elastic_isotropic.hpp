@@ -27,24 +27,24 @@ namespace material{
 
 class LinearElasticIsotropic : public Material{
     public:
-    LinearElasticIsotropic(double E, double nu, double Smax, double Tmax, bool plane_stress);
+    LinearElasticIsotropic(float E, float nu, float Smax, float Tmax, bool plane_stress);
 
-    virtual std::vector<double> stiffness_2D() const override;
-    virtual std::vector<double> stiffness_3D() const override;
+    virtual std::vector<float> stiffness_2D() const override;
+    virtual std::vector<float> stiffness_3D() const override;
 
-    virtual double beam_E_2D(gp_Dir d) const override;
-    virtual double beam_E_3D(gp_Dir d) const override;
+    virtual float beam_E_2D(gp_Dir d) const override;
+    virtual float beam_E_3D(gp_Dir d) const override;
 
     virtual Type get_type() const override{ return this->LINEAR_ELASTIC_ISOTROPIC; }
 
-    virtual std::vector<double> get_max_stresses(gp_Dir d) const override;
+    virtual std::vector<float> get_max_stresses(gp_Dir d) const override;
 
     private:
-    const double E;
-    const double nu;
+    const float E;
+    const float nu;
 
-    std::vector<double> D_2D;
-    std::vector<double> D_3D;
+    std::vector<float> D_2D;
+    std::vector<float> D_3D;
 };
 
 }

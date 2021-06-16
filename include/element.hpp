@@ -27,26 +27,26 @@
 class Node{
     public:
     const gp_Pnt point;
-    long id;
-    double * const results;
+    size_t id;
+    float * const results;
     ~Node(){ delete[] results; }
 
     protected:
-    Node(gp_Pnt p, long id, size_t dim):point(p), id(id), results(new double[dim]()){}
+    Node(gp_Pnt p, size_t id, size_t dim):point(p), id(id), results(new float[dim]()){}
 };
 
 class BeamNode : public Node{
     public:
-    const double dim;
+    const float dim;
     const gp_Dir normal;
     virtual ~BeamNode() = default;
     protected:
-    BeamNode(gp_Pnt p, long id, size_t res_n, double dim, gp_Dir n):Node(p, id, res_n),dim(dim), normal(n){}
+    BeamNode(gp_Pnt p, size_t id, size_t res_n, float dim, gp_Dir n):Node(p, id, res_n),dim(dim), normal(n){}
 };
 
 class BeamNode2D : public BeamNode{
     public:
-    BeamNode2D(gp_Pnt p, long id, double dim, gp_Dir n):BeamNode(p, id, 3, dim, n){}
+    BeamNode2D(gp_Pnt p, size_t id, float dim, gp_Dir n):BeamNode(p, id, 3, dim, n){}
 };
 
 class BeamNodeFactory{
@@ -55,7 +55,7 @@ class BeamNodeFactory{
         NONE,
         BEAM_NODE_2D
     };
-    static BeamNode* make_node(gp_Pnt p, long id, double dim, gp_Dir n, BeamNodeType t);
+    static BeamNode* make_node(gp_Pnt p, size_t id, float dim, gp_Dir n, BeamNodeType t);
 };
 
 class MeshNode : public Node{
@@ -63,12 +63,12 @@ class MeshNode : public Node{
     virtual ~MeshNode() = default;
     virtual size_t get_result_size() const = 0;
     protected:
-    MeshNode(gp_Pnt p, long id, size_t res_n): Node(p, id, res_n){}
+    MeshNode(gp_Pnt p, size_t id, size_t res_n): Node(p, id, res_n){}
 };
 
 class MeshNode2D : public MeshNode{
     public:
-    MeshNode2D(gp_Pnt p, long id):MeshNode(p, id, 3){}
+    MeshNode2D(gp_Pnt p, size_t id):MeshNode(p, id, 3){}
     virtual size_t get_result_size() const override{ return 3; }
 };
 
@@ -78,7 +78,7 @@ class MeshNodeFactory{
         NONE,
         MESH_NODE_2D
     };
-    static MeshNode* make_node(gp_Pnt p, long id, MeshNodeType t);
+    static MeshNode* make_node(gp_Pnt p, size_t id, MeshNodeType t);
 };
 
 
@@ -93,7 +93,7 @@ class Element{
     const std::vector<long> u_pos;
 
     virtual ~Element() = default;
-    virtual std::vector<double> get_k() const = 0;
+    virtual std::vector<float> get_k() const = 0;
 
     protected:
     Element(std::vector<Node*> n, std::vector<long> u_pos):nodes(std::move(n)), u_pos(std::move(u_pos)){}
@@ -103,8 +103,8 @@ class BeamElement : public Element{
     public:
 
     virtual ~BeamElement() = default;
-    virtual std::vector<double> get_k() const override = 0;
-    virtual BeamNode* get_internal_loads(size_t node, const std::vector<double>& u) const = 0;
+    virtual std::vector<float> get_k() const override = 0;
+    virtual BeamNode* get_internal_loads(size_t node, const std::vector<float>& u) const = 0;
     virtual inline BeamNode* get_node(size_t node) const{ return static_cast<BeamNode*>(this->nodes[node]);}
 
     protected:
@@ -115,9 +115,9 @@ class MeshElement : public Element{
     public:
 
     virtual ~MeshElement() = default;
-    virtual std::vector<double> get_k() const override = 0;
-    virtual MeshNode* get_stresses(size_t node, const std::vector<double>& u) const = 0;
-    virtual MeshNode* get_internal_loads(size_t node, const std::vector<double>& u) const = 0;
+    virtual std::vector<float> get_k() const override = 0;
+    virtual MeshNode* get_stresses(size_t node, const std::vector<float>& u) const = 0;
+    virtual MeshNode* get_internal_loads(size_t node, const std::vector<float>& u) const = 0;
 
     /**
      * Necessary to use Gmsh's GUI. See:

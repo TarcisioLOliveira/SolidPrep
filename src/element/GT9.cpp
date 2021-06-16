@@ -28,10 +28,10 @@ namespace element{
 GT9::GT9(std::vector<long> u_pos, ElementShape s, ProjectData* data):
     MeshElement(s.nodes, std::move(u_pos)), mat(data->material.get()), t(data->thickness){}
 
-std::vector<double> GT9::get_k() const{
+std::vector<float> GT9::get_k() const{
     size_t N = this->nodes.size();
 
-    std::vector<double> B(3*3*N, 0);
+    std::vector<float> B(3*3*N, 0);
 
     std::vector<gp_Pnt> p;
     for(auto n:this->nodes){
@@ -40,9 +40,9 @@ std::vector<double> GT9::get_k() const{
 
     gp_Mat deltaM(1, p[0].X(), p[0].Y(), 1, p[1].X(), p[1].Y(), 1, p[2].X(), p[2].Y());
 
-    double Delta = 0.5*std::abs(deltaM.Determinant());
+    float Delta = 0.5*std::abs(deltaM.Determinant());
 
-    std::vector<double> a, b, c;
+    std::vector<float> a, b, c;
     for(size_t i = 0; i < N; ++i){
         size_t j = (i + 1) % 3;
         size_t k = (i + 2) % 3;
@@ -56,12 +56,12 @@ std::vector<double> GT9::get_k() const{
         size_t j = (i + 1) % 3;
         size_t k = (i + 2) % 3;
 
-        double Ai = b[i]*b[k];
-        double Bi = b[i]*b[j];
-        double Ci = c[i]*c[k];
-        double Di = c[i]*c[j];
-        double Ei = c[i]*b[k] + b[i]*c[k];
-        double Fi = c[i]*b[j] + b[i]*c[j];
+        float Ai = b[i]*b[k];
+        float Bi = b[i]*b[j];
+        float Ci = c[i]*c[k];
+        float Di = c[i]*c[j];
+        float Ei = c[i]*b[k] + b[i]*c[k];
+        float Fi = c[i]*b[j] + b[i]*c[j];
         
         B[i*3 + 0*3*N] = (1/(4*Delta))*2*b[i];
         B[i*3 + 1*3*N] = 0;
@@ -74,15 +74,15 @@ std::vector<double> GT9::get_k() const{
         B[i*3 + 2*3*N + 2] = (1/(4*Delta))*(Ei - Fi);
     }
 
-    std::vector<double> DB(3*3*N, 0);
+    std::vector<float> DB(3*3*N, 0);
     auto D = this->mat->stiffness_2D();
 
-    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 3, 3*N, 3, 1, D.data(), 3, B.data(), 3*N, 0, DB.data(), 3*N);
+    cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 3, 3*N, 3, 1, D.data(), 3, B.data(), 3*N, 0, DB.data(), 3*N);
 
-    std::vector<double> K(3*N*3*N, 0);
-    cblas_dgemm(CblasRowMajor, CblasTrans, CblasNoTrans, 3*N, 3*N, 3, 1, B.data(), 3*N, DB.data(), 3*N, 0, K.data(), 3*N);
+    std::vector<float> K(3*N*3*N, 0);
+    cblas_sgemm(CblasRowMajor, CblasTrans, CblasNoTrans, 3*N, 3*N, 3, 1, B.data(), 3*N, DB.data(), 3*N, 0, K.data(), 3*N);
 
-    cblas_dscal(K.size(), this->t*Delta, K.data(), 1);
+    cblas_sscal(K.size(), this->t*Delta, K.data(), 1);
     for(size_t i = 2; i < 3*N; i += 3){
         for(size_t j = 0; j < 3*N; ++j){
             K[i + 3*N*j] *= 1.0/3;
@@ -108,25 +108,25 @@ std::vector<double> GT9::get_k() const{
     return K;
 }
 
-MeshNode* GT9::get_stresses(size_t node, const std::vector<double>& u) const{
+MeshNode* GT9::get_stresses(size_t node, const std::vector<float>& u) const{
     logger::log_assert(node >= 0 && node <= 3, logger::ERROR, "wrong value for BeamLinear2D node, must be either 0 or 1.");
 
     size_t N = this->nodes.size();
 
-    double x = this->get_node(node)->point.X();
-    double y = this->get_node(node)->point.Y();
+    float x = this->get_node(node)->point.X();
+    float y = this->get_node(node)->point.Y();
 
-    std::vector<double> B(3*3*N, 0);
+    std::vector<float> B(3*3*N, 0);
 
     std::vector<gp_Pnt> p;
     for(auto n:this->nodes){
         p.push_back(n->point);
     }
 
-    double Delta = (p[1].X()*p[2].Y() + p[0].X()*p[1].Y() + p[2].X()*p[0].Y())
+    float Delta = (p[1].X()*p[2].Y() + p[0].X()*p[1].Y() + p[2].X()*p[0].Y())
                    - (p[1].X()*p[0].Y() + p[2].X()*p[1].Y() + p[0].X()*p[2].Y());
 
-    std::vector<double> a, b, c;
+    std::vector<float> a, b, c;
     for(size_t i = 0; i < N; ++i){
         size_t j = (i + 1) % 3;
         size_t k = (i + 2) % 3;
@@ -140,15 +140,15 @@ MeshNode* GT9::get_stresses(size_t node, const std::vector<double>& u) const{
         size_t j = (i + 1) % 3;
         size_t k = (i + 2) % 3;
 
-        double Lj = a[j] + b[j]*x + c[j]*y;
-        double Lk = a[k] + b[k]*x + c[k]*y;
+        float Lj = a[j] + b[j]*x + c[j]*y;
+        float Lk = a[k] + b[k]*x + c[k]*y;
 
-        double Ai = b[i]*b[k];
-        double Bi = b[i]*b[j];
-        double Ci = c[i]*c[k];
-        double Di = c[i]*c[j];
-        double Ei = c[i]*b[k]*Lj + b[i]*c[k]*Lk;
-        double Fi = c[i]*b[j]*Lj + b[i]*c[j]*Lk;
+        float Ai = b[i]*b[k];
+        float Bi = b[i]*b[j];
+        float Ci = c[i]*c[k];
+        float Di = c[i]*c[j];
+        float Ei = c[i]*b[k]*Lj + b[i]*c[k]*Lk;
+        float Fi = c[i]*b[j]*Lj + b[i]*c[j]*Lk;
         
         B[i*3*3] = (1/(4*Delta))*2*b[i];
         B[i*3*3 + 1] = 0;
@@ -161,13 +161,13 @@ MeshNode* GT9::get_stresses(size_t node, const std::vector<double>& u) const{
         B[i*3*3 + 3*N + 2] = (1/(4*Delta))*(Ei - Fi);
     }
 
-    std::vector<double> DB(3*3*N, 0);
+    std::vector<float> DB(3*3*N, 0);
     auto D = this->mat->stiffness_2D();
 
-    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 3, 3*N, 3, 1, D.data(), 3, B.data(), 3*N, 0, DB.data(), 3*N);
+    cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 3, 3*N, 3, 1, D.data(), 3, B.data(), 3*N, 0, DB.data(), 3*N);
 
-    std::vector<double> K(3*N*3*N, 0);
-    cblas_dgemm(CblasRowMajor, CblasTrans, CblasNoTrans, 3*N, 3*N, 3, 1, B.data(), 3*N, DB.data(), 3*N, 0, K.data(), 3*N);
+    std::vector<float> K(3*N*3*N, 0);
+    cblas_sgemm(CblasRowMajor, CblasTrans, CblasNoTrans, 3*N, 3*N, 3, 1, B.data(), 3*N, DB.data(), 3*N, 0, K.data(), 3*N);
 
     MeshNode2D* n = static_cast<MeshNode2D*>(this->nodes[node]);
     for(size_t i = 0; i < 3; ++i){
@@ -183,10 +183,10 @@ MeshNode* GT9::get_stresses(size_t node, const std::vector<double>& u) const{
     return this->get_node(node);
 }
 
-MeshNode* GT9::get_internal_loads(size_t node, const std::vector<double>& u) const{
+MeshNode* GT9::get_internal_loads(size_t node, const std::vector<float>& u) const{
     logger::log_assert(node >= 0 && node <= 3, logger::ERROR, "wrong value for BeamLinear2D node, must be either 0 or 1.");
 
-    std::vector<double> k = this->get_k();
+    std::vector<float> k = this->get_k();
 
     MeshNode2D* n = static_cast<MeshNode2D*>(this->nodes[node]);
     for(int i = 0; i < 3; ++i){
