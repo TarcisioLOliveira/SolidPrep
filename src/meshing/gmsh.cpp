@@ -62,9 +62,16 @@ std::vector<ElementShape> Gmsh::mesh(TopoDS_Shape s){
     gmsh::model::mesh::getElements(elemTypes, elemTags, elemNodeTags, this->dim, -1);
 
     this->node_list.reserve(nodeTags.size());
-    for(size_t i = 0; i < nodeTags.size(); ++i){
-        gp_Pnt p(nodeCoords[i*3], nodeCoords[i*3+1], nodeCoords[i*3+2]);
-        this->node_list.emplace_back(MeshNodeFactory::make_node(p, nodeTags[i], MeshNodeFactory::MESH_NODE_2D)); 
+    if(this->dim == 2){
+        for(size_t i = 0; i < nodeTags.size(); ++i){
+            gp_Pnt p(nodeCoords[i*3], nodeCoords[i*3+1], nodeCoords[i*3+2]);
+            this->node_list.emplace_back(MeshNodeFactory::make_node(p, nodeTags[i], MeshNodeFactory::MESH_NODE_2D)); 
+        }
+    } else {
+        // for(size_t i = 0; i < nodeTags.size(); ++i){
+        //     gp_Pnt p(nodeCoords[i*3], nodeCoords[i*3+1], nodeCoords[i*3+2]);
+        //     this->node_list.emplace_back(MeshNodeFactory::make_node(p, nodeTags[i], MeshNodeFactory::MESH_NODE_3D)); 
+        // }
     }
 
     int node_per_elem = 0;
