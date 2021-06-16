@@ -29,10 +29,11 @@ class Node{
     const gp_Pnt point;
     size_t id;
     float * const results;
+    long * u_pos;
     ~Node(){ delete[] results; }
 
     protected:
-    Node(gp_Pnt p, size_t id, size_t dim):point(p), id(id), results(new float[dim]()){}
+    Node(gp_Pnt p, size_t id, size_t dim):point(p), id(id), results(new float[dim]()), u_pos(nullptr){}
 };
 
 class BeamNode : public Node{
@@ -90,13 +91,12 @@ class Element{
     public:
 
     const std::vector<Node*> nodes;
-    const std::vector<long> u_pos;
 
     virtual ~Element() = default;
     virtual std::vector<float> get_k() const = 0;
 
     protected:
-    Element(std::vector<Node*> n, std::vector<long> u_pos):nodes(std::move(n)), u_pos(std::move(u_pos)){}
+    Element(std::vector<Node*> n):nodes(std::move(n)){}
 };
 
 class BeamElement : public Element{
@@ -108,7 +108,7 @@ class BeamElement : public Element{
     virtual inline BeamNode* get_node(size_t node) const{ return static_cast<BeamNode*>(this->nodes[node]);}
 
     protected:
-    BeamElement(BeamNode* p1, BeamNode* p2, std::vector<long> u_pos):Element({p1,p2}, std::move(u_pos)){}
+    BeamElement(BeamNode* p1, BeamNode* p2):Element({p1,p2}){}
 };
 
 class MeshElement : public Element{
@@ -130,7 +130,7 @@ class MeshElement : public Element{
     virtual inline MeshNode* get_node(size_t node) const{ return static_cast<MeshNode*>(this->nodes[node]);}
 
     protected:
-    MeshElement(std::vector<MeshNode*> nodes, std::vector<long> u_pos):Element(std::vector<Node*>(nodes.begin(), nodes.end()), std::move(u_pos)){}
+    MeshElement(std::vector<MeshNode*> nodes):Element(std::vector<Node*>(nodes.begin(), nodes.end())){}
 };
 
 #endif

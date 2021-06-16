@@ -51,12 +51,10 @@ void Meshing::prepare_for_FEM(const std::vector<ElementShape>& base_mesh,
     size_t dof = MeshElementFactory::get_dof_per_node(element_type);
     size_t k_size = MeshElementFactory::get_k_dimension(element_type);
 
-    std::vector<long> world_pos;
-    world_pos.resize(this->node_list.size()*dof);
-
     size_t current = 0;
     for(size_t i = 0; i < this->node_list.size(); ++i){
         auto& n = this->node_list[i];
+        n->u_pos = new long[dof]();
         bool supported = false;
         size_t max_offset = 0;
         for(auto& s : data->supports){
@@ -65,11 +63,11 @@ void Meshing::prepare_for_FEM(const std::vector<ElementShape>& base_mesh,
                 std::vector<long> sup_pos = this->get_support_dof(offset, 0, s, element_type);
                 for(size_t j = 0; j < dof; ++j){
                     if(sup_pos[j] > 0){
-                        if(world_pos[i*dof + j] >= 0){
-                            world_pos[i*dof + j] = sup_pos[j] + current;
+                        if(n->u_pos[j] >= 0){
+                            n->u_pos[j] = sup_pos[j] + current;
                         }
                     } else {
-                        world_pos[i*dof + j] = sup_pos[j];
+                        n->u_pos[j] = sup_pos[j];
                     }
                 }
                 max_offset = std::max(offset, max_offset);
@@ -78,7 +76,7 @@ void Meshing::prepare_for_FEM(const std::vector<ElementShape>& base_mesh,
         }
         if(!supported){
             for(size_t j = 0; j < dof; ++j){
-                world_pos[i*dof + j] = j + current;
+                n->u_pos[j] = j + current;
             }
             current += dof;
         } else {
@@ -88,17 +86,19 @@ void Meshing::prepare_for_FEM(const std::vector<ElementShape>& base_mesh,
 
     load_vector.resize(current);
 
-    current = 0;
-    for(size_t i = 0; i < this->node_list.size(); ++i){
-        auto& n = this->node_list[i];
-        for(auto& f : data->forces){
+
+    for(auto& f : data->forces){
+        std::vector<MeshNode*> node_list;
+        for(auto& n : this->node_list){
             if(f.S.is_inside(n->point)){
+                node_list.push_back(n.get());
+            }
+        }
+        for(auto& n : node_list){
+            for(size_t i = 0; i < dof; ++i){
                 std::vector<float> f_vec = this->get_force_dof(f, element_type);
-                for(size_t j = 0; j < dof; ++j){
-                    if(world_pos[current] >= 0){
-                        load_vector[world_pos[current]] += f_vec[j];
-                        ++current;
-                    }
+                if(n->u_pos[i] >= 0){
+                    load_vector[n->u_pos[i] >= 0] += f_vec[i]/node_list.size();
                 }
             }
         }
@@ -106,15 +106,7 @@ void Meshing::prepare_for_FEM(const std::vector<ElementShape>& base_mesh,
 
 
     for(auto& e : base_mesh){
-        std::vector<long> u_pos(k_size);
-        for(size_t i = 0; i < e.nodes.size(); ++i){
-            auto& n = e.nodes[i];
-            for(size_t j = 0; j < dof; ++j){
-                u_pos[i*dof + j] = world_pos[n->id*dof + j];
-            }
-        }
-
-        this->element_list.emplace_back(MeshElementFactory::make_element(element_type, u_pos, e, data));
+        this->element_list.emplace_back(MeshElementFactory::make_element(element_type, e, data));
         final_mesh.push_back(this->element_list.back().get());
     }
 }

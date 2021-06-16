@@ -28,7 +28,8 @@
 namespace finite_element{
 
 std::vector<float> DirectSolver::calculate_displacements(const std::vector<MeshElement*>& mesh, const std::vector<float>& loads) const{
-    size_t k_dim = std::sqrt(mesh[0]->get_k().size());
+    const size_t k_dim = std::sqrt(mesh[0]->get_k().size());
+    const size_t dof = k_dim / mesh[0]->nodes.size();
 
     int W = loads.size();
     int N = k_dim;
@@ -36,7 +37,13 @@ std::vector<float> DirectSolver::calculate_displacements(const std::vector<MeshE
     std::vector<float> U(loads);
 
     for(auto& e : mesh){
-        this->insert_element_matrix(K, e->get_k(), e->u_pos, W, N);
+        std::vector<long> u_pos;
+        for(auto& n : e->nodes){
+            for(size_t i = 0; i < dof; ++i){
+                u_pos.push_back(n->u_pos[i]);
+            }
+        }
+        this->insert_element_matrix(K, e->get_k(), u_pos, W, N);
     }
 
     int info = LAPACKE_spbsv(LAPACK_ROW_MAJOR, 'L', W, N-1, 1, K.data(), W, U.data(), 1);

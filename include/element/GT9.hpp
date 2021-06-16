@@ -30,7 +30,7 @@ namespace element{
 
 class GT9 : public MeshElement{
     public:
-    GT9(std::vector<long> u_pos, ElementShape s, ProjectData* data);
+    GT9(ElementShape s, ProjectData* data);
 
     virtual std::vector<float> get_k() const override;
     virtual MeshNode* get_stresses(size_t node, const std::vector<float>& u) const override;

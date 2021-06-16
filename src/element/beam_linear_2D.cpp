@@ -23,8 +23,8 @@
 
 namespace element{
 
-BeamLinear2D::BeamLinear2D(BeamNode* n1, BeamNode* n2, std::vector<long> u_pos, float I, float A, float E):
-    BeamElement(n1, n2, std::move(u_pos)), I(I), A(A), E(E){}
+BeamLinear2D::BeamLinear2D(BeamNode* n1, BeamNode* n2, float I, float A, float E):
+    BeamElement(n1, n2), I(I), A(A), E(E){}
 
 std::vector<float> BeamLinear2D::get_k() const{
     // A First Course in the Finite Element Method, Daryl L. Logan, 6 ed. (2016).
@@ -69,9 +69,11 @@ BeamNode* BeamLinear2D::get_internal_loads(size_t node, const std::vector<float>
 
     BeamNode2D* n = static_cast<BeamNode2D*>(this->nodes[node]);
     for(int i = 0; i < 3; ++i){
-        for(int j = 0; j < 6; ++j){
-            if(this->u_pos[j] > -1){
-                n->results[i] += k[utils::to_triangular(node*3+i, j)]*u[this->u_pos[j]];
+        for(int l = 0; l < 2; ++l){
+            for(int j = 0; j < 3; ++j){
+                if(this->nodes[l]->u_pos[j] > -1){
+                    n->results[i] += k[utils::to_triangular(node*3+i, j)]*u[this->nodes[l]->u_pos[j]];
+                }
             }
         }
         n->results[i] = std::abs(n->results[i]);

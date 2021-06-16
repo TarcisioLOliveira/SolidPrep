@@ -25,8 +25,8 @@
 
 namespace element{
 
-GT9::GT9(std::vector<long> u_pos, ElementShape s, ProjectData* data):
-    MeshElement(s.nodes, std::move(u_pos)), mat(data->material.get()), t(data->thickness){}
+GT9::GT9(ElementShape s, ProjectData* data):
+    MeshElement(s.nodes), mat(data->material.get()), t(data->thickness){}
 
 std::vector<float> GT9::get_k() const{
     size_t N = this->nodes.size();
@@ -172,9 +172,11 @@ MeshNode* GT9::get_stresses(size_t node, const std::vector<float>& u) const{
     MeshNode2D* n = static_cast<MeshNode2D*>(this->nodes[node]);
     for(size_t i = 0; i < 3; ++i){
         n->results[i] = 0;
-        for(size_t j = 0; j < 3*N; ++j){
-            if(this->u_pos[j] > -1){
-                n->results[i] += DB[3*N*i + j]*u[this->u_pos[j]];
+        for(size_t l = 0; l < 3; ++l){
+            for(size_t j = 0; j < 3; ++j){
+                if(this->nodes[l]->u_pos[j] > -1){
+                    n->results[i] += DB[3*N*i + j]*u[this->nodes[l]->u_pos[j]];
+                }
             }
         }
         n->results[i] = std::abs(n->results[i]);
@@ -191,9 +193,11 @@ MeshNode* GT9::get_internal_loads(size_t node, const std::vector<float>& u) cons
     MeshNode2D* n = static_cast<MeshNode2D*>(this->nodes[node]);
     for(int i = 0; i < 3; ++i){
         n->results[i] = 0;
-        for(int j = 0; j < 6; ++j){
-            if(this->u_pos[j] > -1){
-                n->results[i] += k[utils::to_triangular(node*3+i, j)]*u[this->u_pos[j]];
+        for(size_t l = 0; l < 3; ++l){
+            for(int j = 0; j < 3; ++j){
+                if(this->nodes[l]->u_pos[j] > -1){
+                    n->results[i] += k[utils::to_triangular(node*3+i, j)]*u[this->nodes[l]->u_pos[j]];
+                }
             }
         }
         n->results[i] = std::abs(n->results[i]);

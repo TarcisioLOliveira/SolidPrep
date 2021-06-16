@@ -67,9 +67,9 @@ class MeshElementFactory{
         GT9
     };
     template<typename ... Args>
-    static MeshElement* make_element(MeshElementType t, std::vector<long> u_pos, const ElementShape& shape, ProjectData* data){
+    static MeshElement* make_element(MeshElementType t, const ElementShape& shape, ProjectData* data){
         switch(t){
-            case GT9: return new element::GT9(u_pos, shape, data);
+            case GT9: return new element::GT9(shape, data);
             case NULL: return nullptr;
         }
 
