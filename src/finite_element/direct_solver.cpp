@@ -24,10 +24,11 @@
 #include "logger.hpp"
 #include "utils.hpp"
 #include <limits>
+#include <cblas.h>
 
 namespace finite_element{
 
-std::vector<float> DirectSolver::calculate_displacements(const std::vector<MeshElement*>& mesh, const std::vector<float>& loads) const{
+std::vector<float> DirectSolver::calculate_displacements(const std::vector<MeshElement*>& mesh, const std::vector<float>& loads, const std::vector<float>& density) const{
     const size_t k_dim = std::sqrt(mesh[0]->get_k().size());
     const size_t dof = k_dim / mesh[0]->nodes.size();
 
@@ -36,12 +37,18 @@ std::vector<float> DirectSolver::calculate_displacements(const std::vector<MeshE
     std::vector<float> K(W*N, 0);
     std::vector<float> U(loads);
 
+    auto rho = density.begin();
     for(auto& e : mesh){
         std::vector<long> u_pos;
         for(auto& n : e->nodes){
             for(size_t i = 0; i < dof; ++i){
                 u_pos.push_back(n->u_pos[i]);
             }
+        }
+        std::vector<float> k = e->get_k();
+        if(rho < density.end()){
+            cblas_sscal(k.size(), *rho, k.data(), 1);
+            ++rho;
         }
         this->insert_element_matrix(K, e->get_k(), u_pos, W, N);
     }
