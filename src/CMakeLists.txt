@@ -22,10 +22,11 @@ add_subdirectory(element)
 add_subdirectory(material)
 add_subdirectory(meshing)
 add_subdirectory(finite_element)
+add_subdirectory(topology_optimization)
 
-add_executable(${PROJECT_NAME} ${SOURCES} ${SOURCES_PATHFINDING} ${SOURCES_SIZING} ${SOURCES_ELEMENT})
+add_executable(${PROJECT_NAME} ${SOURCES} ${SOURCES_PATHFINDING} ${SOURCES_SIZING} ${SOURCES_ELEMENT} ${SOURCES_MATERIAL} ${SOURCES_MESHING} ${SOURCES_FINITE_ELEMENT} ${SOURCES_TOPOLOGY_OPTIMIZATION})
 
-target_link_libraries(${PROJECT_NAME} sizing pathfinding finite_element meshing element material ${GMSH_LIB} ${OpenCASCADE_LIBRARIES} ${LAPACKE_LIBRARIES} ${LAPACK_LIBRARIES} cblas)
+target_link_libraries(${PROJECT_NAME} sizing pathfinding topology_optimization finite_element meshing element material ${GMSH_LIB} ${OpenCASCADE_LIBRARIES} ${LAPACKE_LIBRARIES} ${LAPACK_LIBRARIES} cblas)
 
 install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION .
                                 LIBRARY DESTINATION .
