@@ -22,6 +22,12 @@
 #include "cblas.h"
 #include "logger.hpp"
 #include "project_data.hpp"
+#include <BRepBuilderAPI_MakeVertex.hxx>
+#include <BRepBuilderAPI_MakeEdge.hxx>
+#include <BRepBuilderAPI_MakeWire.hxx>
+#include <BRepBuilderAPI_MakeFace.hxx>
+#include <TopoDS_Wire.hxx>
+#include <TopoDS_Face.hxx>
 
 namespace element{
 
@@ -204,6 +210,30 @@ MeshNode* GT9::get_internal_loads(size_t node, const std::vector<float>& u) cons
     }
 
     return this->get_node(node);
+}
+
+double GT9::get_volume() const{
+    gp_Mat deltaM(1, this->nodes[0]->point.X(), this->nodes[0]->point.Y(),
+                  1, this->nodes[1]->point.X(), this->nodes[1]->point.Y(),
+                  1, this->nodes[2]->point.X(), this->nodes[2]->point.Y());
+
+    return 0.5*std::abs(deltaM.Determinant());
+}
+
+TopoDS_Shape GT9::get_shape() const{
+    TopoDS_Vertex v1 = BRepBuilderAPI_MakeVertex(this->nodes[0]->point);
+    TopoDS_Vertex v2 = BRepBuilderAPI_MakeVertex(this->nodes[1]->point);
+    TopoDS_Vertex v3 = BRepBuilderAPI_MakeVertex(this->nodes[2]->point);
+
+    TopoDS_Edge e1 = BRepBuilderAPI_MakeEdge(v1, v2);
+    TopoDS_Edge e2 = BRepBuilderAPI_MakeEdge(v2, v3);
+    TopoDS_Edge e3 = BRepBuilderAPI_MakeEdge(v3, v1);
+
+    TopoDS_Wire w = BRepBuilderAPI_MakeWire(e1, e2, e3);
+
+    TopoDS_Face f = BRepBuilderAPI_MakeFace(w);
+
+    return f;
 }
 
 }
