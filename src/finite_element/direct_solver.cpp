@@ -28,7 +28,7 @@
 
 namespace finite_element{
 
-std::vector<float> DirectSolver::calculate_displacements(const std::vector<MeshElement*>& mesh, const std::vector<float>& loads, const std::vector<float>& density) const{
+std::vector<float> DirectSolver::calculate_displacements(const std::vector<MeshElement*>& mesh, const std::vector<float>& loads, const std::vector<double>& density) const{
     const size_t k_dim = std::sqrt(mesh[0]->get_k().size());
     const size_t dof = k_dim / mesh[0]->nodes.size();
 
