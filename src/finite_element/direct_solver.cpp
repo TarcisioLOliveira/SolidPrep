@@ -37,6 +37,7 @@ std::vector<float> DirectSolver::calculate_displacements(const std::vector<MeshE
     std::vector<float> K(W*N, 0);
     std::vector<float> U(loads);
 
+    logger::quick_log("Generating stiffness matrix...");
     auto rho = density.begin();
     for(auto& e : mesh){
         std::vector<long> u_pos;
@@ -52,9 +53,14 @@ std::vector<float> DirectSolver::calculate_displacements(const std::vector<MeshE
         }
         this->insert_element_matrix(K, e->get_k(), u_pos, W, N);
     }
+    logger::quick_log("Done.");
+    logger::quick_log("Calculating displacements...");
+    logger::quick_log("W: ",W," N: ", N);
 
     int info = LAPACKE_spbsv(LAPACK_ROW_MAJOR, 'L', W, N-1, 1, K.data(), W, U.data(), 1);
     logger::log_assert(info == 0, logger::ERROR, "LAPACKE returned {} while calculating displacements.", info);
+
+    logger::quick_log("Done.");
    
     return U; 
 }

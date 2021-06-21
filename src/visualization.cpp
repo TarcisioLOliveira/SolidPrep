@@ -22,6 +22,7 @@
 #include "utils.hpp"
 #include <gmsh.h>
 #include <algorithm>
+#include "logger.hpp"
 
 void Visualization::load_mesh(Meshing* mesh, utils::ProblemType type){
     gmsh::clear();
@@ -65,6 +66,7 @@ void Visualization::load_mesh(Meshing* mesh, utils::ProblemType type){
 }
 
 void Visualization::update_view(){
+    logger::quick_log("Updating view...");
     std::vector<int> tag_list;
     gmsh::view::getTags(tag_list);
     if(std::find(tag_list.begin(), tag_list.end(), 1) != tag_list.end()){
@@ -88,6 +90,7 @@ void Visualization::update_view(){
     if(this->shown){
         gmsh::graphics::draw();
     }
+    logger::quick_log("Done.");
 }
 
 void Visualization::show(){
