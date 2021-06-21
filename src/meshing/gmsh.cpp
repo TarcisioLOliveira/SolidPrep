@@ -23,6 +23,7 @@
 #include "utils.hpp"
 #include <gmsh.h>
 #include <algorithm>
+#include <limits>
 
 namespace meshing{
 
@@ -123,7 +124,37 @@ std::vector<ElementShape> Gmsh::mesh(TopoDS_Shape s){
     list.pop_back();
 
     for(size_t n = 0; n < this->node_list.size(); ++n){
-        this->node_list[n]->id = n;
+        this->node_list[n]->id = std::numeric_limits<size_t>::max();
+    }
+
+    size_t new_id = 0;
+    for(auto& n : list[0].nodes){
+        n->id = new_id;
+        ++new_id;
+    }
+    bool changed = true;
+    while(changed){
+        changed = false;
+        for(auto& e : list){
+            bool any = false;
+            bool all = true;
+            for(auto& n : e.nodes){
+                if(n->id < std::numeric_limits<size_t>::max()){
+                    any = true;
+                } else if(n->id == std::numeric_limits<size_t>::max()){
+                    all = false;
+                }
+            }
+            if(any && !all){
+                for(auto& n : e.nodes){
+                    if(n->id == std::numeric_limits<size_t>::max()){
+                        n->id = new_id;
+                        ++new_id;
+                        changed = true;
+                    }
+                }
+            }
+        }
     }
 
     gmsh::clear();
