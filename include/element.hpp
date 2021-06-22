@@ -124,6 +124,7 @@ class MeshElement : public Element{
     virtual std::vector<float> get_k() const override = 0;
     virtual MeshNode* get_stresses(size_t node, const std::vector<float>& u) const = 0;
     virtual MeshNode* get_internal_loads(size_t node, const std::vector<float>& u) const = 0;
+    virtual double get_stress_at(gp_Pnt p, const std::vector<float>& u) const = 0;
     virtual double get_volume() const = 0;
     virtual TopoDS_Shape get_shape() const = 0;
     virtual gp_Pnt get_centroid() const = 0;

@@ -191,6 +191,81 @@ MeshNode* GT9::get_stresses(size_t node, const std::vector<float>& u) const{
     return this->get_node(node);
 }
 
+double GT9::get_stress_at(gp_Pnt point, const std::vector<float>& u) const{
+    size_t N = this->nodes.size();
+
+    float x = point.X();
+    float y = point.Y();
+
+    std::vector<float> B(3*3*N, 0);
+
+    std::vector<gp_Pnt> p;
+    for(auto n:this->nodes){
+        p.push_back(n->point);
+    }
+
+    float Delta = (p[1].X()*p[2].Y() + p[0].X()*p[1].Y() + p[2].X()*p[0].Y())
+                   - (p[1].X()*p[0].Y() + p[2].X()*p[1].Y() + p[0].X()*p[2].Y());
+
+    std::vector<float> a, b, c;
+    for(size_t i = 0; i < N; ++i){
+        size_t j = (i + 1) % 3;
+        size_t k = (i + 2) % 3;
+
+        a.push_back(p[j].X()*p[k].Y() - p[k].X()*p[j].Y());
+        b.push_back(p[j].Y() - p[k].Y());
+        c.push_back(p[k].X() - p[j].X());
+    }
+
+    for(size_t i = 0; i < N; ++i){
+        size_t j = (i + 1) % 3;
+        size_t k = (i + 2) % 3;
+
+        float Lj = a[j] + b[j]*x + c[j]*y;
+        float Lk = a[k] + b[k]*x + c[k]*y;
+
+        float Ai = b[i]*b[k];
+        float Bi = b[i]*b[j];
+        float Ci = c[i]*c[k];
+        float Di = c[i]*c[j];
+        float Ei = c[i]*b[k]*Lj + b[i]*c[k]*Lk;
+        float Fi = c[i]*b[j]*Lj + b[i]*c[j]*Lk;
+        
+        B[i*3*3] = (1/(4*Delta))*2*b[i];
+        B[i*3*3 + 1] = 0;
+        B[i*3*3 + 2] = (1/(4*Delta))*(Ai - Bi);
+        B[i*3*3 + 3*N] = 0;
+        B[i*3*3 + 3*N + 1] = (1/(4*Delta))*2*c[i];
+        B[i*3*3 + 3*N + 2] = (1/(4*Delta))*(Ci - Di);
+        B[i*3*3 + 3*N] = (1/(4*Delta))*2*c[i];
+        B[i*3*3 + 3*N + 1] = (1/(4*Delta))*2*b[i];
+        B[i*3*3 + 3*N + 2] = (1/(4*Delta))*(Ei - Fi);
+    }
+
+    std::vector<float> DB(3*3*N, 0);
+    auto D = this->mat->stiffness_2D();
+
+    cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 3, 3*N, 3, 1, D.data(), 3, B.data(), 3*N, 0, DB.data(), 3*N);
+
+    std::vector<float> K(3*N*3*N, 0);
+    cblas_sgemm(CblasRowMajor, CblasTrans, CblasNoTrans, 3*N, 3*N, 3, 1, B.data(), 3*N, DB.data(), 3*N, 0, K.data(), 3*N);
+
+    std::vector<double> results(3, 0);
+    for(size_t i = 0; i < 3; ++i){
+        results[i] = 0;
+        for(size_t l = 0; l < 3; ++l){
+            for(size_t j = 0; j < 3; ++j){
+                if(this->nodes[l]->u_pos[j] > -1){
+                    results[i] += DB[3*N*i + j]*u[this->nodes[l]->u_pos[j]];
+                }
+            }
+        }
+        results[i] = std::abs(results[i]);
+    }
+
+    return std::sqrt(std::pow(results[0], 2) - results[0]*results[1] + std::pow(results[1], 2) + 3*std::pow(results[2], 2));
+}
+
 MeshNode* GT9::get_internal_loads(size_t node, const std::vector<float>& u) const{
     logger::log_assert(node >= 0 && node <= 3, logger::ERROR, "wrong value for BeamLinear2D node, must be either 0 or 1.");
 

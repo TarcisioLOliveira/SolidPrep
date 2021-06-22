@@ -35,6 +35,7 @@ class GT9 : public MeshElement{
     virtual std::vector<float> get_k() const override;
     virtual MeshNode* get_stresses(size_t node, const std::vector<float>& u) const override;
     virtual MeshNode* get_internal_loads(size_t node, const std::vector<float>& u) const override;
+    virtual double get_stress_at(gp_Pnt p, const std::vector<float>& u) const override;
     virtual size_t get_gmsh_element_type() const override{ return 2;};
     virtual double get_volume() const override;
     virtual TopoDS_Shape get_shape() const override;
