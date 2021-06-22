@@ -27,9 +27,7 @@
 
 void Meshing::prepare_for_FEM(const std::vector<ElementShape>& base_mesh,
                               MeshElementFactory::MeshElementType element_type,
-                              ProjectData* data,
-                              std::vector<MeshElement*>& final_mesh,
-                              std::vector<float>& load_vector){
+                              ProjectData* data){
     logger::log_assert(this->node_list.size() > 0, logger::ERROR, "the object's node list is empty. Ensure you are using the same Meshing instance as the one used to obtain the list of ElementShape instances");
     auto test = base_mesh[0].nodes[0];
     bool correct = false;
@@ -43,7 +41,6 @@ void Meshing::prepare_for_FEM(const std::vector<ElementShape>& base_mesh,
 
     this->element_list.clear();
     this->element_list.reserve(base_mesh.size());
-    final_mesh.reserve(base_mesh.size());
 
     auto comp = [](const std::unique_ptr<MeshNode>& a, const std::unique_ptr<MeshNode>& b){ return a->id < b->id;};
     std::sort(this->node_list.begin(), this->node_list.end(), comp);
@@ -84,7 +81,7 @@ void Meshing::prepare_for_FEM(const std::vector<ElementShape>& base_mesh,
         }
     }
 
-    load_vector.resize(current);
+    this->load_vector.resize(current);
 
 
     for(auto& f : data->forces){
@@ -98,7 +95,7 @@ void Meshing::prepare_for_FEM(const std::vector<ElementShape>& base_mesh,
             for(size_t i = 0; i < dof; ++i){
                 std::vector<float> f_vec = this->get_force_dof(f, element_type);
                 if(n->u_pos[i] >= 0){
-                    load_vector[n->u_pos[i] >= 0] += f_vec[i]/node_list.size();
+                    this->load_vector[n->u_pos[i] >= 0] += f_vec[i]/node_list.size();
                 }
             }
         }
@@ -107,7 +104,6 @@ void Meshing::prepare_for_FEM(const std::vector<ElementShape>& base_mesh,
 
     for(auto& e : base_mesh){
         this->element_list.emplace_back(MeshElementFactory::make_element(element_type, e, data));
-        final_mesh.push_back(this->element_list.back().get());
     }
 }
 

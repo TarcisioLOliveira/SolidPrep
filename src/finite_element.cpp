@@ -21,9 +21,9 @@
 #include "finite_element.hpp"
 #include "logger.hpp"
 
-void FiniteElement::calculate_stresses(const std::vector<MeshElement*>& mesh, const std::vector<float>& displacements) const{
+void FiniteElement::calculate_stresses(Meshing* mesh, const std::vector<float>& displacements) const{
     logger::quick_log("Calculating stresses...");
-    for(auto& e:mesh){
+    for(auto& e:mesh->element_list){
         for(size_t n = 0; n < e->nodes.size(); ++n){
             MeshNode* node = e->get_node(n);
             for(size_t k = 0; k < node->get_result_size(); ++k){
@@ -31,7 +31,7 @@ void FiniteElement::calculate_stresses(const std::vector<MeshElement*>& mesh, co
             }
         }
     }
-    for(auto& e:mesh){
+    for(auto& e:mesh->element_list){
         for(size_t n = 0; n < e->nodes.size(); ++n){
             bool calculated = false;
             MeshNode* node = e->get_node(n);
@@ -48,9 +48,9 @@ void FiniteElement::calculate_stresses(const std::vector<MeshElement*>& mesh, co
     }
     logger::quick_log("Done");
 }
-void FiniteElement::calculate_forces(const std::vector<MeshElement*>& mesh, const std::vector<float>& displacements) const{
+void FiniteElement::calculate_forces(Meshing* mesh, const std::vector<float>& displacements) const{
     logger::quick_log("Calculating forces...");
-    for(auto& e:mesh){
+    for(auto& e:mesh->element_list){
         for(size_t n = 0; n < e->nodes.size(); ++n){
             MeshNode* node = e->get_node(n);
             for(size_t k = 0; k < node->get_result_size(); ++k){
@@ -58,7 +58,7 @@ void FiniteElement::calculate_forces(const std::vector<MeshElement*>& mesh, cons
             }
         }
     }
-    for(auto& e:mesh){
+    for(auto& e:mesh->element_list){
         for(size_t n = 0; n < e->nodes.size(); ++n){
             bool calculated = false;
             MeshNode* node = e->get_node(n);

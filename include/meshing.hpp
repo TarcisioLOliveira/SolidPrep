@@ -32,7 +32,6 @@ class ProjectData;
 
 class Meshing{
     public:
-    friend class Visualization;
 
     /**
      * Just generates a mesh from a shape according to the child class's input
@@ -52,28 +51,22 @@ class Meshing{
      * Assumes you are using the same instace which generated base_mesh (for
      * simplicity).
      *
-     * As it returns two vector instances, both are returned as function
-     * arguments (final_mesh and load_vector).
-     *
-     * The object also stores the mesh elements created.
+     * The object stores the results.
      *
      * @param base_mesh Mesh obtained from mesh()
      * @param element_type Type of element to be used
      * @param supports List of supports
      * @param force List of forces
-     * @param final_mesh Output element list
-     * @param load_vector Output external force vector
      */
     virtual void prepare_for_FEM(const std::vector<ElementShape>& base_mesh,
                                  MeshElementFactory::MeshElementType element_type,
-                                 ProjectData* data,
-                                 std::vector<MeshElement*>& final_mesh,
-                                 std::vector<float>& load_vector);
+                                 ProjectData* data);
 
-    protected:
     std::vector<std::unique_ptr<MeshNode>> node_list;
     std::vector<std::unique_ptr<MeshElement>> element_list;
+    std::vector<float> load_vector;
 
+    protected:
     std::vector<long> get_support_dof(size_t& offset, size_t id, const Support& support, MeshElementFactory::MeshElementType type) const;
     std::vector<float> get_force_dof(const Force& force, MeshElementFactory::MeshElementType type) const;
 };

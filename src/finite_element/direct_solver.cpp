@@ -28,18 +28,18 @@
 
 namespace finite_element{
 
-std::vector<float> DirectSolver::calculate_displacements(const std::vector<MeshElement*>& mesh, const std::vector<float>& loads, const std::vector<double>& density) const{
-    const size_t k_dim = std::sqrt(mesh[0]->get_k().size());
-    const size_t dof = k_dim / mesh[0]->nodes.size();
+std::vector<float> DirectSolver::calculate_displacements(Meshing* mesh, const std::vector<double>& density) const{
+    const size_t k_dim = std::sqrt(mesh->element_list[0]->get_k().size());
+    const size_t dof = k_dim / mesh->element_list[0]->nodes.size();
 
-    int W = loads.size();
+    int W = mesh->load_vector.size();
     int N = k_dim;
     std::vector<float> K(W*N, 0);
-    std::vector<float> U(loads);
+    std::vector<float> U(mesh->load_vector);
 
     logger::quick_log("Generating stiffness matrix...");
     auto rho = density.begin();
-    for(auto& e : mesh){
+    for(auto& e : mesh->element_list){
         std::vector<long> u_pos;
         for(auto& n : e->nodes){
             for(size_t i = 0; i < dof; ++i){

@@ -28,7 +28,7 @@
 class TopologyOptimization{
     public:
 
-    virtual TopoDS_Shape optimize(Visualization* viz, FiniteElement* fem, const std::vector<MeshElement*>& mesh, const std::vector<float>& loads) = 0;
+    virtual TopoDS_Shape optimize(Visualization* viz, FiniteElement* fem, Meshing* mesh) = 0;
 
 };
 
