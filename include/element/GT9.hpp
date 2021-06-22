@@ -38,6 +38,7 @@ class GT9 : public MeshElement{
     virtual size_t get_gmsh_element_type() const override{ return 2;};
     virtual double get_volume() const override;
     virtual TopoDS_Shape get_shape() const override;
+    virtual gp_Pnt get_centroid() const override;
 
     private:
     Material const * const mat;

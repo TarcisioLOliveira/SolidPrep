@@ -236,4 +236,15 @@ TopoDS_Shape GT9::get_shape() const{
     return f;
 }
 
+gp_Pnt GT9::get_centroid() const{
+    double x = 0;
+    double y = 0;
+    for(auto& n : this->nodes){
+        x += n->point.X();
+        y += n->point.Y();
+    }
+
+    return gp_Pnt(x/this->nodes.size(), y/this->nodes.size(), 0);
+}
+
 }
