@@ -21,6 +21,7 @@
 #ifndef ELEMENT_HPP
 #define ELEMENT_HPP
 
+#include <cmath>
 #include <gp_Pnt.hxx>
 #include <vector>
 #include <TopoDS_Shape.hxx>
@@ -64,6 +65,7 @@ class MeshNode : public Node{
     public:
     virtual ~MeshNode() = default;
     virtual size_t get_result_size() const = 0;
+    virtual float get_Von_Mises() const = 0;
     protected:
     MeshNode(gp_Pnt p, size_t id, size_t res_n): Node(p, id, res_n){}
 };
@@ -72,6 +74,9 @@ class MeshNode2D : public MeshNode{
     public:
     MeshNode2D(gp_Pnt p, size_t id):MeshNode(p, id, 3){}
     virtual size_t get_result_size() const override{ return 3; }
+    virtual float get_Von_Mises() const override{
+        return std::sqrt(std::pow(results[0], 2) - results[0]*results[1] + std::pow(results[1], 2) + 3*std::pow(results[2], 2));
+    }
 };
 
 class MeshNodeFactory{
