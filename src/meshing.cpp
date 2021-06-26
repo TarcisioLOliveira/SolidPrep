@@ -95,7 +95,7 @@ void Meshing::prepare_for_FEM(const std::vector<ElementShape>& base_mesh,
             for(size_t i = 0; i < dof; ++i){
                 std::vector<float> f_vec = this->get_force_dof(f, element_type);
                 if(n->u_pos[i] >= 0){
-                    this->load_vector[n->u_pos[i] >= 0] += f_vec[i]/node_list.size();
+                    this->load_vector[n->u_pos[i]] += f_vec[i]/node_list.size();
                 }
             }
         }
