@@ -24,6 +24,7 @@
 #include "element.hpp"
 #include "element/beam_linear_2D.hpp"
 #include "element/GT9.hpp"
+#include "element/TRI3.hpp"
 #include "utils.hpp"
 #include <vector>
 
@@ -64,12 +65,14 @@ class MeshElementFactory{
     public:
     enum MeshElementType{
         NONE,
-        GT9
+        GT9,
+        TRI3
     };
     template<typename ... Args>
     static MeshElement* make_element(MeshElementType t, const ElementShape& shape, ProjectData* data){
         switch(t){
             case GT9: return new element::GT9(shape, data);
+            case TRI3: return new element::TRI3(shape, data);
             case NULL: return nullptr;
         }
 
@@ -78,6 +81,7 @@ class MeshElementFactory{
     static MeshNodeFactory::MeshNodeType get_node_type(MeshElementType t){
         switch(t){
             case GT9: return MeshNodeFactory::MESH_NODE_2D;
+            case TRI3: return MeshNodeFactory::MESH_NODE_2D;
             case NULL: return MeshNodeFactory::NONE;
         }
 
@@ -86,6 +90,7 @@ class MeshElementFactory{
     static size_t get_k_dimension(MeshElementType t){
         switch(t){
             case GT9: return 9;
+            case TRI3: return 6;
             case NULL: return 0;
         }
         return 0;
@@ -93,6 +98,7 @@ class MeshElementFactory{
     static size_t get_dof_per_node(MeshElementType t){
         switch(t){
             case GT9: return 3;
+            case TRI3: return 2;
             case NULL: return 0;
         }
         return 0;
@@ -100,6 +106,7 @@ class MeshElementFactory{
     static utils::ProblemType get_problem_type(MeshElementType t){
         switch(t){
             case GT9:
+            case TRI3:
             case NULL: 
                 return utils::PROBLEM_TYPE_2D;
         }
