@@ -83,41 +83,7 @@ std::vector<float> TRI3::get_k() const{
 MeshNode* TRI3::get_stresses(size_t node, const std::vector<float>& u, double density) const{
     size_t N = this->nodes.size();
 
-    std::vector<float> B(3*2*N, 0);
-
-    std::vector<gp_Pnt> p;
-    for(auto n:this->nodes){
-        p.push_back(n->point);
-    }
-
-    gp_Mat deltaM(1, p[0].X(), p[0].Y(), 1, p[1].X(), p[1].Y(), 1, p[2].X(), p[2].Y());
-
-    float Delta = 0.5*std::abs(deltaM.Determinant());
-
-    std::vector<float> a, b, c;
-    for(size_t i = 0; i < N; ++i){
-        size_t j = (i + 1) % 3;
-        size_t k = (i + 2) % 3;
-
-        a.push_back(p[j].X()*p[k].Y() - p[k].X()*p[j].Y());
-        b.push_back(p[j].Y() - p[k].Y());
-        c.push_back(p[k].X() - p[j].X());
-    }
-
-    for(size_t i = 0; i < N; ++i){
-        B[i*2 + 0*3*N] = b[i];
-        B[i*2 + 1*3*N] = 0;
-        B[i*2 + 2*3*N] = c[i];
-        B[i*2 + 0*3*N + 1] = 0;
-        B[i*2 + 1*3*N + 1] = c[i];
-        B[i*2 + 2*3*N + 1] = b[i];
-    }
-
-    std::vector<float> DB(3*2*N, 0);
-    auto D = this->mat->stiffness_2D();
-
-    cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 3, 2*N, 3, 1, D.data(), 3, B.data(), 2*N, 0, DB.data(), 2*N);
-    cblas_sscal(DB.size(), 1/(2*Delta), DB.data(), 1);
+    auto DB = this->get_DB(this->nodes[node]->point);
 
     MeshNode2D* n = static_cast<MeshNode2D*>(this->nodes[node]);
     for(size_t i = 0; i < 3; ++i){
@@ -138,41 +104,7 @@ MeshNode* TRI3::get_stresses(size_t node, const std::vector<float>& u, double de
 double TRI3::get_stress_at(gp_Pnt point, const std::vector<float>& u) const{
     size_t N = this->nodes.size();
 
-    std::vector<float> B(3*2*N, 0);
-
-    std::vector<gp_Pnt> p;
-    for(auto n:this->nodes){
-        p.push_back(n->point);
-    }
-
-    gp_Mat deltaM(1, p[0].X(), p[0].Y(), 1, p[1].X(), p[1].Y(), 1, p[2].X(), p[2].Y());
-
-    float Delta = 0.5*std::abs(deltaM.Determinant());
-
-    std::vector<float> a, b, c;
-    for(size_t i = 0; i < N; ++i){
-        size_t j = (i + 1) % 3;
-        size_t k = (i + 2) % 3;
-
-        a.push_back(p[j].X()*p[k].Y() - p[k].X()*p[j].Y());
-        b.push_back(p[j].Y() - p[k].Y());
-        c.push_back(p[k].X() - p[j].X());
-    }
-
-    for(size_t i = 0; i < N; ++i){
-        B[i*2 + 0*3*N] = b[i];
-        B[i*2 + 1*3*N] = 0;
-        B[i*2 + 2*3*N] = c[i];
-        B[i*2 + 0*3*N + 1] = 0;
-        B[i*2 + 1*3*N + 1] = c[i];
-        B[i*2 + 2*3*N + 1] = b[i];
-    }
-
-    std::vector<float> DB(3*2*N, 0);
-    auto D = this->mat->stiffness_2D();
-
-    cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 3, 2*N, 3, 1, D.data(), 3, B.data(), 2*N, 0, DB.data(), 2*N);
-    cblas_sscal(DB.size(), 1/(2*Delta), DB.data(), 1);
+    auto DB = this->get_DB(point);
 
     std::vector<double> results(3, 0);
     for(size_t i = 0; i < 3; ++i){
@@ -211,12 +143,64 @@ MeshNode* TRI3::get_internal_loads(size_t node, const std::vector<float>& u) con
     return this->get_node(node);
 }
 
+double TRI3::get_compliance(const std::vector<float>& u, const std::vector<float>& l) const{
+    auto k = this->get_k();
+    std::vector<float> u_vec(6, 0);
+    for(size_t k = 0; k < 3; ++k){
+        for(int j = 0; j < 2; ++j){
+            u_vec[k*2+j] = u[this->nodes[k]->u_pos[j]];
+        }
+    }
+
+    std::vector<float> f_vec(6, 0);
+    if(l.size() > 0){
+        std::vector<float> l_vec(6, 0);
+        for(size_t k = 0; k < 3; ++k){
+            for(int j = 0; j < 2; ++j){
+                l_vec[k*2+j] = l[this->nodes[k]->u_pos[j]];
+            }
+        }
+        cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 6, 1, 6, 1, k.data(), 6, l_vec.data(), 6, 0, f_vec.data(), 6);
+    } else {
+        cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 6, 1, 6, 1, k.data(), 6, u_vec.data(), 6, 0, f_vec.data(), 6);
+    }
+
+    return 1e-3*cblas_sdot(6, u_vec.data(), 1, f_vec.data(), 1);
+}
+
 double TRI3::get_volume() const{
     gp_Mat deltaM(1, this->nodes[0]->point.X(), this->nodes[0]->point.Y(),
                   1, this->nodes[1]->point.X(), this->nodes[1]->point.Y(),
                   1, this->nodes[2]->point.X(), this->nodes[2]->point.Y());
 
-    return 0.5*std::abs(deltaM.Determinant());
+    return 0.5*std::abs(deltaM.Determinant())*1e-6;
+}
+
+void TRI3::get_virtual_load(double P, gp_Pnt point, std::vector<float>& u, std::vector<float>& l) const{
+    std::vector<float> DB = this->get_DB(point);
+    double stress = this->get_stress_at(point, u);
+    std::vector<float> V{1, -0.5, 0,
+                         -0.5, 1, 0,
+                         0,   0, 1.5};
+
+    std::vector<float> u_vec(6, 0);
+    for(size_t k = 0; k < 3; ++k){
+        for(int j = 0; j < 2; ++j){
+            u_vec[k*2+j] = u[this->nodes[k]->u_pos[j]];
+        }
+    }
+
+    std::vector<float> f_vec(6, 0);
+    cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 3, 1, 6, 1, DB.data(), 1, u_vec.data(), 6, 0, f_vec.data(), 6);
+    cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 3, 1, 3, 1, V.data(), 1, f_vec.data(), 6, 0, f_vec.data(), 6);
+    cblas_sgemm(CblasRowMajor, CblasTrans, CblasNoTrans, 3, 1, 6, 1, DB.data(), 1, u_vec.data(), 6, 0, f_vec.data(), 6);
+    cblas_sscal(6, P*std::pow(stress, P-2), f_vec.data(), 1);
+
+    for(size_t k = 0; k < 3; ++k){
+        for(int j = 0; j < 2; ++j){
+            u[this->nodes[k]->u_pos[j]] = f_vec[k*2+j];
+        }
+    }
 }
 
 TopoDS_Shape TRI3::get_shape() const{
@@ -244,6 +228,49 @@ gp_Pnt TRI3::get_centroid() const{
     }
 
     return gp_Pnt(x/this->nodes.size(), y/this->nodes.size(), 0);
+}
+
+std::vector<float> TRI3::get_DB(gp_Pnt point) const{
+    (void)point;
+    size_t N = this->nodes.size();
+
+    std::vector<float> B(3*2*N, 0);
+
+    std::vector<gp_Pnt> p;
+    for(auto n:this->nodes){
+        p.push_back(n->point);
+    }
+
+    gp_Mat deltaM(1, p[0].X(), p[0].Y(), 1, p[1].X(), p[1].Y(), 1, p[2].X(), p[2].Y());
+
+    float Delta = 0.5*std::abs(deltaM.Determinant());
+
+    std::vector<float> a, b, c;
+    for(size_t i = 0; i < N; ++i){
+        size_t j = (i + 1) % 3;
+        size_t k = (i + 2) % 3;
+
+        a.push_back(p[j].X()*p[k].Y() - p[k].X()*p[j].Y());
+        b.push_back(p[j].Y() - p[k].Y());
+        c.push_back(p[k].X() - p[j].X());
+    }
+
+    for(size_t i = 0; i < N; ++i){
+        B[i*2 + 0*3*N] = b[i];
+        B[i*2 + 1*3*N] = 0;
+        B[i*2 + 2*3*N] = c[i];
+        B[i*2 + 0*3*N + 1] = 0;
+        B[i*2 + 1*3*N + 1] = c[i];
+        B[i*2 + 2*3*N + 1] = b[i];
+    }
+
+    std::vector<float> DB(3*2*N, 0);
+    auto D = this->mat->stiffness_2D();
+
+    cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 3, 2*N, 3, 1, D.data(), 3, B.data(), 2*N, 0, DB.data(), 2*N);
+    cblas_sscal(DB.size(), 1/(2*Delta), DB.data(), 1);
+
+    return DB;
 }
 
 }

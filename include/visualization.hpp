@@ -39,6 +39,7 @@ class Visualization{
         this->shown = false;
     }
 
+    void wait();
     inline void end(){
         this->hide();
         gmsh::finalize();

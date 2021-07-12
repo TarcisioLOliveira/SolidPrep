@@ -21,11 +21,17 @@
 #include <iostream>
 #include <STEPCAFControl_Writer.hxx>
 #include <STEPControl_StepModelType.hxx>
+#include "logger.hpp"
 #include "project_data.hpp"
 #include "sizing/beam_sizing.hpp"
 #include "utils.hpp"
 #include <gmsh.h>
 #include <set>
+#include "meshing/gmsh.hpp"
+#include "finite_element/direct_solver.hpp"
+#include "visualization.hpp"
+#include "topology_optimization/minimal_volume.hpp"
+#include <thread>
 
 int main(int argc, char* argv[]){
     // Bnd_Box bounds;
@@ -35,31 +41,32 @@ int main(int argc, char* argv[]){
     // bounds.Get(fXMin, fYMin, fZMin, fXMax, fYMax, fZMax);
     // std::cout << fXMax << " " << fXMin << " " << fYMax << " " << fYMin << " " << fZMax << " " << fZMin << std::endl;
 
-    //ProjectData proj(argv[1]);
+    ProjectData proj(argv[1]);
 
-    gmsh::initialize();
+    meshing::Gmsh mesh(8, 1, utils::PROBLEM_TYPE_2D);
+    auto m = mesh.mesh(proj.ground_structure->shape);
+    std::vector<MeshElement*> elems;
+    std::vector<float> loads;
+    mesh.prepare_for_FEM(m, MeshElementFactory::GT9, &proj);
+    finite_element::DirectSolver fem;
+    topology_optimization::MinimalVolume mv(10, proj.material->get_max_Von_Mises_2D(), &proj);
 
-    gmsh::model::add("show");
+    Visualization v;
+    v.start();
+    v.load_mesh(&mesh, proj.type);
 
-    auto checkForEvent = [=]() -> bool {
-        std::vector<std::string> action;
-        gmsh::onelab::getString("ONELAB/Action", action);
-        if(action.size() && action[0] == "check") {
-            gmsh::onelab::setString("ONELAB/Action", {""});
-            gmsh::graphics::draw();
-        }
-        return true;
+    v.show();
+    auto f = [&](){
+        v.wait();
     };
+    std::thread t(f);
+    mv.optimize(&v, &fem, &mesh);
 
-    gmsh::fltk::initialize();
-    std::set<std::string> args(argv, argv + argc);
-    if(!args.count("-nogui")){
-        while(gmsh::fltk::isAvailable() && checkForEvent())
-            gmsh::fltk::wait();
-    }
+    logger::quick_log("Finished.");
 
+    t.join();
 
-    gmsh::finalize();
+    v.end();
 
 
     // TopoDS_Shape s = proj.sizer->run();

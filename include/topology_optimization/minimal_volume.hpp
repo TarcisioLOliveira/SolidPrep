@@ -26,7 +26,15 @@
 namespace topology_optimization{
 
 class MinimalVolume : public TopologyOptimization{
+    public:
+    MinimalVolume(double r_o, double Smax, ProjectData* data);
 
+    virtual TopoDS_Shape optimize(Visualization* viz, FiniteElement* fem, Meshing* mesh) override;
+
+    private:
+    double r_o;
+    double Smax;
+    ProjectData* data;
 };
 
 }

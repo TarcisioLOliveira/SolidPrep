@@ -27,7 +27,7 @@ namespace finite_element{
 
 class DirectSolver : public FiniteElement{
     public:
-    virtual std::vector<float> calculate_displacements(Meshing* mesh, const std::vector<double>& density = std::vector<double>()) const override;
+    virtual std::vector<float> calculate_displacements(ProjectData* data, Meshing* mesh, const std::vector<double>& density = std::vector<double>(), const std::vector<float>& virtual_load = std::vector<float>()) const override;
 
     private:
     void insert_element_matrix(std::vector<float>& K, const std::vector<float>& k, const std::vector<long>& pos, int w, int& n) const;

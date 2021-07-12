@@ -25,6 +25,7 @@
 #include <iostream>
 #include <utility>
 #include "utils.hpp"
+#include <vector>
 
 namespace logger{
 
@@ -70,6 +71,14 @@ namespace logger{
     static void quick_log(T t, Args&& ... args){
         std::cout << t << " ";
         quick_log(args...);
+    }
+
+    template<typename T>
+    static void quick_log(const std::vector<T>& v){
+        for(const T& e:v){
+            std::cout << e << " ";
+        }
+        std::cout << std::endl;
     }
 }
 

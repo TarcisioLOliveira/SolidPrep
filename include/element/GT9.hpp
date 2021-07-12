@@ -37,13 +37,17 @@ class GT9 : public MeshElement{
     virtual MeshNode* get_internal_loads(size_t node, const std::vector<float>& u) const override;
     virtual double get_stress_at(gp_Pnt p, const std::vector<float>& u) const override;
     virtual size_t get_gmsh_element_type() const override{ return 2;};
+    virtual double get_compliance(const std::vector<float>& u, const std::vector<float>& l = std::vector<float>()) const override;
     virtual double get_volume() const override;
+    virtual void get_virtual_load(double P, gp_Pnt point, std::vector<float>& u, std::vector<float>& l) const override;
     virtual TopoDS_Shape get_shape() const override;
     virtual gp_Pnt get_centroid() const override;
 
     private:
     Material const * const mat;
     float t;
+
+    std::vector<float> get_DB(gp_Pnt point) const;
 };
 
 }

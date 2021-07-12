@@ -67,11 +67,6 @@ void Visualization::load_mesh(Meshing* mesh, utils::ProblemType type){
 
 void Visualization::update_view(){
     logger::quick_log("Updating view...");
-    std::vector<int> tag_list;
-    gmsh::view::getTags(tag_list);
-    if(std::find(tag_list.begin(), tag_list.end(), 1) != tag_list.end()){
-        gmsh::view::remove(1);
-    }
     gmsh::view::add(this->STRESS_VIEW, 1);
 
     std::vector<std::vector<double>> stress;
@@ -80,9 +75,8 @@ void Visualization::update_view(){
     node_tags.reserve(mesh->node_list.size());
     for(auto& n:mesh->node_list){
         node_tags.push_back(n->id+1);
-        float* S = n->results;
-        float s = std::sqrt(0.5*(S[0]*S[0] - S[0]*S[1] + S[1]*S[1] + 3*S[2]*S[2]));
-        std::vector<double> tmp{s};
+        double s = n->get_Von_Mises();
+        std::vector<double> tmp{s/1e6};
         stress.push_back(tmp);
     }
     gmsh::view::addModelData(1, 0, this->MODEL_NAME, "NodeData", node_tags, stress, 0, 1);
@@ -96,6 +90,9 @@ void Visualization::update_view(){
 void Visualization::show(){
     this->shown = true;
 
+    gmsh::fltk::initialize();
+}
+void Visualization::wait(){
     auto checkForEvent = [=]() -> bool {
         std::vector<std::string> action;
         gmsh::onelab::getString("ONELAB/Action", action);
@@ -106,7 +103,6 @@ void Visualization::show(){
         return true;
     };
 
-    gmsh::fltk::initialize();
     while(gmsh::fltk::isAvailable() && checkForEvent() && this->shown)
         gmsh::fltk::wait();
 }

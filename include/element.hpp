@@ -126,6 +126,8 @@ class MeshElement : public Element{
     virtual MeshNode* get_internal_loads(size_t node, const std::vector<float>& u) const = 0;
     virtual double get_stress_at(gp_Pnt p, const std::vector<float>& u) const = 0;
     virtual double get_volume() const = 0;
+    virtual double get_compliance(const std::vector<float>& u, const std::vector<float>& l = std::vector<float>()) const = 0;
+    virtual void get_virtual_load(double P, gp_Pnt point, std::vector<float>& u, std::vector<float>& l) const = 0;
     virtual TopoDS_Shape get_shape() const = 0;
     virtual gp_Pnt get_centroid() const = 0;
 

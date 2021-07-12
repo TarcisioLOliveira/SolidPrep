@@ -87,7 +87,7 @@ ProjectData::ProjectData(std::string project_file){
     }
     if(this->type == utils::PROBLEM_TYPE_2D){
         if(this->log_data(doc, "thickness", TYPE_DOUBLE, true)){
-            this->thickness = doc["thickness"].GetDouble()*1e-3;
+            this->thickness = doc["thickness"].GetDouble();
         }
     }
     if(this->log_data(doc, "material", TYPE_OBJECT, true)){
