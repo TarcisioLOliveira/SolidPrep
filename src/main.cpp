@@ -44,7 +44,10 @@ int main(int argc, char* argv[]){
     ProjectData proj(argv[1]);
 
     meshing::Gmsh mesh(6, 1, utils::PROBLEM_TYPE_2D);
-    auto m = mesh.mesh(proj.ground_structure->shape);
+    auto shape = proj.sizer->run();
+    utils::shape_to_file("test.step", shape);
+    auto m = mesh.mesh(shape);
+    // auto m = mesh.mesh(proj.ground_structure->shape);
     std::vector<MeshElement*> elems;
     std::vector<double> loads;
     mesh.prepare_for_FEM(m, MeshElementFactory::GT9, &proj);

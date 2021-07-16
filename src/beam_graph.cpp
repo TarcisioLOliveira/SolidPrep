@@ -20,6 +20,7 @@
 
 #include "beam_graph.hpp"
 #include "element_factory.hpp"
+#include "logger.hpp"
 #include "utils.hpp"
 
 void BeamGraph::run(){

@@ -73,6 +73,8 @@ TopoDS_Shape BeamSizing::run(){
             double S_n = (normal.Dot(F) < 0) ? S[0] : S[1];
             double S_c = S[2];
 
+            logger::quick_log(Fx, Fy, Mz);
+
             // Bending
             double h_f = std::sqrt(6*Mz/(t*S_f));
             // Normal
@@ -81,10 +83,9 @@ TopoDS_Shape BeamSizing::run(){
             double h_c = (F - normal.Dot(F)*normal).Magnitude()*(3/(2*t*S_c));
 
             // debug
-            std::cout << h_f*1e3 << " " << h_n*1e3 << " " << h_c*1e3 << " " << n->dim*1e3 << std::endl;
+            std::cout << h_f << " " << h_n << " " << h_c << " " << n->dim << std::endl;
 
-            // Using ceil() because we don't need so much precision.
-            double h = std::ceil(1e3*std::max({h_f, h_n, h_c, n->dim})); 
+            double h = std::max({h_f, h_n, h_c, n->dim}); 
             gp_Ax2 axis(n->point, gp_Dir(0,0,1));
             gp_Circ circ(axis, h/2);
             TopoDS_Edge edge = BRepBuilderAPI_MakeEdge(circ);

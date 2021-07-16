@@ -47,7 +47,7 @@ CrossSection::CrossSection(std::vector<gp_Pnt> vertices, double thickness){
 
     gp_Pnt p1(vertices[0]);
     gp_Pnt p2(vertices[size-1]);
-    this->max_dim = p1.Distance(p2)*1e-3;
+    this->max_dim = p1.Distance(p2);
     this->centroid = p1;
     this->centroid.BaryCenter(1, p2, 1);
 
@@ -68,7 +68,7 @@ CrossSection::CrossSection(std::vector<gp_Pnt> vertices, double thickness){
 
     Handle(Geom_Surface) surf = BRep_Tool::Surface(face);
     BOPTools_AlgoTools3D::GetNormalToSurface(surf, this->centroid.X(), this->centroid.Y(), this->normal);
-    this->area = props.Mass()*1e-6;
+    this->area = props.Mass();
 
     gp_Ax1 axis(this->centroid, gp_Dir(0, 0, 1));
     double ang = this->normal.AngleWithRef(gp_Dir(1,0,0), gp_Dir(0,0,1));
@@ -78,7 +78,7 @@ CrossSection::CrossSection(std::vector<gp_Pnt> vertices, double thickness){
     face = TopoDS::Face(transf.Shape());
     BRepGProp::SurfaceProperties(face, props);
 
-    this->inertia = props.MatrixOfInertia()*1e-12;
+    this->inertia = props.MatrixOfInertia();
 
     // Shape creation.
     TopoDS_Shell sh;

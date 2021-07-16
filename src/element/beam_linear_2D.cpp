@@ -28,8 +28,8 @@ BeamLinear2D::BeamLinear2D(BeamNode* n1, BeamNode* n2, double I, double A, doubl
 
 std::vector<double> BeamLinear2D::get_k() const{
     // A First Course in the Finite Element Method, Daryl L. Logan, 6 ed. (2016).
-    
-    double L = this->nodes[0]->point.Distance(this->nodes[1]->point)*1e-3;
+   
+    double L = this->nodes[0]->point.Distance(this->nodes[1]->point);
     gp_Vec v(this->nodes[0]->point, this->nodes[1]->point);
     gp_Dir n(v);
     double theta = n.AngleWithRef(gp_Dir(1,0,0), gp_Dir(0,0,1));
@@ -69,10 +69,11 @@ BeamNode* BeamLinear2D::get_internal_loads(size_t node, const std::vector<double
 
     BeamNode2D* n = static_cast<BeamNode2D*>(this->nodes[node]);
     for(int i = 0; i < 3; ++i){
+        n->results[i] = 0;
         for(int l = 0; l < 2; ++l){
             for(int j = 0; j < 3; ++j){
                 if(this->nodes[l]->u_pos[j] > -1){
-                    n->results[i] += k[utils::to_triangular(node*3+i, j)]*u[this->nodes[l]->u_pos[j]];
+                    n->results[i] += k[utils::to_triangular(node*3+i, 3*l+j)]*u[this->nodes[l]->u_pos[j]];
                 }
             }
         }
