@@ -56,7 +56,7 @@ class ProjectData {
      */
     ProjectData(std::string project_file);
 
-    float thickness;
+    double thickness;
     std::unique_ptr<Pathfinding> pathfinder;
     std::unique_ptr<Sizing> sizer;
     std::unique_ptr<Material> material;

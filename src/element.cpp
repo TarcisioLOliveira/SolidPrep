@@ -21,7 +21,7 @@
 #include "element.hpp"
 
 
-BeamNode* BeamNodeFactory::make_node(gp_Pnt p, size_t id, float dim, gp_Dir n, BeamNodeType t){
+BeamNode* BeamNodeFactory::make_node(gp_Pnt p, size_t id, double dim, gp_Dir n, BeamNodeType t){
     if(t == BEAM_NODE_2D){
         return new BeamNode2D(p, id, dim, n);
     }

@@ -93,7 +93,7 @@ void Meshing::prepare_for_FEM(const std::vector<ElementShape>& base_mesh,
         }
         for(auto& n : node_list){
             for(size_t i = 0; i < dof; ++i){
-                std::vector<float> f_vec = this->get_force_dof(f, element_type);
+                std::vector<double> f_vec = this->get_force_dof(f, element_type);
                 if(n->u_pos[i] >= 0){
                     this->load_vector[n->u_pos[i]] += f_vec[i]/node_list.size();
                 }
@@ -131,10 +131,10 @@ std::vector<long> Meshing::get_support_dof(size_t& offset, size_t id, const Supp
     return pos;
 }
 
-std::vector<float> Meshing::get_force_dof(const Force& force, MeshElementFactory::MeshElementType type) const{
+std::vector<double> Meshing::get_force_dof(const Force& force, MeshElementFactory::MeshElementType type) const{
     size_t size = MeshElementFactory::get_dof_per_node(type);
     utils::ProblemType prob_type = MeshElementFactory::get_problem_type(type);
-    std::vector<float> f(size);
+    std::vector<double> f(size);
     switch(size){
         case 6:
         case 3:

@@ -76,7 +76,7 @@ void Visualization::update_view(){
     for(auto& n:mesh->node_list){
         node_tags.push_back(n->id+1);
         double s = n->get_Von_Mises();
-        std::vector<double> tmp{s/1e6};
+        std::vector<double> tmp{s};
         stress.push_back(tmp);
     }
     gmsh::view::addModelData(1, 0, this->MODEL_NAME, "NodeData", node_tags, stress, 0, 1);

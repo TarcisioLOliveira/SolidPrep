@@ -28,12 +28,12 @@ namespace element{
 
 class BeamLinear2D : public BeamElement{
     public:
-    BeamLinear2D(BeamNode* n1, BeamNode* n2, float I, float A, float E);
+    BeamLinear2D(BeamNode* n1, BeamNode* n2, double I, double A, double E);
 
-    virtual std::vector<float> get_k() const override;
-    virtual BeamNode* get_internal_loads(size_t node, const std::vector<float>& u) const override;
+    virtual std::vector<double> get_k() const override;
+    virtual BeamNode* get_internal_loads(size_t node, const std::vector<double>& u) const override;
 
-    const float I, A, E;
+    const double I, A, E;
 };
 
 }

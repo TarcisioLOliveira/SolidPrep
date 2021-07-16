@@ -29,10 +29,10 @@
 class FiniteElement{
     public:
 
-    virtual std::vector<float> calculate_displacements(ProjectData* data, Meshing* mesh, const std::vector<double>& density = std::vector<double>(), const std::vector<float>& virtual_load = std::vector<float>()) const = 0;
+    virtual std::vector<double> calculate_displacements(ProjectData* data, Meshing* mesh, const std::vector<double>& density = std::vector<double>(), const std::vector<double>& virtual_load = std::vector<double>()) const = 0;
 
-    virtual void calculate_stresses(Meshing* mesh, const std::vector<float>& displacements, const std::vector<double>& density = std::vector<double>()) const;
-    virtual void calculate_forces(Meshing* mesh, const std::vector<float>& displacements) const;
+    virtual void calculate_stresses(Meshing* mesh, const std::vector<double>& displacements, const std::vector<double>& density = std::vector<double>()) const;
+    virtual void calculate_forces(Meshing* mesh, const std::vector<double>& displacements) const;
 };
 
 #endif

@@ -77,7 +77,7 @@ ProjectData::ProjectData(std::string project_file){
 #endif
         std::string absolute_path = project_file.substr(0, last_slash+1);
         absolute_path.append(geom_path);
-        float scale;
+        double scale;
         if(this->log_data(doc, "scale", TYPE_DOUBLE, false)){
             scale = doc["scale"].GetDouble();
         } else {
@@ -99,7 +99,7 @@ ProjectData::ProjectData(std::string project_file){
                 logger::log_assert(mat.HasMember(s.c_str()), logger::ERROR, "missing material property: {}", s);
                 logger::log_assert(mat[s.c_str()].IsArray() || mat[s.c_str()].IsDouble(), logger::ERROR, "material property {} must be either a number or an array of numbers", s);
             }
-            std::vector<std::vector<float>> values(5);
+            std::vector<std::vector<double>> values(5);
             for(size_t i = 0; i < properties.size(); ++i){
                 if(mat[properties[i].c_str()].IsArray()){
                     const auto& a = mat[properties[i].c_str()].GetArray();
@@ -115,10 +115,12 @@ ProjectData::ProjectData(std::string project_file){
                     values[i].resize(3, mat[properties[i].c_str()].GetDouble());
                 }
             }
-            for(auto& i:values[0]) i *= 1e9; // E
-            for(auto& i:values[2]) i *= 1e9; // G
-            for(auto& i:values[3]) i *= 1e6; // Smax
-            for(auto& i:values[4]) i *= 1e6; // Tmax
+            for(auto& i:values[0]) i *= 1e3; // E
+            for(auto& i:values[2]) i *= 1e3; // G
+            // for(auto& i:values[0]) i *= 1e9; // E
+            // for(auto& i:values[2]) i *= 1e9; // G
+            // for(auto& i:values[3]) i *= 1e6; // Smax
+            // for(auto& i:values[4]) i *= 1e6; // Tmax
             this->material.reset(new material::LinearElasticOrthotropic(values[0], values[1], values[2], values[3], values[4]));
         } else if(mat["type"] == "linear_elastic_isotropic"){
             std::vector<std::string> properties{"E", "nu", "Smax", "Tmax"};
@@ -126,12 +128,13 @@ ProjectData::ProjectData(std::string project_file){
                 this->log_data(mat, s, TYPE_DOUBLE, true);
             }
             this->log_data(mat, "plane_stress", TYPE_BOOL, true);
-            float E = mat["E"].GetDouble();
-            float nu = mat["nu"].GetDouble();
-            float Smax = mat["Smax"].GetDouble();
-            float Tmax = mat["Tmax"].GetDouble();
+            double E = mat["E"].GetDouble();
+            double nu = mat["nu"].GetDouble();
+            double Smax = mat["Smax"].GetDouble();
+            double Tmax = mat["Tmax"].GetDouble();
             bool plane_stress = mat["plane_stress"].GetBool();
-            this->material.reset(new material::LinearElasticIsotropic(E*1e9, nu, Smax*1e6, Tmax*1e6, plane_stress));
+            //this->material.reset(new material::LinearElasticIsotropic(E*1e9, nu, Smax*1e6, Tmax*1e6, plane_stress));
+            this->material.reset(new material::LinearElasticIsotropic(E*1e3, nu, Smax, Tmax, plane_stress));
         }
     }
     if(this->log_data(doc, "sizing", TYPE_OBJECT, true)){
@@ -147,10 +150,10 @@ ProjectData::ProjectData(std::string project_file){
                     this->log_data(pathf, "step", TYPE_DOUBLE, true);
                     this->log_data(pathf, "max_turn_angle", TYPE_DOUBLE, true);
                     this->log_data(pathf, "turn_options", TYPE_INT, true);
-                    float step = pathf["step"].GetDouble();
-                    float angle = pathf["max_turn_angle"].GetDouble();
+                    double step = pathf["step"].GetDouble();
+                    double angle = pathf["max_turn_angle"].GetDouble();
                     int choices = pathf["turn_options"].GetInt();
-                    float restriction = 0;
+                    double restriction = 0;
                     if(this->log_data(pathf, "restriction_size", TYPE_DOUBLE, false)){
                         restriction = pathf["restriction_size"].GetDouble();
                     }
@@ -158,9 +161,9 @@ ProjectData::ProjectData(std::string project_file){
                 } else if(pathf["type"] == "visibility_graph"){
                     this->log_data(pathf, "step", TYPE_DOUBLE, true);
                     this->log_data(pathf, "max_turn_angle", TYPE_DOUBLE, true);
-                    float step = pathf["step"].GetDouble();
-                    float angle = pathf["max_turn_angle"].GetDouble();
-                    float restriction = 0;
+                    double step = pathf["step"].GetDouble();
+                    double angle = pathf["max_turn_angle"].GetDouble();
+                    double restriction = 0;
                     if(this->log_data(pathf, "restriction_size", TYPE_DOUBLE, false)){
                         restriction = pathf["restriction_size"].GetDouble();
                     }

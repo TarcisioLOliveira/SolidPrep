@@ -28,14 +28,14 @@
 
 namespace finite_element{
 
-std::vector<float> DirectSolver::calculate_displacements(ProjectData* data, Meshing* mesh, const std::vector<double>& density, const std::vector<float>& virtual_load) const{
+std::vector<double> DirectSolver::calculate_displacements(ProjectData* data, Meshing* mesh, const std::vector<double>& density, const std::vector<double>& virtual_load) const{
     const size_t k_dim = std::sqrt(mesh->element_list[0]->get_k().size());
     const size_t dof = k_dim / mesh->element_list[0]->nodes.size();
 
     int W = mesh->load_vector.size();
     int N = k_dim;
-    std::vector<float> K(W*N, 0);
-    std::vector<float> U;
+    std::vector<double> K(W*N, 0);
+    std::vector<double> U;
     if(virtual_load.size() > 0){
         U = virtual_load;
     } else {
@@ -51,21 +51,18 @@ std::vector<float> DirectSolver::calculate_displacements(ProjectData* data, Mesh
                 u_pos.push_back(n->u_pos[i]);
             }
         }
-        std::vector<float> k = e->get_k();
+        std::vector<double> k = e->get_k();
         if(rho < density.end()){
-            cblas_sscal(k.size(), *rho, k.data(), 1);
+            cblas_dscal(k.size(), *rho, k.data(), 1);
             ++rho;
         }
-        this->insert_element_matrix(K, e->get_k(), u_pos, W, N);
-    }
-    if(data->type == utils::PROBLEM_TYPE_2D){
-        cblas_sscal(K.size(), data->thickness, K.data(), 1);
+        this->insert_element_matrix(K, k, u_pos, W, N);
     }
     logger::quick_log("Done.");
     logger::quick_log("Calculating displacements...");
     logger::quick_log("W: ",W," N: ", N);
 
-    int info = LAPACKE_spbsv(LAPACK_ROW_MAJOR, 'L', W, N-1, 1, K.data(), W, U.data(), 1);
+    int info = LAPACKE_dpbsv(LAPACK_ROW_MAJOR, 'L', W, N-1, 1, K.data(), W, U.data(), 1);
     logger::log_assert(info == 0, logger::ERROR, "LAPACKE returned {} while calculating displacements.", info);
 
     logger::quick_log("Done.");
@@ -73,7 +70,7 @@ std::vector<float> DirectSolver::calculate_displacements(ProjectData* data, Mesh
     return U; 
 }
 
-void DirectSolver::insert_element_matrix(std::vector<float>& K, const std::vector<float>& k, const std::vector<long>& pos, int w, int& n) const{
+void DirectSolver::insert_element_matrix(std::vector<double>& K, const std::vector<double>& k, const std::vector<long>& pos, int w, int& n) const{
     size_t min_i = 0;
     size_t max_i = 0;
     long min = std::numeric_limits<long>::max();

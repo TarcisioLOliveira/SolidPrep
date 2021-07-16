@@ -34,7 +34,7 @@ namespace element{
 GT9::GT9(ElementShape s, ProjectData* data):
     MeshElement(s.nodes), mat(data->material.get()), t(data->thickness){}
 
-std::vector<float> GT9::get_k() const{
+std::vector<double> GT9::get_k() const{
 
     size_t N = this->nodes.size();
 
@@ -45,9 +45,9 @@ std::vector<float> GT9::get_k() const{
 
     gp_Mat deltaM(1, p[0].X(), p[0].Y(), 1, p[1].X(), p[1].Y(), 1, p[2].X(), p[2].Y());
 
-    float delta = 0.5*std::abs(deltaM.Determinant());
+    double delta = 0.5*std::abs(deltaM.Determinant());
 
-    std::vector<float> a, b, c;
+    std::vector<double> a, b, c;
     for(size_t i = 0; i < N; ++i){
         size_t j = (i + 1) % 3;
         size_t k = (i + 2) % 3;
@@ -57,198 +57,198 @@ std::vector<float> GT9::get_k() const{
         c.push_back(p[k].X() - p[j].X());
     }
 
-    float b0 = b[0];
-    float b1 = b[1];
-    float b2 = b[2];
-    float c0 = c[0];
-    float c1 = c[1];
-    float c2 = c[2];
+    double b0 = b[0];
+    double b1 = b[1];
+    double b2 = b[2];
+    double c0 = c[0];
+    double c1 = c[1];
+    double c2 = c[2];
     
     auto D = this->mat->stiffness_2D();
 
-    float d0 = D[0];
-    float d1 = D[1];
-    float d2 = D[2];
-    float d3 = D[3];
-    float d4 = D[4];
-    float d5 = D[5];
-    float d6 = D[6];
-    float d7 = D[7];
-    float d8 = D[8];
+    double d0 = D[0];
+    double d1 = D[1];
+    double d2 = D[2];
+    double d3 = D[3];
+    double d4 = D[4];
+    double d5 = D[5];
+    double d6 = D[6];
+    double d7 = D[7];
+    double d8 = D[8];
 
-    std::vector<float> K{
-(b0*b0*d0 + b0*c0*d2 + b0*c0*d6 + c0*c0*d8)/(4*delta)
+    std::vector<double> K{
+this->t*(b0*b0*d0 + b0*c0*d2 + b0*c0*d6 + c0*c0*d8)/(4*delta)
 ,
-(b0*b0*d2 + b0*c0*d1 + b0*c0*d8 + c0*c0*d7)/(4*delta)
+this->t*(b0*b0*d2 + b0*c0*d1 + b0*c0*d8 + c0*c0*d7)/(4*delta)
 ,
-0.125f*(-(b0*b0*b1*d0 + b0*b0*c1*d2 + b0*b1*c0*d2 + b0*b1*c0*d6 + b0*c0*c1*d1 + b0*c0*c1*d8 + b1*c0*c0*d8 + c0*c0*c1*d7)/3 + (b0*b0*b2*d0 + b0*b0*c2*d2 + b0*b2*c0*d2 + b0*b2*c0*d6 + b0*c0*c2*d1 + b0*c0*c2*d8 + b2*c0*c0*d8 + c0*c0*c2*d7)/3)/delta
+this->t*0.125f*(-(b0*b0*b1*d0 + b0*b0*c1*d2 + b0*b1*c0*d2 + b0*b1*c0*d6 + b0*c0*c1*d1 + b0*c0*c1*d8 + b1*c0*c0*d8 + c0*c0*c1*d7)/3 + (b0*b0*b2*d0 + b0*b0*c2*d2 + b0*b2*c0*d2 + b0*b2*c0*d6 + b0*c0*c2*d1 + b0*c0*c2*d8 + b2*c0*c0*d8 + c0*c0*c2*d7)/3)/delta
 ,
-(b0*b1*d0 + b0*c1*d2 + b1*c0*d6 + c0*c1*d8)/(4*delta)
+this->t*(b0*b1*d0 + b0*c1*d2 + b1*c0*d6 + c0*c1*d8)/(4*delta)
 ,
-(b0*b1*d2 + b0*c1*d1 + b1*c0*d8 + c0*c1*d7)/(4*delta)
+this->t*(b0*b1*d2 + b0*c1*d1 + b1*c0*d8 + c0*c1*d7)/(4*delta)
 ,
-0.125f*((b0*b0*b1*d0 + b0*b0*c1*d2 + b0*b1*c0*d2 + b0*b1*c0*d6 + b0*c0*c1*d1 + b0*c0*c1*d8 + b1*c0*c0*d8 + c0*c0*c1*d7)/3 - (b0*b1*b2*d0 + b0*b1*c2*d2 + b0*b2*c1*d2 + b0*c1*c2*d1 + b1*b2*c0*d6 + b1*c0*c2*d8 + b2*c0*c1*d8 + c0*c1*c2*d7)/3)/delta
+this->t*0.125f*((b0*b0*b1*d0 + b0*b0*c1*d2 + b0*b1*c0*d2 + b0*b1*c0*d6 + b0*c0*c1*d1 + b0*c0*c1*d8 + b1*c0*c0*d8 + c0*c0*c1*d7)/3 - (b0*b1*b2*d0 + b0*b1*c2*d2 + b0*b2*c1*d2 + b0*c1*c2*d1 + b1*b2*c0*d6 + b1*c0*c2*d8 + b2*c0*c1*d8 + c0*c1*c2*d7)/3)/delta
 ,
-(b0*b2*d0 + b0*c2*d2 + b2*c0*d6 + c0*c2*d8)/(4*delta)
+this->t*(b0*b2*d0 + b0*c2*d2 + b2*c0*d6 + c0*c2*d8)/(4*delta)
 ,
-(b0*b2*d2 + b0*c2*d1 + b2*c0*d8 + c0*c2*d7)/(4*delta)
+this->t*(b0*b2*d2 + b0*c2*d1 + b2*c0*d8 + c0*c2*d7)/(4*delta)
 ,
-0.125f*(-(b0*b0*b2*d0 + b0*b0*c2*d2 + b0*b2*c0*d2 + b0*b2*c0*d6 + b0*c0*c2*d1 + b0*c0*c2*d8 + b2*c0*c0*d8 + c0*c0*c2*d7)/3 + (b0*b1*b2*d0 + b0*b1*c2*d2 + b0*b2*c1*d2 + b0*c1*c2*d1 + b1*b2*c0*d6 + b1*c0*c2*d8 + b2*c0*c1*d8 + c0*c1*c2*d7)/3)/delta
+this->t*0.125f*(-(b0*b0*b2*d0 + b0*b0*c2*d2 + b0*b2*c0*d2 + b0*b2*c0*d6 + b0*c0*c2*d1 + b0*c0*c2*d8 + b2*c0*c0*d8 + c0*c0*c2*d7)/3 + (b0*b1*b2*d0 + b0*b1*c2*d2 + b0*b2*c1*d2 + b0*c1*c2*d1 + b1*b2*c0*d6 + b1*c0*c2*d8 + b2*c0*c1*d8 + c0*c1*c2*d7)/3)/delta
 ,
-(b0*b0*d6 + b0*c0*d3 + b0*c0*d8 + c0*c0*d5)/(4*delta)
+this->t*(b0*b0*d6 + b0*c0*d3 + b0*c0*d8 + c0*c0*d5)/(4*delta)
 ,
-(b0*b0*d8 + b0*c0*d5 + b0*c0*d7 + c0*c0*d4)/(4*delta)
+this->t*(b0*b0*d8 + b0*c0*d5 + b0*c0*d7 + c0*c0*d4)/(4*delta)
 ,
-0.125f*(-(b0*b0*b1*d6 + b0*b0*c1*d8 + b0*b1*c0*d3 + b0*b1*c0*d8 + b0*c0*c1*d5 + b0*c0*c1*d7 + b1*c0*c0*d5 + c0*c0*c1*d4)/3 + (b0*b0*b2*d6 + b0*b0*c2*d8 + b0*b2*c0*d3 + b0*b2*c0*d8 + b0*c0*c2*d5 + b0*c0*c2*d7 + b2*c0*c0*d5 + c0*c0*c2*d4)/3)/delta
+this->t*0.125f*(-(b0*b0*b1*d6 + b0*b0*c1*d8 + b0*b1*c0*d3 + b0*b1*c0*d8 + b0*c0*c1*d5 + b0*c0*c1*d7 + b1*c0*c0*d5 + c0*c0*c1*d4)/3 + (b0*b0*b2*d6 + b0*b0*c2*d8 + b0*b2*c0*d3 + b0*b2*c0*d8 + b0*c0*c2*d5 + b0*c0*c2*d7 + b2*c0*c0*d5 + c0*c0*c2*d4)/3)/delta
 ,
-(b0*b1*d6 + b0*c1*d8 + b1*c0*d3 + c0*c1*d5)/(4*delta)
+this->t*(b0*b1*d6 + b0*c1*d8 + b1*c0*d3 + c0*c1*d5)/(4*delta)
 ,
-(b0*b1*d8 + b0*c1*d7 + b1*c0*d5 + c0*c1*d4)/(4*delta)
+this->t*(b0*b1*d8 + b0*c1*d7 + b1*c0*d5 + c0*c1*d4)/(4*delta)
 ,
-0.125f*((b0*b0*b1*d6 + b0*b0*c1*d8 + b0*b1*c0*d3 + b0*b1*c0*d8 + b0*c0*c1*d5 + b0*c0*c1*d7 + b1*c0*c0*d5 + c0*c0*c1*d4)/3 - (b0*b1*b2*d6 + b0*b1*c2*d8 + b0*b2*c1*d8 + b0*c1*c2*d7 + b1*b2*c0*d3 + b1*c0*c2*d5 + b2*c0*c1*d5 + c0*c1*c2*d4)/3)/delta
+this->t*0.125f*((b0*b0*b1*d6 + b0*b0*c1*d8 + b0*b1*c0*d3 + b0*b1*c0*d8 + b0*c0*c1*d5 + b0*c0*c1*d7 + b1*c0*c0*d5 + c0*c0*c1*d4)/3 - (b0*b1*b2*d6 + b0*b1*c2*d8 + b0*b2*c1*d8 + b0*c1*c2*d7 + b1*b2*c0*d3 + b1*c0*c2*d5 + b2*c0*c1*d5 + c0*c1*c2*d4)/3)/delta
 ,
-(b0*b2*d6 + b0*c2*d8 + b2*c0*d3 + c0*c2*d5)/(4*delta)
+this->t*(b0*b2*d6 + b0*c2*d8 + b2*c0*d3 + c0*c2*d5)/(4*delta)
 ,
-(b0*b2*d8 + b0*c2*d7 + b2*c0*d5 + c0*c2*d4)/(4*delta)
+this->t*(b0*b2*d8 + b0*c2*d7 + b2*c0*d5 + c0*c2*d4)/(4*delta)
 ,
-0.125f*(-(b0*b0*b2*d6 + b0*b0*c2*d8 + b0*b2*c0*d3 + b0*b2*c0*d8 + b0*c0*c2*d5 + b0*c0*c2*d7 + b2*c0*c0*d5 + c0*c0*c2*d4)/3 + (b0*b1*b2*d6 + b0*b1*c2*d8 + b0*b2*c1*d8 + b0*c1*c2*d7 + b1*b2*c0*d3 + b1*c0*c2*d5 + b2*c0*c1*d5 + c0*c1*c2*d4)/3)/delta
+this->t*0.125f*(-(b0*b0*b2*d6 + b0*b0*c2*d8 + b0*b2*c0*d3 + b0*b2*c0*d8 + b0*c0*c2*d5 + b0*c0*c2*d7 + b2*c0*c0*d5 + c0*c0*c2*d4)/3 + (b0*b1*b2*d6 + b0*b1*c2*d8 + b0*b2*c1*d8 + b0*c1*c2*d7 + b1*b2*c0*d3 + b1*c0*c2*d5 + b2*c0*c1*d5 + c0*c1*c2*d4)/3)/delta
 ,
-0.125f*(-(b0*b0*b1*d0 + b0*b0*c1*d6 + b0*b1*c0*d2 + b0*b1*c0*d6 + b0*c0*c1*d3 + b0*c0*c1*d8 + b1*c0*c0*d8 + c0*c0*c1*d5)/3 + (b0*b0*b2*d0 + b0*b0*c2*d6 + b0*b2*c0*d2 + b0*b2*c0*d6 + b0*c0*c2*d3 + b0*c0*c2*d8 + b2*c0*c0*d8 + c0*c0*c2*d5)/3)/delta
+this->t*0.125f*(-(b0*b0*b1*d0 + b0*b0*c1*d6 + b0*b1*c0*d2 + b0*b1*c0*d6 + b0*c0*c1*d3 + b0*c0*c1*d8 + b1*c0*c0*d8 + c0*c0*c1*d5)/3 + (b0*b0*b2*d0 + b0*b0*c2*d6 + b0*b2*c0*d2 + b0*b2*c0*d6 + b0*c0*c2*d3 + b0*c0*c2*d8 + b2*c0*c0*d8 + c0*c0*c2*d5)/3)/delta
 ,
-0.125f*(-(b0*b0*b1*d2 + b0*b0*c1*d8 + b0*b1*c0*d1 + b0*b1*c0*d8 + b0*c0*c1*d5 + b0*c0*c1*d7 + b1*c0*c0*d7 + c0*c0*c1*d4)/3 + (b0*b0*b2*d2 + b0*b0*c2*d8 + b0*b2*c0*d1 + b0*b2*c0*d8 + b0*c0*c2*d5 + b0*c0*c2*d7 + b2*c0*c0*d7 + c0*c0*c2*d4)/3)/delta
+this->t*0.125f*(-(b0*b0*b1*d2 + b0*b0*c1*d8 + b0*b1*c0*d1 + b0*b1*c0*d8 + b0*c0*c1*d5 + b0*c0*c1*d7 + b1*c0*c0*d7 + c0*c0*c1*d4)/3 + (b0*b0*b2*d2 + b0*b0*c2*d8 + b0*b2*c0*d1 + b0*b2*c0*d8 + b0*c0*c2*d5 + b0*c0*c2*d7 + b2*c0*c0*d7 + c0*c0*c2*d4)/3)/delta
 ,
-((0.0625f*b0*b0*b1*b1*d0 + 0.0625f*b0*b0*b1*c1*d2 + 0.0625f*b0*b0*b1*c1*d6 + 0.0625f*b0*b0*c1*c1*d8 + 0.0625f*b0*b1*b1*c0*d2 + 0.0625f*b0*b1*b1*c0*d6 + 0.0625f*b0*b1*c0*c1*d1 + 0.0625f*b0*b1*c0*c1*d3 + 0.125f*b0*b1*c0*c1*d8 + 0.0625f*b0*c0*c1*c1*d5 + 0.0625f*b0*c0*c1*c1*d7 + 0.0625f*b1*b1*c0*c0*d8 + 0.0625f*b1*c0*c0*c1*d5 + 0.0625f*b1*c0*c0*c1*d7 + 0.0625f*c0*c0*c1*c1*d4)/6 + (0.0625f*b0*b0*b2*b2*d0 + 0.0625f*b0*b0*b2*c2*d2 + 0.0625f*b0*b0*b2*c2*d6 + 0.0625f*b0*b0*c2*c2*d8 + 0.0625f*b0*b2*b2*c0*d2 + 0.0625f*b0*b2*b2*c0*d6 + 0.0625f*b0*b2*c0*c2*d1 + 0.0625f*b0*b2*c0*c2*d3 + 0.125f*b0*b2*c0*c2*d8 + 0.0625f*b0*c0*c2*c2*d5 + 0.0625f*b0*c0*c2*c2*d7 + 0.0625f*b2*b2*c0*c0*d8 + 0.0625f*b2*c0*c0*c2*d5 + 0.0625f*b2*c0*c0*c2*d7 + 0.0625f*c0*c0*c2*c2*d4)/6 - (0.125f*b0*b0*b1*b2*d0 + 0.0625f*b0*b0*b1*c2*d2 + 0.0625f*b0*b0*b1*c2*d6 + 0.0625f*b0*b0*b2*c1*d2 + 0.0625f*b0*b0*b2*c1*d6 + 0.125f*b0*b0*c1*c2*d8 + 0.125f*b0*b1*b2*c0*d2 + 0.125f*b0*b1*b2*c0*d6 + 0.0625f*b0*b1*c0*c2*d1 + 0.0625f*b0*b1*c0*c2*d3 + 0.125f*b0*b1*c0*c2*d8 + 0.0625f*b0*b2*c0*c1*d1 + 0.0625f*b0*b2*c0*c1*d3 + 0.125f*b0*b2*c0*c1*d8 + 0.125f*b0*c0*c1*c2*d5 + 0.125f*b0*c0*c1*c2*d7 + 0.125f*b1*b2*c0*c0*d8 + 0.0625f*b1*c0*c0*c2*d5 + 0.0625f*b1*c0*c0*c2*d7 + 0.0625f*b2*c0*c0*c1*d5 + 0.0625f*b2*c0*c0*c1*d7 + 0.125f*c0*c0*c1*c2*d4)/12)/delta
+this->t*((0.0625f*b0*b0*b1*b1*d0 + 0.0625f*b0*b0*b1*c1*d2 + 0.0625f*b0*b0*b1*c1*d6 + 0.0625f*b0*b0*c1*c1*d8 + 0.0625f*b0*b1*b1*c0*d2 + 0.0625f*b0*b1*b1*c0*d6 + 0.0625f*b0*b1*c0*c1*d1 + 0.0625f*b0*b1*c0*c1*d3 + 0.125f*b0*b1*c0*c1*d8 + 0.0625f*b0*c0*c1*c1*d5 + 0.0625f*b0*c0*c1*c1*d7 + 0.0625f*b1*b1*c0*c0*d8 + 0.0625f*b1*c0*c0*c1*d5 + 0.0625f*b1*c0*c0*c1*d7 + 0.0625f*c0*c0*c1*c1*d4)/6 + (0.0625f*b0*b0*b2*b2*d0 + 0.0625f*b0*b0*b2*c2*d2 + 0.0625f*b0*b0*b2*c2*d6 + 0.0625f*b0*b0*c2*c2*d8 + 0.0625f*b0*b2*b2*c0*d2 + 0.0625f*b0*b2*b2*c0*d6 + 0.0625f*b0*b2*c0*c2*d1 + 0.0625f*b0*b2*c0*c2*d3 + 0.125f*b0*b2*c0*c2*d8 + 0.0625f*b0*c0*c2*c2*d5 + 0.0625f*b0*c0*c2*c2*d7 + 0.0625f*b2*b2*c0*c0*d8 + 0.0625f*b2*c0*c0*c2*d5 + 0.0625f*b2*c0*c0*c2*d7 + 0.0625f*c0*c0*c2*c2*d4)/6 - (0.125f*b0*b0*b1*b2*d0 + 0.0625f*b0*b0*b1*c2*d2 + 0.0625f*b0*b0*b1*c2*d6 + 0.0625f*b0*b0*b2*c1*d2 + 0.0625f*b0*b0*b2*c1*d6 + 0.125f*b0*b0*c1*c2*d8 + 0.125f*b0*b1*b2*c0*d2 + 0.125f*b0*b1*b2*c0*d6 + 0.0625f*b0*b1*c0*c2*d1 + 0.0625f*b0*b1*c0*c2*d3 + 0.125f*b0*b1*c0*c2*d8 + 0.0625f*b0*b2*c0*c1*d1 + 0.0625f*b0*b2*c0*c1*d3 + 0.125f*b0*b2*c0*c1*d8 + 0.125f*b0*c0*c1*c2*d5 + 0.125f*b0*c0*c1*c2*d7 + 0.125f*b1*b2*c0*c0*d8 + 0.0625f*b1*c0*c0*c2*d5 + 0.0625f*b1*c0*c0*c2*d7 + 0.0625f*b2*c0*c0*c1*d5 + 0.0625f*b2*c0*c0*c1*d7 + 0.125f*c0*c0*c1*c2*d4)/12)/delta
 ,
-0.125f*(-(b0*b1*b1*d0 + b0*b1*c1*d2 + b0*b1*c1*d6 + b0*c1*c1*d8 + b1*b1*c0*d6 + b1*c0*c1*d3 + b1*c0*c1*d8 + c0*c1*c1*d5)/3 + (b0*b1*b2*d0 + b0*b1*c2*d6 + b0*b2*c1*d2 + b0*c1*c2*d8 + b1*b2*c0*d6 + b1*c0*c2*d3 + b2*c0*c1*d8 + c0*c1*c2*d5)/3)/delta
+this->t*0.125f*(-(b0*b1*b1*d0 + b0*b1*c1*d2 + b0*b1*c1*d6 + b0*c1*c1*d8 + b1*b1*c0*d6 + b1*c0*c1*d3 + b1*c0*c1*d8 + c0*c1*c1*d5)/3 + (b0*b1*b2*d0 + b0*b1*c2*d6 + b0*b2*c1*d2 + b0*c1*c2*d8 + b1*b2*c0*d6 + b1*c0*c2*d3 + b2*c0*c1*d8 + c0*c1*c2*d5)/3)/delta
 ,
-0.125f*(-(b0*b1*b1*d2 + b0*b1*c1*d1 + b0*b1*c1*d8 + b0*c1*c1*d7 + b1*b1*c0*d8 + b1*c0*c1*d5 + b1*c0*c1*d7 + c0*c1*c1*d4)/3 + (b0*b1*b2*d2 + b0*b1*c2*d8 + b0*b2*c1*d1 + b0*c1*c2*d7 + b1*b2*c0*d8 + b1*c0*c2*d5 + b2*c0*c1*d7 + c0*c1*c2*d4)/3)/delta
+this->t*0.125f*(-(b0*b1*b1*d2 + b0*b1*c1*d1 + b0*b1*c1*d8 + b0*c1*c1*d7 + b1*b1*c0*d8 + b1*c0*c1*d5 + b1*c0*c1*d7 + c0*c1*c1*d4)/3 + (b0*b1*b2*d2 + b0*b1*c2*d8 + b0*b2*c1*d1 + b0*c1*c2*d7 + b1*b2*c0*d8 + b1*c0*c2*d5 + b2*c0*c1*d7 + c0*c1*c2*d4)/3)/delta
 ,
-(-(0.0625f*b0*b0*b1*b1*d0 + 0.0625f*b0*b0*b1*c1*d2 + 0.0625f*b0*b0*b1*c1*d6 + 0.0625f*b0*b0*c1*c1*d8 + 0.0625f*b0*b1*b1*c0*d2 + 0.0625f*b0*b1*b1*c0*d6 + 0.0625f*b0*b1*c0*c1*d1 + 0.0625f*b0*b1*c0*c1*d3 + 0.125f*b0*b1*c0*c1*d8 + 0.0625f*b0*c0*c1*c1*d5 + 0.0625f*b0*c0*c1*c1*d7 + 0.0625f*b1*b1*c0*c0*d8 + 0.0625f*b1*c0*c0*c1*d5 + 0.0625f*b1*c0*c0*c1*d7 + 0.0625f*c0*c0*c1*c1*d4)/6 - 0.0625f*(b0*b1*b2*b2*d0 + b0*b1*b2*c2*d2 + b0*b1*b2*c2*d6 + b0*b1*c2*c2*d8 + b0*b2*b2*c1*d2 + b0*b2*c1*c2*d1 + b0*b2*c1*c2*d8 + b0*c1*c2*c2*d7 + b1*b2*b2*c0*d6 + b1*b2*c0*c2*d3 + b1*b2*c0*c2*d8 + b1*c0*c2*c2*d5 + b2*b2*c0*c1*d8 + b2*c0*c1*c2*d5 + b2*c0*c1*c2*d7 + c0*c1*c2*c2*d4)/12 + 0.0625f*(b0*b1*b1*b2*d0 + b0*b1*b1*c2*d2 + b0*b1*b2*c1*d2 + b0*b1*b2*c1*d6 + b0*b1*c1*c2*d1 + b0*b1*c1*c2*d8 + b0*b2*c1*c1*d8 + b0*c1*c1*c2*d7 + b1*b1*b2*c0*d6 + b1*b1*c0*c2*d8 + b1*b2*c0*c1*d3 + b1*b2*c0*c1*d8 + b1*c0*c1*c2*d5 + b1*c0*c1*c2*d7 + b2*c0*c1*c1*d5 + c0*c1*c1*c2*d4)/12 + 0.0625f*(b0*b0*b1*b2*d0 + b0*b0*b1*c2*d6 + b0*b0*b2*c1*d2 + b0*b0*c1*c2*d8 + b0*b1*b2*c0*d2 + b0*b1*b2*c0*d6 + b0*b1*c0*c2*d3 + b0*b1*c0*c2*d8 + b0*b2*c0*c1*d1 + b0*b2*c0*c1*d8 + b0*c0*c1*c2*d5 + b0*c0*c1*c2*d7 + b1*b2*c0*c0*d8 + b1*c0*c0*c2*d5 + b2*c0*c0*c1*d7 + c0*c0*c1*c2*d4)/12)/delta
+this->t*(-(0.0625f*b0*b0*b1*b1*d0 + 0.0625f*b0*b0*b1*c1*d2 + 0.0625f*b0*b0*b1*c1*d6 + 0.0625f*b0*b0*c1*c1*d8 + 0.0625f*b0*b1*b1*c0*d2 + 0.0625f*b0*b1*b1*c0*d6 + 0.0625f*b0*b1*c0*c1*d1 + 0.0625f*b0*b1*c0*c1*d3 + 0.125f*b0*b1*c0*c1*d8 + 0.0625f*b0*c0*c1*c1*d5 + 0.0625f*b0*c0*c1*c1*d7 + 0.0625f*b1*b1*c0*c0*d8 + 0.0625f*b1*c0*c0*c1*d5 + 0.0625f*b1*c0*c0*c1*d7 + 0.0625f*c0*c0*c1*c1*d4)/6 - 0.0625f*(b0*b1*b2*b2*d0 + b0*b1*b2*c2*d2 + b0*b1*b2*c2*d6 + b0*b1*c2*c2*d8 + b0*b2*b2*c1*d2 + b0*b2*c1*c2*d1 + b0*b2*c1*c2*d8 + b0*c1*c2*c2*d7 + b1*b2*b2*c0*d6 + b1*b2*c0*c2*d3 + b1*b2*c0*c2*d8 + b1*c0*c2*c2*d5 + b2*b2*c0*c1*d8 + b2*c0*c1*c2*d5 + b2*c0*c1*c2*d7 + c0*c1*c2*c2*d4)/12 + 0.0625f*(b0*b1*b1*b2*d0 + b0*b1*b1*c2*d2 + b0*b1*b2*c1*d2 + b0*b1*b2*c1*d6 + b0*b1*c1*c2*d1 + b0*b1*c1*c2*d8 + b0*b2*c1*c1*d8 + b0*c1*c1*c2*d7 + b1*b1*b2*c0*d6 + b1*b1*c0*c2*d8 + b1*b2*c0*c1*d3 + b1*b2*c0*c1*d8 + b1*c0*c1*c2*d5 + b1*c0*c1*c2*d7 + b2*c0*c1*c1*d5 + c0*c1*c1*c2*d4)/12 + 0.0625f*(b0*b0*b1*b2*d0 + b0*b0*b1*c2*d6 + b0*b0*b2*c1*d2 + b0*b0*c1*c2*d8 + b0*b1*b2*c0*d2 + b0*b1*b2*c0*d6 + b0*b1*c0*c2*d3 + b0*b1*c0*c2*d8 + b0*b2*c0*c1*d1 + b0*b2*c0*c1*d8 + b0*c0*c1*c2*d5 + b0*c0*c1*c2*d7 + b1*b2*c0*c0*d8 + b1*c0*c0*c2*d5 + b2*c0*c0*c1*d7 + c0*c0*c1*c2*d4)/12)/delta
 ,
-0.125f*((b0*b2*b2*d0 + b0*b2*c2*d2 + b0*b2*c2*d6 + b0*c2*c2*d8 + b2*b2*c0*d6 + b2*c0*c2*d3 + b2*c0*c2*d8 + c0*c2*c2*d5)/3 - (b0*b1*b2*d0 + b0*b1*c2*d2 + b0*b2*c1*d6 + b0*c1*c2*d8 + b1*b2*c0*d6 + b1*c0*c2*d8 + b2*c0*c1*d3 + c0*c1*c2*d5)/3)/delta
+this->t*0.125f*((b0*b2*b2*d0 + b0*b2*c2*d2 + b0*b2*c2*d6 + b0*c2*c2*d8 + b2*b2*c0*d6 + b2*c0*c2*d3 + b2*c0*c2*d8 + c0*c2*c2*d5)/3 - (b0*b1*b2*d0 + b0*b1*c2*d2 + b0*b2*c1*d6 + b0*c1*c2*d8 + b1*b2*c0*d6 + b1*c0*c2*d8 + b2*c0*c1*d3 + c0*c1*c2*d5)/3)/delta
 ,
-0.125f*((b0*b2*b2*d2 + b0*b2*c2*d1 + b0*b2*c2*d8 + b0*c2*c2*d7 + b2*b2*c0*d8 + b2*c0*c2*d5 + b2*c0*c2*d7 + c0*c2*c2*d4)/3 - (b0*b1*b2*d2 + b0*b1*c2*d1 + b0*b2*c1*d8 + b0*c1*c2*d7 + b1*b2*c0*d8 + b1*c0*c2*d7 + b2*c0*c1*d5 + c0*c1*c2*d4)/3)/delta
+this->t*0.125f*((b0*b2*b2*d2 + b0*b2*c2*d1 + b0*b2*c2*d8 + b0*c2*c2*d7 + b2*b2*c0*d8 + b2*c0*c2*d5 + b2*c0*c2*d7 + c0*c2*c2*d4)/3 - (b0*b1*b2*d2 + b0*b1*c2*d1 + b0*b2*c1*d8 + b0*c1*c2*d7 + b1*b2*c0*d8 + b1*c0*c2*d7 + b2*c0*c1*d5 + c0*c1*c2*d4)/3)/delta
 ,
-(-(0.0625f*b0*b0*b2*b2*d0 + 0.0625f*b0*b0*b2*c2*d2 + 0.0625f*b0*b0*b2*c2*d6 + 0.0625f*b0*b0*c2*c2*d8 + 0.0625f*b0*b2*b2*c0*d2 + 0.0625f*b0*b2*b2*c0*d6 + 0.0625f*b0*b2*c0*c2*d1 + 0.0625f*b0*b2*c0*c2*d3 + 0.125f*b0*b2*c0*c2*d8 + 0.0625f*b0*c0*c2*c2*d5 + 0.0625f*b0*c0*c2*c2*d7 + 0.0625f*b2*b2*c0*c0*d8 + 0.0625f*b2*c0*c0*c2*d5 + 0.0625f*b2*c0*c0*c2*d7 + 0.0625f*c0*c0*c2*c2*d4)/6 + 0.0625f*(b0*b1*b2*b2*d0 + b0*b1*b2*c2*d2 + b0*b1*b2*c2*d6 + b0*b1*c2*c2*d8 + b0*b2*b2*c1*d2 + b0*b2*c1*c2*d1 + b0*b2*c1*c2*d8 + b0*c1*c2*c2*d7 + b1*b2*b2*c0*d6 + b1*b2*c0*c2*d3 + b1*b2*c0*c2*d8 + b1*c0*c2*c2*d5 + b2*b2*c0*c1*d8 + b2*c0*c1*c2*d5 + b2*c0*c1*c2*d7 + c0*c1*c2*c2*d4)/12 - 0.0625f*(b0*b1*b1*b2*d0 + b0*b1*b1*c2*d2 + b0*b1*b2*c1*d2 + b0*b1*b2*c1*d6 + b0*b1*c1*c2*d1 + b0*b1*c1*c2*d8 + b0*b2*c1*c1*d8 + b0*c1*c1*c2*d7 + b1*b1*b2*c0*d6 + b1*b1*c0*c2*d8 + b1*b2*c0*c1*d3 + b1*b2*c0*c1*d8 + b1*c0*c1*c2*d5 + b1*c0*c1*c2*d7 + b2*c0*c1*c1*d5 + c0*c1*c1*c2*d4)/12 + 0.0625f*(b0*b0*b1*b2*d0 + b0*b0*b1*c2*d2 + b0*b0*b2*c1*d6 + b0*b0*c1*c2*d8 + b0*b1*b2*c0*d2 + b0*b1*b2*c0*d6 + b0*b1*c0*c2*d1 + b0*b1*c0*c2*d8 + b0*b2*c0*c1*d3 + b0*b2*c0*c1*d8 + b0*c0*c1*c2*d5 + b0*c0*c1*c2*d7 + b1*b2*c0*c0*d8 + b1*c0*c0*c2*d7 + b2*c0*c0*c1*d5 + c0*c0*c1*c2*d4)/12)/delta
+this->t*(-(0.0625f*b0*b0*b2*b2*d0 + 0.0625f*b0*b0*b2*c2*d2 + 0.0625f*b0*b0*b2*c2*d6 + 0.0625f*b0*b0*c2*c2*d8 + 0.0625f*b0*b2*b2*c0*d2 + 0.0625f*b0*b2*b2*c0*d6 + 0.0625f*b0*b2*c0*c2*d1 + 0.0625f*b0*b2*c0*c2*d3 + 0.125f*b0*b2*c0*c2*d8 + 0.0625f*b0*c0*c2*c2*d5 + 0.0625f*b0*c0*c2*c2*d7 + 0.0625f*b2*b2*c0*c0*d8 + 0.0625f*b2*c0*c0*c2*d5 + 0.0625f*b2*c0*c0*c2*d7 + 0.0625f*c0*c0*c2*c2*d4)/6 + 0.0625f*(b0*b1*b2*b2*d0 + b0*b1*b2*c2*d2 + b0*b1*b2*c2*d6 + b0*b1*c2*c2*d8 + b0*b2*b2*c1*d2 + b0*b2*c1*c2*d1 + b0*b2*c1*c2*d8 + b0*c1*c2*c2*d7 + b1*b2*b2*c0*d6 + b1*b2*c0*c2*d3 + b1*b2*c0*c2*d8 + b1*c0*c2*c2*d5 + b2*b2*c0*c1*d8 + b2*c0*c1*c2*d5 + b2*c0*c1*c2*d7 + c0*c1*c2*c2*d4)/12 - 0.0625f*(b0*b1*b1*b2*d0 + b0*b1*b1*c2*d2 + b0*b1*b2*c1*d2 + b0*b1*b2*c1*d6 + b0*b1*c1*c2*d1 + b0*b1*c1*c2*d8 + b0*b2*c1*c1*d8 + b0*c1*c1*c2*d7 + b1*b1*b2*c0*d6 + b1*b1*c0*c2*d8 + b1*b2*c0*c1*d3 + b1*b2*c0*c1*d8 + b1*c0*c1*c2*d5 + b1*c0*c1*c2*d7 + b2*c0*c1*c1*d5 + c0*c1*c1*c2*d4)/12 + 0.0625f*(b0*b0*b1*b2*d0 + b0*b0*b1*c2*d2 + b0*b0*b2*c1*d6 + b0*b0*c1*c2*d8 + b0*b1*b2*c0*d2 + b0*b1*b2*c0*d6 + b0*b1*c0*c2*d1 + b0*b1*c0*c2*d8 + b0*b2*c0*c1*d3 + b0*b2*c0*c1*d8 + b0*c0*c1*c2*d5 + b0*c0*c1*c2*d7 + b1*b2*c0*c0*d8 + b1*c0*c0*c2*d7 + b2*c0*c0*c1*d5 + c0*c0*c1*c2*d4)/12)/delta
 ,
-(b0*b1*d0 + b0*c1*d6 + b1*c0*d2 + c0*c1*d8)/(4*delta)
+this->t*(b0*b1*d0 + b0*c1*d6 + b1*c0*d2 + c0*c1*d8)/(4*delta)
 ,
-(b0*b1*d2 + b0*c1*d8 + b1*c0*d1 + c0*c1*d7)/(4*delta)
+this->t*(b0*b1*d2 + b0*c1*d8 + b1*c0*d1 + c0*c1*d7)/(4*delta)
 ,
-0.125f*(-(b0*b1*b1*d0 + b0*b1*c1*d2 + b0*b1*c1*d6 + b0*c1*c1*d8 + b1*b1*c0*d2 + b1*c0*c1*d1 + b1*c0*c1*d8 + c0*c1*c1*d7)/3 + (b0*b1*b2*d0 + b0*b1*c2*d2 + b0*b2*c1*d6 + b0*c1*c2*d8 + b1*b2*c0*d2 + b1*c0*c2*d1 + b2*c0*c1*d8 + c0*c1*c2*d7)/3)/delta
+this->t*0.125f*(-(b0*b1*b1*d0 + b0*b1*c1*d2 + b0*b1*c1*d6 + b0*c1*c1*d8 + b1*b1*c0*d2 + b1*c0*c1*d1 + b1*c0*c1*d8 + c0*c1*c1*d7)/3 + (b0*b1*b2*d0 + b0*b1*c2*d2 + b0*b2*c1*d6 + b0*c1*c2*d8 + b1*b2*c0*d2 + b1*c0*c2*d1 + b2*c0*c1*d8 + c0*c1*c2*d7)/3)/delta
 ,
-(b1*b1*d0 + b1*c1*d2 + b1*c1*d6 + c1*c1*d8)/(4*delta)
+this->t*(b1*b1*d0 + b1*c1*d2 + b1*c1*d6 + c1*c1*d8)/(4*delta)
 ,
-(b1*b1*d2 + b1*c1*d1 + b1*c1*d8 + c1*c1*d7)/(4*delta)
+this->t*(b1*b1*d2 + b1*c1*d1 + b1*c1*d8 + c1*c1*d7)/(4*delta)
 ,
-0.125f*((b0*b1*b1*d0 + b0*b1*c1*d2 + b0*b1*c1*d6 + b0*c1*c1*d8 + b1*b1*c0*d2 + b1*c0*c1*d1 + b1*c0*c1*d8 + c0*c1*c1*d7)/3 - (b1*b1*b2*d0 + b1*b1*c2*d2 + b1*b2*c1*d2 + b1*b2*c1*d6 + b1*c1*c2*d1 + b1*c1*c2*d8 + b2*c1*c1*d8 + c1*c1*c2*d7)/3)/delta
+this->t*0.125f*((b0*b1*b1*d0 + b0*b1*c1*d2 + b0*b1*c1*d6 + b0*c1*c1*d8 + b1*b1*c0*d2 + b1*c0*c1*d1 + b1*c0*c1*d8 + c0*c1*c1*d7)/3 - (b1*b1*b2*d0 + b1*b1*c2*d2 + b1*b2*c1*d2 + b1*b2*c1*d6 + b1*c1*c2*d1 + b1*c1*c2*d8 + b2*c1*c1*d8 + c1*c1*c2*d7)/3)/delta
 ,
-(b1*b2*d0 + b1*c2*d2 + b2*c1*d6 + c1*c2*d8)/(4*delta)
+this->t*(b1*b2*d0 + b1*c2*d2 + b2*c1*d6 + c1*c2*d8)/(4*delta)
 ,
-(b1*b2*d2 + b1*c2*d1 + b2*c1*d8 + c1*c2*d7)/(4*delta)
+this->t*(b1*b2*d2 + b1*c2*d1 + b2*c1*d8 + c1*c2*d7)/(4*delta)
 ,
-0.125f*((b1*b1*b2*d0 + b1*b1*c2*d2 + b1*b2*c1*d2 + b1*b2*c1*d6 + b1*c1*c2*d1 + b1*c1*c2*d8 + b2*c1*c1*d8 + c1*c1*c2*d7)/3 - (b0*b1*b2*d0 + b0*b1*c2*d2 + b0*b2*c1*d6 + b0*c1*c2*d8 + b1*b2*c0*d2 + b1*c0*c2*d1 + b2*c0*c1*d8 + c0*c1*c2*d7)/3)/delta
+this->t*0.125f*((b1*b1*b2*d0 + b1*b1*c2*d2 + b1*b2*c1*d2 + b1*b2*c1*d6 + b1*c1*c2*d1 + b1*c1*c2*d8 + b2*c1*c1*d8 + c1*c1*c2*d7)/3 - (b0*b1*b2*d0 + b0*b1*c2*d2 + b0*b2*c1*d6 + b0*c1*c2*d8 + b1*b2*c0*d2 + b1*c0*c2*d1 + b2*c0*c1*d8 + c0*c1*c2*d7)/3)/delta
 ,
-(b0*b1*d6 + b0*c1*d3 + b1*c0*d8 + c0*c1*d5)/(4*delta)
+this->t*(b0*b1*d6 + b0*c1*d3 + b1*c0*d8 + c0*c1*d5)/(4*delta)
 ,
-(b0*b1*d8 + b0*c1*d5 + b1*c0*d7 + c0*c1*d4)/(4*delta)
+this->t*(b0*b1*d8 + b0*c1*d5 + b1*c0*d7 + c0*c1*d4)/(4*delta)
 ,
-0.125f*(-(b0*b1*b1*d6 + b0*b1*c1*d3 + b0*b1*c1*d8 + b0*c1*c1*d5 + b1*b1*c0*d8 + b1*c0*c1*d5 + b1*c0*c1*d7 + c0*c1*c1*d4)/3 + (b0*b1*b2*d6 + b0*b1*c2*d8 + b0*b2*c1*d3 + b0*c1*c2*d5 + b1*b2*c0*d8 + b1*c0*c2*d7 + b2*c0*c1*d5 + c0*c1*c2*d4)/3)/delta
+this->t*0.125f*(-(b0*b1*b1*d6 + b0*b1*c1*d3 + b0*b1*c1*d8 + b0*c1*c1*d5 + b1*b1*c0*d8 + b1*c0*c1*d5 + b1*c0*c1*d7 + c0*c1*c1*d4)/3 + (b0*b1*b2*d6 + b0*b1*c2*d8 + b0*b2*c1*d3 + b0*c1*c2*d5 + b1*b2*c0*d8 + b1*c0*c2*d7 + b2*c0*c1*d5 + c0*c1*c2*d4)/3)/delta
 ,
-(b1*b1*d6 + b1*c1*d3 + b1*c1*d8 + c1*c1*d5)/(4*delta)
+this->t*(b1*b1*d6 + b1*c1*d3 + b1*c1*d8 + c1*c1*d5)/(4*delta)
 ,
-(b1*b1*d8 + b1*c1*d5 + b1*c1*d7 + c1*c1*d4)/(4*delta)
+this->t*(b1*b1*d8 + b1*c1*d5 + b1*c1*d7 + c1*c1*d4)/(4*delta)
 ,
-0.125f*((b0*b1*b1*d6 + b0*b1*c1*d3 + b0*b1*c1*d8 + b0*c1*c1*d5 + b1*b1*c0*d8 + b1*c0*c1*d5 + b1*c0*c1*d7 + c0*c1*c1*d4)/3 - (b1*b1*b2*d6 + b1*b1*c2*d8 + b1*b2*c1*d3 + b1*b2*c1*d8 + b1*c1*c2*d5 + b1*c1*c2*d7 + b2*c1*c1*d5 + c1*c1*c2*d4)/3)/delta
+this->t*0.125f*((b0*b1*b1*d6 + b0*b1*c1*d3 + b0*b1*c1*d8 + b0*c1*c1*d5 + b1*b1*c0*d8 + b1*c0*c1*d5 + b1*c0*c1*d7 + c0*c1*c1*d4)/3 - (b1*b1*b2*d6 + b1*b1*c2*d8 + b1*b2*c1*d3 + b1*b2*c1*d8 + b1*c1*c2*d5 + b1*c1*c2*d7 + b2*c1*c1*d5 + c1*c1*c2*d4)/3)/delta
 ,
-(b1*b2*d6 + b1*c2*d8 + b2*c1*d3 + c1*c2*d5)/(4*delta)
+this->t*(b1*b2*d6 + b1*c2*d8 + b2*c1*d3 + c1*c2*d5)/(4*delta)
 ,
-(b1*b2*d8 + b1*c2*d7 + b2*c1*d5 + c1*c2*d4)/(4*delta)
+this->t*(b1*b2*d8 + b1*c2*d7 + b2*c1*d5 + c1*c2*d4)/(4*delta)
 ,
-0.125f*((b1*b1*b2*d6 + b1*b1*c2*d8 + b1*b2*c1*d3 + b1*b2*c1*d8 + b1*c1*c2*d5 + b1*c1*c2*d7 + b2*c1*c1*d5 + c1*c1*c2*d4)/3 - (b0*b1*b2*d6 + b0*b1*c2*d8 + b0*b2*c1*d3 + b0*c1*c2*d5 + b1*b2*c0*d8 + b1*c0*c2*d7 + b2*c0*c1*d5 + c0*c1*c2*d4)/3)/delta
+this->t*0.125f*((b1*b1*b2*d6 + b1*b1*c2*d8 + b1*b2*c1*d3 + b1*b2*c1*d8 + b1*c1*c2*d5 + b1*c1*c2*d7 + b2*c1*c1*d5 + c1*c1*c2*d4)/3 - (b0*b1*b2*d6 + b0*b1*c2*d8 + b0*b2*c1*d3 + b0*c1*c2*d5 + b1*b2*c0*d8 + b1*c0*c2*d7 + b2*c0*c1*d5 + c0*c1*c2*d4)/3)/delta
 ,
-0.125f*((b0*b0*b1*d0 + b0*b0*c1*d6 + b0*b1*c0*d2 + b0*b1*c0*d6 + b0*c0*c1*d3 + b0*c0*c1*d8 + b1*c0*c0*d8 + c0*c0*c1*d5)/3 - (b0*b1*b2*d0 + b0*b1*c2*d6 + b0*b2*c1*d6 + b0*c1*c2*d3 + b1*b2*c0*d2 + b1*c0*c2*d8 + b2*c0*c1*d8 + c0*c1*c2*d5)/3)/delta
+this->t*0.125f*((b0*b0*b1*d0 + b0*b0*c1*d6 + b0*b1*c0*d2 + b0*b1*c0*d6 + b0*c0*c1*d3 + b0*c0*c1*d8 + b1*c0*c0*d8 + c0*c0*c1*d5)/3 - (b0*b1*b2*d0 + b0*b1*c2*d6 + b0*b2*c1*d6 + b0*c1*c2*d3 + b1*b2*c0*d2 + b1*c0*c2*d8 + b2*c0*c1*d8 + c0*c1*c2*d5)/3)/delta
 ,
-0.125f*((b0*b0*b1*d2 + b0*b0*c1*d8 + b0*b1*c0*d1 + b0*b1*c0*d8 + b0*c0*c1*d5 + b0*c0*c1*d7 + b1*c0*c0*d7 + c0*c0*c1*d4)/3 - (b0*b1*b2*d2 + b0*b1*c2*d8 + b0*b2*c1*d8 + b0*c1*c2*d5 + b1*b2*c0*d1 + b1*c0*c2*d7 + b2*c0*c1*d7 + c0*c1*c2*d4)/3)/delta
+this->t*0.125f*((b0*b0*b1*d2 + b0*b0*c1*d8 + b0*b1*c0*d1 + b0*b1*c0*d8 + b0*c0*c1*d5 + b0*c0*c1*d7 + b1*c0*c0*d7 + c0*c0*c1*d4)/3 - (b0*b1*b2*d2 + b0*b1*c2*d8 + b0*b2*c1*d8 + b0*c1*c2*d5 + b1*b2*c0*d1 + b1*c0*c2*d7 + b2*c0*c1*d7 + c0*c1*c2*d4)/3)/delta
 ,
-(-(0.0625f*b0*b0*b1*b1*d0 + 0.0625f*b0*b0*b1*c1*d2 + 0.0625f*b0*b0*b1*c1*d6 + 0.0625f*b0*b0*c1*c1*d8 + 0.0625f*b0*b1*b1*c0*d2 + 0.0625f*b0*b1*b1*c0*d6 + 0.0625f*b0*b1*c0*c1*d1 + 0.0625f*b0*b1*c0*c1*d3 + 0.125f*b0*b1*c0*c1*d8 + 0.0625f*b0*c0*c1*c1*d5 + 0.0625f*b0*c0*c1*c1*d7 + 0.0625f*b1*b1*c0*c0*d8 + 0.0625f*b1*c0*c0*c1*d5 + 0.0625f*b1*c0*c0*c1*d7 + 0.0625f*c0*c0*c1*c1*d4)/6 - 0.0625f*(b0*b1*b2*b2*d0 + b0*b1*b2*c2*d2 + b0*b1*b2*c2*d6 + b0*b1*c2*c2*d8 + b0*b2*b2*c1*d6 + b0*b2*c1*c2*d3 + b0*b2*c1*c2*d8 + b0*c1*c2*c2*d5 + b1*b2*b2*c0*d2 + b1*b2*c0*c2*d1 + b1*b2*c0*c2*d8 + b1*c0*c2*c2*d7 + b2*b2*c0*c1*d8 + b2*c0*c1*c2*d5 + b2*c0*c1*c2*d7 + c0*c1*c2*c2*d4)/12 + 0.0625f*(b0*b1*b1*b2*d0 + b0*b1*b1*c2*d6 + b0*b1*b2*c1*d2 + b0*b1*b2*c1*d6 + b0*b1*c1*c2*d3 + b0*b1*c1*c2*d8 + b0*b2*c1*c1*d8 + b0*c1*c1*c2*d5 + b1*b1*b2*c0*d2 + b1*b1*c0*c2*d8 + b1*b2*c0*c1*d1 + b1*b2*c0*c1*d8 + b1*c0*c1*c2*d5 + b1*c0*c1*c2*d7 + b2*c0*c1*c1*d7 + c0*c1*c1*c2*d4)/12 + 0.0625f*(b0*b0*b1*b2*d0 + b0*b0*b1*c2*d2 + b0*b0*b2*c1*d6 + b0*b0*c1*c2*d8 + b0*b1*b2*c0*d2 + b0*b1*b2*c0*d6 + b0*b1*c0*c2*d1 + b0*b1*c0*c2*d8 + b0*b2*c0*c1*d3 + b0*b2*c0*c1*d8 + b0*c0*c1*c2*d5 + b0*c0*c1*c2*d7 + b1*b2*c0*c0*d8 + b1*c0*c0*c2*d7 + b2*c0*c0*c1*d5 + c0*c0*c1*c2*d4)/12)/delta
+this->t*(-(0.0625f*b0*b0*b1*b1*d0 + 0.0625f*b0*b0*b1*c1*d2 + 0.0625f*b0*b0*b1*c1*d6 + 0.0625f*b0*b0*c1*c1*d8 + 0.0625f*b0*b1*b1*c0*d2 + 0.0625f*b0*b1*b1*c0*d6 + 0.0625f*b0*b1*c0*c1*d1 + 0.0625f*b0*b1*c0*c1*d3 + 0.125f*b0*b1*c0*c1*d8 + 0.0625f*b0*c0*c1*c1*d5 + 0.0625f*b0*c0*c1*c1*d7 + 0.0625f*b1*b1*c0*c0*d8 + 0.0625f*b1*c0*c0*c1*d5 + 0.0625f*b1*c0*c0*c1*d7 + 0.0625f*c0*c0*c1*c1*d4)/6 - 0.0625f*(b0*b1*b2*b2*d0 + b0*b1*b2*c2*d2 + b0*b1*b2*c2*d6 + b0*b1*c2*c2*d8 + b0*b2*b2*c1*d6 + b0*b2*c1*c2*d3 + b0*b2*c1*c2*d8 + b0*c1*c2*c2*d5 + b1*b2*b2*c0*d2 + b1*b2*c0*c2*d1 + b1*b2*c0*c2*d8 + b1*c0*c2*c2*d7 + b2*b2*c0*c1*d8 + b2*c0*c1*c2*d5 + b2*c0*c1*c2*d7 + c0*c1*c2*c2*d4)/12 + 0.0625f*(b0*b1*b1*b2*d0 + b0*b1*b1*c2*d6 + b0*b1*b2*c1*d2 + b0*b1*b2*c1*d6 + b0*b1*c1*c2*d3 + b0*b1*c1*c2*d8 + b0*b2*c1*c1*d8 + b0*c1*c1*c2*d5 + b1*b1*b2*c0*d2 + b1*b1*c0*c2*d8 + b1*b2*c0*c1*d1 + b1*b2*c0*c1*d8 + b1*c0*c1*c2*d5 + b1*c0*c1*c2*d7 + b2*c0*c1*c1*d7 + c0*c1*c1*c2*d4)/12 + 0.0625f*(b0*b0*b1*b2*d0 + b0*b0*b1*c2*d2 + b0*b0*b2*c1*d6 + b0*b0*c1*c2*d8 + b0*b1*b2*c0*d2 + b0*b1*b2*c0*d6 + b0*b1*c0*c2*d1 + b0*b1*c0*c2*d8 + b0*b2*c0*c1*d3 + b0*b2*c0*c1*d8 + b0*c0*c1*c2*d5 + b0*c0*c1*c2*d7 + b1*b2*c0*c0*d8 + b1*c0*c0*c2*d7 + b2*c0*c0*c1*d5 + c0*c0*c1*c2*d4)/12)/delta
 ,
-0.125f*((b0*b1*b1*d0 + b0*b1*c1*d2 + b0*b1*c1*d6 + b0*c1*c1*d8 + b1*b1*c0*d6 + b1*c0*c1*d3 + b1*c0*c1*d8 + c0*c1*c1*d5)/3 - (b1*b1*b2*d0 + b1*b1*c2*d6 + b1*b2*c1*d2 + b1*b2*c1*d6 + b1*c1*c2*d3 + b1*c1*c2*d8 + b2*c1*c1*d8 + c1*c1*c2*d5)/3)/delta
+this->t*0.125f*((b0*b1*b1*d0 + b0*b1*c1*d2 + b0*b1*c1*d6 + b0*c1*c1*d8 + b1*b1*c0*d6 + b1*c0*c1*d3 + b1*c0*c1*d8 + c0*c1*c1*d5)/3 - (b1*b1*b2*d0 + b1*b1*c2*d6 + b1*b2*c1*d2 + b1*b2*c1*d6 + b1*c1*c2*d3 + b1*c1*c2*d8 + b2*c1*c1*d8 + c1*c1*c2*d5)/3)/delta
 ,
-0.125f*((b0*b1*b1*d2 + b0*b1*c1*d1 + b0*b1*c1*d8 + b0*c1*c1*d7 + b1*b1*c0*d8 + b1*c0*c1*d5 + b1*c0*c1*d7 + c0*c1*c1*d4)/3 - (b1*b1*b2*d2 + b1*b1*c2*d8 + b1*b2*c1*d1 + b1*b2*c1*d8 + b1*c1*c2*d5 + b1*c1*c2*d7 + b2*c1*c1*d7 + c1*c1*c2*d4)/3)/delta
+this->t*0.125f*((b0*b1*b1*d2 + b0*b1*c1*d1 + b0*b1*c1*d8 + b0*c1*c1*d7 + b1*b1*c0*d8 + b1*c0*c1*d5 + b1*c0*c1*d7 + c0*c1*c1*d4)/3 - (b1*b1*b2*d2 + b1*b1*c2*d8 + b1*b2*c1*d1 + b1*b2*c1*d8 + b1*c1*c2*d5 + b1*c1*c2*d7 + b2*c1*c1*d7 + c1*c1*c2*d4)/3)/delta
 ,
-((0.0625f*b0*b0*b1*b1*d0 + 0.0625f*b0*b0*b1*c1*d2 + 0.0625f*b0*b0*b1*c1*d6 + 0.0625f*b0*b0*c1*c1*d8 + 0.0625f*b0*b1*b1*c0*d2 + 0.0625f*b0*b1*b1*c0*d6 + 0.0625f*b0*b1*c0*c1*d1 + 0.0625f*b0*b1*c0*c1*d3 + 0.125f*b0*b1*c0*c1*d8 + 0.0625f*b0*c0*c1*c1*d5 + 0.0625f*b0*c0*c1*c1*d7 + 0.0625f*b1*b1*c0*c0*d8 + 0.0625f*b1*c0*c0*c1*d5 + 0.0625f*b1*c0*c0*c1*d7 + 0.0625f*c0*c0*c1*c1*d4)/6 + (0.0625f*b1*b1*b2*b2*d0 + 0.0625f*b1*b1*b2*c2*d2 + 0.0625f*b1*b1*b2*c2*d6 + 0.0625f*b1*b1*c2*c2*d8 + 0.0625f*b1*b2*b2*c1*d2 + 0.0625f*b1*b2*b2*c1*d6 + 0.0625f*b1*b2*c1*c2*d1 + 0.0625f*b1*b2*c1*c2*d3 + 0.125f*b1*b2*c1*c2*d8 + 0.0625f*b1*c1*c2*c2*d5 + 0.0625f*b1*c1*c2*c2*d7 + 0.0625f*b2*b2*c1*c1*d8 + 0.0625f*b2*c1*c1*c2*d5 + 0.0625f*b2*c1*c1*c2*d7 + 0.0625f*c1*c1*c2*c2*d4)/6 - (0.125f*b0*b1*b1*b2*d0 + 0.0625f*b0*b1*b1*c2*d2 + 0.0625f*b0*b1*b1*c2*d6 + 0.125f*b0*b1*b2*c1*d2 + 0.125f*b0*b1*b2*c1*d6 + 0.0625f*b0*b1*c1*c2*d1 + 0.0625f*b0*b1*c1*c2*d3 + 0.125f*b0*b1*c1*c2*d8 + 0.125f*b0*b2*c1*c1*d8 + 0.0625f*b0*c1*c1*c2*d5 + 0.0625f*b0*c1*c1*c2*d7 + 0.0625f*b1*b1*b2*c0*d2 + 0.0625f*b1*b1*b2*c0*d6 + 0.125f*b1*b1*c0*c2*d8 + 0.0625f*b1*b2*c0*c1*d1 + 0.0625f*b1*b2*c0*c1*d3 + 0.125f*b1*b2*c0*c1*d8 + 0.125f*b1*c0*c1*c2*d5 + 0.125f*b1*c0*c1*c2*d7 + 0.0625f*b2*c0*c1*c1*d5 + 0.0625f*b2*c0*c1*c1*d7 + 0.125f*c0*c1*c1*c2*d4)/12)/delta
+this->t*((0.0625f*b0*b0*b1*b1*d0 + 0.0625f*b0*b0*b1*c1*d2 + 0.0625f*b0*b0*b1*c1*d6 + 0.0625f*b0*b0*c1*c1*d8 + 0.0625f*b0*b1*b1*c0*d2 + 0.0625f*b0*b1*b1*c0*d6 + 0.0625f*b0*b1*c0*c1*d1 + 0.0625f*b0*b1*c0*c1*d3 + 0.125f*b0*b1*c0*c1*d8 + 0.0625f*b0*c0*c1*c1*d5 + 0.0625f*b0*c0*c1*c1*d7 + 0.0625f*b1*b1*c0*c0*d8 + 0.0625f*b1*c0*c0*c1*d5 + 0.0625f*b1*c0*c0*c1*d7 + 0.0625f*c0*c0*c1*c1*d4)/6 + (0.0625f*b1*b1*b2*b2*d0 + 0.0625f*b1*b1*b2*c2*d2 + 0.0625f*b1*b1*b2*c2*d6 + 0.0625f*b1*b1*c2*c2*d8 + 0.0625f*b1*b2*b2*c1*d2 + 0.0625f*b1*b2*b2*c1*d6 + 0.0625f*b1*b2*c1*c2*d1 + 0.0625f*b1*b2*c1*c2*d3 + 0.125f*b1*b2*c1*c2*d8 + 0.0625f*b1*c1*c2*c2*d5 + 0.0625f*b1*c1*c2*c2*d7 + 0.0625f*b2*b2*c1*c1*d8 + 0.0625f*b2*c1*c1*c2*d5 + 0.0625f*b2*c1*c1*c2*d7 + 0.0625f*c1*c1*c2*c2*d4)/6 - (0.125f*b0*b1*b1*b2*d0 + 0.0625f*b0*b1*b1*c2*d2 + 0.0625f*b0*b1*b1*c2*d6 + 0.125f*b0*b1*b2*c1*d2 + 0.125f*b0*b1*b2*c1*d6 + 0.0625f*b0*b1*c1*c2*d1 + 0.0625f*b0*b1*c1*c2*d3 + 0.125f*b0*b1*c1*c2*d8 + 0.125f*b0*b2*c1*c1*d8 + 0.0625f*b0*c1*c1*c2*d5 + 0.0625f*b0*c1*c1*c2*d7 + 0.0625f*b1*b1*b2*c0*d2 + 0.0625f*b1*b1*b2*c0*d6 + 0.125f*b1*b1*c0*c2*d8 + 0.0625f*b1*b2*c0*c1*d1 + 0.0625f*b1*b2*c0*c1*d3 + 0.125f*b1*b2*c0*c1*d8 + 0.125f*b1*c0*c1*c2*d5 + 0.125f*b1*c0*c1*c2*d7 + 0.0625f*b2*c0*c1*c1*d5 + 0.0625f*b2*c0*c1*c1*d7 + 0.125f*c0*c1*c1*c2*d4)/12)/delta
 ,
-0.125f*(-(b1*b2*b2*d0 + b1*b2*c2*d2 + b1*b2*c2*d6 + b1*c2*c2*d8 + b2*b2*c1*d6 + b2*c1*c2*d3 + b2*c1*c2*d8 + c1*c2*c2*d5)/3 + (b0*b1*b2*d0 + b0*b1*c2*d2 + b0*b2*c1*d6 + b0*c1*c2*d8 + b1*b2*c0*d6 + b1*c0*c2*d8 + b2*c0*c1*d3 + c0*c1*c2*d5)/3)/delta
+this->t*0.125f*(-(b1*b2*b2*d0 + b1*b2*c2*d2 + b1*b2*c2*d6 + b1*c2*c2*d8 + b2*b2*c1*d6 + b2*c1*c2*d3 + b2*c1*c2*d8 + c1*c2*c2*d5)/3 + (b0*b1*b2*d0 + b0*b1*c2*d2 + b0*b2*c1*d6 + b0*c1*c2*d8 + b1*b2*c0*d6 + b1*c0*c2*d8 + b2*c0*c1*d3 + c0*c1*c2*d5)/3)/delta
 ,
-0.125f*(-(b1*b2*b2*d2 + b1*b2*c2*d1 + b1*b2*c2*d8 + b1*c2*c2*d7 + b2*b2*c1*d8 + b2*c1*c2*d5 + b2*c1*c2*d7 + c1*c2*c2*d4)/3 + (b0*b1*b2*d2 + b0*b1*c2*d1 + b0*b2*c1*d8 + b0*c1*c2*d7 + b1*b2*c0*d8 + b1*c0*c2*d7 + b2*c0*c1*d5 + c0*c1*c2*d4)/3)/delta
+this->t*0.125f*(-(b1*b2*b2*d2 + b1*b2*c2*d1 + b1*b2*c2*d8 + b1*c2*c2*d7 + b2*b2*c1*d8 + b2*c1*c2*d5 + b2*c1*c2*d7 + c1*c2*c2*d4)/3 + (b0*b1*b2*d2 + b0*b1*c2*d1 + b0*b2*c1*d8 + b0*c1*c2*d7 + b1*b2*c0*d8 + b1*c0*c2*d7 + b2*c0*c1*d5 + c0*c1*c2*d4)/3)/delta
 ,
-(-(0.0625f*b1*b1*b2*b2*d0 + 0.0625f*b1*b1*b2*c2*d2 + 0.0625f*b1*b1*b2*c2*d6 + 0.0625f*b1*b1*c2*c2*d8 + 0.0625f*b1*b2*b2*c1*d2 + 0.0625f*b1*b2*b2*c1*d6 + 0.0625f*b1*b2*c1*c2*d1 + 0.0625f*b1*b2*c1*c2*d3 + 0.125f*b1*b2*c1*c2*d8 + 0.0625f*b1*c1*c2*c2*d5 + 0.0625f*b1*c1*c2*c2*d7 + 0.0625f*b2*b2*c1*c1*d8 + 0.0625f*b2*c1*c1*c2*d5 + 0.0625f*b2*c1*c1*c2*d7 + 0.0625f*c1*c1*c2*c2*d4)/6 + 0.0625f*(b0*b1*b2*b2*d0 + b0*b1*b2*c2*d2 + b0*b1*b2*c2*d6 + b0*b1*c2*c2*d8 + b0*b2*b2*c1*d6 + b0*b2*c1*c2*d3 + b0*b2*c1*c2*d8 + b0*c1*c2*c2*d5 + b1*b2*b2*c0*d2 + b1*b2*c0*c2*d1 + b1*b2*c0*c2*d8 + b1*c0*c2*c2*d7 + b2*b2*c0*c1*d8 + b2*c0*c1*c2*d5 + b2*c0*c1*c2*d7 + c0*c1*c2*c2*d4)/12 + 0.0625f*(b0*b1*b1*b2*d0 + b0*b1*b1*c2*d2 + b0*b1*b2*c1*d2 + b0*b1*b2*c1*d6 + b0*b1*c1*c2*d1 + b0*b1*c1*c2*d8 + b0*b2*c1*c1*d8 + b0*c1*c1*c2*d7 + b1*b1*b2*c0*d6 + b1*b1*c0*c2*d8 + b1*b2*c0*c1*d3 + b1*b2*c0*c1*d8 + b1*c0*c1*c2*d5 + b1*c0*c1*c2*d7 + b2*c0*c1*c1*d5 + c0*c1*c1*c2*d4)/12 - 0.0625f*(b0*b0*b1*b2*d0 + b0*b0*b1*c2*d2 + b0*b0*b2*c1*d6 + b0*b0*c1*c2*d8 + b0*b1*b2*c0*d2 + b0*b1*b2*c0*d6 + b0*b1*c0*c2*d1 + b0*b1*c0*c2*d8 + b0*b2*c0*c1*d3 + b0*b2*c0*c1*d8 + b0*c0*c1*c2*d5 + b0*c0*c1*c2*d7 + b1*b2*c0*c0*d8 + b1*c0*c0*c2*d7 + b2*c0*c0*c1*d5 + c0*c0*c1*c2*d4)/12)/delta
+this->t*(-(0.0625f*b1*b1*b2*b2*d0 + 0.0625f*b1*b1*b2*c2*d2 + 0.0625f*b1*b1*b2*c2*d6 + 0.0625f*b1*b1*c2*c2*d8 + 0.0625f*b1*b2*b2*c1*d2 + 0.0625f*b1*b2*b2*c1*d6 + 0.0625f*b1*b2*c1*c2*d1 + 0.0625f*b1*b2*c1*c2*d3 + 0.125f*b1*b2*c1*c2*d8 + 0.0625f*b1*c1*c2*c2*d5 + 0.0625f*b1*c1*c2*c2*d7 + 0.0625f*b2*b2*c1*c1*d8 + 0.0625f*b2*c1*c1*c2*d5 + 0.0625f*b2*c1*c1*c2*d7 + 0.0625f*c1*c1*c2*c2*d4)/6 + 0.0625f*(b0*b1*b2*b2*d0 + b0*b1*b2*c2*d2 + b0*b1*b2*c2*d6 + b0*b1*c2*c2*d8 + b0*b2*b2*c1*d6 + b0*b2*c1*c2*d3 + b0*b2*c1*c2*d8 + b0*c1*c2*c2*d5 + b1*b2*b2*c0*d2 + b1*b2*c0*c2*d1 + b1*b2*c0*c2*d8 + b1*c0*c2*c2*d7 + b2*b2*c0*c1*d8 + b2*c0*c1*c2*d5 + b2*c0*c1*c2*d7 + c0*c1*c2*c2*d4)/12 + 0.0625f*(b0*b1*b1*b2*d0 + b0*b1*b1*c2*d2 + b0*b1*b2*c1*d2 + b0*b1*b2*c1*d6 + b0*b1*c1*c2*d1 + b0*b1*c1*c2*d8 + b0*b2*c1*c1*d8 + b0*c1*c1*c2*d7 + b1*b1*b2*c0*d6 + b1*b1*c0*c2*d8 + b1*b2*c0*c1*d3 + b1*b2*c0*c1*d8 + b1*c0*c1*c2*d5 + b1*c0*c1*c2*d7 + b2*c0*c1*c1*d5 + c0*c1*c1*c2*d4)/12 - 0.0625f*(b0*b0*b1*b2*d0 + b0*b0*b1*c2*d2 + b0*b0*b2*c1*d6 + b0*b0*c1*c2*d8 + b0*b1*b2*c0*d2 + b0*b1*b2*c0*d6 + b0*b1*c0*c2*d1 + b0*b1*c0*c2*d8 + b0*b2*c0*c1*d3 + b0*b2*c0*c1*d8 + b0*c0*c1*c2*d5 + b0*c0*c1*c2*d7 + b1*b2*c0*c0*d8 + b1*c0*c0*c2*d7 + b2*c0*c0*c1*d5 + c0*c0*c1*c2*d4)/12)/delta
 ,
-(b0*b2*d0 + b0*c2*d6 + b2*c0*d2 + c0*c2*d8)/(4*delta)
+this->t*(b0*b2*d0 + b0*c2*d6 + b2*c0*d2 + c0*c2*d8)/(4*delta)
 ,
-(b0*b2*d2 + b0*c2*d8 + b2*c0*d1 + c0*c2*d7)/(4*delta)
+this->t*(b0*b2*d2 + b0*c2*d8 + b2*c0*d1 + c0*c2*d7)/(4*delta)
 ,
-0.125f*((b0*b2*b2*d0 + b0*b2*c2*d2 + b0*b2*c2*d6 + b0*c2*c2*d8 + b2*b2*c0*d2 + b2*c0*c2*d1 + b2*c0*c2*d8 + c0*c2*c2*d7)/3 - (b0*b1*b2*d0 + b0*b1*c2*d6 + b0*b2*c1*d2 + b0*c1*c2*d8 + b1*b2*c0*d2 + b1*c0*c2*d8 + b2*c0*c1*d1 + c0*c1*c2*d7)/3)/delta
+this->t*0.125f*((b0*b2*b2*d0 + b0*b2*c2*d2 + b0*b2*c2*d6 + b0*c2*c2*d8 + b2*b2*c0*d2 + b2*c0*c2*d1 + b2*c0*c2*d8 + c0*c2*c2*d7)/3 - (b0*b1*b2*d0 + b0*b1*c2*d6 + b0*b2*c1*d2 + b0*c1*c2*d8 + b1*b2*c0*d2 + b1*c0*c2*d8 + b2*c0*c1*d1 + c0*c1*c2*d7)/3)/delta
 ,
-(b1*b2*d0 + b1*c2*d6 + b2*c1*d2 + c1*c2*d8)/(4*delta)
+this->t*(b1*b2*d0 + b1*c2*d6 + b2*c1*d2 + c1*c2*d8)/(4*delta)
 ,
-(b1*b2*d2 + b1*c2*d8 + b2*c1*d1 + c1*c2*d7)/(4*delta)
+this->t*(b1*b2*d2 + b1*c2*d8 + b2*c1*d1 + c1*c2*d7)/(4*delta)
 ,
-0.125f*(-(b1*b2*b2*d0 + b1*b2*c2*d2 + b1*b2*c2*d6 + b1*c2*c2*d8 + b2*b2*c1*d2 + b2*c1*c2*d1 + b2*c1*c2*d8 + c1*c2*c2*d7)/3 + (b0*b1*b2*d0 + b0*b1*c2*d6 + b0*b2*c1*d2 + b0*c1*c2*d8 + b1*b2*c0*d2 + b1*c0*c2*d8 + b2*c0*c1*d1 + c0*c1*c2*d7)/3)/delta
+this->t*0.125f*(-(b1*b2*b2*d0 + b1*b2*c2*d2 + b1*b2*c2*d6 + b1*c2*c2*d8 + b2*b2*c1*d2 + b2*c1*c2*d1 + b2*c1*c2*d8 + c1*c2*c2*d7)/3 + (b0*b1*b2*d0 + b0*b1*c2*d6 + b0*b2*c1*d2 + b0*c1*c2*d8 + b1*b2*c0*d2 + b1*c0*c2*d8 + b2*c0*c1*d1 + c0*c1*c2*d7)/3)/delta
 ,
-(b2*b2*d0 + b2*c2*d2 + b2*c2*d6 + c2*c2*d8)/(4*delta)
+this->t*(b2*b2*d0 + b2*c2*d2 + b2*c2*d6 + c2*c2*d8)/(4*delta)
 ,
-(b2*b2*d2 + b2*c2*d1 + b2*c2*d8 + c2*c2*d7)/(4*delta)
+this->t*(b2*b2*d2 + b2*c2*d1 + b2*c2*d8 + c2*c2*d7)/(4*delta)
 ,
-0.125f*(-(b0*b2*b2*d0 + b0*b2*c2*d2 + b0*b2*c2*d6 + b0*c2*c2*d8 + b2*b2*c0*d2 + b2*c0*c2*d1 + b2*c0*c2*d8 + c0*c2*c2*d7)/3 + (b1*b2*b2*d0 + b1*b2*c2*d2 + b1*b2*c2*d6 + b1*c2*c2*d8 + b2*b2*c1*d2 + b2*c1*c2*d1 + b2*c1*c2*d8 + c1*c2*c2*d7)/3)/delta
+this->t*0.125f*(-(b0*b2*b2*d0 + b0*b2*c2*d2 + b0*b2*c2*d6 + b0*c2*c2*d8 + b2*b2*c0*d2 + b2*c0*c2*d1 + b2*c0*c2*d8 + c0*c2*c2*d7)/3 + (b1*b2*b2*d0 + b1*b2*c2*d2 + b1*b2*c2*d6 + b1*c2*c2*d8 + b2*b2*c1*d2 + b2*c1*c2*d1 + b2*c1*c2*d8 + c1*c2*c2*d7)/3)/delta
 ,
-(b0*b2*d6 + b0*c2*d3 + b2*c0*d8 + c0*c2*d5)/(4*delta)
+this->t*(b0*b2*d6 + b0*c2*d3 + b2*c0*d8 + c0*c2*d5)/(4*delta)
 ,
-(b0*b2*d8 + b0*c2*d5 + b2*c0*d7 + c0*c2*d4)/(4*delta)
+this->t*(b0*b2*d8 + b0*c2*d5 + b2*c0*d7 + c0*c2*d4)/(4*delta)
 ,
-0.125f*((b0*b2*b2*d6 + b0*b2*c2*d3 + b0*b2*c2*d8 + b0*c2*c2*d5 + b2*b2*c0*d8 + b2*c0*c2*d5 + b2*c0*c2*d7 + c0*c2*c2*d4)/3 - (b0*b1*b2*d6 + b0*b1*c2*d3 + b0*b2*c1*d8 + b0*c1*c2*d5 + b1*b2*c0*d8 + b1*c0*c2*d5 + b2*c0*c1*d7 + c0*c1*c2*d4)/3)/delta
+this->t*0.125f*((b0*b2*b2*d6 + b0*b2*c2*d3 + b0*b2*c2*d8 + b0*c2*c2*d5 + b2*b2*c0*d8 + b2*c0*c2*d5 + b2*c0*c2*d7 + c0*c2*c2*d4)/3 - (b0*b1*b2*d6 + b0*b1*c2*d3 + b0*b2*c1*d8 + b0*c1*c2*d5 + b1*b2*c0*d8 + b1*c0*c2*d5 + b2*c0*c1*d7 + c0*c1*c2*d4)/3)/delta
 ,
-(b1*b2*d6 + b1*c2*d3 + b2*c1*d8 + c1*c2*d5)/(4*delta)
+this->t*(b1*b2*d6 + b1*c2*d3 + b2*c1*d8 + c1*c2*d5)/(4*delta)
 ,
-(b1*b2*d8 + b1*c2*d5 + b2*c1*d7 + c1*c2*d4)/(4*delta)
+this->t*(b1*b2*d8 + b1*c2*d5 + b2*c1*d7 + c1*c2*d4)/(4*delta)
 ,
-0.125f*(-(b1*b2*b2*d6 + b1*b2*c2*d3 + b1*b2*c2*d8 + b1*c2*c2*d5 + b2*b2*c1*d8 + b2*c1*c2*d5 + b2*c1*c2*d7 + c1*c2*c2*d4)/3 + (b0*b1*b2*d6 + b0*b1*c2*d3 + b0*b2*c1*d8 + b0*c1*c2*d5 + b1*b2*c0*d8 + b1*c0*c2*d5 + b2*c0*c1*d7 + c0*c1*c2*d4)/3)/delta
+this->t*0.125f*(-(b1*b2*b2*d6 + b1*b2*c2*d3 + b1*b2*c2*d8 + b1*c2*c2*d5 + b2*b2*c1*d8 + b2*c1*c2*d5 + b2*c1*c2*d7 + c1*c2*c2*d4)/3 + (b0*b1*b2*d6 + b0*b1*c2*d3 + b0*b2*c1*d8 + b0*c1*c2*d5 + b1*b2*c0*d8 + b1*c0*c2*d5 + b2*c0*c1*d7 + c0*c1*c2*d4)/3)/delta
 ,
-(b2*b2*d6 + b2*c2*d3 + b2*c2*d8 + c2*c2*d5)/(4*delta)
+this->t*(b2*b2*d6 + b2*c2*d3 + b2*c2*d8 + c2*c2*d5)/(4*delta)
 ,
-(b2*b2*d8 + b2*c2*d5 + b2*c2*d7 + c2*c2*d4)/(4*delta)
+this->t*(b2*b2*d8 + b2*c2*d5 + b2*c2*d7 + c2*c2*d4)/(4*delta)
 ,
-0.125f*(-(b0*b2*b2*d6 + b0*b2*c2*d3 + b0*b2*c2*d8 + b0*c2*c2*d5 + b2*b2*c0*d8 + b2*c0*c2*d5 + b2*c0*c2*d7 + c0*c2*c2*d4)/3 + (b1*b2*b2*d6 + b1*b2*c2*d3 + b1*b2*c2*d8 + b1*c2*c2*d5 + b2*b2*c1*d8 + b2*c1*c2*d5 + b2*c1*c2*d7 + c1*c2*c2*d4)/3)/delta
+this->t*0.125f*(-(b0*b2*b2*d6 + b0*b2*c2*d3 + b0*b2*c2*d8 + b0*c2*c2*d5 + b2*b2*c0*d8 + b2*c0*c2*d5 + b2*c0*c2*d7 + c0*c2*c2*d4)/3 + (b1*b2*b2*d6 + b1*b2*c2*d3 + b1*b2*c2*d8 + b1*c2*c2*d5 + b2*b2*c1*d8 + b2*c1*c2*d5 + b2*c1*c2*d7 + c1*c2*c2*d4)/3)/delta
 ,
-0.125f*(-(b0*b0*b2*d0 + b0*b0*c2*d6 + b0*b2*c0*d2 + b0*b2*c0*d6 + b0*c0*c2*d3 + b0*c0*c2*d8 + b2*c0*c0*d8 + c0*c0*c2*d5)/3 + (b0*b1*b2*d0 + b0*b1*c2*d6 + b0*b2*c1*d6 + b0*c1*c2*d3 + b1*b2*c0*d2 + b1*c0*c2*d8 + b2*c0*c1*d8 + c0*c1*c2*d5)/3)/delta
+this->t*0.125f*(-(b0*b0*b2*d0 + b0*b0*c2*d6 + b0*b2*c0*d2 + b0*b2*c0*d6 + b0*c0*c2*d3 + b0*c0*c2*d8 + b2*c0*c0*d8 + c0*c0*c2*d5)/3 + (b0*b1*b2*d0 + b0*b1*c2*d6 + b0*b2*c1*d6 + b0*c1*c2*d3 + b1*b2*c0*d2 + b1*c0*c2*d8 + b2*c0*c1*d8 + c0*c1*c2*d5)/3)/delta
 ,
-0.125f*(-(b0*b0*b2*d2 + b0*b0*c2*d8 + b0*b2*c0*d1 + b0*b2*c0*d8 + b0*c0*c2*d5 + b0*c0*c2*d7 + b2*c0*c0*d7 + c0*c0*c2*d4)/3 + (b0*b1*b2*d2 + b0*b1*c2*d8 + b0*b2*c1*d8 + b0*c1*c2*d5 + b1*b2*c0*d1 + b1*c0*c2*d7 + b2*c0*c1*d7 + c0*c1*c2*d4)/3)/delta
+this->t*0.125f*(-(b0*b0*b2*d2 + b0*b0*c2*d8 + b0*b2*c0*d1 + b0*b2*c0*d8 + b0*c0*c2*d5 + b0*c0*c2*d7 + b2*c0*c0*d7 + c0*c0*c2*d4)/3 + (b0*b1*b2*d2 + b0*b1*c2*d8 + b0*b2*c1*d8 + b0*c1*c2*d5 + b1*b2*c0*d1 + b1*c0*c2*d7 + b2*c0*c1*d7 + c0*c1*c2*d4)/3)/delta
 ,
-(-(0.0625f*b0*b0*b2*b2*d0 + 0.0625f*b0*b0*b2*c2*d2 + 0.0625f*b0*b0*b2*c2*d6 + 0.0625f*b0*b0*c2*c2*d8 + 0.0625f*b0*b2*b2*c0*d2 + 0.0625f*b0*b2*b2*c0*d6 + 0.0625f*b0*b2*c0*c2*d1 + 0.0625f*b0*b2*c0*c2*d3 + 0.125f*b0*b2*c0*c2*d8 + 0.0625f*b0*c0*c2*c2*d5 + 0.0625f*b0*c0*c2*c2*d7 + 0.0625f*b2*b2*c0*c0*d8 + 0.0625f*b2*c0*c0*c2*d5 + 0.0625f*b2*c0*c0*c2*d7 + 0.0625f*c0*c0*c2*c2*d4)/6 + 0.0625f*(b0*b1*b2*b2*d0 + b0*b1*b2*c2*d2 + b0*b1*b2*c2*d6 + b0*b1*c2*c2*d8 + b0*b2*b2*c1*d6 + b0*b2*c1*c2*d3 + b0*b2*c1*c2*d8 + b0*c1*c2*c2*d5 + b1*b2*b2*c0*d2 + b1*b2*c0*c2*d1 + b1*b2*c0*c2*d8 + b1*c0*c2*c2*d7 + b2*b2*c0*c1*d8 + b2*c0*c1*c2*d5 + b2*c0*c1*c2*d7 + c0*c1*c2*c2*d4)/12 - 0.0625f*(b0*b1*b1*b2*d0 + b0*b1*b1*c2*d6 + b0*b1*b2*c1*d2 + b0*b1*b2*c1*d6 + b0*b1*c1*c2*d3 + b0*b1*c1*c2*d8 + b0*b2*c1*c1*d8 + b0*c1*c1*c2*d5 + b1*b1*b2*c0*d2 + b1*b1*c0*c2*d8 + b1*b2*c0*c1*d1 + b1*b2*c0*c1*d8 + b1*c0*c1*c2*d5 + b1*c0*c1*c2*d7 + b2*c0*c1*c1*d7 + c0*c1*c1*c2*d4)/12 + 0.0625f*(b0*b0*b1*b2*d0 + b0*b0*b1*c2*d6 + b0*b0*b2*c1*d2 + b0*b0*c1*c2*d8 + b0*b1*b2*c0*d2 + b0*b1*b2*c0*d6 + b0*b1*c0*c2*d3 + b0*b1*c0*c2*d8 + b0*b2*c0*c1*d1 + b0*b2*c0*c1*d8 + b0*c0*c1*c2*d5 + b0*c0*c1*c2*d7 + b1*b2*c0*c0*d8 + b1*c0*c0*c2*d5 + b2*c0*c0*c1*d7 + c0*c0*c1*c2*d4)/12)/delta
+this->t*(-(0.0625f*b0*b0*b2*b2*d0 + 0.0625f*b0*b0*b2*c2*d2 + 0.0625f*b0*b0*b2*c2*d6 + 0.0625f*b0*b0*c2*c2*d8 + 0.0625f*b0*b2*b2*c0*d2 + 0.0625f*b0*b2*b2*c0*d6 + 0.0625f*b0*b2*c0*c2*d1 + 0.0625f*b0*b2*c0*c2*d3 + 0.125f*b0*b2*c0*c2*d8 + 0.0625f*b0*c0*c2*c2*d5 + 0.0625f*b0*c0*c2*c2*d7 + 0.0625f*b2*b2*c0*c0*d8 + 0.0625f*b2*c0*c0*c2*d5 + 0.0625f*b2*c0*c0*c2*d7 + 0.0625f*c0*c0*c2*c2*d4)/6 + 0.0625f*(b0*b1*b2*b2*d0 + b0*b1*b2*c2*d2 + b0*b1*b2*c2*d6 + b0*b1*c2*c2*d8 + b0*b2*b2*c1*d6 + b0*b2*c1*c2*d3 + b0*b2*c1*c2*d8 + b0*c1*c2*c2*d5 + b1*b2*b2*c0*d2 + b1*b2*c0*c2*d1 + b1*b2*c0*c2*d8 + b1*c0*c2*c2*d7 + b2*b2*c0*c1*d8 + b2*c0*c1*c2*d5 + b2*c0*c1*c2*d7 + c0*c1*c2*c2*d4)/12 - 0.0625f*(b0*b1*b1*b2*d0 + b0*b1*b1*c2*d6 + b0*b1*b2*c1*d2 + b0*b1*b2*c1*d6 + b0*b1*c1*c2*d3 + b0*b1*c1*c2*d8 + b0*b2*c1*c1*d8 + b0*c1*c1*c2*d5 + b1*b1*b2*c0*d2 + b1*b1*c0*c2*d8 + b1*b2*c0*c1*d1 + b1*b2*c0*c1*d8 + b1*c0*c1*c2*d5 + b1*c0*c1*c2*d7 + b2*c0*c1*c1*d7 + c0*c1*c1*c2*d4)/12 + 0.0625f*(b0*b0*b1*b2*d0 + b0*b0*b1*c2*d6 + b0*b0*b2*c1*d2 + b0*b0*c1*c2*d8 + b0*b1*b2*c0*d2 + b0*b1*b2*c0*d6 + b0*b1*c0*c2*d3 + b0*b1*c0*c2*d8 + b0*b2*c0*c1*d1 + b0*b2*c0*c1*d8 + b0*c0*c1*c2*d5 + b0*c0*c1*c2*d7 + b1*b2*c0*c0*d8 + b1*c0*c0*c2*d5 + b2*c0*c0*c1*d7 + c0*c0*c1*c2*d4)/12)/delta
 ,
-0.125f*((b1*b1*b2*d0 + b1*b1*c2*d6 + b1*b2*c1*d2 + b1*b2*c1*d6 + b1*c1*c2*d3 + b1*c1*c2*d8 + b2*c1*c1*d8 + c1*c1*c2*d5)/3 - (b0*b1*b2*d0 + b0*b1*c2*d6 + b0*b2*c1*d2 + b0*c1*c2*d8 + b1*b2*c0*d6 + b1*c0*c2*d3 + b2*c0*c1*d8 + c0*c1*c2*d5)/3)/delta
+this->t*0.125f*((b1*b1*b2*d0 + b1*b1*c2*d6 + b1*b2*c1*d2 + b1*b2*c1*d6 + b1*c1*c2*d3 + b1*c1*c2*d8 + b2*c1*c1*d8 + c1*c1*c2*d5)/3 - (b0*b1*b2*d0 + b0*b1*c2*d6 + b0*b2*c1*d2 + b0*c1*c2*d8 + b1*b2*c0*d6 + b1*c0*c2*d3 + b2*c0*c1*d8 + c0*c1*c2*d5)/3)/delta
 ,
-0.125f*((b1*b1*b2*d2 + b1*b1*c2*d8 + b1*b2*c1*d1 + b1*b2*c1*d8 + b1*c1*c2*d5 + b1*c1*c2*d7 + b2*c1*c1*d7 + c1*c1*c2*d4)/3 - (b0*b1*b2*d2 + b0*b1*c2*d8 + b0*b2*c1*d1 + b0*c1*c2*d7 + b1*b2*c0*d8 + b1*c0*c2*d5 + b2*c0*c1*d7 + c0*c1*c2*d4)/3)/delta
+this->t*0.125f*((b1*b1*b2*d2 + b1*b1*c2*d8 + b1*b2*c1*d1 + b1*b2*c1*d8 + b1*c1*c2*d5 + b1*c1*c2*d7 + b2*c1*c1*d7 + c1*c1*c2*d4)/3 - (b0*b1*b2*d2 + b0*b1*c2*d8 + b0*b2*c1*d1 + b0*c1*c2*d7 + b1*b2*c0*d8 + b1*c0*c2*d5 + b2*c0*c1*d7 + c0*c1*c2*d4)/3)/delta
 ,
-(-(0.0625f*b1*b1*b2*b2*d0 + 0.0625f*b1*b1*b2*c2*d2 + 0.0625f*b1*b1*b2*c2*d6 + 0.0625f*b1*b1*c2*c2*d8 + 0.0625f*b1*b2*b2*c1*d2 + 0.0625f*b1*b2*b2*c1*d6 + 0.0625f*b1*b2*c1*c2*d1 + 0.0625f*b1*b2*c1*c2*d3 + 0.125f*b1*b2*c1*c2*d8 + 0.0625f*b1*c1*c2*c2*d5 + 0.0625f*b1*c1*c2*c2*d7 + 0.0625f*b2*b2*c1*c1*d8 + 0.0625f*b2*c1*c1*c2*d5 + 0.0625f*b2*c1*c1*c2*d7 + 0.0625f*c1*c1*c2*c2*d4)/6 + 0.0625f*(b0*b1*b2*b2*d0 + b0*b1*b2*c2*d2 + b0*b1*b2*c2*d6 + b0*b1*c2*c2*d8 + b0*b2*b2*c1*d2 + b0*b2*c1*c2*d1 + b0*b2*c1*c2*d8 + b0*c1*c2*c2*d7 + b1*b2*b2*c0*d6 + b1*b2*c0*c2*d3 + b1*b2*c0*c2*d8 + b1*c0*c2*c2*d5 + b2*b2*c0*c1*d8 + b2*c0*c1*c2*d5 + b2*c0*c1*c2*d7 + c0*c1*c2*c2*d4)/12 + 0.0625f*(b0*b1*b1*b2*d0 + b0*b1*b1*c2*d6 + b0*b1*b2*c1*d2 + b0*b1*b2*c1*d6 + b0*b1*c1*c2*d3 + b0*b1*c1*c2*d8 + b0*b2*c1*c1*d8 + b0*c1*c1*c2*d5 + b1*b1*b2*c0*d2 + b1*b1*c0*c2*d8 + b1*b2*c0*c1*d1 + b1*b2*c0*c1*d8 + b1*c0*c1*c2*d5 + b1*c0*c1*c2*d7 + b2*c0*c1*c1*d7 + c0*c1*c1*c2*d4)/12 - 0.0625f*(b0*b0*b1*b2*d0 + b0*b0*b1*c2*d6 + b0*b0*b2*c1*d2 + b0*b0*c1*c2*d8 + b0*b1*b2*c0*d2 + b0*b1*b2*c0*d6 + b0*b1*c0*c2*d3 + b0*b1*c0*c2*d8 + b0*b2*c0*c1*d1 + b0*b2*c0*c1*d8 + b0*c0*c1*c2*d5 + b0*c0*c1*c2*d7 + b1*b2*c0*c0*d8 + b1*c0*c0*c2*d5 + b2*c0*c0*c1*d7 + c0*c0*c1*c2*d4)/12)/delta
+this->t*(-(0.0625f*b1*b1*b2*b2*d0 + 0.0625f*b1*b1*b2*c2*d2 + 0.0625f*b1*b1*b2*c2*d6 + 0.0625f*b1*b1*c2*c2*d8 + 0.0625f*b1*b2*b2*c1*d2 + 0.0625f*b1*b2*b2*c1*d6 + 0.0625f*b1*b2*c1*c2*d1 + 0.0625f*b1*b2*c1*c2*d3 + 0.125f*b1*b2*c1*c2*d8 + 0.0625f*b1*c1*c2*c2*d5 + 0.0625f*b1*c1*c2*c2*d7 + 0.0625f*b2*b2*c1*c1*d8 + 0.0625f*b2*c1*c1*c2*d5 + 0.0625f*b2*c1*c1*c2*d7 + 0.0625f*c1*c1*c2*c2*d4)/6 + 0.0625f*(b0*b1*b2*b2*d0 + b0*b1*b2*c2*d2 + b0*b1*b2*c2*d6 + b0*b1*c2*c2*d8 + b0*b2*b2*c1*d2 + b0*b2*c1*c2*d1 + b0*b2*c1*c2*d8 + b0*c1*c2*c2*d7 + b1*b2*b2*c0*d6 + b1*b2*c0*c2*d3 + b1*b2*c0*c2*d8 + b1*c0*c2*c2*d5 + b2*b2*c0*c1*d8 + b2*c0*c1*c2*d5 + b2*c0*c1*c2*d7 + c0*c1*c2*c2*d4)/12 + 0.0625f*(b0*b1*b1*b2*d0 + b0*b1*b1*c2*d6 + b0*b1*b2*c1*d2 + b0*b1*b2*c1*d6 + b0*b1*c1*c2*d3 + b0*b1*c1*c2*d8 + b0*b2*c1*c1*d8 + b0*c1*c1*c2*d5 + b1*b1*b2*c0*d2 + b1*b1*c0*c2*d8 + b1*b2*c0*c1*d1 + b1*b2*c0*c1*d8 + b1*c0*c1*c2*d5 + b1*c0*c1*c2*d7 + b2*c0*c1*c1*d7 + c0*c1*c1*c2*d4)/12 - 0.0625f*(b0*b0*b1*b2*d0 + b0*b0*b1*c2*d6 + b0*b0*b2*c1*d2 + b0*b0*c1*c2*d8 + b0*b1*b2*c0*d2 + b0*b1*b2*c0*d6 + b0*b1*c0*c2*d3 + b0*b1*c0*c2*d8 + b0*b2*c0*c1*d1 + b0*b2*c0*c1*d8 + b0*c0*c1*c2*d5 + b0*c0*c1*c2*d7 + b1*b2*c0*c0*d8 + b1*c0*c0*c2*d5 + b2*c0*c0*c1*d7 + c0*c0*c1*c2*d4)/12)/delta
 ,
-0.125f*(-(b0*b2*b2*d0 + b0*b2*c2*d2 + b0*b2*c2*d6 + b0*c2*c2*d8 + b2*b2*c0*d6 + b2*c0*c2*d3 + b2*c0*c2*d8 + c0*c2*c2*d5)/3 + (b1*b2*b2*d0 + b1*b2*c2*d2 + b1*b2*c2*d6 + b1*c2*c2*d8 + b2*b2*c1*d6 + b2*c1*c2*d3 + b2*c1*c2*d8 + c1*c2*c2*d5)/3)/delta
+this->t*0.125f*(-(b0*b2*b2*d0 + b0*b2*c2*d2 + b0*b2*c2*d6 + b0*c2*c2*d8 + b2*b2*c0*d6 + b2*c0*c2*d3 + b2*c0*c2*d8 + c0*c2*c2*d5)/3 + (b1*b2*b2*d0 + b1*b2*c2*d2 + b1*b2*c2*d6 + b1*c2*c2*d8 + b2*b2*c1*d6 + b2*c1*c2*d3 + b2*c1*c2*d8 + c1*c2*c2*d5)/3)/delta
 ,
-0.125f*(-(b0*b2*b2*d2 + b0*b2*c2*d1 + b0*b2*c2*d8 + b0*c2*c2*d7 + b2*b2*c0*d8 + b2*c0*c2*d5 + b2*c0*c2*d7 + c0*c2*c2*d4)/3 + (b1*b2*b2*d2 + b1*b2*c2*d1 + b1*b2*c2*d8 + b1*c2*c2*d7 + b2*b2*c1*d8 + b2*c1*c2*d5 + b2*c1*c2*d7 + c1*c2*c2*d4)/3)/delta
+this->t*0.125f*(-(b0*b2*b2*d2 + b0*b2*c2*d1 + b0*b2*c2*d8 + b0*c2*c2*d7 + b2*b2*c0*d8 + b2*c0*c2*d5 + b2*c0*c2*d7 + c0*c2*c2*d4)/3 + (b1*b2*b2*d2 + b1*b2*c2*d1 + b1*b2*c2*d8 + b1*c2*c2*d7 + b2*b2*c1*d8 + b2*c1*c2*d5 + b2*c1*c2*d7 + c1*c2*c2*d4)/3)/delta
 ,
-((0.0625f*b0*b0*b2*b2*d0 + 0.0625f*b0*b0*b2*c2*d2 + 0.0625f*b0*b0*b2*c2*d6 + 0.0625f*b0*b0*c2*c2*d8 + 0.0625f*b0*b2*b2*c0*d2 + 0.0625f*b0*b2*b2*c0*d6 + 0.0625f*b0*b2*c0*c2*d1 + 0.0625f*b0*b2*c0*c2*d3 + 0.125f*b0*b2*c0*c2*d8 + 0.0625f*b0*c0*c2*c2*d5 + 0.0625f*b0*c0*c2*c2*d7 + 0.0625f*b2*b2*c0*c0*d8 + 0.0625f*b2*c0*c0*c2*d5 + 0.0625f*b2*c0*c0*c2*d7 + 0.0625f*c0*c0*c2*c2*d4)/6 + (0.0625f*b1*b1*b2*b2*d0 + 0.0625f*b1*b1*b2*c2*d2 + 0.0625f*b1*b1*b2*c2*d6 + 0.0625f*b1*b1*c2*c2*d8 + 0.0625f*b1*b2*b2*c1*d2 + 0.0625f*b1*b2*b2*c1*d6 + 0.0625f*b1*b2*c1*c2*d1 + 0.0625f*b1*b2*c1*c2*d3 + 0.125f*b1*b2*c1*c2*d8 + 0.0625f*b1*c1*c2*c2*d5 + 0.0625f*b1*c1*c2*c2*d7 + 0.0625f*b2*b2*c1*c1*d8 + 0.0625f*b2*c1*c1*c2*d5 + 0.0625f*b2*c1*c1*c2*d7 + 0.0625f*c1*c1*c2*c2*d4)/6 - (0.125f*b0*b1*b2*b2*d0 + 0.125f*b0*b1*b2*c2*d2 + 0.125f*b0*b1*b2*c2*d6 + 0.125f*b0*b1*c2*c2*d8 + 0.0625f*b0*b2*b2*c1*d2 + 0.0625f*b0*b2*b2*c1*d6 + 0.0625f*b0*b2*c1*c2*d1 + 0.0625f*b0*b2*c1*c2*d3 + 0.125f*b0*b2*c1*c2*d8 + 0.0625f*b0*c1*c2*c2*d5 + 0.0625f*b0*c1*c2*c2*d7 + 0.0625f*b1*b2*b2*c0*d2 + 0.0625f*b1*b2*b2*c0*d6 + 0.0625f*b1*b2*c0*c2*d1 + 0.0625f*b1*b2*c0*c2*d3 + 0.125f*b1*b2*c0*c2*d8 + 0.0625f*b1*c0*c2*c2*d5 + 0.0625f*b1*c0*c2*c2*d7 + 0.125f*b2*b2*c0*c1*d8 + 0.125f*b2*c0*c1*c2*d5 + 0.125f*b2*c0*c1*c2*d7 + 0.125f*c0*c1*c2*c2*d4)/12)/delta
+this->t*((0.0625f*b0*b0*b2*b2*d0 + 0.0625f*b0*b0*b2*c2*d2 + 0.0625f*b0*b0*b2*c2*d6 + 0.0625f*b0*b0*c2*c2*d8 + 0.0625f*b0*b2*b2*c0*d2 + 0.0625f*b0*b2*b2*c0*d6 + 0.0625f*b0*b2*c0*c2*d1 + 0.0625f*b0*b2*c0*c2*d3 + 0.125f*b0*b2*c0*c2*d8 + 0.0625f*b0*c0*c2*c2*d5 + 0.0625f*b0*c0*c2*c2*d7 + 0.0625f*b2*b2*c0*c0*d8 + 0.0625f*b2*c0*c0*c2*d5 + 0.0625f*b2*c0*c0*c2*d7 + 0.0625f*c0*c0*c2*c2*d4)/6 + (0.0625f*b1*b1*b2*b2*d0 + 0.0625f*b1*b1*b2*c2*d2 + 0.0625f*b1*b1*b2*c2*d6 + 0.0625f*b1*b1*c2*c2*d8 + 0.0625f*b1*b2*b2*c1*d2 + 0.0625f*b1*b2*b2*c1*d6 + 0.0625f*b1*b2*c1*c2*d1 + 0.0625f*b1*b2*c1*c2*d3 + 0.125f*b1*b2*c1*c2*d8 + 0.0625f*b1*c1*c2*c2*d5 + 0.0625f*b1*c1*c2*c2*d7 + 0.0625f*b2*b2*c1*c1*d8 + 0.0625f*b2*c1*c1*c2*d5 + 0.0625f*b2*c1*c1*c2*d7 + 0.0625f*c1*c1*c2*c2*d4)/6 - (0.125f*b0*b1*b2*b2*d0 + 0.125f*b0*b1*b2*c2*d2 + 0.125f*b0*b1*b2*c2*d6 + 0.125f*b0*b1*c2*c2*d8 + 0.0625f*b0*b2*b2*c1*d2 + 0.0625f*b0*b2*b2*c1*d6 + 0.0625f*b0*b2*c1*c2*d1 + 0.0625f*b0*b2*c1*c2*d3 + 0.125f*b0*b2*c1*c2*d8 + 0.0625f*b0*c1*c2*c2*d5 + 0.0625f*b0*c1*c2*c2*d7 + 0.0625f*b1*b2*b2*c0*d2 + 0.0625f*b1*b2*b2*c0*d6 + 0.0625f*b1*b2*c0*c2*d1 + 0.0625f*b1*b2*c0*c2*d3 + 0.125f*b1*b2*c0*c2*d8 + 0.0625f*b1*c0*c2*c2*d5 + 0.0625f*b1*c0*c2*c2*d7 + 0.125f*b2*b2*c0*c1*d8 + 0.125f*b2*c0*c1*c2*d5 + 0.125f*b2*c0*c1*c2*d7 + 0.125f*c0*c1*c2*c2*d4)/12)/delta
 };
 
     return K;
 }
 
-MeshNode* GT9::get_stresses(size_t node, const std::vector<float>& u, double density) const{
+MeshNode* GT9::get_stresses(size_t node, const std::vector<double>& u, double density) const{
     logger::log_assert(node >= 0 && node <= 3, logger::ERROR, "wrong value for BeamLinear2D node, must be either 0 or 1.");
     
     size_t N = this->nodes.size();
 
-    std::vector<float> DB = this->get_DB(this->nodes[node]->point);
+    std::vector<double> DB = this->get_DB(this->nodes[node]->point);
 
     MeshNode2D* n = static_cast<MeshNode2D*>(this->nodes[node]);
     for(size_t i = 0; i < 3; ++i){
@@ -260,16 +260,16 @@ MeshNode* GT9::get_stresses(size_t node, const std::vector<float>& u, double den
                 }
             }
         }
-        n->results[i] = density*1e6*std::abs(n->results[i]);
+        n->results[i] = density*std::abs(n->results[i]);
     }
 
     return this->get_node(node);
 }
 
-double GT9::get_stress_at(gp_Pnt point, const std::vector<float>& u) const{
+double GT9::get_stress_at(gp_Pnt point, const std::vector<double>& u) const{
     size_t N = this->nodes.size();
 
-    std::vector<float> DB = this->get_DB(point);
+    std::vector<double> DB = this->get_DB(point);
 
     std::vector<double> results(3, 0);
     for(size_t i = 0; i < 3; ++i){
@@ -284,13 +284,13 @@ double GT9::get_stress_at(gp_Pnt point, const std::vector<float>& u) const{
         results[i] = std::abs(results[i]);
     }
 
-    return 1e6*std::sqrt(std::pow(results[0], 2) - results[0]*results[1] + std::pow(results[1], 2) + 3*std::pow(results[2], 2));
+    return std::sqrt(std::pow(results[0], 2) - results[0]*results[1] + std::pow(results[1], 2) + 3*std::pow(results[2], 2));
 }
 
-MeshNode* GT9::get_internal_loads(size_t node, const std::vector<float>& u) const{
+MeshNode* GT9::get_internal_loads(size_t node, const std::vector<double>& u) const{
     logger::log_assert(node >= 0 && node <= 3, logger::ERROR, "wrong value for BeamLinear2D node, must be either 0 or 1.");
 
-    std::vector<float> k = this->get_k();
+    std::vector<double> k = this->get_k();
 
     MeshNode2D* n = static_cast<MeshNode2D*>(this->nodes[node]);
     for(int i = 0; i < 3; ++i){
@@ -308,31 +308,36 @@ MeshNode* GT9::get_internal_loads(size_t node, const std::vector<float>& u) cons
     return this->get_node(node);
 }
 
-double GT9::get_compliance(const std::vector<float>& u, const std::vector<float>& l) const{
+double GT9::get_compliance(const std::vector<double>& u, const std::vector<double>& l) const{
     auto k = this->get_k();
-    std::vector<float> u_vec(9, 0);
+    std::vector<double> u_vec(9, 0);
     for(size_t i = 0; i < 3; ++i){
         for(int j = 0; j < 3; ++j){
-            u_vec[i*3+j] = u[this->nodes[i]->u_pos[j]];
-        }
-    }
-
-    std::vector<float> f_vec(9, 0);
-
-    if(l.size() > 0){
-        std::vector<float> l_vec(9, 0);
-        for(size_t k = 0; k < 3; ++k){
-            for(int j = 0; j < 3; ++j){
-                l_vec[k*3+j] = l[this->nodes[k]->u_pos[j]];
+            if(this->nodes[i]->u_pos[j] > -1){
+                u_vec[i*3+j] = u[this->nodes[i]->u_pos[j]];
             }
         }
-        cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 9, 1, 9, 1, k.data(), 9, l_vec.data(), 1, 0, f_vec.data(), 1);
+    }
+
+    std::vector<double> f_vec(9, 0);
+
+    if(l.size() > 0){
+        std::vector<double> l_vec(9, 0);
+        for(size_t k = 0; k < 3; ++k){
+            for(int j = 0; j < 3; ++j){
+                if(this->nodes[k]->u_pos[j] > -1){
+                    l_vec[k*3+j] = l[this->nodes[k]->u_pos[j]];
+                }
+            }
+        }
+        cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 9, 1, 9, 1, k.data(), 9, u_vec.data(), 1, 0, f_vec.data(), 1);
+        return cblas_ddot(9, l_vec.data(), 1, f_vec.data(), 1);
     } else {
-        cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 9, 1, 9, 1, k.data(), 9, u_vec.data(), 1, 0, f_vec.data(), 1);
+        cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 9, 1, 9, 1, k.data(), 9, u_vec.data(), 1, 0, f_vec.data(), 1);
+        return cblas_ddot(9, u_vec.data(), 1, f_vec.data(), 1);
     }
 
 
-    return 1e-3*cblas_sdot(9, u_vec.data(), 1, f_vec.data(), 1);
 }
 
 double GT9::get_volume() const{
@@ -340,38 +345,39 @@ double GT9::get_volume() const{
                   1, this->nodes[1]->point.X(), this->nodes[1]->point.Y(),
                   1, this->nodes[2]->point.X(), this->nodes[2]->point.Y());
 
-    return 0.5*std::abs(deltaM.Determinant())*1e-6;
+    return 0.5*std::abs(deltaM.Determinant())*this->t;
 }
 
-void GT9::get_virtual_load(double P, gp_Pnt point, std::vector<float>& u, std::vector<float>& l) const{
-    std::vector<float> DB = this->get_DB(point);
-    double stress = this->get_stress_at(point, u);
-    std::vector<float> V{1, -0.5, 0,
+void GT9::get_virtual_load(double mult, gp_Pnt point, const std::vector<double>& u, std::vector<double>& l) const{
+    std::vector<double> DB = this->get_DB(point);
+    std::vector<double> V{1, -0.5, 0,
                          -0.5, 1, 0,
                          0,   0, 1.5};
 
-    std::vector<float> u_vec(9, 0);
+    std::vector<double> u_vec(9, 0);
     for(size_t k = 0; k < 3; ++k){
         for(int j = 0; j < 3; ++j){
-            u_vec[k*3+j] = u[this->nodes[k]->u_pos[j]];
+            if(this->nodes[k]->u_pos[j] > -1){
+                u_vec[k*3+j] = u[this->nodes[k]->u_pos[j]];
+            }
         }
     }
 
-    std::vector<float> f_vec(9, 0);
-    cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 3, 1, 9, 1, DB.data(), 9, u_vec.data(), 1, 0, f_vec.data(), 1);
-    std::vector<float> res(f_vec);
-    logger::quick_log(f_vec);
-    cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 3, 1, 3, 1, V.data(), 3, res.data(), 1, 0, f_vec.data(), 1);
+    std::vector<double> f_vec(9, 0);
+    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 3, 1, 9, 1, DB.data(), 9, u_vec.data(), 1, 0, f_vec.data(), 1);
+
+    std::vector<double> res(f_vec);
+    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 3, 1, 3, 1, V.data(), 3, res.data(), 1, 0, f_vec.data(), 1);
     res = f_vec;
-    logger::quick_log(f_vec);
-    cblas_sgemm(CblasRowMajor, CblasTrans, CblasNoTrans, 9, 1, 3, 1, DB.data(), 9, res.data(), 1, 0, f_vec.data(), 1);
-    logger::quick_log(f_vec);
-    cblas_sscal(9, 1e-6*P*std::pow(stress, P-2), f_vec.data(), 1);
-    logger::quick_log(f_vec);
+
+    cblas_dgemm(CblasRowMajor, CblasTrans, CblasNoTrans, 9, 1, 3, 1, DB.data(), 9, res.data(), 1, 0, f_vec.data(), 1);
+    cblas_dscal(9, mult, f_vec.data(), 1);
 
     for(size_t k = 0; k < 3; ++k){
         for(int j = 0; j < 3; ++j){
-            l[this->nodes[k]->u_pos[j]] -= f_vec[k*3+j];
+            if(this->nodes[k]->u_pos[j] > -1){
+                l[this->nodes[k]->u_pos[j]] += f_vec[k*3+j];
+            }
         }
     }
 }
@@ -404,7 +410,7 @@ gp_Pnt GT9::get_centroid() const{
 }
 
 
-std::vector<float> GT9::get_DB(gp_Pnt point) const{
+std::vector<double> GT9::get_DB(gp_Pnt point) const{
     size_t N = this->nodes.size();
 
     std::vector<gp_Pnt> p;
@@ -414,9 +420,9 @@ std::vector<float> GT9::get_DB(gp_Pnt point) const{
 
     gp_Mat deltaM(1, p[0].X(), p[0].Y(), 1, p[1].X(), p[1].Y(), 1, p[2].X(), p[2].Y());
 
-    float delta = 0.5*deltaM.Determinant();
+    double delta = 0.5*deltaM.Determinant();
 
-    std::vector<float> a, b, c;
+    std::vector<double> a, b, c;
     for(size_t i = 0; i < N; ++i){
         size_t j = (i + 1) % 3;
         size_t k = (i + 2) % 3;
@@ -426,30 +432,30 @@ std::vector<float> GT9::get_DB(gp_Pnt point) const{
         c.push_back(p[k].X() - p[j].X());
     }
 
-    float L0 = (a[0] + b[0]*point.X() + c[0]*point.Y())/(2*delta);
-    float L1 = (a[1] + b[1]*point.X() + c[1]*point.Y())/(2*delta);
-    float L2 = (a[2] + b[2]*point.X() + c[2]*point.Y())/(2*delta);
+    double L0 = (a[0] + b[0]*point.X() + c[0]*point.Y())/(2*delta);
+    double L1 = (a[1] + b[1]*point.X() + c[1]*point.Y())/(2*delta);
+    double L2 = (a[2] + b[2]*point.X() + c[2]*point.Y())/(2*delta);
 
-    float b0 = b[0];
-    float b1 = b[1];
-    float b2 = b[2];
-    float c0 = c[0];
-    float c1 = c[1];
-    float c2 = c[2];
+    double b0 = b[0];
+    double b1 = b[1];
+    double b2 = b[2];
+    double c0 = c[0];
+    double c1 = c[1];
+    double c2 = c[2];
     
     auto D = this->mat->stiffness_2D();
 
-    float d0 = D[0];
-    float d1 = D[1];
-    float d2 = D[2];
-    float d3 = D[3];
-    float d4 = D[4];
-    float d5 = D[5];
-    float d6 = D[6];
-    float d7 = D[7];
-    float d8 = D[8];
+    double d0 = D[0];
+    double d1 = D[1];
+    double d2 = D[2];
+    double d3 = D[3];
+    double d4 = D[4];
+    double d5 = D[5];
+    double d6 = D[6];
+    double d7 = D[7];
+    double d8 = D[8];
 
-    std::vector<float> DB{
+    std::vector<double> DB{
 (b0*d0 + c0*d2)/(2*delta)
 ,
 (b0*d2 + c0*d1)/(2*delta)

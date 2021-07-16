@@ -21,35 +21,35 @@
 #include "material.hpp"
 #include <cmath>
 
-Material::Material(std::vector<float> Smax, std::vector<float> Tmax){
+Material::Material(std::vector<double> Smax, std::vector<double> Tmax){
     if(Smax.size() == 1){
-        Smax = std::vector<float>(3, Smax[0]);
+        Smax = std::vector<double>(3, Smax[0]);
     } else if(Smax.size() == 3){
         Smax.insert(Smax.end(), Smax.begin(), Smax.end());
     }
     this->Smax = std::move(Smax);
     if(Tmax.size() == 1){
-        Tmax = std::vector<float>(3, Tmax[0]);
+        Tmax = std::vector<double>(3, Tmax[0]);
     }
     this->Tmax = std::move(Tmax);
 }
 
 
-float Material::get_max_Von_Mises_2D() const{
-    float S11 = std::min(this->Smax[0], this->Smax[3]);
-    float S22 = std::min(this->Smax[1], this->Smax[4]);
-    float T12 = this->Tmax[0];
+double Material::get_max_Von_Mises_2D() const{
+    double S11 = std::min(this->Smax[0], this->Smax[3]);
+    double S22 = std::min(this->Smax[1], this->Smax[4]);
+    double T12 = this->Tmax[0];
     return std::sqrt(0.5*(std::pow(S11-S22, 2)
                           + std::pow(S11, 2) + std::pow(S22,2)
                           + 6*std::pow(T12, 2)));
 }
-float Material::get_max_Von_Mises_3D() const{
-    float S11 = std::min(this->Smax[0], this->Smax[3]);
-    float S22 = std::min(this->Smax[1], this->Smax[4]);
-    float S33 = std::min(this->Smax[2], this->Smax[5]);
-    float T12 = this->Tmax[0];
-    float T13 = this->Tmax[1];
-    float T23 = this->Tmax[2];
+double Material::get_max_Von_Mises_3D() const{
+    double S11 = std::min(this->Smax[0], this->Smax[3]);
+    double S22 = std::min(this->Smax[1], this->Smax[4]);
+    double S33 = std::min(this->Smax[2], this->Smax[5]);
+    double T12 = this->Tmax[0];
+    double T13 = this->Tmax[1];
+    double T23 = this->Tmax[2];
     return std::sqrt(0.5*(std::pow(S11-S22, 2)
                           + std::pow(S22-S33, 2)
                           + std::pow(S11-S33, 2)

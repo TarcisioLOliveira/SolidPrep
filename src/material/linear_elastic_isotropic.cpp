@@ -23,8 +23,8 @@
 
 namespace material{
 
-LinearElasticIsotropic::LinearElasticIsotropic(float E, float nu, float Smax, float Tmax, bool plane_stress):
-    Material(std::vector<float>(Smax), std::vector<float>(Tmax)), E(E), nu(nu){
+LinearElasticIsotropic::LinearElasticIsotropic(double E, double nu, double Smax, double Tmax, bool plane_stress):
+    Material(std::vector<double>(Smax), std::vector<double>(Tmax)), E(E), nu(nu){
     
     this->D_2D.resize(9);
     if(plane_stress){
@@ -56,23 +56,23 @@ LinearElasticIsotropic::LinearElasticIsotropic(float E, float nu, float Smax, fl
     this->D_3D[35] = (E*nu)/(2*(1+nu));
 }
 
-std::vector<float> LinearElasticIsotropic::stiffness_2D() const{
+std::vector<double> LinearElasticIsotropic::stiffness_2D() const{
     return this->D_2D;
 }
-std::vector<float> LinearElasticIsotropic::stiffness_3D() const{
+std::vector<double> LinearElasticIsotropic::stiffness_3D() const{
     return this->D_3D;
 }
 
-float LinearElasticIsotropic::beam_E_2D(gp_Dir d) const{
+double LinearElasticIsotropic::beam_E_2D(gp_Dir d) const{
     (void)d;
     return this->E;
 }
-float LinearElasticIsotropic::beam_E_3D(gp_Dir d) const{
+double LinearElasticIsotropic::beam_E_3D(gp_Dir d) const{
     (void)d;
     return this->E;
 }
 
-std::vector<float> LinearElasticIsotropic::get_max_stresses(gp_Dir d) const{
+std::vector<double> LinearElasticIsotropic::get_max_stresses(gp_Dir d) const{
     (void)d;
     return {this->Smax[0], this->Smax[3], this->Tmax[0]};
 }

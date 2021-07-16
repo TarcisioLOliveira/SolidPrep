@@ -21,7 +21,7 @@
 #include "finite_element.hpp"
 #include "logger.hpp"
 
-void FiniteElement::calculate_stresses(Meshing* mesh, const std::vector<float>& displacements, const std::vector<double>& density) const{
+void FiniteElement::calculate_stresses(Meshing* mesh, const std::vector<double>& displacements, const std::vector<double>& density) const{
     logger::quick_log("Calculating stresses...");
     for(auto& e:mesh->element_list){
         for(size_t n = 0; n < e->nodes.size(); ++n){
@@ -53,7 +53,7 @@ void FiniteElement::calculate_stresses(Meshing* mesh, const std::vector<float>& 
     }
     logger::quick_log("Done");
 }
-void FiniteElement::calculate_forces(Meshing* mesh, const std::vector<float>& displacements) const{
+void FiniteElement::calculate_forces(Meshing* mesh, const std::vector<double>& displacements) const{
     logger::quick_log("Calculating forces...");
     for(auto& e:mesh->element_list){
         for(size_t n = 0; n < e->nodes.size(); ++n){

@@ -27,21 +27,21 @@ namespace material{
 
 class LinearElasticOrthotropic : public Material{
     public:
-    LinearElasticOrthotropic(std::vector<float> E, std::vector<float> nu, std::vector<float> G, std::vector<float> Smax, std::vector<float> Tmax);
+    LinearElasticOrthotropic(std::vector<double> E, std::vector<double> nu, std::vector<double> G, std::vector<double> Smax, std::vector<double> Tmax);
 
-    virtual std::vector<float> stiffness_2D() const override;
-    virtual std::vector<float> stiffness_3D() const override;
+    virtual std::vector<double> stiffness_2D() const override;
+    virtual std::vector<double> stiffness_3D() const override;
 
-    virtual float beam_E_2D(gp_Dir d) const override;
-    virtual float beam_E_3D(gp_Dir d) const override;
+    virtual double beam_E_2D(gp_Dir d) const override;
+    virtual double beam_E_3D(gp_Dir d) const override;
 
     virtual Type get_type() const override{ return this->LINEAR_ELASTIC_ORTHOTROPIC; }
 
-    virtual std::vector<float> get_max_stresses(gp_Dir d) const override;
+    virtual std::vector<double> get_max_stresses(gp_Dir d) const override;
 
     private:
-    std::vector<float> D_2D;
-    std::vector<float> D_3D;
+    std::vector<double> D_2D;
+    std::vector<double> D_3D;
 };
 
 }

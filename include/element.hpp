@@ -30,26 +30,26 @@ class Node{
     public:
     const gp_Pnt point;
     size_t id;
-    float * const results;
+    double * const results;
     long * u_pos;
     ~Node(){ delete[] results; }
 
     protected:
-    Node(gp_Pnt p, size_t id, size_t dim):point(p), id(id), results(new float[dim]()), u_pos(nullptr){}
+    Node(gp_Pnt p, size_t id, size_t dim):point(p), id(id), results(new double[dim]()), u_pos(nullptr){}
 };
 
 class BeamNode : public Node{
     public:
-    const float dim;
+    const double dim;
     const gp_Dir normal;
     virtual ~BeamNode() = default;
     protected:
-    BeamNode(gp_Pnt p, size_t id, size_t res_n, float dim, gp_Dir n):Node(p, id, res_n),dim(dim), normal(n){}
+    BeamNode(gp_Pnt p, size_t id, size_t res_n, double dim, gp_Dir n):Node(p, id, res_n),dim(dim), normal(n){}
 };
 
 class BeamNode2D : public BeamNode{
     public:
-    BeamNode2D(gp_Pnt p, size_t id, float dim, gp_Dir n):BeamNode(p, id, 3, dim, n){}
+    BeamNode2D(gp_Pnt p, size_t id, double dim, gp_Dir n):BeamNode(p, id, 3, dim, n){}
 };
 
 class BeamNodeFactory{
@@ -58,14 +58,14 @@ class BeamNodeFactory{
         NONE,
         BEAM_NODE_2D
     };
-    static BeamNode* make_node(gp_Pnt p, size_t id, float dim, gp_Dir n, BeamNodeType t);
+    static BeamNode* make_node(gp_Pnt p, size_t id, double dim, gp_Dir n, BeamNodeType t);
 };
 
 class MeshNode : public Node{
     public:
     virtual ~MeshNode() = default;
     virtual size_t get_result_size() const = 0;
-    virtual float get_Von_Mises() const = 0;
+    virtual double get_Von_Mises() const = 0;
     protected:
     MeshNode(gp_Pnt p, size_t id, size_t res_n): Node(p, id, res_n){}
 };
@@ -74,7 +74,7 @@ class MeshNode2D : public MeshNode{
     public:
     MeshNode2D(gp_Pnt p, size_t id):MeshNode(p, id, 3){}
     virtual size_t get_result_size() const override{ return 3; }
-    virtual float get_Von_Mises() const override{
+    virtual double get_Von_Mises() const override{
         return std::sqrt(std::pow(results[0], 2) - results[0]*results[1] + std::pow(results[1], 2) + 3*std::pow(results[2], 2));
     }
 };
@@ -99,7 +99,7 @@ class Element{
     const std::vector<Node*> nodes;
 
     virtual ~Element() = default;
-    virtual std::vector<float> get_k() const = 0;
+    virtual std::vector<double> get_k() const = 0;
 
     protected:
     Element(std::vector<Node*> n):nodes(std::move(n)){}
@@ -109,8 +109,8 @@ class BeamElement : public Element{
     public:
 
     virtual ~BeamElement() = default;
-    virtual std::vector<float> get_k() const override = 0;
-    virtual BeamNode* get_internal_loads(size_t node, const std::vector<float>& u) const = 0;
+    virtual std::vector<double> get_k() const override = 0;
+    virtual BeamNode* get_internal_loads(size_t node, const std::vector<double>& u) const = 0;
     virtual inline BeamNode* get_node(size_t node) const{ return static_cast<BeamNode*>(this->nodes[node]);}
 
     protected:
@@ -121,13 +121,13 @@ class MeshElement : public Element{
     public:
 
     virtual ~MeshElement() = default;
-    virtual std::vector<float> get_k() const override = 0;
-    virtual MeshNode* get_stresses(size_t node, const std::vector<float>& u, double density = 1) const = 0;
-    virtual MeshNode* get_internal_loads(size_t node, const std::vector<float>& u) const = 0;
-    virtual double get_stress_at(gp_Pnt p, const std::vector<float>& u) const = 0;
+    virtual std::vector<double> get_k() const override = 0;
+    virtual MeshNode* get_stresses(size_t node, const std::vector<double>& u, double density = 1) const = 0;
+    virtual MeshNode* get_internal_loads(size_t node, const std::vector<double>& u) const = 0;
+    virtual double get_stress_at(gp_Pnt p, const std::vector<double>& u) const = 0;
     virtual double get_volume() const = 0;
-    virtual double get_compliance(const std::vector<float>& u, const std::vector<float>& l = std::vector<float>()) const = 0;
-    virtual void get_virtual_load(double P, gp_Pnt point, std::vector<float>& u, std::vector<float>& l) const = 0;
+    virtual double get_compliance(const std::vector<double>& u, const std::vector<double>& l = std::vector<double>()) const = 0;
+    virtual void get_virtual_load(double mult, gp_Pnt point, const std::vector<double>& u, std::vector<double>& l) const = 0;
     virtual TopoDS_Shape get_shape() const = 0;
     virtual gp_Pnt get_centroid() const = 0;
 

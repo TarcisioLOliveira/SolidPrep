@@ -43,13 +43,13 @@ int main(int argc, char* argv[]){
 
     ProjectData proj(argv[1]);
 
-    meshing::Gmsh mesh(8, 1, utils::PROBLEM_TYPE_2D);
+    meshing::Gmsh mesh(6, 1, utils::PROBLEM_TYPE_2D);
     auto m = mesh.mesh(proj.ground_structure->shape);
     std::vector<MeshElement*> elems;
-    std::vector<float> loads;
+    std::vector<double> loads;
     mesh.prepare_for_FEM(m, MeshElementFactory::GT9, &proj);
     finite_element::DirectSolver fem;
-    topology_optimization::MinimalVolume mv(10, proj.material->get_max_Von_Mises_2D(), &proj);
+    topology_optimization::MinimalVolume mv(15, proj.material->get_max_Von_Mises_2D(), &proj);
 
     Visualization v;
     v.start();
