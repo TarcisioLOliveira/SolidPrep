@@ -202,7 +202,7 @@ std::vector<gp_Pnt> VisibilityGraph::find_path(const CrossSection& begin, const 
             current = current->prev;
         } while(current != nullptr);
     } else {
-        logger::log_assert(false, logger::ERROR, "unable to find path.");
+        logger::log_assert(false, logger::ERROR, "pathfinder was unable to find path.");
         return std::vector<gp_Pnt>();
     }
 
