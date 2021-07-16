@@ -60,7 +60,7 @@ std::vector<gp_Pnt> VisibilityGraph::find_path(const CrossSection& begin, const 
         std::vector<size_t> linked_vertices;
     };
 
-    double restr = this->restriction + begin.get_dimension()*1e3/2;
+    double restr = this->restriction + begin.get_dimension()/2;
 
     // Get edges and vertices.
     std::vector<Edge> edges;
