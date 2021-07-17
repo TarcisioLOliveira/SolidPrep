@@ -42,6 +42,8 @@
 #include <TopoDS.hxx>
 #include <BOPAlgo_BOP.hxx>
 #include <BRepBuilderAPI_Copy.hxx>
+#include <ShapeFix_Shape.hxx>
+#include <ShapeFix_Wireframe.hxx>
 
 namespace sizing{
 
@@ -73,8 +75,6 @@ TopoDS_Shape BeamSizing::run(){
             double S_n = (normal.Dot(F) < 0) ? S[0] : S[1];
             double S_c = S[2];
 
-            logger::quick_log(Fx, Fy, Mz);
-
             // Bending
             double h_f = std::sqrt(6*Mz/(t*S_f));
             // Normal
@@ -85,7 +85,7 @@ TopoDS_Shape BeamSizing::run(){
             // debug
             std::cout << h_f << " " << h_n << " " << h_c << " " << n->dim << std::endl;
 
-            double h = std::max({h_f, h_n, h_c, n->dim}); 
+            double h = 2*std::max({h_f, h_n, h_c, n->dim}); 
             gp_Ax2 axis(n->point, gp_Dir(0,0,1));
             gp_Circ circ(axis, h/2);
             TopoDS_Edge edge = BRepBuilderAPI_MakeEdge(circ);
@@ -99,6 +99,32 @@ TopoDS_Shape BeamSizing::run(){
         }
 
         copy = BRepAlgoAPI_Cut(this->data->ground_structure->shape, copy);
+
+        // Simplify geometry
+
+        double tol = 10;
+        double prec = tol*1.5;
+
+        Handle(ShapeFix_Shape) sfs = new ShapeFix_Shape(copy);
+        sfs->SetPrecision(prec);
+        sfs->SetMaxTolerance(2*tol);
+        sfs->SetMinTolerance(tol);
+        auto sfw = sfs->FixWireTool();
+        sfw->ModifyGeometryMode() = true;
+        sfw->ModifyTopologyMode() = true;
+        sfw->FixSmallMode() = true;
+        sfw->FixSmall(false, prec);
+        sfs->Perform();
+        copy = sfs->Shape();
+
+        Handle(ShapeFix_Wireframe) SFWF = new ShapeFix_Wireframe(copy);
+        SFWF->SetPrecision(prec);
+        SFWF->SetMaxTolerance(2*tol);
+        SFWF->SetMinTolerance(tol);
+        SFWF->ModeDropSmallEdges() = Standard_True;
+        SFWF->FixSmallEdges();
+        SFWF->FixWireGaps();
+        copy = SFWF->Shape();
 
         return copy;
     }
