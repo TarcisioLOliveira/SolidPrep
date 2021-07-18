@@ -45,7 +45,7 @@ TopoDS_Shape MinimalVolume::optimize(Visualization* viz, FiniteElement* fem, Mes
         std::vector<std::vector<size_t>> neighbors;
     };
 
-    Data data{viz, fem, mesh, this, 1, std::vector<double>(mesh->element_list.size(), 1), 0, 0, std::vector<double>(mesh->element_list.size(), 0), 1, std::vector<std::vector<size_t>>(mesh->element_list.size())};
+    Data data{viz, fem, mesh, this, 0.3, std::vector<double>(mesh->element_list.size(), 1), 0, 0, std::vector<double>(mesh->element_list.size(), 0), 1, std::vector<std::vector<size_t>>(mesh->element_list.size())};
 
     // Uses more memory but is much faster
     for(size_t i = 0; i < mesh->element_list.size(); ++i){
@@ -144,12 +144,11 @@ TopoDS_Shape MinimalVolume::optimize(Visualization* viz, FiniteElement* fem, Mes
             double S = e->get_stress_at(e->get_centroid(), u);
             double Se = (pt*P+1)*v*std::pow(data->new_x[i], pt*P-1)*std::pow(S, P);
 
-            grad[i] = Sg*(Se - lKu); //uKu);
-            //logger::quick_log(grad[i], data->new_x[i], Sg, Se, uKl);
+            grad[i] = Sg*(Se - lKu);
         }
         logger::quick_log("Done.");
 
-        double T = 1;
+        double T = 3;
         double alpha_i = std::max(std::min({1.0, std::pow(data->c/new_c,T), std::pow(new_c/data->c, T)}), 0.0001);
         data->alpha = alpha_i;
 
@@ -157,7 +156,7 @@ TopoDS_Shape MinimalVolume::optimize(Visualization* viz, FiniteElement* fem, Mes
 
         logger::quick_log(result, data->c, Spn, Smax, data->mv->Smax, data->alpha);
 
-        return result - data->mv->Smax;//data->mv->Smax;
+        return result - data->mv->Smax;
     
     };
     nlopt::opt MMA(nlopt::LD_MMA, mesh->element_list.size());
@@ -166,7 +165,7 @@ TopoDS_Shape MinimalVolume::optimize(Visualization* viz, FiniteElement* fem, Mes
     MMA.set_upper_bounds(1);
     MMA.add_inequality_constraint(fc, &data);
     MMA.set_param("verbosity", 5);
-    MMA.set_xtol_abs(1e-6);
+    MMA.set_xtol_abs(1e-3);
 
     double opt_f = 0;
 
