@@ -85,7 +85,7 @@ TopoDS_Shape BeamSizing::run(){
             // debug
             std::cout << h_f << " " << h_n << " " << h_c << " " << n->dim << std::endl;
 
-            double h = 2*std::max({h_f, h_n, h_c, n->dim}); 
+            double h = std::max({2*h_f, 2*h_n, 2*h_c, n->dim}); 
             gp_Ax2 axis(n->point, gp_Dir(0,0,1));
             gp_Circ circ(axis, h/2);
             TopoDS_Edge edge = BRepBuilderAPI_MakeEdge(circ);

@@ -43,7 +43,7 @@ int main(int argc, char* argv[]){
 
     ProjectData proj(argv[1]);
 
-    meshing::Gmsh mesh(6, 1, utils::PROBLEM_TYPE_2D);
+    meshing::Gmsh mesh(4, 1, utils::PROBLEM_TYPE_2D);
     auto shape = proj.sizer->run();
     utils::shape_to_file("test.step", shape);
     auto m = mesh.mesh(shape);
@@ -52,7 +52,7 @@ int main(int argc, char* argv[]){
     std::vector<double> loads;
     mesh.prepare_for_FEM(m, MeshElementFactory::GT9, &proj);
     finite_element::DirectSolver fem;
-    topology_optimization::MinimalVolume mv(15, proj.material->get_max_Von_Mises_2D(), &proj);
+    topology_optimization::MinimalVolume mv(9, proj.material->get_max_Von_Mises_2D(), &proj);
 
     Visualization v;
     v.start();

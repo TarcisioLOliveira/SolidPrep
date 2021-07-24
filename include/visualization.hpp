@@ -33,7 +33,8 @@ class Visualization{
     inline void start() const {gmsh::initialize();}
 
     void load_mesh(Meshing* mesh, utils::ProblemType type);
-    void update_view();
+    void update_stress_view(const std::vector<double>& s);
+    void update_density_view(const std::vector<double>& d);
     void show();
     inline void hide(){
         this->shown = false;
@@ -48,6 +49,7 @@ class Visualization{
     private:
     const std::string MODEL_NAME = "loaded_model";
     const std::string STRESS_VIEW = "stress_view";
+    const std::string DENSITY_VIEW = "density_view";
     bool shown = false;
     Meshing* mesh = nullptr;
     int tag = 0;

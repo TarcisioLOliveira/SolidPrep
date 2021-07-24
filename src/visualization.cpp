@@ -22,6 +22,7 @@
 #include "utils.hpp"
 #include <gmsh.h>
 #include <algorithm>
+#include <vector>
 #include "logger.hpp"
 
 void Visualization::load_mesh(Meshing* mesh, utils::ProblemType type){
@@ -65,21 +66,41 @@ void Visualization::load_mesh(Meshing* mesh, utils::ProblemType type){
     gmsh::model::mesh::addElementsByType(this->tag, mesh->element_list[0]->get_gmsh_element_type(), elem_tags, elem_nodes);
 }
 
-void Visualization::update_view(){
+void Visualization::update_stress_view(const std::vector<double>& s){
     logger::quick_log("Updating view...");
     gmsh::view::add(this->STRESS_VIEW, 1);
 
     std::vector<std::vector<double>> stress;
     stress.reserve(mesh->node_list.size());
-    std::vector<size_t> node_tags;
-    node_tags.reserve(mesh->node_list.size());
-    for(auto& n:mesh->node_list){
-        node_tags.push_back(n->id+1);
-        double s = n->get_Von_Mises();
-        std::vector<double> tmp{s};
+    std::vector<size_t> elem_tags;
+    elem_tags.reserve(s.size());
+    for(size_t i = 0; i < s.size(); ++i){
+        elem_tags.push_back(i);
+        std::vector<double> tmp{s[i]};
         stress.push_back(tmp);
     }
-    gmsh::view::addModelData(1, 0, this->MODEL_NAME, "NodeData", node_tags, stress, 0, 1);
+    gmsh::view::addModelData(1, 0, this->MODEL_NAME, "ElementData", elem_tags, stress, 0, 1);
+
+    if(this->shown){
+        gmsh::graphics::draw();
+    }
+    logger::quick_log("Done.");
+}
+
+void Visualization::update_density_view(const std::vector<double>& d){
+    logger::quick_log("Updating view...");
+    gmsh::view::add(this->DENSITY_VIEW, 2);
+
+    std::vector<std::vector<double>> density;
+    density.reserve(mesh->node_list.size());
+    std::vector<size_t> elem_tags;
+    elem_tags.reserve(mesh->element_list.size());
+    for(size_t i = 0; i < mesh->element_list.size(); ++i){
+        elem_tags.push_back(i);
+        std::vector<double> tmp{d[i]};
+        density.push_back(tmp);
+    }
+    gmsh::view::addModelData(2, 0, this->MODEL_NAME, "ElementData", elem_tags, density, 0, 1);
 
     if(this->shown){
         gmsh::graphics::draw();
