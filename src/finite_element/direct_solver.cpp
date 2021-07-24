@@ -28,7 +28,7 @@
 
 namespace finite_element{
 
-std::vector<double> DirectSolver::calculate_displacements(ProjectData* data, Meshing* mesh, const std::vector<double>& density, const std::vector<double>& virtual_load) const{
+std::vector<double> DirectSolver::calculate_displacements(ProjectData* data, Meshing* mesh, const std::vector<double>& density, double pc, const std::vector<double>& virtual_load) const{
     const size_t k_dim = std::sqrt(mesh->element_list[0]->get_k().size());
     const size_t dof = k_dim / mesh->element_list[0]->nodes.size();
 
@@ -53,7 +53,7 @@ std::vector<double> DirectSolver::calculate_displacements(ProjectData* data, Mes
         }
         std::vector<double> k = e->get_k();
         if(rho < density.end()){
-            cblas_dscal(k.size(), *rho, k.data(), 1);
+            cblas_dscal(k.size(), std::pow(*rho, pc), k.data(), 1);
             ++rho;
         }
         this->insert_element_matrix(K, k, u_pos, W, N);

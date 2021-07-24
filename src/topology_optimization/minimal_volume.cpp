@@ -23,6 +23,7 @@
 #include "logger.hpp"
 #include "utils.hpp"
 #include <nlopt.hpp>
+#include <cblas.h>
 
 namespace topology_optimization{
 
@@ -46,9 +47,10 @@ TopoDS_Shape MinimalVolume::optimize(Visualization* viz, FiniteElement* fem, Mes
         std::vector<double> grad_V;
         double alpha;
         std::vector<std::vector<size_t>> neighbors;
+        std::vector<double> u;
     };
 
-    Data data{viz, fem, mesh, this, 1, std::vector<double>(mesh->element_list.size(), 0.9), 0, 0, std::vector<double>(mesh->element_list.size(), 0), 1, std::vector<std::vector<size_t>>(mesh->element_list.size())};
+    Data data{viz, fem, mesh, this, 1, std::vector<double>(mesh->element_list.size(), 0.5), 0, 0, std::vector<double>(mesh->element_list.size(), 0), 1, std::vector<std::vector<size_t>>(mesh->element_list.size()), std::vector<double>()};
 
     // Uses more memory but is much faster
     for(size_t i = 0; i < mesh->element_list.size(); ++i){
@@ -74,7 +76,7 @@ TopoDS_Shape MinimalVolume::optimize(Visualization* viz, FiniteElement* fem, Mes
         Data* data = static_cast<Data*>(f_data);
 
         double V = 0;
-        grad = data->grad_V;
+        double pc = 3;
 
         // Density filtering
         for(size_t i = 0; i < x.size(); ++i){
@@ -90,8 +92,14 @@ TopoDS_Shape MinimalVolume::optimize(Visualization* viz, FiniteElement* fem, Mes
             V += data->new_x[i]*data->grad_V[i];
         }
         data->cur_V = V;
+        data->u = data->fem->calculate_displacements(data->mv->data, data->mesh, data->new_x, pc);
+        for(size_t i = 0; i < data->new_x.size(); ++i){
+            auto& e = data->mesh->element_list[i];
+            grad[i] = -pc*std::pow(data->new_x[i], pc-1)*e->get_compliance(data->u);
+        }
 
-        return V;
+        // return V;
+        return cblas_ddot(data->u.size(), data->u.data(), 1, data->mesh->load_vector.data(), 1);
     };
     auto fc = [](const std::vector<double>& x, std::vector<double>& grad, void* f_data)->double{
         // Getting the data
@@ -99,17 +107,9 @@ TopoDS_Shape MinimalVolume::optimize(Visualization* viz, FiniteElement* fem, Mes
         double pc = 3;
         double pt = 1.0/2;
 
-        std::vector<double> u;
-
-        std::vector<double> x_u(data->new_x);
-        for(auto& d:x_u){
-            d = std::pow(d, pc);
-        }
 
         // Calculating stresses
-        u = data->fem->calculate_displacements(data->mv->data, data->mesh, x_u);
-
-        std::vector<double> fl(u.size(), 0);
+        std::vector<double> fl(data->u.size(), 0);
 
         // Calculating global stress
         int P = 20;
@@ -119,7 +119,7 @@ TopoDS_Shape MinimalVolume::optimize(Visualization* viz, FiniteElement* fem, Mes
         std::vector<double> stress_list(data->mesh->element_list.size());
         for(size_t i = 0; i < data->mesh->element_list.size(); ++i){
             auto& e = data->mesh->element_list[i];
-            double S = e->get_stress_at(e->get_centroid(), u);
+            double S = e->get_stress_at(e->get_centroid(), data->u);
             double Se = std::pow(data->new_x[i], pt)*S;
             stress_list[i] = Se;
             if(Se > Smax){
@@ -128,7 +128,7 @@ TopoDS_Shape MinimalVolume::optimize(Visualization* viz, FiniteElement* fem, Mes
             double v = data->new_x[i]*data->grad_V[i];
             Spn += v*std::pow(Se, P);
 
-            e->get_virtual_load(P*v*std::pow(data->new_x[i], pt*P)*std::pow(S, P-2), e->get_centroid(), u, fl);
+            e->get_virtual_load(P*v*std::pow(data->new_x[i], pt*P)*std::pow(S, P-2), e->get_centroid(), data->u, fl);
             //e->get_virtual_load(v*std::pow(data->new_x[i], pt)/(S), e->get_centroid(), u, fl);
         }
         data->viz->update_stress_view(stress_list);
@@ -144,16 +144,16 @@ TopoDS_Shape MinimalVolume::optimize(Visualization* viz, FiniteElement* fem, Mes
         double result = data->c*Spn;
 
         logger::quick_log("Calculating adjoint problem...{");
-        auto l = data->fem->calculate_displacements(data->mv->data, data->mesh, x_u, fl);
+        auto l = data->fem->calculate_displacements(data->mv->data, data->mesh, data->new_x, pc, fl);
         logger::quick_log("} Done.");
 
         logger::quick_log("Calculating stress gradient...");
         // std::vector<double> grad_tmp(grad);
         for(size_t i = 0; i < data->mesh->element_list.size(); ++i){
             auto& e = data->mesh->element_list[i];
-            double lKu = pc*std::pow(data->new_x[i], pc-1)*e->get_compliance(u, l);
+            double lKu = pc*std::pow(data->new_x[i], pc-1)*e->get_compliance(data->u, l);
             double v = data->new_x[i]*data->grad_V[i];
-            double S = e->get_stress_at(e->get_centroid(), u);
+            double S = e->get_stress_at(e->get_centroid(), data->u);
             double Se = (pt*P+1)*v*std::pow(data->new_x[i], pt*P-1)*std::pow(S, P);
             //double Se = (pt+1)*v*std::pow(data->new_x[i], pt-1)*S;
 
@@ -181,7 +181,7 @@ TopoDS_Shape MinimalVolume::optimize(Visualization* viz, FiniteElement* fem, Mes
 
         data->c = data->alpha*new_c + (1 - data->alpha)*data->c;
 
-        logger::quick_log(result, data->c, Spn, Smax, data->mv->Smax, data->alpha);
+        logger::quick_log(result, data->c, Spn, Smax, data->mv->Smax, data->alpha, data->cur_V);
 
         return result;
     
