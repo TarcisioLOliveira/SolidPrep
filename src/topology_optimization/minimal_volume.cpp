@@ -50,7 +50,7 @@ TopoDS_Shape MinimalVolume::optimize(Visualization* viz, FiniteElement* fem, Mes
         std::vector<double> u;
     };
 
-    Data data{viz, fem, mesh, this, 1, std::vector<double>(mesh->element_list.size(), 0.5), 0, 0, std::vector<double>(mesh->element_list.size(), 0), 1, std::vector<std::vector<size_t>>(mesh->element_list.size()), std::vector<double>()};
+    Data data{viz, fem, mesh, this, 1, std::vector<double>(mesh->element_list.size(), 0.3), 0, 0, std::vector<double>(mesh->element_list.size(), 0), 1, std::vector<std::vector<size_t>>(mesh->element_list.size()), std::vector<double>()};
 
     // Uses more memory but is much faster
     for(size_t i = 0; i < mesh->element_list.size(); ++i){
@@ -132,7 +132,7 @@ TopoDS_Shape MinimalVolume::optimize(Visualization* viz, FiniteElement* fem, Mes
             //e->get_virtual_load(v*std::pow(data->new_x[i], pt)/(S), e->get_centroid(), u, fl);
         }
         data->viz->update_stress_view(stress_list);
-        data->viz->update_density_view(data->new_x);
+        // data->viz->update_density_view(data->new_x);
 
         Spn = std::pow(Spn, 1.0/P);
         double new_c = Smax/Spn;
@@ -192,7 +192,7 @@ TopoDS_Shape MinimalVolume::optimize(Visualization* viz, FiniteElement* fem, Mes
     MMA.set_upper_bounds(1);
     MMA.add_inequality_constraint(fc, &data, this->Smax);
     MMA.set_param("verbosity", 5);
-    MMA.set_xtol_rel(1e-4);
+    MMA.set_xtol_rel(1e-6);
 
     double opt_f = 0;
 
