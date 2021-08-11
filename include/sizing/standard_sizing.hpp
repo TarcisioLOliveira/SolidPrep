@@ -18,29 +18,26 @@
  *
  */
 
-#ifndef STANDARD_BEAM_MESHER_HPP
-#define STANDARD_BEAM_MESHER_HPP
+#ifndef STANDARD_SIZING_HPP
+#define STANDARD_SIZING_HPP
 
+#include "sizing.hpp"
+#include "finite_element.hpp"
 #include "beam_meshing.hpp"
-#include "utils.hpp"
 
-namespace meshing{
+namespace sizing{
 
-class StandardBeamMesher : public BeamMeshing{
+class StandardSizing : public Sizing{
     public:
-    StandardBeamMesher(double size, int order, utils::ProblemType type, int algorithm = 5);
+    StandardSizing(ProjectData* data, FiniteElement* solver);
 
-    virtual std::vector<ElementShape> mesh(TopoDS_Shape s) override;
+    virtual TopoDS_Shape run() override;
 
     private:
-    double size;
-    int order;
-    int dim;
-    int algorithm;
+    FiniteElement* solver;
 
-    MeshNode* find_node(size_t id) const;
-    bool is_inside_2D(gp_Pnt p, const TopoDS_Shape& t);
-    bool is_inside_3D(gp_Pnt p, const TopoDS_Shape& t);
+    TopoDS_Shape build_initial_topology() const;
+    std::vector<double> calculate_change(BeamMeshing* mesh, const std::vector<long>& ids, std::vector<double> h, const TopoDS_Shape& beams) const;
 };
 
 }

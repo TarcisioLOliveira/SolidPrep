@@ -18,31 +18,20 @@
  *
  */
 
-#ifndef STANDARD_BEAM_MESHER_HPP
-#define STANDARD_BEAM_MESHER_HPP
+#ifndef BEAM_MESHING_HPP
+#define BEAM_MESHING_HPP
 
-#include "beam_meshing.hpp"
-#include "utils.hpp"
+#include "meshing.hpp"
 
-namespace meshing{
-
-class StandardBeamMesher : public BeamMeshing{
+class BeamMeshing : public Meshing{
     public:
-    StandardBeamMesher(double size, int order, utils::ProblemType type, int algorithm = 5);
+    struct BoundaryNode{
+        BoundaryNode(MeshNode* n):node(n){}
+        MeshNode* node;
+        gp_Dir normal;
+    };
 
-    virtual std::vector<ElementShape> mesh(TopoDS_Shape s) override;
-
-    private:
-    double size;
-    int order;
-    int dim;
-    int algorithm;
-
-    MeshNode* find_node(size_t id) const;
-    bool is_inside_2D(gp_Pnt p, const TopoDS_Shape& t);
-    bool is_inside_3D(gp_Pnt p, const TopoDS_Shape& t);
+    std::vector<BoundaryNode> boundary_nodes;
 };
-
-}
 
 #endif

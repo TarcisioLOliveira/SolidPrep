@@ -60,9 +60,17 @@ std::vector<ElementShape> StandardBeamMesher::mesh(TopoDS_Shape s){
     std::vector<double> nodeCoords, nodeParams;
     gmsh::model::mesh::getNodes(nodeTags, nodeCoords, nodeParams, this->dim, -1, true);
 
+    std::vector<std::size_t> boundNodeTags;
+    std::vector<double> boundNodeCoords, boundNodeParams;
+    gmsh::model::mesh::getNodes(boundNodeTags, boundNodeCoords, boundNodeParams, this->dim-1, -1, true);
+
     std::vector<int> elemTypes;
     std::vector<std::vector<std::size_t> > elemTags, elemNodeTags;
     gmsh::model::mesh::getElements(elemTypes, elemTags, elemNodeTags, this->dim, -1);
+
+    std::vector<int> boundElemTypes;
+    std::vector<std::vector<std::size_t> > boundElemTags, boundElemNodeTags;
+    gmsh::model::mesh::getElements(boundElemTypes, boundElemTags, boundElemNodeTags, this->dim, -1);
 
     this->node_list.reserve(nodeTags.size());
     if(this->dim == 2){
@@ -75,6 +83,49 @@ std::vector<ElementShape> StandardBeamMesher::mesh(TopoDS_Shape s){
         //     gp_Pnt p(nodeCoords[i*3], nodeCoords[i*3+1], nodeCoords[i*3+2]);
         //     this->node_list.emplace_back(MeshNodeFactory::make_node(p, nodeTags[i], MeshNodeFactory::MESH_NODE_3D)); 
         // }
+    }
+    for(size_t i = 0; i < boundNodeTags.size(); ++i){
+        auto get_id = [&boundNodeTags, i](const std::unique_ptr<MeshNode>& m)->bool{ return boundNodeTags[i] == m->id; };
+        MeshNode* node = std::find_if(this->node_list.begin(), this->node_list.end(), get_id)->get();
+        boundary_nodes.push_back(node);
+    }
+    std::vector<std::vector<size_t>> neighbors(boundNodeTags.size());
+    size_t cur_e = boundElemTags.front().front();
+    size_t idx = 0;
+    for(auto& e:boundElemTags[0]){
+        std::vector<size_t> elem;
+        while(e == cur_e){
+            auto get_id = [&e](const BoundaryNode& m)->bool{ return e == m.node->id; };
+            size_t node_id = std::find_if(this->boundary_nodes.begin(), this->boundary_nodes.end(), get_id) - this->boundary_nodes.begin();
+            elem.push_back(node_id);
+            ++idx;
+        }
+        for(size_t i = 0; i < elem.size(); ++i){
+            for(size_t j = i+1; j < elem.size(); ++j){
+                neighbors[i].push_back(elem[j]);
+                neighbors[j].push_back(elem[i]);
+            }
+        }
+    }
+    for(size_t i = 0; i < neighbors.size(); ++i){
+        gp_Vec vec(0,0,0);
+        for(auto& n:neighbors[0]){
+            vec += gp_Vec(boundary_nodes[n].node->point, boundary_nodes[i].node->point);
+        }
+        gp_Dir dir(vec);
+        gp_Pnt p = boundary_nodes[i].node->point.Translated(dir);
+        bool outside = true;
+        if(this->dim == 2){
+            outside = !this->is_inside_2D(p, s);
+        } else if(this->dim == 3){
+            outside = !this->is_inside_3D(p, s);
+        }
+        if(outside){
+            boundary_nodes[i].normal = std::move(dir);
+        } else {
+            dir.Reverse();
+            boundary_nodes[i].normal = std::move(dir);
+        }
     }
 
     int node_per_elem = 0;
@@ -98,8 +149,8 @@ std::vector<ElementShape> StandardBeamMesher::mesh(TopoDS_Shape s){
     list.reserve(elemTags.size());
     list.emplace_back();
     int i = 0;
-    for(auto n:elemNodeTags[0]){
-        auto get_id = [n](const std::unique_ptr<MeshNode>& m)->bool{ return n == m->id; };
+    for(auto& n:elemNodeTags[0]){
+        auto get_id = [&n](const std::unique_ptr<MeshNode>& m)->bool{ return n == m->id; };
         MeshNode* node = std::find_if(this->node_list.begin(), this->node_list.end(), get_id)->get();
         list.back().nodes.push_back(node);
         ++i;
@@ -163,6 +214,16 @@ std::vector<ElementShape> StandardBeamMesher::mesh(TopoDS_Shape s){
     gmsh::finalize();
 
     return list;
+}
+
+bool StandardBeamMesher::is_inside_2D(gp_Pnt p, const TopoDS_Shape& t){
+    BRepClass3d_SolidClassifier insider(t, p, 0.01);
+    return insider.State() == TopAbs_ON;
+}
+
+bool StandardBeamMesher::is_inside_3D(gp_Pnt p, const TopoDS_Shape& t){
+    BRepClass3d_SolidClassifier insider(t, p, 0.01);
+    return insider.State() == TopAbs_IN;
 }
 
 }

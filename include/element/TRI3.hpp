@@ -35,12 +35,13 @@ class TRI3 : public MeshElement{
     virtual std::vector<double> get_k() const override;
     virtual MeshNode* get_stresses(size_t node, const std::vector<double>& u, double density = 1) const override;
     virtual MeshNode* get_internal_loads(size_t node, const std::vector<double>& u) const override;
+    virtual std::vector<double> get_loads_at(gp_Pnt p, const std::vector<double>& u) const override;
     virtual double get_stress_at(gp_Pnt p, const std::vector<double>& u) const override;
     virtual size_t get_gmsh_element_type() const override{ return 2;};
     virtual double get_compliance(const std::vector<double>& u, const std::vector<double>& l = std::vector<double>()) const override;
     virtual void get_virtual_load(double mult, gp_Pnt point, const std::vector<double>& u, std::vector<double>& l) const override;
     virtual double get_volume() const override;
-    virtual TopoDS_Shape get_shape() const override;
+    virtual TopoDS_Shape get_shape(std::vector<gp_Vec> disp = std::vector<gp_Vec>()) const override;
     virtual gp_Pnt get_centroid() const override;
 
     private:

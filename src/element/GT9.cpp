@@ -287,6 +287,57 @@ double GT9::get_stress_at(gp_Pnt point, const std::vector<double>& u) const{
     return std::sqrt(std::pow(results[0], 2) - results[0]*results[1] + std::pow(results[1], 2) + 3*std::pow(results[2], 2));
 }
 
+std::vector<double> GT9::get_loads_at(gp_Pnt point, const std::vector<double>& u) const{
+    std::vector<double> k = this->get_k();
+    std::vector<double> f_vec(9,0);
+    std::vector<double> u_vec(9,0);
+
+    for(int i = 0; i < 3; ++i){
+        for(size_t j = 0; j < 3; ++j){
+            if(this->nodes[i]->u_pos[j] > -1){
+                u_vec[3*i+j] = u[this->nodes[i]->u_pos[j]];
+            }
+        }
+    }
+    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 9, 1, 9, 1, k.data(), 9, u_vec.data(), 1, 0, f_vec.data(), 1);
+
+    std::vector<gp_Pnt> p;
+    for(auto n:this->nodes){
+        p.push_back(n->point);
+    }
+
+    gp_Mat deltaM(1, p[0].X(), p[0].Y(), 1, p[1].X(), p[1].Y(), 1, p[2].X(), p[2].Y());
+
+    double delta = 0.5*deltaM.Determinant();
+
+    size_t N = this->nodes.size();
+    std::vector<double> a, b, c;
+    for(size_t i = 0; i < N; ++i){
+        size_t j = (i + 1) % 3;
+        size_t k = (i + 2) % 3;
+
+        a.push_back(p[j].X()*p[k].Y() - p[k].X()*p[j].Y());
+        b.push_back(p[j].Y() - p[k].Y());
+        c.push_back(p[k].X() - p[j].X());
+    }
+
+    std::vector<double> L(3);
+    L[0] = (a[0] + b[0]*point.X() + c[0]*point.Y())/(2*delta);
+    L[1] = (a[1] + b[1]*point.X() + c[1]*point.Y())/(2*delta);
+    L[2] = (a[2] + b[2]*point.X() + c[2]*point.Y())/(2*delta);
+    std::vector<double> Nmat(9*3, 0);
+    for(size_t i = 0; i < N; ++i){
+        Nmat[3*i] = L[i];
+        Nmat[3*i + 9 + 1] = L[i];
+        Nmat[3*i + 18 + 2] = L[i];
+    }
+
+    std::vector<double> res(3, 0);
+    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 3, 1, 9, 1, Nmat.data(), 9, f_vec.data(), 1, 0, res.data(), 1);
+
+    return res;
+}
+
 MeshNode* GT9::get_internal_loads(size_t node, const std::vector<double>& u) const{
     logger::log_assert(node >= 0 && node <= 3, logger::ERROR, "wrong value for BeamLinear2D node, must be either 0 or 1.");
 
@@ -336,8 +387,6 @@ double GT9::get_compliance(const std::vector<double>& u, const std::vector<doubl
         cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 9, 1, 9, 1, k.data(), 9, u_vec.data(), 1, 0, f_vec.data(), 1);
         return cblas_ddot(9, u_vec.data(), 1, f_vec.data(), 1);
     }
-
-
 }
 
 double GT9::get_volume() const{
@@ -382,10 +431,20 @@ void GT9::get_virtual_load(double mult, gp_Pnt point, const std::vector<double>&
     }
 }
 
-TopoDS_Shape GT9::get_shape() const{
-    TopoDS_Vertex v1 = BRepBuilderAPI_MakeVertex(this->nodes[0]->point);
-    TopoDS_Vertex v2 = BRepBuilderAPI_MakeVertex(this->nodes[1]->point);
-    TopoDS_Vertex v3 = BRepBuilderAPI_MakeVertex(this->nodes[2]->point);
+TopoDS_Shape GT9::get_shape(std::vector<gp_Vec> disp) const{
+    gp_Pnt p1 = this->nodes[0]->point;
+    gp_Pnt p2 = this->nodes[1]->point;
+    gp_Pnt p3 = this->nodes[2]->point;
+
+    if(disp.size() > 0){
+        p1.Translate(disp[0]);
+        p2.Translate(disp[1]);
+        p3.Translate(disp[2]);
+    }
+
+    TopoDS_Vertex v1 = BRepBuilderAPI_MakeVertex(p1);
+    TopoDS_Vertex v2 = BRepBuilderAPI_MakeVertex(p2);
+    TopoDS_Vertex v3 = BRepBuilderAPI_MakeVertex(p3);
 
     TopoDS_Edge e1 = BRepBuilderAPI_MakeEdge(v1, v2);
     TopoDS_Edge e2 = BRepBuilderAPI_MakeEdge(v2, v3);

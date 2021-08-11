@@ -215,7 +215,67 @@ void TRI3::get_virtual_load(double mult, gp_Pnt point, const std::vector<double>
     }
 }
 
-TopoDS_Shape TRI3::get_shape() const{
+std::vector<double> TRI3::get_loads_at(gp_Pnt point, const std::vector<double>& u) const{
+    std::vector<double> k = this->get_k();
+    std::vector<double> f_vec(6,0);
+    std::vector<double> u_vec(6,0);
+
+    for(int i = 0; i < 3; ++i){
+        for(size_t j = 0; j < 2; ++j){
+            if(this->nodes[i]->u_pos[j] > -1){
+                u_vec[3*i+j] = u[this->nodes[i]->u_pos[j]];
+            }
+        }
+    }
+    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 6, 1, 6, 1, k.data(), 6, u_vec.data(), 1, 0, f_vec.data(), 1);
+
+    std::vector<gp_Pnt> p;
+    for(auto n:this->nodes){
+        p.push_back(n->point);
+    }
+
+    gp_Mat deltaM(1, p[0].X(), p[0].Y(), 1, p[1].X(), p[1].Y(), 1, p[2].X(), p[2].Y());
+
+    double delta = 0.5*deltaM.Determinant();
+
+    size_t N = this->nodes.size();
+    std::vector<double> a, b, c;
+    for(size_t i = 0; i < N; ++i){
+        size_t j = (i + 1) % 3;
+        size_t k = (i + 2) % 3;
+
+        a.push_back(p[j].X()*p[k].Y() - p[k].X()*p[j].Y());
+        b.push_back(p[j].Y() - p[k].Y());
+        c.push_back(p[k].X() - p[j].X());
+    }
+
+    // MISSING TORQUE DATA!
+    std::vector<double> L(2);
+    L[0] = (a[0] + b[0]*point.X() + c[0]*point.Y())/(2*delta);
+    L[1] = (a[1] + b[1]*point.X() + c[1]*point.Y())/(2*delta);
+    std::vector<double> Nmat(6*3, 0);
+    for(size_t i = 0; i < N; ++i){
+        Nmat[2*i] = L[i];
+        Nmat[2*i + 6 + 1] = L[i];
+    }
+
+    std::vector<double> res(3, 0);
+    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 3, 1, 6, 1, Nmat.data(), 6, f_vec.data(), 1, 0, res.data(), 1);
+
+    return res;
+}
+
+TopoDS_Shape TRI3::get_shape(std::vector<gp_Vec> disp) const{
+    gp_Pnt p1 = this->nodes[0]->point;
+    gp_Pnt p2 = this->nodes[1]->point;
+    gp_Pnt p3 = this->nodes[2]->point;
+
+    if(disp.size() > 0){
+        p1.Translate(disp[0]);
+        p2.Translate(disp[1]);
+        p3.Translate(disp[2]);
+    }
+
     TopoDS_Vertex v1 = BRepBuilderAPI_MakeVertex(this->nodes[0]->point);
     TopoDS_Vertex v2 = BRepBuilderAPI_MakeVertex(this->nodes[1]->point);
     TopoDS_Vertex v3 = BRepBuilderAPI_MakeVertex(this->nodes[2]->point);
