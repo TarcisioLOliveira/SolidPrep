@@ -65,12 +65,12 @@ std::vector<ElementShape> StandardBeamMesher::mesh(TopoDS_Shape s){
     gmsh::model::mesh::getNodes(boundNodeTags, boundNodeCoords, boundNodeParams, this->dim-1, -1, true);
 
     std::vector<int> elemTypes;
-    std::vector<std::vector<std::size_t> > elemTags, elemNodeTags;
+    std::vector<std::vector<size_t> > elemTags, elemNodeTags;
     gmsh::model::mesh::getElements(elemTypes, elemTags, elemNodeTags, this->dim, -1);
 
     std::vector<int> boundElemTypes;
-    std::vector<std::vector<std::size_t> > boundElemTags, boundElemNodeTags;
-    gmsh::model::mesh::getElements(boundElemTypes, boundElemTags, boundElemNodeTags, this->dim, -1);
+    std::vector<std::vector<size_t> > boundElemTags, boundElemNodeTags;
+    gmsh::model::mesh::getElements(boundElemTypes, boundElemTags, boundElemNodeTags, this->dim-1, -1);
 
     this->node_list.reserve(nodeTags.size());
     if(this->dim == 2){
@@ -87,30 +87,62 @@ std::vector<ElementShape> StandardBeamMesher::mesh(TopoDS_Shape s){
     for(size_t i = 0; i < boundNodeTags.size(); ++i){
         auto get_id = [&boundNodeTags, i](const std::unique_ptr<MeshNode>& m)->bool{ return boundNodeTags[i] == m->id; };
         MeshNode* node = std::find_if(this->node_list.begin(), this->node_list.end(), get_id)->get();
-        boundary_nodes.push_back(node);
-    }
-    std::vector<std::vector<size_t>> neighbors(boundNodeTags.size());
-    size_t cur_e = boundElemTags.front().front();
-    size_t idx = 0;
-    for(auto& e:boundElemTags[0]){
-        std::vector<size_t> elem;
-        while(e == cur_e){
-            auto get_id = [&e](const BoundaryNode& m)->bool{ return e == m.node->id; };
-            size_t node_id = std::find_if(this->boundary_nodes.begin(), this->boundary_nodes.end(), get_id) - this->boundary_nodes.begin();
-            elem.push_back(node_id);
-            ++idx;
+        auto get_id2 = [&boundNodeTags, i](const BoundaryNode& m)->bool{ return boundNodeTags[i] == m.node->id; };
+        if(std::find_if(this->boundary_nodes.begin(), this->boundary_nodes.end(), get_id2) == this->boundary_nodes.end()){
+            boundary_nodes.push_back(node);
         }
-        for(size_t i = 0; i < elem.size(); ++i){
-            for(size_t j = i+1; j < elem.size(); ++j){
-                neighbors[i].push_back(elem[j]);
-                neighbors[j].push_back(elem[i]);
+    }
+    std::vector<std::vector<size_t>> neighbors(boundary_nodes.size());
+    size_t nodes_per_bound_elem = 0;
+    if(this->dim == 2){
+        nodes_per_bound_elem = 2;
+    } else if(this->dim == 3){
+        nodes_per_bound_elem = 3;
+    }
+
+    size_t idx = 0;
+    std::vector<size_t> elem;
+    for(auto& n:boundElemNodeTags[0]){
+        auto get_id = [&n](const BoundaryNode& m)->bool{ return n == m.node->id; };
+        size_t node_id = std::find_if(this->boundary_nodes.begin(), this->boundary_nodes.end(), get_id) - this->boundary_nodes.begin();
+        elem.push_back(node_id);
+        ++idx;
+
+        if(idx == nodes_per_bound_elem){
+            idx = 0;
+            for(size_t i = 0; i < elem.size(); ++i){
+                for(size_t j = i+1; j < elem.size(); ++j){
+                    if(elem[i] != elem[j]){
+                        neighbors[elem[i]].push_back(elem[j]);
+                        neighbors[elem[j]].push_back(elem[i]);
+                    }
+                }
             }
+            elem.clear();
         }
     }
     for(size_t i = 0; i < neighbors.size(); ++i){
         gp_Vec vec(0,0,0);
-        for(auto& n:neighbors[0]){
+        for(auto& n:neighbors[i]){
             vec += gp_Vec(boundary_nodes[n].node->point, boundary_nodes[i].node->point);
+        }
+        // If colinear/coplanar
+        if(vec.IsEqual(gp_Vec(0, 0, 0), 1e-6, 1e-6)){
+            if(this->dim == 2){
+                gp_Pnt p1 = boundary_nodes[neighbors[i][0]].node->point;
+                gp_Pnt p2 = boundary_nodes[neighbors[i][1]].node->point;
+                gp_Pnt p3 = boundary_nodes[i].node->point;
+                vec = gp_Vec(p1, p2);
+                gp_Ax1 ax(p3, gp_Dir(0, 0, 1));
+                vec.Rotate(ax, M_PI/2);
+            } else if(this->dim == 3){
+                gp_Pnt p1 = boundary_nodes[neighbors[i][0]].node->point;
+                gp_Pnt p2 = boundary_nodes[neighbors[i][1]].node->point;
+                gp_Pnt p3 = boundary_nodes[i].node->point;
+                gp_Vec v1(p3, p1);
+                gp_Vec v2(p3, p2);
+                vec = v1.Crossed(v2);
+            }
         }
         gp_Dir dir(vec);
         gp_Pnt p = boundary_nodes[i].node->point.Translated(dir);
