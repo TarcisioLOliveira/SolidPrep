@@ -32,6 +32,7 @@
 #include "visualization.hpp"
 #include "topology_optimization/minimal_volume.hpp"
 #include <thread>
+#include "sizing/standard_sizing.hpp"
 
 int main(int argc, char* argv[]){
     // Bnd_Box bounds;
@@ -42,10 +43,15 @@ int main(int argc, char* argv[]){
     // std::cout << fXMax << " " << fXMin << " " << fYMax << " " << fYMin << " " << fZMax << " " << fZMin << std::endl;
 
     ProjectData proj(argv[1]);
+    finite_element::DirectSolver fem_beam;
+    sizing::StandardSizing sizer(&proj, &fem_beam);
+    auto shape = sizer.run();
+    utils::shape_to_file("test.step", shape);
+    return 0;
 
     meshing::Gmsh mesh(4, 1, utils::PROBLEM_TYPE_2D);
-    auto shape = proj.sizer->run();
-    utils::shape_to_file("test.step", shape);
+    auto shape2 = proj.sizer->run();
+    utils::shape_to_file("test.step", shape2);
     auto m = mesh.mesh(shape);
     // auto m = mesh.mesh(proj.ground_structure->shape);
     std::vector<MeshElement*> elems;

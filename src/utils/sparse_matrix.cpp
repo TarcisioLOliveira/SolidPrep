@@ -19,6 +19,7 @@
  */
 
 #include "utils/sparse_matrix.hpp"
+#include "logger.hpp"
 
 namespace utils{
 
@@ -84,9 +85,9 @@ std::vector<double> SparseMatrix::to_general_band(size_t diag_size, size_t& ku, 
 }
 
 SparseMatrix::Point SparseMatrix::point_to_general_band(Point p) const{
-    size_t center = kl + ku;
-    size_t i = 0;
-    size_t j = p.j;
+    long center = kl + ku;
+    long i = 0;
+    long j = p.j;
     if(p.j > p.i){
         i = center - (p.j - p.i);
     } else {

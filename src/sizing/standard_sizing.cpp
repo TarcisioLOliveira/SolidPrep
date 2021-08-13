@@ -22,9 +22,12 @@
 #include <TopoDS_Wire.hxx>
 #include <BRepBuilderAPI_MakeWire.hxx>
 #include <BRepBuilderAPI_MakeEdge.hxx>
+#include <BRepBuilderAPI_MakeSolid.hxx>
 #include <BRepBuilderAPI_Copy.hxx>
 #include <BRepOffsetAPI_MakePipe.hxx>
 #include <BRepAlgoAPI_Cut.hxx>
+#include <BRepAlgoAPI_Fuse.hxx>
+#include "logger.hpp"
 #include "meshing/standard_beam_mesher.hpp"
 #include "utils.hpp"
 #include "lapacke.h"
@@ -35,6 +38,9 @@
 #include <TopoDS.hxx>
 #include <IntTools_EdgeEdge.hxx>
 #include "utils/sparse_matrix.hpp"
+#include <TopTools_ListOfShape.hxx>
+#include <ShapeFix_Shape.hxx>
+#include <ShapeFix_Wireframe.hxx>
 
 namespace sizing{
 
@@ -47,8 +53,6 @@ TopoDS_Shape StandardSizing::run(){
     meshing::StandardBeamMesher mesh(mesh_size, 1, utils::PROBLEM_TYPE_2D);
     TopoDS_Shape beams = this->build_initial_topology();
     auto m = mesh.mesh(beams);
-    std::vector<MeshElement*> elems;
-    std::vector<double> loads;
     mesh.prepare_for_FEM(m, MeshElementFactory::GT9, this->data);
     auto u = this->solver->calculate_displacements(this->data, &mesh);
 
@@ -65,7 +69,9 @@ TopoDS_Shape StandardSizing::run(){
         }
     }
 
-    TopoDS_Shape result = BRepBuilderAPI_Copy(data->ground_structure->shape);
+    logger::quick_log("Resizing geometry...");
+    // TopoDS_Shape result = BRepBuilderAPI_Copy(data->ground_structure->shape);
+    TopoDS_Shape result = BRepBuilderAPI_MakeSolid();
     if(this->data->type == utils::PROBLEM_TYPE_2D){
         std::vector<long> uh(mesh.node_list.size()*2, 0);
         for(auto& n:fixed_nodes){
@@ -102,23 +108,32 @@ TopoDS_Shape StandardSizing::run(){
                 gp_Pnt center = n1->point;
                 center.BaryCenter(1, n2->point, 1);
                 std::vector<double> loads = e->get_loads_at(center, u);
-                if(uh[2*i] > -1){
+                if(uh[2*n1->id] > -1){
                     double fn = std::abs(loads[1]/(t*S_y));
                     double fs = std::abs(3*loads[0]/(2*t*T_xy));
                     double mf = std::sqrt(6*std::abs(loads[2])/(t*S_y))/div;
-                    h[uh[2*i]] = std::max({fn, fs, mf});
+                    h[uh[2*n1->id]] = std::max({fn, fs, mf});
                 }
-                if(uh[2*i+1] > -1){
+                if(uh[2*n1->id+1] > -1){
                     double fn = std::abs(loads[0]/(t*S_x));
                     double fs = std::abs(3*loads[1]/(2*t*T_xy));
                     double mf = std::sqrt(6*std::abs(loads[2])/(t*S_x))/div;
-                    h[uh[2*i+1]] = std::max({fn, fs, mf});
+                    h[uh[2*n1->id+1]] = std::max({fn, fs, mf});
                 }
             }
         }
 
         std::vector<double> U = this->calculate_change(&mesh, uh, h, beams);
+        logger::quick_log("Done.");
 
+        logger::quick_log("Generating geometry...");
+        std::cout << "0%";
+        size_t i = 0;
+
+        result = BRepBuilderAPI_Copy(this->data->ground_structure->shape);
+        TopTools_ListOfShape shapes1;
+        shapes1.Append(result);
+        TopTools_ListOfShape shapes2;
         for(auto& e:mesh.element_list){
             std::vector<gp_Vec> vecs;
             for(auto& n:e->nodes){
@@ -129,11 +144,57 @@ TopoDS_Shape StandardSizing::run(){
                 if(uh[2*n->id+1] > -1){
                     v.SetY(U[uh[2*n->id+1]]);
                 }
+                vecs.push_back(v);
             }
-            result = BRepAlgoAPI_Cut(result, e->get_shape(vecs));
+            // TopoDS_Shape s = e->get_shape(vecs);
+            // result = BRepAlgoAPI_Cut(result, s);
+            shapes2.Clear();
+            shapes2.Append(e->get_shape(vecs));
+            BRepAlgoAPI_Cut cut;
+            cut.SetTools(shapes1);
+            cut.SetArguments(shapes2);
+            cut.SetNonDestructive(true);
+            cut.Build();
+            cut.SimplifyResult();
+            result = cut.Shape();
+            shapes1.Clear();
+            shapes1.Append(result);
+
+            double pc = i/(double)(mesh.element_list.size()-1);
+            std::cout << "\r" << pc*100 << "%         ";
+
+            ++i;
         }
+        std::cout << "\r" << 100 << "%         ";
+        std::cout << std::endl;
+
+        logger::quick_log("Done.");
     }
     result = BRepAlgoAPI_Cut(this->data->ground_structure->shape, result);
+
+    // double tol = 10;
+    // double prec = tol*1.5;
+
+    // Handle(ShapeFix_Shape) sfs = new ShapeFix_Shape(result);
+    // sfs->SetPrecision(prec);
+    // sfs->SetMaxTolerance(2*tol);
+    // sfs->SetMinTolerance(tol);
+    // auto sfw = sfs->FixWireTool();
+    // sfw->ModifyGeometryMode() = true;
+    // sfw->ModifyTopologyMode() = true;
+    // sfw->FixSmallMode() = true;
+    // sfw->FixSmall(false, prec);
+    // sfs->Perform();
+    // result = sfs->Shape();
+
+    // Handle(ShapeFix_Wireframe) SFWF = new ShapeFix_Wireframe(result);
+    // SFWF->SetPrecision(prec);
+    // SFWF->SetMaxTolerance(2*tol);
+    // SFWF->SetMinTolerance(tol);
+    // SFWF->ModeDropSmallEdges() = Standard_True;
+    // SFWF->FixSmallEdges();
+    // SFWF->FixWireGaps();
+    // result = SFWF->Shape();
 
     return result;
 }
@@ -169,22 +230,21 @@ std::vector<double> StandardSizing::calculate_change(BeamMeshing* mesh, const st
     }
     utils::SparseMatrix Km;
     for(size_t i = 0; i < mesh->element_list.size(); ++i){
-
         std::vector<double> k_mat(n*n*dof*dof, 0);
         std::vector<long> pos;
         for(size_t j = 0; j < n; ++j){
             size_t k = (j+1) % n;
-            auto& n1 = mesh->element_list[i]->nodes[j];
-            auto& n2 = mesh->element_list[i]->nodes[k];
+            Node* n1 = mesh->element_list[i]->nodes[j];
+            Node* n2 = mesh->element_list[i]->nodes[k];
             for(size_t I = 0; I < dof; ++I){
-                k_mat[(I+j)*n+I+j] = 1;
-                k_mat[(I+j)*n+I+k+dof] = -1;
+                k_mat[(I+j*dof)*n*dof+I+j*dof] = 1;
+                k_mat[(I+j*dof)*n*dof+I+k*dof] = -1;
             }
             for(size_t l = 0; l < dof; ++l){
                 size_t id = n1->id*dof+l;
+                pos.push_back(ids[id]);
                 if(ids[id] > -1){
-                    pos.push_back(n*ids[id]);
-                    h[n*ids[id]] = std::max(0.0, h[n*ids[id]] - std::abs(n1->point.Coord(l) - n2->point.Coord(l)));
+                    h[ids[id]] = std::max(0.0, h[ids[id]] - std::abs(n1->point.Coord(l+1) - n2->point.Coord(l+1)));
                 }
             }
         }
@@ -236,8 +296,9 @@ std::vector<double> StandardSizing::calculate_change(BeamMeshing* mesh, const st
     size_t ku = 0;
     size_t kl = 0;
     std::vector<double> K = Km.to_general_band(h.size(), ku, kl);
+    std::vector<int> pivot(h.size(), 0);
 
-    int info = LAPACKE_dgbsv(LAPACK_ROW_MAJOR, h.size(), kl, ku, 1, K.data(), h.size(), nullptr, h.data(), 1);
+    int info = LAPACKE_dgbsv(LAPACK_ROW_MAJOR, h.size(), kl, ku, 1, K.data(), h.size(), pivot.data(), h.data(), 1);
     logger::log_assert(info == 0, logger::ERROR, "LAPACKE returned {} while calculating topology expansions.", info);
 
     return h;
