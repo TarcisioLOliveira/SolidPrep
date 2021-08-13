@@ -19,13 +19,14 @@
  */
 
 #include "material/linear_elastic_isotropic.hpp"
+#include "logger.hpp"
 #include <cmath>
 
 namespace material{
 
 LinearElasticIsotropic::LinearElasticIsotropic(double E, double nu, double Smax, double Tmax, bool plane_stress):
-    Material(std::vector<double>(Smax), std::vector<double>(Tmax)), E(E), nu(nu){
-    
+    Material({Smax}, {Tmax}), E(E), nu(nu){
+
     this->D_2D.resize(9);
     if(plane_stress){
         this->D_2D[0] = E/(1-nu*nu);

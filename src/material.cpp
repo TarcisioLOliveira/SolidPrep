@@ -23,15 +23,18 @@
 
 Material::Material(std::vector<double> Smax, std::vector<double> Tmax){
     if(Smax.size() == 1){
-        Smax = std::vector<double>(3, Smax[0]);
+        this->Smax = std::vector<double>(6, Smax[0]);
     } else if(Smax.size() == 3){
-        Smax.insert(Smax.end(), Smax.begin(), Smax.end());
+        this->Smax = std::move(Smax);
+        this->Smax.insert(Smax.end(), Smax.begin(), Smax.end());
+    } else {
+        this->Smax = std::move(Smax);
     }
-    this->Smax = std::move(Smax);
     if(Tmax.size() == 1){
-        Tmax = std::vector<double>(3, Tmax[0]);
+        this->Tmax = std::vector<double>(3, Tmax[0]);
+    } else {
+        this->Tmax = std::move(Tmax);
     }
-    this->Tmax = std::move(Tmax);
 }
 
 
