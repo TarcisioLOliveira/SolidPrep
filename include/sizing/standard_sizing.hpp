@@ -35,9 +35,11 @@ class StandardSizing : public Sizing{
 
     private:
     FiniteElement* solver;
+    std::vector<gp_Pnt> end_points;
 
-    TopoDS_Shape build_initial_topology() const;
+    TopoDS_Shape build_initial_topology();
     std::vector<double> calculate_change(BeamMeshing* mesh, const std::vector<long>& ids, std::vector<double> h, const TopoDS_Shape& beams) const;
+    TopoDS_Shape simplify_shape(TopoDS_Shape shape) const;
 };
 
 }

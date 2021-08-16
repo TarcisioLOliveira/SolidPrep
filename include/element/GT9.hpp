@@ -36,7 +36,9 @@ class GT9 : public MeshElement{
     virtual MeshNode* get_stresses(size_t node, const std::vector<double>& u, double density = 1) const override;
     virtual MeshNode* get_internal_loads(size_t node, const std::vector<double>& u) const override;
     virtual double get_stress_at(gp_Pnt p, const std::vector<double>& u) const override;
+    virtual std::vector<double> get_average_stress(const gp_Pnt& p1, const gp_Pnt& p2, const std::vector<double>& u) const override;
     virtual std::vector<double> get_loads_at(gp_Pnt p, const std::vector<double>& u) const override;
+    virtual std::vector<double> get_average_loads(const gp_Pnt& p1, const gp_Pnt& p2, const std::vector<double>& u) const override;
     virtual size_t get_gmsh_element_type() const override{ return 2;};
     virtual double get_compliance(const std::vector<double>& u, const std::vector<double>& l = std::vector<double>()) const override;
     virtual double get_volume() const override;

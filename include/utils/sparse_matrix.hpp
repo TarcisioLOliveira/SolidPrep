@@ -41,10 +41,12 @@ class SparseMatrix{
     };
 
     void set(size_t i, size_t j, double val);
+    void add(size_t i, size_t j, double val);
     double get(size_t i, size_t j) const;
     void insert_matrix(std::vector<double> M, std::vector<long> pos);
     std::vector<double> multiply(std::vector<double> vec) const;
     std::vector<double> to_general_band(size_t diag_size, size_t& ku, size_t& kl) const;
+    std::vector<size_t> affected_ids(const std::vector<size_t>& ids) const;
     inline void clear(){this->data.clear();}
 
     private:

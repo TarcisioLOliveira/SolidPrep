@@ -20,11 +20,28 @@
 
 #include "utils/sparse_matrix.hpp"
 #include "logger.hpp"
+#include <set>
 
 namespace utils{
 
 void SparseMatrix::set(size_t i, size_t j, double val){
     this->data[Point(i, j)] = val;
+    size_t k = 0;
+    if(j > i){
+        k = j - i;
+        if(k > this->ku){
+            ku = k;
+        }
+    } else if(i > j){
+        k = i - j;
+        if(k > this->kl){
+            kl = k;
+        }
+    }
+}
+
+void SparseMatrix::add(size_t i, size_t j, double val){
+    this->data[Point(i, j)] += val;
     size_t k = 0;
     if(j > i){
         k = j - i;
@@ -53,7 +70,7 @@ void SparseMatrix::insert_matrix(std::vector<double> M, std::vector<long> pos){
         for(size_t j = 0; j < pos.size(); ++j){
             if(pos[i] > -1 && pos[j] > -1){
                 if(std::abs(M[i*W + j]) > 1e-7){
-                    this->set(pos[i], pos[j], M[i*W + j]);
+                    this->add(pos[i], pos[j], M[i*W + j]);
                 }
             }
         }
@@ -94,6 +111,39 @@ SparseMatrix::Point SparseMatrix::point_to_general_band(Point p) const{
         i = center + (p.i - p.j);
     }
     return Point(i, j);
+}
+
+std::vector<size_t> SparseMatrix::affected_ids(const std::vector<size_t>& ids) const{
+    std::set<size_t> affected;
+    size_t cur_i = this->data.begin()->first.i;
+    size_t cur_id = 0;
+    bool skip_line = false;
+    for(auto& v:this->data){
+        if(cur_i != v.first.i){
+            cur_i = v.first.i;
+            cur_id = 0;
+            skip_line = false;
+        }
+        if(skip_line){
+            continue;
+        }
+        if(v.first.j < ids[cur_id]){
+            continue;
+        }
+        if(v.first.j > ids[cur_id]){
+            ++cur_id;
+        }
+        if(v.first.j == ids[cur_id]){
+            if(v.second != 0){
+                affected.insert(v.first.i);
+                skip_line = true;
+            }
+            ++cur_id;
+        }
+    }
+    std::vector<size_t> aff(affected.begin(), affected.end());
+
+    return aff;
 }
 
 }

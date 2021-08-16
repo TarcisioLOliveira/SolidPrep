@@ -50,30 +50,33 @@ int main(int argc, char* argv[]){
     return 0;
 
     meshing::Gmsh mesh(4, 1, utils::PROBLEM_TYPE_2D);
-    auto shape2 = proj.sizer->run();
-    utils::shape_to_file("test.step", shape2);
-    auto m = mesh.mesh(shape);
+    // auto shape2 = proj.sizer->run();
+    // utils::shape_to_file("test.step", shape2);
+    // auto m = mesh.mesh(shape);
+    //
     // auto m = mesh.mesh(proj.ground_structure->shape);
+    auto m = mesh.mesh(shape);
     std::vector<MeshElement*> elems;
     std::vector<double> loads;
     mesh.prepare_for_FEM(m, MeshElementFactory::GT9, &proj);
     finite_element::DirectSolver fem;
-    topology_optimization::MinimalVolume mv(9, proj.material->get_max_Von_Mises_2D(), &proj);
+    fem.calculate_displacements(&proj, &mesh);
+    //topology_optimization::MinimalVolume mv(9, proj.material->get_max_Von_Mises_2D(), &proj);
 
     Visualization v;
     v.start();
     v.load_mesh(&mesh, proj.type);
 
     v.show();
-    auto f = [&](){
+    //auto f = [&](){
         v.wait();
-    };
-    std::thread t(f);
-    mv.optimize(&v, &fem, &mesh);
+    // };
+    // std::thread t(f);
+    // mv.optimize(&v, &fem, &mesh);
 
     logger::quick_log("Finished.");
 
-    t.join();
+    //t.join();
 
     v.end();
 
