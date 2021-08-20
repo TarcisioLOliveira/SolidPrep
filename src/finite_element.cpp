@@ -65,17 +65,7 @@ void FiniteElement::calculate_forces(Meshing* mesh, const std::vector<double>& d
     }
     for(auto& e:mesh->element_list){
         for(size_t n = 0; n < e->nodes.size(); ++n){
-            bool calculated = false;
-            MeshNode* node = e->get_node(n);
-            for(size_t k = 0; k < node->get_result_size(); ++k){
-                if(node->results[k] != 0){
-                    calculated = true;
-                    break;
-                }
-            }
-            if(!calculated){
-                e->get_internal_loads(n, displacements);
-            }
+            e->get_internal_loads(n, displacements);
         }
     }
     logger::quick_log("Done.");

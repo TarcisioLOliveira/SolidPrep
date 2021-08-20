@@ -25,6 +25,7 @@
 #include <gp_Pnt.hxx>
 #include <vector>
 #include <TopoDS_Shape.hxx>
+#include <TopoDS_Edge.hxx>
 
 class Node{
     public:
@@ -127,7 +128,10 @@ class MeshElement : public Element{
     virtual double get_stress_at(gp_Pnt p, const std::vector<double>& u) const = 0;
     virtual std::vector<double> get_loads_at(gp_Pnt p, const std::vector<double>& u) const = 0;
     virtual std::vector<double> get_average_stress(const gp_Pnt& p1, const gp_Pnt& p2, const std::vector<double>& u) const = 0;
-    virtual std::vector<double> get_average_loads(const gp_Pnt& p1, const gp_Pnt& p2, const std::vector<double>& u) const = 0;
+    virtual std::vector<double> get_average_loads(const gp_Pnt& p1, const gp_Pnt& p2, const std::vector<double>& u, const std::vector<size_t> excluded_nodes = std::vector<size_t>()) const = 0;
+    virtual std::vector<double> get_average_loads_and_torques(const gp_Pnt& p1, const gp_Pnt& p2, const std::vector<double>& u, const std::vector<size_t> excluded_nodes = std::vector<size_t>()) const = 0;
+    // Edge for 2D, face for 3D
+    virtual std::vector<gp_Pnt> get_intersection_points(const TopoDS_Shape& crosssection) const = 0;
     virtual double get_volume() const = 0;
     virtual double get_compliance(const std::vector<double>& u, const std::vector<double>& l = std::vector<double>()) const = 0;
     virtual void get_virtual_load(double mult, gp_Pnt point, const std::vector<double>& u, std::vector<double>& l) const = 0;

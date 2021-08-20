@@ -28,6 +28,8 @@
 #include <BRepBuilderAPI_MakeFace.hxx>
 #include <TopoDS_Wire.hxx>
 #include <TopoDS_Face.hxx>
+#include <TopoDS.hxx>
+#include <IntTools_EdgeEdge.hxx>
 
 namespace element{
 
@@ -129,15 +131,13 @@ MeshNode* TRI3::get_internal_loads(size_t node, const std::vector<double>& u) co
 
     MeshNode2D* n = static_cast<MeshNode2D*>(this->nodes[node]);
     for(int i = 0; i < 3; ++i){
-        n->results[i] = 0;
         for(size_t l = 0; l < 3; ++l){
             for(int j = 0; j < 2; ++j){
                 if(this->nodes[l]->u_pos[j] > -1){
-                    n->results[i] += k[node*2*3+l*2+j]*u[this->nodes[l]->u_pos[j]];
+                    n->results[i] += k[(node*2+i)*2*3+l*2+j]*u[this->nodes[l]->u_pos[j]];
                 }
             }
         }
-        n->results[i] = std::abs(n->results[i]);
     }
 
     return this->get_node(node);
@@ -265,7 +265,7 @@ std::vector<double> TRI3::get_loads_at(gp_Pnt point, const std::vector<double>& 
 }
 
 
-std::vector<double> TRI3::get_average_loads(const gp_Pnt& p1, const gp_Pnt& p2, const std::vector<double>& u) const{
+std::vector<double> TRI3::get_average_loads(const gp_Pnt& p1, const gp_Pnt& p2, const std::vector<double>& u, const std::vector<size_t> excluded_nodes) const{
     std::vector<double> k = this->get_k();
     std::vector<double> f_vec(6,0);
     std::vector<double> u_vec(6,0);
@@ -307,9 +307,10 @@ std::vector<double> TRI3::get_average_loads(const gp_Pnt& p1, const gp_Pnt& p2, 
 
     double dist = p1.Distance(p2);
 
-    std::vector<double> L(2);
+    std::vector<double> L(3);
     L[0] = (a[0]*(x2-x1)*(y2-y1) + 0.5*b[0]*(x2*x2-x1*x1)*(y2-y1) + 0.5*c[0]*(x2-x1)*(y2*y2-y1*y1))/(2*delta);
     L[1] = (a[1]*(x2-x1)*(y2-y1) + 0.5*b[1]*(x2*x2-x1*x1)*(y2-y1) + 0.5*c[1]*(x2-x1)*(y2*y2-y1*y1))/(2*delta);
+    L[2] = (a[2]*(x2-x1)*(y2-y1) + 0.5*b[2]*(x2*x2-x1*x1)*(y2-y1) + 0.5*c[2]*(x2-x1)*(y2*y2-y1*y1))/(2*delta);
     std::vector<double> Nmat(6*2, 0);
     for(size_t i = 0; i < N; ++i){
         Nmat[2*i] = L[i]/dist;
@@ -317,10 +318,44 @@ std::vector<double> TRI3::get_average_loads(const gp_Pnt& p1, const gp_Pnt& p2, 
     }
 
     std::vector<double> res(2, 0);
-    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 2, 1, 6, 1, Nmat.data(), 6, f_vec.data(), 1, 0, res.data(), 1);
+    std::vector<double> ss_vec(9, 0);
+    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 9, 1, 9, 1, k.data(), 9, u_vec.data(), 1, 0, ss_vec.data(), 1);
+    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 2, 1, 6, 1, Nmat.data(), 6, ss_vec.data(), 1, 0, res.data(), 1);
 
     return res;
 
+}
+
+std::vector<double> TRI3::get_average_loads_and_torques(const gp_Pnt& p1, const gp_Pnt& p2, const std::vector<double>& u, const std::vector<size_t> excluded_nodes) const{
+    // Missing torque. Implemented to avoid compilation errors.
+    return this->get_average_loads(p1, p2, u);
+}
+
+std::vector<gp_Pnt> TRI3::get_intersection_points(const TopoDS_Shape& crosssection) const{
+    size_t N = this->nodes.size();
+    std::vector<gp_Pnt> points;
+
+    TopoDS_Edge line_edge = TopoDS::Edge(crosssection);
+
+    for(size_t i = 0; i < N; ++i){
+        size_t j = (i + 1) % 3;
+
+        TopoDS_Edge e = BRepBuilderAPI_MakeEdge(this->nodes[i]->point, this->nodes[j]->point);
+        gp_Dir dir(gp_Vec(this->nodes[i]->point, this->nodes[j]->point));
+
+        IntTools_EdgeEdge tool(line_edge, e);
+        tool.Perform();
+        auto common = tool.CommonParts();
+        if(common.Size() > 0){
+            for(auto& c:common){
+                double dist = std::abs(c.VertexParameter2()); // n.normal is a unit vector, and the line starts at 0
+                gp_Pnt p = this->nodes[i]->point.Translated(dist*dir);
+                points.push_back(p);
+            }
+        }
+    }
+
+    return points;
 }
 
 TopoDS_Shape TRI3::get_shape(std::vector<gp_Vec> disp) const{

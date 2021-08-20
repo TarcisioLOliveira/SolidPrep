@@ -28,6 +28,9 @@
 #include <BRepBuilderAPI_MakeFace.hxx>
 #include <TopoDS_Wire.hxx>
 #include <TopoDS_Face.hxx>
+#include <TopoDS.hxx>
+#include <IntTools_EdgeEdge.hxx>
+#include <Standard_Handle.hxx>
 
 namespace element{
 
@@ -325,21 +328,17 @@ std::vector<double> GT9::get_loads_at(gp_Pnt point, const std::vector<double>& u
     L[0] = (a[0] + b[0]*point.X() + c[0]*point.Y())/(2*delta);
     L[1] = (a[1] + b[1]*point.X() + c[1]*point.Y())/(2*delta);
     L[2] = (a[2] + b[2]*point.X() + c[2]*point.Y())/(2*delta);
-    //logger::quick_log(f_vec);
-    // for(auto& f:f_vec){
-    //     f = std::abs(f);
-    // }
     std::vector<double> Nmat(9*3, 0);
     for(size_t i = 0; i < N; ++i){
-        size_t j = (i + 1) % 3;
-        size_t k = (i + 2) % 3;
+        // size_t j = (i + 1) % 3;
+        // size_t k = (i + 2) % 3;
 
         Nmat[3*i] = L[i];
         Nmat[3*i + 9 + 1] = L[i];
         Nmat[3*i + 18 + 2] = L[i];
 
-        Nmat[3*i + 2] = 0.5*L[i]*(b[k]*L[j]-b[j]*L[k]);
-        Nmat[3*i + 9 + 2] = 0.5*L[i]*(c[k]*L[j]-c[j]*L[k]);
+        // Nmat[3*i + 2] = 0.5*L[i]*(b[k]*L[j]-b[j]*L[k]);
+        // Nmat[3*i + 9 + 2] = 0.5*L[i]*(c[k]*L[j]-c[j]*L[k]);
     }
 
     std::vector<double> res(3, 0);
@@ -355,15 +354,13 @@ MeshNode* GT9::get_internal_loads(size_t node, const std::vector<double>& u) con
 
     MeshNode2D* n = static_cast<MeshNode2D*>(this->nodes[node]);
     for(int i = 0; i < 3; ++i){
-        n->results[i] = 0;
         for(size_t l = 0; l < 3; ++l){
             for(int j = 0; j < 3; ++j){
                 if(this->nodes[l]->u_pos[j] > -1){
-                    n->results[i] += k[node*3*3+l*3+j]*u[this->nodes[l]->u_pos[j]];
+                    n->results[i] += k[(node*3+i)*3*3+l*3+j]*u[this->nodes[l]->u_pos[j]];
                 }
             }
         }
-        n->results[i] = std::abs(n->results[i]);
     }
 
     return this->get_node(node);
@@ -494,7 +491,126 @@ std::vector<double> GT9::get_average_stress(const gp_Pnt& p1, const gp_Pnt& p2, 
     return s_vec;
 }
 
-std::vector<double> GT9::get_average_loads(const gp_Pnt& p1, const gp_Pnt& p2, const std::vector<double>& u) const{
+std::vector<double> GT9::get_average_loads_and_torques(const gp_Pnt& p1, const gp_Pnt& p2, const std::vector<double>& u, const std::vector<size_t> excluded_nodes) const{
+    size_t N = this->nodes.size();
+
+    double x1 = p1.X();
+    double y1 = p1.Y();
+    double x2 = p2.X();
+    double y2 = p2.Y();
+
+    std::vector<gp_Pnt> p;
+    for(auto n:this->nodes){
+        p.push_back(n->point);
+    }
+
+    double dist = p1.Distance(p2);
+
+    gp_Mat deltaM(1, p[0].X(), p[0].Y(), 1, p[1].X(), p[1].Y(), 1, p[2].X(), p[2].Y());
+
+    double delta = 0.5*deltaM.Determinant();
+
+    std::vector<double> a, b, c;
+    for(size_t i = 0; i < N; ++i){
+        size_t j = (i + 1) % 3;
+        size_t k = (i + 2) % 3;
+
+        a.push_back(p[j].X()*p[k].Y() - p[k].X()*p[j].Y());
+        b.push_back(p[j].Y() - p[k].Y());
+        c.push_back(p[k].X() - p[j].X());
+    }
+
+    std::vector<double> L(3);
+    L[0] = a[0]*std::sqrt(x1*x1 - 2*x1*x2 + x2*x2 + y1*y1 - 2*y1*y2 + y2*y2)/(2*delta) + b[0]*x1*std::sqrt(x1*x1 - 2*x1*x2 + x2*x2 + y1*y1 - 2*y1*y2 + y2*y2)/(4*delta) + b[0]*x2*std::sqrt(x1*x1 - 2*x1*x2 + x2*x2 + y1*y1 - 2*y1*y2 + y2*y2)/(4*delta) + c[0]*y1*std::sqrt(x1*x1 - 2*x1*x2 + x2*x2 + y1*y1 - 2*y1*y2 + y2*y2)/(4*delta) + c[0]*y2*std::sqrt(x1*x1 - 2*x1*x2 + x2*x2 + y1*y1 - 2*y1*y2 + y2*y2)/(4*delta);
+    L[1] = a[1]*std::sqrt(x1*x1 - 2*x1*x2 + x2*x2 + y1*y1 - 2*y1*y2 + y2*y2)/(2*delta) + b[1]*x1*std::sqrt(x1*x1 - 2*x1*x2 + x2*x2 + y1*y1 - 2*y1*y2 + y2*y2)/(4*delta) + b[1]*x2*std::sqrt(x1*x1 - 2*x1*x2 + x2*x2 + y1*y1 - 2*y1*y2 + y2*y2)/(4*delta) + c[1]*y1*std::sqrt(x1*x1 - 2*x1*x2 + x2*x2 + y1*y1 - 2*y1*y2 + y2*y2)/(4*delta) + c[1]*y2*std::sqrt(x1*x1 - 2*x1*x2 + x2*x2 + y1*y1 - 2*y1*y2 + y2*y2)/(4*delta);
+    L[2] = a[2]*std::sqrt(x1*x1 - 2*x1*x2 + x2*x2 + y1*y1 - 2*y1*y2 + y2*y2)/(2*delta) + b[2]*x1*std::sqrt(x1*x1 - 2*x1*x2 + x2*x2 + y1*y1 - 2*y1*y2 + y2*y2)/(4*delta) + b[2]*x2*std::sqrt(x1*x1 - 2*x1*x2 + x2*x2 + y1*y1 - 2*y1*y2 + y2*y2)/(4*delta) + c[2]*y1*std::sqrt(x1*x1 - 2*x1*x2 + x2*x2 + y1*y1 - 2*y1*y2 + y2*y2)/(4*delta) + c[2]*y2*std::sqrt(x1*x1 - 2*x1*x2 + x2*x2 + y1*y1 - 2*y1*y2 + y2*y2)/(4*delta);
+
+
+    // L[0] = (a[0]*(x2-x1)*(y2-y1) + 0.5*b[0]*(x2*x2-x1*x1)*(y2-y1) + 0.5*c[0]*(x2-x1)*(y2*y2-y1*y1))/(2*delta);
+    // L[1] = (a[1]*(x2-x1)*(y2-y1) + 0.5*b[1]*(x2*x2-x1*x1)*(y2-y1) + 0.5*c[1]*(x2-x1)*(y2*y2-y1*y1))/(2*delta);
+    // L[2] = (a[2]*(x2-x1)*(y2-y1) + 0.5*b[2]*(x2*x2-x1*x1)*(y2-y1) + 0.5*c[2]*(x2-x1)*(y2*y2-y1*y1))/(2*delta);
+    std::vector<double> Nmat(9*3, 0);
+    for(size_t i = 0; i < N; ++i){
+        Nmat[2*i] = L[i]/dist;
+        Nmat[2*i + 9 + 1] = L[i]/dist;
+        Nmat[2*i + 18 + 2] = L[i]/dist;
+    }
+
+    std::vector<double> u_vec(9, 0);
+    for(size_t k = 0; k < 3; ++k){
+        for(int j = 0; j < 3; ++j){
+            if(this->nodes[k]->u_pos[j] > -1){
+                u_vec[k*3+j] = u[this->nodes[k]->u_pos[j]];
+            }
+        }
+    }
+
+    std::vector<double> s_vec(3, 0);
+    std::vector<double> ss_vec(9, 0);
+    auto k = this->get_k();
+    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 9, 1, 9, 1, k.data(), 9, u_vec.data(), 1, 0, ss_vec.data(), 1);
+
+    if(excluded_nodes.size() > 0){
+        for(auto& n:excluded_nodes){
+            for(size_t i = 0; i < 3; ++i){
+                ss_vec[3*n+i] = 0;
+            }
+        }
+    }
+
+    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 3, 1, 9, 1, Nmat.data(), 9, ss_vec.data(), 1, 0, s_vec.data(), 1);
+
+    return s_vec;
+
+}
+
+std::vector<gp_Pnt> GT9::get_intersection_points(const TopoDS_Shape& crosssection) const{
+    size_t N = this->nodes.size();
+    std::vector<gp_Pnt> points;
+
+    TopoDS_Edge line_edge = TopoDS::Edge(crosssection);
+    double first = 0;
+    double last = 0;
+    Handle(Geom_Curve) line = BRep_Tool::Curve(line_edge, first, last);
+    Geom_Line* l = static_cast<Geom_Line*>(line.get());
+    gp_Lin ll = l->Lin();
+    for(auto& n:this->nodes){
+        if(ll.Contains(n->point, Precision::Confusion())){
+            points.push_back(n->point);
+        }
+    }
+
+    for(size_t i = 0; i < N; ++i){
+        size_t j = (i + 1) % 3;
+
+        TopoDS_Edge e = BRepBuilderAPI_MakeEdge(this->nodes[i]->point, this->nodes[j]->point);
+        gp_Dir dir(gp_Vec(this->nodes[i]->point, this->nodes[j]->point));
+
+        IntTools_EdgeEdge tool(line_edge, e);
+        tool.Perform();
+        auto common = tool.CommonParts();
+        if(common.Size() > 0){
+            for(auto& c:common){
+                double dist = std::abs(c.VertexParameter2()); // n.normal is a unit vector, and the line starts at 0
+                gp_Pnt p = this->nodes[i]->point.Translated(dist*dir);
+                bool contained = false;
+                for(auto& pp:points){
+                    if(p.IsEqual(pp, Precision::Confusion())){
+                        contained = true;
+                        break;
+                    }
+                }
+                if(!contained){
+                    points.push_back(p);
+                }
+            }
+        }
+    }
+
+    return points;
+}
+
+std::vector<double> GT9::get_average_loads(const gp_Pnt& p1, const gp_Pnt& p2, const std::vector<double>& u, const std::vector<size_t> excluded_nodes) const{
     size_t N = this->nodes.size();
 
     double x1 = p1.X();
@@ -534,41 +650,42 @@ std::vector<double> GT9::get_average_loads(const gp_Pnt& p1, const gp_Pnt& p2, c
     double c2 = c[2];
 
     std::vector<double> NN{
-        (b0*x1*x1*(y1 - y2) + b0*x2*x2*(-y1 + y2) + x1*(2*a0*y1 - 2*a0*y2 + c0*y1*y1 - c0*y2*y2) - x2*(2*a0*y1 - 2*a0*y2 + c0*y1*y1 - c0*y2*y2))/(4*delta)
+(2*a0 + b0*x1 + b0*x2 + c0*y1 + c0*y2)*std::sqrt(x1*x1 - 2*x1*x2 + x2*x2 + y1*y1 - 2*y1*y2 + y2*y2)/(4*delta)
 ,
 0
 ,
-(b0*x1*x1*(0.0625*a1*b2*y1 - 0.0625*a1*b2*y2 - 0.0625*a2*b1*y1 + 0.0625*a2*b1*y2 - 0.03125*b1*c2*y1*y1 + 0.03125*b1*c2*y2*y2 + 0.03125*b2*c1*y1*y1 - 0.03125*b2*c1*y2*y2) + b0*x2*x2*(-0.0625*a1*b2*y1 + 0.0625*a1*b2*y2 + 0.0625*a2*b1*y1 - 0.0625*a2*b1*y2 + 0.03125*b1*c2*y1*y1 - 0.03125*b1*c2*y2*y2 - 0.03125*b2*c1*y1*y1 + 0.03125*b2*c1*y2*y2) + x1*(0.125*a0*a1*b2*y1 - 0.125*a0*a1*b2*y2 - 0.125*a0*a2*b1*y1 + 0.125*a0*a2*b1*y2 - 0.0625*a0*b1*c2*y1*y1 + 0.0625*a0*b1*c2*y2*y2 + 0.0625*a0*b2*c1*y1*y1 - 0.0625*a0*b2*c1*y2*y2 + 0.0625*a1*b2*c0*y1*y1 - 0.0625*a1*b2*c0*y2*y2 - 0.0625*a2*b1*c0*y1*y1 + 0.0625*a2*b1*c0*y2*y2 - 0.0416666666666667*b1*c0*c2*y1*y1*y1 + 0.0416666666666667*b1*c0*c2*y2*y2*y2 + 0.0416666666666667*b2*c0*c1*y1*y1*y1 - 0.0416666666666667*b2*c0*c1*y2*y2*y2) - x2*(0.125*a0*a1*b2*y1 - 0.125*a0*a1*b2*y2 - 0.125*a0*a2*b1*y1 + 0.125*a0*a2*b1*y2 - 0.0625*a0*b1*c2*y1*y1 + 0.0625*a0*b1*c2*y2*y2 + 0.0625*a0*b2*c1*y1*y1 - 0.0625*a0*b2*c1*y2*y2 + 0.0625*a1*b2*c0*y1*y1 - 0.0625*a1*b2*c0*y2*y2 - 0.0625*a2*b1*c0*y1*y1 + 0.0625*a2*b1*c0*y2*y2 - 0.0416666666666667*b1*c0*c2*y1*y1*y1 + 0.0416666666666667*b1*c0*c2*y2*y2*y2 + 0.0416666666666667*b2*c0*c1*y1*y1*y1 - 0.0416666666666667*b2*c0*c1*y2*y2*y2))/(delta*delta)
+std::sqrt(x1*x1 - 2*x1*x2 + x2*x2 + y1*y1 - 2*y1*y2 + y2*y2)*(0.125*a0*a1*b2 - 0.125*a0*a2*b1 + b0*x1*(0.0625*a1*b2 - 0.0625*a2*b1 - 0.0416666666666667*b1*c2*y1 - 0.0208333333333333*b1*c2*y2 + 0.0416666666666667*b2*c1*y1 + 0.0208333333333333*b2*c1*y2) + b0*x2*(0.0625*a1*b2 - 0.0625*a2*b1 - 0.0208333333333333*b1*c2*y1 - 0.0416666666666667*b1*c2*y2 + 0.0208333333333333*b2*c1*y1 + 0.0416666666666667*b2*c1*y2) + 0.0416666666666667*c0*y1*y1*(-b1*c2 + b2*c1) + 0.0416666666666667*c0*y2*y2*(-b1*c2 + b2*c1) - y1*(0.0625*a0*b1*c2 - 0.0625*a0*b2*c1 - 0.0625*a1*b2*c0 + 0.0625*a2*b1*c0 + 0.0416666666666667*b1*c0*c2*y2 - 0.0416666666666667*b2*c0*c1*y2) - 0.0625*y2*(a0*b1*c2 - a0*b2*c1 - a1*b2*c0 + a2*b1*c0))/(delta*delta)
 ,
-(b1*x1*x1*(y1 - y2) + b1*x2*x2*(-y1 + y2) + x1*(2*a1*y1 - 2*a1*y2 + c1*y1*y1 - c1*y2*y2) - x2*(2*a1*y1 - 2*a1*y2 + c1*y1*y1 - c1*y2*y2))/(4*delta)
-,
-0
-,
-(b1*x1*x1*(-0.0625*a0*b2*y1 + 0.0625*a0*b2*y2 + 0.0625*a2*b0*y1 - 0.0625*a2*b0*y2 + 0.03125*b0*c2*y1*y1 - 0.03125*b0*c2*y2*y2 - 0.03125*b2*c0*y1*y1 + 0.03125*b2*c0*y2*y2) + b1*x2*x2*(0.0625*a0*b2*y1 - 0.0625*a0*b2*y2 - 0.0625*a2*b0*y1 + 0.0625*a2*b0*y2 - 0.03125*b0*c2*y1*y1 + 0.03125*b0*c2*y2*y2 + 0.03125*b2*c0*y1*y1 - 0.03125*b2*c0*y2*y2) - x1*(0.125*a0*a1*b2*y1 - 0.125*a0*a1*b2*y2 + 0.0625*a0*b2*c1*y1*y1 - 0.0625*a0*b2*c1*y2*y2 - 0.125*a1*a2*b0*y1 + 0.125*a1*a2*b0*y2 - 0.0625*a1*b0*c2*y1*y1 + 0.0625*a1*b0*c2*y2*y2 + 0.0625*a1*b2*c0*y1*y1 - 0.0625*a1*b2*c0*y2*y2 - 0.0625*a2*b0*c1*y1*y1 + 0.0625*a2*b0*c1*y2*y2 - 0.0416666666666667*b0*c1*c2*y1*y1*y1 + 0.0416666666666667*b0*c1*c2*y2*y2*y2 + 0.0416666666666667*b2*c0*c1*y1*y1*y1 - 0.0416666666666667*b2*c0*c1*y2*y2*y2) + x2*(0.125*a0*a1*b2*y1 - 0.125*a0*a1*b2*y2 + 0.0625*a0*b2*c1*y1*y1 - 0.0625*a0*b2*c1*y2*y2 - 0.125*a1*a2*b0*y1 + 0.125*a1*a2*b0*y2 - 0.0625*a1*b0*c2*y1*y1 + 0.0625*a1*b0*c2*y2*y2 + 0.0625*a1*b2*c0*y1*y1 - 0.0625*a1*b2*c0*y2*y2 - 0.0625*a2*b0*c1*y1*y1 + 0.0625*a2*b0*c1*y2*y2 - 0.0416666666666667*b0*c1*c2*y1*y1*y1 + 0.0416666666666667*b0*c1*c2*y2*y2*y2 + 0.0416666666666667*b2*c0*c1*y1*y1*y1 - 0.0416666666666667*b2*c0*c1*y2*y2*y2))/(delta*delta)
-,
-(b2*x1*x1*(y1 - y2) + b2*x2*x2*(-y1 + y2) + x1*(2*a2*y1 - 2*a2*y2 + c2*y1*y1 - c2*y2*y2) - x2*(2*a2*y1 - 2*a2*y2 + c2*y1*y1 - c2*y2*y2))/(4*delta)
+(2*a1 + b1*x1 + b1*x2 + c1*y1 + c1*y2)*std::sqrt(x1*x1 - 2*x1*x2 + x2*x2 + y1*y1 - 2*y1*y2 + y2*y2)/(4*delta)
 ,
 0
 ,
-(b2*x1*x1*(0.0625*a0*b1*y1 - 0.0625*a0*b1*y2 - 0.0625*a1*b0*y1 + 0.0625*a1*b0*y2 - 0.03125*b0*c1*y1*y1 + 0.03125*b0*c1*y2*y2 + 0.03125*b1*c0*y1*y1 - 0.03125*b1*c0*y2*y2) + b2*x2*x2*(-0.0625*a0*b1*y1 + 0.0625*a0*b1*y2 + 0.0625*a1*b0*y1 - 0.0625*a1*b0*y2 + 0.03125*b0*c1*y1*y1 - 0.03125*b0*c1*y2*y2 - 0.03125*b1*c0*y1*y1 + 0.03125*b1*c0*y2*y2) + x1*(0.125*a0*a2*b1*y1 - 0.125*a0*a2*b1*y2 + 0.0625*a0*b1*c2*y1*y1 - 0.0625*a0*b1*c2*y2*y2 - 0.125*a1*a2*b0*y1 + 0.125*a1*a2*b0*y2 - 0.0625*a1*b0*c2*y1*y1 + 0.0625*a1*b0*c2*y2*y2 - 0.0625*a2*b0*c1*y1*y1 + 0.0625*a2*b0*c1*y2*y2 + 0.0625*a2*b1*c0*y1*y1 - 0.0625*a2*b1*c0*y2*y2 - 0.0416666666666667*b0*c1*c2*y1*y1*y1 + 0.0416666666666667*b0*c1*c2*y2*y2*y2 + 0.0416666666666667*b1*c0*c2*y1*y1*y1 - 0.0416666666666667*b1*c0*c2*y2*y2*y2) - x2*(0.125*a0*a2*b1*y1 - 0.125*a0*a2*b1*y2 + 0.0625*a0*b1*c2*y1*y1 - 0.0625*a0*b1*c2*y2*y2 - 0.125*a1*a2*b0*y1 + 0.125*a1*a2*b0*y2 - 0.0625*a1*b0*c2*y1*y1 + 0.0625*a1*b0*c2*y2*y2 - 0.0625*a2*b0*c1*y1*y1 + 0.0625*a2*b0*c1*y2*y2 + 0.0625*a2*b1*c0*y1*y1 - 0.0625*a2*b1*c0*y2*y2 - 0.0416666666666667*b0*c1*c2*y1*y1*y1 + 0.0416666666666667*b0*c1*c2*y2*y2*y2 + 0.0416666666666667*b1*c0*c2*y1*y1*y1 - 0.0416666666666667*b1*c0*c2*y2*y2*y2))/(delta*delta)
+std::sqrt(x1*x1 - 2*x1*x2 + x2*x2 + y1*y1 - 2*y1*y2 + y2*y2)*(-0.125*a0*a1*b2 + 0.125*a1*a2*b0 - b1*x1*(0.0625*a0*b2 - 0.0625*a2*b0 - 0.0416666666666667*b0*c2*y1 - 0.0208333333333333*b0*c2*y2 + 0.0416666666666667*b2*c0*y1 + 0.0208333333333333*b2*c0*y2) - b1*x2*(0.0625*a0*b2 - 0.0625*a2*b0 - 0.0208333333333333*b0*c2*y1 - 0.0416666666666667*b0*c2*y2 + 0.0208333333333333*b2*c0*y1 + 0.0416666666666667*b2*c0*y2) + 0.0416666666666667*c1*y1*y1*(b0*c2 - b2*c0) + 0.0416666666666667*c1*y2*y2*(b0*c2 - b2*c0) - y1*(0.0625*a0*b2*c1 - 0.0625*a1*b0*c2 + 0.0625*a1*b2*c0 - 0.0625*a2*b0*c1 - 0.0416666666666667*b0*c1*c2*y2 + 0.0416666666666667*b2*c0*c1*y2) - 0.0625*y2*(a0*b2*c1 - a1*b0*c2 + a1*b2*c0 - a2*b0*c1))/(delta*delta)
+,
+(2*a2 + b2*x1 + b2*x2 + c2*y1 + c2*y2)*std::sqrt(x1*x1 - 2*x1*x2 + x2*x2 + y1*y1 - 2*y1*y2 + y2*y2)/(4*delta)
 ,
 0
 ,
-(b0*x1*x1*(y1 - y2) + b0*x2*x2*(-y1 + y2) + x1*(2*a0*y1 - 2*a0*y2 + c0*y1*y1 - c0*y2*y2) - x2*(2*a0*y1 - 2*a0*y2 + c0*y1*y1 - c0*y2*y2))/(4*delta)
-,
-(0.0416666666666667*b0*x1*x1*x1*(b1*c2*y1 - b1*c2*y2 - b2*c1*y1 + b2*c1*y2) + 0.0416666666666667*b0*x2*x2*x2*(-b1*c2*y1 + b1*c2*y2 + b2*c1*y1 - b2*c1*y2) + x1*x1*(0.0625*a0*b1*c2*y1 - 0.0625*a0*b1*c2*y2 - 0.0625*a0*b2*c1*y1 + 0.0625*a0*b2*c1*y2 + 0.0625*a1*b0*c2*y1 - 0.0625*a1*b0*c2*y2 - 0.0625*a2*b0*c1*y1 + 0.0625*a2*b0*c1*y2 + 0.03125*b1*c0*c2*y1*y1 - 0.03125*b1*c0*c2*y2*y2 - 0.03125*b2*c0*c1*y1*y1 + 0.03125*b2*c0*c1*y2*y2) + x1*(0.125*a0*a1*c2*y1 - 0.125*a0*a1*c2*y2 - 0.125*a0*a2*c1*y1 + 0.125*a0*a2*c1*y2 + 0.0625*a1*c0*c2*y1*y1 - 0.0625*a1*c0*c2*y2*y2 - 0.0625*a2*c0*c1*y1*y1 + 0.0625*a2*c0*c1*y2*y2) + x2*x2*(-0.0625*a0*b1*c2*y1 + 0.0625*a0*b1*c2*y2 + 0.0625*a0*b2*c1*y1 - 0.0625*a0*b2*c1*y2 - 0.0625*a1*b0*c2*y1 + 0.0625*a1*b0*c2*y2 + 0.0625*a2*b0*c1*y1 - 0.0625*a2*b0*c1*y2 - 0.03125*b1*c0*c2*y1*y1 + 0.03125*b1*c0*c2*y2*y2 + 0.03125*b2*c0*c1*y1*y1 - 0.03125*b2*c0*c1*y2*y2) - x2*(0.125*a0*a1*c2*y1 - 0.125*a0*a1*c2*y2 - 0.125*a0*a2*c1*y1 + 0.125*a0*a2*c1*y2 + 0.0625*a1*c0*c2*y1*y1 - 0.0625*a1*c0*c2*y2*y2 - 0.0625*a2*c0*c1*y1*y1 + 0.0625*a2*c0*c1*y2*y2))/(delta*delta)
+std::sqrt(x1*x1 - 2*x1*x2 + x2*x2 + y1*y1 - 2*y1*y2 + y2*y2)*(0.125*a0*a2*b1 - 0.125*a1*a2*b0 + b2*x1*(0.0625*a0*b1 - 0.0625*a1*b0 - 0.0416666666666667*b0*c1*y1 - 0.0208333333333333*b0*c1*y2 + 0.0416666666666667*b1*c0*y1 + 0.0208333333333333*b1*c0*y2) + b2*x2*(0.0625*a0*b1 - 0.0625*a1*b0 - 0.0208333333333333*b0*c1*y1 - 0.0416666666666667*b0*c1*y2 + 0.0208333333333333*b1*c0*y1 + 0.0416666666666667*b1*c0*y2) + 0.0416666666666667*c2*y1*y1*(-b0*c1 + b1*c0) + 0.0416666666666667*c2*y2*y2*(-b0*c1 + b1*c0) + y1*(0.0625*a0*b1*c2 - 0.0625*a1*b0*c2 - 0.0625*a2*b0*c1 + 0.0625*a2*b1*c0 - 0.0416666666666667*b0*c1*c2*y2 + 0.0416666666666667*b1*c0*c2*y2) + 0.0625*y2*(a0*b1*c2 - a1*b0*c2 - a2*b0*c1 + a2*b1*c0))/(delta*delta)
 ,
 0
 ,
-(b1*x1*x1*(y1 - y2) + b1*x2*x2*(-y1 + y2) + x1*(2*a1*y1 - 2*a1*y2 + c1*y1*y1 - c1*y2*y2) - x2*(2*a1*y1 - 2*a1*y2 + c1*y1*y1 - c1*y2*y2))/(4*delta)
+(2*a0 + b0*x1 + b0*x2 + c0*y1 + c0*y2)*std::sqrt(x1*x1 - 2*x1*x2 + x2*x2 + y1*y1 - 2*y1*y2 + y2*y2)/(4*delta)
 ,
-(0.0416666666666667*b1*x1*x1*x1*(-b0*c2*y1 + b0*c2*y2 + b2*c0*y1 - b2*c0*y2) + 0.0416666666666667*b1*x2*x2*x2*(b0*c2*y1 - b0*c2*y2 - b2*c0*y1 + b2*c0*y2) + x1*x1*(-0.0625*a0*b1*c2*y1 + 0.0625*a0*b1*c2*y2 - 0.0625*a1*b0*c2*y1 + 0.0625*a1*b0*c2*y2 + 0.0625*a1*b2*c0*y1 - 0.0625*a1*b2*c0*y2 + 0.0625*a2*b1*c0*y1 - 0.0625*a2*b1*c0*y2 - 0.03125*b0*c1*c2*y1*y1 + 0.03125*b0*c1*c2*y2*y2 + 0.03125*b2*c0*c1*y1*y1 - 0.03125*b2*c0*c1*y2*y2) - x1*(0.125*a0*a1*c2*y1 - 0.125*a0*a1*c2*y2 + 0.0625*a0*c1*c2*y1*y1 - 0.0625*a0*c1*c2*y2*y2 - 0.125*a1*a2*c0*y1 + 0.125*a1*a2*c0*y2 - 0.0625*a2*c0*c1*y1*y1 + 0.0625*a2*c0*c1*y2*y2) + x2*x2*(0.0625*a0*b1*c2*y1 - 0.0625*a0*b1*c2*y2 + 0.0625*a1*b0*c2*y1 - 0.0625*a1*b0*c2*y2 - 0.0625*a1*b2*c0*y1 + 0.0625*a1*b2*c0*y2 - 0.0625*a2*b1*c0*y1 + 0.0625*a2*b1*c0*y2 + 0.03125*b0*c1*c2*y1*y1 - 0.03125*b0*c1*c2*y2*y2 - 0.03125*b2*c0*c1*y1*y1 + 0.03125*b2*c0*c1*y2*y2) + x2*(0.125*a0*a1*c2*y1 - 0.125*a0*a1*c2*y2 + 0.0625*a0*c1*c2*y1*y1 - 0.0625*a0*c1*c2*y2*y2 - 0.125*a1*a2*c0*y1 + 0.125*a1*a2*c0*y2 - 0.0625*a2*c0*c1*y1*y1 + 0.0625*a2*c0*c1*y2*y2))/(delta*delta)
+std::sqrt(x1*x1 - 2*x1*x2 + x2*x2 + y1*y1 - 2*y1*y2 + y2*y2)*(0.125*a0*a1*c2 - 0.125*a0*a2*c1 + 0.0416666666666667*b0*x1*x1*(b1*c2 - b2*c1) + 0.0416666666666667*b0*x2*x2*(b1*c2 - b2*c1) + 0.0625*c0*y1*(a1*c2 - a2*c1) + 0.0625*c0*y2*(a1*c2 - a2*c1) + x1*(0.0625*a0*b1*c2 - 0.0625*a0*b2*c1 + 0.0625*a1*b0*c2 - 0.0625*a2*b0*c1 + 0.0416666666666667*b0*b1*c2*x2 - 0.0416666666666667*b0*b2*c1*x2 + 0.0416666666666667*b1*c0*c2*y1 + 0.0208333333333333*b1*c0*c2*y2 - 0.0416666666666667*b2*c0*c1*y1 - 0.0208333333333333*b2*c0*c1*y2) + x2*(0.0625*a0*b1*c2 - 0.0625*a0*b2*c1 + 0.0625*a1*b0*c2 - 0.0625*a2*b0*c1 + 0.0208333333333333*b1*c0*c2*y1 + 0.0416666666666667*b1*c0*c2*y2 - 0.0208333333333333*b2*c0*c1*y1 - 0.0416666666666667*b2*c0*c1*y2))/(delta*delta)
 ,
 0
 ,
-(b2*x1*x1*(y1 - y2) + b2*x2*x2*(-y1 + y2) + x1*(2*a2*y1 - 2*a2*y2 + c2*y1*y1 - c2*y2*y2) - x2*(2*a2*y1 - 2*a2*y2 + c2*y1*y1 - c2*y2*y2))/(4*delta)
+(2*a1 + b1*x1 + b1*x2 + c1*y1 + c1*y2)*std::sqrt(x1*x1 - 2*x1*x2 + x2*x2 + y1*y1 - 2*y1*y2 + y2*y2)/(4*delta)
 ,
-(0.0416666666666667*b2*x1*x1*x1*(b0*c1*y1 - b0*c1*y2 - b1*c0*y1 + b1*c0*y2) + 0.0416666666666667*b2*x2*x2*x2*(-b0*c1*y1 + b0*c1*y2 + b1*c0*y1 - b1*c0*y2) + x1*x1*(0.0625*a0*b2*c1*y1 - 0.0625*a0*b2*c1*y2 - 0.0625*a1*b2*c0*y1 + 0.0625*a1*b2*c0*y2 + 0.0625*a2*b0*c1*y1 - 0.0625*a2*b0*c1*y2 - 0.0625*a2*b1*c0*y1 + 0.0625*a2*b1*c0*y2 + 0.03125*b0*c1*c2*y1*y1 - 0.03125*b0*c1*c2*y2*y2 - 0.03125*b1*c0*c2*y1*y1 + 0.03125*b1*c0*c2*y2*y2) + x1*(0.125*a0*a2*c1*y1 - 0.125*a0*a2*c1*y2 + 0.0625*a0*c1*c2*y1*y1 - 0.0625*a0*c1*c2*y2*y2 - 0.125*a1*a2*c0*y1 + 0.125*a1*a2*c0*y2 - 0.0625*a1*c0*c2*y1*y1 + 0.0625*a1*c0*c2*y2*y2) + x2*x2*(-0.0625*a0*b2*c1*y1 + 0.0625*a0*b2*c1*y2 + 0.0625*a1*b2*c0*y1 - 0.0625*a1*b2*c0*y2 - 0.0625*a2*b0*c1*y1 + 0.0625*a2*b0*c1*y2 + 0.0625*a2*b1*c0*y1 - 0.0625*a2*b1*c0*y2 - 0.03125*b0*c1*c2*y1*y1 + 0.03125*b0*c1*c2*y2*y2 + 0.03125*b1*c0*c2*y1*y1 - 0.03125*b1*c0*c2*y2*y2) - x2*(0.125*a0*a2*c1*y1 - 0.125*a0*a2*c1*y2 + 0.0625*a0*c1*c2*y1*y1 - 0.0625*a0*c1*c2*y2*y2 - 0.125*a1*a2*c0*y1 + 0.125*a1*a2*c0*y2 - 0.0625*a1*c0*c2*y1*y1 + 0.0625*a1*c0*c2*y2*y2))/(delta*delta)
+std::sqrt(x1*x1 - 2*x1*x2 + x2*x2 + y1*y1 - 2*y1*y2 + y2*y2)*(-0.125*a0*a1*c2 + 0.125*a1*a2*c0 + 0.0416666666666667*b1*x1*x1*(-b0*c2 + b2*c0) + 0.0416666666666667*b1*x2*x2*(-b0*c2 + b2*c0) - 0.0625*c1*y1*(a0*c2 - a2*c0) - 0.0625*c1*y2*(a0*c2 - a2*c0) - x1*(0.0625*a0*b1*c2 + 0.0625*a1*b0*c2 - 0.0625*a1*b2*c0 - 0.0625*a2*b1*c0 + 0.0416666666666667*b0*b1*c2*x2 + 0.0416666666666667*b0*c1*c2*y1 + 0.0208333333333333*b0*c1*c2*y2 - 0.0416666666666667*b1*b2*c0*x2 - 0.0416666666666667*b2*c0*c1*y1 - 0.0208333333333333*b2*c0*c1*y2) - x2*(0.0625*a0*b1*c2 + 0.0625*a1*b0*c2 - 0.0625*a1*b2*c0 - 0.0625*a2*b1*c0 + 0.0208333333333333*b0*c1*c2*y1 + 0.0416666666666667*b0*c1*c2*y2 - 0.0208333333333333*b2*c0*c1*y1 - 0.0416666666666667*b2*c0*c1*y2))/(delta*delta)
+,
+0
+,
+(2*a2 + b2*x1 + b2*x2 + c2*y1 + c2*y2)*std::sqrt(x1*x1 - 2*x1*x2 + x2*x2 + y1*y1 - 2*y1*y2 + y2*y2)/(4*delta)
+,
+std::sqrt(x1*x1 - 2*x1*x2 + x2*x2 + y1*y1 - 2*y1*y2 + y2*y2)*(0.125*a0*a2*c1 - 0.125*a1*a2*c0 + 0.0416666666666667*b2*x1*x1*(b0*c1 - b1*c0) + 0.0416666666666667*b2*x2*x2*(b0*c1 - b1*c0) + 0.0625*c2*y1*(a0*c1 - a1*c0) + 0.0625*c2*y2*(a0*c1 - a1*c0) + x1*(0.0625*a0*b2*c1 - 0.0625*a1*b2*c0 + 0.0625*a2*b0*c1 - 0.0625*a2*b1*c0 + 0.0416666666666667*b0*b2*c1*x2 + 0.0416666666666667*b0*c1*c2*y1 + 0.0208333333333333*b0*c1*c2*y2 - 0.0416666666666667*b1*b2*c0*x2 - 0.0416666666666667*b1*c0*c2*y1 - 0.0208333333333333*b1*c0*c2*y2) + x2*(0.0625*a0*b2*c1 - 0.0625*a1*b2*c0 + 0.0625*a2*b0*c1 - 0.0625*a2*b1*c0 + 0.0208333333333333*b0*c1*c2*y1 + 0.0416666666666667*b0*c1*c2*y2 - 0.0208333333333333*b1*c0*c2*y1 - 0.0416666666666667*b1*c0*c2*y2))/(delta*delta)
+
     };
 
     std::vector<double> u_vec(9, 0);
@@ -581,7 +698,19 @@ std::vector<double> GT9::get_average_loads(const gp_Pnt& p1, const gp_Pnt& p2, c
     }
 
     std::vector<double> s_vec(2, 0);
-    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 2, 1, 9, 1, NN.data(), 9, u_vec.data(), 1, 0, s_vec.data(), 1);
+    std::vector<double> ss_vec(9, 0);
+    auto k = this->get_k();
+    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 9, 1, 9, 1, k.data(), 9, u_vec.data(), 1, 0, ss_vec.data(), 1);
+
+    if(excluded_nodes.size() > 0){
+        for(auto& n:excluded_nodes){
+            for(size_t i = 0; i < 3; ++i){
+                ss_vec[3*n+i] = 0;
+            }
+        }
+    }
+
+    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 2, 1, 9, 1, NN.data(), 9, ss_vec.data(), 1, 0, s_vec.data(), 1);
     for(auto& s:s_vec){
         s = s/dist;
     }
