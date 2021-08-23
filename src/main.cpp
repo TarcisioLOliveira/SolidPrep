@@ -47,7 +47,7 @@ int main(int argc, char* argv[]){
     sizing::StandardSizing sizer(&proj, &fem_beam);
     auto shape = sizer.run();
     utils::shape_to_file("test.step", shape);
-    return 0;
+    //return 0;
 
     meshing::Gmsh mesh(4, 1, utils::PROBLEM_TYPE_2D);
     // auto shape2 = proj.sizer->run();
@@ -61,18 +61,18 @@ int main(int argc, char* argv[]){
     mesh.prepare_for_FEM(m, MeshElementFactory::GT9, &proj);
     finite_element::DirectSolver fem;
     fem.calculate_displacements(&proj, &mesh);
-    //topology_optimization::MinimalVolume mv(9, proj.material->get_max_Von_Mises_2D(), &proj);
+    topology_optimization::MinimalVolume mv(9, proj.material->get_max_Von_Mises_2D(), &proj);
 
     Visualization v;
     v.start();
     v.load_mesh(&mesh, proj.type);
 
     v.show();
-    //auto f = [&](){
+    auto f = [&](){
         v.wait();
-    // };
-    // std::thread t(f);
-    // mv.optimize(&v, &fem, &mesh);
+    };
+    std::thread t(f);
+    mv.optimize(&v, &fem, &mesh);
 
     logger::quick_log("Finished.");
 

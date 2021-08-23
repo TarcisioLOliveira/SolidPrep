@@ -26,6 +26,8 @@
 #include <gp_Pnt.hxx>
 #include <STEPCAFControl_Writer.hxx>
 #include <STEPControl_StepModelType.hxx>
+#include <TopoDS_Wire.hxx>
+#include <vector>
 
 namespace utils{
 
@@ -157,6 +159,12 @@ namespace utils{
     }
 
     void shape_to_file(const std::string& s, const TopoDS_Shape& t);
+
+    TopoDS_Shape sweep_surface(const std::vector<gp_Pnt>& spine, const TopoDS_Shape& surface, const TopoDS_Shape& base);
+
+    TopoDS_Shape fast_make_2D_beam(const std::vector<gp_Pnt>& spine, double diameter, const TopoDS_Shape& surface);
+
+    TopoDS_Shape cut_shape(const TopoDS_Shape& base, const TopoDS_Shape& cutter);
 }
 
 #endif

@@ -55,6 +55,7 @@ class StandardSizing : public Sizing{
     FiniteElement* solver;
 
     TopoDS_Shape build_initial_topology();
+    // Doesn't work very well. Can distort some beams.
     TopoDS_Shape simplify_shape(TopoDS_Shape shape) const;
     bool is_inside_2D(const gp_Pnt& p, const TopoDS_Shape& shape) const;
     bool is_inside_3D(const gp_Pnt& p, const TopoDS_Shape& shape) const;

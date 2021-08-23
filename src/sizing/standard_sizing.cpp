@@ -53,6 +53,8 @@
 #include <BOPAlgo_Splitter.hxx>
 #include <GProp_GProps.hxx>
 #include <BRepGProp.hxx>
+#include <BRepBuilderAPI_Transform.hxx>
+#include <GeomAPI_ExtremaCurveCurve.hxx>
 
 namespace sizing{
 
@@ -92,11 +94,15 @@ TopoDS_Shape StandardSizing::expansion_2D(const meshing::StandardBeamMesher& mes
     // Get edges
     std::vector<TopoDS_Edge> edges_init;
     std::vector<TopoDS_Edge> edges_beam;
+    std::vector<TopoDS_Vertex> verts_beam;
     for (TopExp_Explorer exp(this->data->ground_structure->shape, TopAbs_EDGE); exp.More(); exp.Next()){
         edges_init.push_back(TopoDS::Edge(exp.Current()));
     }
     for (TopExp_Explorer exp(beams, TopAbs_EDGE); exp.More(); exp.Next()){
         edges_beam.push_back(TopoDS::Edge(exp.Current()));
+    }
+    for (TopExp_Explorer exp(beams, TopAbs_VERTEX); exp.More(); exp.Next()){
+        verts_beam.push_back(TopoDS::Vertex(exp.Current()));
     }
 
     std::vector<ExternalForce> external_forces;
@@ -154,19 +160,20 @@ TopoDS_Shape StandardSizing::expansion_2D(const meshing::StandardBeamMesher& mes
                         dist2 = std::abs(dist);
                     }
                 }
-            } else {
-                for (TopExp_Explorer exp(beams, TopAbs_VERTEX); exp.More(); exp.Next()){
-                    gp_Pnt p = BRep_Tool::Pnt(TopoDS::Vertex(exp.Current()));
-                    if(line.Contains(p, Precision::Confusion())){
-                        double dist = cur_p.Distance(p);
-                        if(dist > Precision::Confusion()){
-                            if(cur_p.Translated(dist*line_dir).IsEqual(p, Precision::Confusion()) && dist < dist1){
-                                p1 = cur_p.Translated(dist*(line_dir));
-                                dist1 = dist;
-                            } else if(dist < dist2){
-                                p2 = cur_p.Translated(-dist*(line_dir));
-                                dist2 = dist;
-                            }
+            }
+        }
+        if(dist1 - Precision::Infinite() >= -Precision::Confusion() || dist2 - Precision::Infinite() >= -Precision::Confusion()){
+            for(TopExp_Explorer exp(beams, TopAbs_VERTEX); exp.More(); exp.Next()){
+                gp_Pnt p = BRep_Tool::Pnt(TopoDS::Vertex(exp.Current()));
+                if(line.Contains(p, Precision::Confusion())){
+                    double dist = cur_p.Distance(p);
+                    if(dist > Precision::Confusion()){
+                        if(cur_p.Translated(dist*line_dir).IsEqual(p, Precision::Confusion()) && dist < dist1){
+                            p1 = cur_p.Translated(dist*(line_dir));
+                            dist1 = dist;
+                        } else if(dist < dist2){
+                            p2 = cur_p.Translated(-dist*(line_dir));
+                            dist2 = dist;
                         }
                     }
                 }
@@ -270,31 +277,65 @@ TopoDS_Shape StandardSizing::expansion_2D(const meshing::StandardBeamMesher& mes
         }
 
         // Get cross-section
-        gp_Lin line(n.node->point, -n.normal);
-        TopoDS_Edge line_edge = BRepBuilderAPI_MakeEdge(line, -Precision::Infinite(), Precision::Infinite());
+        gp_Dir line_dir = -n.normal;
+        gp_Lin line(n.node->point, line_dir);
+        Handle(Geom_Line) geom_line(new Geom_Line(line));
         gp_Pnt opposite(Precision::Infinite(), Precision::Infinite(), Precision::Infinite());
         gp_Pnt center;
         double distance = Precision::Infinite();
         for(auto& e:edges_beam){
-            IntTools_EdgeEdge tool(line_edge, e);
-            tool.Perform();
-            auto common = tool.CommonParts();
-            if(common.Size() > 0){
-                for(auto& c:common){
-                    double dist = std::abs(c.VertexParameter1()); // n.normal is a unit vector, and the line starts at 0
-                    if(dist > Precision::Confusion() && dist < distance){
-                        opposite = n.node->point.Translated(dist*(-n.normal));
-                        center = n.node->point.Translated(0.5*dist*(-n.normal));
+            double a = 0;
+            double b = 0;
+            Handle(Geom_Curve) edge_curve = BRep_Tool::Curve(e, a, b);
+            GeomAPI_ExtremaCurveCurve extrema(geom_line, edge_curve, 0, Precision::Infinite(), a, b);
+            if(extrema.NbExtrema() > 0){
+                if(extrema.TotalLowerDistance() < Precision::Confusion()){
+                    gp_Pnt p1, p2;
+                    extrema.TotalNearestPoints(p1, p2);
+                    double dist = n.node->point.Distance(p1);
+                    if(dist > Precision::Confusion() && n.node->point.Distance(p1) < distance){
+                        opposite = p1;
                         distance = dist;
                     }
                 }
             }
+            // IntTools_EdgeEdge tool(line_edge, e);
+            // tool.UseQuickCoincidenceCheck(true);
+            // tool.SetFuzzyValue(prec);
+            // tool.Perform();
+            // auto common = tool.CommonParts();
+            // if(common.Size() > 0){
+            //     for(auto& c:common){
+            //         double dist = std::abs(c.VertexParameter1()); // n.normal is a unit vector, and the line starts at 0
+            //         if(dist > Precision::Confusion() && dist < distance){
+            //             opposite = n.node->point.Translated(dist*(line_dir));
+            //             center = n.node->point.Translated(0.5*dist*(line_dir));
+            //             distance = dist;
+            //         }
+            //     }
+            // }
         }
+        if(distance - Precision::Infinite() >= -Precision::Confusion()){
+            for(TopExp_Explorer exp(beams, TopAbs_VERTEX); exp.More(); exp.Next()){
+                gp_Pnt p = BRep_Tool::Pnt(TopoDS::Vertex(exp.Current()));
+                if(line.Contains(p, Precision::Confusion())){
+                    double dist = n.node->point.Distance(p);
+                    if(dist > Precision::Confusion()){
+                        if(n.node->point.Translated(dist*(line_dir)).IsEqual(p, Precision::Confusion()) && dist < distance){
+                            opposite = n.node->point.Translated(dist*(line_dir));
+                            distance = dist;
+                        }
+                    }
+                }
+            }
+        }
+        center = opposite;
+        center.BaryCenter(1, n.node->point, 1);
 
         // Get loads within cross-section
         TopoDS_Edge crosssection = BRepBuilderAPI_MakeEdge(n.node->point, opposite);
         gp_Dir nn(-n.normal.Y(), n.normal.X(), 0);
-        TopoDS_Shape cs_face = BRepPrimAPI_MakePrism(crosssection, 0.001*gp_Vec(nn));
+        TopoDS_Shape cs_face = BRepPrimAPI_MakePrism(crosssection, 0.1*gp_Vec(nn));
         double Fx = 0;
         double Fy = 0;
         double Mz = 0;
@@ -321,14 +362,13 @@ TopoDS_Shape StandardSizing::expansion_2D(const meshing::StandardBeamMesher& mes
 
         for(auto& ef:external_forces){
             if(this->is_inside_2D(ef.position, part)){
-                gp_Vec r(gp_Pnt(0,0,0), ef.position);
+                gp_Vec r(center, ef.position);
                 Fx -= ef.forces.X();
                 Fy -= ef.forces.Y();
                 Mz -= ef.moments.Z() + r.Crossed(ef.forces).Z();
             }
         }
-        gp_Vec r(gp_Pnt(0,0,0), center);
-        Mz -= r.Crossed(gp_Vec(Fx, Fy, 0)).Z();
+        // logger::quick_log(Fx, Fy, Mz);
 
         // Calculate new cross-section
         exp_info.push_back(get_expansion_node_2D(n.normal, center, distance, Fx, Fy, Mz, edges_init));
@@ -346,13 +386,18 @@ TopoDS_Shape StandardSizing::expansion_2D(const meshing::StandardBeamMesher& mes
     logger::quick_log("Building geometry...");
     // Generate topology
     TopoDS_Shape result = BRepBuilderAPI_Copy(this->data->ground_structure->shape);
+    result = utils::cut_shape(result, beams);
 
-    TopTools_ListOfShape shapes1;
-    shapes1.Append(result);
-    TopTools_ListOfShape shapes2;
     std::cout << "0%";
     count = 0;
     for(auto& n:exp_info){
+        double pc = count/(double)(exp_info.size()-1);
+        if(n.diameter < Precision::Confusion()){
+            std::cout << "\r" << pc*100 << "%         ";
+
+            ++count;
+            continue;
+        }
         gp_Ax2 axis(n.center, gp_Dir(0,0,1));
         gp_Circ circ(axis, n.diameter/2);
         TopoDS_Edge edge = BRepBuilderAPI_MakeEdge(circ);
@@ -362,20 +407,8 @@ TopoDS_Shape StandardSizing::expansion_2D(const meshing::StandardBeamMesher& mes
         // Fastest method I managed to find, cut from original shape then
         // inverse cut back into original shape.
         // Still a bit slow though.
-        shapes2.Clear();
-        shapes2.Append(face);
-        BRepAlgoAPI_Cut cut;
-        cut.SetTools(shapes2);
-        cut.SetArguments(shapes1);
-        cut.SetNonDestructive(false);
-        cut.SimplifyResult();
-        cut.SetRunParallel(true);
-        cut.Build();
-        result = cut;
-        shapes1.Clear();
-        shapes1.Append(result);
+        result = utils::cut_shape(result, face);
 
-        double pc = count/(double)(exp_info.size()-1);
         std::cout << "\r" << pc*100 << "%         ";
 
         ++count;
@@ -383,8 +416,8 @@ TopoDS_Shape StandardSizing::expansion_2D(const meshing::StandardBeamMesher& mes
     std::cout << "\r" << 100 << "%         ";
     std::cout << std::endl;
 
-    result = BRepAlgoAPI_Cut(this->data->ground_structure->shape, result);
-    result = this->simplify_shape(result);
+    result = utils::cut_shape(this->data->ground_structure->shape, result);
+    //result = this->simplify_shape(result);
 
     logger::quick_log("Done.");
 
@@ -403,7 +436,6 @@ StandardSizing::ExpansionNode StandardSizing::get_expansion_node_2D(const gp_Dir
     double S_f = std::min(S[0], S[1]);
     double S_n = (normal.Dot(F) < 0) ? S[0] : S[1];
     double S_c = S[2];
-    logger::quick_log(Fx, Fy, Mz);
 
     // Bending
     double h_f = std::sqrt(6*std::abs(Mz)/(t*S_f));
@@ -412,49 +444,58 @@ StandardSizing::ExpansionNode StandardSizing::get_expansion_node_2D(const gp_Dir
     // Shear
     double h_c = (F - normal.Dot(F)*normal).Magnitude()*(3/(2*t*S_c));
 
-    double h = std::max({h_f, h_n, h_c, distance});
+    double h = std::max({h_f, h_n, h_c});//, distance});
+    if(h < Precision::Confusion()){
+        return {center, line_dir, h};
+    }
 
     // Calculate new position for neutral axis, if desired
     if(edges_init.size() > 0){
         gp_Lin side1lin(center, line_dir);
         gp_Lin side2lin(center, -line_dir);
+        Handle(Geom_Line) geom_line1(new Geom_Line(side1lin));
+        Handle(Geom_Line) geom_line2(new Geom_Line(side2lin));
+        
         TopoDS_Edge side1edge = BRepBuilderAPI_MakeEdge(side1lin, 0, h/2);
         TopoDS_Edge side2edge = BRepBuilderAPI_MakeEdge(side2lin, 0, h/2);
         double min_dist1 = Precision::Infinite();
         double min_dist2 = Precision::Infinite();
         for(auto& e:edges_init){
-            IntTools_EdgeEdge tool1(side1edge, e);
-            IntTools_EdgeEdge tool2(side2edge, e);
-            tool1.Perform();
-            tool2.Perform();
-            auto common1 = tool1.CommonParts();
-            auto common2 = tool2.CommonParts();
-            if(common1.Size() > 0){
-                for(auto& c:common1){
-                    double dist = std::abs(c.VertexParameter1()); // line_dir is a unit vector, and the line starts at 0
-                    if(dist < min_dist1){
+            double a = 0;
+            double b = 0;
+            Handle(Geom_Curve) edge_curve = BRep_Tool::Curve(e, a, b);
+            GeomAPI_ExtremaCurveCurve extrema1(geom_line1, edge_curve, 0, h/2, a, b);
+            GeomAPI_ExtremaCurveCurve extrema2(geom_line2, edge_curve, 0, h/2, a, b);
+            if(extrema1.NbExtrema() > 0){
+                if(extrema1.TotalLowerDistance() < Precision::Confusion()){
+                    gp_Pnt p1, p2;
+                    extrema1.TotalNearestPoints(p1, p2);
+                    double dist = center.Distance(p1);
+                    if(dist > Precision::Confusion() && dist < min_dist1){
                         min_dist1 = dist;
                     }
                 }
             }
-            if(common2.Size() > 0){
-                for(auto& c:common2){
-                    double dist = std::abs(c.VertexParameter1()); // line_dir is a unit vector, and the line starts at 0
-                    if(dist < min_dist2){
+            if(extrema2.NbExtrema() > 0){
+                if(extrema2.TotalLowerDistance() < Precision::Confusion()){
+                    gp_Pnt p1, p2;
+                    extrema2.TotalNearestPoints(p1, p2);
+                    double dist = center.Distance(p1);
+                    if(dist > Precision::Confusion() && dist < min_dist2){
                         min_dist2 = dist;
                     }
                 }
             }
         }
-        if(min_dist1 < Precision::Infinite() && min_dist2 < Precision::Infinite()){
+        if(min_dist1 < Precision::Infinite() - Precision::Confusion() && min_dist2 < Precision::Infinite() - Precision::Confusion()){
             gp_Pnt p1 = center.Translated(min_dist1*line_dir);
             gp_Pnt p2 = center.Translated(min_dist2*(-line_dir));
             center = p1;
             center.BaryCenter(1, p2, 1);
-        } else if(min_dist1 < Precision::Infinite()){
-            center.Translate(-min_dist1*line_dir);
-        } else if(min_dist2 < Precision::Infinite()){
-            center.Translate(-min_dist2*(-line_dir));
+        } else if(min_dist1 < Precision::Infinite() - Precision::Confusion()){
+            center.Translate(-(h/2-min_dist1)*line_dir);
+        } else if(min_dist2 < Precision::Infinite() - Precision::Confusion()){
+            center.Translate(-(h/2-min_dist2)*(-line_dir));
         }
     }
 
@@ -476,7 +517,7 @@ bool StandardSizing::is_valid_boundary_point(MeshNode* n) const{
 }
 
 TopoDS_Shape StandardSizing::simplify_shape(TopoDS_Shape shape) const{
-    double tol = 10;
+    double tol = 5;
     double prec = tol*1.5;
 
     Handle(ShapeFix_Shape) sfs = new ShapeFix_Shape(shape);
@@ -484,8 +525,8 @@ TopoDS_Shape StandardSizing::simplify_shape(TopoDS_Shape shape) const{
     sfs->SetMaxTolerance(2*tol);
     sfs->SetMinTolerance(tol);
     auto sfw = sfs->FixWireTool();
-    sfw->ModifyGeometryMode() = true;
-    sfw->ModifyTopologyMode() = true;
+    sfw->ModifyGeometryMode() = false;
+    sfw->ModifyTopologyMode() = false;
     sfw->FixSmallMode() = true;
     sfw->FixSmall(false, prec);
     sfs->Perform();
@@ -510,18 +551,31 @@ TopoDS_Shape StandardSizing::build_initial_topology(){
         for(auto& s:this->data->supports){
             std::vector<gp_Pnt> b(this->data->pathfinder->find_path(f.S, s.S));
             this->end_points.push_back(b.front());
-            TopoDS_Wire w;
-            for(auto p = b.crbegin()+1; p < b.crend(); ++p){
-                TopoDS_Edge e = BRepBuilderAPI_MakeEdge(*(p-1), *p);
-                w = BRepBuilderAPI_MakeWire(w, e);
+            TopoDS_Shape csec = BRepBuilderAPI_Copy(f.S.get_shape());
+            gp_Vec transl(f.S.get_centroid(), b.front());
+            if(transl.Magnitude() > Precision::Confusion()){
+                gp_Trsf trsf;
+                trsf.SetTranslation(transl);
+                csec = BRepBuilderAPI_Transform(csec, trsf);
             }
-            TopoDS_Shape beam = BRepOffsetAPI_MakePipe(w, f.S.get_shape(), GeomFill_IsDiscreteTrihedron);
-            geometry = BRepAlgoAPI_Cut(geometry, beam);
+            gp_Dir fn = f.S.get_normal();
+            gp_Dir sn(gp_Vec(b[0], b[1]));
+            if(!fn.IsEqual(sn, Precision::Confusion()) && !fn.IsEqual(-sn, Precision::Confusion())){
+                gp_Dir axis = fn.Crossed(sn);
+                double ang = fn.AngleWithRef(sn, axis);
+                gp_Ax1 ax(b.front(), axis);
+                gp_Trsf trsf;
+                trsf.SetRotation(ax, ang);
+                csec = BRepBuilderAPI_Transform(csec, trsf);
+            }
+
+            TopoDS_Shape beam = utils::sweep_surface(b, csec, data->ground_structure->shape);
+            // TopoDS_Shape beam = utils::fast_make_2D_beam(b, f.S.get_dimension(), data->ground_structure->shape);
+            geometry = utils::cut_shape(geometry, beam);
         }
     }
-    geometry = BRepAlgoAPI_Cut(this->data->ground_structure->shape, geometry);
 
-    return this->simplify_shape(geometry);
+    return utils::cut_shape(this->data->ground_structure->shape, geometry);
 }
 
 std::vector<double> StandardSizing::calculate_change(BeamMeshing* mesh, const std::vector<long>& ids, std::vector<double> h, const TopoDS_Shape& beams) const{
@@ -709,14 +763,18 @@ TopoDS_Shape StandardSizing::experimental_elemental_approach(){
                 double T_xy = max_stresses[2];
 
                 double h1 = n1->point.Distance(n2->point);
-                std::vector<double> forces1 = e->get_loads_at(n1->point, u);
-                std::vector<double> forces2 = e->get_loads_at(n2->point, u);
+                // std::vector<double> forces1 = e->get_loads_at(n1->point, u);
+                // std::vector<double> forces2 = e->get_loads_at(n2->point, u);
+                std::vector<double> forces = e->get_average_loads_and_torques(n2->point, n1->point, u);
                 // std::vector<double> forces = e->get_average_loads_and_torques(n2->point, n1->point, u);
-                // std::vector<double> forces = e->get_average_loads_and_torques(n2->point, n1->point, u);
-                if((forces1[0]+forces2[0]) == 0 && (forces1[1]+forces2[1]) == 0){
+                // if((forces1[0]+forces2[0]) == 0 && (forces1[1]+forces2[1]) == 0){
+                //     continue;
+                // }
+                // gp_Vec F(forces1[0]+forces2[0], forces1[1]+forces2[1], 0);
+                if(forces[0] == 0 && forces[1] == 0){
                     continue;
                 }
-                gp_Vec F(forces1[0]+forces2[0], forces1[1]+forces2[1], 0);
+                gp_Vec F(forces[0], forces[1], 0);
                 // double Mz = std::abs(forces[2]);
 
                 double hn = std::abs(perp.Dot(F))/(t*S_x);
@@ -728,14 +786,14 @@ TopoDS_Shape StandardSizing::experimental_elemental_approach(){
                 //hh = std::max(0.0, hh - h1);
                 logger::quick_log(F.X(), F.Y());
                 if(uh[2*n1->id] > -1){
-                    int sign = dir.X()/std::abs(dir.X());
-                    h[uh[2*n1->id]] += sign*std::max(0.0, std::abs(F.Y())/(t*S_x) - std::abs(n1->point.X() - n2->point.X()));
-                    // h[uh[2*n1->id]] += dir.X()*hh;
+                    // int sign = dir.X()/std::abs(dir.X());
+                    // h[uh[2*n1->id]] += sign*std::max(0.0, std::abs(F.Y())/(t*S_x) - std::abs(n1->point.X() - n2->point.X()));
+                    h[uh[2*n1->id]] += dir.X()*hh;
                 }
                 if(uh[2*n1->id+1] > -1){
-                    int sign = dir.Y()/std::abs(dir.Y());
-                    h[uh[2*n1->id+1]] += sign*std::max(0.0, std::abs(F.X())/(t*S_x) - std::abs(n1->point.Y() - n2->point.Y()));
-                    // h[uh[2*n1->id+1]] += dir.Y()*hh;
+                    // int sign = dir.Y()/std::abs(dir.Y());
+                    // h[uh[2*n1->id+1]] += sign*std::max(0.0, std::abs(F.X())/(t*S_x) - std::abs(n1->point.Y() - n2->point.Y()));
+                    h[uh[2*n1->id+1]] += dir.Y()*hh;
                 }
             }
         }
@@ -765,18 +823,7 @@ TopoDS_Shape StandardSizing::experimental_elemental_approach(){
             }
             TopoDS_Shape s = e->get_shape(vecs);
             
-            shapes2.Clear();
-            shapes2.Append(s);
-            BRepAlgoAPI_Cut cut;
-            cut.SetTools(shapes2);
-            cut.SetArguments(shapes1);
-            cut.SetNonDestructive(false);
-            cut.SimplifyResult();
-            cut.SetRunParallel(true);
-            cut.Build();
-            result = cut;
-            shapes1.Clear();
-            shapes1.Append(result);
+            result = utils::cut_shape(result, s);
 
             double pc = i/(double)(mesh.element_list.size()-1);
             std::cout << "\r" << pc*100 << "%         ";
@@ -788,19 +835,18 @@ TopoDS_Shape StandardSizing::experimental_elemental_approach(){
 
         logger::quick_log("Done.");
     }
-    result = BRepAlgoAPI_Cut(this->data->ground_structure->shape, result);
-    result = this->simplify_shape(result);
+    result = utils::cut_shape(this->data->ground_structure->shape, result);
 
     return result;
 }
 
 bool StandardSizing::is_inside_2D(const gp_Pnt& p, const TopoDS_Shape& shape) const{
-    BRepClass3d_SolidClassifier insider(shape, p, 0.01);
+    BRepClass3d_SolidClassifier insider(shape, p, 0.1);
     return insider.State() == TopAbs_ON;
 }
 
 bool StandardSizing::is_inside_3D(const gp_Pnt& p, const TopoDS_Shape& shape) const{
-    BRepClass3d_SolidClassifier insider(shape, p, 0.01);
+    BRepClass3d_SolidClassifier insider(shape, p, 0.1);
     return insider.State() == TopAbs_IN;
 }
 
