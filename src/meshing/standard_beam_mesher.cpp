@@ -37,6 +37,7 @@ StandardBeamMesher::StandardBeamMesher(double size, int order, utils::ProblemTyp
 }
 
 std::vector<ElementShape> StandardBeamMesher::mesh(TopoDS_Shape s){
+    this->shape = s;
     this->node_list.clear();
     gmsh::initialize();
 

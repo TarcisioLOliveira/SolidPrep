@@ -37,6 +37,7 @@ Gmsh::Gmsh(double size, int order, utils::ProblemType type, int algorithm):
 }
 
 std::vector<ElementShape> Gmsh::mesh(TopoDS_Shape s){
+    this->shape = s;
     this->node_list.clear();
     gmsh::initialize();
 

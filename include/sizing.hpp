@@ -28,6 +28,7 @@ class ProjectData;
 class Sizing{
     public:
     Sizing(ProjectData* data):data(data){}
+    virtual ~Sizing() = default;
 
     virtual TopoDS_Shape run() = 0;
 

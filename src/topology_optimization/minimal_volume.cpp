@@ -24,6 +24,7 @@
 #include "utils.hpp"
 #include <nlopt.hpp>
 #include <cblas.h>
+#include <BRepBuilderAPI_Copy.hxx>
 
 namespace topology_optimization{
 
@@ -50,7 +51,7 @@ TopoDS_Shape MinimalVolume::optimize(Visualization* viz, FiniteElement* fem, Mes
         std::vector<double> u;
     };
 
-    Data data{viz, fem, mesh, this, 1, std::vector<double>(mesh->element_list.size(), 0.3), 0, 0, std::vector<double>(mesh->element_list.size(), 0), 1, std::vector<std::vector<size_t>>(mesh->element_list.size()), std::vector<double>()};
+    Data data{viz, fem, mesh, this, 1, std::vector<double>(mesh->element_list.size(), 0.5), 0, 0, std::vector<double>(mesh->element_list.size(), 0), 1, std::vector<std::vector<size_t>>(mesh->element_list.size()), std::vector<double>()};
 
     // Uses more memory but is much faster
     for(size_t i = 0; i < mesh->element_list.size(); ++i){
@@ -148,7 +149,7 @@ TopoDS_Shape MinimalVolume::optimize(Visualization* viz, FiniteElement* fem, Mes
         logger::quick_log("} Done.");
 
         logger::quick_log("Calculating stress gradient...");
-        // std::vector<double> grad_tmp(grad);
+        std::vector<double> grad_tmp(grad);
         for(size_t i = 0; i < data->mesh->element_list.size(); ++i){
             auto& e = data->mesh->element_list[i];
             double lKu = pc*std::pow(data->new_x[i], pc-1)*e->get_compliance(data->u, l);
@@ -157,22 +158,22 @@ TopoDS_Shape MinimalVolume::optimize(Visualization* viz, FiniteElement* fem, Mes
             double Se = (pt*P+1)*v*std::pow(data->new_x[i], pt*P-1)*std::pow(S, P);
             //double Se = (pt+1)*v*std::pow(data->new_x[i], pt-1)*S;
 
-            // grad_tmp[i] = Sg*(Se - lKu);
-            grad[i] = Sg*(Se - lKu);
+            grad_tmp[i] = Sg*(Se - lKu);
+            // grad[i] = Sg*(Se - lKu);
             // grad[i] = Se - lKu;
         }
-        // // Sensitivity filtering
-        // for(size_t i = 0; i < x.size(); ++i){
-        //     double w = 0;
-        //     grad[i] = 0;
-        //     for(const auto& j:data->neighbors[i]){
-        //         double dist = data->mesh->element_list[i]->get_centroid().Distance(data->mesh->element_list[j]->get_centroid());
-        //         double wj = 1 - dist/data->mv->r_o;
-        //         grad[i] += wj*grad_tmp[j];
-        //         w += wj;
-        //     }
-        //     grad[i] /= w;
-        // }
+        // Sensitivity filtering
+        for(size_t i = 0; i < x.size(); ++i){
+            double w = 0;
+            grad[i] = 0;
+            for(const auto& j:data->neighbors[i]){
+                double dist = data->mesh->element_list[i]->get_centroid().Distance(data->mesh->element_list[j]->get_centroid());
+                double wj = 1 - dist/data->mv->r_o;
+                grad[i] += wj*data->new_x[j]*grad_tmp[j];
+                w += wj;
+            }
+            grad[i] /= w*data->new_x[i];
+        }
         logger::quick_log("Done.");
 
         double T = 1;
@@ -203,7 +204,13 @@ TopoDS_Shape MinimalVolume::optimize(Visualization* viz, FiniteElement* fem, Mes
     logger::quick_log("Final volume: ", data.cur_V);
 
     if(r > 0){
-
+        TopoDS_Shape result = BRepBuilderAPI_Copy(this->data->ground_structure->shape);
+        for(size_t i = 0; i < data.new_x.size(); ++i){
+            if(data.new_x[i] > 0.8){
+                result = utils::cut_shape(result, mesh->element_list[i]->get_shape());
+            }
+        }
+        return result;
     }
 
     return TopoDS_Shape();

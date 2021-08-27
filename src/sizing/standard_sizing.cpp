@@ -38,6 +38,7 @@
 #include "meshing/standard_beam_mesher.hpp"
 #include "utils.hpp"
 #include "lapacke.h"
+#include "cblas.h"
 #include <cmath>
 #include <limits>
 #include <algorithm>
@@ -94,15 +95,11 @@ TopoDS_Shape StandardSizing::expansion_2D(const meshing::StandardBeamMesher& mes
     // Get edges
     std::vector<TopoDS_Edge> edges_init;
     std::vector<TopoDS_Edge> edges_beam;
-    std::vector<TopoDS_Vertex> verts_beam;
     for (TopExp_Explorer exp(this->data->ground_structure->shape, TopAbs_EDGE); exp.More(); exp.Next()){
         edges_init.push_back(TopoDS::Edge(exp.Current()));
     }
     for (TopExp_Explorer exp(beams, TopAbs_EDGE); exp.More(); exp.Next()){
         edges_beam.push_back(TopoDS::Edge(exp.Current()));
-    }
-    for (TopExp_Explorer exp(beams, TopAbs_VERTEX); exp.More(); exp.Next()){
-        verts_beam.push_back(TopoDS::Vertex(exp.Current()));
     }
 
     std::vector<ExternalForce> external_forces;
@@ -126,14 +123,6 @@ TopoDS_Shape StandardSizing::expansion_2D(const meshing::StandardBeamMesher& mes
             if(s.S.is_inside(cur_p)){
                 sup = &s;
                 break;
-            }
-        }
-
-        // Filter redundancy
-        for(size_t j = i+1; j < this->end_points.size(); ++j){
-            if(sup->S.is_inside(this->end_points[j])){
-                this->end_points.erase(this->end_points.begin()+j);
-                --j;
             }
         }
 
@@ -187,6 +176,14 @@ TopoDS_Shape StandardSizing::expansion_2D(const meshing::StandardBeamMesher& mes
         gp_Dir final_dir(gp_Vec(p1, p2));
         gp_Lin final_line(p1, final_dir);
 
+        // Filter redundancy
+        for(size_t j = i+1; j < this->end_points.size(); ++j){
+            if(final_line.Contains(this->end_points[j], Precision::Confusion()) && center.Distance(this->end_points[j]) < distance/2){
+                this->end_points.erase(this->end_points.begin()+j);
+                --j;
+            }
+        }
+
         double Fx = 0;
         double Fy = 0;
         for(auto& n:mesh.node_list){
@@ -208,31 +205,42 @@ TopoDS_Shape StandardSizing::expansion_2D(const meshing::StandardBeamMesher& mes
             ++Mn;
         }
         ef.diameter = distance;
+        ef.line_dir = line_dir;
         external_forces.push_back(ef);
     }
 
     // Calculate reaction moments
-
     if(Mn > 1){
-        std::vector<double> Mat(Mn*Mn, 1);
+        // Fast inverted matrix because LAPACK was returning inf
+        // Basically the inverse of ones() - I
+        std::vector<double> Mat(Mn*Mn, 1.0/std::max(1.0, Mn-1.0));
+        for(size_t i = 0; i < Mn; ++i){
+            Mat[i*Mn + i] *= -std::max(0.0, Mn-2.0);
+        }
         std::vector<double> Mvec(Mn);
+        size_t idx = 0;
         for(size_t i = this->data->forces.size(); i < external_forces.size(); ++i){
             if(external_forces[i].Mz){
                 auto& ef_i = external_forces[i];
                 for(size_t j = 0; j < external_forces.size(); ++j){
                     auto& ef_j = external_forces[j];
                     if(i != j){
-                        gp_Vec r(ef_j.position, ef_i.position);
-                        Mvec[i] -= r.Crossed(ef_j.forces).Z();
+                        gp_Vec r(ef_i.position, ef_j.position);
+                        Mvec[idx] -= r.Crossed(ef_j.forces).Z();
                     }
                 }
+                ++idx;
             }
         }
-        for(size_t i = 0; i < Mn; ++i){
-            Mat[i*Mn + i] = 0;
-        }
-        std::vector<int> ipiv(Mn, 0);
-        LAPACKE_dgesv(LAPACK_ROW_MAJOR, Mn, 1, Mvec.data(), Mn, ipiv.data(), Mvec.data(), 1);
+        logger::quick_log(Mat);
+        logger::quick_log(Mvec);
+        auto Mtemp(Mvec);
+        // std::vector<int> ipiv(Mn, 0);
+        // int info = LAPACKE_dgesv(LAPACK_ROW_MAJOR, Mn, 1, Mvec.data(), Mn, ipiv.data(), Mvec.data(), 1);
+        // logger::log_assert(info == 0, logger::ERROR, "LAPACK returned {} while calculating reaction moments.", info);
+        cblas_dgemv(CblasRowMajor, CblasNoTrans, Mn, Mn, 1, Mat.data(), Mn, Mtemp.data(), 1, 0, Mvec.data(), 1);
+        logger::quick_log(Mat);
+        logger::quick_log(Mvec);
         size_t Mi = 0;
         for(size_t i = this->data->forces.size(); i < external_forces.size(); ++i){
             if(external_forces[i].Mz){
@@ -246,10 +254,8 @@ TopoDS_Shape StandardSizing::expansion_2D(const meshing::StandardBeamMesher& mes
                 auto& ef_i = external_forces[i];
                 for(size_t j = 0; j < external_forces.size(); ++j){
                     auto& ef_j = external_forces[j];
-                    if(i != j){
-                        gp_Vec r(ef_j.position, ef_i.position);
-                        ef_i.moments -= r.Crossed(ef_i.forces);
-                    }
+                    gp_Vec r(gp_Pnt(0,0,0), ef_j.position);
+                    ef_i.moments -= r.Crossed(ef_j.forces);
                 }
                 break;
             }
@@ -299,21 +305,6 @@ TopoDS_Shape StandardSizing::expansion_2D(const meshing::StandardBeamMesher& mes
                     }
                 }
             }
-            // IntTools_EdgeEdge tool(line_edge, e);
-            // tool.UseQuickCoincidenceCheck(true);
-            // tool.SetFuzzyValue(prec);
-            // tool.Perform();
-            // auto common = tool.CommonParts();
-            // if(common.Size() > 0){
-            //     for(auto& c:common){
-            //         double dist = std::abs(c.VertexParameter1()); // n.normal is a unit vector, and the line starts at 0
-            //         if(dist > Precision::Confusion() && dist < distance){
-            //             opposite = n.node->point.Translated(dist*(line_dir));
-            //             center = n.node->point.Translated(0.5*dist*(line_dir));
-            //             distance = dist;
-            //         }
-            //     }
-            // }
         }
         if(distance - Precision::Infinite() >= -Precision::Confusion()){
             for(TopExp_Explorer exp(beams, TopAbs_VERTEX); exp.More(); exp.Next()){
@@ -417,7 +408,7 @@ TopoDS_Shape StandardSizing::expansion_2D(const meshing::StandardBeamMesher& mes
     std::cout << std::endl;
 
     result = utils::cut_shape(this->data->ground_structure->shape, result);
-    //result = this->simplify_shape(result);
+    result = this->simplify_shape(result);
 
     logger::quick_log("Done.");
 
@@ -431,7 +422,7 @@ StandardSizing::ExpansionNode StandardSizing::get_expansion_node_2D(const gp_Dir
 
     double t = this->data->thickness;
 
-    std::vector<double> S = this->data->material->get_max_stresses(normal);
+    std::vector<double> S(this->data->material->get_max_stresses(normal));
 
     double S_f = std::min(S[0], S[1]);
     double S_n = (normal.Dot(F) < 0) ? S[0] : S[1];

@@ -44,8 +44,9 @@ int main(int argc, char* argv[]){
 
     ProjectData proj(argv[1]);
     finite_element::DirectSolver fem_beam;
-    sizing::StandardSizing sizer(&proj, &fem_beam);
-    auto shape = sizer.run();
+    sizing::StandardSizing* sizer = new sizing::StandardSizing(&proj, &fem_beam);
+    auto shape = sizer->run();
+    delete sizer;
     utils::shape_to_file("test.step", shape);
     //return 0;
 
@@ -72,7 +73,8 @@ int main(int argc, char* argv[]){
         v.wait();
     };
     std::thread t(f);
-    mv.optimize(&v, &fem, &mesh);
+    TopoDS_Shape result = mv.optimize(&v, &fem, &mesh);
+    utils::shape_to_file("result.step", result);
 
     logger::quick_log("Finished.");
 
