@@ -162,6 +162,7 @@ namespace utils{
 
     TopoDS_Shape sweep_surface(const std::vector<gp_Pnt>& spine, const TopoDS_Shape& surface, const TopoDS_Shape& base);
 
+    // Not really very fast actually
     TopoDS_Shape fast_make_2D_beam(const std::vector<gp_Pnt>& spine, double diameter, const TopoDS_Shape& surface);
 
     TopoDS_Shape cut_shape(const TopoDS_Shape& base, const TopoDS_Shape& cutter);

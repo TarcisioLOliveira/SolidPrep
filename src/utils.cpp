@@ -100,28 +100,24 @@ TopoDS_Shape sweep_surface(const std::vector<gp_Pnt>& spine, const TopoDS_Shape&
             double d2 = gp_Vec(prev_dir).Dot(gp_Vec(gp_Pnt(0,0,0), prev_mid));
             double d3 = gp_Vec(cur_dir).Dot(gp_Vec(gp_Pnt(0,0,0), cur_mid));
 
-            // gp_Mat M(axis.XYZ(), prev_dir.XYZ(), cur_dir.XYZ());
-            // gp_Pnt center(0,0,0);
-            // center.Translate((d1*prev_dir.Crossed(cur_dir)+d2*cur_dir.Crossed(axis)+d3*axis.Crossed(prev_dir))/M.Determinant());
+            gp_Mat M(axis.XYZ(), prev_dir.XYZ(), cur_dir.XYZ());
+            gp_Pnt center(0,0,0);
+            center.Translate((d1*prev_dir.Crossed(cur_dir)+d2*cur_dir.Crossed(axis)+d3*axis.Crossed(prev_dir))/M.Determinant());
 
-            std::vector<double> d({d1, d2, d3});
-            std::vector<double> M({axis.X(), axis.Y(), axis.Z(),
-                                   prev_dir.X(), prev_dir.Y(), prev_dir.Z(),
-                                   cur_dir.X(), cur_dir.Y(), cur_dir.Z()});
-            std::vector<int> ipiv(3);
-            LAPACKE_dgesv(LAPACK_ROW_MAJOR, 3, 1, M.data(), 3, ipiv.data(), d.data(), 1);
-            gp_Pnt center(d[0], d[1], d[2]);
+            // std::vector<double> d({d1, d2, d3});
+            // std::vector<double> M({axis.X(), axis.Y(), axis.Z(),
+            //                        prev_dir.X(), prev_dir.Y(), prev_dir.Z(),
+            //                        cur_dir.X(), cur_dir.Y(), cur_dir.Z()});
+            // std::vector<int> ipiv(3);
+            // LAPACKE_dgesv(LAPACK_ROW_MAJOR, 3, 1, M.data(), 3, ipiv.data(), d.data(), 1);
+            // gp_Pnt center(d[0], d[1], d[2]);
+            //
             // logger::quick_log(d1, d2, d3);
             // logger::quick_log(axis.X(), axis.Y(), axis.Z(), prev_dir.X(), prev_dir.Y(), cur_dir.X(), cur_dir.Y());
             // logger::quick_log(center.X(), center.Y(), prev_mid.X(), prev_mid.Y(), cur_mid.X(), cur_mid.Y());
             gp_Ax1 ax(center, axis);
             gp_Vec v1(center, cur_mid);
             gp_Vec v2(center, prev_mid);
-            // v1.Normalize();
-            // v2.Normalize();
-            // double dot = v1.X()*v2.X() + v1.Y()*v2.Y() + v1.Z()*v2.Z();
-            // double det = v1.X()*v2.Y()*axis.Z() + v2.X()*axis.Y()*v1.Z() + axis.X()*v1.Y()*v2.Z() - v1.Z()*v2.Y()*axis.X() - v2.Z()*axis.Y()*v1.X() - axis.Z()*v1.Y()*v2.X();
-            // double ang = -std::atan2(det, dot);
             double ang = v2.AngleWithRef(v1, axis);
             TopoDS_Shape revol = BRepPrimAPI_MakeRevol(csec, ax, ang, true);
             result = cut_shape(result, revol);
