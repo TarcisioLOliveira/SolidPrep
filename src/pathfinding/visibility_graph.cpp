@@ -52,7 +52,7 @@
 namespace pathfinding{
 
 VisibilityGraph::VisibilityGraph(GroundStructure* topology, double step, double turn_angle, double restriction, utils::ProblemType type):
-    step(step), angle(turn_angle), restriction(restriction), topology(topology), type(type){}
+    step(step), angle(turn_angle*M_PI/180), restriction(restriction), topology(topology), type(type){}
 
 std::vector<gp_Pnt> VisibilityGraph::find_path(const CrossSection& begin, const CrossSection& end){
     struct Vertex{
@@ -207,8 +207,6 @@ std::vector<gp_Pnt> VisibilityGraph::find_path(const CrossSection& begin, const 
     }
 
     // Get final path
-
-    this->angle = (M_PI/180)*this->angle;
     if(node_path.size() == 1){
         std::vector<gp_Pnt> final_list(this->path_section(begin, end));
         std::reverse(final_list.begin(), final_list.end());
@@ -268,7 +266,7 @@ std::vector<gp_Pnt> VisibilityGraph::path_section(const CrossSection& begin, con
         gp_Dir current_dir(gp_Vec(prev, current));
         gp_Dir path_dir(gp_Vec(current, closest));
         curr_dist = current.Distance(closest);
-        if(current_dir.Angle(path_dir) <= this->angle){
+        if(std::abs(current_dir.AngleWithRef(path_dir, gp_Dir(0,0,1))) <= this->angle){
             if(curr_dist <= this->step + 1e-3){
                 list.push_back(closest);
                 break;
