@@ -232,15 +232,8 @@ TopoDS_Shape StandardSizing::expansion_2D(const meshing::StandardBeamMesher& mes
                 ++idx;
             }
         }
-        logger::quick_log(Mat);
-        logger::quick_log(Mvec);
         auto Mtemp(Mvec);
-        // std::vector<int> ipiv(Mn, 0);
-        // int info = LAPACKE_dgesv(LAPACK_ROW_MAJOR, Mn, 1, Mvec.data(), Mn, ipiv.data(), Mvec.data(), 1);
-        // logger::log_assert(info == 0, logger::ERROR, "LAPACK returned {} while calculating reaction moments.", info);
         cblas_dgemv(CblasRowMajor, CblasNoTrans, Mn, Mn, 1, Mat.data(), Mn, Mtemp.data(), 1, 0, Mvec.data(), 1);
-        logger::quick_log(Mat);
-        logger::quick_log(Mvec);
         size_t Mi = 0;
         for(size_t i = this->data->forces.size(); i < external_forces.size(); ++i){
             if(external_forces[i].Mz){
