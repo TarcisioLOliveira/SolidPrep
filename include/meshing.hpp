@@ -32,6 +32,7 @@ class ProjectData;
 
 class Meshing{
     public:
+    Meshing(double size):size(size){}
 
     /**
      * Just generates a mesh from a shape according to the child class's input
@@ -62,12 +63,16 @@ class Meshing{
                                  MeshElementFactory::MeshElementType element_type,
                                  ProjectData* data);
 
+    virtual void clear_results();
+
     std::vector<std::unique_ptr<MeshNode>> node_list;
     std::vector<std::unique_ptr<MeshElement>> element_list;
     std::vector<double> load_vector;
     TopoDS_Shape shape;
 
     protected:
+    double size;
+    MeshElementFactory::MeshElementType type;
     std::vector<long> get_support_dof(size_t& offset, size_t id, const Support& support, MeshElementFactory::MeshElementType type) const;
     std::vector<double> get_force_dof(const Force& force, MeshElementFactory::MeshElementType type) const;
 };

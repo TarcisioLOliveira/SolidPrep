@@ -34,6 +34,7 @@ class Visualization{
 
     void load_mesh(Meshing* mesh, utils::ProblemType type);
     void update_stress_view(const std::vector<double>& s);
+    void update_nodal_stress_view(const std::vector<double>& s);
     void update_density_view(const std::vector<double>& d);
     void show();
     inline void hide(){

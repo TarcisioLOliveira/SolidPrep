@@ -28,6 +28,7 @@
 #include <BRepBuilderAPI_MakeWire.hxx>
 #include <BRepBuilderAPI_MakeEdge.hxx>
 #include <BRepBuilderAPI_MakeSolid.hxx>
+#include <BRepBuilderAPI_MakeVertex.hxx>
 #include <BRepBuilderAPI_MakeFace.hxx>
 #include <BRepBuilderAPI_Copy.hxx>
 #include <BRepOffsetAPI_MakePipe.hxx>
@@ -56,6 +57,7 @@
 #include <BRepGProp.hxx>
 #include <BRepBuilderAPI_Transform.hxx>
 #include <GeomAPI_ExtremaCurveCurve.hxx>
+#include <BRepExtrema_DistShapeShape.hxx>
 
 namespace sizing{
 
@@ -68,7 +70,7 @@ TopoDS_Shape StandardSizing::run(){
 }
 
 TopoDS_Shape StandardSizing::boundary_expansion_approach(){
-    double mesh_size = 2;
+    double mesh_size = 3;
 
     // Get beams and do FEA
     meshing::StandardBeamMesher mesh(mesh_size, 1, utils::PROBLEM_TYPE_2D);
@@ -125,32 +127,19 @@ TopoDS_Shape StandardSizing::expansion_2D(const meshing::StandardBeamMesher& mes
                 break;
             }
         }
+        if(sup == nullptr){
+            continue;
+        }
 
         // Get edges
         gp_Dir normal(sup->S.get_normal());
         gp_Dir line_dir(normal.Y(), -normal.X(), 0);
         gp_Lin line(cur_p, line_dir);
         TopoDS_Edge line_edge = BRepBuilderAPI_MakeEdge(line, -Precision::Infinite(), Precision::Infinite());
+        Handle(Geom_Line) geom_line(new Geom_Line(line));
         gp_Pnt p1, p2;
         double dist1 = Precision::Infinite();
         double dist2 = Precision::Infinite();
-        for(auto& e:edges_beam){
-            IntTools_EdgeEdge tool(line_edge, e);
-            tool.Perform();
-            auto common = tool.CommonParts();
-            if(common.Size() > 0){
-                for(auto& c:common){
-                    double dist = std::abs(c.VertexParameter1()); // n.normal is a unit vector, and the line starts at 0
-                    if(dist > Precision::Confusion() && dist < dist1){
-                        p1 = cur_p.Translated(dist*(line_dir));
-                        dist1 = dist;
-                    } else if(dist < -Precision::Confusion() && std::abs(dist) < dist2){
-                        p2 = cur_p.Translated(dist*(line_dir));
-                        dist2 = std::abs(dist);
-                    }
-                }
-            }
-        }
         if(dist1 - Precision::Infinite() >= -Precision::Confusion() || dist2 - Precision::Infinite() >= -Precision::Confusion()){
             for(TopExp_Explorer exp(beams, TopAbs_VERTEX); exp.More(); exp.Next()){
                 gp_Pnt p = BRep_Tool::Pnt(TopoDS::Vertex(exp.Current()));
@@ -160,7 +149,7 @@ TopoDS_Shape StandardSizing::expansion_2D(const meshing::StandardBeamMesher& mes
                         if(cur_p.Translated(dist*line_dir).IsEqual(p, Precision::Confusion()) && dist < dist1){
                             p1 = cur_p.Translated(dist*(line_dir));
                             dist1 = dist;
-                        } else if(dist < dist2){
+                        } else if(cur_p.Translated(-dist*line_dir).IsEqual(p, Precision::Confusion()) && dist < dist2){
                             p2 = cur_p.Translated(-dist*(line_dir));
                             dist2 = dist;
                         }
@@ -178,7 +167,7 @@ TopoDS_Shape StandardSizing::expansion_2D(const meshing::StandardBeamMesher& mes
 
         // Filter redundancy
         for(size_t j = i+1; j < this->end_points.size(); ++j){
-            if(final_line.Contains(this->end_points[j], Precision::Confusion()) && center.Distance(this->end_points[j]) < distance/2){
+            if(final_line.Contains(this->end_points[j], Precision::Confusion()) && center.Distance(this->end_points[j]) - distance/2 <= Precision::Confusion()){
                 this->end_points.erase(this->end_points.begin()+j);
                 --j;
             }
@@ -260,6 +249,7 @@ TopoDS_Shape StandardSizing::expansion_2D(const meshing::StandardBeamMesher& mes
     exp_info.reserve(mesh.boundary_nodes.size() + external_forces.size());
     size_t ef_count = 0;
     for(auto& ef:external_forces){
+        // logger::quick_log(ef.forces.X(), ef.forces.Y(), ef.moments.Z(), ef.position.X(), ef.position.Y());
         if(ef_count >= this->data->forces.size()){
             exp_info.push_back(get_expansion_node_2D(-ef.line_dir, ef.position, ef.diameter, ef.forces.X(), ef.forces.Y(), ef.moments.Z(), edges_init));
         } else {
@@ -267,6 +257,14 @@ TopoDS_Shape StandardSizing::expansion_2D(const meshing::StandardBeamMesher& mes
         }
         ++ef_count;
     }
+
+    struct SeparateNodes{
+        gp_Pnt center;
+        double distance;
+        gp_Dir dir;
+        TopoDS_Shape splitter;
+    };
+    std::vector<SeparateNodes> separate_analysis;
 
     size_t count = 0;
     for(auto& n:mesh.boundary_nodes){
@@ -293,8 +291,12 @@ TopoDS_Shape StandardSizing::expansion_2D(const meshing::StandardBeamMesher& mes
                     extrema.TotalNearestPoints(p1, p2);
                     double dist = n.node->point.Distance(p1);
                     if(dist > Precision::Confusion() && n.node->point.Distance(p1) < distance){
-                        opposite = p1;
-                        distance = dist;
+                        center = p1;
+                        center.BaryCenter(1, n.node->point,1);
+                        if(this->is_inside_2D(center, beams)){
+                            opposite = p1;
+                            distance = dist;
+                        }
                     }
                 }
             }
@@ -306,15 +308,23 @@ TopoDS_Shape StandardSizing::expansion_2D(const meshing::StandardBeamMesher& mes
                     double dist = n.node->point.Distance(p);
                     if(dist > Precision::Confusion()){
                         if(n.node->point.Translated(dist*(line_dir)).IsEqual(p, Precision::Confusion()) && dist < distance){
-                            opposite = n.node->point.Translated(dist*(line_dir));
-                            distance = dist;
+                            center = n.node->point.Translated(dist*(line_dir));
+                            center.BaryCenter(1, n.node->point,1);
+                            if(this->is_inside_2D(center, beams)){
+                                opposite = n.node->point.Translated(dist*(line_dir));
+                                distance = dist;
+                            }
                         }
                     }
                 }
             }
         }
-        center = opposite;
-        center.BaryCenter(1, n.node->point, 1);
+
+        // As it's redundant, we can afford to lose points that aren't working
+        // correctly.
+        if(opposite.IsEqual(gp_Pnt(Precision::Infinite(), Precision::Infinite(), Precision::Infinite()), Precision::Confusion())){
+            continue;
+        }
 
         // Get loads within cross-section
         TopoDS_Edge crosssection = BRepBuilderAPI_MakeEdge(n.node->point, opposite);
@@ -326,6 +336,9 @@ TopoDS_Shape StandardSizing::expansion_2D(const meshing::StandardBeamMesher& mes
         GProp_GProps props;
         BRepGProp::SurfaceProperties(beams, props);
         double A = props.Mass();
+        GProp_GProps props_cs;
+        BRepGProp::SurfaceProperties(cs_face, props_cs);
+        double A_cs = props_cs.Mass();
 
         BOPAlgo_Splitter splitter;
         TopoDS_Shape beams_copy = BRepBuilderAPI_Copy(beams);
@@ -335,13 +348,18 @@ TopoDS_Shape StandardSizing::expansion_2D(const meshing::StandardBeamMesher& mes
         TopoDS_Shape result = splitter.Shape();
         TopoDS_Shape part;
         for(TopExp_Explorer shell_getter(result, TopAbs_FACE); shell_getter.More(); shell_getter.Next()){
-            part = shell_getter.Current();
+            TopoDS_Shape tmp = shell_getter.Current();
             GProp_GProps props2;
             BRepGProp::SurfaceProperties(part, props2);
             double A2 = props2.Mass();
-            if(A - A2 > Precision::Confusion()){
+            if((A - A_cs) - A2 > Precision::Confusion() ){
+                part = tmp;
                 break;
             }
+        }
+        if(part.IsNull()){
+            SeparateNodes sn{center, distance, line_dir, cs_face};
+            separate_analysis.push_back(sn);
         }
 
         for(auto& ef:external_forces){
@@ -352,7 +370,7 @@ TopoDS_Shape StandardSizing::expansion_2D(const meshing::StandardBeamMesher& mes
                 Mz -= ef.moments.Z() + r.Crossed(ef.forces).Z();
             }
         }
-        // logger::quick_log(Fx, Fy, Mz);
+        //logger::quick_log(Fx, Fy, Mz, center.X(), center.Y());
 
         // Calculate new cross-section
         exp_info.push_back(get_expansion_node_2D(n.normal, center, distance, Fx, Fy, Mz, edges_init));
@@ -362,6 +380,14 @@ TopoDS_Shape StandardSizing::expansion_2D(const meshing::StandardBeamMesher& mes
 
         ++count;
     }
+
+    // In case the faster expansion method is not enough, go beam by beam:
+    // if(separate_analysis.size()){
+    //     for(auto& beam:this->separate_beams){
+    //         mesh.clear_results();
+    //     }
+    // }
+
     std::cout << "\r" << 100 << "%         ";
     std::cout << std::endl;
 
@@ -428,8 +454,9 @@ StandardSizing::ExpansionNode StandardSizing::get_expansion_node_2D(const gp_Dir
     // Shear
     double h_c = (F - normal.Dot(F)*normal).Magnitude()*(3/(2*t*S_c));
 
-    double h = std::max({h_f, h_n, h_c});//, distance});
-    if(h < Precision::Confusion()){
+    double mult = 1.0;
+    double h = mult*std::max({h_f, h_n, h_c});//, distance});
+    if(h - distance < Precision::Confusion()){
         return {center, line_dir, h};
     }
 
@@ -440,11 +467,15 @@ StandardSizing::ExpansionNode StandardSizing::get_expansion_node_2D(const gp_Dir
         Handle(Geom_Line) geom_line1(new Geom_Line(side1lin));
         Handle(Geom_Line) geom_line2(new Geom_Line(side2lin));
         
-        TopoDS_Edge side1edge = BRepBuilderAPI_MakeEdge(side1lin, 0, h/2);
-        TopoDS_Edge side2edge = BRepBuilderAPI_MakeEdge(side2lin, 0, h/2);
         double min_dist1 = Precision::Infinite();
         double min_dist2 = Precision::Infinite();
         for(auto& e:edges_init){
+            BRepExtrema_DistShapeShape edge_checker(e, BRepBuilderAPI_MakeVertex(center));
+            edge_checker.Perform();
+            if(edge_checker.Value() < Precision::Confusion()){
+                continue;
+            }
+
             double a = 0;
             double b = 0;
             Handle(Geom_Curve) edge_curve = BRep_Tool::Curve(e, a, b);
@@ -477,9 +508,11 @@ StandardSizing::ExpansionNode StandardSizing::get_expansion_node_2D(const gp_Dir
             center = p1;
             center.BaryCenter(1, p2, 1);
         } else if(min_dist1 < Precision::Infinite() - Precision::Confusion()){
-            center.Translate(-(h/2-min_dist1)*line_dir);
+            double dev = std::min(h/2-min_dist1, h/2-distance/2);
+            center.Translate(-dev*line_dir);
         } else if(min_dist2 < Precision::Infinite() - Precision::Confusion()){
-            center.Translate(-(h/2-min_dist2)*(-line_dir));
+            double dev = std::min(h/2-min_dist2, h/2-distance/2);
+            center.Translate(-dev*(-line_dir));
         }
     }
 
@@ -554,6 +587,7 @@ TopoDS_Shape StandardSizing::build_initial_topology(){
             }
 
             TopoDS_Shape beam = utils::sweep_surface(b, csec, data->ground_structure->shape);
+            this->separate_beams.push_back(beam);
             // TopoDS_Shape beam = utils::fast_make_2D_beam(b, f.S.get_dimension(), data->ground_structure->shape);
             geometry = utils::cut_shape(geometry, beam);
         }
@@ -677,7 +711,7 @@ std::vector<double> StandardSizing::calculate_change(BeamMeshing* mesh, const st
 }
 
 TopoDS_Shape StandardSizing::experimental_elemental_approach(){
-    double mesh_size = 3;
+    double mesh_size = 4;
 
     meshing::StandardBeamMesher mesh(mesh_size, 1, utils::PROBLEM_TYPE_2D);
     TopoDS_Shape beams = this->build_initial_topology();

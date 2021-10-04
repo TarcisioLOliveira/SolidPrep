@@ -28,7 +28,7 @@
 namespace meshing{
 
 Gmsh::Gmsh(double size, int order, utils::ProblemType type, int algorithm):
-    size(size), order(order), dim(0), algorithm(algorithm){
+    Meshing(size), order(order), dim(0), algorithm(algorithm){
     if(type == utils::PROBLEM_TYPE_2D){
         dim = 2;
     } else if(type == utils::PROBLEM_TYPE_3D){

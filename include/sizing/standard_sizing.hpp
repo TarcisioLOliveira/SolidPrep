@@ -55,11 +55,14 @@ class StandardSizing : public Sizing{
     FiniteElement* solver;
 
     TopoDS_Shape build_initial_topology();
-    // Not recommended to use it with beams. Other shapes may work.
+    // Not recommended to use it with beams. Other shapes tend work.
+    // Some kind of simplification is necessary for the resulting resized beam
+    // though, as the small edges can make Gmsh generate way too many nodes.
     TopoDS_Shape simplify_shape(TopoDS_Shape shape) const;
     bool is_inside_2D(const gp_Pnt& p, const TopoDS_Shape& shape) const;
     bool is_inside_3D(const gp_Pnt& p, const TopoDS_Shape& shape) const;
 
+    std::vector<TopoDS_Shape> separate_beams;
     TopoDS_Shape boundary_expansion_approach();
     bool is_valid_boundary_point(MeshNode* n) const;
     TopoDS_Shape expansion_2D(const meshing::StandardBeamMesher& mesh, const std::vector<double>& u, const TopoDS_Shape& beams);

@@ -31,6 +31,8 @@ class BeamMeshing : public Meshing{
         gp_Dir normal;
     };
 
+    BeamMeshing(double size):Meshing(size){}
+
     std::vector<BoundaryNode> boundary_nodes;
 };
 

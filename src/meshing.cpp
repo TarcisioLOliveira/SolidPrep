@@ -39,6 +39,7 @@ void Meshing::prepare_for_FEM(const std::vector<ElementShape>& base_mesh,
     }
     logger::log_assert(correct, logger::ERROR, "object mismatch. Please ensure that the Meshing instance used to generate the list of ElementShape instances is the same as the one being used to prepare the mesh for FEM.");
 
+    this->type = element_type;
     this->element_list.clear();
     this->element_list.reserve(base_mesh.size());
 
@@ -55,7 +56,7 @@ void Meshing::prepare_for_FEM(const std::vector<ElementShape>& base_mesh,
         bool supported = false;
         size_t max_offset = 0;
         for(auto& s : data->supports){
-            if(s.S.is_inside(n->point)){
+            if(s.S.is_inside(n->point)){//s.S.get_distance(n->point) <= this->size/4){//
                 size_t offset = 0;
                 std::vector<long> sup_pos = this->get_support_dof(offset, 0, s, element_type);
                 for(size_t j = 0; j < dof; ++j){
@@ -87,7 +88,7 @@ void Meshing::prepare_for_FEM(const std::vector<ElementShape>& base_mesh,
     for(auto& f : data->forces){
         std::vector<MeshNode*> node_list;
         for(auto& n : this->node_list){
-            if(f.S.is_inside(n->point)){
+            if(f.S.get_distance(n->point) < this->size/3){//f.S.is_inside(n->point)){
                 node_list.push_back(n.get());
             }
         }
@@ -149,4 +150,13 @@ std::vector<double> Meshing::get_force_dof(const Force& force, MeshElementFactor
 
 
     return f;
+}
+
+
+void Meshing::clear_results(){
+    for(auto& n:this->node_list){
+        for(size_t i = 0; i < n->get_result_size(); ++i){
+            n->results[i] = 0;
+        }
+    }
 }

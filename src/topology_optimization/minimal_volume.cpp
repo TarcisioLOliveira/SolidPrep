@@ -25,6 +25,7 @@
 #include <nlopt.hpp>
 #include <cblas.h>
 #include <BRepBuilderAPI_Copy.hxx>
+#include <chrono>
 
 namespace topology_optimization{
 
@@ -49,9 +50,11 @@ TopoDS_Shape MinimalVolume::optimize(Visualization* viz, FiniteElement* fem, Mes
         double alpha;
         std::vector<std::vector<size_t>> neighbors;
         std::vector<double> u;
+        int it_num;
+        double ftol_rel;
     };
 
-    Data data{viz, fem, mesh, this, 1, std::vector<double>(mesh->element_list.size(), 0.5), 0, 0, std::vector<double>(mesh->element_list.size(), 0), 1, std::vector<std::vector<size_t>>(mesh->element_list.size()), std::vector<double>()};
+    Data data{viz, fem, mesh, this, 1, std::vector<double>(mesh->element_list.size(), 1.0), 0, 0, std::vector<double>(mesh->element_list.size(), 0), 1, std::vector<std::vector<size_t>>(mesh->element_list.size()), std::vector<double>(), 0, 1e-8};
 
     // Uses more memory but is much faster
     for(size_t i = 0; i < mesh->element_list.size(); ++i){
@@ -92,15 +95,23 @@ TopoDS_Shape MinimalVolume::optimize(Visualization* viz, FiniteElement* fem, Mes
             data->new_x[i] /= w;
             V += data->new_x[i]*data->grad_V[i];
         }
-        data->cur_V = V;
         data->u = data->fem->calculate_displacements(data->mv->data, data->mesh, data->new_x, pc);
-        for(size_t i = 0; i < data->new_x.size(); ++i){
-            auto& e = data->mesh->element_list[i];
-            grad[i] = -pc*std::pow(data->new_x[i], pc-1)*e->get_compliance(data->u);
+        grad = data->grad_V;
+        //for(size_t i = 0; i < data->new_x.size(); ++i){
+        //    auto& e = data->mesh->element_list[i];
+        //    grad[i] = -pc*std::pow(data->new_x[i], pc-1)*e->get_compliance(data->u);
+        //}
+
+        ++data->it_num;
+
+        if(data->it_num > 1 && std::abs(V - data->cur_V)/V < data->ftol_rel){
+            data->cur_V = V;
+            throw nlopt::forced_stop();
         }
 
-        // return V;
-        return cblas_ddot(data->u.size(), data->u.data(), 1, data->mesh->load_vector.data(), 1);
+        data->cur_V = V;
+        return V;
+        //return cblas_ddot(data->u.size(), data->u.data(), 1, data->mesh->load_vector.data(), 1);
     };
     auto fc = [](const std::vector<double>& x, std::vector<double>& grad, void* f_data)->double{
         // Getting the data
@@ -149,7 +160,7 @@ TopoDS_Shape MinimalVolume::optimize(Visualization* viz, FiniteElement* fem, Mes
         logger::quick_log("} Done.");
 
         logger::quick_log("Calculating stress gradient...");
-        std::vector<double> grad_tmp(grad);
+        // std::vector<double> grad_tmp(grad);
         for(size_t i = 0; i < data->mesh->element_list.size(); ++i){
             auto& e = data->mesh->element_list[i];
             double lKu = pc*std::pow(data->new_x[i], pc-1)*e->get_compliance(data->u, l);
@@ -158,22 +169,22 @@ TopoDS_Shape MinimalVolume::optimize(Visualization* viz, FiniteElement* fem, Mes
             double Se = (pt*P+1)*v*std::pow(data->new_x[i], pt*P-1)*std::pow(S, P);
             //double Se = (pt+1)*v*std::pow(data->new_x[i], pt-1)*S;
 
-            grad_tmp[i] = Sg*(Se - lKu);
-            // grad[i] = Sg*(Se - lKu);
+            //grad_tmp[i] = Sg*(Se - lKu);
+            grad[i] = Sg*(Se - lKu);
             // grad[i] = Se - lKu;
         }
         // Sensitivity filtering
-        for(size_t i = 0; i < x.size(); ++i){
-            double w = 0;
-            grad[i] = 0;
-            for(const auto& j:data->neighbors[i]){
-                double dist = data->mesh->element_list[i]->get_centroid().Distance(data->mesh->element_list[j]->get_centroid());
-                double wj = 1 - dist/data->mv->r_o;
-                grad[i] += wj*data->new_x[j]*grad_tmp[j];
-                w += wj;
-            }
-            grad[i] /= w*data->new_x[i];
-        }
+        // for(size_t i = 0; i < x.size(); ++i){
+        //     double w = 0;
+        //     grad[i] = 0;
+        //     for(const auto& j:data->neighbors[i]){
+        //         double dist = data->mesh->element_list[i]->get_centroid().Distance(data->mesh->element_list[j]->get_centroid());
+        //         double wj = 1 - dist/data->mv->r_o;
+        //         grad[i] += wj*data->new_x[j]*grad_tmp[j];
+        //         w += wj;
+        //     }
+        //     grad[i] /= w*data->new_x[i];
+        // }
         logger::quick_log("Done.");
 
         double T = 1;
@@ -193,25 +204,38 @@ TopoDS_Shape MinimalVolume::optimize(Visualization* viz, FiniteElement* fem, Mes
     MMA.set_upper_bounds(1);
     MMA.add_inequality_constraint(fc, &data, this->Smax);
     MMA.set_param("verbosity", 5);
-    MMA.set_xtol_rel(1e-6);
+    MMA.set_ftol_rel(data.ftol_rel);
 
     double opt_f = 0;
 
     std::vector<double> density = data.new_x;
 
     logger::quick_log("Done.");
-    nlopt::result r = MMA.optimize(density, opt_f);
-    logger::quick_log("Final volume: ", data.cur_V);
-
-    if(r > 0){
-        TopoDS_Shape result = BRepBuilderAPI_Copy(this->data->ground_structure->shape);
-        for(size_t i = 0; i < data.new_x.size(); ++i){
-            if(data.new_x[i] > 0.8){
-                result = utils::cut_shape(result, mesh->element_list[i]->get_shape());
-            }
-        }
-        return result;
+    auto start_to = std::chrono::high_resolution_clock::now();
+    nlopt::result r = nlopt::FORCED_STOP;
+    try{
+        r = MMA.optimize(density, opt_f);
+    } catch(nlopt::forced_stop& f){
+        r = nlopt::FORCED_STOP;
     }
+    auto stop_to = std::chrono::high_resolution_clock::now();
+    logger::quick_log("Final volume: ", data.cur_V);
+    auto to_duration = std::chrono::duration_cast<std::chrono::seconds>(stop_to-start_to);
+    double to_time = to_duration.count();
+    double it_time = to_time/data.it_num;
+    logger::quick_log("Time per iteration (topology optimization): ", it_time, " seconds");
+    logger::quick_log("Number of iterations (topology optimization): ", data.it_num);
+
+    // if(r > 0 || r == nlopt::FORCED_STOP){
+    //     TopoDS_Shape result = BRepBuilderAPI_Copy(this->data->ground_structure->shape);
+    //     for(size_t i = 0; i < data.new_x.size(); ++i){
+    //         if(data.new_x[i] > 0.5){
+    //             result = utils::cut_shape(result, mesh->element_list[i]->get_shape());
+    //         }
+    //     }
+    //     result = utils::cut_shape(this->data->ground_structure->shape, result);
+    //     return result;
+    // }
 
     return TopoDS_Shape();
 }

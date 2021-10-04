@@ -33,7 +33,6 @@ class StandardBeamMesher : public BeamMeshing{
     virtual std::vector<ElementShape> mesh(TopoDS_Shape s) override;
 
     private:
-    double size;
     int order;
     int dim;
     int algorithm;

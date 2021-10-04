@@ -28,7 +28,7 @@
 namespace meshing{
 
 StandardBeamMesher::StandardBeamMesher(double size, int order, utils::ProblemType type, int algorithm):
-    size(size), order(order), dim(0), algorithm(algorithm){
+    BeamMeshing(size), order(order), dim(0), algorithm(algorithm){
     if(type == utils::PROBLEM_TYPE_2D){
         dim = 2;
     } else if(type == utils::PROBLEM_TYPE_3D){
@@ -128,7 +128,7 @@ std::vector<ElementShape> StandardBeamMesher::mesh(TopoDS_Shape s){
             vec += gp_Vec(boundary_nodes[n].node->point, boundary_nodes[i].node->point);
         }
         // If colinear/coplanar
-        if(vec.IsEqual(gp_Vec(0, 0, 0), 1e-6, 1e-6)){
+        if(vec.IsEqual(gp_Vec(0, 0, 0), Precision::Confusion(), Precision::Angular())){
             if(this->dim == 2){
                 gp_Pnt p1 = boundary_nodes[neighbors[i][0]].node->point;
                 gp_Pnt p2 = boundary_nodes[neighbors[i][1]].node->point;
