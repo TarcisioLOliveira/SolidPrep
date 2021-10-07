@@ -85,192 +85,61 @@ ProjectData::ProjectData(std::string project_file){
         }
         this->ground_structure.reset(new GroundStructure(absolute_path, scale, this->type));
     }
+
+    bool needs_sizing = true;
+    bool needs_topopt = true;
+    if(this->log_data(doc, "analysis", TYPE_STRING, true)){
+        std::string a = doc["analysis"].GetString();
+        if(a == "complete"){
+            this->analysis = COMPLETE;
+        } else if(a == "fea_only"){
+            this->analysis = FEA_ONLY;
+            needs_sizing = false;
+            needs_topopt = false;
+        } else if(a == "beams_only"){
+            this->analysis = BEAMS_ONLY;
+            needs_topopt = false;
+        } else if(a == "topopt_only"){
+            this->analysis = OPTIMIZE_ONLY;
+            needs_sizing = false;
+        }
+    }
     if(this->type == utils::PROBLEM_TYPE_2D){
         if(this->log_data(doc, "thickness", TYPE_DOUBLE, true)){
             this->thickness = doc["thickness"].GetDouble();
         }
     }
     if(this->log_data(doc, "material", TYPE_OBJECT, true)){
-        auto& mat = doc["material"];
-        this->log_data(mat, "type", TYPE_STRING, true);
-        if(mat["type"] == "linear_elastic_orthotropic"){
-            std::vector<std::string> properties{"E", "nu", "G", "Smax", "Tmax"};
-            for(auto& s:properties){
-                logger::log_assert(mat.HasMember(s.c_str()), logger::ERROR, "missing material property: {}", s);
-                logger::log_assert(mat[s.c_str()].IsArray() || mat[s.c_str()].IsDouble(), logger::ERROR, "material property {} must be either a number or an array of numbers", s);
-            }
-            std::vector<std::vector<double>> values(5);
-            for(size_t i = 0; i < properties.size(); ++i){
-                if(mat[properties[i].c_str()].IsArray()){
-                    const auto& a = mat[properties[i].c_str()].GetArray();
-                    if(a.Size() == 1){
-                        values[i].resize(3, a[0].GetDouble());
-                    } else {
-                        values[i].resize(3, 0);
-                        for(size_t j = 0; j < std::min(a.Size(), (rapidjson::SizeType) 3); ++j){
-                            values[i][j] = a[j].GetDouble();
-                        }
-                    }
-                } else {
-                    values[i].resize(3, mat[properties[i].c_str()].GetDouble());
-                }
-            }
-            for(auto& i:values[0]) i *= 1e3; // E
-            for(auto& i:values[2]) i *= 1e3; // G
-            // for(auto& i:values[0]) i *= 1e9; // E
-            // for(auto& i:values[2]) i *= 1e9; // G
-            // for(auto& i:values[3]) i *= 1e6; // Smax
-            // for(auto& i:values[4]) i *= 1e6; // Tmax
-            this->material.reset(new material::LinearElasticOrthotropic(values[0], values[1], values[2], values[3], values[4]));
-        } else if(mat["type"] == "linear_elastic_isotropic"){
-            std::vector<std::string> properties{"E", "nu", "Smax", "Tmax"};
-            for(auto& s:properties){
-                this->log_data(mat, s, TYPE_DOUBLE, true);
-            }
-            this->log_data(mat, "plane_stress", TYPE_BOOL, true);
-            double E = mat["E"].GetDouble();
-            double nu = mat["nu"].GetDouble();
-            double Smax = mat["Smax"].GetDouble();
-            double Tmax = mat["Tmax"].GetDouble();
-            bool plane_stress = mat["plane_stress"].GetBool();
-            //this->material.reset(new material::LinearElasticIsotropic(E*1e9, nu, Smax*1e6, Tmax*1e6, plane_stress));
-            this->material.reset(new material::LinearElasticIsotropic(E*1e3, nu, Smax, Tmax, plane_stress));
-        }
+        this->material = this->load_material(doc);
     }
-    if(this->log_data(doc, "sizing", TYPE_OBJECT, true)){
-        auto& sizing = doc["sizing"];
-        this->log_data(sizing, "type", TYPE_STRING, true);
-        if(sizing["type"] == "beam_sizing"){
-            if(this->log_data(sizing, "pathfinding", TYPE_OBJECT, true)){
-                using namespace pathfinding;
-
-                auto& pathf = sizing["pathfinding"];
-                this->log_data(pathf, "type", TYPE_STRING, true);
-                if(pathf["type"] == "meshless_astar"){
-                    this->log_data(pathf, "step", TYPE_DOUBLE, true);
-                    this->log_data(pathf, "max_turn_angle", TYPE_DOUBLE, true);
-                    this->log_data(pathf, "turn_options", TYPE_INT, true);
-                    double step = pathf["step"].GetDouble();
-                    double angle = pathf["max_turn_angle"].GetDouble();
-                    int choices = pathf["turn_options"].GetInt();
-                    double restriction = 0;
-                    if(this->log_data(pathf, "restriction_size", TYPE_DOUBLE, false)){
-                        restriction = pathf["restriction_size"].GetDouble();
-                    }
-                    this->pathfinder.reset(new MeshlessAStar(this->ground_structure->shape, step, angle, choices, restriction, utils::PROBLEM_TYPE_2D));
-                } else if(pathf["type"] == "visibility_graph"){
-                    this->log_data(pathf, "step", TYPE_DOUBLE, true);
-                    this->log_data(pathf, "max_turn_angle", TYPE_DOUBLE, true);
-                    double step = pathf["step"].GetDouble();
-                    double angle = pathf["max_turn_angle"].GetDouble();
-                    double restriction = 0;
-                    if(this->log_data(pathf, "restriction_size", TYPE_DOUBLE, false)){
-                        restriction = pathf["restriction_size"].GetDouble();
-                    }
-                    this->pathfinder.reset(new VisibilityGraph(this->ground_structure.get(), step, angle, restriction, utils::PROBLEM_TYPE_2D));
-                } else {
-                    logger::log_assert(false, logger::ERROR, "unknown pathfinding algorithm inserted: {}.", pathf["type"].GetString());
-                }
-            }
-            this->log_data(sizing, "element_type", TYPE_STRING, true);
-            BeamElementFactory::BeamElementType t = BeamElementFactory::NONE;
-            if(sizing["element_type"] == "beam_linear_2D"){
-                t = BeamElementFactory::BEAM_LINEAR_2D;
-            } else {
-                logger::log_assert(false, logger::ERROR, "unknown element type for sizing algorithm: {}.", sizing["element_type"].GetString());
-            }
-            this->sizer.reset(new sizing::BeamSizing(this, t));
+    if(this->log_data(doc, "mesher", TYPE_OBJECT, true)){
+        this->log_data(doc["mesher"], "element_type", TYPE_STRING, true);
+        this->topopt_element = this->get_element_type(doc["mesher"]["element_type"]);
+        this->topopt_mesher = this->load_mesher(doc);
+    }
+    if(this->log_data(doc, "finite_element", TYPE_OBJECT, false)){
+        this->topopt_fea = this->load_fea(doc);
+    }
+    if(this->log_data(doc, "topopt", TYPE_OBJECT, needs_topopt)){
+        this->topopt = this->load_topopt(doc);
+    }
+    if(this->log_data(doc, "sizing", TYPE_OBJECT, needs_sizing)){
+        if(this->log_data(doc["sizing"], "pathfinding", TYPE_OBJECT, false)){
+            this->pathfinder = this->load_pathfinder(doc["sizing"]);
         }
+        if(this->log_data(doc["sizing"], "finite_element", TYPE_OBJECT, false)){
+            this->sizer_fea = this->load_fea(doc["sizing"]);
+        }
+        this->sizer = this->load_sizer(doc);
     }
     if(this->log_data(doc, "loads", TYPE_ARRAY, true)){
-        if(this->type == utils::PROBLEM_TYPE_2D){
-            for(auto& f : doc["loads"].GetArray()){
-                logger::log_assert(f.IsObject(), logger::ERROR, "Each load must be stored as a JSON object");
-                this->log_data(f, "vertices", TYPE_ARRAY, true);
-                this->log_data(f, "load", TYPE_ARRAY, true);
-                auto vertices = f["vertices"].GetArray();
-                auto loads = f["load"].GetArray();
-                logger::log_assert(loads.Size() == 2, logger::ERROR, "Load vector must have exactly two dimensions in 2D problems");
-
-                gp_Vec l(loads[0].GetDouble(), loads[1].GetDouble(), 0);
-                std::vector<gp_Pnt> vlist;
-                for(auto& v : vertices){
-                    logger::log_assert(v.Size() == 2, logger::ERROR, "Vertices must have exactly two dimensions in 2D problems");
-                    vlist.emplace_back(v[0].GetDouble(), v[1].GetDouble(), 0);
-                }
-                CrossSection S(vlist, this->thickness);
-                this->forces.emplace_back(S, l);
-            }
-        } else if(this->type == utils::PROBLEM_TYPE_3D) {
-            for(auto& f : doc["loads"].GetArray()){
-                logger::log_assert(f.IsObject(), logger::ERROR, "Each load must be stored as a JSON object");
-                this->log_data(f, "vertices", TYPE_ARRAY, true);
-                this->log_data(f, "load", TYPE_ARRAY, true);
-                auto vertices = f["vertices"].GetArray();
-                auto loads = f["load"].GetArray();
-                logger::log_assert(loads.Size() == 2, logger::ERROR, "Load vector must have exactly three dimensions in 3D problems");
-
-                gp_Vec l(loads[0].GetDouble(), loads[1].GetDouble(), loads[2].GetDouble());
-                std::vector<gp_Pnt> vlist;
-                for(auto& v : vertices){
-                    logger::log_assert(v.Size() == 2, logger::ERROR, "Vertices must have exactly three dimensions in 3D problems");
-                    vlist.emplace_back(v[0].GetDouble(), v[1].GetDouble(), v[2].GetDouble());
-                }
-                CrossSection S(vlist);
-                this->forces.emplace_back(S, l);
-            }
-        }
+        this->forces = this->get_loads(doc["loads"]);
     }
     if(this->log_data(doc, "supports", TYPE_ARRAY, true)){
-        if(this->type == utils::PROBLEM_TYPE_2D){
-            for(auto& f : doc["supports"].GetArray()){
-                logger::log_assert(f.IsObject(), logger::ERROR, "Each support must be stored as a JSON object");
-                this->log_data(f, "vertices", TYPE_ARRAY, true);
-                this->log_data(f, "X", TYPE_BOOL, true);
-                this->log_data(f, "Y", TYPE_BOOL, true);
-                this->log_data(f, "MZ", TYPE_BOOL, true);
-                bool X = f["X"].GetBool();
-                bool Y = f["Y"].GetBool();
-                bool MZ = f["MZ"].GetBool();
-
-                auto vertices = f["vertices"].GetArray();
-                std::vector<gp_Pnt> vlist;
-                for(auto& v : vertices){
-                    logger::log_assert(v.Size() == 2, logger::ERROR, "Vertices must have exactly two dimensions in 2D problems");
-                    vlist.emplace_back(v[0].GetDouble(), v[1].GetDouble(), 0);
-                }
-                CrossSection S(vlist, this->thickness);
-                this->supports.emplace_back(X, Y, MZ, S);
-            }
-        } else if(this->type == utils::PROBLEM_TYPE_3D) {
-            for(auto& f : doc["supports"].GetArray()){
-                logger::log_assert(f.IsObject(), logger::ERROR, "Each support must be stored as a JSON object");
-                this->log_data(f, "vertices", TYPE_ARRAY, true);
-                this->log_data(f, "X", TYPE_BOOL, true);
-                this->log_data(f, "Y", TYPE_BOOL, true);
-                this->log_data(f, "Z", TYPE_BOOL, true);
-                this->log_data(f, "MX", TYPE_BOOL, true);
-                this->log_data(f, "MY", TYPE_BOOL, true);
-                this->log_data(f, "MZ", TYPE_BOOL, true);
-                bool X = f["X"].GetBool();
-                bool Y = f["Y"].GetBool();
-                bool Z = f["Z"].GetBool();
-                bool MX = f["MX"].GetBool();
-                bool MY = f["MY"].GetBool();
-                bool MZ = f["MZ"].GetBool();
-
-                auto vertices = f["vertices"].GetArray();
-                std::vector<gp_Pnt> vlist;
-                for(auto& v : vertices){
-                    logger::log_assert(v.Size() == 2, logger::ERROR, "Vertices must have exactly three dimensions in 3D problems");
-                    vlist.emplace_back(v[0].GetDouble(), v[1].GetDouble(), v[2].GetDouble());
-                }
-                CrossSection S(vlist);
-                this->supports.emplace_back(X, Y, Z, MX, MY, MZ, S);
-            }
-        }
+        this->supports = this->get_support(doc["supports"]);
     }
 
 
     fclose(fp);
 }
+

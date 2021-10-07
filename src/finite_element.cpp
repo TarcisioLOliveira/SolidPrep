@@ -20,6 +20,7 @@
 
 #include "finite_element.hpp"
 #include "logger.hpp"
+#include "project_data.hpp"
 
 void FiniteElement::calculate_stresses(Meshing* mesh, const std::vector<double>& displacements, const std::vector<double>& density) const{
     logger::quick_log("Calculating stresses...");

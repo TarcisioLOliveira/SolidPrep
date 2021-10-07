@@ -20,18 +20,48 @@
 #ifndef PROJECT_DATA_HPP
 #define PROJECT_DATA_HPP
 
+#include <algorithm>
 #include <memory>
 #include <string>
 #include <vector>
+#include "finite_element/direct_solver.hpp"
+#include "meshing/gmsh.hpp"
+#include "rapidjson/allocators.h"
 #include "rapidjson/document.h"
 #include "STEPCAFControl_Reader.hxx"
 #include "logger.hpp"
 #include "force.hpp"
+#include "sizing/standard_sizing.hpp"
 #include "support.hpp"
 #include "pathfinding.hpp"
 #include "sizing.hpp"
 #include "ground_structure.hpp"
 #include "material.hpp"
+#include "pathfinding/meshless_astar.hpp"
+#include "pathfinding/visibility_graph.hpp"
+#include "material/linear_elastic_isotropic.hpp"
+#include "material/linear_elastic_orthotropic.hpp"
+#include "rapidjson/document.h"
+#include "rapidjson/filereadstream.h"
+#include "rapidjson/error/error.h"
+#include "rapidjson/error/en.h"
+#include "logger.hpp"
+#include "rapidjson/rapidjson.h"
+#include "sizing/beam_sizing.hpp"
+#include "utils.hpp"
+#define _USE_MATH_DEFINES
+#include <cmath>
+#include "force.hpp"
+#include <BRepGProp.hxx>
+#include <GProp_GProps.hxx>
+#include <Bnd_Box.hxx>
+#include <BRepBndLib.hxx>
+#include <gp_Pnt.hxx>
+#include <gp_Vec.hxx>
+#include <cmath>
+#include "finite_element.hpp"
+#include "topology_optimization.hpp"
+#include "topology_optimization/minimal_volume.hpp"
 
 /**
  * Reads and stores project data.
@@ -48,7 +78,12 @@ class ProjectData {
         TYPE_ARRAY,
         TYPE_OBJECT
     };
-
+    enum AnalysisType{
+        COMPLETE,
+        FEA_ONLY,
+        OPTIMIZE_ONLY,
+        BEAMS_ONLY
+    };
     /**
      * Loads project data file.
      *
@@ -64,6 +99,12 @@ class ProjectData {
     std::unique_ptr<GroundStructure> ground_structure;
     std::vector<Force> forces;
     std::vector<Support> supports;
+    std::unique_ptr<FiniteElement> sizer_fea;
+    std::unique_ptr<TopologyOptimization> topopt;
+    std::unique_ptr<FiniteElement> topopt_fea;
+    std::unique_ptr<Meshing> topopt_mesher;
+    MeshElementFactory::MeshElementType topopt_element;
+    AnalysisType analysis;
     
     private:
     /**
@@ -78,12 +119,42 @@ class ProjectData {
      */
     template<typename A, typename B>
     bool log_data(const rapidjson::GenericValue<A, B>& doc, std::string name, DataType type, bool required) const;
+
+    template<typename A, typename B>
+    std::unique_ptr<Material> load_material(const rapidjson::GenericValue<A, B>& doc);
+
+    template<typename A, typename B>
+    std::unique_ptr<Pathfinding> load_pathfinder(const rapidjson::GenericValue<A, B>& doc);
+
+    template<typename A, typename B>
+    std::unique_ptr<Sizing> load_sizer(const rapidjson::GenericValue<A, B>& doc);
+
+    template<typename A, typename B>
+    std::unique_ptr<FiniteElement> load_fea(const rapidjson::GenericValue<A, B>& doc);
+
+    template<typename A, typename B>
+    std::unique_ptr<Meshing> load_mesher(const rapidjson::GenericValue<A, B>& doc);
+
+    template<typename A, typename B>
+    std::unique_ptr<TopologyOptimization> load_topopt(const rapidjson::GenericValue<A, B>& doc);
+
+    template<typename A, typename B>
+    MeshElementFactory::MeshElementType get_element_type(const rapidjson::GenericValue<A, B>& doc);
+
+    template<typename A, typename B>
+    std::vector<Force> get_loads(const rapidjson::GenericValue<A, B>& doc);
+
+    template<typename A, typename B>
+    std::vector<Support> get_support(const rapidjson::GenericValue<A, B>& doc);
 };
 
 template<typename A, typename B>
 bool ProjectData::log_data(const rapidjson::GenericValue<A, B>& doc, std::string name, ProjectData::DataType type, bool required) const{
     logger::AssertType error = (required) ? logger::ERROR : logger::SILENT;
     bool exists = logger::log_assert(doc.HasMember(name.c_str()), error, "Missing member: {}", name);
+    if(!exists){
+        return false;
+    }
     bool correct_type = false;
     switch (type){
         case TYPE_NULL:
@@ -108,7 +179,281 @@ bool ProjectData::log_data(const rapidjson::GenericValue<A, B>& doc, std::string
             correct_type = logger::log_assert(doc[name.c_str()].IsObject(), error, "Value of key \"{}\" has wrong type, must be an object.", name);
             break;
     }
-    return exists && correct_type;
+    return correct_type;
+}
+
+
+template<typename A, typename B>
+std::unique_ptr<Material> ProjectData::load_material(const rapidjson::GenericValue<A, B>& doc){
+    std::unique_ptr<Material> material;
+    auto& mat = doc["material"];
+    this->log_data(mat, "type", TYPE_STRING, true);
+    if(mat["type"] == "linear_elastic_orthotropic"){
+        std::vector<std::string> properties{"E", "nu", "G", "Smax", "Tmax"};
+        for(auto& s:properties){
+            logger::log_assert(mat.HasMember(s.c_str()), logger::ERROR, "missing material property: {}", s);
+            logger::log_assert(mat[s.c_str()].IsArray() || mat[s.c_str()].IsDouble(), logger::ERROR, "material property {} must be either a number or an array of numbers", s);
+        }
+        std::vector<std::vector<double>> values(5);
+        for(size_t i = 0; i < properties.size(); ++i){
+            if(mat[properties[i].c_str()].IsArray()){
+                const auto& a = mat[properties[i].c_str()].GetArray();
+                if(a.Size() == 1){
+                    values[i].resize(3, a[0].GetDouble());
+                } else {
+                    values[i].resize(3, 0);
+                    for(size_t j = 0; j < std::min(a.Size(), (rapidjson::SizeType) 3); ++j){
+                        values[i][j] = a[j].GetDouble();
+                    }
+                }
+            } else {
+                values[i].resize(3, mat[properties[i].c_str()].GetDouble());
+            }
+        }
+        for(auto& i:values[0]) i *= 1e3; // E
+        for(auto& i:values[2]) i *= 1e3; // G
+        // for(auto& i:values[0]) i *= 1e9; // E
+        // for(auto& i:values[2]) i *= 1e9; // G
+        // for(auto& i:values[3]) i *= 1e6; // Smax
+        // for(auto& i:values[4]) i *= 1e6; // Tmax
+        material.reset(new material::LinearElasticOrthotropic(values[0], values[1], values[2], values[3], values[4]));
+    } else if(mat["type"] == "linear_elastic_isotropic"){
+        std::vector<std::string> properties{"E", "nu", "Smax", "Tmax"};
+        for(auto& s:properties){
+            this->log_data(mat, s, TYPE_DOUBLE, true);
+        }
+        this->log_data(mat, "plane_stress", TYPE_BOOL, true);
+        double E = mat["E"].GetDouble();
+        double nu = mat["nu"].GetDouble();
+        double Smax = mat["Smax"].GetDouble();
+        double Tmax = mat["Tmax"].GetDouble();
+        bool plane_stress = mat["plane_stress"].GetBool();
+        //this->material.reset(new material::LinearElasticIsotropic(E*1e9, nu, Smax*1e6, Tmax*1e6, plane_stress));
+        material.reset(new material::LinearElasticIsotropic(E*1e3, nu, Smax, Tmax, plane_stress));
+    }
+
+    return material;
+}
+
+
+template<typename A, typename B>
+std::unique_ptr<Pathfinding> ProjectData::load_pathfinder(const rapidjson::GenericValue<A, B>& doc){
+    using namespace pathfinding;
+
+    std::unique_ptr<Pathfinding> pathfinder;
+
+    auto& pathf = doc["pathfinding"];
+    this->log_data(pathf, "type", TYPE_STRING, true);
+    if(pathf["type"] == "meshless_astar"){
+        this->log_data(pathf, "step", TYPE_DOUBLE, true);
+        this->log_data(pathf, "max_turn_angle", TYPE_DOUBLE, true);
+        this->log_data(pathf, "turn_options", TYPE_INT, true);
+        double step = pathf["step"].GetDouble();
+        double angle = pathf["max_turn_angle"].GetDouble();
+        int choices = pathf["turn_options"].GetInt();
+        double restriction = 0;
+        if(this->log_data(pathf, "restriction_size", TYPE_DOUBLE, false)){
+            restriction = pathf["restriction_size"].GetDouble();
+        }
+        pathfinder.reset(new MeshlessAStar(this->ground_structure->shape, step, angle, choices, restriction, utils::PROBLEM_TYPE_2D));
+    } else if(pathf["type"] == "visibility_graph"){
+        this->log_data(pathf, "step", TYPE_DOUBLE, true);
+        this->log_data(pathf, "max_turn_angle", TYPE_DOUBLE, true);
+        double step = pathf["step"].GetDouble();
+        double angle = pathf["max_turn_angle"].GetDouble();
+        double restriction = 0;
+        if(this->log_data(pathf, "restriction_size", TYPE_DOUBLE, false)){
+            restriction = pathf["restriction_size"].GetDouble();
+        }
+        pathfinder.reset(new VisibilityGraph(this->ground_structure.get(), step, angle, restriction, utils::PROBLEM_TYPE_2D));
+    } else {
+        logger::log_assert(false, logger::ERROR, "unknown pathfinding algorithm inserted: {}.", pathf["type"].GetString());
+    }
+
+    return pathfinder;
+}
+
+template<typename A, typename B>
+std::unique_ptr<Sizing> ProjectData::load_sizer(const rapidjson::GenericValue<A, B>& doc){
+    auto& sizing = doc["sizing"];
+    std::unique_ptr<Sizing> sizer;
+    this->log_data(sizing, "type", TYPE_STRING, true);
+    if(sizing["type"] == "beam_sizing"){
+        this->log_data(sizing, "element_type", TYPE_STRING, true);
+        BeamElementFactory::BeamElementType t = BeamElementFactory::NONE;
+        if(sizing["element_type"] == "beam_linear_2D"){
+            t = BeamElementFactory::BEAM_LINEAR_2D;
+        } else {
+            logger::log_assert(false, logger::ERROR, "unknown element type for sizing algorithm: {}.", sizing["element_type"].GetString());
+        }
+        sizer.reset(new sizing::BeamSizing(this, t));
+    } else if(sizing["type"] == "standard_sizing"){
+        this->log_data(sizing, "element_size", TYPE_DOUBLE, true);
+        double size = sizing["element_size"].GetDouble();
+        double mult = 1.0;
+        if(this->log_data(sizing, "oversizing", TYPE_DOUBLE, false)){
+            mult = sizing["oversizing"].GetDouble();
+        }
+        sizer.reset(new sizing::StandardSizing(this, this->sizer_fea.get(), size, mult));
+    }
+
+    return sizer;
+}
+
+template<typename A, typename B>
+std::unique_ptr<FiniteElement> ProjectData::load_fea(const rapidjson::GenericValue<A, B>& doc){
+    auto& fea = doc["finite_element"];
+    std::unique_ptr<FiniteElement> finite_element;
+    if(fea["type"] == "direct_solver"){
+        finite_element.reset(new finite_element::DirectSolver());
+    }
+
+    return finite_element;
+}
+
+template<typename A, typename B>
+std::unique_ptr<Meshing> ProjectData::load_mesher(const rapidjson::GenericValue<A, B>& doc){
+    auto& mesh = doc["mesher"];
+    std::unique_ptr<Meshing> mesher;
+    if(mesh["type"] == "gmsh"){
+        this->log_data(mesh, "element_size", TYPE_DOUBLE, true);
+        size_t algorithm = 6;
+        if(this->log_data(mesh, "algorithm", TYPE_INT, false)){
+            algorithm = mesh["algorithm"].GetInt();
+        }
+        double size = mesh["element_size"].GetDouble();
+        mesher.reset(new meshing::Gmsh(size, MeshElementFactory::get_gmsh_element_type(this->topopt_element), this->type, algorithm));
+    }
+    return mesher;
+}
+
+template<typename A, typename B>
+std::unique_ptr<TopologyOptimization> ProjectData::load_topopt(const rapidjson::GenericValue<A, B>& doc){
+    auto& to = doc["topopt"];
+    std::unique_ptr<TopologyOptimization> topopt;
+    if(to["type"] == "minimal_volume"){
+        this->log_data(to, "r_o", TYPE_DOUBLE, true);
+        this->log_data(to, "Smax", TYPE_DOUBLE, true);
+        this->log_data(to, "rho_init", TYPE_DOUBLE, true);
+        this->log_data(to, "ftol_rel", TYPE_DOUBLE, true);
+        this->log_data(to, "result_threshold", TYPE_DOUBLE, true);
+
+        double r_o = to["r_o"].GetDouble();
+        double Smax = to["Smax"].GetDouble();
+        double rho_init = to["rho_init"].GetDouble();
+        double ftol_rel = to["ftol_rel"].GetDouble();
+        double result_threshold = to["result_threshold"].GetDouble();
+        topopt.reset(new topology_optimization::MinimalVolume(r_o, Smax, this, rho_init, ftol_rel, result_threshold));
+    }
+    return topopt;
+}
+
+template<typename A, typename B>
+MeshElementFactory::MeshElementType ProjectData::get_element_type(const rapidjson::GenericValue<A, B>& doc){
+    std::string name = doc.GetString();
+    MeshElementFactory::MeshElementType type;
+    if(name == "GT9"){
+        type = MeshElementFactory::GT9;
+    } else if(name == "TRI3"){
+        type = MeshElementFactory::TRI3;
+    }
+    return type;
+}
+
+template<typename A, typename B>
+std::vector<Force> ProjectData::get_loads(const rapidjson::GenericValue<A, B>& doc){
+    std::vector<Force> forces;
+    if(this->type == utils::PROBLEM_TYPE_2D){
+        for(auto& f : doc.GetArray()){
+            logger::log_assert(f.IsObject(), logger::ERROR, "Each load must be stored as a JSON object");
+            this->log_data(f, "vertices", TYPE_ARRAY, true);
+            this->log_data(f, "load", TYPE_ARRAY, true);
+            auto vertices = f["vertices"].GetArray();
+            auto loads = f["load"].GetArray();
+            logger::log_assert(loads.Size() == 2, logger::ERROR, "Load vector must have exactly two dimensions in 2D problems");
+
+            gp_Vec l(loads[0].GetDouble(), loads[1].GetDouble(), 0);
+            std::vector<gp_Pnt> vlist;
+            for(auto& v : vertices){
+                logger::log_assert(v.Size() == 2, logger::ERROR, "Vertices must have exactly two dimensions in 2D problems");
+                vlist.emplace_back(v[0].GetDouble(), v[1].GetDouble(), 0);
+            }
+            CrossSection S(vlist, this->thickness);
+            forces.emplace_back(S, l);
+        }
+    } else if(this->type == utils::PROBLEM_TYPE_3D) {
+        for(auto& f : doc.GetArray()){
+            logger::log_assert(f.IsObject(), logger::ERROR, "Each load must be stored as a JSON object");
+            this->log_data(f, "vertices", TYPE_ARRAY, true);
+            this->log_data(f, "load", TYPE_ARRAY, true);
+            auto vertices = f["vertices"].GetArray();
+            auto loads = f["load"].GetArray();
+            logger::log_assert(loads.Size() == 2, logger::ERROR, "Load vector must have exactly three dimensions in 3D problems");
+
+            gp_Vec l(loads[0].GetDouble(), loads[1].GetDouble(), loads[2].GetDouble());
+            std::vector<gp_Pnt> vlist;
+            for(auto& v : vertices){
+                logger::log_assert(v.Size() == 2, logger::ERROR, "Vertices must have exactly three dimensions in 3D problems");
+                vlist.emplace_back(v[0].GetDouble(), v[1].GetDouble(), v[2].GetDouble());
+            }
+            CrossSection S(vlist);
+            forces.emplace_back(S, l);
+        }
+    }
+    return forces;
+}
+
+template<typename A, typename B>
+std::vector<Support> ProjectData::get_support(const rapidjson::GenericValue<A, B>& doc){
+    std::vector<Support> supports;
+    if(this->type == utils::PROBLEM_TYPE_2D){
+        for(auto& f : doc.GetArray()){
+            logger::log_assert(f.IsObject(), logger::ERROR, "Each support must be stored as a JSON object");
+            this->log_data(f, "vertices", TYPE_ARRAY, true);
+            this->log_data(f, "X", TYPE_BOOL, true);
+            this->log_data(f, "Y", TYPE_BOOL, true);
+            this->log_data(f, "MZ", TYPE_BOOL, true);
+            bool X = f["X"].GetBool();
+            bool Y = f["Y"].GetBool();
+            bool MZ = f["MZ"].GetBool();
+
+            auto vertices = f["vertices"].GetArray();
+            std::vector<gp_Pnt> vlist;
+            for(auto& v : vertices){
+                logger::log_assert(v.Size() == 2, logger::ERROR, "Vertices must have exactly two dimensions in 2D problems");
+                vlist.emplace_back(v[0].GetDouble(), v[1].GetDouble(), 0);
+            }
+            CrossSection S(vlist, this->thickness);
+            supports.emplace_back(X, Y, MZ, S);
+        }
+    } else if(this->type == utils::PROBLEM_TYPE_3D) {
+        for(auto& f : doc.GetArray()){
+            logger::log_assert(f.IsObject(), logger::ERROR, "Each support must be stored as a JSON object");
+            this->log_data(f, "vertices", TYPE_ARRAY, true);
+            this->log_data(f, "X", TYPE_BOOL, true);
+            this->log_data(f, "Y", TYPE_BOOL, true);
+            this->log_data(f, "Z", TYPE_BOOL, true);
+            this->log_data(f, "MX", TYPE_BOOL, true);
+            this->log_data(f, "MY", TYPE_BOOL, true);
+            this->log_data(f, "MZ", TYPE_BOOL, true);
+            bool X = f["X"].GetBool();
+            bool Y = f["Y"].GetBool();
+            bool Z = f["Z"].GetBool();
+            bool MX = f["MX"].GetBool();
+            bool MY = f["MY"].GetBool();
+            bool MZ = f["MZ"].GetBool();
+
+            auto vertices = f["vertices"].GetArray();
+            std::vector<gp_Pnt> vlist;
+            for(auto& v : vertices){
+                logger::log_assert(v.Size() == 2, logger::ERROR, "Vertices must have exactly three dimensions in 3D problems");
+                vlist.emplace_back(v[0].GetDouble(), v[1].GetDouble(), v[2].GetDouble());
+            }
+            CrossSection S(vlist);
+            supports.emplace_back(X, Y, Z, MX, MY, MZ, S);
+        }
+    }
+    return supports;
 }
 
 #endif

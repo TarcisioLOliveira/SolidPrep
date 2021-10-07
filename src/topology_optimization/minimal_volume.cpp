@@ -26,11 +26,12 @@
 #include <cblas.h>
 #include <BRepBuilderAPI_Copy.hxx>
 #include <chrono>
+#include "project_data.hpp"
 
 namespace topology_optimization{
 
-MinimalVolume::MinimalVolume(double r_o, double Smax, ProjectData* data):
-    r_o(r_o), Smax(Smax), data(data){}
+MinimalVolume::MinimalVolume(double r_o, double Smax, ProjectData* data, double rho_init, double ftol_rel, double result_threshold):
+    r_o(r_o), Smax(Smax), data(data), rho_init(rho_init), ftol_rel(ftol_rel), result_threshold(result_threshold){}
 
 
 TopoDS_Shape MinimalVolume::optimize(Visualization* viz, FiniteElement* fem, Meshing* mesh){
@@ -54,7 +55,7 @@ TopoDS_Shape MinimalVolume::optimize(Visualization* viz, FiniteElement* fem, Mes
         double ftol_rel;
     };
 
-    Data data{viz, fem, mesh, this, 1, std::vector<double>(mesh->element_list.size(), 1.0), 0, 0, std::vector<double>(mesh->element_list.size(), 0), 1, std::vector<std::vector<size_t>>(mesh->element_list.size()), std::vector<double>(), 0, 1e-8};
+    Data data{viz, fem, mesh, this, 1, std::vector<double>(mesh->element_list.size(), this->rho_init), 0, 0, std::vector<double>(mesh->element_list.size(), 0), 1, std::vector<std::vector<size_t>>(mesh->element_list.size()), std::vector<double>(), 0, this->ftol_rel};
 
     // Uses more memory but is much faster
     for(size_t i = 0; i < mesh->element_list.size(); ++i){
@@ -225,17 +226,24 @@ TopoDS_Shape MinimalVolume::optimize(Visualization* viz, FiniteElement* fem, Mes
     double it_time = to_time/data.it_num;
     logger::quick_log("Time per iteration (topology optimization): ", it_time, " seconds");
     logger::quick_log("Number of iterations (topology optimization): ", data.it_num);
-
-    // if(r > 0 || r == nlopt::FORCED_STOP){
-    //     TopoDS_Shape result = BRepBuilderAPI_Copy(this->data->ground_structure->shape);
-    //     for(size_t i = 0; i < data.new_x.size(); ++i){
-    //         if(data.new_x[i] > 0.5){
-    //             result = utils::cut_shape(result, mesh->element_list[i]->get_shape());
-    //         }
-    //     }
-    //     result = utils::cut_shape(this->data->ground_structure->shape, result);
-    //     return result;
-    // }
+   
+    logger::quick_log(" "); 
+    logger::quick_log("Saving resulting topology...");
+    std::cout << "\r" << 0 << "%         ";
+    if(r > 0 || r == nlopt::FORCED_STOP){
+        TopoDS_Shape result = BRepBuilderAPI_Copy(this->data->ground_structure->shape);
+        for(size_t i = 0; i < data.new_x.size(); ++i){
+            if(data.new_x[i] >= this->result_threshold){
+                result = utils::cut_shape(result, mesh->element_list[i]->get_shape());
+            }
+            double pc = i/(double)(data.new_x.size()-1);
+            std::cout << "\r" << pc*100 << "%         ";
+        }
+        result = utils::cut_shape(this->data->ground_structure->shape, result);
+        return result;
+    }
+    std::cout << "\r" << 100 << "%         ";
+    logger::quick_log(" "); 
 
     return TopoDS_Shape();
 }

@@ -24,7 +24,8 @@
 #include <vector>
 #include "element.hpp"
 #include "meshing.hpp"
-#include "project_data.hpp"
+
+class ProjectData;
 
 class FiniteElement{
     public:

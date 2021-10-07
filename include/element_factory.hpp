@@ -103,6 +103,15 @@ class MeshElementFactory{
         }
         return 0;
     }
+    static size_t get_gmsh_element_type(MeshElementType t){
+        switch(t){
+            case GT9:
+            case TRI3: return 1;
+            case NULL: return 0;
+        }
+        return 0;
+
+    }
     static utils::ProblemType get_problem_type(MeshElementType t){
         switch(t){
             case GT9:

@@ -47,12 +47,14 @@ class StandardSizing : public Sizing{
         double diameter = 0;
     };
 
-    StandardSizing(ProjectData* data, FiniteElement* solver);
+    StandardSizing(ProjectData* data, FiniteElement* solver, double element_size, double multiplier);
 
     virtual TopoDS_Shape run() override;
 
     private:
     FiniteElement* solver;
+    double element_size;
+    double multiplier;
 
     TopoDS_Shape build_initial_topology();
     // Not recommended to use it with beams. Other shapes tend work.

@@ -44,6 +44,7 @@
 #include <BRepBuilderAPI_Copy.hxx>
 #include <ShapeFix_Shape.hxx>
 #include <ShapeFix_Wireframe.hxx>
+#include "beam_graph.hpp"
 
 namespace sizing{
 

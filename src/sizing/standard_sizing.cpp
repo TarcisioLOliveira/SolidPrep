@@ -58,11 +58,12 @@
 #include <BRepBuilderAPI_Transform.hxx>
 #include <GeomAPI_ExtremaCurveCurve.hxx>
 #include <BRepExtrema_DistShapeShape.hxx>
+#include <project_data.hpp>
 
 namespace sizing{
 
-StandardSizing::StandardSizing(ProjectData* data, FiniteElement* solver):
-   Sizing(data), solver(solver){}
+StandardSizing::StandardSizing(ProjectData* data, FiniteElement* solver, double element_size, double multiplier):
+   Sizing(data), solver(solver), element_size(element_size), multiplier(multiplier){}
 
 TopoDS_Shape StandardSizing::run(){
     return this->boundary_expansion_approach();
@@ -70,10 +71,9 @@ TopoDS_Shape StandardSizing::run(){
 }
 
 TopoDS_Shape StandardSizing::boundary_expansion_approach(){
-    double mesh_size = 3;
 
     // Get beams and do FEA
-    meshing::StandardBeamMesher mesh(mesh_size, 1, utils::PROBLEM_TYPE_2D);
+    meshing::StandardBeamMesher mesh(this->element_size, 1, utils::PROBLEM_TYPE_2D);
     TopoDS_Shape beams = this->build_initial_topology();
     utils::shape_to_file("beams.step", beams);
     auto m = mesh.mesh(beams);
@@ -454,8 +454,7 @@ StandardSizing::ExpansionNode StandardSizing::get_expansion_node_2D(const gp_Dir
     // Shear
     double h_c = (F - normal.Dot(F)*normal).Magnitude()*(3/(2*t*S_c));
 
-    double mult = 1.0;
-    double h = mult*std::max({h_f, h_n, h_c});//, distance});
+    double h = this->multiplier*std::max({h_f, h_n, h_c});//, distance});
     if(h - distance < Precision::Confusion()){
         return {center, line_dir, h};
     }

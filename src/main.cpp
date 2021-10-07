@@ -46,78 +46,69 @@ int main(int argc, char* argv[]){
     double size_time = 0;
     ProjectData proj(argv[1]);
     auto start_sizing = std::chrono::high_resolution_clock::now();
-    finite_element::DirectSolver fem_beam;
-    sizing::StandardSizing* sizer = new sizing::StandardSizing(&proj, &fem_beam);
-    auto shape = sizer->run();
-    auto stop_sizing = std::chrono::high_resolution_clock::now();
-    auto sizing_duration = std::chrono::duration_cast<std::chrono::seconds>(stop_sizing-start_sizing);
-    size_time = sizing_duration.count()/60.0;
-    delete sizer;
-    utils::shape_to_file("test.step", shape);
-    //return 0;
-
-    meshing::Gmsh mesh(3, 1, utils::PROBLEM_TYPE_2D);
-    // auto shape2 = proj.sizer->run();
-    // utils::shape_to_file("test.step", shape2);
-    // auto m = mesh.mesh(shape);
-    //
-    // auto m = mesh.mesh(proj.ground_structure->shape);
-
-    // GroundStructure beam_test("beams.step", 1, utils::PROBLEM_TYPE_2D);
-    // auto m = mesh.mesh(beam_test.shape);
+    TopoDS_Shape shape;
+    if(proj.analysis == ProjectData::COMPLETE || proj.analysis == ProjectData::BEAMS_ONLY){
+        shape = proj.sizer->run();
+        auto stop_sizing = std::chrono::high_resolution_clock::now();
+        auto sizing_duration = std::chrono::duration_cast<std::chrono::seconds>(stop_sizing-start_sizing);
+        size_time = sizing_duration.count()/60.0;
+        utils::shape_to_file("sized.step", shape);
+    } else if(proj.analysis == ProjectData::FEA_ONLY || proj.analysis == ProjectData::OPTIMIZE_ONLY){
+        shape = proj.ground_structure->shape;
+    }
     
     auto start_mesh = std::chrono::high_resolution_clock::now();
-    //auto m = mesh.mesh(proj.ground_structure->shape);
-    auto m = mesh.mesh(shape);
+    auto m = proj.topopt_mesher->mesh(shape);
     std::vector<MeshElement*> elems;
     std::vector<double> loads;
-    mesh.prepare_for_FEM(m, MeshElementFactory::GT9, &proj);
-    finite_element::DirectSolver fem;
-    //auto u = fem.calculate_displacements(&proj, &mesh);
-    topology_optimization::MinimalVolume mv(6, 10, &proj);//proj.material->get_max_Von_Mises_2D(), &proj);
+    proj.topopt_mesher->prepare_for_FEM(m, proj.topopt_element, &proj);
     auto stop_mesh = std::chrono::high_resolution_clock::now();
-    // std::vector<double> stresses;
-    // stresses.reserve(mesh.element_list.size());
-    // for(auto& e:mesh.element_list){
-    //     stresses.push_back(e->get_stress_at(e->get_centroid(), u));
-    // }
+    if(proj.analysis == ProjectData::FEA_ONLY || proj.analysis == ProjectData::BEAMS_ONLY){
+        auto u = proj.topopt_fea->calculate_displacements(&proj, proj.topopt_mesher.get());
+        std::vector<double> stresses;
+        stresses.reserve(proj.topopt_mesher->element_list.size());
+        for(auto& e:proj.topopt_mesher->element_list){
+            stresses.push_back(e->get_stress_at(e->get_centroid(), u));
+        }
+        Visualization v;
+        v.start();
+        v.load_mesh(proj.topopt_mesher.get(), proj.type);
+        v.update_stress_view(stresses);
+        v.show();
+        v.wait();
+        v.end();
+    } else if(proj.analysis == ProjectData::OPTIMIZE_ONLY || proj.analysis == ProjectData::COMPLETE){
+        Visualization v;
+        v.start();
+        v.load_mesh(proj.topopt_mesher.get(), proj.type);
 
-    Visualization v;
-    v.start();
-    v.load_mesh(&mesh, proj.type);
-    // v.update_stress_view(stresses);
+        v.show();
+        auto f = [&](){
+          v.wait();
+        };
+        std::thread t(f);
+        auto start_to = std::chrono::high_resolution_clock::now();
+        TopoDS_Shape result = proj.topopt->optimize(&v, proj.topopt_fea.get(), proj.topopt_mesher.get());
+        auto stop_to = std::chrono::high_resolution_clock::now();
+        auto to_duration = std::chrono::duration_cast<std::chrono::seconds>(stop_to-start_to);
+        double to_time = to_duration.count()/60.0;
+        auto total_duration = std::chrono::duration_cast<std::chrono::seconds>(stop_to-start_sizing);
+        double total_time = total_duration.count()/60.0;
+        auto mesh_duration = std::chrono::duration_cast<std::chrono::seconds>(stop_mesh-start_mesh);
+        double mesh_time = mesh_duration.count()/60.0;
 
-    v.show();
-    auto f = [&](){
-      v.wait();
-    };
-    std::thread t(f);
-    auto start_to = std::chrono::high_resolution_clock::now();
-    TopoDS_Shape result = mv.optimize(&v, &fem, &mesh);
-    auto stop_to = std::chrono::high_resolution_clock::now();
-    auto to_duration = std::chrono::duration_cast<std::chrono::seconds>(stop_to-start_to);
-    double to_time = to_duration.count()/60.0;
-    auto total_duration = std::chrono::duration_cast<std::chrono::seconds>(stop_to-start_sizing);
-    double total_time = total_duration.count()/60.0;
-    auto mesh_duration = std::chrono::duration_cast<std::chrono::seconds>(stop_mesh-start_mesh);
-    double mesh_time = mesh_duration.count()/60.0;
+        logger::quick_log("Sizing time: ", size_time, " minutes");
+        logger::quick_log("Topology optimization time (including preparations for TO): ", to_time+mesh_time, " minutes");
+        logger::quick_log("Total optimization time: ", to_time+size_time+mesh_time, " minutes");
+        logger::quick_log("Total runtime (including GUI loading, excluding saving result as STEP): ", total_time, " minutes");
 
-    logger::quick_log("Sizing time: ", size_time, " minutes");
-    logger::quick_log("Topology optimization time (including preparations for TO): ", to_time+mesh_time, " minutes");
-    logger::quick_log("Total optimization time: ", to_time+size_time+mesh_time, " minutes");
-    logger::quick_log("Total runtime (including GUI loading, excluding saving result as STEP): ", total_time, " minutes");
+        logger::quick_log("Finished.");
 
-    //utils::shape_to_file("result.step", result);
+        t.join();
 
-    logger::quick_log("Finished.");
+        v.end();
 
-    t.join();
-
-    v.end();
-
-
-    // TopoDS_Shape s = proj.sizer->run();
-    // utils::shape_to_file("test.step", s);
+    }
 
     return 0;
 }

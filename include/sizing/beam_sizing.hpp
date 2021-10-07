@@ -22,7 +22,6 @@
 #define BEAM_SIZING_HPP
 
 #include "sizing.hpp"
-#include "beam_graph.hpp"
 #include <vector>
 #include "element_factory.hpp"
 
