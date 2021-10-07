@@ -20,4 +20,4 @@ tmp/
 .ycm*
 
 # Results
-*.step
+/*.step

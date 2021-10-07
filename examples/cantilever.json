@@ -1,0 +1,67 @@
+{
+    "solid_type": "2D", // or "3D"
+    "geometry_path": "square.step", // Relative path from problem definition file's path
+    "thickness": 20, // [mm], 2D only
+    "scale": 10, // [mm]
+    "analysis": "complete", // or "fea_only" or "beams_only" or "topopt_only"
+    "material":{
+        // (Dialami et al. 2020), 3D printed PLA, Table 3 (Crossed)
+        // "type": "linear_elastic_orthotropic",
+        // "Smax": [10, 12.5, 7.5, 10, 12.5, 7.5], // [MPa]; +x, +y, +z, -x, -y, -z
+        // "Tmax": [7.5, 9.375, 5.625], // [MPa]; xy, xz, yz
+        // "E": [2.464, 1.984, 2.324], // x, y, z [GPa]
+        // "nu": [0.259, 0.188, 0.236], // xy, xz, yz
+        // "G": [0.362, 0.363, 0.332] // yz, xz, xy  [GPa]
+        "type": "linear_elastic_isotropic",
+        "Smax": 10.0,
+        "Tmax": 7.5,
+        "E": 2.0,
+        "nu": 0.23,
+        "plane_stress": true
+    },
+    "finite_element":{
+        "type": "direct_solver"
+    },
+    "mesher":{
+        "type": "gmsh",
+        "element_size": 4,
+        "element_type": "GT9", //YUQIU and YIN, 1994
+        "algorithm": 6 // Gmsh meshing algorithm, optional
+    },
+    "sizing":{
+        "type": "standard_sizing", // Sizing algorithm
+        "element_size": 4, // Element size for beam analysis
+        "oversizing": 1.0, // Oversizing constant, optional
+        "finite_element":{
+            "type": "direct_solver"
+        },
+        "pathfinding":{
+            "type": "visibility_graph",
+            "step": 2, // [mm]
+            "restriction_size": 0, // Optional, defines additional safety distance from edges.
+            "max_turn_angle": 5 // [°]
+        }
+    },
+    "topopt":{
+        "type": "minimal_volume", // LE et al, 2009
+        "r_o": 8, // Density filter radius
+        "Smax": 16.4, // Maximum global stress
+        "rho_init": 0.7, // Initial density
+        "ftol_rel": 1e-8, // Convergence criterium, relative objective function change
+        "result_threshold": 0.5 // minimum density a the resulting element must have to be included in resulting STEP file
+    },
+    "loads":[
+        {
+            "vertices": [[200, 10], [200, -10]], // [mm], set to scale
+            "load": [0,-5000] // [N]
+        }
+    ],
+    "supports":[
+        {
+            "X": true, // Blocks X forces
+            "Y": true, // Blocks Y forces
+            "MZ": true, // Blocks moments around Z
+            "vertices": [[-200, -200], [-200, 200]] // [mm], set to scale
+        }
+    ]
+}
