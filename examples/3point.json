@@ -48,7 +48,8 @@
         "Smax": 16.4, // Maximum global stress
         "rho_init": 0.7, // Initial density
         "ftol_rel": 1e-8, // Convergence criterium, relative objective function change
-        "result_threshold": 0.5 // minimum density a the resulting element must have to be included in resulting STEP file
+        "result_threshold": 0.5, // minimum density a the resulting element must have to be included in resulting STEP file
+        "save_result": false // results are not being built properly
     },
     "loads":[
         {

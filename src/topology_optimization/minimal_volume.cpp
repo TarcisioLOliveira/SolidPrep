@@ -30,8 +30,8 @@
 
 namespace topology_optimization{
 
-MinimalVolume::MinimalVolume(double r_o, double Smax, ProjectData* data, double rho_init, double ftol_rel, double result_threshold):
-    r_o(r_o), Smax(Smax), data(data), rho_init(rho_init), ftol_rel(ftol_rel), result_threshold(result_threshold){}
+MinimalVolume::MinimalVolume(double r_o, double Smax, ProjectData* data, double rho_init, double ftol_rel, double result_threshold, bool save):
+    r_o(r_o), Smax(Smax), data(data), rho_init(rho_init), ftol_rel(ftol_rel), result_threshold(result_threshold), save_result(save){}
 
 
 TopoDS_Shape MinimalVolume::optimize(Visualization* viz, FiniteElement* fem, Meshing* mesh){
@@ -145,7 +145,7 @@ TopoDS_Shape MinimalVolume::optimize(Visualization* viz, FiniteElement* fem, Mes
             //e->get_virtual_load(v*std::pow(data->new_x[i], pt)/(S), e->get_centroid(), u, fl);
         }
         data->viz->update_stress_view(stress_list);
-        // data->viz->update_density_view(data->new_x);
+        //data->viz->update_density_view(data->new_x);
 
         Spn = std::pow(Spn, 1.0/P);
         double new_c = Smax/Spn;
@@ -230,7 +230,7 @@ TopoDS_Shape MinimalVolume::optimize(Visualization* viz, FiniteElement* fem, Mes
     logger::quick_log(" "); 
     logger::quick_log("Saving resulting topology...");
     std::cout << "\r" << 0 << "%         ";
-    if(r > 0 || r == nlopt::FORCED_STOP){
+    if(this->save_result && (r > 0 || r == nlopt::FORCED_STOP)){
         TopoDS_Shape result = BRepBuilderAPI_Copy(this->data->ground_structure->shape);
         for(size_t i = 0; i < data.new_x.size(); ++i){
             if(data.new_x[i] >= this->result_threshold){
