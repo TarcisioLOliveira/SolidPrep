@@ -760,7 +760,7 @@ void GT9::get_virtual_load(double mult, gp_Pnt point, const std::vector<double>&
     std::vector<double> DB = this->get_DB(point);
     std::vector<double> V{1, -0.5, 0,
                          -0.5, 1, 0,
-                         0,   0, 1.5};
+                         0,   0, 3};
 
     std::vector<double> u_vec(9, 0);
     for(size_t k = 0; k < 3; ++k){
