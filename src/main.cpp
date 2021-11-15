@@ -36,17 +36,16 @@
 #include <chrono>
 
 int main(int argc, char* argv[]){
-    // Bnd_Box bounds;
-    // BRepBndLib::Add(this->shape, bounds);
-    // bounds.SetGap(0.0);
-    // Standard_Real fXMin, fYMin, fZMin, fXMax, fYMax, fZMax;
-    // bounds.Get(fXMin, fYMin, fZMin, fXMax, fYMax, fZMax);
-    // std::cout << fXMax << " " << fXMin << " " << fYMax << " " << fYMin << " " << fZMax << " " << fZMin << std::endl;
+
 
     double size_time = 0;
+
+    // Load project file
     ProjectData proj(argv[1]);
     auto start_sizing = std::chrono::high_resolution_clock::now();
     TopoDS_Shape shape;
+
+    // Sizing step
     if(proj.analysis == ProjectData::COMPLETE || proj.analysis == ProjectData::BEAMS_ONLY){
         shape = proj.sizer->run();
         auto stop_sizing = std::chrono::high_resolution_clock::now();
@@ -57,6 +56,8 @@ int main(int argc, char* argv[]){
         shape = proj.ground_structure->shape;
     }
     
+
+    // Meshing
     auto start_mesh = std::chrono::high_resolution_clock::now();
     auto m = proj.topopt_mesher->mesh(shape);
     std::vector<MeshElement*> elems;
@@ -64,12 +65,16 @@ int main(int argc, char* argv[]){
     proj.topopt_mesher->prepare_for_FEM(m, proj.topopt_element, &proj);
     auto stop_mesh = std::chrono::high_resolution_clock::now();
     if(proj.analysis == ProjectData::FEA_ONLY || proj.analysis == ProjectData::BEAMS_ONLY){
+
+        // Finite element analysis
         auto u = proj.topopt_fea->calculate_displacements(&proj, proj.topopt_mesher.get());
         std::vector<double> stresses;
         stresses.reserve(proj.topopt_mesher->element_list.size());
         for(auto& e:proj.topopt_mesher->element_list){
             stresses.push_back(e->get_stress_at(e->get_centroid(), u));
         }
+
+        // Display results
         Visualization v;
         v.start();
         v.load_mesh(proj.topopt_mesher.get(), proj.type);
@@ -78,6 +83,8 @@ int main(int argc, char* argv[]){
         v.wait();
         v.end();
     } else if(proj.analysis == ProjectData::OPTIMIZE_ONLY || proj.analysis == ProjectData::COMPLETE){
+
+        // Display progress
         Visualization v;
         v.start();
         v.load_mesh(proj.topopt_mesher.get(), proj.type);
@@ -87,8 +94,13 @@ int main(int argc, char* argv[]){
           v.wait();
         };
         std::thread t(f);
+
         auto start_to = std::chrono::high_resolution_clock::now();
+
+        // Optimization
         TopoDS_Shape result = proj.topopt->optimize(&v, proj.topopt_fea.get(), proj.topopt_mesher.get());
+
+        // Display time
         auto stop_to = std::chrono::high_resolution_clock::now();
         auto to_duration = std::chrono::duration_cast<std::chrono::seconds>(stop_to-start_to);
         double to_time = to_duration.count()/60.0;

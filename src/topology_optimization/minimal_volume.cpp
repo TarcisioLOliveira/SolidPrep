@@ -141,7 +141,7 @@ TopoDS_Shape MinimalVolume::optimize(Visualization* viz, FiniteElement* fem, Mes
             double v = data->new_x[i]*data->grad_V[i];
             Spn += v*std::pow(Se, P);
 
-            e->get_virtual_load(P*v*std::pow(data->new_x[i], pt*P)*std::pow(S, P-2), e->get_centroid(), data->u, fl);
+            e->get_virtual_load(v*std::pow(data->new_x[i], pt*P)*std::pow(S, P-2), e->get_centroid(), data->u, fl);
             //e->get_virtual_load(v*std::pow(data->new_x[i], pt)/(S), e->get_centroid(), u, fl);
         }
         data->viz->update_stress_view(stress_list);
@@ -152,7 +152,7 @@ TopoDS_Shape MinimalVolume::optimize(Visualization* viz, FiniteElement* fem, Mes
         if(data->c == 0){
             data->c = new_c;
         }
-        double Sg = data->c*std::pow(Spn, 1 - P)/P;
+        double Sg = data->c*std::pow(Spn, 1 - P);
 
         double result = data->c*Spn;
 
@@ -167,7 +167,7 @@ TopoDS_Shape MinimalVolume::optimize(Visualization* viz, FiniteElement* fem, Mes
             double lKu = pc*std::pow(data->new_x[i], pc-1)*e->get_compliance(data->u, l);
             double v = data->new_x[i]*data->grad_V[i];
             double S = e->get_stress_at(e->get_centroid(), data->u);
-            double Se = (pt*P+1)*v*std::pow(data->new_x[i], pt*P-1)*std::pow(S, P);
+            double Se = (pt*P+1)*v*std::pow(data->new_x[i], pt*P-1)*std::pow(S, P)/P;
             //double Se = (pt+1)*v*std::pow(data->new_x[i], pt-1)*S;
 
             //grad_tmp[i] = Sg*(Se - lKu);

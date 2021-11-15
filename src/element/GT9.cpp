@@ -775,8 +775,10 @@ void GT9::get_virtual_load(double mult, gp_Pnt point, const std::vector<double>&
     cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 3, 1, 9, 1, DB.data(), 9, u_vec.data(), 1, 0, f_vec.data(), 1);
 
     std::vector<double> res(f_vec);
+    f_vec = std::vector<double>(9, 0);
     cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 3, 1, 3, 1, V.data(), 3, res.data(), 1, 0, f_vec.data(), 1);
     res = f_vec;
+    f_vec = std::vector<double>(9, 0);
 
     cblas_dgemm(CblasRowMajor, CblasTrans, CblasNoTrans, 9, 1, 3, 1, DB.data(), 9, res.data(), 1, 0, f_vec.data(), 1);
     cblas_dscal(9, mult, f_vec.data(), 1);

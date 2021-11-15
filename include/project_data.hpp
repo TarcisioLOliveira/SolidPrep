@@ -337,13 +337,15 @@ std::unique_ptr<TopologyOptimization> ProjectData::load_topopt(const rapidjson::
         this->log_data(to, "rho_init", TYPE_DOUBLE, true);
         this->log_data(to, "ftol_rel", TYPE_DOUBLE, true);
         this->log_data(to, "result_threshold", TYPE_DOUBLE, true);
+        this->log_data(to, "save_result", TYPE_BOOL, true);
 
         double r_o = to["r_o"].GetDouble();
         double Smax = to["Smax"].GetDouble();
         double rho_init = to["rho_init"].GetDouble();
         double ftol_rel = to["ftol_rel"].GetDouble();
         double result_threshold = to["result_threshold"].GetDouble();
-        topopt.reset(new topology_optimization::MinimalVolume(r_o, Smax, this, rho_init, ftol_rel, result_threshold));
+        bool save_result = to["save_result"].GetBool();
+        topopt.reset(new topology_optimization::MinimalVolume(r_o, Smax, this, rho_init, ftol_rel, result_threshold, save_result));
     }
     return topopt;
 }

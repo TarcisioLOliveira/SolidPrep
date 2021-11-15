@@ -29,8 +29,11 @@ void BeamGraph::run(){
     std::vector<std::vector<gp_Pnt>> beams;
     size_t k_dim = BeamElementFactory::get_k_dimension(this->type);
 
+    // K dimensions
     int W = 0;
     int N = k_dim;
+
+    // Get beam paths
     int node_qnt = 0;
     for(auto& f:this->data->forces){
         for(auto& s:this->data->supports){
@@ -41,6 +44,7 @@ void BeamGraph::run(){
         }
     }
 
+    // Initialize matrices and vectors
     std::vector<double> K(W*N);
     std::vector<double> F(W);
     std::vector<BeamElement*> elems(node_qnt-1);
@@ -52,6 +56,7 @@ void BeamGraph::run(){
     size_t cur_id = 0;
     size_t pos_offset = 0;
 
+    // Fill K
     for(size_t i = 0; i < beams.size(); ++i){
         const std::vector<gp_Pnt>& beam = beams[i];
         const Force& f = this->data->forces[i/this->data->supports.size()];
@@ -60,7 +65,7 @@ void BeamGraph::run(){
         double dim = f.S.get_dimension();
         size_t sup_id = i%this->data->supports.size();
 
-        // Support
+        // Get element attached to support
         {
             // Negative id indicates support, indexed at -(n+1) in this->data->supports
             gp_Vec v1 = gp_Vec(beam[0], beam[1]);
@@ -68,6 +73,8 @@ void BeamGraph::run(){
             gp_Vec v2 = gp_Vec(beam[0], beam[1]) + gp_Vec(beam[1], beam[2]);
             this->nodes[1] = BeamNodeFactory::make_node(beam[1], cur_id, dim, v2, node_type);
             std::vector<long> pos(k_dim);
+
+            // Calculate needed offsets to ensure K will not be singular
             if(k_dim >= 2 && this->data->supports[sup_id].X){
                 pos[0] = -1;
             } else {
@@ -100,6 +107,8 @@ void BeamGraph::run(){
             elems[0] = BeamElementFactory::make_element(BeamElementFactory::BEAM_LINEAR_2D, this->nodes[0], this->nodes[1], I, A, E);
             this->insert_element_matrix(K, elems[0]->get_k(), pos, W, N);
         }
+
+        // Get the rest of the elements
         for(size_t j = 1; j < beam.size()-1; ++j){
             size_t true_pos = cur_id+sup_id+1;
             gp_Vec v(beam[true_pos], beam[true_pos+1]);
@@ -127,7 +136,7 @@ void BeamGraph::run(){
             this->insert_element_matrix(K, elems[true_pos]->get_k(), pos, W, N);
             ++cur_id;
         }
-        // Force
+        // Adds forces to force vector
         {
             if(k_dim >= 2){
                 F[cur_id*k_dim/2 + pos_offset] = -f.vec.X();
@@ -149,12 +158,14 @@ void BeamGraph::run(){
     logger::log_assert(info == 0, logger::ERROR, "LAPACKE returned {} while calculating displacements during sizing step.", info);
     K.clear();
 
+    // Calculate reactions
     for(size_t i = 0; i < elems.size(); ++i){
         if(elems[i]->get_node(0)->id < 0){
             elems[i]->get_internal_loads(0, F);
         }
         elems[i]->get_internal_loads(1, F);
     }
+    // Delete elements
     while(!elems.empty()){
         delete elems.back();
         elems.pop_back();
@@ -162,6 +173,7 @@ void BeamGraph::run(){
 }
 
 void BeamGraph::insert_element_matrix(std::vector<double>& K, const std::vector<double>& k, const std::vector<long>& pos, int w, int& n) const{
+    // Check if K needs to be resized
     long first = -1;
     long last = 0;
     for(size_t i = 0; i < pos.size(); ++i){
@@ -172,11 +184,14 @@ void BeamGraph::insert_element_matrix(std::vector<double>& K, const std::vector<
             last = i;
         }
     }
+    // Resize K if needed
     if(pos[last] - pos[first] > n){
         n = pos[last] - pos[first];
         K.resize(w*n);
     }
     
+    // Add k to K
+    // If pos[i] = -1, row and column are not to be inserted 
     for(long i = first; i < last+1; ++i){
         for(long j = i; j < last+1; ++j){
             if(pos[i] > -1 && pos[j] > -1){

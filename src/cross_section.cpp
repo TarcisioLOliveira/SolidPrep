@@ -40,11 +40,12 @@
 #include <BRepPrimAPI_MakeSphere.hxx>
 
 CrossSection::CrossSection(std::vector<gp_Pnt> vertices, double thickness){
-    // Calculation of properties
     size_t size = vertices.size();
     logger::log_assert(size > 1, logger::ERROR, "Bi-dimensional cross sections must have two or more vertices.");
     logger::log_assert(!utils::equal(vertices[0], vertices[size-1]), logger::ERROR, "The vertices of a bi-dimensional cross section must not form a closed polygon.");
 
+    // Creates a 2D cross-section so that OCCT functions for line/face 
+    // intersection can work correctly.
     gp_Pnt p1(vertices[0]);
     gp_Pnt p2(vertices[size-1]);
     this->max_dim = p1.Distance(p2);
@@ -114,6 +115,7 @@ CrossSection::CrossSection(gp_Pnt p):
 CrossSection::CrossSection(gp_Pnt p, utils::ProblemType type, double radius):
     centroid(p), inertia(), normal(), max_dim(radius), shape(), area(){
     if(type == utils::PROBLEM_TYPE_2D){
+        // Creates a circle
         gp_Ax2 axis(p, gp_Dir(0,0,1));
         gp_Circ circ(axis, radius);
         TopoDS_Edge edge = BRepBuilderAPI_MakeEdge(circ);
@@ -121,6 +123,7 @@ CrossSection::CrossSection(gp_Pnt p, utils::ProblemType type, double radius):
         TopoDS_Face face = BRepBuilderAPI_MakeFace(wire);
         this->shape = face;
     } else if(type == utils::PROBLEM_TYPE_3D){
+        // Creates a sphere
         this->shape = BRepPrimAPI_MakeSphere(radius);
         gp_Trsf t;
         t.SetTranslation(gp_Pnt(0,0,0), p);

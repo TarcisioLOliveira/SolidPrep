@@ -23,14 +23,30 @@
 
 #include "meshing.hpp"
 
+/**
+ * Interface class for meshers designed to be used on continuum topologies by
+ * assuming that they are composed of multiple intersecting beams, in order to
+ * be used by beam sizing algorithms.
+ *
+ * @see Meshing
+ * @see BeamSizing
+ */
 class BeamMeshing : public Meshing{
     public:
+    /**
+     * Represents a node situated on the topology's boundary.
+     */
     struct BoundaryNode{
         BoundaryNode(MeshNode* n):node(n){}
-        MeshNode* node;
-        gp_Dir normal;
+        MeshNode* node; ///< Associated mesh node
+        gp_Dir normal; ///< Normal to the node, pointing outward from the topology
     };
 
+    /**
+     * Constructs an object by predetermining element size.
+     *
+     * @param size Element size.
+     */
     BeamMeshing(double size):Meshing(size){}
 
     std::vector<BoundaryNode> boundary_nodes;

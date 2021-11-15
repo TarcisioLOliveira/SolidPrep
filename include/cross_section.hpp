@@ -26,13 +26,22 @@
 #include <gp_Pnt.hxx>
 #include <TopoDS_Shape.hxx>
 
+/**
+ * Represents the cross-section of a beam.
+ */
 class CrossSection{
     public:
+    /**
+     * Represents a rectangle. Used to create a rectangular cross-section.
+     */
     struct Rectangle{
         double w, h;
         gp_Pnt center;
         gp_Vec rotation;
     };
+    /**
+     * Represents a circle. Used to create a circular cross-section.
+     */
     struct Circle{
         double r;
         gp_Pnt center;
@@ -49,6 +58,7 @@ class CrossSection{
 
     /**
      * Creates a general cross section for 3D problems.
+     * Not yet implemented.
      *
      * @param vertices Vertices of the application geometry.
      */
@@ -56,6 +66,7 @@ class CrossSection{
 
     /**
      * Creates a rectangular cross section for 3D problems.
+     * Not yet implemented.
      *
      * @param r Rectangle object.
      */
@@ -63,28 +74,52 @@ class CrossSection{
 
     /**
      * Creates a circular cross section for 3D problems.
+     * Not yet implemented.
      *
      * @param c Circular object.
      */
     CrossSection(Circle c);
 
     /**
-     * Creates a dummy point cross section, for pathfinding for example.
+     * Creates a dummy point cross section, for pathfinding.
      *
      * @param p Point.
      */
     CrossSection(gp_Pnt p);
 
     /**
-     * Creates a dummy cross section with size, for pathfinding for example.
+     * Creates a dummy cross section with size, for pathfinding.
      *
      * @param p Point.
      */
     CrossSection(gp_Pnt p, utils::ProblemType type, double radius = 10);
 
+    /**
+     * Checks if a point is inside the cross-section.
+     *
+     * @param p Point to check.
+     *
+     * @return Whether it's inside or not.
+     */
     bool is_inside(gp_Pnt p) const;
+    /**
+     * Gets the shortest Euclidian distance to the cross-section.
+     *
+     * @param p Point of origin.
+     *
+     * @return Shortest distance.
+     */
     double get_distance(gp_Pnt p) const;
 
+    /**
+     * Gets a component of the moment of inertia (second moment of area) of the
+     * cross-section, 1-indexed.
+     *
+     * @param i Matrix i coordinate.
+     * @param j Matrix j coordinate.
+     *
+     * @return The component of the moment of inertia tensor.
+     */
     inline double get_moment_of_inertia(int i, int j) const{
         return this->inertia(i, j);
     }
@@ -107,9 +142,19 @@ class CrossSection{
         return this->shape;
     }
 
+    /**
+     * "Rotates" the cross-section by giving it another normal.
+     *
+     * @param n New normal.
+     */
     inline void set_normal(gp_Dir n){
         this->normal = n;
     }
+    /**
+     * "Translates" the cross-section by giving it another centroid.
+     *
+     * @param p The new centroid.
+     */
     void set_centroid(gp_Pnt p);
 
     private:
