@@ -3,7 +3,7 @@
     "geometry_path": "L.step", // Relative path from problem definition file's path
     "thickness": 20, // [mm], 2D only
     "scale": 10, // [mm]
-    "analysis": "complete", // or "fea_only" or "beams_only" or "topopt_only"
+    "analysis": "topopt_only", // or "fea_only" or "beams_only" or "topopt_only"
     "material":{
         // (Dialami et al. 2020), 3D printed PLA, Table 3 (Crossed)
         // "type": "linear_elastic_orthotropic",
@@ -22,16 +22,10 @@
     "finite_element":{
         "type": "direct_solver"
     },
-    "mesher":{
-        "type": "gmsh",
-        "element_size": 4,
-        "element_type": "GT9", //YUQIU and YIN, 1994
-        "algorithm": 6 // Gmsh meshing algorithm, optional
-    },
     "sizing":{
         "type": "standard_sizing", // Sizing algorithm
         "element_size": 4, // Element size for beam analysis
-        "oversizing": 1.3, // Oversizing constant, optional
+        "oversizing": 1.1, // Oversizing constant, optional
         "finite_element":{
             "type": "direct_solver"
         },
@@ -42,11 +36,17 @@
             "max_turn_angle": 5 // [°]
         }
     },
+    "mesher":{
+        "type": "gmsh",
+        "element_size": 4,
+        "element_type": "GT9", //YUQIU and YIN, 1994
+        "algorithm": 6 // Gmsh meshing algorithm, optional
+    },
     "topopt":{
         "type": "minimal_volume", // LE et al, 2009
         "r_o": 8, // Density filter radius
         "Smax": 16.4, // Maximum global stress
-        "rho_init": 0.7, // Initial density
+        "rho_init": 0.6, // Initial density
         "ftol_rel": 1e-8, // Convergence criterium, relative objective function change
         "result_threshold": 0.5, // minimum density a the resulting element must have to be included in resulting STEP file
         "save_result": false // results are not being built properly
