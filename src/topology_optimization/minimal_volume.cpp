@@ -53,16 +53,26 @@ TopoDS_Shape MinimalVolume::optimize(Visualization* viz, FiniteElement* fem, Mes
         std::vector<double> u;
         int it_num;
         double ftol_rel;
+        std::vector<double> p;
     };
 
-    Data data{viz, fem, mesh, this, 1, std::vector<double>(mesh->element_list.size(), this->rho_init), 0, 0, std::vector<double>(mesh->element_list.size(), 0), 1, std::vector<std::vector<size_t>>(mesh->element_list.size()), std::vector<double>(), 0, this->ftol_rel};
+    Data data{viz, fem, mesh, this, 1, std::vector<double>(mesh->element_list.size(), this->rho_init), 0, 0, std::vector<double>(mesh->element_list.size(), 0), 1, std::vector<std::vector<size_t>>(mesh->element_list.size()), std::vector<double>(), 0, this->ftol_rel, std::vector<double>(mesh->element_list.size()*3)};
+
+    
+    for(size_t i = 0; i < mesh->element_list.size(); ++i){
+        gp_Pnt c = mesh->element_list[i]->get_centroid();
+        data.p[3*i] = c.X();
+        data.p[3*i+1] = c.Y();
+        data.p[3*i+2] = c.Z();
+    }
 
     // Uses more memory but is much faster
     for(size_t i = 0; i < mesh->element_list.size(); ++i){
         data.grad_V[i] = mesh->element_list[i]->get_volume();
         data.max_V += data.grad_V[i];
         for(size_t j = i; j < mesh->element_list.size(); ++j){
-            double dist = data.mesh->element_list[i]->get_centroid().Distance(data.mesh->element_list[j]->get_centroid());
+            // double dist = data.mesh->element_list[i]->get_centroid().Distance(data.mesh->element_list[j]->get_centroid());
+            double dist = std::sqrt(std::pow(data.p[3*i] - data.p[3*j], 2) + std::pow(data.p[3*i+1] - data.p[3*j+1], 2) + std::pow(data.p[3*i+2] - data.p[3*j+2], 2));
             if(dist <= data.mv->r_o){
                 data.neighbors[i].push_back(j);
                 data.neighbors[j].push_back(i);
@@ -88,16 +98,19 @@ TopoDS_Shape MinimalVolume::optimize(Visualization* viz, FiniteElement* fem, Mes
             double w = 0;
             data->new_x[i] = 0;
             for(const auto& j:data->neighbors[i]){
-                double dist = data->mesh->element_list[i]->get_centroid().Distance(data->mesh->element_list[j]->get_centroid());
+                // double dist = data->mesh->element_list[i]->get_centroid().Distance(data->mesh->element_list[j]->get_centroid());
+                double dist = std::sqrt(std::pow(data->p[3*i] - data->p[3*j], 2) + std::pow(data->p[3*i+1] - data->p[3*j+1], 2) + std::pow(data->p[3*i+2] - data->p[3*j+2], 2));
                 double wj = 1 - dist/data->mv->r_o;
                 data->new_x[i] += wj*x[j];
+                grad[i] += wj*data->grad_V[j];
                 w += wj;
             }
             data->new_x[i] /= w;
+            grad[i] /= w;
             V += data->new_x[i]*data->grad_V[i];
         }
         data->u = data->fem->calculate_displacements(data->mv->data, data->mesh, data->new_x, pc);
-        grad = data->grad_V;
+        //grad = data->grad_V;
         //for(size_t i = 0; i < data->new_x.size(); ++i){
         //    auto& e = data->mesh->element_list[i];
         //    grad[i] = -pc*std::pow(data->new_x[i], pc-1)*e->get_compliance(data->u);
@@ -161,7 +174,7 @@ TopoDS_Shape MinimalVolume::optimize(Visualization* viz, FiniteElement* fem, Mes
         logger::quick_log("} Done.");
 
         logger::quick_log("Calculating stress gradient...");
-        // std::vector<double> grad_tmp(grad);
+        std::vector<double> grad_tmp(grad);
         for(size_t i = 0; i < data->mesh->element_list.size(); ++i){
             auto& e = data->mesh->element_list[i];
             double lKu = pc*std::pow(data->new_x[i], pc-1)*e->get_compliance(data->u, l);
@@ -170,22 +183,23 @@ TopoDS_Shape MinimalVolume::optimize(Visualization* viz, FiniteElement* fem, Mes
             double Se = (pt*P+1)*v*std::pow(data->new_x[i], pt*P-1)*std::pow(S, P)/P;
             //double Se = (pt+1)*v*std::pow(data->new_x[i], pt-1)*S;
 
-            //grad_tmp[i] = Sg*(Se - lKu);
-            grad[i] = Sg*(Se - lKu);
+            grad_tmp[i] = Sg*(Se - lKu);
+            // grad[i] = Sg*(Se - lKu);
             // grad[i] = Se - lKu;
         }
-        // Sensitivity filtering
-        // for(size_t i = 0; i < x.size(); ++i){
-        //     double w = 0;
-        //     grad[i] = 0;
-        //     for(const auto& j:data->neighbors[i]){
-        //         double dist = data->mesh->element_list[i]->get_centroid().Distance(data->mesh->element_list[j]->get_centroid());
-        //         double wj = 1 - dist/data->mv->r_o;
-        //         grad[i] += wj*data->new_x[j]*grad_tmp[j];
-        //         w += wj;
-        //     }
-        //     grad[i] /= w*data->new_x[i];
-        // }
+        // Sensitivity filtering (implied by the density filtering)
+        for(size_t i = 0; i < x.size(); ++i){
+             double w = 0;
+             grad[i] = 0;
+             for(const auto& j:data->neighbors[i]){
+                 // double dist = data->mesh->element_list[i]->get_centroid().Distance(data->mesh->element_list[j]->get_centroid());
+                 double dist = std::sqrt(std::pow(data->p[3*i] - data->p[3*j], 2) + std::pow(data->p[3*i+1] - data->p[3*j+1], 2) + std::pow(data->p[3*i+2] - data->p[3*j+2], 2));
+                 double wj = 1 - dist/data->mv->r_o;
+                 grad[i] += wj*data->new_x[j]*grad_tmp[j];
+                 w += wj;
+             }
+             grad[i] /= w*data->new_x[i];
+         }
         logger::quick_log("Done.");
 
         double T = 1;
