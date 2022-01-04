@@ -30,8 +30,8 @@
 
 namespace topology_optimization{
 
-MinimalVolume::MinimalVolume(double r_o, double Smax, ProjectData* data, double rho_init, double ftol_rel, double result_threshold, bool save):
-    r_o(r_o), Smax(Smax), data(data), rho_init(rho_init), ftol_rel(ftol_rel), result_threshold(result_threshold), save_result(save){}
+MinimalVolume::MinimalVolume(double r_o, double Smax, ProjectData* data, double rho_init, double xtol_abs, double result_threshold, bool save, int P, int pc):
+    r_o(r_o), Smax(Smax), data(data), rho_init(rho_init), xtol_abs(xtol_abs), result_threshold(result_threshold), save_result(save), P(P), pc(pc){}
 
 
 TopoDS_Shape MinimalVolume::optimize(Visualization* viz, FiniteElement* fem, Meshing* mesh){
@@ -45,6 +45,7 @@ TopoDS_Shape MinimalVolume::optimize(Visualization* viz, FiniteElement* fem, Mes
         MinimalVolume* mv;
         double c;
         std::vector<double> new_x;
+        std::vector<double> d;
         double max_V;
         double cur_V;
         std::vector<double> grad_V;
@@ -52,11 +53,12 @@ TopoDS_Shape MinimalVolume::optimize(Visualization* viz, FiniteElement* fem, Mes
         std::vector<std::vector<size_t>> neighbors;
         std::vector<double> u;
         int it_num;
-        double ftol_rel;
+        double xtol_abs;
         std::vector<double> p;
+        std::vector<double> w;
     };
 
-    Data data{viz, fem, mesh, this, 1, std::vector<double>(mesh->element_list.size(), this->rho_init), 0, 0, std::vector<double>(mesh->element_list.size(), 0), 1, std::vector<std::vector<size_t>>(mesh->element_list.size()), std::vector<double>(), 0, this->ftol_rel, std::vector<double>(mesh->element_list.size()*3)};
+    Data data{viz, fem, mesh, this, 1, std::vector<double>(mesh->element_list.size(), this->rho_init), std::vector<double>(mesh->element_list.size(), this->rho_init), 0, 0, std::vector<double>(mesh->element_list.size(), 0), 1, std::vector<std::vector<size_t>>(mesh->element_list.size()), std::vector<double>(), 0, this->xtol_abs, std::vector<double>(mesh->element_list.size()*3), std::vector<double>(mesh->element_list.size())};
 
     
     for(size_t i = 0; i < mesh->element_list.size(); ++i){
@@ -76,6 +78,9 @@ TopoDS_Shape MinimalVolume::optimize(Visualization* viz, FiniteElement* fem, Mes
             if(dist <= data.mv->r_o){
                 data.neighbors[i].push_back(j);
                 data.neighbors[j].push_back(i);
+                double wj = 1 - dist/data.mv->r_o;
+                data.w[i] += wj;
+                data.w[j] += wj;
             }
         }
     }
@@ -91,26 +96,27 @@ TopoDS_Shape MinimalVolume::optimize(Visualization* viz, FiniteElement* fem, Mes
         Data* data = static_cast<Data*>(f_data);
 
         double V = 0;
-        double pc = 3;
+        //double pc = std::min(1+data->it_num*0.1, data->mv->pc*1.0);//data->mv->pc;
+        double pc = data->mv->pc;
+        double change = 0;
 
         // Density filtering
         for(size_t i = 0; i < x.size(); ++i){
-            double w = 0;
+            change = std::max(change, std::abs(data->d[i] - x[i]));
+            grad[i] = 0;
             data->new_x[i] = 0;
             for(const auto& j:data->neighbors[i]){
                 // double dist = data->mesh->element_list[i]->get_centroid().Distance(data->mesh->element_list[j]->get_centroid());
                 double dist = std::sqrt(std::pow(data->p[3*i] - data->p[3*j], 2) + std::pow(data->p[3*i+1] - data->p[3*j+1], 2) + std::pow(data->p[3*i+2] - data->p[3*j+2], 2));
                 double wj = 1 - dist/data->mv->r_o;
                 data->new_x[i] += wj*x[j];
-                grad[i] += wj*data->grad_V[j];
-                w += wj;
+                // Yes, it is w[j] instead of w[i] here
+                grad[i] += wj*data->grad_V[j]/data->w[j];
             }
-            data->new_x[i] /= w;
-            grad[i] /= w;
+            data->new_x[i] /= data->w[i];
             V += data->new_x[i]*data->grad_V[i];
         }
         data->u = data->fem->calculate_displacements(data->mv->data, data->mesh, data->new_x, pc);
-        //grad = data->grad_V;
         //for(size_t i = 0; i < data->new_x.size(); ++i){
         //    auto& e = data->mesh->element_list[i];
         //    grad[i] = -pc*std::pow(data->new_x[i], pc-1)*e->get_compliance(data->u);
@@ -118,10 +124,19 @@ TopoDS_Shape MinimalVolume::optimize(Visualization* viz, FiniteElement* fem, Mes
 
         ++data->it_num;
 
-        if(data->it_num > 1 && std::abs(V - data->cur_V)/V < data->ftol_rel){
+        logger::quick_log("");
+        logger::quick_log("Change: ", change);
+        logger::quick_log("");
+        if(data->it_num > 1 && change < data->xtol_abs){
             data->cur_V = V;
             throw nlopt::forced_stop();
         }
+        if(data->it_num > 1 && V < 0.0011*data->max_V){
+            data->cur_V = V;
+            throw nlopt::forced_stop();
+        }
+
+        data->d = x;
 
         data->cur_V = V;
         return V;
@@ -130,7 +145,9 @@ TopoDS_Shape MinimalVolume::optimize(Visualization* viz, FiniteElement* fem, Mes
     auto fc = [](const std::vector<double>& x, std::vector<double>& grad, void* f_data)->double{
         // Getting the data
         Data* data = static_cast<Data*>(f_data);
-        double pc = 3;
+        // double pc = std::min(1+data->it_num*0.1, data->mv->pc*1.0);//data->mv->pc;
+        // double pt = 1.0/std::max(1.0, 3-data->it_num*0.1);
+        double pc = data->mv->pc;
         double pt = 1.0/2;
 
 
@@ -138,7 +155,7 @@ TopoDS_Shape MinimalVolume::optimize(Visualization* viz, FiniteElement* fem, Mes
         std::vector<double> fl(data->u.size(), 0);
 
         // Calculating global stress
-        int P = 20;
+        int P = data->mv->P;
         double Spn = 0;
         double Smax = 0;
 
@@ -147,15 +164,30 @@ TopoDS_Shape MinimalVolume::optimize(Visualization* viz, FiniteElement* fem, Mes
             auto& e = data->mesh->element_list[i];
             double S = e->get_stress_at(e->get_centroid(), data->u);
             double Se = std::pow(data->new_x[i], pt)*S;
-            stress_list[i] = Se;
+            stress_list[i] = data->new_x[i]*S;//std::pow(data->new_x[i],pc)*S;//Se;
             if(Se > Smax){
                 Smax = Se;
             }
             double v = data->new_x[i]*data->grad_V[i];
             Spn += v*std::pow(Se, P);
 
+            // double W = 0;
+            // for(const auto& j:data->neighbors[i]){
+            //     // double dist = data->mesh->element_list[i]->get_centroid().Distance(data->mesh->element_list[j]->get_centroid());
+            //     double dist = std::sqrt(std::pow(data->p[3*i] - data->p[3*j], 2) + std::pow(data->p[3*i+1] - data->p[3*j+1], 2) + std::pow(data->p[3*i+2] - data->p[3*j+2], 2));
+            //     double wj = 1 - dist/data->mv->r_o;
+            //     // Yes, it is w[j] instead of w[i] here
+            //     W += wj/data->w[j];
+            // }
+            // for(const auto& j:data->neighbors[i]){
+            //     // double dist = data->mesh->element_list[i]->get_centroid().Distance(data->mesh->element_list[j]->get_centroid());
+            //     double dist = std::sqrt(std::pow(data->p[3*i] - data->p[3*j], 2) + std::pow(data->p[3*i+1] - data->p[3*j+1], 2) + std::pow(data->p[3*i+2] - data->p[3*j+2], 2));
+            //     double wj = 1 - dist/data->mv->r_o;
+            //     double w = wj/data->w[j];
+            //     // Yes, it is w[j] instead of w[i] here
+            //     e->get_virtual_load(v*std::pow(data->new_x[i], pt*P)*std::pow(S, P-2)*w/W, e->get_centroid(), data->u, fl);
+            // }
             e->get_virtual_load(v*std::pow(data->new_x[i], pt*P)*std::pow(S, P-2), e->get_centroid(), data->u, fl);
-            //e->get_virtual_load(v*std::pow(data->new_x[i], pt)/(S), e->get_centroid(), u, fl);
         }
         data->viz->update_stress_view(stress_list);
         //data->viz->update_density_view(data->new_x);
@@ -189,16 +221,14 @@ TopoDS_Shape MinimalVolume::optimize(Visualization* viz, FiniteElement* fem, Mes
         }
         // Sensitivity filtering (implied by the density filtering)
         for(size_t i = 0; i < x.size(); ++i){
-             double w = 0;
              grad[i] = 0;
              for(const auto& j:data->neighbors[i]){
                  // double dist = data->mesh->element_list[i]->get_centroid().Distance(data->mesh->element_list[j]->get_centroid());
                  double dist = std::sqrt(std::pow(data->p[3*i] - data->p[3*j], 2) + std::pow(data->p[3*i+1] - data->p[3*j+1], 2) + std::pow(data->p[3*i+2] - data->p[3*j+2], 2));
                  double wj = 1 - dist/data->mv->r_o;
-                 grad[i] += wj*data->new_x[j]*grad_tmp[j];
-                 w += wj;
+                 // Yes, it is w[j] instead of w[i] here
+                 grad[i] += wj*grad_tmp[j]/data->w[j];
              }
-             grad[i] /= w*data->new_x[i];
          }
         logger::quick_log("Done.");
 
@@ -219,7 +249,8 @@ TopoDS_Shape MinimalVolume::optimize(Visualization* viz, FiniteElement* fem, Mes
     MMA.set_upper_bounds(1);
     MMA.add_inequality_constraint(fc, &data, this->Smax);
     MMA.set_param("verbosity", 5);
-    MMA.set_ftol_rel(data.ftol_rel);
+    MMA.set_xtol_abs(this->xtol_abs);
+    MMA.set_param("inner_maxeval", 15);
 
     double opt_f = 0;
 

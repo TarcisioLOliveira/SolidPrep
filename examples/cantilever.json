@@ -44,17 +44,18 @@
     },
     "topopt":{
         "type": "minimal_volume", // LE et al, 2009
-        "r_o": 8, // Density filter radius
+        "r_o": 4, // Density filter radius
         "Smax": 16.4, // Maximum global stress
         "rho_init": 0.5, // Initial density
-        "ftol_rel": 1e-8, // Convergence criterium, relative objective function change
-        "result_threshold": 0.5, // minimum density a the resulting element must have to be included in resulting STEP file
+        "xtol_abs": 0.005, // Convergence criterium, absolute maximum design variable change
+        "result_threshold": 0.5, // minimum density the resulting element must have to be included in resulting STEP file
         "save_result": false // results are not being built properly
     },
     "loads":[
         {
             "vertices": [[200, 10], [200, -10]], // [mm], set to scale
-            "load": [0,-2000] // [N]
+            // "load": [0,-2000] // [N]
+            "load": [-5000,0] // [N]
         }
     ],
     "supports":[

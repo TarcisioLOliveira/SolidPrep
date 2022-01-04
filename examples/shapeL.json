@@ -25,7 +25,7 @@
     "sizing":{
         "type": "standard_sizing", // Sizing algorithm
         "element_size": 4, // Element size for beam analysis
-        "oversizing": 1.1, // Oversizing constant, optional
+        "oversizing": 1.0, // Oversizing constant, optional
         "finite_element":{
             "type": "direct_solver"
         },
@@ -39,15 +39,17 @@
     "mesher":{
         "type": "gmsh",
         "element_size": 4,
-        "element_type": "GT9", //YUQIU and YIN, 1994
+        "element_type": "TRI3", //YUQIU and YIN, 1994
         "algorithm": 6 // Gmsh meshing algorithm, optional
     },
     "topopt":{
         "type": "minimal_volume", // LE et al, 2009
         "r_o": 8, // Density filter radius
         "Smax": 16.4, // Maximum global stress
-        "rho_init": 0.6, // Initial density
-        "ftol_rel": 1e-8, // Convergence criterium, relative objective function change
+        "rho_init": 0.5, // Initial density
+        "xtol_abs": 1e-20, // Convergence criterium, absolute maximum design variable change
+        "P": 8, // p-norm
+        "pc": 4, // penalization
         "result_threshold": 0.5, // minimum density a the resulting element must have to be included in resulting STEP file
         "save_result": false // results are not being built properly
     },

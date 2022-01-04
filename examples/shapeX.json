@@ -38,16 +38,16 @@
     },
     "mesher":{
         "type": "gmsh",
-        "element_size": 4,
+        "element_size": 5,
         "element_type": "GT9", //YUQIU and YIN, 1994
         "algorithm": 6 // Gmsh meshing algorithm, optional
     },
     "topopt":{
         "type": "minimal_volume", // LE et al, 2009
-        "r_o": 8, // Density filter radius
+        "r_o": 10, // Density filter radius
         "Smax": 16.4, // Maximum global stress
-        "rho_init": 0.3, // Initial density
-        "ftol_rel": 1e-8, // Convergence criterium, relative objective function change
+        "rho_init": 0.65, // Initial density
+        "xtol_abs": 0.005, // Convergence criterium, absolute maximum design variable change
         "result_threshold": 0.5, // minimum density a the resulting element must have to be included in resulting STEP file
         "save_result": false // results are not being built properly
     },
