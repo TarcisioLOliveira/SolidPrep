@@ -64,6 +64,14 @@ void Visualization::load_mesh(Meshing* mesh, utils::ProblemType type){
         }
     }
     gmsh::model::mesh::addElementsByType(this->tag, mesh->element_list[0]->get_gmsh_element_type(), elem_tags, elem_nodes);
+
+    // gmsh::option::setNumber("View.DrawLines", 0);
+    // gmsh::option::setNumber("View.DrawPoints", 0);
+    // gmsh::option::setNumber("View.DrawTrihedra", 0);
+    // gmsh::option::setNumber("View.DrawTriangles", 0);
+    gmsh::option::setNumber("Mesh.SurfaceEdges", 0);
+    gmsh::option::setNumber("Mesh.VolumeEdges", 0);
+    gmsh::option::setNumber("Mesh.Triangles", 0);
 }
 
 void Visualization::update_stress_view(const std::vector<double>& s){
@@ -121,6 +129,9 @@ void Visualization::update_density_view(const std::vector<double>& d){
         std::vector<double> tmp{d[i]};
         density.push_back(tmp);
     }
+    gmsh::option::setNumber("View.ColormapNumber", 9); //grayscale
+    gmsh::option::setNumber("View.DrawLines", 0);
+    gmsh::option::setNumber("View.DrawPoints", 0);
     gmsh::view::addModelData(2, 0, this->MODEL_NAME, "ElementData", elem_tags, density, 0, 1);
 
     if(this->shown){
