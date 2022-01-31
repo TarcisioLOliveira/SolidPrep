@@ -1246,4 +1246,20 @@ TopoDS_Shape StandardSizing::bspline_simple2D(const std::vector<ExpansionNode>& 
     return result;
 }
 
+
+void StandardSizing::trussify(const std::vector<ExternalForce>& external_forces){
+    // Split topology into multiple sections based on the intersections between
+    // separate beams (use BOPAlgo_Section).
+    // Get truss nodes based on common edges
+    // Create truss beams already attached to nodes
+    // Add split parts back into split queue so they may be further split if
+    // needed
+    // Create constructor for CrossSection that takes a TopoDS_Shape.
+    // Do FEA on each individual part, provided they have at least one defined
+    // force acting on them (model the split edges as supports?)
+    // Use the resulting beams along with their nodes to in the same splitting
+    // algorithm that's already used to calculate reactions for points in a
+    // beam, in order to resize them.
+}
+
 }
