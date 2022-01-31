@@ -44,6 +44,7 @@ class TRI3 : public MeshElement{
     virtual size_t get_gmsh_element_type() const override{ return 2;};
     virtual double get_compliance(const std::vector<double>& u, const std::vector<double>& l = std::vector<double>()) const override;
     virtual void get_virtual_load(double mult, gp_Pnt point, const std::vector<double>& u, std::vector<double>& l) const override;
+    virtual std::vector<double> get_f(gp_Dir dir, double norm, std::vector<gp_Pnt> points) const override;
     virtual double get_volume() const override;
     virtual TopoDS_Shape get_shape(std::vector<gp_Vec> disp = std::vector<gp_Vec>()) const override;
     virtual gp_Pnt get_centroid() const override;
