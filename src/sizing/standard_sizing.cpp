@@ -35,6 +35,7 @@
 #include <BRepPrimAPI_MakePrism.hxx>
 #include <BRepAlgoAPI_Cut.hxx>
 #include <BRepAlgoAPI_Fuse.hxx>
+#include <BRepAlgoAPI_Section.hxx>
 #include "logger.hpp"
 #include "meshing/standard_beam_mesher.hpp"
 #include "utils.hpp"
@@ -59,6 +60,7 @@
 #include <GeomAPI_ExtremaCurveCurve.hxx>
 #include <BRepExtrema_DistShapeShape.hxx>
 #include <project_data.hpp>
+#include <Geom_Circle.hxx>
 
 namespace sizing{
 
@@ -77,7 +79,7 @@ TopoDS_Shape StandardSizing::boundary_expansion_approach(){
     TopoDS_Shape beams = this->build_initial_topology();
     utils::shape_to_file("beams.step", beams);
     auto m = mesh.mesh(beams);
-    mesh.prepare_for_FEM(m, MeshElementFactory::GT9, this->data);
+    mesh.prepare_for_FEM(m, MeshElementFactory::GT9, this->data);//, true);
     auto u = this->solver->calculate_displacements(this->data, &mesh);
     this->solver->calculate_forces(&mesh, u);
 
@@ -140,19 +142,17 @@ TopoDS_Shape StandardSizing::expansion_2D(const meshing::StandardBeamMesher& mes
         gp_Pnt p1, p2;
         double dist1 = Precision::Infinite();
         double dist2 = Precision::Infinite();
-        if(dist1 - Precision::Infinite() >= -Precision::Confusion() || dist2 - Precision::Infinite() >= -Precision::Confusion()){
-            for(TopExp_Explorer exp(beams, TopAbs_VERTEX); exp.More(); exp.Next()){
-                gp_Pnt p = BRep_Tool::Pnt(TopoDS::Vertex(exp.Current()));
-                if(line.Contains(p, Precision::Confusion())){
-                    double dist = cur_p.Distance(p);
-                    if(dist > Precision::Confusion()){
-                        if(cur_p.Translated(dist*line_dir).IsEqual(p, Precision::Confusion()) && dist < dist1){
-                            p1 = cur_p.Translated(dist*(line_dir));
-                            dist1 = dist;
-                        } else if(cur_p.Translated(-dist*line_dir).IsEqual(p, Precision::Confusion()) && dist < dist2){
-                            p2 = cur_p.Translated(-dist*(line_dir));
-                            dist2 = dist;
-                        }
+        for(TopExp_Explorer exp(beams, TopAbs_VERTEX); exp.More(); exp.Next()){
+            gp_Pnt p = BRep_Tool::Pnt(TopoDS::Vertex(exp.Current()));
+            if(line.Contains(p, Precision::Confusion())){
+                double dist = cur_p.Distance(p);
+                if(dist > Precision::Confusion()){
+                    if(cur_p.Translated(dist*line_dir).IsEqual(p, Precision::Confusion()) && dist < dist1){
+                        p1 = cur_p.Translated(dist*(line_dir));
+                        dist1 = dist;
+                    } else if(cur_p.Translated(-dist*line_dir).IsEqual(p, Precision::Confusion()) && dist < dist2){
+                        p2 = cur_p.Translated(-dist*(line_dir));
+                        dist2 = dist;
                     }
                 }
             }
@@ -175,17 +175,24 @@ TopoDS_Shape StandardSizing::expansion_2D(const meshing::StandardBeamMesher& mes
 
         double Fx = 0;
         double Fy = 0;
+        double Mz = 0;
         for(auto& n:mesh.node_list){
             if(final_line.Contains(n->point, Precision::Confusion())){
-                double dist = p1.Distance(n->point);
-                if(p1.Translated(dist*final_dir).IsEqual(n->point, Precision::Confusion())){
-                    Fx -= n->results[0];
-                    Fy -= n->results[1];
+                double dist = center.Distance(n->point);
+                if(dist < distance/2 + Precision::Confusion()){
+                    Fx += n->results[0];
+                    Fy += n->results[1];
+                    // logger::quick_log(n->results[2]);
+                    if(n->results[2] >= 0){
+                        Mz += std::abs(n->results[2]);
+                    }
                 }
             }
         }
+        logger::quick_log(Fx, Fy, Mz);
         ExternalForce ef;
         ef.forces = gp_Vec(Fx, Fy, 0);
+        // ef.moments = gp_Vec(0, 0, Mz);
         ef.position = center;
         ef.Mx = sup->MX;
         ef.My = sup->MY;
@@ -199,6 +206,443 @@ TopoDS_Shape StandardSizing::expansion_2D(const meshing::StandardBeamMesher& mes
     }
 
     // Calculate reaction moments
+    this->calculate_reaction_moments(Mn, external_forces);
+
+    // Calculate expansions
+    std::vector<ExpansionNode> exp_info;
+    std::vector<ExpansionNode> exp_tmp;
+    exp_info.reserve(mesh.boundary_nodes.size() + external_forces.size());
+
+    struct SeparateNodes{
+        gp_Pnt center;
+        double distance;
+        gp_Dir dir;
+        TopoDS_Shape splitter;
+    };
+    std::vector<SeparateNodes> separate_analysis;
+
+    double min_diam = Precision::Infinite();
+    double max_diam = 0;
+    for(auto& f:this->data->forces){
+        double d = f.S.get_dimension();
+        if(d < min_diam){
+            min_diam = d;
+        }
+        max_diam += d;
+    }
+
+    size_t count = 0;
+    for(auto& n:mesh.boundary_nodes){
+        if(!this->is_valid_boundary_point(n.node)){
+            ++count;
+            continue;
+        }
+        // Get cross-section
+        gp_Dir line_dir = -n.normal;
+        gp_Lin line(n.node->point, line_dir);
+        Handle(Geom_Line) geom_line(new Geom_Line(line));
+        gp_Pnt opposite(Precision::Infinite(), Precision::Infinite(), Precision::Infinite());
+        gp_Pnt center;
+        double distance = Precision::Infinite();
+        for(auto& e:edges_beam){
+            double a = 0;
+            double b = 0;
+            Handle(Geom_Curve) edge_curve = BRep_Tool::Curve(e, a, b);
+            GeomAPI_ExtremaCurveCurve extrema(geom_line, edge_curve, 0, Precision::Infinite(), a, b);
+            if(extrema.NbExtrema() > 0){
+                if(extrema.TotalLowerDistance() < Precision::Confusion()){
+                    gp_Pnt p1, p2;
+                    extrema.TotalNearestPoints(p1, p2);
+                    double dist = n.node->point.Distance(p1);
+                    if(dist > Precision::Confusion() && dist < distance && this->is_inside_2D(p1, beams)){
+                        gp_Pnt c = p1;
+                        c.BaryCenter(1, n.node->point,1);
+                        if(this->is_inside_2D(c, beams)){
+                            opposite = p1;
+                            distance = dist;
+                            center = c;
+                            continue;
+                        }
+                    }
+                }
+            }
+            extrema = GeomAPI_ExtremaCurveCurve(geom_line, edge_curve, 0, -Precision::Infinite(), a, b);
+            if(extrema.NbExtrema() > 0){
+                if(extrema.TotalLowerDistance() < Precision::Confusion()){
+                    gp_Pnt p1, p2;
+                    extrema.TotalNearestPoints(p1, p2);
+                    double dist = n.node->point.Distance(p1);
+                    if(dist > Precision::Confusion() && dist < distance && this->is_inside_2D(p1, beams)){
+                        gp_Pnt c = p1;
+                        c.BaryCenter(1, n.node->point,1);
+                        if(this->is_inside_2D(c, beams)){
+                            opposite = p1;
+                            distance = dist;
+                            center = c;
+                        }
+                    }
+                }
+            }
+        }
+        if(distance - Precision::Infinite() >= -Precision::Confusion()){
+            for(TopExp_Explorer exp(beams, TopAbs_VERTEX); exp.More(); exp.Next()){
+                gp_Pnt p = BRep_Tool::Pnt(TopoDS::Vertex(exp.Current()));
+                if(line.Contains(p, Precision::Confusion()) && !p.IsEqual(n.node->point, Precision::Confusion())){
+                    double dist = n.node->point.Distance(p);
+                    if(dist > Precision::Confusion() && dist < distance){
+                        if(n.node->point.Translated(dist*(line_dir)).IsEqual(p, Precision::Confusion()) && dist < distance){
+                            gp_Pnt c = n.node->point.Translated(dist*(line_dir));
+                            c.BaryCenter(1, n.node->point,1);
+                            if(this->is_inside_2D(c, beams)){
+                                opposite = n.node->point.Translated(dist*(line_dir));
+                                distance = dist;
+                                center = c;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // As it's redundant, we can afford to lose points that aren't working
+        // correctly.
+        if(opposite.IsEqual(gp_Pnt(Precision::Infinite(), Precision::Infinite(), Precision::Infinite()), Precision::Confusion())){
+            continue;
+        }
+
+        if(opposite.Distance(n.node->point) > max_diam + Precision::Confusion()){
+            continue;
+        }
+
+        // Get loads within cross-section
+        TopoDS_Edge crosssection = BRepBuilderAPI_MakeEdge(n.node->point, opposite);
+        gp_Dir nn(-n.normal.Y(), n.normal.X(), 0);
+        TopoDS_Shape cs_face = BRepPrimAPI_MakePrism(crosssection, 0.1*gp_Vec(nn));
+        double Fx = 0;
+        double Fy = 0;
+        double Mz = 0;
+        GProp_GProps props;
+        BRepGProp::SurfaceProperties(beams, props);
+        double A = props.Mass();
+        GProp_GProps props_cs;
+        BRepGProp::SurfaceProperties(cs_face, props_cs);
+        double A_cs = props_cs.Mass();
+
+        BOPAlgo_Splitter splitter;
+        TopoDS_Shape beams_copy = BRepBuilderAPI_Copy(beams);
+        splitter.AddArgument(beams_copy);
+        splitter.AddTool(cs_face);
+        splitter.Perform();
+        TopoDS_Shape result = splitter.Shape();
+        TopoDS_Shape part;
+        double A2 = 0;
+
+        // If you check for A2 > Precision::Confusion(), suddenly the split
+        // doesn't seem to work anymore.
+        // If you try to search for other possible parts within `result`,
+        // suddenly all internal loads become zero.
+        // Remove it all and it works correctly.
+        // What is this? Quantum mechanics?
+        for(TopExp_Explorer shell_getter(result, TopAbs_FACE); shell_getter.More(); shell_getter.Next()){
+            TopoDS_Shape tmp = shell_getter.Current();
+            GProp_GProps props2;
+            BRepGProp::SurfaceProperties(part, props2);
+            A2 = props2.Mass();
+            if((A - A_cs) - A2 > Precision::Confusion()){
+                part = tmp;
+                break;
+            }
+        }
+        // if(A2 < Precision::Confusion()){
+        //     for(TopExp_Explorer shell_getter(result, TopAbs_SHELL); shell_getter.More(); shell_getter.Next()){
+        //         TopoDS_Shape tmp = shell_getter.Current();
+        //         GProp_GProps props2;
+        //         BRepGProp::SurfaceProperties(part, props2);
+        //         A2 = props2.Mass();
+        //         if((A - A_cs) - A2 > Precision::Confusion() && A2 > Precision::Confusion()){
+        //             part = tmp;
+        //             break;
+        //         }
+        //     }
+        // }
+        // if(A2 < Precision::Confusion()){
+        //     for(TopExp_Explorer shell_getter(result, TopAbs_SOLID); shell_getter.More(); shell_getter.Next()){
+        //         TopoDS_Shape tmp = shell_getter.Current();
+        //         GProp_GProps props2;
+        //         BRepGProp::SurfaceProperties(part, props2);
+        //         A2 = props2.Mass();
+        //         if((A - A_cs) - A2 > Precision::Confusion() && A2 > Precision::Confusion()){
+        //             part = tmp;
+        //             break;
+        //         }
+        //     }
+        // }
+        if(part.IsNull()){
+            // (I don't remember what this is here for)
+            SeparateNodes sn{center, distance, line_dir, cs_face};
+            separate_analysis.push_back(sn);
+        }
+
+        std::vector<size_t> used_ef;
+        for(size_t i = 0; i < external_forces.size(); ++i){
+            auto& ef = external_forces[i];
+            if(this->is_inside_2D(ef.position, part)){
+                gp_Vec r(center, ef.position);
+                Fx -= ef.forces.X();
+                Fy -= ef.forces.Y();
+                Mz -= ef.moments.Z() + r.Crossed(ef.forces).Z();
+                used_ef.push_back(i);
+            }
+        }
+        //logger::quick_log(Fx, Fy, Mz, center.X(), center.Y());
+
+        // Calculate new cross-section
+        auto node = get_expansion_node_2D(n.normal, center, distance, Fx, Fy, Mz, edges_init);
+        node.used_ef = used_ef;
+        // if(std::abs(Mz) > 0 || std::abs(Fx) > 0 || std::abs(Fy) > 0){
+        //     logger::quick_log(A2, Mz, Fx, Fy);
+        // }
+
+        if(node.diameter + Precision::Confusion() >= min_diam){
+            if(!this->insert_expansion_node(exp_info, node)){
+                exp_tmp.push_back(node);
+            }
+        }
+
+        //logger::quick_log(exp_info.rbegin()->center.X(), exp_info.rbegin()->center.Y());
+
+        double pc = count/(double)(mesh.boundary_nodes.size()-1);
+        std::cout << "\r" << pc*100 << "%         ";
+
+        ++count;
+    }
+
+    // Resize nodes according to translated position of end nodes.
+    bool resized = true;
+
+    size_t ef_count = 0;
+    while(resized){
+        resized = false;
+        ef_count = 0;
+        for(auto& ef:external_forces){
+            // logger::quick_log(ef.forces.X(), ef.forces.Y(), ef.moments.Z(), ef.position.X(), ef.position.Y());
+            if(ef_count >= this->data->forces.size()){
+                auto node = get_expansion_node_2D(-ef.line_dir, ef.position, ef.diameter, ef.forces.X(), ef.forces.Y(), ef.moments.Z(), edges_init);
+                if(ef.position.Distance(node.center) > Precision::Confusion()){
+                    resized = true;
+                }
+                ef.position = node.center;
+                ef.diameter = node.diameter;
+                ef.moments = gp_Vec(0,0,0);
+            }
+            ++ef_count;
+        }
+
+        if(!resized){
+            break;
+        }
+
+        this->calculate_reaction_moments(Mn, external_forces);
+
+        for(auto& e:exp_info){
+            if(e.used_ef.size() > 0){
+                double Fx = 0;
+                double Fy = 0;
+                double Mz = 0;
+                for(auto& i:e.used_ef){
+                    auto& ef = external_forces[i];
+                    gp_Vec r(e.center, ef.position);
+                    Fx -= ef.forces.X();
+                    Fy -= ef.forces.Y();
+                    Mz -= ef.moments.Z() + r.Crossed(ef.forces).Z();
+                }
+                auto node = get_expansion_node_2D(e.direction, e.center, e.diameter, Fx, Fy, Mz, edges_init);
+                e.center = node.center;
+                e.diameter = node.diameter;
+                e.direction = node.direction;
+            }
+        }
+    }
+
+    // Add external forces
+    ef_count = 0;
+    for(auto& ef:external_forces){
+        // logger::quick_log(ef.forces.X(), ef.forces.Y(), ef.moments.Z(), ef.position.X(), ef.position.Y());
+        if(ef_count >= this->data->forces.size()){
+            auto node = get_expansion_node_2D(-ef.line_dir, ef.position, ef.diameter, ef.forces.X(), ef.forces.Y(), ef.moments.Z(), edges_init);
+            if(!this->insert_expansion_node(exp_info, node)){
+                exp_tmp.push_back(node);
+            }
+        } else {
+            auto node = get_expansion_node_2D(-ef.line_dir, ef.position, ef.diameter, ef.forces.X(), ef.forces.Y(), ef.moments.Z());
+            if(!this->insert_expansion_node(exp_info, node)){
+                exp_tmp.push_back(node);
+            }
+        }
+        ++ef_count;
+    }
+
+    // Currently disabled
+    while(exp_tmp.size() > 0){
+        auto i = exp_tmp.begin();
+        while(i < exp_tmp.end()){
+            if(this->insert_expansion_node(exp_info, *i)){
+                i = exp_tmp.erase(i);
+            } else {
+                ++i;
+            }
+        }
+    }
+
+    // Filter nodes to remove ones with too little diameter, too big diameter,
+    // or misplaced for some reason (calculation errors with unknown cause)
+    // Fortunately, current calculation method was designed to be redundant,
+    // so taking out a few points should not cause problems.
+
+    // auto i = exp_info.begin()+2;
+    // while(i < exp_info.end()-2){
+    //     // Prevent "wobbling"
+    //     bool decreasing_left = i->diameter + Precision::Confusion() >= (i-1)->diameter && (i-1)->diameter + Precision::Confusion() >= (i-2)->diameter;
+    //     bool increasing_left = i->diameter <= (i-1)->diameter + Precision::Confusion()  && (i-1)->diameter <= (i-2)->diameter + Precision::Confusion() ;
+    //     bool decreasing_right = i->diameter + Precision::Confusion()  >= (i+1)->diameter && (i+1)->diameter  + Precision::Confusion() >= (i+2)->diameter;
+    //     bool increasing_right = i->diameter <= (i+1)->diameter + Precision::Confusion()  && (i+1)->diameter <= (i+2)->diameter + Precision::Confusion() ;
+    //     if((decreasing_left && increasing_right) ||
+    //        (increasing_left && increasing_right) ||
+    //        (decreasing_left && decreasing_right) ||
+    //        (increasing_left && decreasing_right)){
+    //         ++i;
+    //     } else {
+    //         i = exp_info.erase(i);
+    //     }
+    // }
+
+    std::cout << "\r" << 100 << "%         ";
+    std::cout << std::endl;
+
+    logger::quick_log("Done.");
+
+    logger::quick_log("Building geometry...");
+    // Generate topology
+    TopoDS_Shape result = BRepBuilderAPI_Copy(this->data->ground_structure->shape);
+    result = utils::cut_shape(result, beams);
+
+    // TODO: make this work
+    //return this->bspline_simple2D(exp_info, result);
+    std::cout << "0%";
+    count = 0;
+    for(auto& n:exp_info){
+        double pc = count/(double)(exp_info.size()-1);
+        if(n.diameter < Precision::Confusion()){
+            std::cout << "\r" << pc*100 << "%         ";
+
+            ++count;
+            continue;
+        }
+        gp_Ax2 axis(n.center, gp_Dir(0,0,1));
+        gp_Circ circ(axis, n.diameter/2);
+        TopoDS_Edge edge = BRepBuilderAPI_MakeEdge(circ);
+        TopoDS_Wire wire = BRepBuilderAPI_MakeWire(edge);
+        TopoDS_Face face = BRepBuilderAPI_MakeFace(wire);
+
+        // Fastest method I managed to find, cut from original shape then
+        // inverse cut back into original shape.
+        // Still a bit slow though.
+        result = utils::cut_shape(result, face);
+
+        std::cout << "\r" << pc*100 << "%         ";
+
+        ++count;
+    }
+    std::cout << "\r" << 100 << "%         ";
+    std::cout << std::endl;
+
+    result = utils::cut_shape(this->data->ground_structure->shape, result);
+    result = this->simplify_shape(result);
+
+    logger::quick_log("Done.");
+
+    return result;
+}
+
+bool StandardSizing::insert_expansion_node(std::vector<ExpansionNode>& exp_info, ExpansionNode node) const{
+    auto angle = [](const gp_Dir& d1, const gp_Dir& d2)->double{
+        double dot = std::abs(d1.Dot(d2));
+
+        return std::acos(dot);
+    };
+
+    // Temporary measure
+    exp_info.push_back(node);
+    return true;
+
+    bool inserted = false;
+    if(exp_info.size() < 2){
+        inserted = true;
+        exp_info.push_back(node);
+    } else {
+        // Directional sort?
+        gp_Pnt p(node.center);
+        gp_Dir n(node.direction);
+        for(auto i = exp_info.begin()+1; i < exp_info.end(); ++i){
+            gp_Pnt p1((i-1)->center);
+            gp_Pnt p2(i->center);
+            gp_Vec dir1(p1, p);
+            gp_Vec dir2(p2, p);
+            gp_Dir n1((i-1)->direction);
+            gp_Dir n2(i->direction);
+            if(p2.IsEqual(p, Precision::Confusion())){
+                if(std::abs(i->diameter - node.diameter) <= Precision::Confusion()
+                  && (n2.IsEqual(n, Precision::Confusion()) || n2.IsEqual(-n, Precision::Confusion()))){
+                    inserted = true;
+                    break;
+                } else {
+                    continue;
+                }
+            }
+            if(p1.IsEqual(p, Precision::Confusion())){
+                if(std::abs((i-1)->diameter - node.diameter) <= Precision::Confusion()
+                  && (n1.IsEqual(n, Precision::Confusion()) || n1.IsEqual(-n, Precision::Confusion()))){
+                    inserted = true;
+                    break;
+                } else {
+                    continue;
+                }
+            }
+            bool is_between = dir1.X()*dir2.X() < Precision::Confusion() && dir1.Y()*dir2.Y() < Precision::Confusion();
+            bool is_aligned = std::abs(angle(n, n1) + angle(n, n2) - angle(n1, n2)) < Precision::Confusion();//compare line dirs
+            if(is_between && is_aligned){
+                //if(node.diameter + Precision::Confusion() >= std::min(i->diameter, (i-1)->diameter)){
+                    inserted = true;
+                    exp_info.insert(i, node);
+                //}
+                break;
+            }
+        }
+        if(!inserted){
+            if(node.center.Distance(exp_info.front().center) < node.center.Distance(exp_info.back().center)){
+                // gp_Vec dir1(exp_info[0].center, p);
+                // gp_Vec dir2(exp_info[1].center, exp_info[0].center);
+                // bool is_before = dir1.X()*dir2.X() > -Precision::Confusion() && dir1.Y()*dir2.Y() > -Precision::Confusion();
+                // if(is_before){ // Otherwise, it's probably a miscalculated node.
+                    exp_info.insert(exp_info.begin(), node);
+                    inserted = true;
+                // }
+            } else {
+                // gp_Vec dir1(exp_info[exp_info.size()-1].center, p);
+                // gp_Vec dir2(exp_info[exp_info.size()-2].center, exp_info[exp_info.size()-1].center);
+                // bool is_after = dir1.X()*dir2.X() > -Precision::Confusion() && dir1.Y()*dir2.Y() > -Precision::Confusion();
+                // if(is_after){ // Otherwise, it's probably a miscalculated node.
+                    exp_info.push_back(node);
+                    inserted = true;
+                // }
+            }
+        }
+    }
+
+    return inserted;
+}
+
+void StandardSizing::calculate_reaction_moments(size_t Mn, std::vector<ExternalForce>& external_forces) const{
     if(Mn > 1){
         // Fast inverted matrix because LAPACK was returning inf
         // Basically the inverse of ones() - I
@@ -243,198 +687,10 @@ TopoDS_Shape StandardSizing::expansion_2D(const meshing::StandardBeamMesher& mes
             }
         }
     }
-
-    // Calculate expansions
-    std::vector<ExpansionNode> exp_info;
-    exp_info.reserve(mesh.boundary_nodes.size() + external_forces.size());
-    size_t ef_count = 0;
-    for(auto& ef:external_forces){
-        // logger::quick_log(ef.forces.X(), ef.forces.Y(), ef.moments.Z(), ef.position.X(), ef.position.Y());
-        if(ef_count >= this->data->forces.size()){
-            exp_info.push_back(get_expansion_node_2D(-ef.line_dir, ef.position, ef.diameter, ef.forces.X(), ef.forces.Y(), ef.moments.Z(), edges_init));
-        } else {
-            exp_info.push_back(get_expansion_node_2D(-ef.line_dir, ef.position, ef.diameter, ef.forces.X(), ef.forces.Y(), ef.moments.Z()));
-        }
-        ++ef_count;
-    }
-
-    struct SeparateNodes{
-        gp_Pnt center;
-        double distance;
-        gp_Dir dir;
-        TopoDS_Shape splitter;
-    };
-    std::vector<SeparateNodes> separate_analysis;
-
-    size_t count = 0;
-    for(auto& n:mesh.boundary_nodes){
-        if(!this->is_valid_boundary_point(n.node)){
-            ++count;
-            continue;
-        }
-
-        // Get cross-section
-        gp_Dir line_dir = -n.normal;
-        gp_Lin line(n.node->point, line_dir);
-        Handle(Geom_Line) geom_line(new Geom_Line(line));
-        gp_Pnt opposite(Precision::Infinite(), Precision::Infinite(), Precision::Infinite());
-        gp_Pnt center;
-        double distance = Precision::Infinite();
-        for(auto& e:edges_beam){
-            double a = 0;
-            double b = 0;
-            Handle(Geom_Curve) edge_curve = BRep_Tool::Curve(e, a, b);
-            GeomAPI_ExtremaCurveCurve extrema(geom_line, edge_curve, 0, Precision::Infinite(), a, b);
-            if(extrema.NbExtrema() > 0){
-                if(extrema.TotalLowerDistance() < Precision::Confusion()){
-                    gp_Pnt p1, p2;
-                    extrema.TotalNearestPoints(p1, p2);
-                    double dist = n.node->point.Distance(p1);
-                    if(dist > Precision::Confusion() && n.node->point.Distance(p1) < distance){
-                        center = p1;
-                        center.BaryCenter(1, n.node->point,1);
-                        if(this->is_inside_2D(center, beams)){
-                            opposite = p1;
-                            distance = dist;
-                        }
-                    }
-                }
-            }
-        }
-        if(distance - Precision::Infinite() >= -Precision::Confusion()){
-            for(TopExp_Explorer exp(beams, TopAbs_VERTEX); exp.More(); exp.Next()){
-                gp_Pnt p = BRep_Tool::Pnt(TopoDS::Vertex(exp.Current()));
-                if(line.Contains(p, Precision::Confusion())){
-                    double dist = n.node->point.Distance(p);
-                    if(dist > Precision::Confusion()){
-                        if(n.node->point.Translated(dist*(line_dir)).IsEqual(p, Precision::Confusion()) && dist < distance){
-                            center = n.node->point.Translated(dist*(line_dir));
-                            center.BaryCenter(1, n.node->point,1);
-                            if(this->is_inside_2D(center, beams)){
-                                opposite = n.node->point.Translated(dist*(line_dir));
-                                distance = dist;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        // As it's redundant, we can afford to lose points that aren't working
-        // correctly.
-        if(opposite.IsEqual(gp_Pnt(Precision::Infinite(), Precision::Infinite(), Precision::Infinite()), Precision::Confusion())){
-            continue;
-        }
-
-        // Get loads within cross-section
-        TopoDS_Edge crosssection = BRepBuilderAPI_MakeEdge(n.node->point, opposite);
-        gp_Dir nn(-n.normal.Y(), n.normal.X(), 0);
-        TopoDS_Shape cs_face = BRepPrimAPI_MakePrism(crosssection, 0.1*gp_Vec(nn));
-        double Fx = 0;
-        double Fy = 0;
-        double Mz = 0;
-        GProp_GProps props;
-        BRepGProp::SurfaceProperties(beams, props);
-        double A = props.Mass();
-        GProp_GProps props_cs;
-        BRepGProp::SurfaceProperties(cs_face, props_cs);
-        double A_cs = props_cs.Mass();
-
-        BOPAlgo_Splitter splitter;
-        TopoDS_Shape beams_copy = BRepBuilderAPI_Copy(beams);
-        splitter.AddArgument(beams_copy);
-        splitter.AddTool(cs_face);
-        splitter.Perform();
-        TopoDS_Shape result = splitter.Shape();
-        TopoDS_Shape part;
-        for(TopExp_Explorer shell_getter(result, TopAbs_FACE); shell_getter.More(); shell_getter.Next()){
-            TopoDS_Shape tmp = shell_getter.Current();
-            GProp_GProps props2;
-            BRepGProp::SurfaceProperties(part, props2);
-            double A2 = props2.Mass();
-            if((A - A_cs) - A2 > Precision::Confusion() ){
-                part = tmp;
-                break;
-            }
-        }
-        if(part.IsNull()){
-            SeparateNodes sn{center, distance, line_dir, cs_face};
-            separate_analysis.push_back(sn);
-        }
-
-        for(auto& ef:external_forces){
-            if(this->is_inside_2D(ef.position, part)){
-                gp_Vec r(center, ef.position);
-                Fx -= ef.forces.X();
-                Fy -= ef.forces.Y();
-                Mz -= ef.moments.Z() + r.Crossed(ef.forces).Z();
-            }
-        }
-        //logger::quick_log(Fx, Fy, Mz, center.X(), center.Y());
-
-        // Calculate new cross-section
-        exp_info.push_back(get_expansion_node_2D(n.normal, center, distance, Fx, Fy, Mz, edges_init));
-
-        double pc = count/(double)(mesh.boundary_nodes.size()-1);
-        std::cout << "\r" << pc*100 << "%         ";
-
-        ++count;
-    }
-
-    // In case the faster expansion method is not enough, go beam by beam:
-    // if(separate_analysis.size()){
-    //     for(auto& beam:this->separate_beams){
-    //         mesh.clear_results();
-    //     }
-    // }
-
-    std::cout << "\r" << 100 << "%         ";
-    std::cout << std::endl;
-
-    logger::quick_log("Done.");
-
-    logger::quick_log("Building geometry...");
-    // Generate topology
-    TopoDS_Shape result = BRepBuilderAPI_Copy(this->data->ground_structure->shape);
-    result = utils::cut_shape(result, beams);
-
-    std::cout << "0%";
-    count = 0;
-    for(auto& n:exp_info){
-        double pc = count/(double)(exp_info.size()-1);
-        if(n.diameter < Precision::Confusion()){
-            std::cout << "\r" << pc*100 << "%         ";
-
-            ++count;
-            continue;
-        }
-        gp_Ax2 axis(n.center, gp_Dir(0,0,1));
-        gp_Circ circ(axis, n.diameter/2);
-        TopoDS_Edge edge = BRepBuilderAPI_MakeEdge(circ);
-        TopoDS_Wire wire = BRepBuilderAPI_MakeWire(edge);
-        TopoDS_Face face = BRepBuilderAPI_MakeFace(wire);
-
-        // Fastest method I managed to find, cut from original shape then
-        // inverse cut back into original shape.
-        // Still a bit slow though.
-        result = utils::cut_shape(result, face);
-
-        std::cout << "\r" << pc*100 << "%         ";
-
-        ++count;
-    }
-    std::cout << "\r" << 100 << "%         ";
-    std::cout << std::endl;
-
-    result = utils::cut_shape(this->data->ground_structure->shape, result);
-    result = this->simplify_shape(result);
-
-    logger::quick_log("Done.");
-
-    return result;
 }
 
 StandardSizing::ExpansionNode StandardSizing::get_expansion_node_2D(const gp_Dir& line_dir, gp_Pnt center, double distance, double Fx, double Fy, double Mz, const std::vector<TopoDS_Edge>& edges_init) const{
+    gp_Dir new_dir = line_dir;
     gp_Vec normal(line_dir);
     normal.Rotate(gp_Ax1(center, gp_Dir(0,0,1)), M_PI/2);
     gp_Vec F(Fx, Fy, 0);
@@ -461,61 +717,119 @@ StandardSizing::ExpansionNode StandardSizing::get_expansion_node_2D(const gp_Dir
 
     // Calculate new position for neutral axis, if desired
     if(edges_init.size() > 0){
-        gp_Lin side1lin(center, line_dir);
-        gp_Lin side2lin(center, -line_dir);
-        Handle(Geom_Line) geom_line1(new Geom_Line(side1lin));
-        Handle(Geom_Line) geom_line2(new Geom_Line(side2lin));
-        
         double min_dist1 = Precision::Infinite();
         double min_dist2 = Precision::Infinite();
+        double norm1 = 0;
+        double norm2 = 0;
+        gp_Pnt p1(0,0,0);
+        gp_Pnt p2(0,0,0);
+        gp_Dir dir1(0,0,1);
+        gp_Dir dir2(0,0,1);
         for(auto& e:edges_init){
-            BRepExtrema_DistShapeShape edge_checker(e, BRepBuilderAPI_MakeVertex(center));
+            BRepExtrema_DistShapeShape edge_checker(BRepBuilderAPI_MakeVertex(center), e);
             edge_checker.Perform();
-            if(edge_checker.Value() < Precision::Confusion()){
+            double dist = edge_checker.Value();
+            if(dist < Precision::Confusion() || dist > h/2){
                 continue;
             }
+            gp_Pnt p;
+            for(int i = 1; i <= edge_checker.NbSolution(); ++i){
+                p = edge_checker.PointOnShape2(i);
+                if(center.Distance(p) <= dist + Precision::Confusion()){
+                    break;
+                }
+            }
+            gp_Vec vec(center, p);
+            gp_Vec line_vec(line_dir);
+            //gp_Vec translvec((h/2-dist)*(-vec.Normalized()));
+            gp_Vec translvec(line_dir);
 
-            double a = 0;
-            double b = 0;
-            Handle(Geom_Curve) edge_curve = BRep_Tool::Curve(e, a, b);
-            GeomAPI_ExtremaCurveCurve extrema1(geom_line1, edge_curve, 0, h/2, a, b);
-            GeomAPI_ExtremaCurveCurve extrema2(geom_line2, edge_curve, 0, h/2, a, b);
-            if(extrema1.NbExtrema() > 0){
-                if(extrema1.TotalLowerDistance() < Precision::Confusion()){
-                    gp_Pnt p1, p2;
-                    extrema1.TotalNearestPoints(p1, p2);
-                    double dist = center.Distance(p1);
-                    if(dist > Precision::Confusion() && dist < min_dist1){
-                        min_dist1 = dist;
-                    }
-                }
+            if(vec.IsNormal(line_vec, Precision::Angular())){
+                continue;
             }
-            if(extrema2.NbExtrema() > 0){
-                if(extrema2.TotalLowerDistance() < Precision::Confusion()){
-                    gp_Pnt p1, p2;
-                    extrema2.TotalNearestPoints(p1, p2);
-                    double dist = center.Distance(p1);
-                    if(dist > Precision::Confusion() && dist < min_dist2){
-                        min_dist2 = dist;
-                    }
-                }
+            double b = dist;
+            double c = h/2;
+            double gamma = vec.Angle(line_dir);
+            double gamma2 = vec.Angle(-line_dir);
+            if(gamma2 > gamma){
+                gamma = gamma2;
+                translvec = -line_dir;
             }
+            double delta = std::pow(2*b*std::cos(gamma), 2) - 4*(b*b-c*c);
+            double a = (2*b*std::cos(gamma) + std::sqrt(delta))/2;
+            a = std::max(a, (2*b*std::cos(gamma) - std::sqrt(delta))/2);
+            double norm = std::abs(a);
+            translvec.Multiply(a);
+
+            // gp_Pnt pp(center.Translated(translvec));
+            // if(normal.X()*pp.X() + normal.Y()*pp.Y() > 0){
+            //     if(translvec.Magnitude() > gp_Vec(p1, center).Magnitude()){
+            //         p1 = pp;
+            //         dir1 = gp_Vec(pp, center);
+            //     }
+            // } else {
+            //     if(translvec.Magnitude() > gp_Vec(p2, center).Magnitude()){
+            //         p2 = pp;
+            //         dir2 = gp_Vec(pp, center);
+            //     }
+            // }
+
+            // double normx = 0;
+            // double normy = 0;
+            // if(std::abs(line_dir.X()) > Precision::Confusion()){
+            //     double x = translvec.X();
+            //     double y = x*line_dir.Y()/line_dir.X();
+            //     normx = std::sqrt(x*x+y*y);
+            // }
+            // if(std::abs(line_dir.Y()) > Precision::Confusion()){
+            //     double y = translvec.Y();
+            //     double x = y*line_dir.X()/line_dir.Y();
+            //     normy = std::sqrt(x*x+y*y);
+            // }
+            // double norm = 0;
+            // if(normx > Precision::Confusion() && normy > Precision::Confusion()){
+            //     norm = std::min(normx, normy);
+            // } else {
+            //     norm = std::max(normx, normy);
+            // }
+            if(line_dir.X()*translvec.X() >= -Precision::Confusion() && line_dir.Y()*translvec.Y() >= -Precision::Confusion() && norm > norm1){
+                p1 = p;
+                norm1 = norm;
+            } else if(line_dir.X()*translvec.X() <= Precision::Confusion() && line_dir.Y()*translvec.Y() <= Precision::Confusion() && norm > norm2){
+                p2 = p;
+                norm2 = norm;
+            }
+
         }
-        if(min_dist1 < Precision::Infinite() - Precision::Confusion() && min_dist2 < Precision::Infinite() - Precision::Confusion()){
-            gp_Pnt p1 = center.Translated(min_dist1*line_dir);
-            gp_Pnt p2 = center.Translated(min_dist2*(-line_dir));
-            center = p1;
-            center.BaryCenter(1, p2, 1);
-        } else if(min_dist1 < Precision::Infinite() - Precision::Confusion()){
-            double dev = std::min(h/2-min_dist1, h/2-distance/2);
-            center.Translate(-dev*line_dir);
-        } else if(min_dist2 < Precision::Infinite() - Precision::Confusion()){
-            double dev = std::min(h/2-min_dist2, h/2-distance/2);
-            center.Translate(-dev*(-line_dir));
+        // if(!p1.IsEqual(gp_Pnt(0,0,0), Precision::Confusion()) && !p2.IsEqual(gp_Pnt(0,0,0), Precision::Confusion())){
+        //     center = p1;
+        //     center.BaryCenter(1, p2, 1);
+        //     new_dir = gp_Dir(gp_Vec(p1, p2));
+        // } else if(!p1.IsEqual(gp_Pnt(0,0,0), Precision::Confusion())){
+        //     center = p1;
+        //     new_dir = dir1;
+        // } else if(!p2.IsEqual(gp_Pnt(0,0,0), Precision::Confusion())){
+        //     center = p2;
+        //     new_dir = dir2;
+        // }
+        //
+        if(norm1 > Precision::Confusion() && norm2 > Precision::Confusion()){
+            gp_Pnt pp1 = center.Translated(norm1*line_dir);
+            gp_Pnt pp2 = center.Translated(norm2*(-line_dir));
+            center = pp1;
+            center.BaryCenter(1, pp2, 1);
+        } else if(norm1 > Precision::Confusion()){
+            center.Translate(norm1*line_dir);
+            new_dir = gp_Vec(center, p1);
+        } else if(norm2 > Precision::Confusion()){
+            center.Translate(norm2*(-line_dir));
+            new_dir = -gp_Vec(center, p2);
         }
     }
 
-    return {center, line_dir, h};
+    //logger::quick_log(center.X(), center.Y(), h);
+
+    return {center, new_dir, h};
 }
 
 bool StandardSizing::is_valid_boundary_point(MeshNode* n) const{
@@ -712,7 +1026,7 @@ std::vector<double> StandardSizing::calculate_change(BeamMeshing* mesh, const st
 TopoDS_Shape StandardSizing::experimental_elemental_approach(){
     double mesh_size = 4;
 
-    meshing::StandardBeamMesher mesh(mesh_size, 1, utils::PROBLEM_TYPE_2D);
+    meshing::StandardBeamMesher mesh(mesh_size, 1, utils::PROBLEM_TYPE_2D, this->data);
     TopoDS_Shape beams = this->build_initial_topology();
     auto m = mesh.mesh(beams);
     mesh.prepare_for_FEM(m, MeshElementFactory::GT9, this->data);
@@ -865,6 +1179,71 @@ bool StandardSizing::is_inside_2D(const gp_Pnt& p, const TopoDS_Shape& shape) co
 bool StandardSizing::is_inside_3D(const gp_Pnt& p, const TopoDS_Shape& shape) const{
     BRepClass3d_SolidClassifier insider(shape, p, 0.1);
     return insider.State() == TopAbs_IN;
+}
+
+
+TopoDS_Shape StandardSizing::bspline_simple2D(const std::vector<ExpansionNode>& exp_info, TopoDS_Shape base) const{
+    TopoDS_Shape result = base;
+
+    // gp_Pnt prev_p2 = exp_info[0].center.Translated( (exp_info[0].diameter/2)*exp_info[0].direction);
+    // gp_Pnt prev_p3 = exp_info[0].center.Translated(-(exp_info[0].diameter/2)*exp_info[0].direction);
+    // TopoDS_Vertex prev_v2 = BRepBuilderAPI_MakeVertex(prev_p2);
+    // TopoDS_Vertex prev_v3 = BRepBuilderAPI_MakeVertex(prev_p3);
+    std::cout << "0%";
+    int count = 0;
+    logger::quick_log(exp_info[0].center.X(), exp_info[0].center.Y(), exp_info[0].diameter);
+    for(size_t i = 1; i < exp_info.size(); ++i){
+        double pc = count/(double)(exp_info.size()-1);
+        if(exp_info[i-1].diameter < Precision::Confusion() || exp_info[i].diameter < Precision::Confusion() 
+            || exp_info[i-1].center.IsEqual(exp_info[i].center, Precision::Confusion())){
+            std::cout << "\r" << pc*100 << "%         ";
+
+            ++count;
+            continue;
+        }
+        logger::quick_log(exp_info[i].center.X(), exp_info[i].center.Y(), exp_info[i].diameter);
+        gp_Dir dir1 = exp_info[i-1].direction;
+        gp_Dir dir2 = exp_info[i].direction;
+        if(dir1.X()*dir2.X() < Precision::Confusion() && dir1.Y()*dir2.Y() < Precision::Confusion()){
+            dir2 = -dir2;
+        }
+        gp_Pnt p1 = exp_info[i-1].center.Translated( (exp_info[i-1].diameter/2)*dir1);
+        gp_Pnt p4 = exp_info[i-1].center.Translated(-(exp_info[i-1].diameter/2)*dir1);
+        TopoDS_Vertex v1 = BRepBuilderAPI_MakeVertex(p1);
+        TopoDS_Vertex v4 = BRepBuilderAPI_MakeVertex(p4);
+        // TopoDS_Vertex v1(std::move(prev_v2));
+        // TopoDS_Vertex v4(std::move(prev_v3));
+
+        gp_Pnt p2 = exp_info[i].center.Translated( (exp_info[i].diameter/2)*dir2);
+        gp_Pnt p3 = exp_info[i].center.Translated(-(exp_info[i].diameter/2)*dir2);
+        TopoDS_Vertex v2 = BRepBuilderAPI_MakeVertex(p2);
+        TopoDS_Vertex v3 = BRepBuilderAPI_MakeVertex(p3);
+
+        TopoDS_Edge e1 = BRepBuilderAPI_MakeEdge(v1, v2);
+        TopoDS_Edge e2 = BRepBuilderAPI_MakeEdge(v2, v3);
+        TopoDS_Edge e3 = BRepBuilderAPI_MakeEdge(v3, v4);
+        TopoDS_Edge e4 = BRepBuilderAPI_MakeEdge(v4, v1);
+        TopoDS_Wire w = BRepBuilderAPI_MakeWire(e1, e2, e3, e4);
+        TopoDS_Face f = BRepBuilderAPI_MakeFace(w);
+
+        result = utils::cut_shape(result, f);
+
+        // prev_v2 = std::move(v2);
+        // prev_v3 = std::move(v3);
+
+        std::cout << "\r" << pc*100 << "%         ";
+
+        ++count;
+    }
+    std::cout << "\r" << 100 << "%         ";
+    std::cout << std::endl;
+
+    result = utils::cut_shape(this->data->ground_structure->shape, result);
+    result = this->simplify_shape(result);
+
+    logger::quick_log("Done.");
+
+    return result;
 }
 
 }
