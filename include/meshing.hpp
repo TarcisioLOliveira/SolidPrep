@@ -61,7 +61,7 @@ class Meshing{
      */
     virtual void prepare_for_FEM(const std::vector<ElementShape>& base_mesh,
                                  MeshElementFactory::MeshElementType element_type,
-                                 ProjectData* data);
+                                 ProjectData* data, bool force_only = false);
 
     virtual void clear_results();
 
@@ -75,6 +75,8 @@ class Meshing{
     MeshElementFactory::MeshElementType type;
     std::vector<long> get_support_dof(size_t& offset, size_t id, const Support& support, MeshElementFactory::MeshElementType type) const;
     std::vector<double> get_force_dof(const Force& force, MeshElementFactory::MeshElementType type) const;
+    // Inside and not on boundary
+    bool is_strictly_inside2D(gp_Pnt p, TopoDS_Shape s) const;
 };
 
 #endif
