@@ -12,6 +12,8 @@ Dependencies:
 - [NLopt](https://nlopt.readthedocs.io/en/latest/)
 - [Gmsh](https://gmsh.info/)
 
+Also includes code from [RapidJSON](https://github.com/Tencent/rapidjson) and [jdumas/mma](https://github.com/jdumas/mma).
+
 Installation consists on installing the dependencies somewhere CMake can find 
 them (which should be done automatically when building them with CMake or using 
 a package manager such as `apt`). After that, the program can be built as usual:
