@@ -322,7 +322,7 @@ std::unique_ptr<Meshing> ProjectData::load_mesher(const rapidjson::GenericValue<
             algorithm = mesh["algorithm"].GetInt();
         }
         double size = mesh["element_size"].GetDouble();
-        mesher.reset(new meshing::Gmsh(size, MeshElementFactory::get_gmsh_element_type(this->topopt_element), this->type, algorithm));
+        mesher.reset(new meshing::Gmsh(size, MeshElementFactory::get_gmsh_element_type(this->topopt_element), this->type, this, algorithm));
     }
     return mesher;
 }

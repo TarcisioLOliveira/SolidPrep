@@ -24,11 +24,13 @@
 #include "meshing.hpp"
 #include "utils.hpp"
 
+class ProjectData;
+
 namespace meshing{
 
 class Gmsh : public Meshing{
     public:
-    Gmsh(double size, int order, utils::ProblemType type, int algorithm = 5);
+    Gmsh(double size, int order, utils::ProblemType type, ProjectData* data, int algorithm = 6);
 
     virtual std::vector<ElementShape> mesh(TopoDS_Shape s) override;
 
@@ -36,6 +38,7 @@ class Gmsh : public Meshing{
     int order;
     int dim;
     int algorithm;
+    ProjectData* data;
 
     MeshNode* find_node(size_t id) const;
 };

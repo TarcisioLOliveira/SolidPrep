@@ -24,11 +24,15 @@
 #include <gmsh.h>
 #include <algorithm>
 #include <limits>
+#include <BOPAlgo_Splitter.hxx>
+#include <BOPAlgo_Builder.hxx>
+#include "project_data.hpp"
+#include <BRepBuilderAPI_Copy.hxx>
 
 namespace meshing{
 
-Gmsh::Gmsh(double size, int order, utils::ProblemType type, int algorithm):
-    Meshing(size), order(order), dim(0), algorithm(algorithm){
+Gmsh::Gmsh(double size, int order, utils::ProblemType type, ProjectData* data, int algorithm):
+    Meshing(size), order(order), dim(0), algorithm(algorithm), data(data){
     if(type == utils::PROBLEM_TYPE_2D){
         dim = 2;
     } else if(type == utils::PROBLEM_TYPE_3D){
@@ -39,12 +43,41 @@ Gmsh::Gmsh(double size, int order, utils::ProblemType type, int algorithm):
 std::vector<ElementShape> Gmsh::mesh(TopoDS_Shape s){
     this->shape = s;
     this->node_list.clear();
+
+    bool has_condition_inside = false;
+
+    TopoDS_Shape shape = BRepBuilderAPI_Copy(s);
+    for(auto& f:this->data->forces){
+        if(this->is_strictly_inside2D(f.S.get_centroid(), this->shape)){
+            has_condition_inside = true;
+
+            BOPAlgo_Splitter splitter;
+            splitter.SetNonDestructive(true);
+            splitter.AddArgument(shape);
+            splitter.AddTool(f.S.get_shape());
+            splitter.Perform();
+            shape = splitter.Shape();
+        }
+    }
+    for(auto& s:this->data->supports){
+        if(this->is_strictly_inside2D(s.S.get_centroid(), this->shape)){
+            has_condition_inside = true;
+
+            BOPAlgo_Splitter splitter;
+            splitter.SetNonDestructive(true);
+            splitter.AddArgument(shape);
+            splitter.AddTool(s.S.get_shape());
+            splitter.Perform();
+            shape = splitter.Shape();
+        }
+    }
+
     gmsh::initialize();
 
     gmsh::model::add("base");
 
     gmsh::vectorpair vec;
-    gmsh::model::occ::importShapesNativePointer(static_cast<const void*>(&s), vec);
+    gmsh::model::occ::importShapesNativePointer(static_cast<const void*>(&shape), vec);
     gmsh::model::occ::synchronize();
 
     gmsh::option::setNumber("Mesh.MeshSizeMin", this->size);
@@ -54,12 +87,18 @@ std::vector<ElementShape> Gmsh::mesh(TopoDS_Shape s){
 
     gmsh::option::setNumber("Mesh.ElementOrder", this->order);
     gmsh::option::setNumber("Mesh.HighOrderOptimize", 2);
+    gmsh::option::setNumber("Mesh.Optimize", 1);
+    gmsh::option::setNumber("Mesh.OptimizeNetgen", 1);
 
     gmsh::model::mesh::generate(this->dim);
 
     std::vector<std::size_t> nodeTags;
     std::vector<double> nodeCoords, nodeParams;
-    gmsh::model::mesh::getNodes(nodeTags, nodeCoords, nodeParams, this->dim, -1, true);
+    if(has_condition_inside){
+        gmsh::model::mesh::getNodes(nodeTags, nodeCoords, nodeParams, -1, -1, true);
+    } else {
+        gmsh::model::mesh::getNodes(nodeTags, nodeCoords, nodeParams, this->dim, -1, true);
+    }
 
     std::vector<int> elemTypes;
     std::vector<std::vector<std::size_t> > elemTags, elemNodeTags;
@@ -69,8 +108,18 @@ std::vector<ElementShape> Gmsh::mesh(TopoDS_Shape s){
     if(this->dim == 2){
         for(size_t i = 0; i < nodeTags.size(); ++i){
             gp_Pnt p(nodeCoords[i*3], nodeCoords[i*3+1], nodeCoords[i*3+2]);
-            this->node_list.emplace_back(MeshNodeFactory::make_node(p, nodeTags[i], MeshNodeFactory::MESH_NODE_2D)); 
+            this->node_list.emplace_back(MeshNodeFactory::make_node(p, nodeTags[i], MeshNodeFactory::MESH_NODE_2D));
         }
+        // gp_Pnt p(nodeCoords[0], nodeCoords[1], nodeCoords[2]);
+        // this->node_list.emplace_back(MeshNodeFactory::make_node(p, nodeTags[0], MeshNodeFactory::MESH_NODE_2D)); 
+        // for(size_t i = 1; i < nodeTags.size(); ++i){
+        //     gp_Pnt p = gp_Pnt(nodeCoords[i*3], nodeCoords[i*3+1], nodeCoords[i*3+2]);
+        //     auto get_id = [&p](const std::unique_ptr<MeshNode>& m)->bool{ return p.IsEqual(m->point, Precision::Confusion()); };
+        //     auto it = std::find_if(this->node_list.begin(), this->node_list.end(), get_id);
+        //     if(it == this->node_list.end()){
+        //         this->node_list.emplace_back(MeshNodeFactory::make_node(p, nodeTags[i], MeshNodeFactory::MESH_NODE_2D)); 
+        //     }
+        // }
     } else {
         // for(size_t i = 0; i < nodeTags.size(); ++i){
         //     gp_Pnt p(nodeCoords[i*3], nodeCoords[i*3+1], nodeCoords[i*3+2]);
@@ -100,6 +149,8 @@ std::vector<ElementShape> Gmsh::mesh(TopoDS_Shape s){
     list.emplace_back();
     int i = 0;
     for(auto n:elemNodeTags[0]){
+        // gp_Pnt p(nodeCoords[n*3], nodeCoords[n*3+1], nodeCoords[n*3+2]);
+        // auto get_id = [&p](const std::unique_ptr<MeshNode>& m)->bool{ return p.IsEqual(m->point, Precision::Confusion()); };
         auto get_id = [n](const std::unique_ptr<MeshNode>& m)->bool{ return n == m->id; };
         MeshNode* node = std::find_if(this->node_list.begin(), this->node_list.end(), get_id)->get();
         list.back().nodes.push_back(node);
@@ -159,6 +210,20 @@ std::vector<ElementShape> Gmsh::mesh(TopoDS_Shape s){
             }
         }
     }
+    // Prune unused nodes and reorder list based on id
+    auto it = this->node_list.begin();
+    while(it < this->node_list.end()){
+        if((*it)->id == std::numeric_limits<size_t>::max()){
+            it = this->node_list.erase(it);
+        } else {
+            ++it;
+        }
+    }
+
+    auto comp = [](const std::unique_ptr<MeshNode>& n1, const std::unique_ptr<MeshNode>& n2)->bool{
+        return n1->id < n2->id;
+    };
+    std::sort(this->node_list.begin(), this->node_list.end(), comp);
 
     gmsh::clear();
     gmsh::finalize();
