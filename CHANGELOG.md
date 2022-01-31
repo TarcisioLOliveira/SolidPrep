@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.1.1]
+### Added
+- Minimal compliance support.
+- GCMMASolver class from [jdumas/mma](https://github.com/jdumas/mma).
+
+### Changed
+- Make MinimalVolume work correctly.
+- Replace NLopt for GCMMASolver in MinimalVolume.
+- Fix force vector generation.
+- Make DirectSolver slightly faster.
+- Fix StandardSizing generating misplaced circles (in some cases).
+- Improve visualization of results from optimization and finite element analysis.
+
 ## [v0.1.0]
 ### Added
 - Implementation of pre-sizing algorithm (StandardSizing class)
