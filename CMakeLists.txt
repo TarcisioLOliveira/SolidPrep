@@ -31,6 +31,10 @@ if(WIN32 OR CYGWIN)
     list(APPEND GMSH_LIB winmm wsock32 ws2_32 psapi)
 endif()
 
+if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
+    set(CMAKE_CXX_FLAGS_RELEASE "-O3 -march=native")
+endif()
+
 
 include_directories(
     ${PROJECT_SOURCE_DIR}/include
