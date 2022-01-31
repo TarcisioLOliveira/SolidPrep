@@ -197,7 +197,7 @@ struct ElementShape{
 class Element{
     public:
 
-    const std::vector<Node*> nodes;
+    std::vector<Node*> nodes;
 
     virtual ~Element() = default;
     /**
