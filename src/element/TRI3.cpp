@@ -110,7 +110,6 @@ double TRI3::get_stress_at(gp_Pnt point, const std::vector<double>& u) const{
 
     std::vector<double> results(3, 0);
     for(size_t i = 0; i < 3; ++i){
-        results[i] = 0;
         for(size_t l = 0; l < 3; ++l){
             for(size_t j = 0; j < 2; ++j){
                 if(this->nodes[l]->u_pos[j] > -1){
@@ -118,7 +117,6 @@ double TRI3::get_stress_at(gp_Pnt point, const std::vector<double>& u) const{
                 }
             }
         }
-        results[i] = std::abs(results[i]);
     }
 
     return std::sqrt(std::pow(results[0], 2) - results[0]*results[1] + std::pow(results[1], 2) + 3*std::pow(results[2], 2));
