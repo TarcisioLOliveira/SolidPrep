@@ -35,7 +35,25 @@
 namespace element{
 
 GT9::GT9(ElementShape s, ProjectData* data):
-    MeshElement(s.nodes), mat(data->material.get()), t(data->thickness){}
+    MeshElement(s.nodes), mat(data->material.get()), t(data->thickness){
+        // std::vector<gp_Pnt> p;
+        // for(auto n:this->nodes){
+        //     p.push_back(n->point);
+        // }
+        // gp_Mat deltaM(1, p[0].X(), p[0].Y(), 1, p[1].X(), p[1].Y(), 1, p[2].X(), p[2].Y());
+
+        // double delta = deltaM.Determinant();
+        // if(delta < 0){
+        //     std::swap(this->nodes[0], this->nodes[1]);
+        // }
+        if(this->nodes[0]->id > this->nodes[1]->id){
+            std::swap(this->nodes[0], this->nodes[1]);
+        }
+        if(this->nodes[1]->id > this->nodes[2]->id){
+            std::swap(this->nodes[1], this->nodes[2]);
+        }
+
+    }
 
 std::vector<double> GT9::get_k() const{
 
