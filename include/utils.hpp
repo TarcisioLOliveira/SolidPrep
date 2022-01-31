@@ -137,9 +137,9 @@ namespace utils{
         // lower triangle
         // i >= j
         if(i > j){
-            return (i-j)*w + j;
+            return (i-j) + j*w;
         } else {
-            return (j-i)*w + i;
+            return (j-i) + i*w;
         }
     }
 

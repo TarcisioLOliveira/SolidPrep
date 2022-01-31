@@ -30,7 +30,10 @@ class DirectSolver : public FiniteElement{
     virtual std::vector<double> calculate_displacements(ProjectData* data, Meshing* mesh, const std::vector<double>& density = std::vector<double>(), double pc = 3, const std::vector<double>& virtual_load = std::vector<double>()) const override;
 
     private:
-    void insert_element_matrix(std::vector<double>& K, const std::vector<double>& k, const std::vector<long>& pos, int w, int& n) const;
+    std::vector<double> calculate_displacements_simple(ProjectData* data, Meshing* mesh) const;
+
+    void insert_element_matrix(std::vector<double>& K, const std::vector<double>& k, const std::vector<long>& pos, size_t w, size_t n) const;
+    std::vector<double> expand_U(const std::vector<long>& new_pos, std::vector<double>& U, Meshing* mesh, size_t dof, size_t size) const;
 };
 
 }
