@@ -211,7 +211,7 @@ std::vector<gp_Pnt> VisibilityGraph::find_path(const CrossSection& begin, const 
         std::vector<gp_Pnt> final_list(this->path_section(begin, end));
         std::reverse(final_list.begin(), final_list.end());
         return final_list;
-    } else {
+    } else if(node_path.size() > 1){
         gp_Pnt cur_point = node_list[*(node_path.end()-2)];
         std::vector<gp_Pnt> final_list(this->path_section(begin, CrossSection(cur_point)));
         std::reverse(final_list.begin(), final_list.end());
@@ -219,18 +219,16 @@ std::vector<gp_Pnt> VisibilityGraph::find_path(const CrossSection& begin, const 
             cur_point = node_list[*i];
             gp_Dir n(gp_Vec(*(final_list.begin()+2), *(final_list.begin()+1)));
             gp_Pnt prev_point = final_list.front();
-            CrossSection c = begin;
-            c.set_centroid(prev_point);
-            c.set_normal(n);
-            std::vector<gp_Pnt> cur_list(this->path_section(c, CrossSection(cur_point)));
+            CrossSection cs(prev_point);
+            cs.set_normal(n);
+            std::vector<gp_Pnt> cur_list(this->path_section(cs, CrossSection(cur_point)));
             final_list.insert(final_list.begin(), cur_list.rbegin(), cur_list.rend()-1);
         }
         gp_Dir n(gp_Vec(*(final_list.begin()+2), *(final_list.begin()+1)));
         gp_Pnt prev_point = final_list.front();
-        CrossSection c = begin;
-        c.set_centroid(prev_point);
-        c.set_normal(n);
-        std::vector<gp_Pnt> cur_list(this->path_section(c, end));
+        CrossSection cs(prev_point);
+        cs.set_normal(n);
+        std::vector<gp_Pnt> cur_list(this->path_section(cs, end));
         final_list.insert(final_list.begin(), cur_list.rbegin(), cur_list.rend()-1);
 
         return final_list;
@@ -243,6 +241,10 @@ std::vector<gp_Pnt> VisibilityGraph::path_section(const CrossSection& begin, con
     list.push_back(begin.get_centroid());
     gp_Pnt b1 = begin.get_centroid().Translated(this->step*begin.get_normal());
     gp_Pnt b2 = begin.get_centroid().Translated(-this->step*begin.get_normal());
+
+    if(begin.get_dimension() == 0){
+        b2 = b1;
+    }
 
     gp_Pnt closest1 = this->get_closest_point(b1, end.get_shape());
     gp_Pnt closest2 = this->get_closest_point(b2, end.get_shape());
@@ -283,7 +285,7 @@ std::vector<gp_Pnt> VisibilityGraph::path_section(const CrossSection& begin, con
                 // TODO
             }
         }
-    } while(curr_dist <= prev_dist);
+    } while(true);//curr_dist <= prev_dist + Precision::Confusion());
 
     logger::log_assert(curr_dist <= prev_dist, logger::ERROR, "pathfinding algorithm did not converge.");
 
