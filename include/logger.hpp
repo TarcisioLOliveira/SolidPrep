@@ -26,6 +26,7 @@
 #include <utility>
 #include "utils.hpp"
 #include <vector>
+#include <signal.h>
 
 namespace logger{
 
@@ -56,7 +57,10 @@ namespace logger{
             //fprintf(stderr, message.c_str(), args ...);
             std::cout << utils::format(message, std::forward<Args>(args) ...) << std::endl;
             if(t == ERROR){
-                exit(EXIT_FAILURE);
+                // exit(EXIT_FAILURE);
+                //
+                // Exit and get stacktrace on gdb. Dirty but works.
+                kill(getpid(),SIGSEGV);
             }
         }
         return expr;
