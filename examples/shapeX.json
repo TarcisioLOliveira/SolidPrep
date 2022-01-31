@@ -3,7 +3,7 @@
     "geometry_path": "square.step", // Relative path from problem definition file's path
     "thickness": 20, // [mm], 2D only
     "scale": 10, // [mm]
-    "analysis": "complete", // or "fea_only" or "beams_only" or "topopt_only"
+    "analysis": "beams_only", // or "fea_only" or "beams_only" or "topopt_only"
     "material":{
         // (Dialami et al. 2020), 3D printed PLA, Table 3 (Crossed)
         // "type": "linear_elastic_orthotropic",
@@ -46,8 +46,11 @@
         "type": "minimal_volume", // LE et al, 2009
         "r_o": 10, // Density filter radius
         "Smax": 16.4, // Maximum global stress
-        "rho_init": 0.65, // Initial density
-        "xtol_abs": 0.005, // Convergence criterium, absolute maximum design variable change
+        "rho_init": 0.1, // Initial density
+        "xtol_abs": 1e-5, // Convergence criterium, absolute maximum design variable change
+        "Vfrac_abs": 1e-6, // Convergence criterium, absolute maximum volume fraction change
+        "P": 8, // p-norm
+        "pc": 4, // penalization
         "result_threshold": 0.5, // minimum density a the resulting element must have to be included in resulting STEP file
         "save_result": false // results are not being built properly
     },

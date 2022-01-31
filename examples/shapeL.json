@@ -3,7 +3,7 @@
     "geometry_path": "L.step", // Relative path from problem definition file's path
     "thickness": 20, // [mm], 2D only
     "scale": 10, // [mm]
-    "analysis": "topopt_only", // or "fea_only" or "beams_only" or "topopt_only"
+    "analysis": "complete", // or "fea_only" or "beams_only" or "topopt_only"
     "material":{
         // (Dialami et al. 2020), 3D printed PLA, Table 3 (Crossed)
         // "type": "linear_elastic_orthotropic",
@@ -25,34 +25,44 @@
     "sizing":{
         "type": "standard_sizing", // Sizing algorithm
         "element_size": 4, // Element size for beam analysis
-        "oversizing": 1.0, // Oversizing constant, optional
+        "oversizing": 1.7, // Oversizing constant, optional
         "finite_element":{
             "type": "direct_solver"
         },
         "pathfinding":{
             "type": "visibility_graph",
             "step": 2, // [mm]
-            "restriction_size": 0, // Optional, defines additional safety distance from edges.
+            "restriction_size": 10, // Optional, defines additional safety distance from edges.
             "max_turn_angle": 5 // [°]
         }
     },
     "mesher":{
         "type": "gmsh",
-        "element_size": 4,
-        "element_type": "TRI3", //YUQIU and YIN, 1994
+        "element_size": 5,
+        "element_type": "GT9", //YUQIU and YIN, 1994
         "algorithm": 6 // Gmsh meshing algorithm, optional
     },
     "topopt":{
         "type": "minimal_volume", // LE et al, 2009
-        "r_o": 8, // Density filter radius
+        "r_o": 10, // Density filter radius
         "Smax": 16.4, // Maximum global stress
-        "rho_init": 0.5, // Initial density
-        "xtol_abs": 1e-20, // Convergence criterium, absolute maximum design variable change
+        "rho_init": 0.1, // Initial density
+        "xtol_abs": 1e-5, // Convergence criterium, absolute maximum design variable change
+        "Vfrac_abs": 1e-6, // Convergence criterium, absolute maximum volume fraction change
         "P": 8, // p-norm
         "pc": 4, // penalization
-        "result_threshold": 0.5, // minimum density a the resulting element must have to be included in resulting STEP file
+        "result_threshold": 0.5, // minimum density the resulting element must have to be included in resulting STEP file
         "save_result": false // results are not being built properly
     },
+    // "topopt":{
+    //     "type": "minimal_compliance", //SIMP + MMA
+    //     "r_o": 10, // Density filter radius
+    //     "V": 0.5, // Initial density
+    //     "xtol_abs": 1e-10, // Convergence criterium, absolute maximum design variable change
+    //     "pc": 4, // penalization
+    //     "result_threshold": 0.5, // minimum density a the resulting element must have to be included in resulting STEP file
+    //     "save_result": false // results are not being built properly
+    // },
     "loads":[
         {
             "vertices": [[180, 0], [200, 0]], // [mm], set to scale

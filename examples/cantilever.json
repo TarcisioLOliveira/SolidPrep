@@ -38,24 +38,27 @@
     },
     "mesher":{
         "type": "gmsh",
-        "element_size": 4,
+        "element_size": 5,
         "element_type": "GT9", //YUQIU and YIN, 1994
         "algorithm": 6 // Gmsh meshing algorithm, optional
     },
     "topopt":{
         "type": "minimal_volume", // LE et al, 2009
-        "r_o": 4, // Density filter radius
+        "r_o": 10, // Density filter radius
         "Smax": 16.4, // Maximum global stress
-        "rho_init": 0.5, // Initial density
-        "xtol_abs": 0.005, // Convergence criterium, absolute maximum design variable change
-        "result_threshold": 0.5, // minimum density the resulting element must have to be included in resulting STEP file
+        "rho_init": 0.1, // Initial density
+        "xtol_abs": 1e-5, // Convergence criterium, absolute maximum design variable change
+        "Vfrac_abs": 1e-6, // Convergence criterium, absolute maximum volume fraction change
+        "P": 8, // p-norm
+        "pc": 4, // penalization
+        "result_threshold": 0.5, // minimum density a the resulting element must have to be included in resulting STEP file
         "save_result": false // results are not being built properly
     },
     "loads":[
         {
             "vertices": [[200, 10], [200, -10]], // [mm], set to scale
-            // "load": [0,-2000] // [N]
-            "load": [-5000,0] // [N]
+            "load": [0,-2000] // [N]
+            //"load": [-5000,0] // [N]
         }
     ],
     "supports":[

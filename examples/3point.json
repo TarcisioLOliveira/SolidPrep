@@ -38,23 +38,26 @@
     },
     "mesher":{
         "type": "gmsh",
-        "element_size": 4,
+        "element_size": 5,
         "element_type": "GT9", //YUQIU and YIN, 1994
         "algorithm": 6 // Gmsh meshing algorithm, optional
     },
     "topopt":{
         "type": "minimal_volume", // LE et al, 2009
-        "r_o": 8, // Density filter radius
+        "r_o": 10, // Density filter radius
         "Smax": 16.4, // Maximum global stress
-        "rho_init": 1.0, // Initial density
-        "ftol_rel": 1e-8, // Convergence criterium, relative objective function change
+        "rho_init": 0.05, // Initial density
+        "xtol_abs": 1e-5, // Convergence criterium, absolute maximum design variable change
+        "Vfrac_abs": 1e-6, // Convergence criterium, absolute maximum volume fraction change
+        "P": 8, // p-norm
+        "pc": 4, // penalization
         "result_threshold": 0.5, // minimum density a the resulting element must have to be included in resulting STEP file
         "save_result": false // results are not being built properly
     },
     "loads":[
         {
-            "vertices": [[0, 20], [0, -20]], // [mm], set to scale
-            "load": [0,-4000] // [N]
+            "vertices": [[0, 35], [0, -35]], // [mm], set to scale
+            "load": [0,-10000] // [N]
         }
     ],
     "supports":[
@@ -62,13 +65,13 @@
             "X": true, // Blocks X forces
             "Y": true, // Blocks Y forces
             "MZ": true, // Blocks moments around Z
-            "vertices": [[-200, -200], [-200, 200]] // [mm], set to scale
+            "vertices": [[-200, -35], [-200, 35]] // [mm], set to scale
         },
         {
             "X": true, // Blocks X forces
             "Y": true, // Blocks Y forces
             "MZ": true, // Blocks moments around Z
-            "vertices": [[200, 200], [200, -200]] // [mm], set to scale
+            "vertices": [[200, 35], [200, -35]] // [mm], set to scale
         }
     ]
 }
