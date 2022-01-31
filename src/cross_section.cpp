@@ -108,7 +108,7 @@ CrossSection::CrossSection(std::vector<gp_Pnt> vertices, double thickness){
     this->shape = sh;
 }
 CrossSection::CrossSection(gp_Pnt p):
-    centroid(p), inertia(), normal(), max_dim(), shape(BRepBuilderAPI_MakeVertex(p)), area(){
+    centroid(p), inertia(), normal(), max_dim(0), shape(BRepBuilderAPI_MakeVertex(p)), area(0){
 
 }
 
@@ -139,7 +139,7 @@ CrossSection::CrossSection(std::vector<gp_Pnt> vertices){
 
 bool CrossSection::is_inside(gp_Pnt p) const{
     BRepClass3d_SolidClassifier insider(this->shape);
-    insider.Perform(p, 0);
+    insider.Perform(p, Precision::Confusion());
     return insider.State() == TopAbs_ON;
 }
 
