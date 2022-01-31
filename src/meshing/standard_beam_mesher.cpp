@@ -24,11 +24,15 @@
 #include <gmsh.h>
 #include <algorithm>
 #include <limits>
+#include <BOPAlgo_Splitter.hxx>
+#include <BOPAlgo_Builder.hxx>
+#include "project_data.hpp"
+#include <BRepBuilderAPI_Copy.hxx>
 
 namespace meshing{
 
-StandardBeamMesher::StandardBeamMesher(double size, int order, utils::ProblemType type, int algorithm):
-    BeamMeshing(size), order(order), dim(0), algorithm(algorithm){
+StandardBeamMesher::StandardBeamMesher(double size, int order, utils::ProblemType type, ProjectData* data, int algorithm):
+    BeamMeshing(size), order(order), dim(0), algorithm(algorithm), data(data){
     if(type == utils::PROBLEM_TYPE_2D){
         dim = 2;
     } else if(type == utils::PROBLEM_TYPE_3D){
@@ -39,12 +43,42 @@ StandardBeamMesher::StandardBeamMesher(double size, int order, utils::ProblemTyp
 std::vector<ElementShape> StandardBeamMesher::mesh(TopoDS_Shape s){
     this->shape = s;
     this->node_list.clear();
+
+    bool has_condition_inside = false;
+
+    TopoDS_Shape shape = BRepBuilderAPI_Copy(s);
+    for(auto& f:this->data->forces){
+        if(this->is_strictly_inside2D(f.S.get_centroid(), this->shape)){
+            has_condition_inside = true;
+
+            BOPAlgo_Splitter splitter;
+            splitter.SetNonDestructive(true);
+            splitter.AddArgument(shape);
+            splitter.AddTool(f.S.get_shape());
+            splitter.Perform();
+            shape = splitter.Shape();
+        }
+    }
+    for(auto& s:this->data->supports){
+        if(this->is_strictly_inside2D(s.S.get_centroid(), this->shape)){
+            has_condition_inside = true;
+
+            BOPAlgo_Splitter splitter;
+            splitter.SetNonDestructive(true);
+            splitter.AddArgument(shape);
+            splitter.AddTool(s.S.get_shape());
+            splitter.Perform();
+            shape = splitter.Shape();
+        }
+    }
+
     gmsh::initialize();
 
     gmsh::model::add("base");
 
     gmsh::vectorpair vec;
-    gmsh::model::occ::importShapesNativePointer(static_cast<const void*>(&s), vec);
+    gmsh::model::occ::importShapesNativePointer(static_cast<const void*>(&shape), vec);
+
     gmsh::model::occ::synchronize();
 
     gmsh::option::setNumber("Mesh.MeshSizeMin", this->size);
@@ -59,7 +93,11 @@ std::vector<ElementShape> StandardBeamMesher::mesh(TopoDS_Shape s){
 
     std::vector<std::size_t> nodeTags;
     std::vector<double> nodeCoords, nodeParams;
-    gmsh::model::mesh::getNodes(nodeTags, nodeCoords, nodeParams, this->dim, -1, true);
+    if(has_condition_inside){
+        gmsh::model::mesh::getNodes(nodeTags, nodeCoords, nodeParams, -1, -1, true);
+    } else {
+      gmsh::model::mesh::getNodes(nodeTags, nodeCoords, nodeParams, this->dim, -1, true);
+    }
 
     std::vector<std::size_t> boundNodeTags;
     std::vector<double> boundNodeCoords, boundNodeParams;
@@ -242,7 +280,20 @@ std::vector<ElementShape> StandardBeamMesher::mesh(TopoDS_Shape s){
             }
         }
     }
+    // Prune unused nodes and reorder list based on id
+    auto it = this->node_list.begin();
+    while(it < this->node_list.end()){
+        if((*it)->id == std::numeric_limits<size_t>::max()){
+            it = this->node_list.erase(it);
+        } else {
+            ++it;
+        }
+    }
 
+    auto comp = [](const std::unique_ptr<MeshNode>& n1, const std::unique_ptr<MeshNode>& n2)->bool{
+        return n1->id < n2->id;
+    };
+    std::sort(this->node_list.begin(), this->node_list.end(), comp);
     gmsh::clear();
     gmsh::finalize();
 

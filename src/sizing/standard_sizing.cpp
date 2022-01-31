@@ -73,7 +73,7 @@ TopoDS_Shape StandardSizing::run(){
 TopoDS_Shape StandardSizing::boundary_expansion_approach(){
 
     // Get beams and do FEA
-    meshing::StandardBeamMesher mesh(this->element_size, 1, utils::PROBLEM_TYPE_2D);
+    meshing::StandardBeamMesher mesh(this->element_size, 1, utils::PROBLEM_TYPE_2D, this->data);
     TopoDS_Shape beams = this->build_initial_topology();
     utils::shape_to_file("beams.step", beams);
     auto m = mesh.mesh(beams);

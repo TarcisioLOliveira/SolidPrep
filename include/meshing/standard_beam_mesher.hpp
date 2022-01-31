@@ -24,11 +24,13 @@
 #include "beam_meshing.hpp"
 #include "utils.hpp"
 
+class ProjectData;
+
 namespace meshing{
 
 class StandardBeamMesher : public BeamMeshing{
     public:
-    StandardBeamMesher(double size, int order, utils::ProblemType type, int algorithm = 5);
+    StandardBeamMesher(double size, int order, utils::ProblemType type, ProjectData* data, int algorithm = 6);
 
     virtual std::vector<ElementShape> mesh(TopoDS_Shape s) override;
 
@@ -36,6 +38,7 @@ class StandardBeamMesher : public BeamMeshing{
     int order;
     int dim;
     int algorithm;
+    ProjectData* data;
 
     MeshNode* find_node(size_t id) const;
     bool is_inside_2D(gp_Pnt p, const TopoDS_Shape& t);
