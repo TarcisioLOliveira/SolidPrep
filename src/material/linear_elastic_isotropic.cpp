@@ -75,7 +75,7 @@ double LinearElasticIsotropic::beam_E_3D(gp_Dir d) const{
 
 std::vector<double> LinearElasticIsotropic::get_max_stresses(gp_Dir d) const{
     (void)d;
-    return {this->Smax[0], this->Smax[3], this->Tmax[0]};
+    return {this->Smax[0], this->Smax[0], this->Tmax[0]};
 }
 
 }
