@@ -56,7 +56,7 @@ void Visualization::load_mesh(Meshing* mesh, utils::ProblemType type){
     elem_tags.reserve(mesh->element_list.size());
     std::vector<size_t> elem_nodes;
     elem_nodes.reserve(mesh->element_list.size()*mesh->element_list[0]->nodes.size());
-    size_t etag = 0;
+    size_t etag = 1;
     for(auto& e:mesh->element_list){
         elem_tags.push_back(etag++);
         for(auto& n:e->nodes){
@@ -75,7 +75,7 @@ void Visualization::update_stress_view(const std::vector<double>& s){
     std::vector<size_t> elem_tags;
     elem_tags.reserve(s.size());
     for(size_t i = 0; i < s.size(); ++i){
-        elem_tags.push_back(i);
+        elem_tags.push_back(i+1);
         std::vector<double> tmp{s[i]};
         stress.push_back(tmp);
     }
@@ -96,7 +96,7 @@ void Visualization::update_nodal_stress_view(const std::vector<double>& s){
     std::vector<size_t> node_tags;
     node_tags.reserve(s.size());
     for(size_t i = 0; i < s.size(); ++i){
-        node_tags.push_back(i);
+        node_tags.push_back(i+1);
         std::vector<double> tmp{s[i]};
         stress.push_back(tmp);
     }
@@ -117,7 +117,7 @@ void Visualization::update_density_view(const std::vector<double>& d){
     std::vector<size_t> elem_tags;
     elem_tags.reserve(mesh->element_list.size());
     for(size_t i = 0; i < mesh->element_list.size(); ++i){
-        elem_tags.push_back(i);
+        elem_tags.push_back(i+1);
         std::vector<double> tmp{d[i]};
         density.push_back(tmp);
     }
