@@ -75,6 +75,7 @@ class Meshing{
     MeshElementFactory::MeshElementType type;
     std::vector<long> get_support_dof(size_t& offset, size_t id, const Support& support, MeshElementFactory::MeshElementType type) const;
     std::vector<double> get_force_dof(const Force& force, MeshElementFactory::MeshElementType type) const;
+    void reverse_cuthill_mckee(const std::vector<ElementShape>& elem_list);
     // Inside and not on boundary
     bool is_strictly_inside2D(gp_Pnt p, TopoDS_Shape s) const;
 };

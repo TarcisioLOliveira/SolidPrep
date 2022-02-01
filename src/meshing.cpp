@@ -26,6 +26,9 @@
 #include <BRepBuilderAPI_MakeEdge.hxx>
 #include <BRepBuilderAPI_MakeVertex.hxx>
 #include <BRepExtrema_DistShapeShape.hxx>
+#include <limits>
+#include <set>
+#include <queue>
 
 
 void Meshing::prepare_for_FEM(const std::vector<ElementShape>& base_mesh,
@@ -271,6 +274,72 @@ void Meshing::clear_results(){
     }
 }
 
+void Meshing::reverse_cuthill_mckee(const std::vector<ElementShape>& elem_list){
+    // Create adjacency "matrix"
+    std::vector<std::set<size_t>> adjacents(this->node_list.size());
+    for(auto& e:elem_list){
+        for(size_t i = 0; i < e.nodes.size(); ++i){
+            for(size_t j = 1; j < e.nodes.size(); ++j){
+                size_t k = (i+j) % e.nodes.size();
+                adjacents[e.nodes[i]->id].insert(e.nodes[k]->id);
+            }
+        }
+    }
+    std::vector<bool> added(elem_list.size(), false);
+
+    // Get node with least degree
+    size_t min_degree = adjacents[0].size();
+    size_t min_node = 0;
+    for(size_t i = 1; i < adjacents.size(); ++i){
+        if(adjacents[i].size() < min_degree){
+            min_node = i;
+            min_degree = adjacents[i].size();
+        }
+    }
+
+    // Generate Cuthill-McKee
+    
+    auto comp = [&](size_t n1, size_t n2){
+        return adjacents[n1].size() < adjacents[n2].size();
+    };
+    std::queue<size_t> queue;
+    queue.push(min_node);
+    added[min_node] = true;
+    std::vector<size_t> result;
+    result.reserve(this->node_list.size());
+    while(!queue.empty()){
+        size_t node = queue.front();
+        auto& adj = adjacents[node];
+
+        std::vector<size_t> new_nodes;
+        new_nodes.reserve(adj.size());
+        for(auto& n:adj){
+            if(!added[n]){
+                added[n] = true;
+                auto upper = std::upper_bound(new_nodes.begin(), new_nodes.end(), n, comp);
+                new_nodes.insert(upper, n);
+            }
+        }
+        for(auto& n:new_nodes){
+            queue.push(n);
+        }
+
+        result.push_back(node);
+        queue.pop();
+    }
+    logger::log_assert(result.size() == this->node_list.size(), logger::ERROR, "Mesh contains disconnected nodes.");
+
+    // Reorder node list
+    std::vector<std::unique_ptr<MeshNode>> new_node_list(this->node_list.size());
+    size_t pos = 0;
+    for(auto i = result.rbegin(); i < result.rend(); ++i){
+        new_node_list[pos] = std::move(this->node_list[*i]);
+        new_node_list[pos]->id = pos;
+        ++pos;
+    }
+
+    this->node_list = std::move(new_node_list);
+}
 
 bool Meshing::is_strictly_inside2D(gp_Pnt p, TopoDS_Shape s) const{
     BRepClass3d_SolidClassifier insider(s);

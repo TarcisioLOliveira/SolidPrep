@@ -247,53 +247,41 @@ std::vector<ElementShape> StandardBeamMesher::mesh(TopoDS_Shape s){
     }
     list.pop_back();
 
-    for(size_t n = 0; n < this->node_list.size(); ++n){
-        this->node_list[n]->id = std::numeric_limits<size_t>::max();
-    }
-
+    // Prune unused nodes
     size_t new_id = 0;
-    for(auto& n : list[0].nodes){
+    for(auto& n : this->node_list){
         n->id = new_id;
         ++new_id;
     }
-    bool changed = true;
-    while(changed){
-        changed = false;
-        for(auto& e : list){
-            bool any = false;
-            bool all = true;
-            for(auto& n : e.nodes){
-                if(n->id < std::numeric_limits<size_t>::max()){
-                    any = true;
-                } else if(n->id == std::numeric_limits<size_t>::max()){
-                    all = false;
-                }
-            }
-            if(any && !all){
-                for(auto& n : e.nodes){
-                    if(n->id == std::numeric_limits<size_t>::max()){
-                        n->id = new_id;
-                        ++new_id;
-                        changed = true;
-                    }
-                }
-            }
-        }
+
+    std::vector<bool> used(this->node_list.size(), false);
+    for(size_t i = 0; i < list.size(); ++i){
+        for(auto& n:list[i].nodes){
+            used[n->id] = true;
+        }   
     }
-    // Prune unused nodes and reorder list based on id
+
+    bool renumber = false;
     auto it = this->node_list.begin();
     while(it < this->node_list.end()){
-        if((*it)->id == std::numeric_limits<size_t>::max()){
+        if(!used[(*it)->id]){
             it = this->node_list.erase(it);
+            renumber = true;
         } else {
             ++it;
         }
     }
+    used.clear();
 
-    auto comp = [](const std::unique_ptr<MeshNode>& n1, const std::unique_ptr<MeshNode>& n2)->bool{
-        return n1->id < n2->id;
-    };
-    std::sort(this->node_list.begin(), this->node_list.end(), comp);
+    if(renumber){
+        new_id = 0;
+        for(auto& n : this->node_list){
+            n->id = new_id;
+            ++new_id;
+        }
+    }
+    this->reverse_cuthill_mckee(list);
+
     gmsh::clear();
     gmsh::finalize();
 
