@@ -42,6 +42,30 @@ class MinimalVolume : public TopologyOptimization{
     bool save_result;
     int P;
     int pc;
+
+    Visualization* viz;
+    FiniteElement* fem;
+    Meshing* mesh;
+    double c;
+    std::vector<double> new_x;
+    double max_V;
+    double cur_V;
+    std::vector<double> grad_V;
+    double alpha;
+    std::vector<std::vector<size_t>> neighbors;
+    int it_num;
+    std::vector<double> p;
+    std::vector<double> w;
+    double Spn;
+    double Sm;
+
+    double fobj(const std::vector<double>& x);
+    double fobj_grad(const std::vector<double>& x, std::vector<double>& grad);
+
+    // Normalized stress norm (LE et al, 2009)
+    void update_c();
+    double fc_norm(const std::vector<double>& x);
+    double fc_norm_grad(const std::vector<double>& x, std::vector<double>& grad);
 };
 
 }
