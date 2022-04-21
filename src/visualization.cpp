@@ -72,6 +72,8 @@ void Visualization::load_mesh(Meshing* mesh, utils::ProblemType type){
     gmsh::option::setNumber("Mesh.SurfaceEdges", 0);
     gmsh::option::setNumber("Mesh.VolumeEdges", 0);
     gmsh::option::setNumber("Mesh.Triangles", 0);
+    gmsh::option::setNumber("General.ColorScheme", 3);
+    gmsh::option::setNumber("General.FltkColorScheme", 1);
 }
 
 void Visualization::update_stress_view(const std::vector<double>& s){
