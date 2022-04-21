@@ -27,6 +27,7 @@
 // Original code by Niels Aage, February 2013
 // Modified to use OpenMP by Jun Wu, April 2017
 // Various modifications by Jérémie Dumas, June 2017
+// Small modifications by Tarcísio Ladeia de Oliveira, 2022
 //
 // The class solves a general non-linear programming problem
 // on standard from, i.e. non-linear objective f, m non-linear
@@ -51,9 +52,12 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#ifndef MMA_SOLVER_HPP
+#define MMA_SOLVER_HPP
 
 #include <vector>
+
+namespace optimization{
 
 class MMASolver {
 
@@ -104,3 +108,7 @@ class MMASolver {
 	static void Factorize(double *K, int n);
 	static void Solve(double *K, double *x, int n);
 };
+
+}
+
+#endif

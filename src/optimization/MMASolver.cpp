@@ -30,6 +30,8 @@
 // PUBLIC
 ////////////////////////////////////////////////////////////////////////////////
 
+namespace optimization{
+
 MMASolver::MMASolver(int nn, int mm, double ai, double ci, double di)
 	: n(nn)
 	, m(mm)
@@ -104,6 +106,7 @@ void MMASolver::SolveDIP(double *x) {
 	double err = 1.0;
 	int loop;
 
+    XYZofLAMBDA(x);
 	while (epsi > tol) {
 
 		loop = 0;
@@ -111,7 +114,6 @@ void MMASolver::SolveDIP(double *x) {
 			loop++;
 
 			// Set up Newton system
-			XYZofLAMBDA(x);
 			DualGrad(x);
 			for (int j = 0; j < m; j++) {
 				grad[j] = -1.0 * grad[j] - epsi / lam[j];
@@ -373,22 +375,28 @@ void MMASolver::GenSub(const double *xval, const double *dfdx, const double *gx,
 			upp[i] = xval[i] + gamma * (upp[i] - xold1[i]);
 
 			double xmami = std::max(xmamieps, xmax[i] - xmin[i]);
-			// double xmami = xmax[i] - xmin[i];
+
 			low[i] = std::max(low[i], xval[i] - 100.0 * xmami);
-			low[i] = std::min(low[i], xval[i] - 1.0e-5 * xmami);
-			upp[i] = std::max(upp[i], xval[i] + 1.0e-5 * xmami);
+			low[i] = std::min(low[i], xval[i] - 1e-3 * xmami);
+			upp[i] = std::max(upp[i], xval[i] + 1e-3 * xmami);
 			upp[i] = std::min(upp[i], xval[i] + 100.0 * xmami);
 
-			double xmi = xmin[i] - 1.0e-6;
-			double xma = xmax[i] + 1.0e-6;
-			if (xval[i] < xmi) {
-				low[i] = xval[i] - (xma - xval[i]) / 0.9;
-				upp[i] = xval[i] + (xma - xval[i]) / 0.9;
-			}
-			if (xval[i] > xma) {
-				low[i] = xval[i] - (xval[i] - xmi) / 0.9;
-				upp[i] = xval[i] + (xval[i] - xmi) / 0.9;
-			}
+			// double xmami = xmax[i] - xmin[i];
+			//low[i] = std::max(low[i], xval[i] - 100.0 * xmami);
+			//low[i] = std::min(low[i], xval[i] - 1.0e-5 * xmami);
+			//upp[i] = std::max(upp[i], xval[i] + 1.0e-5 * xmami);
+			//upp[i] = std::min(upp[i], xval[i] + 100.0 * xmami);
+
+			//double xmi = xmin[i] - 1.0e-6;
+			//double xma = xmax[i] + 1.0e-6;
+			//if (xval[i] < xmi) {
+			//	low[i] = xval[i] - (xma - xval[i]) / 0.9;
+			//	upp[i] = xval[i] + (xma - xval[i]) / 0.9;
+			//}
+			//if (xval[i] > xma) {
+			//	low[i] = xval[i] - (xval[i] - xmi) / 0.9;
+			//	upp[i] = xval[i] + (xval[i] - xmi) / 0.9;
+			//}
 		}
 	}
 
@@ -466,4 +474,6 @@ void MMASolver::Solve(double *K, double *x, int n) {
 		}
 		x[i] = a / K[i * n + i];
 	}
+}
+
 }
