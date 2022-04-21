@@ -116,7 +116,10 @@ int main(int argc, char* argv[]){
 
         logger::quick_log("Finished.");
 
-        t.join();
+        //t.join();
+        v.hide();
+        v.show();
+        v.wait();
 
         v.end();
 
