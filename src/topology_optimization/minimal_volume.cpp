@@ -322,7 +322,7 @@ double MinimalVolume::fc_norm_grad(const std::vector<double>& x, std::vector<dou
     double Sg = this->c*std::pow(Spn, 1 - P);
 
     logger::quick_log("Calculating adjoint problem...{");
-    auto l = this->fem->calculate_displacements(this->data, this->mesh, this->new_x, pc, fl);
+    auto l = this->fem->calculate_displacements(this->data, this->mesh, this->new_x, pc, true, fl);
     logger::quick_log("} Done.");
 
     logger::quick_log("Calculating stress gradient...");

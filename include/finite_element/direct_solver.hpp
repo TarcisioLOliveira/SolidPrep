@@ -27,13 +27,15 @@ namespace finite_element{
 
 class DirectSolver : public FiniteElement{
     public:
-    virtual std::vector<double> calculate_displacements(ProjectData* data, Meshing* mesh, const std::vector<double>& density = std::vector<double>(), double pc = 3, const std::vector<double>& virtual_load = std::vector<double>()) const override;
+    virtual std::vector<double> calculate_displacements(ProjectData* data, Meshing* mesh, const std::vector<double>& density = std::vector<double>(), double pc = 3, bool use_stored_matrix = false, const std::vector<double>& virtual_load = std::vector<double>()) override;
 
     private:
-    std::vector<double> calculate_displacements_simple(ProjectData* data, Meshing* mesh) const;
+    std::vector<double> K = std::vector<double>();
+    size_t W = 0;
+    size_t N = 0;
+    std::vector<double> calculate_displacements_simple(ProjectData* data, Meshing* mesh, bool use_stored_matrix);
 
     void insert_element_matrix(std::vector<double>& K, const std::vector<double>& k, const std::vector<long>& pos, size_t w, size_t n) const;
-    std::vector<double> expand_U(const std::vector<long>& new_pos, std::vector<double>& U, Meshing* mesh, size_t dof, size_t size) const;
 };
 
 }
