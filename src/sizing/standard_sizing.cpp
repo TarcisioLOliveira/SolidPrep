@@ -266,11 +266,11 @@ TopoDS_Shape StandardSizing::expansion_2D(const meshing::StandardBeamMesher& mes
                     }
                 }
             }
-            extrema = GeomAPI_ExtremaCurveCurve(geom_line, edge_curve, 0, -Precision::Infinite(), a, b);
+            GeomAPI_ExtremaCurveCurve extrema2(geom_line, edge_curve, 0, -Precision::Infinite(), a, b);
             if(extrema.NbExtrema() > 0){
-                if(extrema.TotalLowerDistance() < Precision::Confusion()){
+                if(extrema2.TotalLowerDistance() < Precision::Confusion()){
                     gp_Pnt p1, p2;
-                    extrema.TotalNearestPoints(p1, p2);
+                    extrema2.TotalNearestPoints(p1, p2);
                     double dist = n.node->point.Distance(p1);
                     if(dist > Precision::Confusion() && dist < distance && this->is_inside_2D(p1, beams)){
                         gp_Pnt c = p1;
