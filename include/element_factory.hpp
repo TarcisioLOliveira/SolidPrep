@@ -73,7 +73,7 @@ class MeshElementFactory{
         switch(t){
             case GT9: return new element::GT9(shape, data);
             case TRI3: return new element::TRI3(shape, data);
-            case NULL: return nullptr;
+            case NONE: return nullptr;
         }
 
         return nullptr;
@@ -82,7 +82,7 @@ class MeshElementFactory{
         switch(t){
             case GT9: return MeshNodeFactory::MESH_NODE_2D;
             case TRI3: return MeshNodeFactory::MESH_NODE_2D;
-            case NULL: return MeshNodeFactory::NONE;
+            case NONE: return MeshNodeFactory::NONE;
         }
 
         return MeshNodeFactory::NONE;
@@ -91,7 +91,7 @@ class MeshElementFactory{
         switch(t){
             case GT9: return 9;
             case TRI3: return 6;
-            case NULL: return 0;
+            case NONE: return 0;
         }
         return 0;
     }
@@ -99,7 +99,7 @@ class MeshElementFactory{
         switch(t){
             case GT9: return 3;
             case TRI3: return 2;
-            case NULL: return 0;
+            case NONE: return 0;
         }
         return 0;
     }
@@ -107,7 +107,7 @@ class MeshElementFactory{
         switch(t){
             case GT9:
             case TRI3: return 1;
-            case NULL: return 0;
+            case NONE: return 0;
         }
         return 0;
 
@@ -116,7 +116,7 @@ class MeshElementFactory{
         switch(t){
             case GT9:
             case TRI3:
-            case NULL: 
+            case NONE: 
                 return utils::PROBLEM_TYPE_2D;
         }
         return utils::PROBLEM_TYPE_2D;
