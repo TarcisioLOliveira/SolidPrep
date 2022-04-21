@@ -56,7 +56,7 @@
     },
     "loads":[
         {
-            "vertices": [[0, 35], [0, -35]], // [mm], set to scale
+            "vertices": [[0, 15], [0, -15]], // [mm], set to scale
             "load": [0,-10000] // [N]
         }
     ],
@@ -65,13 +65,13 @@
             "X": true, // Blocks X forces
             "Y": true, // Blocks Y forces
             "MZ": true, // Blocks moments around Z
-            "vertices": [[-200, -35], [-200, 35]] // [mm], set to scale
+            "vertices": [[-200, -62.5], [-200, 62.5]] // [mm], set to scale
         },
         {
             "X": true, // Blocks X forces
             "Y": true, // Blocks Y forces
             "MZ": true, // Blocks moments around Z
-            "vertices": [[200, 35], [200, -35]] // [mm], set to scale
+            "vertices": [[200, 62.5], [200, -62.5]] // [mm], set to scale
         }
     ]
 }
