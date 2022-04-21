@@ -153,6 +153,7 @@ void GCMMASolver::SolveDIP(double *x) {
 	double err = 1.0;
 	int loop;
 
+    XYZofLAMBDA(x);
 	while (epsi > tol) {
 
 		loop = 0;
@@ -160,7 +161,6 @@ void GCMMASolver::SolveDIP(double *x) {
 			loop++;
 
 			// Set up Newton system
-			XYZofLAMBDA(x);
 			DualGrad(x);
 			for (int j = 0; j < m; ++j) {
 				grad[j] = -1.0 * grad[j] - epsi / lam[j];

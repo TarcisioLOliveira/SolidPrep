@@ -26,7 +26,7 @@
 //
 // Original MMA code by Niels Aage, February 2013
 // Extension to GCMMA by Jérémie Dumas, June 2017
-// Minor modifications by Tarcísio Ladeia de Oliveira, 2021
+// Minor modifications by Tarcísio Ladeia de Oliveira, 2021-2022
 //
 // The class solves a general non-linear programming problem
 // on standard from, i.e. non-linear objective f, m non-linear
