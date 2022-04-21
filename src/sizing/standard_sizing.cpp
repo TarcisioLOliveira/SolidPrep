@@ -182,17 +182,22 @@ TopoDS_Shape StandardSizing::expansion_2D(const meshing::StandardBeamMesher& mes
                 if(dist < distance/2 + Precision::Confusion()){
                     Fx += n->results[0];
                     Fy += n->results[1];
-                    // logger::quick_log(n->results[2]);
-                    if(n->results[2] >= 0){
-                        Mz += std::abs(n->results[2]);
-                    }
+                    // This method is way too good to be true.
+                    // But looks like it's true.
+                    gp_Vec F(n->results[0], n->results[1], 0);
+                    //logger::quick_log(F.X(), F.Y());
+                    gp_Vec d(center, n->point);
+                    //logger::quick_log(d.X(), d.Y());
+                    gp_Vec M(d.Crossed(F));
+                    Mz += M.Z();
+
                 }
             }
         }
         logger::quick_log(Fx, Fy, Mz);
         ExternalForce ef;
         ef.forces = gp_Vec(Fx, Fy, 0);
-        // ef.moments = gp_Vec(0, 0, Mz);
+        ef.moments = gp_Vec(0, 0, Mz);
         ef.position = center;
         ef.Mx = sup->MX;
         ef.My = sup->MY;
@@ -206,7 +211,7 @@ TopoDS_Shape StandardSizing::expansion_2D(const meshing::StandardBeamMesher& mes
     }
 
     // Calculate reaction moments
-    this->calculate_reaction_moments(Mn, external_forces);
+    // this->calculate_reaction_moments(Mn, external_forces);
 
     // Calculate expansions
     std::vector<ExpansionNode> exp_info;
@@ -417,55 +422,55 @@ TopoDS_Shape StandardSizing::expansion_2D(const meshing::StandardBeamMesher& mes
         ++count;
     }
 
-    // Resize nodes according to translated position of end nodes.
-    bool resized = true;
+    // // Resize nodes according to translated position of end nodes.
+    // bool resized = true;
 
-    size_t ef_count = 0;
-    while(resized){
-        resized = false;
-        ef_count = 0;
-        for(auto& ef:external_forces){
-            // logger::quick_log(ef.forces.X(), ef.forces.Y(), ef.moments.Z(), ef.position.X(), ef.position.Y());
-            if(ef_count >= this->data->forces.size()){
-                auto node = get_expansion_node_2D(-ef.line_dir, ef.position, ef.diameter, ef.forces.X(), ef.forces.Y(), ef.moments.Z(), edges_init);
-                if(ef.position.Distance(node.center) > Precision::Confusion()){
-                    resized = true;
-                }
-                ef.position = node.center;
-                ef.diameter = node.diameter;
-                ef.moments = gp_Vec(0,0,0);
-            }
-            ++ef_count;
-        }
+    // size_t ef_count = 0;
+    // while(resized){
+    //     resized = false;
+    //     ef_count = 0;
+    //     for(auto& ef:external_forces){
+    //         // logger::quick_log(ef.forces.X(), ef.forces.Y(), ef.moments.Z(), ef.position.X(), ef.position.Y());
+    //         if(ef_count >= this->data->forces.size()){
+    //             auto node = get_expansion_node_2D(-ef.line_dir, ef.position, ef.diameter, ef.forces.X(), ef.forces.Y(), ef.moments.Z(), edges_init);
+    //             if(ef.position.Distance(node.center) > Precision::Confusion()){
+    //                 resized = true;
+    //             }
+    //             ef.position = node.center;
+    //             ef.diameter = node.diameter;
+    //             ef.moments = gp_Vec(0,0,0);
+    //         }
+    //         ++ef_count;
+    //     }
 
-        if(!resized){
-            break;
-        }
+    //     if(!resized){
+    //         break;
+    //     }
 
-        this->calculate_reaction_moments(Mn, external_forces);
+    //     this->calculate_reaction_moments(Mn, external_forces);
 
-        for(auto& e:exp_info){
-            if(e.used_ef.size() > 0){
-                double Fx = 0;
-                double Fy = 0;
-                double Mz = 0;
-                for(auto& i:e.used_ef){
-                    auto& ef = external_forces[i];
-                    gp_Vec r(e.center, ef.position);
-                    Fx -= ef.forces.X();
-                    Fy -= ef.forces.Y();
-                    Mz -= ef.moments.Z() + r.Crossed(ef.forces).Z();
-                }
-                auto node = get_expansion_node_2D(e.direction, e.center, e.diameter, Fx, Fy, Mz, edges_init);
-                e.center = node.center;
-                e.diameter = node.diameter;
-                e.direction = node.direction;
-            }
-        }
-    }
+    //     for(auto& e:exp_info){
+    //         if(e.used_ef.size() > 0){
+    //             double Fx = 0;
+    //             double Fy = 0;
+    //             double Mz = 0;
+    //             for(auto& i:e.used_ef){
+    //                 auto& ef = external_forces[i];
+    //                 gp_Vec r(e.center, ef.position);
+    //                 Fx -= ef.forces.X();
+    //                 Fy -= ef.forces.Y();
+    //                 Mz -= ef.moments.Z() + r.Crossed(ef.forces).Z();
+    //             }
+    //             auto node = get_expansion_node_2D(e.direction, e.center, e.diameter, Fx, Fy, Mz, edges_init);
+    //             e.center = node.center;
+    //             e.diameter = node.diameter;
+    //             e.direction = node.direction;
+    //         }
+    //     }
+    // }
 
     // Add external forces
-    ef_count = 0;
+    size_t ef_count = 0;
     for(auto& ef:external_forces){
         // logger::quick_log(ef.forces.X(), ef.forces.Y(), ef.moments.Z(), ef.position.X(), ef.position.Y());
         if(ef_count >= this->data->forces.size()){
