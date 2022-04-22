@@ -1,8 +1,24 @@
-# SolidPrep - Experimental method of structural design automation
+# SolidPrep - Structural design automation and optimization
 
-SolidPrep ("Solid Preprocessor") is an experimental method of automating the 
-design of continuum structures, based on the use of continuum beams with 
-variable cross-section and taking advantage of topology optimization.
+SolidPrep ("Solid Preprocessor") is a collection of methods developed to 
+automate and optimize the design of continuum structures. It is currently 
+under development, but is usable.
+
+It serves mainly as research software, and contains experimental methods 
+alongside established methods. It is designed to be extensible and flexible, in 
+order to allow new methods to be added and compared to established ones.
+
+Currently features:
+- Gmsh/OneLab meshing and GUI
+- JSON-based problem specification file
+- Topology optimization:
+    - SIMP
+    - Convolution density filtering
+    - Compliance and volume minimization
+    - MMA and GCMMA
+- Beam-based design automation (experimental)
+    - Fast design of continuum structures based on methods used for sizing beams
+    - Uses OpenCascade for solid geometry
 
 ## Installation
 
@@ -12,7 +28,8 @@ Dependencies:
 - [NLopt](https://nlopt.readthedocs.io/en/latest/)
 - [Gmsh](https://gmsh.info/)
 
-Also includes code from [RapidJSON](https://github.com/Tencent/rapidjson) and [jdumas/mma](https://github.com/jdumas/mma).
+Also includes code from [RapidJSON](https://github.com/Tencent/rapidjson) and 
+[jdumas/mma](https://github.com/jdumas/mma).
 
 Installation consists on installing the dependencies somewhere CMake can find 
 them (which should be done automatically when building them with CMake or using 
@@ -24,6 +41,9 @@ cd build
 cmake ..
 make
 ```
+
+The scripts `build_debug.sh` and `build_release.sh` can also be used if you 
+have access to a shell.
 
 The program has not been tested on Windows nor MacOS. It should work, but it is 
 possible that some modifications may be needed.
