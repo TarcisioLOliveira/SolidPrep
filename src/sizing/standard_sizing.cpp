@@ -259,9 +259,9 @@ TopoDS_Shape StandardSizing::expansion_2D(const meshing::StandardBeamMesher& mes
                     gp_Pnt p1, p2;
                     extrema.TotalNearestPoints(p1, p2);
                     double dist = n.node->point.Distance(p1);
-                    if(dist > Precision::Confusion() && dist < distance && this->is_inside_2D(p1, beams)){
+                    if(dist > Precision::Confusion() && dist < distance){// && this->is_inside_2D(p1, beams)){
                         gp_Pnt c = p1;
-                        c.BaryCenter(1, n.node->point,1);
+                        c.BaryCenter(1, n.node->point, 1);
                         if(this->is_inside_2D(c, beams)){
                             opposite = p1;
                             distance = dist;
@@ -271,51 +271,11 @@ TopoDS_Shape StandardSizing::expansion_2D(const meshing::StandardBeamMesher& mes
                     }
                 }
             }
-            GeomAPI_ExtremaCurveCurve extrema2(geom_line, edge_curve, 0, -Precision::Infinite(), a, b);
-            if(extrema.NbExtrema() > 0){
-                if(extrema2.TotalLowerDistance() < Precision::Confusion()){
-                    gp_Pnt p1, p2;
-                    extrema2.TotalNearestPoints(p1, p2);
-                    double dist = n.node->point.Distance(p1);
-                    if(dist > Precision::Confusion() && dist < distance && this->is_inside_2D(p1, beams)){
-                        gp_Pnt c = p1;
-                        c.BaryCenter(1, n.node->point,1);
-                        if(this->is_inside_2D(c, beams)){
-                            opposite = p1;
-                            distance = dist;
-                            center = c;
-                        }
-                    }
-                }
-            }
-        }
-        if(distance - Precision::Infinite() >= -Precision::Confusion()){
-            for(TopExp_Explorer exp(beams, TopAbs_VERTEX); exp.More(); exp.Next()){
-                gp_Pnt p = BRep_Tool::Pnt(TopoDS::Vertex(exp.Current()));
-                if(line.Contains(p, Precision::Confusion()) && !p.IsEqual(n.node->point, Precision::Confusion())){
-                    double dist = n.node->point.Distance(p);
-                    if(dist > Precision::Confusion() && dist < distance){
-                        if(n.node->point.Translated(dist*(line_dir)).IsEqual(p, Precision::Confusion()) && dist < distance){
-                            gp_Pnt c = n.node->point.Translated(dist*(line_dir));
-                            c.BaryCenter(1, n.node->point,1);
-                            if(this->is_inside_2D(c, beams)){
-                                opposite = n.node->point.Translated(dist*(line_dir));
-                                distance = dist;
-                                center = c;
-                            }
-                        }
-                    }
-                }
-            }
         }
 
         // As it's redundant, we can afford to lose points that aren't working
         // correctly.
         if(opposite.IsEqual(gp_Pnt(Precision::Infinite(), Precision::Infinite(), Precision::Infinite()), Precision::Confusion())){
-            continue;
-        }
-
-        if(opposite.Distance(n.node->point) > max_diam + Precision::Confusion()){
             continue;
         }
 

@@ -163,11 +163,12 @@ std::vector<ElementShape> StandardBeamMesher::mesh(TopoDS_Shape s){
     for(size_t i = 0; i < neighbors.size(); ++i){
         gp_Vec vec(0,0,0);
         for(auto& n:neighbors[i]){
-            vec += gp_Vec(boundary_nodes[n].node->point, boundary_nodes[i].node->point);
+            vec += gp_Vec(boundary_nodes[n].node->point, boundary_nodes[i].node->point).Normalized();
         }
         // If colinear/coplanar
         if(vec.IsEqual(gp_Vec(0, 0, 0), Precision::Confusion(), Precision::Angular())){
             if(this->dim == 2){
+                // Get the line's vector and rotate it 90 degrees
                 gp_Pnt p1 = boundary_nodes[neighbors[i][0]].node->point;
                 gp_Pnt p2 = boundary_nodes[neighbors[i][1]].node->point;
                 gp_Pnt p3 = boundary_nodes[i].node->point;
@@ -175,6 +176,7 @@ std::vector<ElementShape> StandardBeamMesher::mesh(TopoDS_Shape s){
                 gp_Ax1 ax(p3, gp_Dir(0, 0, 1));
                 vec.Rotate(ax, M_PI/2);
             } else if(this->dim == 3){
+                // Get two other points and get the normal to the plane
                 gp_Pnt p1 = boundary_nodes[neighbors[i][0]].node->point;
                 gp_Pnt p2 = boundary_nodes[neighbors[i][1]].node->point;
                 gp_Pnt p3 = boundary_nodes[i].node->point;
