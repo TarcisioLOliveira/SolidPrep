@@ -585,16 +585,6 @@ std::vector<gp_Pnt> GT9::get_intersection_points(const TopoDS_Shape& crosssectio
     std::vector<gp_Pnt> points;
 
     TopoDS_Edge line_edge = TopoDS::Edge(crosssection);
-    double first = 0;
-    double last = 0;
-    Handle(Geom_Curve) line = BRep_Tool::Curve(line_edge, first, last);
-    Geom_Line* l = static_cast<Geom_Line*>(line.get());
-    gp_Lin ll = l->Lin();
-    for(auto& n:this->nodes){
-        if(ll.Contains(n->point, Precision::Confusion())){
-            points.push_back(n->point);
-        }
-    }
 
     for(size_t i = 0; i < N; ++i){
         size_t j = (i + 1) % 3;
