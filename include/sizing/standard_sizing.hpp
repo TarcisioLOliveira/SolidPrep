@@ -49,6 +49,11 @@ class StandardSizing : public Sizing{
         double diameter = 0;
     };
 
+    struct IntersectionNode{
+        gp_Pnt point;
+        gp_Vec force;
+    };
+
     struct TrussNode{
         gp_Vec forces;
         gp_Vec moments;

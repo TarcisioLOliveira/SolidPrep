@@ -218,14 +218,6 @@ TopoDS_Shape StandardSizing::expansion_2D(const meshing::StandardBeamMesher& mes
     std::vector<ExpansionNode> exp_tmp;
     exp_info.reserve(mesh.boundary_nodes.size() + external_forces.size());
 
-    struct SeparateNodes{
-        gp_Pnt center;
-        double distance;
-        gp_Dir dir;
-        TopoDS_Shape splitter;
-    };
-    std::vector<SeparateNodes> separate_analysis;
-
     double min_diam = Precision::Infinite();
     double max_diam = 0;
     for(auto& f:this->data->forces){
@@ -281,89 +273,52 @@ TopoDS_Shape StandardSizing::expansion_2D(const meshing::StandardBeamMesher& mes
 
         // Get loads within cross-section
         TopoDS_Edge crosssection = BRepBuilderAPI_MakeEdge(n.node->point, opposite);
-        gp_Dir nn(-n.normal.Y(), n.normal.X(), 0);
-        TopoDS_Shape cs_face = BRepPrimAPI_MakePrism(crosssection, 0.1*gp_Vec(nn));
+        gp_Vec nn(-n.normal.Y(), n.normal.X(), 0);
+        nn.Normalize();
+
+        std::vector<IntersectionNode> int_nodes;
+        for(auto& e:mesh.element_list){
+            { // Heuristic filter
+                TopoDS_Vertex v = BRepBuilderAPI_MakeVertex(e->get_centroid());
+                auto extrema = BRepExtrema_DistShapeShape(crosssection, v, Extrema_ExtFlag_MIN);
+                double dist = extrema.Value();
+                if(dist > this->element_size){
+                    continue;
+                }
+            }
+
+            std::vector<gp_Pnt> points = e->get_intersection_points(crosssection);
+            if(points.size() == 0){
+                continue;
+            }
+
+            for(size_t j = 0; j < e->nodes.size(); ++j){
+                auto& ne = e->nodes[j];
+                double line_pos_rel = nn.Dot(gp_Vec(ne->point, n.node->point));
+                // Check for nodes that are on the same side
+                if(line_pos_rel < Precision::Confusion()){
+                    std::vector<double> force = e->get_loads_at(ne->point, u);
+                    int_nodes.push_back({
+                        ne->point,
+                        gp_Vec(force[0], force[1], 0)
+                    });
+                }
+            }
+        }
+
         double Fx = 0;
         double Fy = 0;
         double Mz = 0;
-        GProp_GProps props;
-        BRepGProp::SurfaceProperties(beams, props);
-        double A = props.Mass();
-        GProp_GProps props_cs;
-        BRepGProp::SurfaceProperties(cs_face, props_cs);
-        double A_cs = props_cs.Mass();
-
-        BOPAlgo_Splitter splitter;
-        TopoDS_Shape beams_copy = BRepBuilderAPI_Copy(beams);
-        splitter.AddArgument(beams_copy);
-        splitter.AddTool(cs_face);
-        splitter.Perform();
-        TopoDS_Shape result = splitter.Shape();
-        TopoDS_Shape part;
-        double A2 = 0;
-
-        // If you check for A2 > Precision::Confusion(), suddenly the split
-        // doesn't seem to work anymore.
-        // If you try to search for other possible parts within `result`,
-        // suddenly all internal loads become zero.
-        // Remove it all and it works correctly.
-        // What is this? Quantum mechanics?
-        for(TopExp_Explorer shell_getter(result, TopAbs_FACE); shell_getter.More(); shell_getter.Next()){
-            TopoDS_Shape tmp = shell_getter.Current();
-            GProp_GProps props2;
-            BRepGProp::SurfaceProperties(part, props2);
-            A2 = props2.Mass();
-            if((A - A_cs) - A2 > Precision::Confusion()){
-                part = tmp;
-                break;
-            }
+        for(auto& in:int_nodes){
+            Fx += in.force.X();
+            Fy += in.force.Y();
+            gp_Vec r(center, in.point);
+            Mz += r.Crossed(in.force).Z();
         }
-        // if(A2 < Precision::Confusion()){
-        //     for(TopExp_Explorer shell_getter(result, TopAbs_SHELL); shell_getter.More(); shell_getter.Next()){
-        //         TopoDS_Shape tmp = shell_getter.Current();
-        //         GProp_GProps props2;
-        //         BRepGProp::SurfaceProperties(part, props2);
-        //         A2 = props2.Mass();
-        //         if((A - A_cs) - A2 > Precision::Confusion() && A2 > Precision::Confusion()){
-        //             part = tmp;
-        //             break;
-        //         }
-        //     }
-        // }
-        // if(A2 < Precision::Confusion()){
-        //     for(TopExp_Explorer shell_getter(result, TopAbs_SOLID); shell_getter.More(); shell_getter.Next()){
-        //         TopoDS_Shape tmp = shell_getter.Current();
-        //         GProp_GProps props2;
-        //         BRepGProp::SurfaceProperties(part, props2);
-        //         A2 = props2.Mass();
-        //         if((A - A_cs) - A2 > Precision::Confusion() && A2 > Precision::Confusion()){
-        //             part = tmp;
-        //             break;
-        //         }
-        //     }
-        // }
-        if(part.IsNull()){
-            // (I don't remember what this is here for)
-            SeparateNodes sn{center, distance, line_dir, cs_face};
-            separate_analysis.push_back(sn);
-        }
-
-        std::vector<size_t> used_ef;
-        for(size_t i = 0; i < external_forces.size(); ++i){
-            auto& ef = external_forces[i];
-            if(this->is_inside_2D(ef.position, part)){
-                gp_Vec r(center, ef.position);
-                Fx -= ef.forces.X();
-                Fy -= ef.forces.Y();
-                Mz -= ef.moments.Z() + r.Crossed(ef.forces).Z();
-                used_ef.push_back(i);
-            }
-        }
-        //logger::quick_log(Fx, Fy, Mz, center.X(), center.Y());
 
         // Calculate new cross-section
         auto node = get_expansion_node_2D(n.normal, center, distance, Fx, Fy, Mz, edges_init);
-        node.used_ef = used_ef;
+        //node.used_ef = used_ef;
         // if(std::abs(Mz) > 0 || std::abs(Fx) > 0 || std::abs(Fy) > 0){
         //     logger::quick_log(A2, Mz, Fx, Fy);
         // }
@@ -376,58 +331,11 @@ TopoDS_Shape StandardSizing::expansion_2D(const meshing::StandardBeamMesher& mes
 
         //logger::quick_log(exp_info.rbegin()->center.X(), exp_info.rbegin()->center.Y());
 
-        double pc = count/(double)(mesh.boundary_nodes.size()-1);
+        double pc = count/(double)(bnodes.size()-1);
         std::cout << "\r" << pc*100 << "%         ";
 
         ++count;
     }
-
-    // // Resize nodes according to translated position of end nodes.
-    // bool resized = true;
-
-    // size_t ef_count = 0;
-    // while(resized){
-    //     resized = false;
-    //     ef_count = 0;
-    //     for(auto& ef:external_forces){
-    //         // logger::quick_log(ef.forces.X(), ef.forces.Y(), ef.moments.Z(), ef.position.X(), ef.position.Y());
-    //         if(ef_count >= this->data->forces.size()){
-    //             auto node = get_expansion_node_2D(-ef.line_dir, ef.position, ef.diameter, ef.forces.X(), ef.forces.Y(), ef.moments.Z(), edges_init);
-    //             if(ef.position.Distance(node.center) > Precision::Confusion()){
-    //                 resized = true;
-    //             }
-    //             ef.position = node.center;
-    //             ef.diameter = node.diameter;
-    //             ef.moments = gp_Vec(0,0,0);
-    //         }
-    //         ++ef_count;
-    //     }
-
-    //     if(!resized){
-    //         break;
-    //     }
-
-    //     this->calculate_reaction_moments(Mn, external_forces);
-
-    //     for(auto& e:exp_info){
-    //         if(e.used_ef.size() > 0){
-    //             double Fx = 0;
-    //             double Fy = 0;
-    //             double Mz = 0;
-    //             for(auto& i:e.used_ef){
-    //                 auto& ef = external_forces[i];
-    //                 gp_Vec r(e.center, ef.position);
-    //                 Fx -= ef.forces.X();
-    //                 Fy -= ef.forces.Y();
-    //                 Mz -= ef.moments.Z() + r.Crossed(ef.forces).Z();
-    //             }
-    //             auto node = get_expansion_node_2D(e.direction, e.center, e.diameter, Fx, Fy, Mz, edges_init);
-    //             e.center = node.center;
-    //             e.diameter = node.diameter;
-    //             e.direction = node.direction;
-    //         }
-    //     }
-    // }
 
     // Add external forces
     size_t ef_count = 0;
