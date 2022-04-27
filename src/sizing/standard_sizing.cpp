@@ -229,7 +229,9 @@ TopoDS_Shape StandardSizing::expansion_2D(const meshing::StandardBeamMesher& mes
     }
 
     size_t count = 0;
-    for(auto& n:mesh.boundary_nodes){
+    std::vector<BeamMeshing::BoundaryNode> bnodes = mesh.boundary_nodes;
+    for(size_t i = 0; i < bnodes.size(); ++i){
+        auto& n = bnodes[i];
         if(!this->is_valid_boundary_point(n.node)){
             ++count;
             continue;
@@ -240,35 +242,52 @@ TopoDS_Shape StandardSizing::expansion_2D(const meshing::StandardBeamMesher& mes
         Handle(Geom_Line) geom_line(new Geom_Line(line));
         gp_Pnt opposite(Precision::Infinite(), Precision::Infinite(), Precision::Infinite());
         gp_Pnt center;
+        size_t id = 0;
         double distance = Precision::Infinite();
-        for(auto& e:edges_beam){
-            double a = 0;
-            double b = 0;
-            Handle(Geom_Curve) edge_curve = BRep_Tool::Curve(e, a, b);
-            GeomAPI_ExtremaCurveCurve extrema(geom_line, edge_curve, 0, Precision::Infinite(), a, b);
-            if(extrema.NbExtrema() > 0){
-                if(extrema.TotalLowerDistance() < Precision::Confusion()){
-                    gp_Pnt p1, p2;
-                    extrema.TotalNearestPoints(p1, p2);
-                    double dist = n.node->point.Distance(p1);
-                    if(dist > Precision::Confusion() && dist < distance){// && this->is_inside_2D(p1, beams)){
-                        gp_Pnt c = p1;
-                        c.BaryCenter(1, n.node->point, 1);
+        for(size_t j = i+1; j < bnodes.size(); ++j){
+            gp_Pnt p = bnodes[j].node->point;
+            if(line.Contains(p, Precision::Confusion())){
+                double dist = n.node->point.Distance(p);
+                if(dist > Precision::Confusion() && dist < distance){
+                    if(n.node->point.Translated(dist*(line_dir)).IsEqual(p, Precision::Confusion())){
+                        gp_Pnt c = n.node->point.Translated(dist*(line_dir));
+                        c.BaryCenter(1, n.node->point,1);
                         if(this->is_inside_2D(c, beams)){
-                            opposite = p1;
+                            opposite = n.node->point.Translated(dist*(line_dir));
                             distance = dist;
                             center = c;
-                            continue;
+                            id = j;
                         }
                     }
                 }
             }
         }
-
-        // As it's redundant, we can afford to lose points that aren't working
-        // correctly.
-        if(opposite.IsEqual(gp_Pnt(Precision::Infinite(), Precision::Infinite(), Precision::Infinite()), Precision::Confusion())){
-            continue;
+        if(distance < Precision::Infinite() - Precision::Confusion()){
+            bnodes.erase(bnodes.begin()+id);
+        } else {
+            for(auto& e:edges_beam){
+                double a = 0;
+                double b = 0;
+                Handle(Geom_Curve) edge_curve = BRep_Tool::Curve(e, a, b);
+                GeomAPI_ExtremaCurveCurve extrema(geom_line, edge_curve, 0, Precision::Infinite(), a, b);
+                if(extrema.NbExtrema() > 0){
+                    if(extrema.TotalLowerDistance() < Precision::Confusion()){
+                        gp_Pnt p1, p2;
+                        extrema.TotalNearestPoints(p1, p2);
+                        double dist = n.node->point.Distance(p1);
+                        if(dist > Precision::Confusion() && dist < distance){// && this->is_inside_2D(p1, beams)){
+                            gp_Pnt c = p1;
+                            c.BaryCenter(1, n.node->point, 1);
+                            if(this->is_inside_2D(c, beams)){
+                                opposite = p1;
+                                distance = dist;
+                                center = c;
+                                continue;
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         // Get loads within cross-section
