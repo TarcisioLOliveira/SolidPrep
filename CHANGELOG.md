@@ -4,6 +4,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+### Added
+- MMASolver from [jdumas/mma](https://github.com/jdumas/mma).
+
+### Changed
+- Global stiffness matrix now uses minimal K instead of minimal density.
+- Organize examples by version.
+- Improved resizing method so it works with trussed structures.
+- Somewhat improved speed of resizing.
+- Make OneLab default to dark mode.
+
+### Fixed
+- Resizing of indeterminate beams.
+- Compatibility with GCC 11 and OpenCascade 7.6.1.
+- Resizing creating stray circles.
+- Make OneLab more responsive after optimization end.
+
 ## [v0.1.1]
 ### Added
 - Minimal compliance support.
