@@ -30,6 +30,7 @@
 #include <lapacke.h>
 #include <vector>
 #include "optimization/GCMMASolver.hpp"
+#include "optimization/MMASolver.hpp"
 
 namespace topology_optimization{
 
@@ -86,27 +87,65 @@ TopoDS_Shape MinimalVolume::optimize(Visualization* viz, FiniteElement* fem, Mes
     logger::quick_log("Done.");
     auto start_to = std::chrono::high_resolution_clock::now();
     
-    optimization::GCMMASolver gcmma(x.size(), 1, 0, 1e6, 1); //1e5
+    //optimization::GCMMASolver gcmma(x.size(), 1, 0, 1e6, 1); //1e5
+    optimization::MMASolver mma(x.size(), 1, 0, 1e6, 1); //1e5
 
     double ff;
     std::vector<double> df(x.size());
     std::vector<double> dg(x.size());
     std::vector<double> g(1);
 
-    std::vector<double> xnew(x);
+    // std::vector<double> xnew(x);
+    std::vector<double> xold(x);
 
     std::vector<double> xmin;
     std::vector<double> xmax;
 
-    xmin = std::vector<double>(x.size(), 0.001);
-    xmax = std::vector<double>(x.size(), 1.0);
+    // xmin = std::vector<double>(x.size(), 0.001);
+    // xmax = std::vector<double>(x.size(), 1.0);
+    double max_step = 0.01;
+    xmin = std::vector<double>(x.size(), std::max(this->rho_init - max_step, 0.0));
+    xmax = std::vector<double>(x.size(), std::min(this->rho_init + max_step, 1.0));
 
     double fnew = this->max_V;
     std::vector<double> gnew(1);
     g[0] = 1e3;
 
-    int max_innerit = 30;
+    ff = this->fobj_grad(x, df);
+    g[0] = this->fc_norm_grad(x, dg);
+
+    // int max_innerit = 30;
     double ch = 1.0;
+	for (int iter = 0; (ch > this->xtol_abs && std::abs(ff-fnew)/this->max_V > this->Vfrac_abs) || std::abs(this->Sm/(this->c*this->Spn) - 1) > 1e-4; ++iter){
+
+        update_c();
+
+        fnew = ff;
+        gnew = g;
+
+        mma.Update(x.data(), df.data(), g.data(), dg.data(), xmin.data(), xmax.data());
+
+        ch = 0.0;
+        for (size_t i = 0; i < x.size(); ++i) {
+            ch = std::max(ch, std::abs(xold[i] - x[i]));
+            xold[i] = x[i];
+            xmin[i] = std::max(x[i] - max_step, 0.0);
+            xmax[i] = std::min(x[i] + max_step, 1.0);
+        }
+
+        ff = this->fobj_grad(x, df);
+        g[0] = this->fc_norm_grad(x, dg);
+
+        logger::quick_log("");
+        logger::quick_log("");
+        logger::quick_log("Iteration: ", iter);
+        logger::quick_log("Results: ", ff, g[0]);//+this->Smax);
+        logger::quick_log("");
+        logger::quick_log("Design var change: ", ch);
+        logger::quick_log("Volume change: ", std::abs(ff-fnew)/this->max_V);
+        logger::quick_log("Stress difference: ", std::abs(this->Sm/(this->c*this->Spn) - 1));
+	}
+    /* GCMMA
 	for (int iter = 0; (ch > this->xtol_abs && std::abs(ff-fnew)/this->max_V > this->Vfrac_abs) || std::abs(this->Sm/(this->c*this->Spn) - 1) > 1e-4; ++iter){
 
         update_c();
@@ -159,6 +198,7 @@ TopoDS_Shape MinimalVolume::optimize(Visualization* viz, FiniteElement* fem, Mes
         logger::quick_log("Volume change: ", std::abs(ff-fnew)/this->max_V);
         logger::quick_log("Stress difference: ", std::abs(this->Sm/(this->c*this->Spn) - 1));
 	}
+    */
     
     auto stop_to = std::chrono::high_resolution_clock::now();
     logger::quick_log("Final volume: ", this->cur_V);
@@ -310,11 +350,11 @@ double MinimalVolume::fc_norm_grad(const std::vector<double>& x, std::vector<dou
     Spn = std::pow(Spn, 1.0/P);
 
     double result = this->c*Spn;
-    if(result < Smax){
-        this->c = Smax/Spn;
-        result = Smax;
-        this->alpha = 0.5;
-    }
+    // if(result < Smax){
+    //     this->c = Smax/Spn;
+    //     result = Smax;
+    //     this->alpha = 0.5;
+    // }
 
     this->Spn = Spn;
     this->Sm = Smax;
