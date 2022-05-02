@@ -33,7 +33,7 @@ class Visualization{
     inline void start() const {gmsh::initialize();}
 
     void load_mesh(Meshing* mesh, utils::ProblemType type);
-    void update_stress_view(const std::vector<double>& s);
+    void update_stress_view(const std::vector<double>& s, size_t id = 1);
     void update_nodal_stress_view(const std::vector<double>& s);
     void update_density_view(const std::vector<double>& d);
     void show();
@@ -49,8 +49,8 @@ class Visualization{
 
     private:
     const std::string MODEL_NAME = "loaded_model";
-    const std::string STRESS_VIEW = "stress_view";
-    const std::string DENSITY_VIEW = "density_view";
+    const std::string STRESS_VIEW = "Von Mises Stress";
+    const std::string DENSITY_VIEW = "Elemental Density";
     bool shown = false;
     Meshing* mesh = nullptr;
     int tag = 0;

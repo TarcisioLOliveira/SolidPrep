@@ -76,12 +76,15 @@ void Visualization::load_mesh(Meshing* mesh, utils::ProblemType type){
     gmsh::option::setNumber("General.FltkColorScheme", 1);
 
     gmsh::view::add(this->STRESS_VIEW, 1);
-    gmsh::view::add(this->DENSITY_VIEW, 2);
-    gmsh::view::option::setNumber(2, "ColormapNumber", 9); //grayscale
-    gmsh::view::option::setNumber(2, "ColormapInvert", 1.0); //inverted
+    gmsh::view::add("Normal Stress (X axis)", 2);
+    gmsh::view::add("Normal Stress (Y axis)", 3);
+    gmsh::view::add("Shear Stress", 4);
+    gmsh::view::add(this->DENSITY_VIEW, 5);
+    gmsh::view::option::setNumber(5, "ColormapNumber", 9); //grayscale
+    gmsh::view::option::setNumber(5, "ColormapInvert", 1.0); //inverted
 }
 
-void Visualization::update_stress_view(const std::vector<double>& s){
+void Visualization::update_stress_view(const std::vector<double>& s, size_t id){
     logger::quick_log("Updating view...");
 
     std::vector<std::vector<double>> stress;
@@ -93,7 +96,7 @@ void Visualization::update_stress_view(const std::vector<double>& s){
         std::vector<double> tmp{s[i]};
         stress.push_back(tmp);
     }
-    gmsh::view::addModelData(1, 0, this->MODEL_NAME, "ElementData", elem_tags, stress, 0, 1);
+    gmsh::view::addModelData(id, 0, this->MODEL_NAME, "ElementData", elem_tags, stress, 0, 1);
 
     if(this->shown){
         gmsh::graphics::draw();
@@ -133,10 +136,7 @@ void Visualization::update_density_view(const std::vector<double>& d){
         std::vector<double> tmp{d[i]};
         density.push_back(tmp);
     }
-    // gmsh::option::setNumber("View.ColormapNumber", 9); //grayscale
-    // gmsh::option::setNumber("View.DrawLines", 0);
-    // gmsh::option::setNumber("View.DrawPoints", 0);
-    gmsh::view::addModelData(2, 0, this->MODEL_NAME, "ElementData", elem_tags, density, 0, 1);
+    gmsh::view::addModelData(5, 0, this->MODEL_NAME, "ElementData", elem_tags, density, 0, 1);
 
     if(this->shown){
         gmsh::graphics::draw();
