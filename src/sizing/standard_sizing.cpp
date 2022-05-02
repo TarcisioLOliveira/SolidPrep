@@ -61,6 +61,8 @@
 #include <BRepExtrema_DistShapeShape.hxx>
 #include <project_data.hpp>
 #include <Geom_Circle.hxx>
+#include <ShapeCustom.hxx>
+#include <ShapeCustom_RestrictionParameters.hxx>
 
 namespace sizing{
 
@@ -79,7 +81,7 @@ TopoDS_Shape StandardSizing::boundary_expansion_approach(){
     TopoDS_Shape beams = this->build_initial_topology();
     utils::shape_to_file("beams.step", beams);
     auto m = mesh.mesh(beams);
-    mesh.prepare_for_FEM(m, MeshElementFactory::GT9, this->data);//, true);
+    mesh.prepare_for_FEM(m, MeshElementFactory::TRI3, this->data);//, true);
     auto u = this->solver->calculate_displacements(this->data, &mesh);
     this->solver->calculate_forces(&mesh, u);
 
@@ -248,12 +250,14 @@ TopoDS_Shape StandardSizing::expansion_2D(const meshing::StandardBeamMesher& mes
             gp_Pnt p = bnodes[j].node->point;
             if(line.Contains(p, Precision::Confusion())){
                 double dist = n.node->point.Distance(p);
-                if(dist > Precision::Confusion() && dist < distance){
+                // using max_diam is a bit of a heuristic checking, as sometimes the algorithm
+                // ends up picking a point on the other side of the geometry, for some reason.
+                if(dist > Precision::Confusion() && dist < distance && dist < max_diam + Precision::Confusion()){
                     if(n.node->point.Translated(dist*(line_dir)).IsEqual(p, Precision::Confusion())){
                         gp_Pnt c = n.node->point.Translated(dist*(line_dir));
                         c.BaryCenter(1, n.node->point,1);
                         if(this->is_inside_2D(c, beams)){
-                            opposite = n.node->point.Translated(dist*(line_dir));
+                            opposite = p;//n.node->point.Translated(dist*(line_dir));
                             distance = dist;
                             center = c;
                             id = j;
@@ -262,7 +266,7 @@ TopoDS_Shape StandardSizing::expansion_2D(const meshing::StandardBeamMesher& mes
                 }
             }
         }
-        if(distance < Precision::Infinite() - Precision::Confusion()){
+        if(id > 0){
             bnodes.erase(bnodes.begin()+id);
         } else {
             for(auto& e:edges_beam){
@@ -297,13 +301,12 @@ TopoDS_Shape StandardSizing::expansion_2D(const meshing::StandardBeamMesher& mes
 
         std::vector<IntersectionNode> int_nodes;
         for(auto& e:mesh.element_list){
-            { // Heuristic filter
-                TopoDS_Vertex v = BRepBuilderAPI_MakeVertex(e->get_centroid());
-                auto extrema = BRepExtrema_DistShapeShape(crosssection, v, Extrema_ExtFlag_MIN);
-                double dist = extrema.Value();
-                if(dist > this->element_size){
-                    continue;
-                }
+            // Heuristic filter
+            TopoDS_Vertex v = BRepBuilderAPI_MakeVertex(e->get_centroid());
+            auto extrema = BRepExtrema_DistShapeShape(crosssection, v, Extrema_ExtFlag_MIN);
+            double dist = extrema.Value();
+            if(dist > this->element_size){
+                continue;
             }
 
             std::vector<gp_Pnt> points = e->get_intersection_points(crosssection);
@@ -315,7 +318,7 @@ TopoDS_Shape StandardSizing::expansion_2D(const meshing::StandardBeamMesher& mes
                 auto& ne = e->nodes[j];
                 double line_pos_rel = nn.Dot(gp_Vec(ne->point, n.node->point));
                 // Check for nodes that are on the same side
-                if(line_pos_rel < Precision::Confusion()){
+                if(line_pos_rel > Precision::Confusion()){
                     std::vector<double> force = e->get_loads_at(ne->point, u);
                     int_nodes.push_back({
                         ne->point,
@@ -342,7 +345,7 @@ TopoDS_Shape StandardSizing::expansion_2D(const meshing::StandardBeamMesher& mes
         //     logger::quick_log(A2, Mz, Fx, Fy);
         // }
 
-        if(node.diameter + Precision::Confusion() >= min_diam){
+        if(node.diameter > distance){
             if(!this->insert_expansion_node(exp_info, node)){
                 exp_tmp.push_back(node);
             }
@@ -739,7 +742,7 @@ bool StandardSizing::is_valid_boundary_point(MeshNode* n) const{
 }
 
 TopoDS_Shape StandardSizing::simplify_shape(TopoDS_Shape shape) const{
-    double tol = 5;
+    double tol = 20;
     double prec = tol*1.5;
 
     Handle(ShapeFix_Shape) sfs = new ShapeFix_Shape(shape);
@@ -762,6 +765,18 @@ TopoDS_Shape StandardSizing::simplify_shape(TopoDS_Shape shape) const{
     SFWF->FixSmallEdges();
     SFWF->FixWireGaps();
     shape = SFWF->Shape();
+
+    // Handle(ShapeCustom_RestrictionParameters) rp(new ShapeCustom_RestrictionParameters());
+    // shape = ShapeCustom::BSplineRestriction(shape,
+    //         tol,
+    //         tol,
+    //         200,
+    //         400,
+    //         GeomAbs_C2,
+    //         GeomAbs_C2,
+    //         true,
+    //         true,
+    //         rp);
 
     return shape;
 }
