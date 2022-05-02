@@ -285,6 +285,9 @@ std::vector<gp_Pnt> VisibilityGraph::path_section(const CrossSection& begin, con
                 // TODO
             }
         }
+        if(!this->topology->is_inside(list.back())){
+            logger::log_assert(curr_dist <= prev_dist, logger::ERROR, "pathfinding algorithm did not converge.");
+        }
     } while(true);//curr_dist <= prev_dist + Precision::Confusion());
 
     logger::log_assert(curr_dist <= prev_dist, logger::ERROR, "pathfinding algorithm did not converge.");
