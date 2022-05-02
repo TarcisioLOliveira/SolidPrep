@@ -128,11 +128,11 @@ MeshNode* TRI3::get_internal_loads(size_t node, const std::vector<double>& u) co
     std::vector<double> k = this->get_k();
 
     MeshNode2D* n = static_cast<MeshNode2D*>(this->nodes[node]);
-    for(int i = 0; i < 3; ++i){
+    for(int i = 0; i < 2; ++i){
         for(size_t l = 0; l < 3; ++l){
             for(int j = 0; j < 2; ++j){
                 if(this->nodes[l]->u_pos[j] > -1){
-                    n->results[i] += k[(node*2+i)*2*3+l*2+j]*u[this->nodes[l]->u_pos[j]];
+                    n->results[i] += k[(node*2+i)*6+l*2+j]*u[this->nodes[l]->u_pos[j]];
                 }
             }
         }
@@ -221,7 +221,7 @@ std::vector<double> TRI3::get_loads_at(gp_Pnt point, const std::vector<double>& 
     for(int i = 0; i < 3; ++i){
         for(size_t j = 0; j < 2; ++j){
             if(this->nodes[i]->u_pos[j] > -1){
-                u_vec[3*i+j] = u[this->nodes[i]->u_pos[j]];
+                u_vec[2*i+j] = u[this->nodes[i]->u_pos[j]];
             }
         }
     }
@@ -247,9 +247,10 @@ std::vector<double> TRI3::get_loads_at(gp_Pnt point, const std::vector<double>& 
         c.push_back(p[k].X() - p[j].X());
     }
 
-    std::vector<double> L(2);
+    std::vector<double> L(3);
     L[0] = (a[0] + b[0]*point.X() + c[0]*point.Y())/(2*delta);
     L[1] = (a[1] + b[1]*point.X() + c[1]*point.Y())/(2*delta);
+    L[2] = (a[2] + b[2]*point.X() + c[2]*point.Y())/(2*delta);
     std::vector<double> Nmat(6*2, 0);
     for(size_t i = 0; i < N; ++i){
         Nmat[2*i] = L[i];
