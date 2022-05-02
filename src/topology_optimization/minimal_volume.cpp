@@ -88,7 +88,8 @@ TopoDS_Shape MinimalVolume::optimize(Visualization* viz, FiniteElement* fem, Mes
     auto start_to = std::chrono::high_resolution_clock::now();
     
     //optimization::GCMMASolver gcmma(x.size(), 1, 0, 1e6, 1); //1e5
-    optimization::MMASolver mma(x.size(), 1, 0, 1e6, 1); //1e5
+    optimization::MMASolver mma(x.size(), 1, 0, 1e4, 1); //1e5
+    mma.SetAsymptotes(0.05, 0.2, 1.01);
 
     double ff;
     std::vector<double> df(x.size());
@@ -101,11 +102,8 @@ TopoDS_Shape MinimalVolume::optimize(Visualization* viz, FiniteElement* fem, Mes
     std::vector<double> xmin;
     std::vector<double> xmax;
 
-    // xmin = std::vector<double>(x.size(), 0.001);
-    // xmax = std::vector<double>(x.size(), 1.0);
-    double max_step = 0.01;
-    xmin = std::vector<double>(x.size(), std::max(this->rho_init - max_step, 0.0));
-    xmax = std::vector<double>(x.size(), std::min(this->rho_init + max_step, 1.0));
+    xmin = std::vector<double>(x.size(), 0.0);
+    xmax = std::vector<double>(x.size(), 1.0);
 
     double fnew = this->max_V;
     std::vector<double> gnew(1);
@@ -116,7 +114,7 @@ TopoDS_Shape MinimalVolume::optimize(Visualization* viz, FiniteElement* fem, Mes
 
     // int max_innerit = 30;
     double ch = 1.0;
-	for (int iter = 0; (ch > this->xtol_abs && std::abs(ff-fnew)/this->max_V > this->Vfrac_abs) || std::abs(this->Sm/(this->c*this->Spn) - 1) > 1e-4; ++iter){
+	for (int iter = 0; (ch > this->xtol_abs && std::abs(ff-fnew)/this->max_V > this->Vfrac_abs) || std::abs(this->Sm/(this->c*this->Spn) - 1) > 1e-1; ++iter){
 
         update_c();
 
@@ -129,8 +127,6 @@ TopoDS_Shape MinimalVolume::optimize(Visualization* viz, FiniteElement* fem, Mes
         for (size_t i = 0; i < x.size(); ++i) {
             ch = std::max(ch, std::abs(xold[i] - x[i]));
             xold[i] = x[i];
-            xmin[i] = std::max(x[i] - max_step, 0.0);
-            xmax[i] = std::min(x[i] + max_step, 1.0);
         }
 
         ff = this->fobj_grad(x, df);
@@ -345,7 +341,7 @@ double MinimalVolume::fc_norm_grad(const std::vector<double>& x, std::vector<dou
         e->get_virtual_load(v*std::pow(this->new_x[i], pt*P)*std::pow(S, P-2), e->get_centroid(), u, fl);
     }
     this->viz->update_stress_view(stress_list);
-    //this->viz->update_density_view(this->new_x);
+    this->viz->update_density_view(this->new_x);
 
     Spn = std::pow(Spn, 1.0/P);
 
