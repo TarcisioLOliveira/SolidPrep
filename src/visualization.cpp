@@ -77,6 +77,8 @@ void Visualization::load_mesh(Meshing* mesh, utils::ProblemType type){
 
     gmsh::view::add(this->STRESS_VIEW, 1);
     gmsh::view::add(this->DENSITY_VIEW, 2);
+    gmsh::view::option::setNumber(2, "ColormapNumber", 9); //grayscale
+    gmsh::view::option::setNumber(2, "ColormapInvert", 1.0); //inverted
 }
 
 void Visualization::update_stress_view(const std::vector<double>& s){
