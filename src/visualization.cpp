@@ -74,11 +74,13 @@ void Visualization::load_mesh(Meshing* mesh, utils::ProblemType type){
     gmsh::option::setNumber("Mesh.Triangles", 0);
     gmsh::option::setNumber("General.ColorScheme", 3);
     gmsh::option::setNumber("General.FltkColorScheme", 1);
+
+    gmsh::view::add(this->STRESS_VIEW, 1);
+    gmsh::view::add(this->DENSITY_VIEW, 2);
 }
 
 void Visualization::update_stress_view(const std::vector<double>& s){
     logger::quick_log("Updating view...");
-    gmsh::view::add(this->STRESS_VIEW, 1);
 
     std::vector<std::vector<double>> stress;
     stress.reserve(mesh->element_list.size());
@@ -99,7 +101,6 @@ void Visualization::update_stress_view(const std::vector<double>& s){
 
 void Visualization::update_nodal_stress_view(const std::vector<double>& s){
     logger::quick_log("Updating view...");
-    gmsh::view::add(this->STRESS_VIEW, 1);
 
     std::vector<std::vector<double>> stress;
     stress.reserve(mesh->node_list.size());
@@ -120,7 +121,6 @@ void Visualization::update_nodal_stress_view(const std::vector<double>& s){
 
 void Visualization::update_density_view(const std::vector<double>& d){
     logger::quick_log("Updating view...");
-    gmsh::view::add(this->DENSITY_VIEW, 2);
 
     std::vector<std::vector<double>> density;
     density.reserve(mesh->node_list.size());
@@ -131,9 +131,9 @@ void Visualization::update_density_view(const std::vector<double>& d){
         std::vector<double> tmp{d[i]};
         density.push_back(tmp);
     }
-    gmsh::option::setNumber("View.ColormapNumber", 9); //grayscale
-    gmsh::option::setNumber("View.DrawLines", 0);
-    gmsh::option::setNumber("View.DrawPoints", 0);
+    // gmsh::option::setNumber("View.ColormapNumber", 9); //grayscale
+    // gmsh::option::setNumber("View.DrawLines", 0);
+    // gmsh::option::setNumber("View.DrawPoints", 0);
     gmsh::view::addModelData(2, 0, this->MODEL_NAME, "ElementData", elem_tags, density, 0, 1);
 
     if(this->shown){
