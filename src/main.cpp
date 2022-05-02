@@ -74,6 +74,12 @@ int main(int argc, char* argv[]){
             stresses.push_back(e->get_stress_at(e->get_centroid(), u));
         }
 
+        if(proj.analysis == ProjectData::BEAMS_ONLY){
+            logger::quick_log("");
+            logger::quick_log("Sizing time: ", size_time, " minutes");
+            logger::quick_log("");
+        }
+
         // Display results
         Visualization v;
         v.start();
