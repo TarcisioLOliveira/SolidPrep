@@ -55,7 +55,6 @@ int main(int argc, char* argv[]){
     } else if(proj.analysis == ProjectData::FEA_ONLY || proj.analysis == ProjectData::OPTIMIZE_ONLY){
         shape = proj.ground_structure->shape;
     }
-    
 
     // Meshing
     auto start_mesh = std::chrono::high_resolution_clock::now();
@@ -69,9 +68,19 @@ int main(int argc, char* argv[]){
         // Finite element analysis
         auto u = proj.topopt_fea->calculate_displacements(&proj, proj.topopt_mesher.get());
         std::vector<double> stresses;
+        std::vector<double> stressesX;
+        std::vector<double> stressesY;
+        std::vector<double> stressesXY;
         stresses.reserve(proj.topopt_mesher->element_list.size());
+        stressesX.reserve(proj.topopt_mesher->element_list.size());
+        stressesY.reserve(proj.topopt_mesher->element_list.size());
+        stressesXY.reserve(proj.topopt_mesher->element_list.size());
         for(auto& e:proj.topopt_mesher->element_list){
             stresses.push_back(e->get_stress_at(e->get_centroid(), u));
+            auto tensor = e->get_stress_tensor(e->get_centroid(), u);
+            stressesX.push_back(tensor[0]);
+            stressesY.push_back(tensor[3]);
+            stressesXY.push_back(tensor[1]);
         }
 
         if(proj.analysis == ProjectData::BEAMS_ONLY){
@@ -84,7 +93,10 @@ int main(int argc, char* argv[]){
         Visualization v;
         v.start();
         v.load_mesh(proj.topopt_mesher.get(), proj.type);
-        v.update_stress_view(stresses);
+        v.update_stress_view(stresses, 1);
+        v.update_stress_view(stressesX, 2);
+        v.update_stress_view(stressesY, 3);
+        v.update_stress_view(stressesXY, 4);
         v.show();
         v.wait();
         v.end();
