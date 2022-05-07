@@ -122,6 +122,28 @@ double TRI3::get_stress_at(gp_Pnt point, const std::vector<double>& u) const{
     return std::sqrt(std::pow(results[0], 2) - results[0]*results[1] + std::pow(results[1], 2) + 3*std::pow(results[2], 2));
 }
 
+std::vector<double> TRI3::get_stress_tensor(gp_Pnt p, const std::vector<double>& u) const{
+    size_t N = this->nodes.size();
+
+    std::vector<double> DB = this->get_DB(p);
+
+    std::vector<double> results(3, 0);
+    for(size_t i = 0; i < 3; ++i){
+        for(size_t l = 0; l < 3; ++l){
+            for(size_t j = 0; j < 2; ++j){
+                if(this->nodes[l]->u_pos[j] > -1){
+                    results[i] += DB[2*N*i + 2*l + j]*u[this->nodes[l]->u_pos[j]];
+                }
+            }
+        }
+    }
+
+    std::vector<double> S{results[0], results[2],
+                          results[2], results[1]};
+
+    return S;
+}
+
 MeshNode* TRI3::get_internal_loads(size_t node, const std::vector<double>& u) const{
     logger::log_assert(node >= 0 && node <= 3, logger::ERROR, "wrong value for BeamLinear2D node, must be either 0 or 1.");
 

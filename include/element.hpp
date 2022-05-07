@@ -303,6 +303,15 @@ class MeshElement : public Element{
      * @return Von Mises stress at point p.
      */
     virtual double get_stress_at(gp_Pnt p, const std::vector<double>& u) const = 0;
+    /**
+     * Calculates the Cauchy stress tensor at a point within the element.
+     *
+     * @param p The point.
+     * @param u Displacement vector.
+     *
+     * @return Stress tensor at point p.
+     */
+    virtual std::vector<double> get_stress_tensor(gp_Pnt p, const std::vector<double>& u) const = 0;
     /** 
      * Calculates the internal loads at a point within the element. Does not
      * consider contribution from other elements.

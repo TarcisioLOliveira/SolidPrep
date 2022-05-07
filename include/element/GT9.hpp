@@ -36,6 +36,7 @@ class GT9 : public MeshElement{
     virtual MeshNode* get_stresses(size_t node, const std::vector<double>& u, double density = 1) const override;
     virtual MeshNode* get_internal_loads(size_t node, const std::vector<double>& u) const override;
     virtual double get_stress_at(gp_Pnt p, const std::vector<double>& u) const override;
+    virtual std::vector<double> get_stress_tensor(gp_Pnt p, const std::vector<double>& u) const override;
     virtual std::vector<double> get_average_stress(const gp_Pnt& p1, const gp_Pnt& p2, const std::vector<double>& u) const override;
     virtual std::vector<double> get_average_loads_and_torques(const gp_Pnt& p1, const gp_Pnt& p2, const std::vector<double>& u, const std::vector<size_t> excluded_nodes = std::vector<size_t>()) const override;
     virtual std::vector<double> get_loads_at(gp_Pnt p, const std::vector<double>& u) const override;

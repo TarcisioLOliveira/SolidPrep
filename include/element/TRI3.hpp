@@ -41,6 +41,7 @@ class TRI3 : public MeshElement{
     virtual std::vector<double> get_average_loads(const gp_Pnt& p1, const gp_Pnt& p2, const std::vector<double>& u, const std::vector<size_t> excluded_nodes = std::vector<size_t>()) const override;
     virtual std::vector<gp_Pnt> get_intersection_points(const TopoDS_Shape& crosssection) const override;
     virtual double get_stress_at(gp_Pnt p, const std::vector<double>& u) const override;
+    virtual std::vector<double> get_stress_tensor(gp_Pnt p, const std::vector<double>& u) const override;
     virtual size_t get_gmsh_element_type() const override{ return 2;};
     virtual double get_compliance(const std::vector<double>& u, const std::vector<double>& l = std::vector<double>()) const override;
     virtual void get_virtual_load(double mult, gp_Pnt point, const std::vector<double>& u, std::vector<double>& l) const override;
