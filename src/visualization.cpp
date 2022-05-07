@@ -74,6 +74,8 @@ void Visualization::load_mesh(Meshing* mesh, utils::ProblemType type){
     gmsh::option::setNumber("Mesh.Triangles", 0);
     gmsh::option::setNumber("General.ColorScheme", 3);
     gmsh::option::setNumber("General.FltkColorScheme", 1);
+    gmsh::option::setString("General.GraphicsFontEngine", "StringTexture");
+    
 
     gmsh::view::add(this->STRESS_VIEW, 1);
     gmsh::view::add("Normal Stress (X axis)", 2);
