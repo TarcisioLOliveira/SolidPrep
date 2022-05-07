@@ -81,7 +81,7 @@ TopoDS_Shape StandardSizing::boundary_expansion_approach(){
     TopoDS_Shape beams = this->build_initial_topology();
     utils::shape_to_file("beams.step", beams);
     auto m = mesh.mesh(beams);
-    mesh.prepare_for_FEM(m, MeshElementFactory::TRI3, this->data);//, true);
+    mesh.prepare_for_FEM(m, MeshElementFactory::GT9, this->data);//, true);
     auto u = this->solver->calculate_displacements(this->data, &mesh);
     this->solver->calculate_forces(&mesh, u);
 
