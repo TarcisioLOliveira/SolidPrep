@@ -14,7 +14,7 @@
         // "G": [0.362, 0.363, 0.332] // yz, xz, xy  [GPa]
         "type": "linear_elastic_isotropic",
         "Smax": 100.0,
-        "Tmax": 750.0,
+        "Tmax": 75.0,
         "E": 180.0,
         "nu": 0.3,
         "plane_stress": true
@@ -33,7 +33,7 @@
             "type": "visibility_graph",
             "step": 2, // [mm]
             "restriction_size": 0, // Optional, defines additional safety distance from edges.
-            "max_turn_angle": 0.4 // [°]
+            "max_turn_angle": 5 // [°]
         }
     },
     "mesher":{
@@ -47,8 +47,8 @@
         "r_o": 8, // Density filter radius
         "Smax": 100.0, // Maximum global stress
         "rho_init": 0.1, // Initial density
-        "xtol_abs": 1e-4, // Convergence criterium, absolute maximum design variable change
-        "Vfrac_abs": 0, // Convergence criterium, absolute maximum volume fraction change
+        "xtol_abs": 1e-5, // Convergence criterium, absolute maximum design variable change
+        "Vfrac_abs": 1e-6, // Convergence criterium, absolute maximum volume fraction change
         "P": 8, // p-norm
         "pc": 3, // penalization
         "result_threshold": 0.5, // minimum density a the resulting element must have to be included in resulting STEP file
@@ -56,26 +56,16 @@
     },
     "loads":[
         {
-            "vertices": [[180, 200], [200, 200]], // [mm], set to scale
-            "load": [0,-30000] // [N]
-        },
-        {
-            "vertices": [[180, -200], [200, -200]], // [mm], set to scale
-            "load": [0,-30000] // [N]
+            "vertices": [[200, 20], [200, -20]], // [mm], set to scale
+            "load": [0,-50000] // [N]
         }
     ],
     "supports":[
-        // {
-        //     "X": true, // Blocks X forces
-        //     "Y": true, // Blocks Y forces
-        //     "MZ": true, // Blocks moments around Z
-        //     "vertices": [[-200, 100], [-200, 200]] // [mm], set to scale
-        // },
         {
             "X": true, // Blocks X forces
             "Y": true, // Blocks Y forces
             "MZ": true, // Blocks moments around Z
-            "vertices": [[-200, 200], [-200, -200]] // [mm], set to scale
+            "vertices": [[-200, -200], [-200, 200]] // [mm], set to scale
         }
     ]
 }
