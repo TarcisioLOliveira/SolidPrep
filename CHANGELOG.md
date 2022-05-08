@@ -7,20 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Added
 - MMASolver from [jdumas/mma](https://github.com/jdumas/mma).
+- Views for stress components for `fea_only` and `beams_only`.
+- `get_stress_tensor()` for elements.
+- Examples for v0.1.2 (`beams_only`).
 
 ### Changed
 - Global stiffness matrix now uses minimal K instead of minimal density.
 - Organize examples by version.
-- Improved resizing method so it works with trussed structures.
+- Improved resizing method so it works with trussed and indeterminate structures.
 - Somewhat improved speed of resizing.
 - Make OneLab default to dark mode.
 - Make MinimalVolume use MMA (temporarily).
+- Show sizing time when using `beams_only` mode.
+- Change font renderer for OneLab.
 
 ### Fixed
 - Resizing of indeterminate beams.
 - Compatibility with GCC 11 and OpenCascade 7.6.1.
 - Resizing creating stray circles.
 - Make OneLab more responsive after optimization end.
+- Make density visualization grayscale.
+- Stop flickering when updating multiple views.
 
 ## [v0.1.1]
 ### Added
