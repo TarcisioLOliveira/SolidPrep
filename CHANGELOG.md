@@ -29,6 +29,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Make density visualization grayscale.
 - Stop flickering when updating multiple views.
 
+### Removed
+- Unused/unusable functions from StandardSizing.
+
 ## [v0.1.1]
 ### Added
 - Minimal compliance support.

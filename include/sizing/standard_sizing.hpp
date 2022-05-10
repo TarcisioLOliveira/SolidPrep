@@ -54,23 +54,6 @@ class StandardSizing : public Sizing{
         gp_Vec force;
     };
 
-    struct TrussNode{
-        gp_Vec forces;
-        gp_Vec moments;
-        bool Mx = false;
-        bool My = false;
-        bool Mz = false;
-        CrossSection S;
-    };
-    struct TrussNodeWrapper{
-        TrussNode* node;
-        bool negative;
-    };
-    struct TrussBeam{
-        std::vector<TrussNodeWrapper> nodes;
-        TopoDS_Shape geometry;
-    };
-
     StandardSizing(ProjectData* data, FiniteElement* solver, double element_size, double multiplier);
 
     virtual TopoDS_Shape run() override;
@@ -79,6 +62,7 @@ class StandardSizing : public Sizing{
     FiniteElement* solver;
     double element_size;
     double multiplier;
+    std::vector<gp_Pnt> end_points;
 
     TopoDS_Shape build_initial_topology();
     // Not recommended to use it with beams. Other shapes tend work.
@@ -93,21 +77,16 @@ class StandardSizing : public Sizing{
     bool is_valid_boundary_point(MeshNode* n) const;
     TopoDS_Shape expansion_2D(const meshing::StandardBeamMesher& mesh, const std::vector<double>& u, const TopoDS_Shape& beams);
     ExpansionNode get_expansion_node_2D(const gp_Dir& line_dir, gp_Pnt center, double distance, double Fx, double Fy, double Mz, const std::vector<TopoDS_Edge>& edges_init = std::vector<TopoDS_Edge>()) const;
+    void calculate_reaction_moments(size_t Mn, std::vector<ExternalForce>& external_forces) const;
+
+    /**
+     * Currently unused.
+     * Previously used to test for a way of ordering points along the beams' central
+     * lines having only the points and their normals.
+     * Does not work correctly, may be removed later.
+     */
     TopoDS_Shape bspline_simple2D(const std::vector<ExpansionNode>& exp_info, TopoDS_Shape base) const;
     bool insert_expansion_node(std::vector<ExpansionNode>& exp_info, ExpansionNode node) const;
-    void calculate_reaction_moments(size_t Mn, std::vector<ExternalForce>& external_forces) const;
-    void trussify(const std::vector<ExternalForce>& external_forces);
-
-    std::vector<TrussNode> truss_nodes;
-    std::vector<TrussBeam> truss_beams;
-   
-    /**
-     * Related to elemental approach. 
-     * Fully functional, but does not give the expected results. 
-     */
-    std::vector<gp_Pnt> end_points;
-    TopoDS_Shape experimental_elemental_approach();
-    std::vector<double> calculate_change(BeamMeshing* mesh, const std::vector<long>& ids, std::vector<double> h, const TopoDS_Shape& beams) const;
 };
 
 }
