@@ -32,6 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 - Unused/unusable functions from StandardSizing.
 - `calculate_stress()` from FiniteElement.
+- Unused functions from MeshElement.
 
 ## [v0.1.1]
 ### Added

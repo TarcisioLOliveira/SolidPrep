@@ -276,16 +276,6 @@ class MeshElement : public Element{
      */
     virtual std::vector<double> get_k() const override = 0;
     /**
-     * Calculates the stress vector at a node.
-     *
-     * @param node Number of the node within the element's list of nodes.
-     * @param u Displacement vector.
-     * @param density SIMP density of element (optional).
-     *
-     * @return A pointer to the node.
-     */
-    virtual MeshNode* get_stresses(size_t node, const std::vector<double>& u, double density = 1) const = 0;
-    /**
      * Calculates the internal load vector at a node.
      *
      * @param node Number of the node within the element's list of nodes.
@@ -322,42 +312,6 @@ class MeshElement : public Element{
      * @return Internal loads.
      */
     virtual std::vector<double> get_loads_at(gp_Pnt p, const std::vector<double>& u) const = 0;
-    /*
-     * Calculates the average stress between two points within an element.
-     *
-     * @param p1 Point 1.
-     * @param p2 Point 2.
-     * @param u Displacement vector.
-     *
-     * @return Vector of average stresses.
-     */
-    virtual std::vector<double> get_average_stress(const gp_Pnt& p1, const gp_Pnt& p2, const std::vector<double>& u) const = 0;
-    /*
-     * Calculates the average interal loads between two points within an 
-     * element.
-     *
-     * @param p1 Point 1.
-     * @param p2 Point 2.
-     * @param u Displacement vector.
-     * @param excluded_nodes Number of the node elements not to be accounted
-     * for during calculation (optional).
-     *
-     * @return Vector of average internal loads.
-     */
-    virtual std::vector<double> get_average_loads(const gp_Pnt& p1, const gp_Pnt& p2, const std::vector<double>& u, const std::vector<size_t> excluded_nodes = std::vector<size_t>()) const = 0;
-    /*
-     * Calculates the average interal loads between two points within an 
-     * element, considering internal torques too.
-     *
-     * @param p1 Point 1.
-     * @param p2 Point 2.
-     * @param u Displacement vector.
-     * @param excluded_nodes Number of the node elements not to be accounted
-     * for during calculation (optional).
-     *
-     * @return Vector of average internal loads.
-     */
-    virtual std::vector<double> get_average_loads_and_torques(const gp_Pnt& p1, const gp_Pnt& p2, const std::vector<double>& u, const std::vector<size_t> excluded_nodes = std::vector<size_t>()) const = 0;
     // Edge for 2D, face for 3D
     /** 
      * Calculates the intersection points between a shape (edge for 2D, face

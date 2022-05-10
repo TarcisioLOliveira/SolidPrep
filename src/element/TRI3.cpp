@@ -82,27 +82,6 @@ std::vector<double> TRI3::get_k() const{
     return K;
 }
 
-MeshNode* TRI3::get_stresses(size_t node, const std::vector<double>& u, double density) const{
-    size_t N = this->nodes.size();
-
-    auto DB = this->get_DB(this->nodes[node]->point);
-
-    MeshNode2D* n = static_cast<MeshNode2D*>(this->nodes[node]);
-    for(size_t i = 0; i < 3; ++i){
-        n->results[i] = 0;
-        for(size_t l = 0; l < 3; ++l){
-            for(size_t j = 0; j < 2; ++j){
-                if(this->nodes[l]->u_pos[j] > -1){
-                    n->results[i] += DB[2*N*i + l*2 + j]*u[this->nodes[l]->u_pos[j]];
-                }
-            }
-        }
-        n->results[i] = density*std::abs(n->results[i]);
-    }
-
-    return this->get_node(node);
-}
-
 double TRI3::get_stress_at(gp_Pnt point, const std::vector<double>& u) const{
     size_t N = this->nodes.size();
 
@@ -285,73 +264,6 @@ std::vector<double> TRI3::get_loads_at(gp_Pnt point, const std::vector<double>& 
     return res;
 }
 
-
-std::vector<double> TRI3::get_average_loads(const gp_Pnt& p1, const gp_Pnt& p2, const std::vector<double>& u, const std::vector<size_t> excluded_nodes) const{
-    std::vector<double> k = this->get_k();
-    std::vector<double> f_vec(6,0);
-    std::vector<double> u_vec(6,0);
-
-    for(int i = 0; i < 3; ++i){
-        for(size_t j = 0; j < 2; ++j){
-            if(this->nodes[i]->u_pos[j] > -1){
-                u_vec[3*i+j] = u[this->nodes[i]->u_pos[j]];
-            }
-        }
-    }
-    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 6, 1, 6, 1, k.data(), 6, u_vec.data(), 1, 0, f_vec.data(), 1);
-
-    std::vector<gp_Pnt> p;
-    for(auto n:this->nodes){
-        p.push_back(n->point);
-    }
-
-    gp_Mat deltaM(1, p[0].X(), p[0].Y(), 1, p[1].X(), p[1].Y(), 1, p[2].X(), p[2].Y());
-
-    double delta = 0.5*deltaM.Determinant();
-
-    size_t N = this->nodes.size();
-    std::vector<double> a, b, c;
-    for(size_t i = 0; i < N; ++i){
-        size_t j = (i + 1) % 3;
-        size_t k = (i + 2) % 3;
-
-        a.push_back(p[j].X()*p[k].Y() - p[k].X()*p[j].Y());
-        b.push_back(p[j].Y() - p[k].Y());
-        c.push_back(p[k].X() - p[j].X());
-    }
-
-    double x1 = p1.X();
-    double x2 = p2.X();
-    double y1 = p1.Y();
-    double y2 = p2.Y();
-
-
-    double dist = p1.Distance(p2);
-
-    std::vector<double> L(3);
-    L[0] = (a[0]*(x2-x1)*(y2-y1) + 0.5*b[0]*(x2*x2-x1*x1)*(y2-y1) + 0.5*c[0]*(x2-x1)*(y2*y2-y1*y1))/(2*delta);
-    L[1] = (a[1]*(x2-x1)*(y2-y1) + 0.5*b[1]*(x2*x2-x1*x1)*(y2-y1) + 0.5*c[1]*(x2-x1)*(y2*y2-y1*y1))/(2*delta);
-    L[2] = (a[2]*(x2-x1)*(y2-y1) + 0.5*b[2]*(x2*x2-x1*x1)*(y2-y1) + 0.5*c[2]*(x2-x1)*(y2*y2-y1*y1))/(2*delta);
-    std::vector<double> Nmat(6*2, 0);
-    for(size_t i = 0; i < N; ++i){
-        Nmat[2*i] = L[i]/dist;
-        Nmat[2*i + 6 + 1] = L[i]/dist;
-    }
-
-    std::vector<double> res(2, 0);
-    std::vector<double> ss_vec(9, 0);
-    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 9, 1, 9, 1, k.data(), 9, u_vec.data(), 1, 0, ss_vec.data(), 1);
-    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 2, 1, 6, 1, Nmat.data(), 6, ss_vec.data(), 1, 0, res.data(), 1);
-
-    return res;
-
-}
-
-std::vector<double> TRI3::get_average_loads_and_torques(const gp_Pnt& p1, const gp_Pnt& p2, const std::vector<double>& u, const std::vector<size_t> excluded_nodes) const{
-    // Missing torque. Implemented to avoid compilation errors.
-    return this->get_average_loads(p1, p2, u);
-}
-
 std::vector<gp_Pnt> TRI3::get_intersection_points(const TopoDS_Shape& crosssection) const{
     size_t N = this->nodes.size();
     std::vector<gp_Pnt> points;
@@ -414,49 +326,6 @@ gp_Pnt TRI3::get_centroid() const{
     }
 
     return gp_Pnt(x/this->nodes.size(), y/this->nodes.size(), 0);
-}
-std::vector<double> TRI3::get_average_stress(const gp_Pnt& p1, const gp_Pnt& p2, const std::vector<double>& u) const{
-    size_t N = this->nodes.size();
-
-    std::vector<double> B(3*2*N, 0);
-
-    std::vector<gp_Pnt> p;
-    for(auto n:this->nodes){
-        p.push_back(n->point);
-    }
-
-    gp_Mat deltaM(1, p[0].X(), p[0].Y(), 1, p[1].X(), p[1].Y(), 1, p[2].X(), p[2].Y());
-
-    double Delta = 0.5*deltaM.Determinant();
-
-    std::vector<double> a, b, c;
-    for(size_t i = 0; i < N; ++i){
-        size_t j = (i + 1) % 3;
-        size_t k = (i + 2) % 3;
-
-        a.push_back(p[j].X()*p[k].Y() - p[k].X()*p[j].Y());
-        b.push_back(p[j].Y() - p[k].Y());
-        c.push_back(p[k].X() - p[j].X());
-    }
-
-    double mult = (p2.X()-p1.X())*(p2.Y()-p1.Y())/p1.Distance(p2);
-
-    for(size_t i = 0; i < N; ++i){
-        B[i*2 + 0*2*N] = b[i]/(2*Delta)*mult;
-        B[i*2 + 1*2*N] = 0;
-        B[i*2 + 2*2*N] = c[i]/(2*Delta)*mult;
-        B[i*2 + 0*2*N + 1] = 0;
-        B[i*2 + 1*2*N + 1] = c[i]/(2*Delta)*mult;
-        B[i*2 + 2*2*N + 1] = b[i]/(2*Delta)*mult;
-    }
-
-    std::vector<double> DB(3*2*N, 0);
-    auto D = this->mat->stiffness_2D();
-
-    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 3, 2*N, 3, 1, D.data(), 3, B.data(), 2*N, 0, DB.data(), 2*N);
-
-    return DB;
-
 }
 
 std::vector<double> TRI3::get_DB(gp_Pnt point) const{
