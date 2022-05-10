@@ -32,7 +32,6 @@ class FiniteElement{
 
     virtual std::vector<double> calculate_displacements(ProjectData* data, Meshing* mesh, const std::vector<double>& density = std::vector<double>(), double pc = 3, bool use_stored_matrix = false, const std::vector<double>& virtual_load = std::vector<double>()) = 0;
 
-    virtual void calculate_stresses(Meshing* mesh, const std::vector<double>& displacements, const std::vector<double>& density = std::vector<double>()) const;
     virtual void calculate_forces(Meshing* mesh, const std::vector<double>& displacements) const;
 };
 

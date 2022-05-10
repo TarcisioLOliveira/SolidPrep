@@ -22,38 +22,6 @@
 #include "logger.hpp"
 #include "project_data.hpp"
 
-void FiniteElement::calculate_stresses(Meshing* mesh, const std::vector<double>& displacements, const std::vector<double>& density) const{
-    logger::quick_log("Calculating stresses...");
-    for(auto& e:mesh->element_list){
-        for(size_t n = 0; n < e->nodes.size(); ++n){
-            MeshNode* node = e->get_node(n);
-            for(size_t k = 0; k < node->get_result_size(); ++k){
-                node->results[k] = 0;
-            }
-        }
-    }
-    for(size_t i = 0; i < mesh->element_list.size(); ++i){
-        auto& e = mesh->element_list[i];
-        for(size_t n = 0; n < e->nodes.size(); ++n){
-            bool calculated = false;
-            MeshNode* node = e->get_node(n);
-            for(size_t k = 0; k < node->get_result_size(); ++k){
-                if(node->results[k] != 0){
-                    calculated = true;
-                    break;
-                }
-            }
-            double rho = 1;
-            if(density.size() > 0){
-                rho = density[i];
-            }
-            if(!calculated){
-                e->get_stresses(n, displacements, rho);
-            }
-        }
-    }
-    logger::quick_log("Done");
-}
 void FiniteElement::calculate_forces(Meshing* mesh, const std::vector<double>& displacements) const{
     logger::quick_log("Calculating forces...");
     for(auto& e:mesh->element_list){
