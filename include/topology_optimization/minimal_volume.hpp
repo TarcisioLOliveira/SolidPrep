@@ -53,7 +53,6 @@ class MinimalVolume : public TopologyOptimization{
     std::vector<double> grad_V;
     double alpha;
     std::vector<std::vector<size_t>> neighbors;
-    int it_num;
     std::vector<double> p;
     std::vector<double> w;
     double Spn;

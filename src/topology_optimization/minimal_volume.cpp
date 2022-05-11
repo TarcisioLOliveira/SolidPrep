@@ -36,7 +36,7 @@ namespace topology_optimization{
 
 
 MinimalVolume::MinimalVolume(double r_o, double Smax, ProjectData* data, double rho_init, double xtol_abs, double Vfrac_abs, double result_threshold, bool save, int P, int pc):
-    r_o(r_o), Smax(Smax), data(data), rho_init(rho_init), xtol_abs(xtol_abs), Vfrac_abs(Vfrac_abs), result_threshold(result_threshold), save_result(save), P(P), pc(pc), viz(nullptr), fem(nullptr), mesh(nullptr), c(1), new_x(), max_V(0), cur_V(0), alpha(1), neighbors(), it_num(0), p(), w(), Spn(1), Sm(1){}
+    r_o(r_o), Smax(Smax), data(data), rho_init(rho_init), xtol_abs(xtol_abs), Vfrac_abs(Vfrac_abs), result_threshold(result_threshold), save_result(save), P(P), pc(pc), viz(nullptr), fem(nullptr), mesh(nullptr), c(1), new_x(), max_V(0), cur_V(0), alpha(1), neighbors(), p(), w(), Spn(1), Sm(1){}
 
 
 TopoDS_Shape MinimalVolume::optimize(Visualization* viz, FiniteElement* fem, Meshing* mesh){
@@ -51,7 +51,6 @@ TopoDS_Shape MinimalVolume::optimize(Visualization* viz, FiniteElement* fem, Mes
     this->grad_V = std::vector<double>(mesh->element_list.size(), 0);
     this->alpha = 1;
     this->neighbors = std::vector<std::vector<size_t>>(mesh->element_list.size()), std::vector<double>();
-    this->it_num = 0;
     this->p = std::vector<double>(mesh->element_list.size()*3);
     this->w = std::vector<double>(mesh->element_list.size());
 
@@ -114,7 +113,8 @@ TopoDS_Shape MinimalVolume::optimize(Visualization* viz, FiniteElement* fem, Mes
 
     // int max_innerit = 30;
     double ch = 1.0;
-	for (int iter = 0; (ch > this->xtol_abs && std::abs(ff-fnew)/this->max_V > this->Vfrac_abs) || std::abs(this->Sm/(this->c*this->Spn) - 1) > 1e-1; ++iter){
+    int iter;
+	for (iter = 0; (ch > this->xtol_abs && std::abs(ff-fnew)/this->max_V > this->Vfrac_abs) || std::abs(this->Sm/(this->c*this->Spn) - 1) > 1e-1; ++iter){
 
         update_c();
 
@@ -200,9 +200,9 @@ TopoDS_Shape MinimalVolume::optimize(Visualization* viz, FiniteElement* fem, Mes
     logger::quick_log("Final volume: ", this->cur_V);
     auto to_duration = std::chrono::duration_cast<std::chrono::seconds>(stop_to-start_to);
     double to_time = to_duration.count();
-    double it_time = to_time/this->it_num;
+    double it_time = to_time/iter;
     logger::quick_log("Time per iteration (topology optimization): ", it_time, " seconds");
-    logger::quick_log("Number of iterations (topology optimization): ", this->it_num);
+    logger::quick_log("Number of iterations (topology optimization): ", iter);
    
     logger::quick_log(" "); 
     if(this->save_result){
@@ -261,8 +261,6 @@ double MinimalVolume::fobj_grad(const std::vector<double>& x, std::vector<double
         this->new_x[i] /= this->w[i];
         V += this->new_x[i]*this->grad_V[i];
     }
-
-    ++this->it_num;
 
     this->cur_V = V;
     return V;
