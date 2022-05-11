@@ -25,7 +25,6 @@ Currently features:
 Dependencies:
 - [OpenCascade](https://git.dev.opencascade.org/gitweb/?p=occt.git;a=summary)
 - [LAPACK, LAPACKE, CBLAS](http://www.netlib.org/lapack/)
-- [NLopt](https://nlopt.readthedocs.io/en/latest/)
 - [Gmsh](https://gmsh.info/)
 
 Also includes code from [RapidJSON](https://github.com/Tencent/rapidjson) and 

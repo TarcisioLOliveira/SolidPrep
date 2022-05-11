@@ -23,7 +23,6 @@ endif()
 find_package(LAPACK REQUIRED)
 find_package(LAPACKE REQUIRED)
 find_package(CBLAS REQUIRED)
-find_package(NLopt REQUIRED)
 find_library(GMSH_LIB gmsh REQUIRED)
 find_path(GMSH_INC gmsh.h REQUIRED)
 
@@ -44,7 +43,6 @@ include_directories(
     ${LAPACK_INCLUDE_DIR}
     ${LAPACKE_INCLUDE_DIR}
     ${GMSH_INC}
-    ${NLopt_INCLUDE_DIR}
 )
    
 add_subdirectory(src)
