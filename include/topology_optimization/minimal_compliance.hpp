@@ -27,7 +27,7 @@ namespace topology_optimization{
 
 class MinimalCompliance : public TopologyOptimization{
     public:
-    MinimalCompliance(double r_o, ProjectData* data, double Vfinal, double xtol_abs, double result_threshold, bool save, int pc);
+        MinimalCompliance(double r_o, ProjectData* data, double Vfinal, double xtol_abs, double ftol_rel, double result_threshold, bool save, int pc);
 
     virtual TopoDS_Shape optimize(Visualization* viz, FiniteElement* fem, Meshing* mesh) override;
 
@@ -36,9 +36,28 @@ class MinimalCompliance : public TopologyOptimization{
     ProjectData* data;
     double Vfinal;
     double xtol_abs;
+    double ftol_rel;
     double result_threshold;
     bool save_result;
     int pc;
+
+    Visualization* viz;
+    FiniteElement* fem;
+    Meshing* mesh;
+    std::vector<double> new_x;
+    double max_V;
+    double cur_V;
+    std::vector<double> grad_V;
+    double alpha;
+    std::vector<std::vector<size_t>> neighbors;
+    std::vector<double> p;
+    std::vector<double> w;
+
+    double fobj(const std::vector<double>& x);
+    double fobj_grad(const std::vector<double>& x, std::vector<double>& grad);
+
+    double fc_norm(const std::vector<double>& x);
+    double fc_norm_grad(const std::vector<double>& x, std::vector<double>& grad);
 };
 
 }

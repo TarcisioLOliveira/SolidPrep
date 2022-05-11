@@ -357,6 +357,7 @@ std::unique_ptr<TopologyOptimization> ProjectData::load_topopt(const rapidjson::
         this->log_data(to, "r_o", TYPE_DOUBLE, true);
         this->log_data(to, "V", TYPE_DOUBLE, true);
         this->log_data(to, "xtol_abs", TYPE_DOUBLE, true);
+        this->log_data(to, "ftol_rel", TYPE_DOUBLE, true);
         this->log_data(to, "result_threshold", TYPE_DOUBLE, true);
         this->log_data(to, "save_result", TYPE_BOOL, true);
         this->log_data(to, "pc", TYPE_INT, true);
@@ -364,10 +365,11 @@ std::unique_ptr<TopologyOptimization> ProjectData::load_topopt(const rapidjson::
         double r_o = to["r_o"].GetDouble();
         double V = to["V"].GetDouble();
         double xtol_abs = to["xtol_abs"].GetDouble();
+        double ftol_rel = to["ftol_rel"].GetDouble();
         double result_threshold = to["result_threshold"].GetDouble();
         bool save_result = to["save_result"].GetBool();
         int pc = to["pc"].GetInt();
-        topopt.reset(new topology_optimization::MinimalCompliance(r_o, this, V, xtol_abs, result_threshold, save_result, pc));
+        topopt.reset(new topology_optimization::MinimalCompliance(r_o, this, V, xtol_abs, ftol_rel, result_threshold, save_result, pc));
     }
     return topopt;
 }

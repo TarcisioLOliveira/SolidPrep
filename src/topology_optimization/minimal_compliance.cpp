@@ -22,201 +22,138 @@
 #include "logger.hpp"
 #include "utils.hpp"
 #include <cmath>
-#include <nlopt.hpp>
 #include <cblas.h>
 #include <BRepBuilderAPI_Copy.hxx>
 #include <chrono>
 #include "project_data.hpp"
 #include <lapacke.h>
 #include <vector>
+#include "optimization/MMASolver.hpp"
 
 namespace topology_optimization{
 
 
-MinimalCompliance::MinimalCompliance(double r_o, ProjectData* data, double Vfinal, double xtol_abs, double result_threshold, bool save, int pc):
-    r_o(r_o), data(data), Vfinal(Vfinal), xtol_abs(xtol_abs), result_threshold(result_threshold), save_result(save), pc(pc){}
+MinimalCompliance::MinimalCompliance(double r_o, ProjectData* data, double Vfinal, double xtol_abs, double ftol_rel, double result_threshold, bool save, int pc):
+    r_o(r_o), data(data), Vfinal(Vfinal), xtol_abs(xtol_abs), ftol_rel(ftol_rel), result_threshold(result_threshold), save_result(save), pc(pc), viz(nullptr), fem(nullptr), mesh(nullptr),  new_x(), max_V(0), cur_V(0), alpha(1), neighbors(), p(), w(){}
 
 
 TopoDS_Shape MinimalCompliance::optimize(Visualization* viz, FiniteElement* fem, Meshing* mesh){
 
     logger::quick_log("Preparing for optimization...");
 
-    struct Data{
-        Visualization* viz;
-        FiniteElement* fem;
-        Meshing* mesh;
-        MinimalCompliance* mv;
-        double c;
-        std::vector<double> new_x;
-        std::vector<double> d;
-        double max_V;
-        double cur_V;
-        std::vector<double> grad_V;
-        double alpha;
-        std::vector<std::vector<size_t>> neighbors;
-        int it_num;
-        double xtol_abs;
-        std::vector<double> p;
-        std::vector<double> w;
-    };
-
-    Data data{viz, fem, mesh, this, 1, std::vector<double>(mesh->element_list.size(), this->Vfinal), std::vector<double>(mesh->element_list.size(), Vfinal), 0, 0, std::vector<double>(mesh->element_list.size(), 0), 1, std::vector<std::vector<size_t>>(mesh->element_list.size()), 0, this->xtol_abs, std::vector<double>(mesh->element_list.size()*3), std::vector<double>(mesh->element_list.size())};
+    this->viz = viz;
+    this->fem = fem;
+    this->mesh = mesh;
+    this->new_x = std::vector<double>(mesh->element_list.size(), this->Vfinal);
+    this->grad_V = std::vector<double>(mesh->element_list.size(), 0);
+    this->alpha = 1;
+    this->neighbors = std::vector<std::vector<size_t>>(mesh->element_list.size()), std::vector<double>();
+    this->p = std::vector<double>(mesh->element_list.size()*3);
+    this->w = std::vector<double>(mesh->element_list.size());
 
     
     for(size_t i = 0; i < mesh->element_list.size(); ++i){
         gp_Pnt c = mesh->element_list[i]->get_centroid();
-        data.p[3*i] = c.X();
-        data.p[3*i+1] = c.Y();
-        data.p[3*i+2] = c.Z();
+        this->p[3*i] = c.X();
+        this->p[3*i+1] = c.Y();
+        this->p[3*i+2] = c.Z();
     }
 
     // Uses more memory but is much faster
     for(size_t i = 0; i < mesh->element_list.size(); ++i){
-        data.grad_V[i] = mesh->element_list[i]->get_volume();
-        data.max_V += data.grad_V[i];
+        this->grad_V[i] = mesh->element_list[i]->get_volume();
+        this->max_V += this->grad_V[i];
         for(size_t j = i; j < mesh->element_list.size(); ++j){
             // double dist = data.mesh->element_list[i]->get_centroid().Distance(data.mesh->element_list[j]->get_centroid());
-            double dist = std::sqrt(std::pow(data.p[3*i] - data.p[3*j], 2) + std::pow(data.p[3*i+1] - data.p[3*j+1], 2) + std::pow(data.p[3*i+2] - data.p[3*j+2], 2));
-            if(dist <= data.mv->r_o){
-                data.neighbors[i].push_back(j);
-                data.neighbors[j].push_back(i);
-                double wj = 1 - dist/data.mv->r_o;
-                data.w[i] += wj;
-                data.w[j] += wj;
+            double dist = std::sqrt(std::pow(this->p[3*i] - this->p[3*j], 2) + std::pow(this->p[3*i+1] - this->p[3*j+1], 2) + std::pow(this->p[3*i+2] - this->p[3*j+2], 2));
+            if(dist <= this->r_o){
+                this->neighbors[i].push_back(j);
+                this->neighbors[j].push_back(i);
+                double wj = 1 - dist/this->r_o;
+                this->w[i] += wj;
+                this->w[j] += wj;
             }
         }
     }
-    // for(auto& v:data.grad_V){
-    //     v /= data.max_V;
-    // }
-    // data.max_V = 1;
-    data.cur_V = data.max_V;
 
-    // (Le et al. 2010)
-    auto f = [](const std::vector<double>& x, std::vector<double>& grad, void* f_data)->double{
-        // Getting the data
-        Data* data = static_cast<Data*>(f_data);
+    this->cur_V = this->max_V;
 
-        double change = 0;
-        double pc = data->mv->pc;
-        double c = 0;
-
-        std::vector<double> grad_tmp(x.size());
-
-        // Density filtering
-        for(size_t i = 0; i < x.size(); ++i){
-            change = std::max(change, std::abs(data->d[i] - x[i]));
-            data->new_x[i] = 0;
-            for(const auto& j:data->neighbors[i]){
-                // double dist = data->mesh->element_list[i]->get_centroid().Distance(data->mesh->element_list[j]->get_centroid());
-                double dist = std::sqrt(std::pow(data->p[3*i] - data->p[3*j], 2) + std::pow(data->p[3*i+1] - data->p[3*j+1], 2) + std::pow(data->p[3*i+2] - data->p[3*j+2], 2));
-                double wj = 1 - dist/data->mv->r_o;
-                data->new_x[i] += wj*x[j];
-            }
-            data->new_x[i] /= data->w[i];
-        }
-        data->viz->update_density_view(data->new_x);
-
-        // logger::quick_log("");
-        logger::quick_log("Change: ", change);
-        // logger::quick_log("");
-        if(data->it_num > 1 && change < data->xtol_abs){
-            throw nlopt::forced_stop();
-        }
-
-        std::vector<double> u = data->fem->calculate_displacements(data->mv->data, data->mesh, data->new_x, pc);
-
-        for(size_t i = 0; i < data->new_x.size(); ++i){
-            auto& e = data->mesh->element_list[i];
-            double uKu = e->get_compliance(u);
-            grad_tmp[i] = -pc*std::pow(data->new_x[i], pc-1)*uKu;
-            c += std::pow(data->new_x[i], pc)*uKu;
-        }
-        for(size_t i = 0; i < x.size(); ++i){
-             grad[i] = 0;
-             for(const auto& j:data->neighbors[i]){
-                 // double dist = data->mesh->element_list[i]->get_centroid().Distance(data->mesh->element_list[j]->get_centroid());
-                 double dist = std::sqrt(std::pow(data->p[3*i] - data->p[3*j], 2) + std::pow(data->p[3*i+1] - data->p[3*j+1], 2) + std::pow(data->p[3*i+2] - data->p[3*j+2], 2));
-                 double wj = 1 - dist/data->mv->r_o;
-                 // Yes, it is w[j] instead of w[i] here
-                 grad[i] += wj*grad_tmp[j]/data->w[j];
-             }
-         }
-
-        ++data->it_num;
-
-        data->d = x;
-
-        return c;
-    };
-    auto fc = [](const std::vector<double>& x, std::vector<double>& grad, void* f_data)->double{
-        // Getting the data
-        Data* data = static_cast<Data*>(f_data);
-
-        double V = 0;
-
-        for(size_t i = 0; i < x.size(); ++i){
-            grad[i] = 0;
-            V += data->new_x[i]*data->grad_V[i];
-            for(const auto& j:data->neighbors[i]){
-                // double dist = data->mesh->element_list[i]->get_centroid().Distance(data->mesh->element_list[j]->get_centroid());
-                double dist = std::sqrt(std::pow(data->p[3*i] - data->p[3*j], 2) + std::pow(data->p[3*i+1] - data->p[3*j+1], 2) + std::pow(data->p[3*i+2] - data->p[3*j+2], 2));
-                double wj = 1 - dist/data->mv->r_o;
-                // Yes, it is w[j] instead of w[i] here
-                grad[i] += wj*data->grad_V[j]/data->w[j];
-            }
-        }
-        data->cur_V = V;
-
-        if(data->it_num > 1 && V < 0.0011*data->max_V){
-            data->cur_V = V;
-            throw nlopt::forced_stop();
-        }
-
-        return V - data->mv->Vfinal*data->max_V;
-    };
-
-    nlopt::opt MMA(nlopt::LD_MMA, mesh->element_list.size());
-    MMA.set_min_objective(f, &data);
-    MMA.set_lower_bounds(0.001);
-    MMA.set_upper_bounds(1);
-    MMA.add_inequality_constraint(fc, &data, 1e-10);
-    MMA.set_param("verbosity", 5);
-    MMA.set_xtol_abs(this->xtol_abs);
-    //MMA.set_param("inner_maxeval", 5);
-
-    double opt_f = 0;
-
-    std::vector<double> x = data.new_x;
+    std::vector<double> x = this->new_x;
 
     logger::quick_log("Done.");
     auto start_to = std::chrono::high_resolution_clock::now();
 
-    nlopt::result r = nlopt::FORCED_STOP;
-    try{
-        r = MMA.optimize(x, opt_f);
-    } catch(nlopt::forced_stop& f){
-        r = nlopt::FORCED_STOP;
-    }
+    optimization::MMASolver mma(x.size(), 1, 0, 1e4, 1); //1e5
+    mma.SetAsymptotes(0.5, 0.7, 1.2);
+
+    double ff;
+    std::vector<double> df(x.size());
+    std::vector<double> dg(x.size());
+    std::vector<double> g(1);
+
+    // std::vector<double> xnew(x);
+    std::vector<double> xold(x);
+
+    std::vector<double> xmin;
+    std::vector<double> xmax;
+
+    xmin = std::vector<double>(x.size(), 0.0);
+    xmax = std::vector<double>(x.size(), 1.0);
+
+    double fnew = this->max_V;
+    std::vector<double> gnew(1);
+    g[0] = 1e3;
+
+    ff = this->fobj_grad(x, df);
+    g[0] = this->fc_norm_grad(x, dg);
+
+    // int max_innerit = 30;
+    double ch = 1.0;
+    int iter;
+	for (iter = 0; (ch > this->xtol_abs && std::abs(ff-fnew)/fnew > this->ftol_rel); ++iter){
+
+        fnew = ff;
+        gnew = g;
+
+        mma.Update(x.data(), df.data(), g.data(), dg.data(), xmin.data(), xmax.data());
+
+        ch = 0.0;
+        for (size_t i = 0; i < x.size(); ++i) {
+            ch = std::max(ch, std::abs(xold[i] - x[i]));
+            xold[i] = x[i];
+        }
+
+        ff = this->fobj_grad(x, df);
+        g[0] = this->fc_norm_grad(x, dg);
+
+        logger::quick_log("");
+        logger::quick_log("");
+        logger::quick_log("Iteration: ", iter);
+        logger::quick_log("Results: ", ff, g[0]);//+this->Smax);
+        logger::quick_log("");
+        logger::quick_log("Design var change: ", ch);
+        logger::quick_log("Compliance change: ", std::abs(ff-fnew)/fnew);
+        logger::quick_log("Volume change: ", std::abs(g[0]-gnew[0])/this->max_V);
+	}
     
     auto stop_to = std::chrono::high_resolution_clock::now();
-    logger::quick_log("Final volume: ", data.cur_V);
+    logger::quick_log("Final volume: ", this->cur_V);
     auto to_duration = std::chrono::duration_cast<std::chrono::seconds>(stop_to-start_to);
     double to_time = to_duration.count();
-    double it_time = to_time/data.it_num;
+    double it_time = to_time/iter;
     logger::quick_log("Time per iteration (topology optimization): ", it_time, " seconds");
-    logger::quick_log("Number of iterations (topology optimization): ", data.it_num);
+    logger::quick_log("Number of iterations (topology optimization): ", iter);
    
     logger::quick_log(" "); 
-    if(this->save_result && (r > 0 || r == nlopt::FORCED_STOP)){
+    if(this->save_result){
         logger::quick_log("Saving resulting topology...");
         std::cout << "\r" << 0 << "%         ";
         TopoDS_Shape result = BRepBuilderAPI_Copy(this->data->ground_structure->shape);
-        for(size_t i = 0; i < data.new_x.size(); ++i){
-            if(data.new_x[i] >= this->result_threshold){
+        for(size_t i = 0; i < this->new_x.size(); ++i){
+            if(this->new_x[i] >= this->result_threshold){
                 result = utils::cut_shape(result, mesh->element_list[i]->get_shape());
             }
-            double pc = i/(double)(data.new_x.size()-1);
+            double pc = i/(double)(this->new_x.size()-1);
             std::cout << "\r" << pc*100 << "%         ";
         }
         result = utils::cut_shape(this->data->ground_structure->shape, result);
@@ -228,5 +165,102 @@ TopoDS_Shape MinimalCompliance::optimize(Visualization* viz, FiniteElement* fem,
     return TopoDS_Shape();
 }
 
+double MinimalCompliance::fobj(const std::vector<double>& x){
+    double pc = this->pc;
+    double c = 0;
+
+    // Density filtering
+    for(size_t i = 0; i < x.size(); ++i){
+        this->new_x[i] = 0;
+        for(const auto& j:this->neighbors[i]){
+            // double dist = this->mesh->element_list[i]->get_centroid().Distance(this->mesh->element_list[j]->get_centroid());
+            double dist = std::sqrt(std::pow(this->p[3*i] - this->p[3*j], 2) + std::pow(this->p[3*i+1] - this->p[3*j+1], 2) + std::pow(this->p[3*i+2] - this->p[3*j+2], 2));
+            double wj = 1 - dist/this->r_o;
+            this->new_x[i] += wj*x[j];
+        }
+        this->new_x[i] /= this->w[i];
+    }
+
+    std::vector<double> u = this->fem->calculate_displacements(this->data, this->mesh, this->new_x, pc);
+
+    for(size_t i = 0; i < this->new_x.size(); ++i){
+        auto& e = this->mesh->element_list[i];
+        double uKu = e->get_compliance(u);
+        c += std::pow(this->new_x[i], pc)*uKu;
+    }
+
+    return c;
+
+}
+double MinimalCompliance::fobj_grad(const std::vector<double>& x, std::vector<double>& grad){
+    double pc = this->pc;
+    double c = 0;
+
+    std::vector<double> grad_tmp(x.size());
+
+    // Density filtering
+    for(size_t i = 0; i < x.size(); ++i){
+        this->new_x[i] = 0;
+        for(const auto& j:this->neighbors[i]){
+            // double dist = this->mesh->element_list[i]->get_centroid().Distance(this->mesh->element_list[j]->get_centroid());
+            double dist = std::sqrt(std::pow(this->p[3*i] - this->p[3*j], 2) + std::pow(this->p[3*i+1] - this->p[3*j+1], 2) + std::pow(this->p[3*i+2] - this->p[3*j+2], 2));
+            double wj = 1 - dist/this->r_o;
+            this->new_x[i] += wj*x[j];
+        }
+        this->new_x[i] /= this->w[i];
+    }
+    this->viz->update_density_view(this->new_x);
+
+    std::vector<double> u = this->fem->calculate_displacements(this->data, this->mesh, this->new_x, pc);
+
+    for(size_t i = 0; i < this->new_x.size(); ++i){
+        auto& e = this->mesh->element_list[i];
+        double uKu = e->get_compliance(u);
+        grad_tmp[i] = -pc*std::pow(this->new_x[i], pc-1)*uKu;
+        c += std::pow(this->new_x[i], pc)*uKu;
+    }
+    for(size_t i = 0; i < x.size(); ++i){
+         grad[i] = 0;
+         for(const auto& j:this->neighbors[i]){
+             // double dist = this->mesh->element_list[i]->get_centroid().Distance(this->mesh->element_list[j]->get_centroid());
+             double dist = std::sqrt(std::pow(this->p[3*i] - this->p[3*j], 2) + std::pow(this->p[3*i+1] - this->p[3*j+1], 2) + std::pow(this->p[3*i+2] - this->p[3*j+2], 2));
+             double wj = 1 - dist/this->r_o;
+             // Yes, it is w[j] instead of w[i] here
+             grad[i] += wj*grad_tmp[j]/this->w[j];
+         }
+    }
+
+    return c;
+}
+
+double MinimalCompliance::fc_norm(const std::vector<double>& x){
+    double V = 0;
+
+    for(size_t i = 0; i < x.size(); ++i){
+        V += this->new_x[i]*this->grad_V[i];
+    }
+    this->cur_V = V;
+
+    return V - this->Vfinal*this->max_V;
+
+}
+double MinimalCompliance::fc_norm_grad(const std::vector<double>& x, std::vector<double>& grad){
+    double V = 0;
+
+    for(size_t i = 0; i < x.size(); ++i){
+        grad[i] = 0;
+        V += this->new_x[i]*this->grad_V[i];
+        for(const auto& j:this->neighbors[i]){
+            // double dist = this->mesh->element_list[i]->get_centroid().Distance(this->mesh->element_list[j]->get_centroid());
+            double dist = std::sqrt(std::pow(this->p[3*i] - this->p[3*j], 2) + std::pow(this->p[3*i+1] - this->p[3*j+1], 2) + std::pow(this->p[3*i+2] - this->p[3*j+2], 2));
+            double wj = 1 - dist/this->r_o;
+            // Yes, it is w[j] instead of w[i] here
+            grad[i] += wj*this->grad_V[j]/this->w[j];
+        }
+    }
+    this->cur_V = V;
+
+    return V - this->Vfinal*this->max_V;
+}
 
 }

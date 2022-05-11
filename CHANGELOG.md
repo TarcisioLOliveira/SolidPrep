@@ -17,7 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improved resizing method so it works with trussed and indeterminate structures.
 - Somewhat improved speed of resizing.
 - Make OneLab default to dark mode.
-- Make MinimalVolume use MMA (temporarily).
+- Make MinimalVolume and MinimalCompliance use MMA.
 - Show sizing time when using `beams_only` mode.
 - Change font renderer for OneLab.
 
