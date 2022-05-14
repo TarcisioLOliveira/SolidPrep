@@ -217,8 +217,9 @@ double MinimalCompliance::fobj_grad(const std::vector<double>& x, std::vector<do
         auto& e = this->mesh->element_list[i];
         double uKu = e->get_compliance(u);
         grad_tmp[i] = -pc*std::pow(this->new_x[i], pc-1)*uKu;
-        c += std::pow(this->new_x[i], pc)*uKu;
+        //c += std::pow(this->new_x[i], pc)*uKu;
     }
+    c = cblas_ddot(u.size(), this->mesh->load_vector.data(), 1, u.data(), 1);
     for(size_t i = 0; i < x.size(); ++i){
          grad[i] = 0;
          for(const auto& j:this->neighbors[i]){
