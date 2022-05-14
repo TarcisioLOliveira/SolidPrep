@@ -36,6 +36,7 @@ class Visualization{
     void update_stress_view(const std::vector<double>& s, size_t id = 1);
     void update_nodal_stress_view(const std::vector<double>& s);
     void update_density_view(const std::vector<double>& d);
+    void update_vector_view(const std::vector<std::unique_ptr<MeshNode>>& nodes, const std::vector<double>& values);
     void show();
     inline void hide(){
         this->shown = false;
@@ -54,6 +55,7 @@ class Visualization{
     bool shown = false;
     Meshing* mesh = nullptr;
     int tag = 0;
+    utils::ProblemType type = utils::PROBLEM_TYPE_2D;
 };
 
 #endif

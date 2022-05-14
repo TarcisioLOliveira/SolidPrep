@@ -30,6 +30,7 @@ void Visualization::load_mesh(Meshing* mesh, utils::ProblemType type){
     gmsh::model::add(this->MODEL_NAME);
 
     this->mesh = mesh;
+    this->type = type;
 
     std::vector<double> coords;
     coords.reserve(mesh->node_list.size()*3);
@@ -84,6 +85,8 @@ void Visualization::load_mesh(Meshing* mesh, utils::ProblemType type){
     gmsh::view::add(this->DENSITY_VIEW, 5);
     gmsh::view::option::setNumber(5, "ColormapNumber", 9); //grayscale
     gmsh::view::option::setNumber(5, "ColormapInvert", 1.0); //inverted
+    gmsh::view::add("Displacement View", 6);
+
 }
 
 void Visualization::update_stress_view(const std::vector<double>& s, size_t id){
@@ -145,6 +148,38 @@ void Visualization::update_density_view(const std::vector<double>& d){
     }
     logger::quick_log("Done.");
 }
+
+void Visualization::update_vector_view(const std::vector<std::unique_ptr<MeshNode>>& nodes, const std::vector<double>& values){
+    logger::quick_log("Updating view...");
+
+    std::vector<std::vector<double>> vecs;
+    vecs.reserve(nodes.size());
+    std::vector<size_t> node_tags;
+    node_tags.reserve(nodes.size());
+    if(this->type == utils::PROBLEM_TYPE_2D){
+        for(size_t i = 0; i < nodes.size(); ++i){
+            node_tags.push_back(i+1);
+            std::vector<double> tmp;
+            for(size_t j = 0; j < 2; ++j){
+                if(nodes[i]->u_pos[j] > -1){
+                    tmp.push_back(values[nodes[i]->u_pos[j]]);
+                } else {
+                    tmp.push_back(0);
+                }
+            }
+            tmp.push_back(0);
+            vecs.push_back(tmp);
+        }
+    }
+    gmsh::view::addModelData(6, 0, this->MODEL_NAME, "NodeData", node_tags, vecs, 0, 3);
+
+    if(this->shown){
+        gmsh::graphics::draw();
+    }
+    logger::quick_log("Done.");
+
+}
+
 
 void Visualization::show(){
     this->shown = true;
