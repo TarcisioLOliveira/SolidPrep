@@ -44,7 +44,6 @@ class MinimalCompliance : public TopologyOptimization{
     Visualization* viz;
     FiniteElement* fem;
     Meshing* mesh;
-    std::vector<double> new_x;
     double max_V;
     double cur_V;
     std::vector<double> grad_V;
@@ -58,6 +57,10 @@ class MinimalCompliance : public TopologyOptimization{
 
     double fc_norm(const std::vector<double>& x);
     double fc_norm_grad(const std::vector<double>& x, std::vector<double>& grad);
+
+    void init_convolution_filter();
+    std::vector<double> convolution_filter_density(const std::vector<double>& x);
+    std::vector<double> convolution_grad_correction(const std::vector<double>& df);
 };
 
 }
