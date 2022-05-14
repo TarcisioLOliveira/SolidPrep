@@ -90,6 +90,7 @@ TopoDS_Shape MinimalCompliance::optimize(Visualization* viz, FiniteElement* fem,
     // int max_innerit = 30;
     double ch = 1.0;
     int iter;
+    std::vector<double> newx;
 	for (iter = 0; (ch > this->xtol_abs && std::abs(ff-fnew)/fnew > this->ftol_rel); ++iter){
 
         fnew = ff;
@@ -103,7 +104,7 @@ TopoDS_Shape MinimalCompliance::optimize(Visualization* viz, FiniteElement* fem,
             xold[i] = x[i];
         }
 
-        auto newx = this->convolution_filter_density(x);
+        newx = this->convolution_filter_density(x);
         ff = this->fobj_grad(newx, df);
         g[0] = this->fc_norm_grad(newx, dg);
         df = this->convolution_grad_correction(df);
@@ -144,6 +145,15 @@ TopoDS_Shape MinimalCompliance::optimize(Visualization* viz, FiniteElement* fem,
         std::cout << "\r" << 100 << "%         ";
         logger::quick_log(" "); 
     }
+
+    // Validate results
+    auto newmesh = this->mesh->prune(newx, this->result_threshold);
+    this->mesh->prepare_for_FEM(newmesh, this->data->topopt_element, this->data);
+    std::vector<double> u = this->fem->calculate_displacements(this->data, this->mesh);
+    double c = cblas_ddot(u.size(), this->mesh->load_vector.data(), 1, u.data(), 1);
+    logger::quick_log(" ");
+    logger::quick_log("Compliance error: ", 100*(ff/c-1), "%");
+    logger::quick_log(" ");
 
     return TopoDS_Shape();
 }
