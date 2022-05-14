@@ -88,6 +88,7 @@ void Meshing::prepare_for_FEM(const std::vector<ElementShape>& base_mesh,
         }
     }
 
+    this->load_vector.clear();
     this->load_vector.resize(current);
 
     for(auto& e : base_mesh){
@@ -219,6 +220,52 @@ void Meshing::prepare_for_FEM(const std::vector<ElementShape>& base_mesh,
         // TODO
     }
 
+}
+
+std::vector<ElementShape> Meshing::prune(const std::vector<double>& rho, double threshold){
+    std::vector<ElementShape> list;
+    { // Remove elements
+        auto r = rho.begin();
+        for(auto& e:this->element_list){
+            if(*r >= threshold){
+                list.emplace_back();
+                for(auto& n:e->nodes){
+                    list.back().nodes.push_back(static_cast<MeshNode*>(n));
+                }
+            }
+            ++r;
+        }
+    }
+
+    std::vector<bool> used(this->node_list.size(), false);
+    for(auto& e:list){
+        for(auto& n:e.nodes){
+            used[n->id] = true;
+        }
+    }   
+
+    bool renumber = false;
+    auto it = this->node_list.begin();
+    while(it < this->node_list.end()){
+        if(!used[(*it)->id]){
+            it = this->node_list.erase(it);
+            renumber = true;
+        } else {
+            ++it;
+        }
+    }
+
+    size_t new_id;
+    if(renumber){
+        new_id = 0;
+        for(auto& n : this->node_list){
+            n->id = new_id;
+            ++new_id;
+        }
+    }
+    this->reverse_cuthill_mckee(list);
+
+    return list;
 }
 
 std::vector<long> Meshing::get_support_dof(size_t& offset, size_t id, const Support& support, MeshElementFactory::MeshElementType type) const{

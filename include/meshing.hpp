@@ -63,6 +63,15 @@ class Meshing{
                                  MeshElementFactory::MeshElementType element_type,
                                  ProjectData* data, bool force_only = false);
 
+    /**
+     * Removes elements below a certain density threshold. Useful for
+     * validating and saving results.
+     *
+     * @param rho Density vector
+     * @param threshold Density threshold
+     */
+    virtual std::vector<ElementShape> prune(const std::vector<double>& rho, double threshold);
+
     virtual void clear_results();
 
     std::vector<std::unique_ptr<MeshNode>> node_list;
