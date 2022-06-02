@@ -38,6 +38,7 @@ endif()
 
 include_directories(
     ${PROJECT_SOURCE_DIR}/include
+    ${PROJECT_SOURCE_DIR}/rapidjson/include
     SYSTEM
     ${OpenCASCADE_INCLUDE_DIR}
     ${LAPACK_INCLUDE_DIR}

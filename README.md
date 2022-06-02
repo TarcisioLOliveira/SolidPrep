@@ -26,13 +26,20 @@ Dependencies:
 - [OpenCascade](https://git.dev.opencascade.org/gitweb/?p=occt.git;a=summary)
 - [LAPACK, LAPACKE, CBLAS](http://www.netlib.org/lapack/)
 - [Gmsh](https://gmsh.info/)
+- [RapidJSON](https://github.com/Tencent/rapidjson) (included as submodule)
 
-Also includes code from [RapidJSON](https://github.com/Tencent/rapidjson) and 
+Also includes code from  and 
 [jdumas/mma](https://github.com/jdumas/mma).
 
 Installation consists on installing the dependencies somewhere CMake can find 
 them (which should be done automatically when building them with CMake or using 
-a package manager such as `apt`). After that, the program can be built as usual:
+a package manager such as `apt`). Then, load submodule with:
+
+```bash
+git submodule update --init
+```
+
+After that, the program can be built as usual:
 
 ```bash
 mkdir build
