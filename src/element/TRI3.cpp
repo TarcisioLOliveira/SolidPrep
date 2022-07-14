@@ -123,23 +123,23 @@ std::vector<double> TRI3::get_stress_tensor(gp_Pnt p, const std::vector<double>&
     return S;
 }
 
-MeshNode* TRI3::get_internal_loads(size_t node, const std::vector<double>& u) const{
+std::vector<double> TRI3::get_internal_loads(size_t node, const std::vector<double>& u) const{
     logger::log_assert(node >= 0 && node <= 3, logger::ERROR, "wrong value for BeamLinear2D node, must be either 0 or 1.");
 
     std::vector<double> k = this->get_k();
 
-    MeshNode2D* n = static_cast<MeshNode2D*>(this->nodes[node]);
+    std::vector<double> results(2, 0);
     for(int i = 0; i < 2; ++i){
         for(size_t l = 0; l < 3; ++l){
             for(int j = 0; j < 2; ++j){
                 if(this->nodes[l]->u_pos[j] > -1){
-                    n->results[i] += k[(node*2+i)*6+l*2+j]*u[this->nodes[l]->u_pos[j]];
+                    results[i] += k[(node*2+i)*6+l*2+j]*u[this->nodes[l]->u_pos[j]];
                 }
             }
         }
     }
 
-    return this->get_node(node);
+    return results;
 }
 
 double TRI3::get_compliance(const std::vector<double>& u, const std::vector<double>& l) const{

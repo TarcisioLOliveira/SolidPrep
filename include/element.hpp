@@ -34,13 +34,11 @@ class Node{
     public:
     const gp_Pnt point; ///< Node position
     size_t id;
-    double * const results; ///< Stores results, such as stress or reactions
     /**
      * Stores the position of the values of local displacement in the global
      * displacement vector.
      */
     long * u_pos;
-    ~Node(){ delete[] results; }
 
     protected:
     /**
@@ -48,9 +46,8 @@ class Node{
      *
      * @param p Node position.
      * @param id Node id.
-     * @param dim Size of results array.
      */
-    Node(gp_Pnt p, size_t id, size_t dim):point(p), id(id), results(new double[dim]()), u_pos(nullptr){}
+    Node(gp_Pnt p, size_t id):point(p), id(id), u_pos(nullptr){}
 };
 
 /**
@@ -72,7 +69,7 @@ class BeamNode : public Node{
      * @param dim Height of the cross-section at point p.
      * @param normal Normal of the cross-section at point p.
      */
-    BeamNode(gp_Pnt p, size_t id, size_t res_n, double dim, gp_Dir n):Node(p, id, res_n),dim(dim), normal(n){}
+    BeamNode(gp_Pnt p, size_t id, double dim, gp_Dir n):Node(p, id),dim(dim), normal(n){}
 };
 
 /**
@@ -89,7 +86,7 @@ class BeamNode2D : public BeamNode{
      * @param dim Height of the cross-section at point p.
      * @param n Normal of the cross-section at point p.
      */
-    BeamNode2D(gp_Pnt p, size_t id, double dim, gp_Dir n):BeamNode(p, id, 3, dim, n){}
+    BeamNode2D(gp_Pnt p, size_t id, double dim, gp_Dir n):BeamNode(p, id, dim, n){}
 };
 
 /**
@@ -119,27 +116,14 @@ class BeamNodeFactory{
 class MeshNode : public Node{
     public:
     virtual ~MeshNode() = default;
-    /**
-     * Gets the size of the results array.
-     *
-     * @return Size of results array.
-     */
-    virtual size_t get_result_size() const = 0;
-    /**
-     * Gets Von Mises stress based on results array.
-     *
-     * @return Von Mises stress.
-     */
-    virtual double get_Von_Mises() const = 0;
     protected:
     /**
      * Constructs the mesh node instance.
      *
      * @param p Position.
      * @param id Node id.
-     * @param res_n Size of the result array.
      */
-    MeshNode(gp_Pnt p, size_t id, size_t res_n): Node(p, id, res_n){}
+    MeshNode(gp_Pnt p, size_t id): Node(p, id){}
 };
 
 /**
@@ -155,11 +139,7 @@ class MeshNode2D : public MeshNode{
      * @param p Position.
      * @param id Node id.
      */
-    MeshNode2D(gp_Pnt p, size_t id):MeshNode(p, id, 3){}
-    virtual size_t get_result_size() const override{ return 3; }
-    virtual double get_Von_Mises() const override{
-        return std::sqrt(std::pow(results[0], 2) - results[0]*results[1] + std::pow(results[1], 2) + 3*std::pow(results[2], 2));
-    }
+    MeshNode2D(gp_Pnt p, size_t id):MeshNode(p, id){}
 };
 
 /**
@@ -240,9 +220,9 @@ class BeamElement : public Element{
      * @param node Number of the node within the element's list of nodes.
      * @param u Displacement vector.
      *
-     * @return A pointer to the node.
+     * @return Internal loads per node.
      */
-    virtual BeamNode* get_internal_loads(size_t node, const std::vector<double>& u) const = 0;
+    virtual std::vector<double> get_internal_loads(size_t node, const std::vector<double>& u) const = 0;
     /**
      * Returns an element node.
      *
@@ -281,9 +261,9 @@ class MeshElement : public Element{
      * @param node Number of the node within the element's list of nodes.
      * @param u Displacement vector.
      *
-     * @return A pointer to the node.
+     * @return Internal loads at node.
      */
-    virtual MeshNode* get_internal_loads(size_t node, const std::vector<double>& u) const = 0;
+    virtual std::vector<double> get_internal_loads(size_t node, const std::vector<double>& u) const = 0;
     /** 
      * Calculates the Von Mises stresses at a point within the element.
      *

@@ -62,25 +62,25 @@ std::vector<double> BeamLinear2D::get_k() const{
     return k;
 }
 
-BeamNode* BeamLinear2D::get_internal_loads(size_t node, const std::vector<double>& u) const{
+std::vector<double> BeamLinear2D::get_internal_loads(size_t node, const std::vector<double>& u) const{
     logger::log_assert(node == 0 || node == 1, logger::ERROR, "wrong value for BeamLinear2D node, must be either 0 or 1.");
 
     std::vector<double> k = this->get_k();
+    std::vector<double> results(3, 0);
 
-    BeamNode2D* n = static_cast<BeamNode2D*>(this->nodes[node]);
     for(int i = 0; i < 3; ++i){
-        n->results[i] = 0;
+        results[i] = 0;
         for(int l = 0; l < 2; ++l){
             for(int j = 0; j < 3; ++j){
                 if(this->nodes[l]->u_pos[j] > -1){
-                    n->results[i] += k[utils::to_triangular(node*3+i, 3*l+j)]*u[this->nodes[l]->u_pos[j]];
+                    results[i] += k[utils::to_triangular(node*3+i, 3*l+j)]*u[this->nodes[l]->u_pos[j]];
                 }
             }
         }
-        n->results[i] = std::abs(n->results[i]);
+        results[i] = std::abs(results[i]);
     }
 
-    return this->get_node(node);
+    return results;
 }
 
 }

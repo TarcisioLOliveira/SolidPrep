@@ -53,8 +53,10 @@ class BeamGraph{
 
     /**
      * Generates the graph.
+     *
+     * @return Internal reactions.
      */
-    void run();
+    std::vector<double> run();
    
     /**
      * Gets a node based on its id.

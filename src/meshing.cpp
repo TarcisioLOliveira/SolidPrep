@@ -313,14 +313,6 @@ std::vector<double> Meshing::get_force_dof(const Force& force, MeshElementFactor
 }
 
 
-void Meshing::clear_results(){
-    for(auto& n:this->node_list){
-        for(size_t i = 0; i < n->get_result_size(); ++i){
-            n->results[i] = 0;
-        }
-    }
-}
-
 void Meshing::reverse_cuthill_mckee(const std::vector<ElementShape>& elem_list){
     // Create adjacency "matrix"
     std::vector<std::set<size_t>> adjacents(this->node_list.size());

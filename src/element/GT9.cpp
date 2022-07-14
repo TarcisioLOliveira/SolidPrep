@@ -31,6 +31,7 @@
 #include <TopoDS.hxx>
 #include <IntTools_EdgeEdge.hxx>
 #include <Standard_Handle.hxx>
+#include <vector>
 
 namespace element{
 
@@ -362,23 +363,23 @@ std::vector<double> GT9::get_loads_at(gp_Pnt point, const std::vector<double>& u
     return res;
 }
 
-MeshNode* GT9::get_internal_loads(size_t node, const std::vector<double>& u) const{
+std::vector<double> GT9::get_internal_loads(size_t node, const std::vector<double>& u) const{
     logger::log_assert(node >= 0 && node <= 3, logger::ERROR, "wrong value for BeamLinear2D node, must be either 0 or 1.");
 
     std::vector<double> k = this->get_k();
 
-    MeshNode2D* n = static_cast<MeshNode2D*>(this->nodes[node]);
+    std::vector<double> results(3, 0);
     for(int i = 0; i < 3; ++i){
         for(size_t l = 0; l < 3; ++l){
             for(int j = 0; j < 3; ++j){
                 if(this->nodes[l]->u_pos[j] > -1){
-                    n->results[i] += k[(node*3+i)*3*3+l*3+j]*u[this->nodes[l]->u_pos[j]];
+                    results[i] += k[(node*3+i)*3*3+l*3+j]*u[this->nodes[l]->u_pos[j]];
                 }
             }
         }
     }
 
-    return this->get_node(node);
+    return results;
 }
 
 std::vector<gp_Pnt> GT9::get_intersection_points(const TopoDS_Shape& crosssection) const{

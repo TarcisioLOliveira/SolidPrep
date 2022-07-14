@@ -72,8 +72,6 @@ class Meshing{
      */
     virtual std::vector<ElementShape> prune(const std::vector<double>& rho, double threshold);
 
-    virtual void clear_results();
-
     std::vector<std::unique_ptr<MeshNode>> node_list;
     std::vector<std::unique_ptr<MeshElement>> element_list;
     std::vector<double> load_vector;

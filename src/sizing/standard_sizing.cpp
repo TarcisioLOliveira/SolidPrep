@@ -82,7 +82,6 @@ TopoDS_Shape StandardSizing::boundary_expansion_approach(){
     auto m = mesh.mesh(beams);
     mesh.prepare_for_FEM(m, MeshElementFactory::GT9, this->data);//, true);
     auto u = this->solver->calculate_displacements(this->data, &mesh);
-    this->solver->calculate_forces(&mesh, u);
 
     if(this->data->type == utils::PROBLEM_TYPE_2D){
         return this->expansion_2D(mesh, u, beams);
@@ -174,6 +173,8 @@ TopoDS_Shape StandardSizing::expansion_2D(const meshing::StandardBeamMesher& mes
             }
         }
 
+        auto reactions = this->solver->calculate_forces(&mesh, u, this->data->topopt_element);
+        auto dof = MeshElementFactory::get_dof_per_node(this->data->topopt_element);
         double Fx = 0;
         double Fy = 0;
         double Mz = 0;
@@ -181,11 +182,11 @@ TopoDS_Shape StandardSizing::expansion_2D(const meshing::StandardBeamMesher& mes
             if(final_line.Contains(n->point, Precision::Confusion())){
                 double dist = center.Distance(n->point);
                 if(dist < distance/2 + Precision::Confusion()){
-                    Fx += n->results[0];
-                    Fy += n->results[1];
+                    Fx += reactions[n->id*dof + 0];
+                    Fy += reactions[n->id*dof + 1];
                     // This method is way too good to be true.
                     // But looks like it's true.
-                    gp_Vec F(n->results[0], n->results[1], 0);
+                    gp_Vec F(reactions[n->id*dof + 0], reactions[n->id*dof + 1], 0);
                     //logger::quick_log(F.X(), F.Y());
                     gp_Vec d(center, n->point);
                     //logger::quick_log(d.X(), d.Y());

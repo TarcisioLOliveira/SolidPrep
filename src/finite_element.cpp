@@ -22,20 +22,20 @@
 #include "logger.hpp"
 #include "project_data.hpp"
 
-void FiniteElement::calculate_forces(Meshing* mesh, const std::vector<double>& displacements) const{
+std::vector<double> FiniteElement::calculate_forces(const Meshing* mesh, const std::vector<double>& displacements, MeshElementFactory::MeshElementType type) const{
     logger::quick_log("Calculating forces...");
+    size_t dof = MeshElementFactory::get_dof_per_node(type);
+    std::vector<double> results(mesh->node_list.size()*dof, 0);
     for(auto& e:mesh->element_list){
         for(size_t n = 0; n < e->nodes.size(); ++n){
-            MeshNode* node = e->get_node(n);
-            for(size_t k = 0; k < node->get_result_size(); ++k){
-                node->results[k] = 0;
+            auto f = e->get_internal_loads(n, displacements);
+            auto& node = e->nodes[n];
+            for(size_t i = 0; i < dof; ++i){
+                results[node->id*dof + i] += f[i];
             }
         }
     }
-    for(auto& e:mesh->element_list){
-        for(size_t n = 0; n < e->nodes.size(); ++n){
-            e->get_internal_loads(n, displacements);
-        }
-    }
     logger::quick_log("Done.");
+
+    return results;
 }

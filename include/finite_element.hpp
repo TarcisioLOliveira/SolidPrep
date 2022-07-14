@@ -24,6 +24,7 @@
 #include <vector>
 #include "element.hpp"
 #include "meshing.hpp"
+#include "element_factory.hpp"
 
 class ProjectData;
 
@@ -32,7 +33,7 @@ class FiniteElement{
 
     virtual std::vector<double> calculate_displacements(ProjectData* data, Meshing* mesh, const std::vector<double>& density = std::vector<double>(), double pc = 3, bool use_stored_matrix = false, const std::vector<double>& virtual_load = std::vector<double>()) = 0;
 
-    virtual void calculate_forces(Meshing* mesh, const std::vector<double>& displacements) const;
+    virtual std::vector<double> calculate_forces(const Meshing* mesh, const std::vector<double>& displacements, MeshElementFactory::MeshElementType type) const;
 };
 
 #endif

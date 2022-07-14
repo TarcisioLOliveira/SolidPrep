@@ -55,16 +55,16 @@ BeamSizing::BeamSizing(ProjectData* data, BeamElementFactory::BeamElementType t)
 
 TopoDS_Shape BeamSizing::run(){
     BeamGraph graph(this->data, this->type);
-    graph.run();
+    auto results = graph.run();
     if(this->data->type == utils::PROBLEM_TYPE_2D){
         TopoDS_Shape copy = BRepBuilderAPI_Copy(this->data->ground_structure->shape);
 
         size_t graph_size = graph.size();
         for(size_t i = 0; i < graph_size; ++i){
             BeamNode* n = graph.get(i);
-            double Fx = n->results[0];
-            double Fy = n->results[1];
-            double Mz = n->results[2];
+            double Fx = results[i*3+0];
+            double Fy = results[i*3+1];
+            double Mz = results[i*3+2];
 
             gp_Vec normal(n->normal);
             gp_Vec F(Fx, Fy, 0);

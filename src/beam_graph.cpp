@@ -23,7 +23,7 @@
 #include "logger.hpp"
 #include "utils.hpp"
 
-void BeamGraph::run(){
+std::vector<double> BeamGraph::run(){
     // Uses UPLO=L lower symmetric band matrices
 
     std::vector<std::vector<gp_Pnt>> beams;
@@ -159,17 +159,23 @@ void BeamGraph::run(){
     K.clear();
 
     // Calculate reactions
+    std::vector<double> reactions;
+    reactions.reserve((elems.size()+1)*3);
     for(size_t i = 0; i < elems.size(); ++i){
         if(elems[i]->get_node(0)->id < 0){
-            elems[i]->get_internal_loads(0, F);
+            auto res = elems[i]->get_internal_loads(0, F);
+            reactions.insert(reactions.end(), res.begin(), res.end());
         }
-        elems[i]->get_internal_loads(1, F);
+        auto res = elems[i]->get_internal_loads(1, F);
+        reactions.insert(reactions.end(), res.begin(), res.end());
     }
     // Delete elements
     while(!elems.empty()){
         delete elems.back();
         elems.pop_back();
     }
+
+    return reactions;
 }
 
 void BeamGraph::insert_element_matrix(std::vector<double>& K, const std::vector<double>& k, const std::vector<long>& pos, int w, int& n) const{
