@@ -25,6 +25,7 @@ find_package(LAPACKE REQUIRED)
 find_package(CBLAS REQUIRED)
 find_library(GMSH_LIB gmsh REQUIRED)
 find_path(GMSH_INC gmsh.h REQUIRED)
+find_package(VTK REQUIRED)
 
 if(WIN32 OR CYGWIN)
     list(APPEND GMSH_LIB winmm wsock32 ws2_32 psapi)
@@ -44,6 +45,7 @@ include_directories(
     ${LAPACK_INCLUDE_DIR}
     ${LAPACKE_INCLUDE_DIR}
     ${GMSH_INC}
+    ${VTK_INCLUDE_DIR}
 )
    
 add_subdirectory(src)

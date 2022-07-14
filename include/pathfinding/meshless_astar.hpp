@@ -21,6 +21,7 @@
 #ifndef MESHLESS_ASTAR_HPP
 #define MESHLESS_ASTAR_HPP
 
+#include <array>
 #include "TopoDS_Solid.hxx"
 #include "pathfinding.hpp"
 #include "utils.hpp"
