@@ -21,6 +21,7 @@
 #ifndef FINITE_ELEMENT_HPP
 #define FINITE_ELEMENT_HPP
 
+#include <memory>
 #include <vector>
 #include "element.hpp"
 #include "meshing.hpp"
@@ -33,7 +34,7 @@ class FiniteElement{
 
     virtual std::vector<double> calculate_displacements(ProjectData* data, Meshing* mesh, const std::vector<double>& density = std::vector<double>(), double pc = 3, bool use_stored_matrix = false, const std::vector<double>& virtual_load = std::vector<double>()) = 0;
 
-    virtual std::vector<double> calculate_forces(const Meshing* mesh, const std::vector<double>& displacements, MeshElementFactory::MeshElementType type) const;
+    virtual std::vector<double> calculate_forces(const Meshing* mesh, const std::vector<double>& displacements, const std::unique_ptr<MeshElementFactory>& elem_maker) const;
 };
 
 #endif

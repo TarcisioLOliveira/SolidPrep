@@ -27,10 +27,3 @@ BeamNode* BeamNodeFactory::make_node(gp_Pnt p, size_t id, double dim, gp_Dir n, 
     }
     return nullptr;
 }
-
-MeshNode* MeshNodeFactory::make_node(gp_Pnt p, size_t id, MeshNodeType t){
-    if(t == MESH_NODE_2D){
-        return new MeshNode2D(p, id);
-    }
-    return nullptr;
-}

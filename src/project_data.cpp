@@ -18,6 +18,7 @@
  *
  */
 #include "project_data.hpp"
+#include "element/GT9.hpp"
 #include "pathfinding/meshless_astar.hpp"
 #include "pathfinding/visibility_graph.hpp"
 #include "material/linear_elastic_isotropic.hpp"
@@ -30,6 +31,7 @@
 #include "rapidjson/rapidjson.h"
 #include "sizing/beam_sizing.hpp"
 #include "utils.hpp"
+#include <memory>
 #define _USE_MATH_DEFINES
 #include <cmath>
 #include "force.hpp"
@@ -308,7 +310,7 @@ std::unique_ptr<Meshing> ProjectData::load_mesher(const rapidjson::GenericValue<
             algorithm = mesh["algorithm"].GetInt();
         }
         double size = mesh["element_size"].GetDouble();
-        mesher.reset(new meshing::Gmsh(size, MeshElementFactory::get_gmsh_element_type(this->topopt_element), this->type, this, algorithm));
+        mesher.reset(new meshing::Gmsh(size, this->topopt_element->get_element_order(), this->type, this, algorithm));
     }
     return mesher;
 }
@@ -358,15 +360,18 @@ std::unique_ptr<TopologyOptimization> ProjectData::load_topopt(const rapidjson::
     return topopt;
 }
 
-MeshElementFactory::MeshElementType ProjectData::get_element_type(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc){
+std::unique_ptr<MeshElementFactory> ProjectData::get_element_type(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc){
     std::string name = doc.GetString();
-    MeshElementFactory::MeshElementType type;
     if(name == "GT9"){
-        type = MeshElementFactory::GT9;
+        return std::unique_ptr<MeshElementFactory>(static_cast<MeshElementFactory*>(
+                    new MeshElementFactoryImpl<element::GT9>()
+                ));
     } else if(name == "TRI3"){
-        type = MeshElementFactory::TRI3;
+        return std::unique_ptr<MeshElementFactory>(static_cast<MeshElementFactory*>(
+                    new MeshElementFactoryImpl<element::TRI3>()
+                ));
     }
-    return type;
+    return nullptr;
 }
 
 std::vector<Force> ProjectData::get_loads(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc){

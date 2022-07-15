@@ -24,6 +24,7 @@
 #include "element.hpp"
 #include "material.hpp"
 #include <vector>
+#include "utils.hpp"
 
 class ProjectData;
 
@@ -31,6 +32,14 @@ namespace element{
 
 class TRI3 : public MeshElement{
     public:
+    static const size_t ORDER          = 1;
+    static const size_t GMSH_TYPE      = 2;
+    static const size_t NODE_DOF       = 2;
+    static const size_t NODES_PER_ELEM = 3;
+    static const size_t K_DIM          = NODE_DOF*NODES_PER_ELEM;
+
+    static const utils::ProblemType PROBLEM_TYPE = utils::PROBLEM_TYPE_2D;
+
     TRI3(ElementShape s, ProjectData* data);
 
     virtual std::vector<double> get_k() const override;
@@ -39,7 +48,6 @@ class TRI3 : public MeshElement{
     virtual std::vector<gp_Pnt> get_intersection_points(const TopoDS_Shape& crosssection) const override;
     virtual double get_stress_at(gp_Pnt p, const std::vector<double>& u) const override;
     virtual std::vector<double> get_stress_tensor(gp_Pnt p, const std::vector<double>& u) const override;
-    virtual size_t get_gmsh_element_type() const override{ return 2;};
     virtual double get_compliance(const std::vector<double>& u, const std::vector<double>& l = std::vector<double>()) const override;
     virtual void get_virtual_load(double mult, gp_Pnt point, const std::vector<double>& u, std::vector<double>& l) const override;
     virtual std::vector<double> get_f(gp_Dir dir, double norm, std::vector<gp_Pnt> points) const override;

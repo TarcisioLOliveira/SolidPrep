@@ -32,7 +32,7 @@
 
 
 void Meshing::prepare_for_FEM(const std::vector<ElementShape>& base_mesh,
-                              MeshElementFactory::MeshElementType element_type,
+                              const std::unique_ptr<MeshElementFactory>& element_type,
                               ProjectData* data, bool force_only){
     logger::log_assert(this->node_list.size() > 0, logger::ERROR, "the object's node list is empty. Ensure you are using the same Meshing instance as the one used to obtain the list of ElementShape instances");
     auto test = base_mesh[0].nodes[0];
@@ -45,15 +45,15 @@ void Meshing::prepare_for_FEM(const std::vector<ElementShape>& base_mesh,
     }
     logger::log_assert(correct, logger::ERROR, "object mismatch. Please ensure that the Meshing instance used to generate the list of ElementShape instances is the same as the one being used to prepare the mesh for FEM.");
 
-    this->type = element_type;
+    this->elem_maker = element_type.get();
     this->element_list.clear();
     this->element_list.reserve(base_mesh.size());
 
     auto comp = [](const std::unique_ptr<MeshNode>& a, const std::unique_ptr<MeshNode>& b){ return a->id < b->id;};
     std::sort(this->node_list.begin(), this->node_list.end(), comp);
 
-    size_t dof = MeshElementFactory::get_dof_per_node(element_type);
-    size_t k_size = MeshElementFactory::get_k_dimension(element_type);
+    size_t dof = this->elem_maker->get_dof_per_node();
+    size_t k_size = this->elem_maker->get_k_dimension();
 
     size_t current = 0;
     for(size_t i = 0; i < this->node_list.size(); ++i){
@@ -66,7 +66,7 @@ void Meshing::prepare_for_FEM(const std::vector<ElementShape>& base_mesh,
         for(auto& s : data->supports){
             if(s.S.is_inside(n->point)){//s.S.get_distance(n->point) <= this->size/4){//
                 size_t offset = 0;
-                std::vector<long> sup_pos = this->get_support_dof(offset, 0, s, element_type);
+                std::vector<long> sup_pos = this->get_support_dof(offset, 0, s, this->elem_maker);
                 for(size_t j = 0; j < dof; ++j){
                     if(sup_pos[j] >= 0){
                         if(n->u_pos[j] == 0){
@@ -92,7 +92,7 @@ void Meshing::prepare_for_FEM(const std::vector<ElementShape>& base_mesh,
     this->load_vector.resize(current);
 
     for(auto& e : base_mesh){
-        this->element_list.emplace_back(MeshElementFactory::make_element(element_type, e, data));
+        this->element_list.emplace_back(this->elem_maker->make_element(e, data));
     }
 
 
@@ -107,7 +107,7 @@ void Meshing::prepare_for_FEM(const std::vector<ElementShape>& base_mesh,
                 }
                 for(auto& n : node_list){
                     for(size_t i = 0; i < dof; ++i){
-                        std::vector<double> f_vec = this->get_force_dof(f, element_type);
+                        std::vector<double> f_vec = this->get_force_dof(f, this->elem_maker);
                         if(n->u_pos[i] >= 0){
                             this->load_vector[n->u_pos[i]] += f_vec[i]/node_list.size();
                         }
@@ -268,9 +268,9 @@ std::vector<ElementShape> Meshing::prune(const std::vector<double>& rho, double 
     return list;
 }
 
-std::vector<long> Meshing::get_support_dof(size_t& offset, size_t id, const Support& support, MeshElementFactory::MeshElementType type) const{
-    size_t size = MeshElementFactory::get_dof_per_node(type);
-    utils::ProblemType prob_type = MeshElementFactory::get_problem_type(type);
+std::vector<long> Meshing::get_support_dof(size_t& offset, size_t id, const Support& support, const MeshElementFactory* elem_maker) const{
+    size_t size = elem_maker->get_dof_per_node();
+    utils::ProblemType prob_type = elem_maker->get_problem_type();
     std::vector<long> pos(size);
     id *= size;
     switch(size){
@@ -292,9 +292,9 @@ std::vector<long> Meshing::get_support_dof(size_t& offset, size_t id, const Supp
     return pos;
 }
 
-std::vector<double> Meshing::get_force_dof(const Force& force, MeshElementFactory::MeshElementType type) const{
-    size_t size = MeshElementFactory::get_dof_per_node(type);
-    utils::ProblemType prob_type = MeshElementFactory::get_problem_type(type);
+std::vector<double> Meshing::get_force_dof(const Force& force, const MeshElementFactory* elem_maker) const{
+    size_t size = elem_maker->get_dof_per_node();
+    utils::ProblemType prob_type = elem_maker->get_problem_type();
     std::vector<double> f(size);
     switch(size){
         case 6:

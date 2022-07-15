@@ -116,7 +116,6 @@ class BeamNodeFactory{
 class MeshNode : public Node{
     public:
     virtual ~MeshNode() = default;
-    protected:
     /**
      * Constructs the mesh node instance.
      *
@@ -124,41 +123,6 @@ class MeshNode : public Node{
      * @param id Node id.
      */
     MeshNode(gp_Pnt p, size_t id): Node(p, id){}
-};
-
-/**
- * Superclass for 2D elements.
- *
- * @see MeshNode
- */
-class MeshNode2D : public MeshNode{
-    public:
-    /**
-     * Constructs the 2D mesh node instance.
-     *
-     * @param p Position.
-     * @param id Node id.
-     */
-    MeshNode2D(gp_Pnt p, size_t id):MeshNode(p, id){}
-};
-
-/**
- * Class used to create instances of the desired MeshNode subclass more easily.
- */
-class MeshNodeFactory{
-    public:
-    enum MeshNodeType{
-        NONE,
-        MESH_NODE_2D
-    };
-    /**
-     * Constructs the 2D mesh node instance with the specified type.
-     *
-     * @param p Position.
-     * @param id Node id.
-     * @param t Type of node.
-     */
-    static MeshNode* make_node(gp_Pnt p, size_t id, MeshNodeType t);
 };
 
 /**
@@ -351,14 +315,6 @@ class MeshElement : public Element{
      * @return The centroid.
      */
     virtual gp_Pnt get_centroid() const = 0;
-
-    /**
-     * Necessary to use Gmsh's GUI. See:
-     * https://gmsh.info/doc/texinfo/gmsh.html#MSH-file-format
-     * 
-     * @return Gmsh element type number.
-     */
-    virtual size_t get_gmsh_element_type() const = 0;
 
     /**
      * Returns an element node.

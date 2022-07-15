@@ -56,7 +56,7 @@ void Visualization::load_mesh(Meshing* mesh, utils::ProblemType type){
     std::vector<size_t> elem_tags;
     elem_tags.reserve(mesh->element_list.size());
     std::vector<size_t> elem_nodes;
-    elem_nodes.reserve(mesh->element_list.size()*mesh->element_list[0]->nodes.size());
+    elem_nodes.reserve(mesh->element_list.size()*mesh->elem_info->get_nodes_per_element());
     size_t etag = 1;
     for(auto& e:mesh->element_list){
         elem_tags.push_back(etag++);
@@ -64,7 +64,7 @@ void Visualization::load_mesh(Meshing* mesh, utils::ProblemType type){
             elem_nodes.push_back(n->id+1);
         }
     }
-    gmsh::model::mesh::addElementsByType(this->tag, mesh->element_list[0]->get_gmsh_element_type(), elem_tags, elem_nodes);
+    gmsh::model::mesh::addElementsByType(this->tag, mesh->elem_info->get_gmsh_element_type(), elem_tags, elem_nodes);
 
     // gmsh::option::setNumber("View.DrawLines", 0);
     // gmsh::option::setNumber("View.DrawPoints", 0);

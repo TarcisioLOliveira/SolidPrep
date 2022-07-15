@@ -105,7 +105,7 @@ class ProjectData {
     std::unique_ptr<TopologyOptimization> topopt;
     std::unique_ptr<FiniteElement> topopt_fea;
     std::unique_ptr<Meshing> topopt_mesher;
-    MeshElementFactory::MeshElementType topopt_element;
+    std::unique_ptr<MeshElementFactory> topopt_element;
     AnalysisType analysis;
     
     private:
@@ -133,7 +133,7 @@ class ProjectData {
 
     std::unique_ptr<TopologyOptimization> load_topopt(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc);
 
-    MeshElementFactory::MeshElementType get_element_type(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc);
+    std::unique_ptr<MeshElementFactory> get_element_type(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc);
 
     std::vector<Force> get_loads(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc);
 

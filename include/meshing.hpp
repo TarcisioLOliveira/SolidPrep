@@ -60,7 +60,7 @@ class Meshing{
      * @param force List of forces
      */
     virtual void prepare_for_FEM(const std::vector<ElementShape>& base_mesh,
-                                 MeshElementFactory::MeshElementType element_type,
+                                 const std::unique_ptr<MeshElementFactory>& element_type,
                                  ProjectData* data, bool force_only = false);
 
     /**
@@ -79,9 +79,14 @@ class Meshing{
 
     protected:
     double size;
-    MeshElementFactory::MeshElementType type;
-    std::vector<long> get_support_dof(size_t& offset, size_t id, const Support& support, MeshElementFactory::MeshElementType type) const;
-    std::vector<double> get_force_dof(const Force& force, MeshElementFactory::MeshElementType type) const;
+    const MeshElementFactory* elem_maker;
+
+    public:
+    const MeshElementFactory * const & elem_info = elem_maker;
+
+    protected:
+    std::vector<long> get_support_dof(size_t& offset, size_t id, const Support& support, const MeshElementFactory* elem_maker) const;
+    std::vector<double> get_force_dof(const Force& force, const MeshElementFactory* elem_maker) const;
     void reverse_cuthill_mckee(const std::vector<ElementShape>& elem_list);
     // Inside and not on boundary
     bool is_strictly_inside2D(gp_Pnt p, TopoDS_Shape s) const;

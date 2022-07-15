@@ -63,64 +63,52 @@ class BeamElementFactory{
 
 class MeshElementFactory{
     public:
-    enum MeshElementType{
-        NONE,
-        GT9,
-        TRI3
-    };
-    template<typename ... Args>
-    static MeshElement* make_element(MeshElementType t, const ElementShape& shape, ProjectData* data){
-        switch(t){
-            case GT9: return new element::GT9(shape, data);
-            case TRI3: return new element::TRI3(shape, data);
-            case NONE: return nullptr;
-        }
+    inline virtual MeshElement* make_element(const ElementShape& shape, ProjectData* data) const = 0;
+    inline virtual size_t get_k_dimension() const = 0;
+    inline virtual size_t get_dof_per_node() const = 0;
+    inline virtual size_t get_nodes_per_element() const = 0;
+    /**
+     * Necessary to use Gmsh's GUI. See:
+     * https://gmsh.info/doc/texinfo/gmsh.html#MSH-file-format
+     * 
+     * @return Gmsh element type number.
+     */
+    inline virtual size_t get_gmsh_element_type() const = 0;
+    inline virtual size_t get_element_order() const = 0;
+    inline virtual utils::ProblemType get_problem_type() const = 0;
+};
 
-        return nullptr;
+template<class T>
+class MeshElementFactoryImpl : public MeshElementFactory{
+    public:
+    inline MeshElement* make_element(const ElementShape& shape, ProjectData* data) const override{
+        return new T(shape, data);
     }
-    static MeshNodeFactory::MeshNodeType get_node_type(MeshElementType t){
-        switch(t){
-            case GT9: return MeshNodeFactory::MESH_NODE_2D;
-            case TRI3: return MeshNodeFactory::MESH_NODE_2D;
-            case NONE: return MeshNodeFactory::NONE;
-        }
-
-        return MeshNodeFactory::NONE;
+    inline size_t get_k_dimension() const override{
+        return T::K_DIM;
     }
-    static size_t get_k_dimension(MeshElementType t){
-        switch(t){
-            case GT9: return 9;
-            case TRI3: return 6;
-            case NONE: return 0;
-        }
-        return 0;
+    inline size_t get_dof_per_node() const override{
+        return T::NODE_DOF;
     }
-    static size_t get_dof_per_node(MeshElementType t){
-        switch(t){
-            case GT9: return 3;
-            case TRI3: return 2;
-            case NONE: return 0;
-        }
-        return 0;
+    inline size_t get_nodes_per_element() const override{
+        return T::NODES_PER_ELEM;
     }
-    static size_t get_gmsh_element_type(MeshElementType t){
-        switch(t){
-            case GT9:
-            case TRI3: return 1;
-            case NONE: return 0;
-        }
-        return 0;
-
+    /**
+     * Necessary to use Gmsh's GUI. See:
+     * https://gmsh.info/doc/texinfo/gmsh.html#MSH-file-format
+     * 
+     * @return Gmsh element type number.
+     */
+    inline size_t get_gmsh_element_type() const override{
+        return T::GMSH_TYPE;
     }
-    static utils::ProblemType get_problem_type(MeshElementType t){
-        switch(t){
-            case GT9:
-            case TRI3:
-            case NONE: 
-                return utils::PROBLEM_TYPE_2D;
-        }
-        return utils::PROBLEM_TYPE_2D;
+    inline utils::ProblemType get_problem_type() const override{
+        return T::PROBLEM_TYPE;
+    }
+    inline size_t get_element_order() const override{
+        return T::ORDER;
     }
 };
+
 
 #endif

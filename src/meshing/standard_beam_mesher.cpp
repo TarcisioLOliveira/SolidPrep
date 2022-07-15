@@ -115,7 +115,7 @@ std::vector<ElementShape> StandardBeamMesher::mesh(TopoDS_Shape s){
     if(this->dim == 2){
         for(size_t i = 0; i < nodeTags.size(); ++i){
             gp_Pnt p(nodeCoords[i*3], nodeCoords[i*3+1], nodeCoords[i*3+2]);
-            this->node_list.emplace_back(MeshNodeFactory::make_node(p, nodeTags[i], MeshNodeFactory::MESH_NODE_2D)); 
+            this->node_list.emplace_back(new MeshNode(p, nodeTags[i]));
         }
     } else {
         // for(size_t i = 0; i < nodeTags.size(); ++i){
