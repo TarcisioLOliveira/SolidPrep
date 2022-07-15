@@ -23,8 +23,6 @@
 
 #include "element.hpp"
 #include "element/beam_linear_2D.hpp"
-#include "element/GT9.hpp"
-#include "element/TRI3.hpp"
 #include "utils.hpp"
 #include <vector>
 

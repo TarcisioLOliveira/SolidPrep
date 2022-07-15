@@ -26,6 +26,7 @@
 #include <vector>
 #include <TopoDS_Shape.hxx>
 #include <TopoDS_Edge.hxx>
+#include <memory>
 
 /**
  * Basic node superclass.
@@ -206,6 +207,7 @@ class BeamElement : public Element{
     BeamElement(BeamNode* p1, BeamNode* p2):Element({p1,p2}){}
 };
 
+class MeshElementFactory;
 /**
  * Basic superclass to define 2D and 3D elements.
  */
@@ -315,6 +317,13 @@ class MeshElement : public Element{
      * @return The centroid.
      */
     virtual gp_Pnt get_centroid() const = 0;
+    /**
+     * Returns a factory pointer, from which still possible to obtain
+     * information on the element being used.
+     *
+     * @return Unique pointer to MeshElementFactory instance.
+     */
+    virtual inline std::unique_ptr<MeshElementFactory> get_element_info() const = 0;
 
     /**
      * Returns an element node.

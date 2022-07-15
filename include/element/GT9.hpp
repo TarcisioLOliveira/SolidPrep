@@ -24,6 +24,8 @@
 #include "element.hpp"
 #include "material.hpp"
 #include "utils.hpp"
+#include "element_factory.hpp"
+#include <memory>
 
 class ProjectData;
 
@@ -53,6 +55,9 @@ class GT9 : public MeshElement{
     virtual std::vector<double> get_f(gp_Dir dir, double norm, std::vector<gp_Pnt> points) const override;
     virtual TopoDS_Shape get_shape(std::vector<gp_Vec> disp = std::vector<gp_Vec>()) const override;
     virtual gp_Pnt get_centroid() const override;
+    virtual inline std::unique_ptr<MeshElementFactory> get_element_info() const override{
+        return std::unique_ptr<MeshElementFactory>(new MeshElementFactoryImpl<GT9>());
+    }
 
     private:
     Material const * const mat;

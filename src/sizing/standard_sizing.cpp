@@ -63,6 +63,7 @@
 #include <Geom_Circle.hxx>
 #include <ShapeCustom.hxx>
 #include <ShapeCustom_RestrictionParameters.hxx>
+#include "element/GT9.hpp"
 
 namespace sizing{
 

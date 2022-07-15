@@ -42,6 +42,8 @@
 #include <gp_Pnt.hxx>
 #include <gp_Vec.hxx>
 #include <cmath>
+#include "element/GT9.hpp"
+#include "element/TRI3.hpp"
 
 ProjectData::ProjectData(std::string project_file){
 #ifdef _WIN32
