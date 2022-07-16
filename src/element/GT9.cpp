@@ -47,18 +47,18 @@ GT9::GT9(ElementShape s, ProjectData* data):
         // if(delta < 0){
         //     std::swap(this->nodes[0], this->nodes[1]);
         // }
-        if(this->nodes[0]->id > this->nodes[1]->id){
-            std::swap(this->nodes[0], this->nodes[1]);
-        }
-        if(this->nodes[1]->id > this->nodes[2]->id){
-            std::swap(this->nodes[1], this->nodes[2]);
-        }
+        // if(this->nodes[0]->id > this->nodes[1]->id){
+        //     std::swap(this->nodes[0], this->nodes[1]);
+        // }
+        // if(this->nodes[1]->id > this->nodes[2]->id){
+        //     std::swap(this->nodes[1], this->nodes[2]);
+        // }
 
     }
 
 std::vector<double> GT9::get_k() const{
 
-    size_t N = this->nodes.size();
+    size_t N = this->NODES_PER_ELEM;
 
     std::vector<gp_Pnt> p;
     for(auto n:this->nodes){
@@ -266,37 +266,46 @@ t*(0.0104166666666667*b0*b0*b2*b2*d0 + 0.0104166666666667*b0*b0*b2*c2*d2 + 0.010
 }
 
 double GT9::get_stress_at(gp_Pnt point, const std::vector<double>& u) const{
-    size_t N = this->nodes.size();
+    size_t N = this->NODES_PER_ELEM;
 
     std::vector<double> DB = this->get_DB(point);
 
-    std::vector<double> results(3, 0);
-    for(size_t i = 0; i < 3; ++i){
-        for(size_t l = 0; l < 3; ++l){
-            for(size_t j = 0; j < 3; ++j){
-                if(this->nodes[l]->u_pos[j] > -1){
-                    results[i] += DB[3*N*i + 3*l + j]*u[this->nodes[l]->u_pos[j]];
-                }
+    std::vector<double> results(N, 0);
+    std::vector<double> U(K_DIM, 0);
+    for(size_t l = 0; l < N; ++l){
+        for(size_t j = 0; j < NODE_DOF; ++j){
+            if(this->nodes[l]->u_pos[j] > -1){
+                U[l*NODE_DOF + j] = u[this->nodes[l]->u_pos[j]];
             }
+        }
+    }
+    for(size_t i = 0; i < N; ++i){
+        for(size_t j = 0; j < K_DIM; ++j){
+            results[i] += DB[i*K_DIM + j]*U[j];
         }
     }
 
     return std::sqrt(std::pow(results[0], 2) - results[0]*results[1] + std::pow(results[1], 2) + 3*std::pow(results[2], 2));
 }
 
-std::vector<double> GT9::get_stress_tensor(gp_Pnt p, const std::vector<double>& u) const{
-    size_t N = this->nodes.size();
+std::vector<double> GT9::get_stress_tensor(const gp_Pnt& p, const std::vector<double>& u) const{
+    size_t N = this->NODES_PER_ELEM;
+    const size_t S_SIZE = 3;
 
     std::vector<double> DB = this->get_DB(p);
 
-    std::vector<double> results(3, 0);
-    for(size_t i = 0; i < 3; ++i){
-        for(size_t l = 0; l < 3; ++l){
-            for(size_t j = 0; j < 3; ++j){
-                if(this->nodes[l]->u_pos[j] > -1){
-                    results[i] += DB[3*N*i + 3*l + j]*u[this->nodes[l]->u_pos[j]];
-                }
+    std::vector<double> results(S_SIZE, 0);
+    std::vector<double> U(K_DIM, 0);
+    for(size_t l = 0; l < N; ++l){
+        for(size_t j = 0; j < NODE_DOF; ++j){
+            if(this->nodes[l]->u_pos[j] > -1){
+                U[l*NODE_DOF + j] = u[this->nodes[l]->u_pos[j]];
             }
+        }
+    }
+    for(size_t i = 0; i < S_SIZE; ++i){
+        for(size_t j = 0; j < K_DIM; ++j){
+            results[i] += DB[i*K_DIM + j]*U[j];
         }
     }
 
@@ -306,76 +315,24 @@ std::vector<double> GT9::get_stress_tensor(gp_Pnt p, const std::vector<double>& 
     return S;
 }
 
-std::vector<double> GT9::get_loads_at(gp_Pnt point, const std::vector<double>& u) const{
-    std::vector<double> k = this->get_k();
-    std::vector<double> f_vec(9,0);
-    std::vector<double> u_vec(9,0);
 
-    for(int i = 0; i < 3; ++i){
-        for(size_t j = 0; j < 3; ++j){
-            if(this->nodes[i]->u_pos[j] > -1){
-                u_vec[3*i+j] = u[this->nodes[i]->u_pos[j]];
+std::vector<double> GT9::get_internal_loads(const std::vector<double>& u) const{
+    size_t N = this->NODES_PER_ELEM;
+
+    std::vector<double> k = this->get_k();
+
+    std::vector<double> results(K_DIM, 0);
+    std::vector<double> U(K_DIM, 0);
+    for(size_t l = 0; l < N; ++l){
+        for(size_t j = 0; j < NODE_DOF; ++j){
+            if(this->nodes[l]->u_pos[j] > -1){
+                U[l*NODE_DOF + j] = u[this->nodes[l]->u_pos[j]];
             }
         }
     }
-    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 9, 1, 9, 1, k.data(), 9, u_vec.data(), 1, 0, f_vec.data(), 1);
-
-    std::vector<gp_Pnt> p;
-    for(auto n:this->nodes){
-        p.push_back(n->point);
-    }
-
-    gp_Mat deltaM(1, p[0].X(), p[0].Y(), 1, p[1].X(), p[1].Y(), 1, p[2].X(), p[2].Y());
-
-    double delta = 0.5*deltaM.Determinant();
-
-    size_t N = this->nodes.size();
-    std::vector<double> a, b, c;
-    for(size_t i = 0; i < N; ++i){
-        size_t j = (i + 1) % 3;
-        size_t k = (i + 2) % 3;
-
-        a.push_back(p[j].X()*p[k].Y() - p[k].X()*p[j].Y());
-        b.push_back(p[j].Y() - p[k].Y());
-        c.push_back(p[k].X() - p[j].X());
-    }
-
-    std::vector<double> L(3);
-    L[0] = (a[0] + b[0]*point.X() + c[0]*point.Y())/(2*delta);
-    L[1] = (a[1] + b[1]*point.X() + c[1]*point.Y())/(2*delta);
-    L[2] = (a[2] + b[2]*point.X() + c[2]*point.Y())/(2*delta);
-    std::vector<double> Nmat(9*3, 0);
-    for(size_t i = 0; i < N; ++i){
-        // size_t j = (i + 1) % 3;
-        // size_t k = (i + 2) % 3;
-
-        Nmat[3*i] = L[i];
-        Nmat[3*i + 9 + 1] = L[i];
-        Nmat[3*i + 18 + 2] = L[i];
-
-        // Nmat[3*i + 2] = 0.5*L[i]*(b[k]*L[j]-b[j]*L[k]);
-        // Nmat[3*i + 9 + 2] = 0.5*L[i]*(c[k]*L[j]-c[j]*L[k]);
-    }
-
-    std::vector<double> res(3, 0);
-    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 3, 1, 9, 1, Nmat.data(), 9, f_vec.data(), 1, 0, res.data(), 1);
-
-    return res;
-}
-
-std::vector<double> GT9::get_internal_loads(size_t node, const std::vector<double>& u) const{
-    logger::log_assert(node >= 0 && node <= 3, logger::ERROR, "wrong value for BeamLinear2D node, must be either 0 or 1.");
-
-    std::vector<double> k = this->get_k();
-
-    std::vector<double> results(3, 0);
-    for(int i = 0; i < 3; ++i){
-        for(size_t l = 0; l < 3; ++l){
-            for(int j = 0; j < 3; ++j){
-                if(this->nodes[l]->u_pos[j] > -1){
-                    results[i] += k[(node*3+i)*3*3+l*3+j]*u[this->nodes[l]->u_pos[j]];
-                }
-            }
+    for(size_t i = 0; i < K_DIM; ++i){
+        for(size_t j = 0; j < K_DIM; ++j){
+            results[i] += k[i*K_DIM + j]*U[j];
         }
     }
 
@@ -383,7 +340,7 @@ std::vector<double> GT9::get_internal_loads(size_t node, const std::vector<doubl
 }
 
 std::vector<gp_Pnt> GT9::get_intersection_points(const TopoDS_Shape& crosssection) const{
-    size_t N = this->nodes.size();
+    size_t N = this->NODES_PER_ELEM;
     std::vector<gp_Pnt> points;
 
     TopoDS_Edge line_edge = TopoDS::Edge(crosssection);
@@ -419,33 +376,47 @@ std::vector<gp_Pnt> GT9::get_intersection_points(const TopoDS_Shape& crosssectio
 }
 
 double GT9::get_compliance(const std::vector<double>& u, const std::vector<double>& l) const{
+    size_t N = this->NODES_PER_ELEM;
+
     auto k = this->get_k();
-    std::vector<double> u_vec(9, 0);
-    for(size_t i = 0; i < 3; ++i){
-        for(int j = 0; j < 3; ++j){
+    std::vector<double> u_vec(K_DIM, 0);
+    for(size_t i = 0; i < N; ++i){
+        for(size_t j = 0; j < NODE_DOF; ++j){
             if(this->nodes[i]->u_pos[j] > -1){
-                u_vec[i*3+j] = u[this->nodes[i]->u_pos[j]];
+                u_vec[i*NODE_DOF+j] = u[this->nodes[i]->u_pos[j]];
             }
         }
     }
 
-    std::vector<double> f_vec(9, 0);
+    std::vector<double> f_vec(K_DIM, 0);
 
+    for(size_t i = 0; i < K_DIM; ++i){
+        for(size_t j = 0; j < K_DIM; ++j){
+            f_vec[i] += k[i*K_DIM + j]*u_vec[j];
+        }
+    }
+
+    double result = 0;
     if(l.size() > 0){
         std::vector<double> l_vec(9, 0);
-        for(size_t k = 0; k < 3; ++k){
-            for(int j = 0; j < 3; ++j){
-                if(this->nodes[k]->u_pos[j] > -1){
-                    l_vec[k*3+j] = l[this->nodes[k]->u_pos[j]];
+        for(size_t i = 0; i < N; ++i){
+            for(size_t j = 0; j < NODE_DOF; ++j){
+                if(this->nodes[i]->u_pos[j] > -1){
+                    l_vec[i*NODE_DOF+j] = l[this->nodes[i]->u_pos[j]];
                 }
             }
         }
-        cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 9, 1, 9, 1, k.data(), 9, u_vec.data(), 1, 0, f_vec.data(), 1);
-        return cblas_ddot(9, l_vec.data(), 1, f_vec.data(), 1);
+        for(size_t i = 0; i < K_DIM; ++i){
+            result += f_vec[i]*l_vec[i];
+        }
+        // return cblas_ddot(9, l_vec.data(), 1, f_vec.data(), 1);
     } else {
-        cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 9, 1, 9, 1, k.data(), 9, u_vec.data(), 1, 0, f_vec.data(), 1);
-        return cblas_ddot(9, u_vec.data(), 1, f_vec.data(), 1);
+        for(size_t i = 0; i < K_DIM; ++i){
+            result += f_vec[i]*u_vec[i];
+        }
+        // return cblas_ddot(9, u_vec.data(), 1, f_vec.data(), 1);
     }
+    return result;
 }
 
 double GT9::get_volume() const{
@@ -456,43 +427,65 @@ double GT9::get_volume() const{
     return 0.5*std::abs(deltaM.Determinant())*this->t;
 }
 
-void GT9::get_virtual_load(double mult, gp_Pnt point, const std::vector<double>& u, std::vector<double>& l) const{
+void GT9::get_virtual_load(double mult, const gp_Pnt& point, const std::vector<double>& u, std::vector<double>& l) const{
+    size_t N = this->NODES_PER_ELEM;
+    const size_t S_SIZE = 3;
+
     std::vector<double> DB = this->get_DB(point);
     std::vector<double> V{1, -0.5, 0,
                          -0.5, 1, 0,
                          0,   0, 3};
 
-    std::vector<double> u_vec(9, 0);
-    for(size_t k = 0; k < 3; ++k){
-        for(int j = 0; j < 3; ++j){
-            if(this->nodes[k]->u_pos[j] > -1){
-                u_vec[k*3+j] = u[this->nodes[k]->u_pos[j]];
+    std::vector<double> u_vec(K_DIM, 0);
+    for(size_t i = 0; i < N; ++i){
+        for(size_t j = 0; j < NODE_DOF; ++j){
+            if(this->nodes[i]->u_pos[j] > -1){
+                u_vec[i*NODE_DOF+j] = u[this->nodes[i]->u_pos[j]];
             }
         }
     }
 
-    std::vector<double> f_vec(9, 0);
-    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 3, 1, 9, 1, DB.data(), 9, u_vec.data(), 1, 0, f_vec.data(), 1);
+    std::vector<double> vec(N, 0);
 
-    std::vector<double> res(f_vec);
-    f_vec = std::vector<double>(9, 0);
-    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 3, 1, 3, 1, V.data(), 3, res.data(), 1, 0, f_vec.data(), 1);
-    res = f_vec;
-    f_vec = std::vector<double>(9, 0);
+    for(size_t i = 0; i < S_SIZE; ++i){
+        for(size_t j = 0; j < K_DIM; ++j){
+            vec[i] += DB[i*K_DIM + j]*u_vec[j];
+        }
+    }
+    std::vector<double> vec2(N, 0);
+    for(size_t i = 0; i < S_SIZE; ++i){
+        for(size_t j = 0; j < S_SIZE; ++j){
+            vec2[i] += V[i*S_SIZE + j]*vec[j];
+        }
+    }
+    std::vector<double> vec3(K_DIM, 0);
+    for(size_t i = 0; i < K_DIM; ++i){
+        for(size_t j = 0; j < S_SIZE; ++j){
+            vec3[i] += DB[j*K_DIM + i]*vec2[j];
+        }
+    }
+    // std::vector<double> f_vec(9, 0);
+    // cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 3, 1, 9, 1, DB.data(), 9, u_vec.data(), 1, 0, f_vec.data(), 1);
 
-    cblas_dgemm(CblasRowMajor, CblasTrans, CblasNoTrans, 9, 1, 3, 1, DB.data(), 9, res.data(), 1, 0, f_vec.data(), 1);
-    cblas_dscal(9, mult, f_vec.data(), 1);
+    // std::vector<double> res(f_vec);
+    // f_vec = std::vector<double>(9, 0);
+    // cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 3, 1, 3, 1, V.data(), 3, res.data(), 1, 0, f_vec.data(), 1);
+    // res = f_vec;
+    // f_vec = std::vector<double>(9, 0);
 
-    for(size_t k = 0; k < 3; ++k){
-        for(int j = 0; j < 3; ++j){
+    // cblas_dgemm(CblasRowMajor, CblasTrans, CblasNoTrans, 9, 1, 3, 1, DB.data(), 9, res.data(), 1, 0, f_vec.data(), 1);
+    // cblas_dscal(9, mult, f_vec.data(), 1);
+
+    for(size_t k = 0; k < N; ++k){
+        for(size_t j = 0; j < NODE_DOF; ++j){
             if(this->nodes[k]->u_pos[j] > -1){
-                l[this->nodes[k]->u_pos[j]] += f_vec[k*3+j];
+                l[this->nodes[k]->u_pos[j]] += mult*vec3[k*NODE_DOF+j];
             }
         }
     }
 }
 
-TopoDS_Shape GT9::get_shape(std::vector<gp_Vec> disp) const{
+TopoDS_Shape GT9::get_shape(const std::vector<gp_Vec>& disp) const{
     gp_Pnt p1 = this->nodes[0]->point;
     gp_Pnt p2 = this->nodes[1]->point;
     gp_Pnt p3 = this->nodes[2]->point;
@@ -530,7 +523,7 @@ gp_Pnt GT9::get_centroid() const{
 }
 
 
-std::vector<double> GT9::get_DB(gp_Pnt point) const{
+std::vector<double> GT9::get_DB(const gp_Pnt& point) const{
     size_t N = this->nodes.size();
 
     std::vector<gp_Pnt> p;
@@ -634,7 +627,7 @@ std::vector<double> GT9::get_DB(gp_Pnt point) const{
     return DB;
 }
 
-std::vector<double> GT9::get_f(gp_Dir dir, double norm, std::vector<gp_Pnt> points) const{
+std::vector<double> GT9::get_f(const gp_Dir& dir, double norm, const std::vector<gp_Pnt>& points) const{
 
     std::vector<gp_Pnt> p;
     for(auto n:this->nodes){
@@ -711,8 +704,8 @@ std::vector<double> GT9::get_f(gp_Dir dir, double norm, std::vector<gp_Pnt> poin
         t*sqrt(x1*x1 - 2*x1*x2 + x2*x2 + y1*y1 - 2*y1*y2 + y2*y2)*(0.125*a0*a2*c1 + 0.0625*a0*b2*c1*x1 + 0.0625*a0*b2*c1*x2 + 0.0625*a0*c1*c2*y1 + 0.0625*a0*c1*c2*y2 - 0.125*a1*a2*c0 - 0.0625*a1*b2*c0*x1 - 0.0625*a1*b2*c0*x2 - 0.0625*a1*c0*c2*y1 - 0.0625*a1*c0*c2*y2 + 0.0625*a2*b0*c1*x1 + 0.0625*a2*b0*c1*x2 - 0.0625*a2*b1*c0*x1 - 0.0625*a2*b1*c0*x2 + 0.0416666666666667*b0*b2*c1*x1*x1 + 0.0416666666666667*b0*b2*c1*x1*x2 + 0.0416666666666667*b0*b2*c1*x2*x2 + 0.0416666666666667*b0*c1*c2*x1*y1 + 0.0208333333333333*b0*c1*c2*x1*y2 + 0.0208333333333333*b0*c1*c2*x2*y1 + 0.0416666666666667*b0*c1*c2*x2*y2 - 0.0416666666666667*b1*b2*c0*x1*x1 - 0.0416666666666667*b1*b2*c0*x1*x2 - 0.0416666666666667*b1*b2*c0*x2*x2 - 0.0416666666666667*b1*c0*c2*x1*y1 - 0.0208333333333333*b1*c0*c2*x1*y2 - 0.0208333333333333*b1*c0*c2*x2*y1 - 0.0416666666666667*b1*c0*c2*x2*y2)/(delta*delta)
     });
 
-    std::vector<double> f(9, 0);
-    for(size_t i = 0; i < 9; ++i){
+    std::vector<double> f(K_DIM, 0);
+    for(size_t i = 0; i < K_DIM; ++i){
         f[i] = N[2*i]*px + N[2*i+1]*py;
     }
 

@@ -48,7 +48,7 @@ class Node{
      * @param p Node position.
      * @param id Node id.
      */
-    Node(gp_Pnt p, size_t id):point(p), id(id), u_pos(nullptr){}
+    Node(gp_Pnt p, size_t id):point(std::move(p)), id(id), u_pos(nullptr){}
 };
 
 /**
@@ -123,7 +123,7 @@ class MeshNode : public Node{
      * @param p Position.
      * @param id Node id.
      */
-    MeshNode(gp_Pnt p, size_t id): Node(p, id){}
+    MeshNode(gp_Pnt p, size_t id): Node(std::move(p), id){}
 };
 
 /**
@@ -222,14 +222,13 @@ class MeshElement : public Element{
      */
     virtual std::vector<double> get_k() const override = 0;
     /**
-     * Calculates the internal load vector at a node.
+     * Calculates the internal load vector of the element.
      *
-     * @param node Number of the node within the element's list of nodes.
      * @param u Displacement vector.
      *
      * @return Internal loads at node.
      */
-    virtual std::vector<double> get_internal_loads(size_t node, const std::vector<double>& u) const = 0;
+    virtual std::vector<double> get_internal_loads(const std::vector<double>& u) const = 0;
     /** 
      * Calculates the Von Mises stresses at a point within the element.
      *
@@ -247,18 +246,7 @@ class MeshElement : public Element{
      *
      * @return Stress tensor at point p.
      */
-    virtual std::vector<double> get_stress_tensor(gp_Pnt p, const std::vector<double>& u) const = 0;
-    /** 
-     * Calculates the internal loads at a point within the element. Does not
-     * consider contribution from other elements.
-     *
-     * @param p The point.
-     * @param u Displacement vector.
-     *
-     * @return Internal loads.
-     */
-    virtual std::vector<double> get_loads_at(gp_Pnt p, const std::vector<double>& u) const = 0;
-    // Edge for 2D, face for 3D
+    virtual std::vector<double> get_stress_tensor(const gp_Pnt& p, const std::vector<double>& u) const = 0;
     /** 
      * Calculates the intersection points between a shape (edge for 2D, face
      * for 3D) and the boundaries of the element.
@@ -293,7 +281,7 @@ class MeshElement : public Element{
      * @param u Displacement vector.
      * @param l Global virtual load vector.
      */
-    virtual void get_virtual_load(double mult, gp_Pnt point, const std::vector<double>& u, std::vector<double>& l) const = 0;
+    virtual void get_virtual_load(double mult, const gp_Pnt& point, const std::vector<double>& u, std::vector<double>& l) const = 0;
     /**
      * Calculates the force vector for a distributed load.
      *
@@ -302,7 +290,7 @@ class MeshElement : public Element{
      * @param points Delimiting points.
      * @return Force vector.
      */
-    virtual std::vector<double> get_f(gp_Dir dir, double norm, std::vector<gp_Pnt> points) const = 0;
+    virtual std::vector<double> get_f(const gp_Dir& dir, double norm, const std::vector<gp_Pnt>& points) const = 0;
     /**
      * Returns the geometry of the element.
      *
@@ -310,7 +298,7 @@ class MeshElement : public Element{
      *
      * @return Shape of the element.
      */
-    virtual TopoDS_Shape get_shape(std::vector<gp_Vec> disp = std::vector<gp_Vec>()) const = 0;
+    virtual TopoDS_Shape get_shape(const std::vector<gp_Vec>& disp = std::vector<gp_Vec>()) const = 0;
     /**
      * Calculates the centroid of the element.
      *
@@ -340,7 +328,7 @@ class MeshElement : public Element{
      *
      * @param nodes List of nodes.
      */
-    MeshElement(std::vector<MeshNode*> nodes):Element(std::vector<Node*>(nodes.begin(), nodes.end())){}
+    MeshElement(const std::vector<MeshNode*>& nodes):Element(std::vector<Node*>(nodes.begin(), nodes.end())){}
 };
 
 #endif

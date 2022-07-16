@@ -27,11 +27,11 @@ std::vector<double> FiniteElement::calculate_forces(const Meshing* mesh, const s
     size_t dof = elem_maker->get_dof_per_node();
     std::vector<double> results(mesh->node_list.size()*dof, 0);
     for(auto& e:mesh->element_list){
+        auto f = e->get_internal_loads(displacements);
         for(size_t n = 0; n < e->nodes.size(); ++n){
-            auto f = e->get_internal_loads(n, displacements);
             auto& node = e->nodes[n];
             for(size_t i = 0; i < dof; ++i){
-                results[node->id*dof + i] += f[i];
+                results[node->id*dof + i] += f[n*dof+i];
             }
         }
     }

@@ -316,15 +316,16 @@ TopoDS_Shape StandardSizing::expansion_2D(const meshing::StandardBeamMesher& mes
                 continue;
             }
 
+            std::vector<double> force = e->get_internal_loads(u);
+            size_t dof = e->get_element_info()->get_dof_per_node();
             for(size_t j = 0; j < e->nodes.size(); ++j){
                 auto& ne = e->nodes[j];
                 double line_pos_rel = nn.Dot(gp_Vec(ne->point, n.node->point));
                 // Check for nodes that are on the same side
                 if(line_pos_rel > Precision::Confusion()){
-                    std::vector<double> force = e->get_loads_at(ne->point, u);
                     int_nodes.push_back({
                         ne->point,
-                        gp_Vec(force[0], force[1], 0)
+                        gp_Vec(force[j*dof+0], force[j*dof+1], 0)
                     });
                 }
             }
