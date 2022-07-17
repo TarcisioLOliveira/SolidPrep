@@ -124,7 +124,7 @@ std::vector<double> TRI3::get_DB(const gp_Pnt& point) const{
     return DB;
 }
 
-std::vector<double> TRI3::get_f(const gp_Dir& dir, double norm, const std::vector<gp_Pnt>& points) const{
+std::vector<double> TRI3::get_Nf(const std::vector<gp_Pnt>& points) const{
 
     std::vector<gp_Pnt> p;
     for(auto n:this->nodes){
@@ -160,10 +160,7 @@ std::vector<double> TRI3::get_f(const gp_Dir& dir, double norm, const std::vecto
     double x2 = points[1].X();
     double y2 = points[1].Y();
 
-    double px = dir.X()*norm;
-    double py = dir.Y()*norm;
-
-    std::vector<double> N({
+    std::vector<double> Nf({
         t*(2*a0 + b0*x1 + b0*x2 + c0*y1 + c0*y2)*sqrt(x1*x1 - 2*x1*x2 + x2*x2 + y1*y1 - 2*y1*y2 + y2*y2)/(4*delta)
         ,
         0
@@ -188,13 +185,8 @@ std::vector<double> TRI3::get_f(const gp_Dir& dir, double norm, const std::vecto
         ,
         t*(2*a2 + b2*x1 + b2*x2 + c2*y1 + c2*y2)*sqrt(x1*x1 - 2*x1*x2 + x2*x2 + y1*y1 - 2*y1*y2 + y2*y2)/(4*delta)
     });
-
-    std::vector<double> f(K_DIM, 0);
-    for(size_t i = 0; i < K_DIM; ++i){
-        f[i] = N[2*i]*px + N[2*i+1]*py;
-    }
-
-    return f;
+    
+    return Nf;
 }
 
 }

@@ -43,14 +43,14 @@ class GT9 : public MeshElementCommon2DTri<GT9>{
     GT9(ElementShape s, ProjectData* data);
 
     virtual std::vector<double> get_k() const override;
-    virtual std::vector<double> get_f(const gp_Dir& dir, double norm, const std::vector<gp_Pnt>& points) const override;
 
     virtual inline std::unique_ptr<MeshElementFactory> get_element_info() const override{
         return std::unique_ptr<MeshElementFactory>(new MeshElementFactoryImpl<GT9>());
     }
 
     private:
-    std::vector<double> get_DB(const gp_Pnt& point) const override;
+    virtual std::vector<double> get_DB(const gp_Pnt& point) const override;
+    virtual std::vector<double> get_Nf(const std::vector<gp_Pnt>& points) const override;
 };
 
 }

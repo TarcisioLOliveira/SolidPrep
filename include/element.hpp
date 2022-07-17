@@ -367,6 +367,16 @@ class MeshElement : public Element{
      * @return DB matrix.
      */
     virtual std::vector<double> get_DB(const gp_Pnt& point) const = 0;
+
+    /**
+     * Gets the matrix used to calculate the nodal force vector. Calculated
+     * from the boundary integral of the interpolation matrix.
+     *
+     * @param points Points that define the boundary.
+     *
+     * @return The interpolation matrix for nodal forces, Nf.
+     */
+    virtual std::vector<double> get_Nf(const std::vector<gp_Pnt>& points) const = 0;
 };
 
 #endif

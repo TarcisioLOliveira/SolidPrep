@@ -30,6 +30,7 @@
 #include <TopoDS.hxx>
 #include <IntTools_EdgeEdge.hxx>
 #include <Standard_Handle.hxx>
+#include <vector>
 
 #include "element.hpp"
 #include "utils.hpp"
@@ -172,6 +173,7 @@ template<class T>
 class MeshElementCommon2D : public MeshElementCommon<T>{
     public:
     static const size_t S_SIZE = 3; // Size of the stress and strain vectors
+    static const size_t DIM    = 2; // Number of dimensions
 
     static const utils::ProblemType PROBLEM_TYPE = utils::PROBLEM_TYPE_2D;
 
@@ -249,6 +251,22 @@ class MeshElementCommon2D : public MeshElementCommon<T>{
                 }
             }
         }
+    }
+
+    virtual std::vector<double> get_f(const gp_Dir& dir, double norm, const std::vector<gp_Pnt>& points) const override{
+        const size_t K_DIM = T::K_DIM;
+
+        double px = dir.X()*norm;
+        double py = dir.Y()*norm;
+
+        auto Nf = this->get_Nf(points);
+
+        std::vector<double> f(K_DIM, 0);
+        for(size_t i = 0; i < K_DIM; ++i){
+            f[i] = Nf[DIM*i]*px + Nf[DIM*i+1]*py;
+        }
+
+        return f;
     }
 
     protected:
