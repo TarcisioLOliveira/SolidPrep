@@ -21,6 +21,7 @@
 #ifndef ELEMENT_HPP
 #define ELEMENT_HPP
 
+#include "material.hpp"
 #include <cmath>
 #include <gp_Pnt.hxx>
 #include <vector>
@@ -266,11 +267,19 @@ class MeshElement : public Element{
      * Calculates the element's compliance.
      *
      * @param u Displacement vector.
-     * @param l Virtual displacement vector (optional).
      *
      * @return The compliance.
      */
-    virtual double get_compliance(const std::vector<double>& u, const std::vector<double>& l = std::vector<double>()) const = 0;
+    virtual double get_compliance(const std::vector<double>& u) const = 0;
+    /**
+     * Calculates the element's compliance with a virtual displacement vector.
+     *
+     * @param u Displacement vector.
+     * @param l Virtual displacement vector.
+     *
+     * @return The compliance.
+     */
+    virtual double get_compliance(const std::vector<double>& u, const std::vector<double>& l) const = 0;
     /**
      * Calculates the elemental contribution to the virtual load, for a p-norm
      * global stress aggregation function.
@@ -294,17 +303,32 @@ class MeshElement : public Element{
     /**
      * Returns the geometry of the element.
      *
-     * @param disp Displacement of nodes (optional).
+     * @return Shape of the element.
+     */
+    virtual TopoDS_Shape get_shape() const = 0;
+    /**
+     * Returns the geometry of the element, considering nodal displacements.
+     *
+     * @param disp Displacement of nodes.
      *
      * @return Shape of the element.
      */
-    virtual TopoDS_Shape get_shape(const std::vector<gp_Vec>& disp = std::vector<gp_Vec>()) const = 0;
+    virtual TopoDS_Shape get_shape(const std::vector<gp_Vec>& disp) const = 0;
     /**
      * Calculates the centroid of the element.
      *
      * @return The centroid.
      */
-    virtual gp_Pnt get_centroid() const = 0;
+    virtual gp_Pnt get_centroid() const{
+        double x = 0;
+        double y = 0;
+        for(auto& n : this->nodes){
+            x += n->point.X();
+            y += n->point.Y();
+        }
+
+        return gp_Pnt(x/this->nodes.size(), y/this->nodes.size(), 0);
+    }
     /**
      * Returns a factory pointer, from which still possible to obtain
      * information on the element being used.
@@ -323,12 +347,26 @@ class MeshElement : public Element{
     virtual inline MeshNode* get_node(size_t node) const{ return static_cast<MeshNode*>(this->nodes[node]);}
 
     protected:
+    Material const * const mat;
     /**
      * Creates an element with the specified nodes.
      *
      * @param nodes List of nodes.
      */
-    MeshElement(const std::vector<MeshNode*>& nodes):Element(std::vector<Node*>(nodes.begin(), nodes.end())){}
+    MeshElement(const std::vector<MeshNode*>& nodes, Material* m):
+        Element(std::vector<Node*>(nodes.begin(), nodes.end())),
+        mat(m)
+        {}
+
+    /**
+     * Gets the multiplication of the constitutive matrix (D or C) and the linear
+     * displacement matrix (B). Used to calculate stress at a point.
+     *
+     * @param point Point where it's measured at.
+     *
+     * @return DB matrix.
+     */
+    virtual std::vector<double> get_DB(const gp_Pnt& point) const = 0;
 };
 
 #endif
