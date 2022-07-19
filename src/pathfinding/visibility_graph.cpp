@@ -51,8 +51,8 @@
 
 namespace pathfinding{
 
-VisibilityGraph::VisibilityGraph(GroundStructure* topology, double step, double turn_angle, double restriction, utils::ProblemType type):
-    step(step), angle(turn_angle*M_PI/180), restriction(restriction), topology(topology), type(type){}
+VisibilityGraph::VisibilityGraph(const std::unique_ptr<Geometry>& topology, double step, double turn_angle, double restriction, utils::ProblemType type):
+    step(step), angle(turn_angle*M_PI/180), restriction(restriction), topology(topology.get()), type(type){}
 
 std::vector<gp_Pnt> VisibilityGraph::find_path(const CrossSection& begin, const CrossSection& end){
     struct Vertex{

@@ -24,9 +24,10 @@
 #include "TopoDS_Solid.hxx"
 #include "pathfinding.hpp"
 #include "utils.hpp"
-#include "ground_structure.hpp"
+#include "geometry.hpp"
 #include "Geom_Curve.hxx"
 #include "TopoDS_Face.hxx"
+#include <memory>
 #include <queue>
 #include <vector>
 
@@ -59,7 +60,7 @@ class VisibilityGraph : public Pathfinding{
         double b;
     };
 
-    VisibilityGraph(GroundStructure* topology, double step, double turn_angle, double restriction, utils::ProblemType type);
+    VisibilityGraph(const std::unique_ptr<Geometry>& topology, double step, double turn_angle, double restriction, utils::ProblemType type);
     ~VisibilityGraph() = default;
 
     virtual std::vector<gp_Pnt> find_path(const CrossSection& begin, const CrossSection& end) override;
@@ -68,7 +69,7 @@ class VisibilityGraph : public Pathfinding{
     double step;
     double angle;
     double restriction;
-    GroundStructure* topology;
+    const Geometry* topology;
     utils::ProblemType type;
 
     gp_Pnt get_closest_point(const gp_Pnt& p, const TopoDS_Shape& t) const;

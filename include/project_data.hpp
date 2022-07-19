@@ -35,6 +35,7 @@
 #include "utils.hpp"
 #include "finite_element.hpp"
 #include "topology_optimization.hpp"
+#include "geometry.hpp"
 
 /**
  * Reads and stores project data.
@@ -69,7 +70,7 @@ class ProjectData {
     std::unique_ptr<Sizing> sizer;
     std::unique_ptr<Material> material;
     utils::ProblemType type;
-    std::unique_ptr<GroundStructure> ground_structure;
+    std::unique_ptr<Geometry> ground_structure;
     std::vector<Force> forces;
     std::vector<Support> supports;
     std::unique_ptr<FiniteElement> sizer_fea;

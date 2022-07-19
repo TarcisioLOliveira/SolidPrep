@@ -74,23 +74,6 @@ ProjectData::ProjectData(std::string project_file){
             logger::log_assert(false, logger::ERROR,  "Solid type incorrectly specified, must be \"2D\" or \"3D\".");
         }
     }
-    if(this->log_data(doc, "geometry_path", TYPE_STRING, true)){
-        std::string geom_path = doc["geometry_path"].GetString();
-#ifdef _WIN32
-        size_t last_slash = project_file.rfind("\\");
-#else
-        size_t last_slash = project_file.rfind("/");
-#endif
-        std::string absolute_path = project_file.substr(0, last_slash+1);
-        absolute_path.append(geom_path);
-        double scale;
-        if(this->log_data(doc, "scale", TYPE_DOUBLE, false)){
-            scale = doc["scale"].GetDouble();
-        } else {
-            scale = 1;
-        }
-        this->ground_structure.reset(new GroundStructure(absolute_path, scale, this->type));
-    }
 
     bool needs_sizing = true;
     bool needs_topopt = true;
@@ -143,6 +126,23 @@ ProjectData::ProjectData(std::string project_file){
     }
     if(this->log_data(doc, "supports", TYPE_ARRAY, true)){
         this->supports = this->get_support(doc["supports"]);
+    }
+    if(this->log_data(doc, "geometry_path", TYPE_STRING, true)){
+        std::string geom_path = doc["geometry_path"].GetString();
+#ifdef _WIN32
+        size_t last_slash = project_file.rfind("\\");
+#else
+        size_t last_slash = project_file.rfind("/");
+#endif
+        std::string absolute_path = project_file.substr(0, last_slash+1);
+        absolute_path.append(geom_path);
+        double scale;
+        if(this->log_data(doc, "scale", TYPE_DOUBLE, false)){
+            scale = doc["scale"].GetDouble();
+        } else {
+            scale = 1;
+        }
+        this->ground_structure.reset(new Geometry(absolute_path, scale, this->type, this->topopt_element.get(), needs_topopt, this->material.get()));
     }
 
 
@@ -261,7 +261,7 @@ std::unique_ptr<Pathfinding> ProjectData::load_pathfinder(const rapidjson::Gener
         if(this->log_data(pathf, "restriction_size", TYPE_DOUBLE, false)){
             restriction = pathf["restriction_size"].GetDouble();
         }
-        pathfinder.reset(new VisibilityGraph(this->ground_structure.get(), step, angle, restriction, utils::PROBLEM_TYPE_2D));
+        pathfinder.reset(new VisibilityGraph(this->ground_structure, step, angle, restriction, utils::PROBLEM_TYPE_2D));
     } else {
         logger::log_assert(false, logger::ERROR, "unknown pathfinding algorithm inserted: {}.", pathf["type"].GetString());
     }

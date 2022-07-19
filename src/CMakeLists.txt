@@ -14,6 +14,7 @@ set(SOURCES
     meshing.cpp
     finite_element.cpp
     visualization.cpp
+    geometry.cpp
 )
 
 add_subdirectory(pathfinding)

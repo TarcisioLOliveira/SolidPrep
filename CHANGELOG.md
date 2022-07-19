@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - `ElementCommon` family of classes, to enhance code reuse and extension among
   element classes.
+- `Geometry` class, replacing `GroundStructure`.
 
 ### Fixed
 
@@ -15,6 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Moved project loading from header to source file.
 - Remove `results` variable from Node.
 - Fully refactor element classes.
+
+### Deprecated
+- `GroundStructure`class.
 
 ## [v0.1.2]
 ### Added
