@@ -24,46 +24,17 @@
 #include <memory>
 #include <string>
 #include <vector>
-#include "finite_element/direct_solver.hpp"
-#include "meshing/gmsh.hpp"
-#include "rapidjson/allocators.h"
 #include "rapidjson/document.h"
-#include "STEPCAFControl_Reader.hxx"
-#include "logger.hpp"
-#include "force.hpp"
-#include "rapidjson/encodings.h"
-#include "sizing/standard_sizing.hpp"
+#include "rapidjson/rapidjson.h"
+
 #include "support.hpp"
 #include "pathfinding.hpp"
 #include "sizing.hpp"
 #include "ground_structure.hpp"
 #include "material.hpp"
-#include "pathfinding/meshless_astar.hpp"
-#include "pathfinding/visibility_graph.hpp"
-#include "material/linear_elastic_isotropic.hpp"
-#include "material/linear_elastic_orthotropic.hpp"
-#include "rapidjson/document.h"
-#include "rapidjson/filereadstream.h"
-#include "rapidjson/error/error.h"
-#include "rapidjson/error/en.h"
-#include "logger.hpp"
-#include "rapidjson/rapidjson.h"
-#include "sizing/beam_sizing.hpp"
 #include "utils.hpp"
-#define _USE_MATH_DEFINES
-#include <cmath>
-#include "force.hpp"
-#include <BRepGProp.hxx>
-#include <GProp_GProps.hxx>
-#include <Bnd_Box.hxx>
-#include <BRepBndLib.hxx>
-#include <gp_Pnt.hxx>
-#include <gp_Vec.hxx>
-#include <cmath>
 #include "finite_element.hpp"
 #include "topology_optimization.hpp"
-#include "topology_optimization/minimal_volume.hpp"
-#include "topology_optimization/minimal_compliance.hpp"
 
 /**
  * Reads and stores project data.

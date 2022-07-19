@@ -17,33 +17,36 @@
  *   along with SolidPrep.  If not, see <https://www.gnu.org/licenses/>.
  *
  */
-#include "project_data.hpp"
-#include "element/GT9.hpp"
-#include "pathfinding/meshless_astar.hpp"
-#include "pathfinding/visibility_graph.hpp"
-#include "material/linear_elastic_isotropic.hpp"
-#include "material/linear_elastic_orthotropic.hpp"
-#include "rapidjson/document.h"
-#include "rapidjson/filereadstream.h"
-#include "rapidjson/error/error.h"
-#include "rapidjson/error/en.h"
-#include "logger.hpp"
-#include "rapidjson/rapidjson.h"
-#include "sizing/beam_sizing.hpp"
-#include "utils.hpp"
-#include <memory>
 #define _USE_MATH_DEFINES
 #include <cmath>
-#include "force.hpp"
 #include <BRepGProp.hxx>
 #include <GProp_GProps.hxx>
 #include <Bnd_Box.hxx>
 #include <BRepBndLib.hxx>
 #include <gp_Pnt.hxx>
 #include <gp_Vec.hxx>
-#include <cmath>
+#include "rapidjson/rapidjson.h"
+#include "rapidjson/document.h"
+#include "rapidjson/filereadstream.h"
+#include "rapidjson/error/error.h"
+#include "rapidjson/error/en.h"
+
+#include "utils.hpp"
+#include "force.hpp"
+#include "logger.hpp"
+#include "project_data.hpp"
+#include "pathfinding/meshless_astar.hpp"
+#include "pathfinding/visibility_graph.hpp"
+#include "material/linear_elastic_isotropic.hpp"
+#include "material/linear_elastic_orthotropic.hpp"
+#include "sizing/standard_sizing.hpp"
+#include "finite_element/direct_solver.hpp"
+#include "meshing/gmsh.hpp"
+#include "sizing/beam_sizing.hpp"
 #include "element/GT9.hpp"
 #include "element/TRI3.hpp"
+#include "topology_optimization/minimal_volume.hpp"
+#include "topology_optimization/minimal_compliance.hpp"
 
 ProjectData::ProjectData(std::string project_file){
 #ifdef _WIN32
