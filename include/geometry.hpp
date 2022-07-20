@@ -27,19 +27,28 @@
 #include "element.hpp"
 #include "utils.hpp"
 #include "material.hpp"
+#include <BRepClass3d_SolidClassifier.hxx>
 
 class Geometry{
     public:
     Geometry(const std::string& path, double scale, utils::ProblemType type, MeshElementFactory* elem_type, bool do_topopt, Material* material, std::vector<Material*> alt_materials = std::vector<Material*>());
 
-    bool is_inside(const gp_Pnt& p) const;
+    inline bool is_inside(const gp_Pnt& p) const{
+        if(this->type == utils::PROBLEM_TYPE_2D){
+            return this->is_inside_2D(p);
+        } else if(this->type == utils::PROBLEM_TYPE_3D){
+            return this->is_inside_3D(p);
+        }
+        return false;
+    }
 
     inline std::vector<double> get_D() const{
         if(this->type == utils::PROBLEM_TYPE_2D){
             return this->material->stiffness_2D();
-        } else {
+        } else if(this->type == utils::PROBLEM_TYPE_3D){
             return this->material->stiffness_3D();
         }
+        return std::vector<double>();
     }
 
     const TopoDS_Shape shape;
@@ -54,8 +63,16 @@ class Geometry{
     utils::ProblemType type;
 
     TopoDS_Shape load_shape(const std::string& path, double scale) const;
-    bool is_inside_2D(const gp_Pnt& p) const;
-    bool is_inside_3D(const gp_Pnt& p) const;
+
+    inline bool is_inside_2D(const gp_Pnt& p) const{
+        BRepClass3d_SolidClassifier insider(this->shape, p, 0.01);
+        return insider.State() == TopAbs_ON;
+    }
+
+    inline bool is_inside_3D(const gp_Pnt& p) const{
+        BRepClass3d_SolidClassifier insider(this->shape, p, 0.01);
+        return insider.State() == TopAbs_IN;
+    }
 };
 
 #endif

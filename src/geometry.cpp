@@ -19,9 +19,8 @@
  */
 
 #include "geometry.hpp"
-#include "STEPCAFControl_Reader.hxx"
-#include "BRepClass3d_SolidClassifier.hxx"
-#include "BRepBuilderAPI_Transform.hxx"
+#include <STEPCAFControl_Reader.hxx>
+#include <BRepBuilderAPI_Transform.hxx>
 
 Geometry::Geometry(const std::string& path, double scale, utils::ProblemType type,
         MeshElementFactory* elem_type, bool do_topopt, Material* material, std::vector<Material*> alt_materials ):
@@ -59,21 +58,4 @@ TopoDS_Shape Geometry::load_shape(const std::string& path, double scale) const{
     return s;
 }
 
-bool Geometry::is_inside(const gp_Pnt& p) const{
-    if(this->type == utils::PROBLEM_TYPE_2D){
-        return this->is_inside_2D(p);
-    } else if(this->type == utils::PROBLEM_TYPE_3D){
-        return this->is_inside_3D(p);
-    }
-    return false;
-}
 
-bool Geometry::is_inside_2D(const gp_Pnt& p) const{
-    BRepClass3d_SolidClassifier insider(this->shape, p, 0.01);
-    return insider.State() == TopAbs_ON;
-}
-
-bool Geometry::is_inside_3D(const gp_Pnt& p) const{
-    BRepClass3d_SolidClassifier insider(this->shape, p, 0.01);
-    return insider.State() == TopAbs_IN;
-}
