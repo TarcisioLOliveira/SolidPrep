@@ -30,7 +30,6 @@
 #include "support.hpp"
 #include "pathfinding.hpp"
 #include "sizing.hpp"
-#include "ground_structure.hpp"
 #include "material.hpp"
 #include "utils.hpp"
 #include "finite_element.hpp"
@@ -68,9 +67,9 @@ class ProjectData {
     double thickness;
     std::unique_ptr<Pathfinding> pathfinder;
     std::unique_ptr<Sizing> sizer;
-    std::unique_ptr<Material> material;
+    std::vector<std::unique_ptr<Material>> materials;
     utils::ProblemType type;
-    std::unique_ptr<Geometry> ground_structure;
+    std::vector<std::unique_ptr<Geometry>> geometries;
     std::vector<Force> forces;
     std::vector<Support> supports;
     std::unique_ptr<FiniteElement> sizer_fea;
@@ -93,7 +92,9 @@ class ProjectData {
      */
     bool log_data(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc, std::string name, DataType type, bool required) const;
 
-    std::unique_ptr<Material> load_material(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc);
+    std::vector<std::unique_ptr<Material>> load_materials(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc);
+
+    std::vector<std::unique_ptr<Geometry>> load_geometries(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc, const std::string& folder_path);
 
     std::unique_ptr<Pathfinding> load_pathfinder(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc);
 

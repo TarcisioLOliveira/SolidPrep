@@ -57,7 +57,7 @@ TopoDS_Shape BeamSizing::run(){
     BeamGraph graph(this->data, this->type);
     auto results = graph.run();
     if(this->data->type == utils::PROBLEM_TYPE_2D){
-        TopoDS_Shape copy = BRepBuilderAPI_Copy(this->data->ground_structure->shape);
+        TopoDS_Shape copy = BRepBuilderAPI_Copy(this->data->geometries[0]->shape);
 
         size_t graph_size = graph.size();
         for(size_t i = 0; i < graph_size; ++i){
@@ -70,7 +70,7 @@ TopoDS_Shape BeamSizing::run(){
             gp_Vec F(Fx, Fy, 0);
             double t = this->data->thickness;
 
-            std::vector<double> S = this->data->material->get_max_stresses(normal);
+            std::vector<double> S = this->data->materials[0]->get_max_stresses(normal);
 
             double S_f = std::min(S[0], S[1]);
             double S_n = (normal.Dot(F) < 0) ? S[0] : S[1];
@@ -99,7 +99,7 @@ TopoDS_Shape BeamSizing::run(){
             copy = BRepAlgoAPI_Cut(copy, face);
         }
 
-        copy = BRepAlgoAPI_Cut(this->data->ground_structure->shape, copy);
+        copy = BRepAlgoAPI_Cut(this->data->geometries[0]->shape, copy);
 
         // Simplify geometry
 

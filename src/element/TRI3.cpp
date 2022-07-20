@@ -34,7 +34,7 @@
 namespace element{
 
 TRI3::TRI3(ElementShape s, ProjectData* data):
-    MeshElementCommon2DTri<TRI3>(s.nodes, data->material.get(), data->thickness){}
+    MeshElementCommon2DTri<TRI3>(s.nodes, data->materials[0].get(), data->thickness){}
 
 std::vector<double> TRI3::get_k() const{
     size_t N = this->nodes.size();

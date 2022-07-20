@@ -27,7 +27,7 @@
 namespace element{
 
 GT9::GT9(ElementShape s, ProjectData* data):
-    MeshElementCommon2DTri<GT9>(s.nodes, data->material.get(), data->thickness)
+    MeshElementCommon2DTri<GT9>(s.nodes, data->materials[0].get(), data->thickness)
     {}
 
 std::vector<double> GT9::get_k() const{

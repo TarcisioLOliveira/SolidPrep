@@ -101,7 +101,7 @@ TopoDS_Shape StandardSizing::expansion_2D(const meshing::StandardBeamMesher& mes
     // Get edges
     std::vector<TopoDS_Edge> edges_init;
     std::vector<TopoDS_Edge> edges_beam;
-    for (TopExp_Explorer exp(this->data->ground_structure->shape, TopAbs_EDGE); exp.More(); exp.Next()){
+    for (TopExp_Explorer exp(this->data->geometries[0]->shape, TopAbs_EDGE); exp.More(); exp.Next()){
         edges_init.push_back(TopoDS::Edge(exp.Current()));
     }
     for (TopExp_Explorer exp(beams, TopAbs_EDGE); exp.More(); exp.Next()){
@@ -374,7 +374,7 @@ TopoDS_Shape StandardSizing::expansion_2D(const meshing::StandardBeamMesher& mes
 
     logger::quick_log("Building geometry...");
     // Generate topology
-    TopoDS_Shape result = BRepBuilderAPI_Copy(this->data->ground_structure->shape);
+    TopoDS_Shape result = BRepBuilderAPI_Copy(this->data->geometries[0]->shape);
     result = utils::cut_shape(result, beams);
 
     // TODO: make this work
@@ -407,7 +407,7 @@ TopoDS_Shape StandardSizing::expansion_2D(const meshing::StandardBeamMesher& mes
     std::cout << "\r" << 100 << "%         ";
     std::cout << std::endl;
 
-    result = utils::cut_shape(this->data->ground_structure->shape, result);
+    result = utils::cut_shape(this->data->geometries[0]->shape, result);
     result = this->simplify_shape(result);
 
     logger::quick_log("Done.");
@@ -471,7 +471,7 @@ StandardSizing::ExpansionNode StandardSizing::get_expansion_node_2D(const gp_Dir
 
     double t = this->data->thickness;
 
-    std::vector<double> S(this->data->material->get_max_stresses(normal));
+    std::vector<double> S(this->data->materials[0]->get_max_stresses(normal));
 
     double S_f = std::min(S[0], S[1]);
     double S_n = (normal.Dot(F) < 0) ? S[0] : S[1];
@@ -616,7 +616,7 @@ TopoDS_Shape StandardSizing::simplify_shape(TopoDS_Shape shape) const{
 }
 
 TopoDS_Shape StandardSizing::build_initial_topology(){
-    TopoDS_Shape geometry = BRepBuilderAPI_Copy(data->ground_structure->shape);
+    TopoDS_Shape geometry = BRepBuilderAPI_Copy(data->geometries[0]->shape);
     this->end_points.reserve(this->data->supports.size());
     for(auto& f:this->data->forces){
         for(auto& s:this->data->supports){
@@ -640,14 +640,14 @@ TopoDS_Shape StandardSizing::build_initial_topology(){
                 csec = BRepBuilderAPI_Transform(csec, trsf);
             }
 
-            TopoDS_Shape beam = utils::sweep_surface(b, csec, data->ground_structure->shape);
+            TopoDS_Shape beam = utils::sweep_surface(b, csec, data->geometries[0]->shape);
             this->separate_beams.push_back(beam);
-            // TopoDS_Shape beam = utils::fast_make_2D_beam(b, f.S.get_dimension(), data->ground_structure->shape);
+            // TopoDS_Shape beam = utils::fast_make_2D_beam(b, f.S.get_dimension(), data->geometries[0]->shape);
             geometry = utils::cut_shape(geometry, beam);
         }
     }
 
-    return utils::cut_shape(this->data->ground_structure->shape, geometry);
+    return utils::cut_shape(this->data->geometries[0]->shape, geometry);
 }
 
 bool StandardSizing::is_inside_2D(const gp_Pnt& p, const TopoDS_Shape& shape) const{
@@ -717,7 +717,7 @@ TopoDS_Shape StandardSizing::bspline_simple2D(const std::vector<ExpansionNode>& 
     std::cout << "\r" << 100 << "%         ";
     std::cout << std::endl;
 
-    result = utils::cut_shape(this->data->ground_structure->shape, result);
+    result = utils::cut_shape(this->data->geometries[0]->shape, result);
     result = this->simplify_shape(result);
 
     logger::quick_log("Done.");

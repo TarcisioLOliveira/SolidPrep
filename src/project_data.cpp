@@ -98,8 +98,8 @@ ProjectData::ProjectData(std::string project_file){
             this->thickness = doc["thickness"].GetDouble();
         }
     }
-    if(this->log_data(doc, "material", TYPE_OBJECT, true)){
-        this->material = this->load_material(doc);
+    if(this->log_data(doc, "material", TYPE_ARRAY, true)){
+        this->materials = this->load_materials(doc);
     }
     if(this->log_data(doc, "mesher", TYPE_OBJECT, true)){
         this->log_data(doc["mesher"], "element_type", TYPE_STRING, true);
@@ -112,6 +112,21 @@ ProjectData::ProjectData(std::string project_file){
     if(this->log_data(doc, "topopt", TYPE_OBJECT, needs_topopt)){
         this->topopt = this->load_topopt(doc);
     }
+    if(this->log_data(doc, "loads", TYPE_ARRAY, true)){
+        this->forces = this->get_loads(doc["loads"]);
+    }
+    if(this->log_data(doc, "supports", TYPE_ARRAY, true)){
+        this->supports = this->get_support(doc["supports"]);
+    }
+    if(this->log_data(doc, "geometry", TYPE_ARRAY, true)){
+#ifdef _WIN32
+        size_t last_slash = project_file.rfind("\\");
+#else
+        size_t last_slash = project_file.rfind("/");
+#endif
+        std::string absolute_path = project_file.substr(0, last_slash+1);
+        this->geometries = this->load_geometries(doc, absolute_path);
+    }
     if(this->log_data(doc, "sizing", TYPE_OBJECT, needs_sizing)){
         if(this->log_data(doc["sizing"], "pathfinding", TYPE_OBJECT, false)){
             this->pathfinder = this->load_pathfinder(doc["sizing"]);
@@ -120,29 +135,6 @@ ProjectData::ProjectData(std::string project_file){
             this->sizer_fea = this->load_fea(doc["sizing"]);
         }
         this->sizer = this->load_sizer(doc);
-    }
-    if(this->log_data(doc, "loads", TYPE_ARRAY, true)){
-        this->forces = this->get_loads(doc["loads"]);
-    }
-    if(this->log_data(doc, "supports", TYPE_ARRAY, true)){
-        this->supports = this->get_support(doc["supports"]);
-    }
-    if(this->log_data(doc, "geometry_path", TYPE_STRING, true)){
-        std::string geom_path = doc["geometry_path"].GetString();
-#ifdef _WIN32
-        size_t last_slash = project_file.rfind("\\");
-#else
-        size_t last_slash = project_file.rfind("/");
-#endif
-        std::string absolute_path = project_file.substr(0, last_slash+1);
-        absolute_path.append(geom_path);
-        double scale;
-        if(this->log_data(doc, "scale", TYPE_DOUBLE, false)){
-            scale = doc["scale"].GetDouble();
-        } else {
-            scale = 1;
-        }
-        this->ground_structure.reset(new Geometry(absolute_path, scale, this->type, this->topopt_element.get(), needs_topopt, this->material.get()));
     }
 
 
@@ -182,63 +174,114 @@ bool ProjectData::log_data(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc
     return correct_type;
 }
 
-std::unique_ptr<Material> ProjectData::load_material(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc){
-    std::unique_ptr<Material> material;
-    auto& mat = doc["material"];
-    this->log_data(mat, "type", TYPE_STRING, true);
-    if(mat["type"] == "linear_elastic_orthotropic"){
-        std::vector<std::string> properties{"E", "nu", "G", "Smax", "Tmax"};
-        for(auto& s:properties){
-            logger::log_assert(mat.HasMember(s.c_str()), logger::ERROR, "missing material property: {}", s);
-            logger::log_assert(mat[s.c_str()].IsArray() || mat[s.c_str()].IsDouble(), logger::ERROR, "material property {} must be either a number or an array of numbers", s);
-        }
-        std::vector<std::vector<double>> values(5);
-        for(size_t i = 0; i < properties.size(); ++i){
-            if(mat[properties[i].c_str()].IsArray()){
-                const auto& a = mat[properties[i].c_str()].GetArray();
-                if(a.Size() == 1){
-                    values[i].resize(3, a[0].GetDouble());
-                } else {
-                    values[i].resize(3, 0);
-                    for(size_t j = 0; j < std::min(a.Size(), (rapidjson::SizeType) 3); ++j){
-                        values[i][j] = a[j].GetDouble();
-                    }
-                }
-            } else {
-                values[i].resize(3, mat[properties[i].c_str()].GetDouble());
+std::vector<std::unique_ptr<Material>> ProjectData::load_materials(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc){
+    const auto& materials = doc["material"].GetArray();
+    std::vector<std::unique_ptr<Material>> material;
+    for(const auto& mat:materials){
+        this->log_data(mat, "type", TYPE_STRING, true);
+        if(mat["type"] == "linear_elastic_orthotropic"){
+            std::vector<std::string> properties{"E", "nu", "G", "Smax", "Tmax"};
+            for(auto& s:properties){
+                logger::log_assert(mat.HasMember(s.c_str()), logger::ERROR, "missing material property: {}", s);
+                logger::log_assert(mat[s.c_str()].IsArray() || mat[s.c_str()].IsDouble(), logger::ERROR, "material property {} must be either a number or an array of numbers", s);
             }
-        }
-        logger::log_assert(mat.HasMember("name"), logger::ERROR, "missing material property: name");
-        logger::log_assert(mat["name"].IsString(), logger::ERROR, "material property 'name' must be a string");
-        std::string name(mat["name"].GetString());
+            std::vector<std::vector<double>> values(5);
+            for(size_t i = 0; i < properties.size(); ++i){
+                if(mat[properties[i].c_str()].IsArray()){
+                    const auto& a = mat[properties[i].c_str()].GetArray();
+                    if(a.Size() == 1){
+                        values[i].resize(3, a[0].GetDouble());
+                    } else {
+                        values[i].resize(3, 0);
+                        for(size_t j = 0; j < std::min(a.Size(), (rapidjson::SizeType) 3); ++j){
+                            values[i][j] = a[j].GetDouble();
+                        }
+                    }
+                } else {
+                    values[i].resize(3, mat[properties[i].c_str()].GetDouble());
+                }
+            }
+            logger::log_assert(mat.HasMember("name"), logger::ERROR, "missing material property: name");
+            logger::log_assert(mat["name"].IsString(), logger::ERROR, "material property 'name' must be a string");
+            std::string name(mat["name"].GetString());
 
-        for(auto& i:values[0]) i *= 1e3; // E
-        for(auto& i:values[2]) i *= 1e3; // G
-        // for(auto& i:values[0]) i *= 1e9; // E
-        // for(auto& i:values[2]) i *= 1e9; // G
-        // for(auto& i:values[3]) i *= 1e6; // Smax
-        // for(auto& i:values[4]) i *= 1e6; // Tmax
-        material.reset(new material::LinearElasticOrthotropic(name, values[0], values[1], values[2], values[3], values[4]));
-    } else if(mat["type"] == "linear_elastic_isotropic"){
-        std::vector<std::string> properties{"E", "nu", "Smax", "Tmax"};
-        for(auto& s:properties){
-            this->log_data(mat, s, TYPE_DOUBLE, true);
-        }
-        this->log_data(mat, "plane_stress", TYPE_BOOL, true);
-        double E = mat["E"].GetDouble();
-        double nu = mat["nu"].GetDouble();
-        double Smax = mat["Smax"].GetDouble();
-        double Tmax = mat["Tmax"].GetDouble();
-        bool plane_stress = mat["plane_stress"].GetBool();
+            for(auto& i:values[0]) i *= 1e3; // E
+            for(auto& i:values[2]) i *= 1e3; // G
+            // for(auto& i:values[0]) i *= 1e9; // E
+            // for(auto& i:values[2]) i *= 1e9; // G
+            // for(auto& i:values[3]) i *= 1e6; // Smax
+            // for(auto& i:values[4]) i *= 1e6; // Tmax
+            material.emplace_back(new material::LinearElasticOrthotropic(name, values[0], values[1], values[2], values[3], values[4]));
+        } else if(mat["type"] == "linear_elastic_isotropic"){
+            std::vector<std::string> properties{"E", "nu", "Smax", "Tmax"};
+            for(auto& s:properties){
+                this->log_data(mat, s, TYPE_DOUBLE, true);
+            }
+            this->log_data(mat, "plane_stress", TYPE_BOOL, true);
+            double E = mat["E"].GetDouble();
+            double nu = mat["nu"].GetDouble();
+            double Smax = mat["Smax"].GetDouble();
+            double Tmax = mat["Tmax"].GetDouble();
+            bool plane_stress = mat["plane_stress"].GetBool();
 
-        logger::log_assert(mat.HasMember("name"), logger::ERROR, "missing material property: name");
-        logger::log_assert(mat["name"].IsString(), logger::ERROR, "material property 'name' must be a string");
-        std::string name(mat["name"].GetString());
-        //this->material.reset(new material::LinearElasticIsotropic(E*1e9, nu, Smax*1e6, Tmax*1e6, plane_stress));
-        material.reset(new material::LinearElasticIsotropic(name, E*1e3, nu, Smax, Tmax, plane_stress));
+            logger::log_assert(mat.HasMember("name"), logger::ERROR, "missing material property: name");
+            logger::log_assert(mat["name"].IsString(), logger::ERROR, "material property 'name' must be a string");
+            std::string name(mat["name"].GetString());
+            //this->material.reset(new material::LinearElasticIsotropic(E*1e9, nu, Smax*1e6, Tmax*1e6, plane_stress));
+            material.emplace_back(new material::LinearElasticIsotropic(name, E*1e3, nu, Smax, Tmax, plane_stress));
+        }
     }
 
     return material;
+}
+
+std::vector<std::unique_ptr<Geometry>> ProjectData::load_geometries(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc, const std::string& folder_path){
+    const auto& geometries = doc["geometry"].GetArray();
+    std::vector<std::unique_ptr<Geometry>> geometry;
+    for(const auto& geom:geometries){
+        std::string absolute_path = folder_path;
+        std::string geom_path = geom["file_path"].GetString();
+        absolute_path.append(geom_path);
+
+        double scale;
+        bool do_topopt;
+        Material* material;
+        std::vector<Material*> alt_materials;
+        if(this->log_data(geom, "scale", TYPE_DOUBLE, false)){
+            scale = geom["scale"].GetDouble();
+        } else {
+            scale = 1;
+        }
+        if(this->log_data(geom, "do_topopt", TYPE_BOOL, true)){
+            do_topopt = geom["do_topopt"].GetBool();
+        }
+        if(this->log_data(geom, "material", TYPE_STRING, true)){
+            std::string mat_name(geom["material"].GetString());
+            auto equal_name = [&mat_name](const std::unique_ptr<Material>& m)->bool{
+                return mat_name == m->name;
+            };
+            auto it = std::find_if(this->materials.begin(), this->materials.end(), equal_name);
+            logger::log_assert(it != this->materials.end(), logger::ERROR, "material with name '{}' not found", mat_name);
+            material = it->get();
+        }
+        if(this->log_data(geom, "alt_materials", TYPE_ARRAY, false)){
+            const auto& alt = geom["alt_materials"].GetArray();
+            if(alt.Size() > 0){
+                for(const auto& mat:alt){
+                    logger::log_assert(mat.IsString(), logger::ERROR, "alt_materials must only contain the names of materials");
+                    std::string mat_name(mat.GetString());
+                    auto equal_name = [&mat_name](const std::unique_ptr<Material>& m)->bool{
+                        return mat_name == std::string(m->name);
+                    };
+                    auto it = std::find_if(this->materials.begin(), this->materials.end(), equal_name);
+                    logger::log_assert(it != this->materials.end(), logger::ERROR, "material with name '{}' not found", mat_name);
+                    alt_materials.push_back(it->get());
+                }
+            }
+        }
+        geometry.emplace_back(new Geometry(absolute_path, scale, this->type, this->topopt_element.get(), do_topopt, material, alt_materials));
+    }
+    return geometry;
 }
 
 std::unique_ptr<Pathfinding> ProjectData::load_pathfinder(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc){
@@ -259,7 +302,7 @@ std::unique_ptr<Pathfinding> ProjectData::load_pathfinder(const rapidjson::Gener
         if(this->log_data(pathf, "restriction_size", TYPE_DOUBLE, false)){
             restriction = pathf["restriction_size"].GetDouble();
         }
-        pathfinder.reset(new MeshlessAStar(this->ground_structure->shape, step, angle, choices, restriction, utils::PROBLEM_TYPE_2D));
+        pathfinder.reset(new MeshlessAStar(this->geometries[0]->shape, step, angle, choices, restriction, utils::PROBLEM_TYPE_2D));
     } else if(pathf["type"] == "visibility_graph"){
         this->log_data(pathf, "step", TYPE_DOUBLE, true);
         this->log_data(pathf, "max_turn_angle", TYPE_DOUBLE, true);
@@ -269,7 +312,7 @@ std::unique_ptr<Pathfinding> ProjectData::load_pathfinder(const rapidjson::Gener
         if(this->log_data(pathf, "restriction_size", TYPE_DOUBLE, false)){
             restriction = pathf["restriction_size"].GetDouble();
         }
-        pathfinder.reset(new VisibilityGraph(this->ground_structure, step, angle, restriction, utils::PROBLEM_TYPE_2D));
+        pathfinder.reset(new VisibilityGraph(this->geometries[0], step, angle, restriction, utils::PROBLEM_TYPE_2D));
     } else {
         logger::log_assert(false, logger::ERROR, "unknown pathfinding algorithm inserted: {}.", pathf["type"].GetString());
     }

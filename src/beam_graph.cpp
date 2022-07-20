@@ -98,9 +98,9 @@ std::vector<double> BeamGraph::run(){
             }
             double E = 0;
             if(data->type == utils::PROBLEM_TYPE_2D){
-                E = this->data->material->beam_E_2D(v1);
+                E = this->data->materials[0]->beam_E_2D(v1);
             } else {
-                E = this->data->material->beam_E_3D(v1);
+                E = this->data->materials[0]->beam_E_3D(v1);
             }
             this->nodes[0]->u_pos = new long[3]{pos[0], pos[1], pos[2]};
             this->nodes[1]->u_pos = new long[3]{pos[3], pos[4], pos[5]};
@@ -127,9 +127,9 @@ std::vector<double> BeamGraph::run(){
             }
             double E = 0;
             if(data->type == utils::PROBLEM_TYPE_2D){
-                E = this->data->material->beam_E_2D(v);
+                E = this->data->materials[0]->beam_E_2D(v);
             } else {
-                E = this->data->material->beam_E_3D(v);
+                E = this->data->materials[0]->beam_E_3D(v);
             }
             this->nodes[true_pos+1]->u_pos = new long[3]{pos[3], pos[4], pos[5]};
             elems[true_pos] = BeamElementFactory::make_element(BeamElementFactory::BEAM_LINEAR_2D, this->nodes[true_pos], this->nodes[true_pos+1], I, A, E);

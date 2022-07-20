@@ -208,7 +208,7 @@ TopoDS_Shape MinimalVolume::optimize(Visualization* viz, FiniteElement* fem, Mes
     if(this->save_result){
         logger::quick_log("Saving resulting topology...");
         std::cout << "\r" << 0 << "%         ";
-        TopoDS_Shape result = BRepBuilderAPI_Copy(this->data->ground_structure->shape);
+        TopoDS_Shape result = BRepBuilderAPI_Copy(this->data->geometries[0]->shape);
         for(size_t i = 0; i < this->new_x.size(); ++i){
             if(this->new_x[i] >= this->result_threshold){
                 result = utils::cut_shape(result, mesh->element_list[i]->get_shape());
@@ -216,7 +216,7 @@ TopoDS_Shape MinimalVolume::optimize(Visualization* viz, FiniteElement* fem, Mes
             double pc = i/(double)(this->new_x.size()-1);
             std::cout << "\r" << pc*100 << "%         ";
         }
-        result = utils::cut_shape(this->data->ground_structure->shape, result);
+        result = utils::cut_shape(this->data->geometries[0]->shape, result);
         return result;
         std::cout << "\r" << 100 << "%         ";
         logger::quick_log(" "); 

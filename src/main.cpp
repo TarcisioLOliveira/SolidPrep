@@ -53,7 +53,7 @@ int main(int argc, char* argv[]){
         size_time = sizing_duration.count()/60.0;
         utils::shape_to_file("sized.step", shape);
     } else if(proj.analysis == ProjectData::FEA_ONLY || proj.analysis == ProjectData::OPTIMIZE_ONLY){
-        shape = proj.ground_structure->shape;
+        shape = proj.geometries[0]->shape;
     }
 
     // Meshing
