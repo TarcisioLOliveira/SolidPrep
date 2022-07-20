@@ -107,6 +107,8 @@ TopoDS_Shape StandardSizing::expansion_2D(const meshing::StandardBeamMesher& mes
     for (TopExp_Explorer exp(beams, TopAbs_EDGE); exp.More(); exp.Next()){
         edges_beam.push_back(TopoDS::Edge(exp.Current()));
     }
+    auto D = this->data->geometries[0]->material->stiffness_2D();
+    auto t = this->data->thickness;
 
     std::vector<ExternalForce> external_forces;
     // Get applied forces
@@ -175,7 +177,14 @@ TopoDS_Shape StandardSizing::expansion_2D(const meshing::StandardBeamMesher& mes
             }
         }
 
-        auto reactions = this->solver->calculate_forces(&mesh, u, this->data->topopt_element);
+        // `calculate_forces()` still needs to be adapted to support multiple geometries
+        // It'll likely result in multiple reaction vectors, one per geometry,
+        // which will then need to be summed afterwards by the caller function
+        // in order to obtain the final result (if so desired).
+        //
+        // This way, the function can also calculate reactions for each geoemtry
+        // separately.
+        auto reactions = this->solver->calculate_forces(&mesh, this->data->geometries[0], t, u, this->data->topopt_element);
         auto dof = this->data->topopt_element->get_dof_per_node();
         double Fx = 0;
         double Fy = 0;
@@ -316,7 +325,7 @@ TopoDS_Shape StandardSizing::expansion_2D(const meshing::StandardBeamMesher& mes
                 continue;
             }
 
-            std::vector<double> force = e->get_internal_loads(u);
+            std::vector<double> force = e->get_internal_loads(D, t, u);
             size_t dof = e->get_element_info()->get_dof_per_node();
             for(size_t j = 0; j < e->nodes.size(); ++j){
                 auto& ne = e->nodes[j];

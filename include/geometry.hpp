@@ -34,6 +34,14 @@ class Geometry{
 
     bool is_inside(const gp_Pnt& p) const;
 
+    inline std::vector<double> get_D() const{
+        if(this->type == utils::PROBLEM_TYPE_2D){
+            return this->material->stiffness_2D();
+        } else {
+            return this->material->stiffness_3D();
+        }
+    }
+
     const TopoDS_Shape shape;
     const double scale;
     const Material* const material;

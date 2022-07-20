@@ -62,6 +62,7 @@ class Material{
      */
     virtual std::vector<double> get_max_stresses(gp_Dir d) const = 0;
 
+    // Unused, may delete later
     virtual double get_max_Von_Mises_2D() const;
     virtual double get_max_Von_Mises_3D() const;
 

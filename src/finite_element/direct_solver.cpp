@@ -25,6 +25,7 @@
 #include "utils.hpp"
 #include <limits>
 #include <cblas.h>
+#include "project_data.hpp"
 
 namespace finite_element{
 
@@ -33,8 +34,8 @@ std::vector<double> DirectSolver::calculate_displacements(ProjectData* data, Mes
     if(!use_stored_matrix || this->K.size() == 0){
         this->K.clear();
 
-        const size_t k_dim = std::sqrt(mesh->element_list[0]->get_k().size());
-        const size_t dof = k_dim / mesh->element_list[0]->nodes.size();
+        const size_t k_dim = data->topopt_element->get_k_dimension();
+        const size_t dof = data->topopt_element->get_dof_per_node();
 
         W = mesh->load_vector.size();
         N = k_dim;
@@ -73,6 +74,9 @@ std::vector<double> DirectSolver::calculate_displacements(ProjectData* data, Mes
 
         this->K = std::vector<double>(W*N, 0);
 
+
+        const auto D = data->geometries[0]->material->stiffness_2D();
+        const double t = data->thickness;
         if(density.size() == 0){
             logger::quick_log("Generating stiffness matrix...");
             for(auto& e : mesh->element_list){
@@ -82,7 +86,7 @@ std::vector<double> DirectSolver::calculate_displacements(ProjectData* data, Mes
                         u_pos.push_back(n->u_pos[i]);
                     }
                 }
-                std::vector<double> k = e->get_k();
+                std::vector<double> k = e->get_k(D, t);
                 this->insert_element_matrix(K, k, u_pos, W, N);
             }
         } else {
@@ -96,13 +100,13 @@ std::vector<double> DirectSolver::calculate_displacements(ProjectData* data, Mes
                     }
                 }
                 if(rho < density.end() && density.size() >= mesh->element_list.size()){
-                    std::vector<double> k = e->get_k();
+                    std::vector<double> k = e->get_k(D, t);
                     double rho_scal = rho_min + (1-rho_min)*std::pow(*rho, pc);
                     cblas_dscal(k.size(), rho_scal, k.data(), 1);
                     this->insert_element_matrix(K, k, u_pos, W, N);
                     ++rho;
                 } else {
-                    std::vector<double> k = e->get_k();
+                    std::vector<double> k = e->get_k(D, t);
                     this->insert_element_matrix(K, k, u_pos, W, N);
                 }
             }
@@ -148,8 +152,8 @@ void DirectSolver::insert_element_matrix(std::vector<double>& K, const std::vect
 std::vector<double> DirectSolver::calculate_displacements_simple(ProjectData* data, Meshing* mesh, bool use_stored_matrix){
     if(!use_stored_matrix || this->K.size() == 0){
         this->K.clear();
-        const size_t k_dim = std::sqrt(mesh->element_list[0]->get_k().size());
-        const size_t dof = k_dim / mesh->element_list[0]->nodes.size();
+        const size_t k_dim = data->topopt_element->get_k_dimension();
+        const size_t dof = data->topopt_element->get_dof_per_node();
 
         W = mesh->load_vector.size();
         N = k_dim;
@@ -187,6 +191,8 @@ std::vector<double> DirectSolver::calculate_displacements_simple(ProjectData* da
         K = std::vector<double>(W*N, 0);
 
         logger::quick_log("Generating stiffness matrix...");
+        const auto D = data->geometries[0]->material->stiffness_2D();
+        const double t = data->thickness;
         for(auto& e : mesh->element_list){
             std::vector<long> u_pos;
             for(auto& n : e->nodes){
@@ -194,7 +200,7 @@ std::vector<double> DirectSolver::calculate_displacements_simple(ProjectData* da
                     u_pos.push_back(n->u_pos[i]);
                 }
             }
-            std::vector<double> k = e->get_k();
+            std::vector<double> k = e->get_k(D, t);
             this->insert_element_matrix(K, k, u_pos, W, N);
         }
 

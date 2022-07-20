@@ -61,7 +61,7 @@ class BeamElementFactory{
 
 class MeshElementFactory{
     public:
-    inline virtual MeshElement* make_element(const ElementShape& shape, ProjectData* data) const = 0;
+    inline virtual MeshElement* make_element(const ElementShape& shape) const = 0;
     inline virtual size_t get_k_dimension() const = 0;
     inline virtual size_t get_dof_per_node() const = 0;
     inline virtual size_t get_nodes_per_element() const = 0;
@@ -79,8 +79,8 @@ class MeshElementFactory{
 template<class T>
 class MeshElementFactoryImpl : public MeshElementFactory{
     public:
-    inline MeshElement* make_element(const ElementShape& shape, ProjectData* data) const override{
-        return new T(shape, data);
+    inline MeshElement* make_element(const ElementShape& shape) const override{
+        return new T(shape);
     }
     inline size_t get_k_dimension() const override{
         return T::K_DIM;

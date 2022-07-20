@@ -21,16 +21,15 @@
 #include "element/GT9.hpp"
 #include "cblas.h"
 #include "logger.hpp"
-#include "project_data.hpp"
 #include <vector>
 
 namespace element{
 
-GT9::GT9(ElementShape s, ProjectData* data):
-    MeshElementCommon2DTri<GT9>(s.nodes, data->materials[0].get(), data->thickness)
+GT9::GT9(ElementShape s):
+    MeshElementCommon2DTri<GT9>(s.nodes)
     {}
 
-std::vector<double> GT9::get_k() const{
+std::vector<double> GT9::get_k(const std::vector<double>& D, const double t) const{
 
     size_t N = this->NODES_PER_ELEM;
 
@@ -60,8 +59,6 @@ std::vector<double> GT9::get_k() const{
     double c1 = c[1];
     double c2 = c[2];
     
-    auto D = this->mat->stiffness_2D();
-
     double d0 = D[0];
     double d1 = D[1];
     double d2 = D[2];
@@ -240,7 +237,7 @@ t*(0.0104166666666667*b0*b0*b2*b2*d0 + 0.0104166666666667*b0*b0*b2*c2*d2 + 0.010
 }
 
 
-std::vector<double> GT9::get_DB(const gp_Pnt& point) const{
+std::vector<double> GT9::get_DB(const std::vector<double>& D, const gp_Pnt& point) const{
     size_t N = this->nodes.size();
 
     std::vector<gp_Pnt> p;
@@ -273,8 +270,6 @@ std::vector<double> GT9::get_DB(const gp_Pnt& point) const{
     double c1 = c[1];
     double c2 = c[2];
     
-    auto D = this->mat->stiffness_2D();
-
     double d0 = D[0];
     double d1 = D[1];
     double d2 = D[2];
@@ -344,7 +339,7 @@ std::vector<double> GT9::get_DB(const gp_Pnt& point) const{
     return DB;
 }
 
-std::vector<double> GT9::get_Nf(const std::vector<gp_Pnt>& points) const{
+std::vector<double> GT9::get_Nf(const double t, const std::vector<gp_Pnt>& points) const{
 
     std::vector<gp_Pnt> p;
     for(auto n:this->nodes){

@@ -38,12 +38,12 @@
 template<class T>
 class MeshElementCommon : public MeshElement{
     public:
-    virtual double get_stress_at(gp_Pnt point, const std::vector<double>& u) const override{
+    virtual double get_stress_at(const std::vector<double>& D, const gp_Pnt& point, const std::vector<double>& u) const override{
         const size_t N = T::NODES_PER_ELEM;
         const size_t K_DIM = T::K_DIM;
         const size_t NODE_DOF = T::NODE_DOF;
 
-        const std::vector<double> DB = this->get_DB(point);
+        const std::vector<double> DB = this->get_DB(D, point);
 
         std::vector<double> results(N, 0);
         std::vector<double> u_vec(K_DIM, 0);
@@ -63,12 +63,12 @@ class MeshElementCommon : public MeshElement{
         return std::sqrt(std::pow(results[0], 2) - results[0]*results[1] + std::pow(results[1], 2) + 3*std::pow(results[2], 2));
     }
 
-    virtual std::vector<double> get_internal_loads(const std::vector<double>& u) const override{
+    virtual std::vector<double> get_internal_loads(const std::vector<double>& D, const double t, const std::vector<double>& u) const override{
         const size_t N = T::NODES_PER_ELEM;
         const size_t K_DIM = T::K_DIM;
         const size_t NODE_DOF = T::NODE_DOF;
 
-        const std::vector<double> k = this->get_k();
+        const std::vector<double> k = this->get_k(D, t);
 
         std::vector<double> results(K_DIM, 0);
         std::vector<double> U(K_DIM, 0);
@@ -88,12 +88,12 @@ class MeshElementCommon : public MeshElement{
         return results;
     }
 
-    virtual double get_compliance(const std::vector<double>& u) const override{
+    virtual double get_compliance(const std::vector<double>& D, const double t, const std::vector<double>& u) const override{
         const size_t N = T::NODES_PER_ELEM;
         const size_t K_DIM = T::K_DIM;
         const size_t NODE_DOF = T::NODE_DOF;
 
-        const auto k = this->get_k();
+        const auto k = this->get_k(D, t);
 
         std::vector<double> u_vec(K_DIM, 0);
         for(size_t i = 0; i < N; ++i){
@@ -120,12 +120,12 @@ class MeshElementCommon : public MeshElement{
         
         return result;
     }
-    virtual double get_compliance(const std::vector<double>& u, const std::vector<double>& l) const override{
+    virtual double get_compliance(const std::vector<double>& D, const double t, const std::vector<double>& u, const std::vector<double>& l) const override{
         const size_t N = T::NODES_PER_ELEM;
         const size_t K_DIM = T::K_DIM;
         const size_t NODE_DOF = T::NODE_DOF;
 
-        const auto k = this->get_k();
+        const auto k = this->get_k(D, t);
 
         std::vector<double> u_vec(K_DIM, 0);
         for(size_t i = 0; i < N; ++i){
@@ -162,8 +162,8 @@ class MeshElementCommon : public MeshElement{
 
 
     protected:
-    MeshElementCommon(const std::vector<MeshNode*>& nodes, Material* m):
-            MeshElement(nodes, m)
+    MeshElementCommon(const std::vector<MeshNode*>& nodes):
+            MeshElement(nodes)
             {}
 
 };
@@ -177,12 +177,12 @@ class MeshElementCommon2D : public MeshElementCommon<T>{
 
     static const utils::ProblemType PROBLEM_TYPE = utils::PROBLEM_TYPE_2D;
 
-    virtual std::vector<double> get_stress_tensor(const gp_Pnt& p, const std::vector<double>& u) const override{
+    virtual std::vector<double> get_stress_tensor(const std::vector<double>& D, const gp_Pnt& p, const std::vector<double>& u) const override{
         const size_t N = T::NODES_PER_ELEM;
         const size_t K_DIM = T::K_DIM;
         const size_t NODE_DOF = T::NODE_DOF;
 
-        const std::vector<double> DB = this->get_DB(p);
+        const std::vector<double> DB = this->get_DB(D, p);
 
         std::vector<double> results(S_SIZE, 0);
         std::vector<double> U(K_DIM, 0);
@@ -205,12 +205,12 @@ class MeshElementCommon2D : public MeshElementCommon<T>{
         return S;
     }
 
-    virtual void get_virtual_load(double mult, const gp_Pnt& point, const std::vector<double>& u, std::vector<double>& l) const override{
+    virtual void get_virtual_load(const std::vector<double>& D, double mult, const gp_Pnt& point, const std::vector<double>& u, std::vector<double>& l) const override{
         const size_t N = T::NODES_PER_ELEM;
         const size_t K_DIM = T::K_DIM;
         const size_t NODE_DOF = T::NODE_DOF;
 
-        const std::vector<double> DB = this->get_DB(point);
+        const std::vector<double> DB = this->get_DB(D, point);
         const std::vector<double> V{1, -0.5, 0,
                                    -0.5, 1, 0,
                                    0,   0, 3};
@@ -253,13 +253,13 @@ class MeshElementCommon2D : public MeshElementCommon<T>{
         }
     }
 
-    virtual std::vector<double> get_f(const gp_Dir& dir, double norm, const std::vector<gp_Pnt>& points) const override{
+    virtual std::vector<double> get_f(const double t, const gp_Dir& dir, double norm, const std::vector<gp_Pnt>& points) const override{
         const size_t K_DIM = T::K_DIM;
 
         double px = dir.X()*norm;
         double py = dir.Y()*norm;
 
-        auto Nf = this->get_Nf(points);
+        auto Nf = this->get_Nf(t, points);
 
         std::vector<double> f(K_DIM, 0);
         for(size_t i = 0; i < K_DIM; ++i){
@@ -270,9 +270,8 @@ class MeshElementCommon2D : public MeshElementCommon<T>{
     }
 
     protected:
-    const double t;
-    MeshElementCommon2D(const std::vector<MeshNode*>& nodes, Material* m, double thickness):
-            MeshElementCommon<T>(nodes, m), t(thickness)
+    MeshElementCommon2D(const std::vector<MeshNode*>& nodes):
+            MeshElementCommon<T>(nodes)
             {}
 };
 
@@ -315,12 +314,12 @@ class MeshElementCommon2DTri : public MeshElementCommon2D<T>{
         return points;
     }
 
-    virtual double get_volume() const override{
+    virtual double get_volume(const double t) const override{
         const gp_Mat deltaM(1, this->nodes[0]->point.X(), this->nodes[0]->point.Y(),
                             1, this->nodes[1]->point.X(), this->nodes[1]->point.Y(),
                             1, this->nodes[2]->point.X(), this->nodes[2]->point.Y());
 
-        return 0.5*std::abs(deltaM.Determinant())*this->t;
+        return 0.5*std::abs(deltaM.Determinant())*t;
     }
 
     virtual TopoDS_Shape get_shape() const override{
@@ -340,8 +339,8 @@ class MeshElementCommon2DTri : public MeshElementCommon2D<T>{
     }
 
     protected:
-    MeshElementCommon2DTri(const std::vector<MeshNode*>& nodes, Material* m, double thickness):
-            MeshElementCommon2D<T>(nodes, m, thickness)
+    MeshElementCommon2DTri(const std::vector<MeshNode*>& nodes):
+            MeshElementCommon2D<T>(nodes)
             {}
 
     inline TopoDS_Face generate_geometry(const gp_Pnt& p1, const gp_Pnt& p2, const gp_Pnt& p3) const{

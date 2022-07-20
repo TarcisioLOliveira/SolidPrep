@@ -50,7 +50,7 @@ TopoDS_Shape MinimalCompliance::optimize(Visualization* viz, FiniteElement* fem,
     this->init_convolution_filter();
 
     for(size_t i = 0; i < mesh->element_list.size(); ++i){
-        this->grad_V[i] = mesh->element_list[i]->get_volume();
+        this->grad_V[i] = mesh->element_list[i]->get_volume(this->data->thickness);
         this->max_V += this->grad_V[i];
     }
 
@@ -178,9 +178,10 @@ double MinimalCompliance::fobj_grad(const std::vector<double>& x, std::vector<do
     std::vector<double> u = this->fem->calculate_displacements(this->data, this->mesh, x, pc);
     this->viz->update_vector_view(this->mesh->node_list, u);
 
+    const auto D = this->data->geometries[0]->get_D();
     for(size_t i = 0; i < x.size(); ++i){
         auto& e = this->mesh->element_list[i];
-        double uKu = e->get_compliance(u);
+        double uKu = e->get_compliance(D, this->data->thickness, u);
         grad[i] = -pc*std::pow(x[i], pc-1)*uKu;
     }
     c = cblas_ddot(u.size(), this->mesh->load_vector.data(), 1, u.data(), 1);

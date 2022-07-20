@@ -28,8 +28,6 @@
 #include "element_factory.hpp"
 #include "element_common.hpp"
 
-class ProjectData;
-
 namespace element{
 
 class TRI3 : public MeshElementCommon2DTri<TRI3>{
@@ -42,17 +40,17 @@ class TRI3 : public MeshElementCommon2DTri<TRI3>{
 
     static const utils::ProblemType PROBLEM_TYPE = utils::PROBLEM_TYPE_2D;
 
-    TRI3(ElementShape s, ProjectData* data);
+    TRI3(ElementShape s);
 
-    virtual std::vector<double> get_k() const override;
+    virtual std::vector<double> get_k(const std::vector<double>& D, const double t) const override;
 
     virtual inline std::unique_ptr<MeshElementFactory> get_element_info() const override{
         return std::unique_ptr<MeshElementFactory>(new MeshElementFactoryImpl<TRI3>());
     }
 
     private:
-    virtual std::vector<double> get_DB(const gp_Pnt& point) const override;
-    virtual std::vector<double> get_Nf(const std::vector<gp_Pnt>& points) const override;
+    virtual std::vector<double> get_DB(const std::vector<double>& D, const gp_Pnt& point) const override;
+    virtual std::vector<double> get_Nf(const double t, const std::vector<gp_Pnt>& points) const override;
 };
 
 }

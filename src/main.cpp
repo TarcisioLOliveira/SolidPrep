@@ -75,9 +75,10 @@ int main(int argc, char* argv[]){
         stressesX.reserve(proj.topopt_mesher->element_list.size());
         stressesY.reserve(proj.topopt_mesher->element_list.size());
         stressesXY.reserve(proj.topopt_mesher->element_list.size());
+        const auto D = proj.geometries[0]->get_D();
         for(auto& e:proj.topopt_mesher->element_list){
-            stresses.push_back(e->get_stress_at(e->get_centroid(), u));
-            auto tensor = e->get_stress_tensor(e->get_centroid(), u);
+            stresses.push_back(e->get_stress_at(D, e->get_centroid(), u));
+            auto tensor = e->get_stress_tensor(D, e->get_centroid(), u);
             stressesX.push_back(tensor[0]);
             stressesY.push_back(tensor[3]);
             stressesXY.push_back(tensor[1]);

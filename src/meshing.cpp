@@ -92,7 +92,7 @@ void Meshing::prepare_for_FEM(const std::vector<ElementShape>& base_mesh,
     this->load_vector.resize(current);
 
     for(auto& e : base_mesh){
-        this->element_list.emplace_back(this->elem_maker->make_element(e, data));
+        this->element_list.emplace_back(this->elem_maker->make_element(e));
     }
 
 
@@ -173,7 +173,7 @@ void Meshing::prepare_for_FEM(const std::vector<ElementShape>& base_mesh,
                     }
                     std::vector<double> fe;
                     if(list.size() == 2){
-                        fe = e->get_f(dir, norm, {list[0]->point, list[1]->point});
+                        fe = e->get_f(data->thickness, dir, norm, {list[0]->point, list[1]->point});
                     } else if(list.size() == 1){
                         for(size_t i = 0; i < N; ++i){
                             size_t j = (i+1)%N;
@@ -184,12 +184,12 @@ void Meshing::prepare_for_FEM(const std::vector<ElementShape>& base_mesh,
                                 break;
                             }
                             if(is_between_points(n1, n2, p1)){
-                                fe = e->get_f(dir, norm, {n1, p1});
+                                fe = e->get_f(data->thickness, dir, norm, {n1, p1});
                                 // logger::quick_log(n1.X(), n1.Y(), p1.X(), p1.Y(), n2.X(), n2.Y());
                                 // logger::quick_log(fe);
                                 break;
                             } else if(is_between_points(n1, n2, p2)){
-                                fe = e->get_f(dir, norm, {n1, p2});
+                                fe = e->get_f(data->thickness, dir, norm, {n1, p2});
                                 // logger::quick_log(n1.X(), n1.Y(), p2.X(), p2.Y(), n2.X(), n2.Y());
                                 // logger::quick_log(fe);
                                 break;

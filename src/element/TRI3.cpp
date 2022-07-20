@@ -21,7 +21,6 @@
 #include "element/TRI3.hpp"
 #include "cblas.h"
 #include "logger.hpp"
-#include "project_data.hpp"
 #include <BRepBuilderAPI_MakeVertex.hxx>
 #include <BRepBuilderAPI_MakeEdge.hxx>
 #include <BRepBuilderAPI_MakeWire.hxx>
@@ -33,10 +32,10 @@
 
 namespace element{
 
-TRI3::TRI3(ElementShape s, ProjectData* data):
-    MeshElementCommon2DTri<TRI3>(s.nodes, data->materials[0].get(), data->thickness){}
+TRI3::TRI3(ElementShape s):
+    MeshElementCommon2DTri<TRI3>(s.nodes){}
 
-std::vector<double> TRI3::get_k() const{
+std::vector<double> TRI3::get_k(const std::vector<double>& D, const double t) const{
     size_t N = this->nodes.size();
 
     std::vector<double> B(3*2*N, 0);
@@ -70,19 +69,18 @@ std::vector<double> TRI3::get_k() const{
     }
 
     std::vector<double> DB(3*2*N, 0);
-    auto D = this->mat->stiffness_2D();
 
     cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 3, 2*N, 3, 1, D.data(), 3, B.data(), 2*N, 0, DB.data(), 2*N);
 
     std::vector<double> K(2*N*2*N, 0);
     cblas_dgemm(CblasRowMajor, CblasTrans, CblasNoTrans, 2*N, 2*N, 3, 1, B.data(), 2*N, DB.data(), 2*N, 0, K.data(), 2*N);
 
-    cblas_dscal(K.size(), this->t*Delta, K.data(), 1);
+    cblas_dscal(K.size(), t*Delta, K.data(), 1);
 
     return K;
 }
 
-std::vector<double> TRI3::get_DB(const gp_Pnt& point) const{
+std::vector<double> TRI3::get_DB(const std::vector<double>& D, const gp_Pnt& point) const{
     (void)point;
     size_t N = this->nodes.size();
 
@@ -117,14 +115,13 @@ std::vector<double> TRI3::get_DB(const gp_Pnt& point) const{
     }
 
     std::vector<double> DB(3*2*N, 0);
-    auto D = this->mat->stiffness_2D();
 
     cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 3, 2*N, 3, 1, D.data(), 3, B.data(), 2*N, 0, DB.data(), 2*N);
 
     return DB;
 }
 
-std::vector<double> TRI3::get_Nf(const std::vector<gp_Pnt>& points) const{
+std::vector<double> TRI3::get_Nf(const double t, const std::vector<gp_Pnt>& points) const{
 
     std::vector<gp_Pnt> p;
     for(auto n:this->nodes){

@@ -28,8 +28,6 @@
 #include <memory>
 #include "element_common.hpp"
 
-class ProjectData;
-
 namespace element{
 
 class GT9 : public MeshElementCommon2DTri<GT9>{
@@ -40,17 +38,17 @@ class GT9 : public MeshElementCommon2DTri<GT9>{
     static const size_t NODES_PER_ELEM = 3;
     static const size_t K_DIM          = NODE_DOF*NODES_PER_ELEM;
 
-    GT9(ElementShape s, ProjectData* data);
+    GT9(ElementShape s);
 
-    virtual std::vector<double> get_k() const override;
+    virtual std::vector<double> get_k(const std::vector<double>& D, const double t) const override;
 
     virtual inline std::unique_ptr<MeshElementFactory> get_element_info() const override{
         return std::unique_ptr<MeshElementFactory>(new MeshElementFactoryImpl<GT9>());
     }
 
     private:
-    virtual std::vector<double> get_DB(const gp_Pnt& point) const override;
-    virtual std::vector<double> get_Nf(const std::vector<gp_Pnt>& points) const override;
+    virtual std::vector<double> get_DB(const std::vector<double>& D, const gp_Pnt& point) const override;
+    virtual std::vector<double> get_Nf(const double t, const std::vector<gp_Pnt>& points) const override;
 };
 
 }

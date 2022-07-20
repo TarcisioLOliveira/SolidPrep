@@ -151,7 +151,8 @@ class Element{
      *
      * @return The element stiffness matrix.
      */
-    virtual std::vector<double> get_k() const = 0;
+    // Removed just to avoid having to deal with BeamElement
+    // virtual std::vector<double> get_k() const = 0;
 
     protected:
     /**
@@ -179,7 +180,7 @@ class BeamElement : public Element{
      *
      * @return The element stiffness matrix.
      */
-    virtual std::vector<double> get_k() const override = 0;
+    virtual std::vector<double> get_k() const = 0;
     /**
      * Calculates the internal loads at a certain element node.
      *
@@ -219,35 +220,42 @@ class MeshElement : public Element{
     /**
      * Creates and returns the elemental stiffness matrix.
      *
+     * @param D Constitutive matrix.
+     * @param t Geometry thickness.
+     *
      * @return The element stiffness matrix.
      */
-    virtual std::vector<double> get_k() const override = 0;
+    virtual std::vector<double> get_k(const std::vector<double>& D, const double t) const = 0;
     /**
      * Calculates the internal load vector of the element.
      *
+     * @param D Constitutive matrix.
+     * @param t Geometry thickness.
      * @param u Displacement vector.
      *
      * @return Internal loads at node.
      */
-    virtual std::vector<double> get_internal_loads(const std::vector<double>& u) const = 0;
+    virtual std::vector<double> get_internal_loads(const std::vector<double>& D, const double t, const std::vector<double>& u) const = 0;
     /** 
      * Calculates the Von Mises stresses at a point within the element.
      *
+     * @param D Constitutive matrix.
      * @param p The point.
      * @param u Displacement vector.
      *
      * @return Von Mises stress at point p.
      */
-    virtual double get_stress_at(gp_Pnt p, const std::vector<double>& u) const = 0;
+    virtual double get_stress_at(const std::vector<double>& D, const gp_Pnt& p, const std::vector<double>& u) const = 0;
     /**
      * Calculates the Cauchy stress tensor at a point within the element.
      *
+     * @param D Constitutive matrix.
      * @param p The point.
      * @param u Displacement vector.
      *
      * @return Stress tensor at point p.
      */
-    virtual std::vector<double> get_stress_tensor(const gp_Pnt& p, const std::vector<double>& u) const = 0;
+    virtual std::vector<double> get_stress_tensor(const std::vector<double>& D, const gp_Pnt& p, const std::vector<double>& u) const = 0;
     /** 
      * Calculates the intersection points between a shape (edge for 2D, face
      * for 3D) and the boundaries of the element.
@@ -260,46 +268,54 @@ class MeshElement : public Element{
     /**
      * Returns the volume or area of the element.
      *
+     * @param t Geometry thickness.
+     *
      * @return volume or area.
      */
-    virtual double get_volume() const = 0;
+    virtual double get_volume(const double t) const = 0;
     /**
      * Calculates the element's compliance.
      *
+     * @param D Constitutive matrix.
+     * @param t Geometry thickness.
      * @param u Displacement vector.
      *
      * @return The compliance.
      */
-    virtual double get_compliance(const std::vector<double>& u) const = 0;
+    virtual double get_compliance(const std::vector<double>& D, const double t, const std::vector<double>& u) const = 0;
     /**
      * Calculates the element's compliance with a virtual displacement vector.
      *
+     * @param D Constitutive matrix.
+     * @param t Geometry thickness.
      * @param u Displacement vector.
      * @param l Virtual displacement vector.
      *
      * @return The compliance.
      */
-    virtual double get_compliance(const std::vector<double>& u, const std::vector<double>& l) const = 0;
+    virtual double get_compliance(const std::vector<double>& D, const double t, const std::vector<double>& u, const std::vector<double>& l) const = 0;
     /**
      * Calculates the elemental contribution to the virtual load, for a p-norm
      * global stress aggregation function.
      *
+     * @param D Constitutive matrix.
      * @param mult Value to be multiplied to the result. For p-norm stress 
      * based on LE et al, 2009, it is:
      * P*v*std::pow(data->new_x[i], pt*P)*std::pow(S, P-2)
      * @param u Displacement vector.
      * @param l Global virtual load vector.
      */
-    virtual void get_virtual_load(double mult, const gp_Pnt& point, const std::vector<double>& u, std::vector<double>& l) const = 0;
+    virtual void get_virtual_load(const std::vector<double>& D, double mult, const gp_Pnt& point, const std::vector<double>& u, std::vector<double>& l) const = 0;
     /**
      * Calculates the force vector for a distributed load.
      *
+     * @param t Geometry thickness.
      * @param dir Load direction.
      * @param norm Distributed load intensity over area (that is, pressure).
      * @param points Delimiting points.
      * @return Force vector.
      */
-    virtual std::vector<double> get_f(const gp_Dir& dir, double norm, const std::vector<gp_Pnt>& points) const = 0;
+    virtual std::vector<double> get_f(const double t, const gp_Dir& dir, double norm, const std::vector<gp_Pnt>& points) const = 0;
     /**
      * Returns the geometry of the element.
      *
@@ -347,36 +363,36 @@ class MeshElement : public Element{
     virtual inline MeshNode* get_node(size_t node) const{ return static_cast<MeshNode*>(this->nodes[node]);}
 
     protected:
-    Material const * const mat;
     /**
      * Creates an element with the specified nodes.
      *
      * @param nodes List of nodes.
      */
-    MeshElement(const std::vector<MeshNode*>& nodes, Material* m):
-        Element(std::vector<Node*>(nodes.begin(), nodes.end())),
-        mat(m)
+    MeshElement(const std::vector<MeshNode*>& nodes):
+        Element(std::vector<Node*>(nodes.begin(), nodes.end()))
         {}
 
     /**
      * Gets the multiplication of the constitutive matrix (D or C) and the linear
      * displacement matrix (B). Used to calculate stress at a point.
      *
+     * @param D constitutive matrix.
      * @param point Point where it's measured at.
      *
      * @return DB matrix.
      */
-    virtual std::vector<double> get_DB(const gp_Pnt& point) const = 0;
+    virtual std::vector<double> get_DB(const std::vector<double>& D, const gp_Pnt& point) const = 0;
 
     /**
      * Gets the matrix used to calculate the nodal force vector. Calculated
      * from the boundary integral of the interpolation matrix.
      *
+     * @param t Geometry thickness.
      * @param points Points that define the boundary.
      *
      * @return The interpolation matrix for nodal forces, Nf.
      */
-    virtual std::vector<double> get_Nf(const std::vector<gp_Pnt>& points) const = 0;
+    virtual std::vector<double> get_Nf(const double t, const std::vector<gp_Pnt>& points) const = 0;
 };
 
 #endif

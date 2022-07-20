@@ -64,7 +64,7 @@ TopoDS_Shape MinimalVolume::optimize(Visualization* viz, FiniteElement* fem, Mes
 
     // Uses more memory but is much faster
     for(size_t i = 0; i < mesh->element_list.size(); ++i){
-        this->grad_V[i] = mesh->element_list[i]->get_volume();
+        this->grad_V[i] = mesh->element_list[i]->get_volume(data->thickness);
         this->max_V += this->grad_V[i];
         for(size_t j = i; j < mesh->element_list.size(); ++j){
             // double dist = data.mesh->element_list[i]->get_centroid().Distance(data.mesh->element_list[j]->get_centroid());
@@ -291,10 +291,11 @@ double MinimalVolume::fc_norm(const std::vector<double>& x){
     double Spn = 0;
     double Smax = 0;
 
+    const auto D = this->data->geometries[0]->get_D();
     std::vector<double> stress_list(this->mesh->element_list.size());
     for(size_t i = 0; i < this->mesh->element_list.size(); ++i){
         auto& e = this->mesh->element_list[i];
-        double S = e->get_stress_at(e->get_centroid(), u);
+        double S = e->get_stress_at(D, e->get_centroid(), u);
         double Se = std::pow(this->new_x[i], pt)*S;
         if(Se > Smax){
             Smax = Se;
@@ -324,10 +325,11 @@ double MinimalVolume::fc_norm_grad(const std::vector<double>& x, std::vector<dou
     double Spn = 0;
     double Smax = 0;
 
+    const auto D = this->data->geometries[0]->get_D();
     std::vector<double> stress_list(this->mesh->element_list.size());
     for(size_t i = 0; i < this->mesh->element_list.size(); ++i){
         auto& e = this->mesh->element_list[i];
-        double S = e->get_stress_at(e->get_centroid(), u);
+        double S = e->get_stress_at(D, e->get_centroid(), u);
         double Se = std::pow(this->new_x[i], pt)*S;
         stress_list[i] = this->new_x[i]*S;//std::pow(this->new_x[i],pc)*S;//Se;
         if(Se > Smax){
@@ -336,7 +338,7 @@ double MinimalVolume::fc_norm_grad(const std::vector<double>& x, std::vector<dou
         double v = this->grad_V[i];
         Spn += v*std::pow(Se, P);
 
-        e->get_virtual_load(v*std::pow(this->new_x[i], pt*P)*std::pow(S, P-2), e->get_centroid(), u, fl);
+        e->get_virtual_load(D, v*std::pow(this->new_x[i], pt*P)*std::pow(S, P-2), e->get_centroid(), u, fl);
     }
     this->viz->update_stress_view(stress_list);
     this->viz->update_density_view(this->new_x);
@@ -363,9 +365,9 @@ double MinimalVolume::fc_norm_grad(const std::vector<double>& x, std::vector<dou
     std::vector<double> grad_tmp(grad);
     for(size_t i = 0; i < this->mesh->element_list.size(); ++i){
         auto& e = this->mesh->element_list[i];
-        double lKu = pc*std::pow(this->new_x[i], pc-1)*e->get_compliance(u, l);
+        double lKu = pc*std::pow(this->new_x[i], pc-1)*e->get_compliance(D, this->data->thickness, u, l);
         double v = this->grad_V[i];
-        double S = e->get_stress_at(e->get_centroid(), u);
+        double S = e->get_stress_at(D, e->get_centroid(), u);
         double Se = pt*v*std::pow(this->new_x[i], pt*P-1)*std::pow(S, P);
 
         grad_tmp[i] = Sg*(Se - lKu);
