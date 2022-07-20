@@ -27,7 +27,7 @@ namespace material{
 
 class LinearElasticOrthotropic : public Material{
     public:
-    LinearElasticOrthotropic(std::vector<double> E, std::vector<double> nu, std::vector<double> G, std::vector<double> Smax, std::vector<double> Tmax);
+    LinearElasticOrthotropic(const std::string& name, std::vector<double> E, std::vector<double> nu, std::vector<double> G, std::vector<double> Smax, std::vector<double> Tmax);
 
     virtual std::vector<double> stiffness_2D() const override;
     virtual std::vector<double> stiffness_3D() const override;

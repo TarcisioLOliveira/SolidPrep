@@ -27,7 +27,7 @@ namespace material{
 
 class LinearElasticIsotropic : public Material{
     public:
-    LinearElasticIsotropic(double E, double nu, double Smax, double Tmax, bool plane_stress);
+    LinearElasticIsotropic(const std::string& name, double E, double nu, double Smax, double Tmax, bool plane_stress);
 
     virtual std::vector<double> stiffness_2D() const override;
     virtual std::vector<double> stiffness_3D() const override;

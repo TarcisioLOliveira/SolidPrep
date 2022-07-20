@@ -208,13 +208,17 @@ std::unique_ptr<Material> ProjectData::load_material(const rapidjson::GenericVal
                 values[i].resize(3, mat[properties[i].c_str()].GetDouble());
             }
         }
+        logger::log_assert(mat.HasMember("name"), logger::ERROR, "missing material property: name");
+        logger::log_assert(mat["name"].IsString(), logger::ERROR, "material property 'name' must be a string");
+        std::string name(mat["name"].GetString());
+
         for(auto& i:values[0]) i *= 1e3; // E
         for(auto& i:values[2]) i *= 1e3; // G
         // for(auto& i:values[0]) i *= 1e9; // E
         // for(auto& i:values[2]) i *= 1e9; // G
         // for(auto& i:values[3]) i *= 1e6; // Smax
         // for(auto& i:values[4]) i *= 1e6; // Tmax
-        material.reset(new material::LinearElasticOrthotropic(values[0], values[1], values[2], values[3], values[4]));
+        material.reset(new material::LinearElasticOrthotropic(name, values[0], values[1], values[2], values[3], values[4]));
     } else if(mat["type"] == "linear_elastic_isotropic"){
         std::vector<std::string> properties{"E", "nu", "Smax", "Tmax"};
         for(auto& s:properties){
@@ -226,8 +230,12 @@ std::unique_ptr<Material> ProjectData::load_material(const rapidjson::GenericVal
         double Smax = mat["Smax"].GetDouble();
         double Tmax = mat["Tmax"].GetDouble();
         bool plane_stress = mat["plane_stress"].GetBool();
+
+        logger::log_assert(mat.HasMember("name"), logger::ERROR, "missing material property: name");
+        logger::log_assert(mat["name"].IsString(), logger::ERROR, "material property 'name' must be a string");
+        std::string name(mat["name"].GetString());
         //this->material.reset(new material::LinearElasticIsotropic(E*1e9, nu, Smax*1e6, Tmax*1e6, plane_stress));
-        material.reset(new material::LinearElasticIsotropic(E*1e3, nu, Smax, Tmax, plane_stress));
+        material.reset(new material::LinearElasticIsotropic(name, E*1e3, nu, Smax, Tmax, plane_stress));
     }
 
     return material;

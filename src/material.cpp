@@ -21,7 +21,8 @@
 #include "material.hpp"
 #include <cmath>
 
-Material::Material(std::vector<double> Smax, std::vector<double> Tmax){
+Material::Material(const std::string& name, std::vector<double> Smax, std::vector<double> Tmax):
+    name(name){
     if(Smax.size() == 1){
         this->Smax = std::vector<double>(6, Smax[0]);
     } else if(Smax.size() == 3){

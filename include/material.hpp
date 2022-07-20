@@ -38,10 +38,11 @@ class Material{
      * values. Accounts for anisotropy (both for positive and negative stress
      * values) if so desired.
      *
+     * @param name Name of the material (for material selection).
      * @param Smax Maximum normal stresses. Input either 1, 3 or 6 values.
      * @param Tmax Maximum shear stresses. Input either 1 or 3 values.
      */
-    Material(std::vector<double> Smax, std::vector<double> Tmax);
+    Material(const std::string& name, std::vector<double> Smax, std::vector<double> Tmax);
 
     virtual std::vector<double> stiffness_2D() const = 0;
     virtual std::vector<double> stiffness_3D() const = 0;
@@ -64,6 +65,7 @@ class Material{
     virtual double get_max_Von_Mises_2D() const;
     virtual double get_max_Von_Mises_3D() const;
 
+    const std::string name;
     protected:
     std::vector<double> Smax;
     std::vector<double> Tmax;
