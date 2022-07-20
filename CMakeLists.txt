@@ -32,7 +32,7 @@ if(WIN32 OR CYGWIN)
 endif()
 
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
-    set(CMAKE_CXX_FLAGS_RELEASE "-O3 -march=native")
+    set(CMAKE_CXX_FLAGS_RELEASE "-O3 -march=native -pipe -fomit-frame-pointer -flto=auto")
     #set(CMAKE_CXX_FLAGS_DEBUG  "-fsanitize=address")
 endif()
 
