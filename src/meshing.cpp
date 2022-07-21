@@ -26,6 +26,9 @@
 #include <BRepBuilderAPI_MakeEdge.hxx>
 #include <BRepBuilderAPI_MakeVertex.hxx>
 #include <BRepExtrema_DistShapeShape.hxx>
+#include <BRep_Builder.hxx>
+#include <BOPAlgo_Splitter.hxx>
+#include <BOPAlgo_Builder.hxx>
 #include <limits>
 #include <set>
 #include <queue>
@@ -397,3 +400,163 @@ bool Meshing::is_strictly_inside2D(gp_Pnt p, TopoDS_Shape s) const{
     return insider.State() == TopAbs_ON && !on_edge;
 }
 
+void Meshing::prune(const std::vector<ElementShape>& list){
+    // Prune unused nodes
+    size_t new_id = 0;
+    for(auto& n : this->node_list){
+        n->id = new_id;
+        ++new_id;
+    }
+
+    std::vector<bool> used(this->node_list.size(), false);
+    for(size_t i = 0; i < list.size(); ++i){
+        for(auto& n:list[i].nodes){
+            used[n->id] = true;
+        }   
+    }
+
+    bool renumber = false;
+    auto it = this->node_list.begin();
+    while(it < this->node_list.end()){
+        if(!used[(*it)->id]){
+            it = this->node_list.erase(it);
+            renumber = true;
+        } else {
+            ++it;
+        }
+    }
+    used.clear();
+
+    if(renumber){
+        new_id = 0;
+        for(auto& n : this->node_list){
+            n->id = new_id;
+            ++new_id;
+        }
+    }
+    this->reverse_cuthill_mckee(list);
+}
+
+std::vector<ElementShape> Meshing::generate_element_shapes(const std::vector<size_t>& elem_tags, const std::vector<size_t>& elem_node_tags, size_t nodes_per_elem, const std::unordered_map<size_t, size_t>& duplicate_map){
+    std::vector<ElementShape> list;
+    list.reserve(elem_tags.size());
+    list.emplace_back();
+    size_t i = 0;
+    for(auto n:elem_node_tags){
+        // gp_Pnt p(nodeCoords[n*3], nodeCoords[n*3+1], nodeCoords[n*3+2]);
+        // auto get_id = [&p](const std::unique_ptr<MeshNode>& m)->bool{ return p.IsEqual(m->point, Precision::Confusion()); };
+        
+        // If there are duplicates, redirect the node tag to the correct,
+        // deduplicated node.
+        auto map_find(duplicate_map.find(n));
+        if(map_find != duplicate_map.end()){
+            n = map_find->second;
+        }
+
+        // Find node with id `n`
+        auto get_id = [n](const std::unique_ptr<MeshNode>& m)->bool{ return n == m->id; };
+        MeshNode* node = std::find_if(this->node_list.begin(), this->node_list.end(), get_id)->get();
+        list.back().nodes.push_back(node);
+        ++i;
+
+        // Begin next element
+        if(i == nodes_per_elem){
+            // Checking for colinear points. Implemented when there some
+            // problems with mesh generation, but were due to a bad imple-
+            // mentation of mine. Probably not needed anymore.
+            //
+            // auto& nodes = list.back().nodes;
+            // double Delta = 0;
+            // if(node_per_elem % 3 == 0){
+            //     gp_Pnt p[3] = {nodes[0]->point, nodes[1]->point, nodes[2]->point};
+            //     gp_Mat deltaM(1, p[0].X(), p[0].Y(), 1, p[1].X(), p[1].Y(), 1, p[2].X(), p[2].Y());
+            //     Delta = std::abs(deltaM.Determinant());
+            // } else {
+            //     // TODO: Checking for 3D
+            // }
+            // if(Delta < 1e-3){
+            //     list.pop_back();
+            // }
+
+            list.emplace_back();
+            i = 0;
+        }
+    }
+    list.pop_back();
+
+    return list;
+}
+
+std::unordered_map<size_t, size_t> Meshing::find_duplicates(){
+    std::unordered_map<size_t, size_t> duplicate_map;
+    const auto point_sort = 
+        [](const std::unique_ptr<MeshNode>& n1, const std::unique_ptr<MeshNode>& n2)->bool{
+            if(n1->point.X() < n2->point.X()){
+                return true;
+            } else if(n1->point.Y() < n2->point.Y()){
+                return true;
+            } else if(n1->point.Z() < n2->point.Z()){
+                return true;
+            }
+            return false;
+        };
+    // The usual method to find duplicates is to test each one against the
+    // other, which is O(N^2). However, std::sort() is Nlog2N, then,
+    // figuring out the duplicates is O(N), so it's a much better
+    // alternative.
+    std::sort(this->node_list.begin(), this->node_list.end(), point_sort);
+
+    auto i = this->node_list.begin();
+    while(i < this->node_list.end()-1){
+        if((*i)->point.IsEqual((*(i+1))->point, Precision::Confusion())){
+            duplicate_map.emplace((*(i+1))->id, (*i)->id);
+            this->node_list.erase(i+1);
+        } else {
+            ++i;
+        }
+    }
+    
+    return duplicate_map;
+}
+
+TopoDS_Shape Meshing::make_compound(const std::vector<std::unique_ptr<Geometry>>& geometries) const{
+    // Assuming linear with a single element type
+    BRep_Builder builder;
+    TopoDS_Compound comp;
+    builder.MakeCompound(comp);
+    for(const auto& geom:geometries){
+        builder.Add(comp,geom->shape);
+    }
+    return comp;
+}
+bool Meshing::adapt_for_boundary_condition_inside(TopoDS_Shape& sh, const std::vector<Force>& forces, const std::vector<Support>& supports){
+    bool has_condition_inside = false;
+    // TODO: adapt for 3D, maybe (methods to insert loads/supports into the
+    // geometry if needed).
+    for(auto& f:forces){
+        if(this->is_strictly_inside2D(f.S.get_centroid(), this->shape)){
+            has_condition_inside = true;
+
+            BOPAlgo_Splitter splitter;
+            splitter.SetNonDestructive(true);
+            splitter.AddArgument(shape);
+            splitter.AddTool(f.S.get_shape());
+            splitter.Perform();
+            sh = splitter.Shape();
+        }
+    }
+    for(auto& s:supports){
+        if(this->is_strictly_inside2D(s.S.get_centroid(), this->shape)){
+            has_condition_inside = true;
+
+            BOPAlgo_Splitter splitter;
+            splitter.SetNonDestructive(true);
+            splitter.AddArgument(shape);
+            splitter.AddTool(s.S.get_shape());
+            splitter.Perform();
+            sh = splitter.Shape();
+        }
+    }
+
+    return has_condition_inside;
+}

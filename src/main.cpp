@@ -36,7 +36,7 @@
 #include <chrono>
 
 int main(int argc, char* argv[]){
-
+    typedef std::chrono::time_point<std::chrono::high_resolution_clock> Clock;
 
     double size_time = 0;
 
@@ -46,19 +46,23 @@ int main(int argc, char* argv[]){
     TopoDS_Shape shape;
 
     // Sizing step
+    std::vector<ElementShape> m;
+    Clock start_mesh;
+
     if(proj.analysis == ProjectData::COMPLETE || proj.analysis == ProjectData::BEAMS_ONLY){
         shape = proj.sizer->run();
         auto stop_sizing = std::chrono::high_resolution_clock::now();
         auto sizing_duration = std::chrono::duration_cast<std::chrono::seconds>(stop_sizing-start_sizing);
         size_time = sizing_duration.count()/60.0;
         utils::shape_to_file("sized.step", shape);
+        start_mesh = std::chrono::high_resolution_clock::now();
+        m = proj.topopt_mesher->mesh(shape, proj.topopt_element.get());
     } else if(proj.analysis == ProjectData::FEA_ONLY || proj.analysis == ProjectData::OPTIMIZE_ONLY){
-        shape = proj.geometries[0]->shape;
+        start_mesh = std::chrono::high_resolution_clock::now();
+        m = proj.topopt_mesher->mesh(proj.geometries, proj.topopt_element.get());
     }
 
     // Meshing
-    auto start_mesh = std::chrono::high_resolution_clock::now();
-    auto m = proj.topopt_mesher->mesh(shape);
     std::vector<MeshElement*> elems;
     std::vector<double> loads;
     proj.topopt_mesher->prepare_for_FEM(m, proj.topopt_element, &proj);

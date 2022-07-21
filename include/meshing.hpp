@@ -22,11 +22,13 @@
 #define MESHING_HPP
 
 #include <TopoDS_Shape.hxx>
+#include <unordered_map>
 #include "element.hpp"
 #include <vector>
 #include "support.hpp"
 #include "force.hpp"
 #include "element_factory.hpp"
+#include "geometry.hpp"
 
 class ProjectData;
 
@@ -35,15 +37,29 @@ class Meshing{
     Meshing(double size):size(size){}
 
     /**
-     * Just generates a mesh from a shape according to the child class's input
-     * parameters set in its construction. Return MeshNodes are just pointers
-     * to the ones stored in the class object.
+     * Just generates a mesh from a group of geometries, depending on analysis
+     * parameters set in their construction. Returns ElementShape instances,
+     * not elements. Elements should be made using prepare_for_FEM().
      *
-     * @param s OCCT shape to be meshed
+     * @param geoemtries The geometries to be meshed
+     * @param elem_type Element type
+     *
      * @return collection of ElementShapes (which are just a collection of
      *         MeshNodes
      */
-    virtual std::vector<ElementShape> mesh(TopoDS_Shape s) = 0;
+    virtual std::vector<ElementShape> mesh(const std::vector<std::unique_ptr<Geometry>>& geometries, const MeshElementFactory* const elem_type) = 0;
+    /**
+     * Just generates a mesh from a shape according to the child class's input
+     * parameters set in its construction. Returns ElementShape instances,
+     * not elements. Elements should be made using prepare_for_FEM().
+     *
+     * @param s The shape to be meshed
+     * @param elem_type Element type
+     *
+     * @return collection of ElementShapes (which are just a collection of
+     *         MeshNodes
+     */
+    virtual std::vector<ElementShape> mesh(const TopoDS_Shape& s, const MeshElementFactory* const elem_type) = 0;
     /**
      * Takes a mesh and boundary conditions and returns a collection of
      * elements and its load vector, to be used later in a FiniteElement
@@ -90,6 +106,46 @@ class Meshing{
     void reverse_cuthill_mckee(const std::vector<ElementShape>& elem_list);
     // Inside and not on boundary
     bool is_strictly_inside2D(gp_Pnt p, TopoDS_Shape s) const;
+
+    /**
+     * Prunes and optimizes list of nodes after generation.
+     *
+     * @param list List of element shapes.
+     */
+    virtual void prune(const std::vector<ElementShape>& list);
+
+    /**
+     * Generates the list of element shapes from mesh information.
+     *
+     * @param elem_tags Element tags
+     * @param elem_node_tags Node tags per element
+     * @param nodes_per_elem Number of nodes in each element
+     * @param duplicate_map Map of duplicate nodes (optional)
+     *
+     * @return Vector of element shapes
+     */
+    virtual std::vector<ElementShape> generate_element_shapes(const std::vector<size_t>& elem_tags, const std::vector<size_t>& elem_node_tags, size_t nodes_per_elem,const std::unordered_map<size_t, size_t>& duplicate_map = std::unordered_map<size_t, size_t>());
+
+    /**
+     * Search for duplicate nodes (different tag but same position)
+     * That may happen also for single geometries that get cut by a boundary
+     * condition, but they behave correctly without this workaround.
+     *
+     * @return Mapping of duplicate nodes, redirecting the duplicates to single
+     * one.
+     */
+    virtual std::unordered_map<size_t, size_t> find_duplicates();
+
+    /**
+     * Turns a vector of geometries into a single compound geometry.
+     *
+     * @param geometries Vector of Geometry instances
+     *
+     * @return OCCT compound as TopoDS_Shape
+     */
+    virtual TopoDS_Shape make_compound(const std::vector<std::unique_ptr<Geometry>>& geometries) const;
+
+    virtual bool adapt_for_boundary_condition_inside(TopoDS_Shape& sh, const std::vector<Force>& forces, const std::vector<Support>& supports);
 };
 
 #endif

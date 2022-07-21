@@ -32,7 +32,7 @@ class StandardBeamMesher : public BeamMeshing{
     public:
     StandardBeamMesher(double size, int order, utils::ProblemType type, ProjectData* data, int algorithm = 6);
 
-    virtual std::vector<ElementShape> mesh(TopoDS_Shape s) override;
+    virtual std::vector<ElementShape> mesh(const TopoDS_Shape& s, const MeshElementFactory* const elem_type) override;
 
     private:
     int order;

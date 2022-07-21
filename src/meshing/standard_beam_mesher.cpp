@@ -28,6 +28,8 @@
 #include <BOPAlgo_Builder.hxx>
 #include "project_data.hpp"
 #include <BRepBuilderAPI_Copy.hxx>
+#include <BRepBuilderAPI_Copy.hxx>
+#include <BRep_Builder.hxx>
 
 namespace meshing{
 
@@ -40,7 +42,7 @@ StandardBeamMesher::StandardBeamMesher(double size, int order, utils::ProblemTyp
     }
 }
 
-std::vector<ElementShape> StandardBeamMesher::mesh(TopoDS_Shape s){
+std::vector<ElementShape> StandardBeamMesher::mesh(const TopoDS_Shape& s, const MeshElementFactory* const elem_type){
     this->shape = s;
     this->node_list.clear();
 
@@ -201,22 +203,7 @@ std::vector<ElementShape> StandardBeamMesher::mesh(TopoDS_Shape s){
         }
     }
 
-    int node_per_elem = 0;
-    if(this->dim == 2){
-        if(this->order == 1){
-            node_per_elem = 3;
-        } else if(this->order == 2){
-            node_per_elem = 6;
-        } else {
-            node_per_elem = 12;
-        }
-    } else if(this->dim == 3){
-        if(this->order == 1){
-            node_per_elem = 4;
-        } else {
-            node_per_elem = 10;
-        }
-    }
+    auto nodes_per_elem = elem_type->get_nodes_per_element();
 
     std::vector<ElementShape> list;
     list.reserve(elemTags.size());
@@ -228,11 +215,11 @@ std::vector<ElementShape> StandardBeamMesher::mesh(TopoDS_Shape s){
         list.back().nodes.push_back(node);
         ++i;
 
-        if(i == node_per_elem){
+        if(i == nodes_per_elem){
             auto& nodes = list.back().nodes;
             double Delta = 0;
 
-            if(node_per_elem % 3 == 0){
+            if(nodes_per_elem % 3 == 0){
                 gp_Pnt p[3] = {nodes[0]->point, nodes[1]->point, nodes[2]->point};
                 gp_Mat deltaM(1, p[0].X(), p[0].Y(), 1, p[1].X(), p[1].Y(), 1, p[2].X(), p[2].Y());
                 Delta = std::abs(deltaM.Determinant());

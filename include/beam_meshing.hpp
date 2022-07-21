@@ -50,6 +50,14 @@ class BeamMeshing : public Meshing{
     BeamMeshing(double size):Meshing(size){}
 
     std::vector<BoundaryNode> boundary_nodes;
+
+    private:
+    // Currently unsupported, as it can't be used well in the current implementation.
+    virtual std::vector<ElementShape> mesh(const std::vector<std::unique_ptr<Geometry>>& geometries, const MeshElementFactory* const elem_type) override final{
+        (void)geometries;
+        (void)elem_type;
+        return std::vector<ElementShape>();
+    }
 };
 
 #endif

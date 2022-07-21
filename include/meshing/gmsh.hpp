@@ -32,7 +32,8 @@ class Gmsh : public Meshing{
     public:
     Gmsh(double size, int order, utils::ProblemType type, ProjectData* data, int algorithm = 6);
 
-    virtual std::vector<ElementShape> mesh(TopoDS_Shape s) override;
+    virtual std::vector<ElementShape> mesh(const std::vector<std::unique_ptr<Geometry>>& geometries, const MeshElementFactory* const elem_type) override;
+    virtual std::vector<ElementShape> mesh(const TopoDS_Shape& s, const MeshElementFactory* const elem_type) override;
 
     private:
     int order;
@@ -40,7 +41,7 @@ class Gmsh : public Meshing{
     int algorithm;
     ProjectData* data;
 
-    MeshNode* find_node(size_t id) const;
+    void gmsh_meshing(bool has_condition_inside, TopoDS_Shape sh, std::vector<size_t>& elem_tags, std::vector<size_t>& elem_node_tags, const MeshElementFactory* const elem_type);
 };
 
 }

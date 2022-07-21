@@ -80,8 +80,8 @@ TopoDS_Shape StandardSizing::boundary_expansion_approach(){
     meshing::StandardBeamMesher mesh(this->element_size, 1, utils::PROBLEM_TYPE_2D, this->data);
     TopoDS_Shape beams = this->build_initial_topology();
     utils::shape_to_file("beams.step", beams);
-    auto m = mesh.mesh(beams);
     std::unique_ptr<MeshElementFactory> gt9_maker(new MeshElementFactoryImpl<element::GT9>());
+    auto m = mesh.mesh(beams, gt9_maker.get());
     mesh.prepare_for_FEM(m, gt9_maker, this->data);//, true);
     auto u = this->solver->calculate_displacements(this->data, &mesh);
 
