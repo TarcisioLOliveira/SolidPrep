@@ -65,6 +65,7 @@ std::vector<ElementShape> Gmsh::mesh(const std::vector<std::unique_ptr<Geometry>
 
 
 std::vector<ElementShape> Gmsh::mesh(const TopoDS_Shape& s, const MeshElementFactory* const elem_type){
+    this->shape = s;
     this->node_list.clear();
 
     TopoDS_Shape sh = BRepBuilderAPI_Copy(this->shape);
