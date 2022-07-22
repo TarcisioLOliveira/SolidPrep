@@ -232,14 +232,38 @@ void Meshing::prepare_for_FEM(const std::vector<ElementShape>& base_mesh,
 
     this->prepare_for_FEM(base_mesh, element_type, data, force_only);
 
-    for(auto& e:this->element_list){
-        for(auto& g:geometries){
-            if(g->is_inside(e->get_centroid())){
-                g->mesh.push_back(e.get());
+    if(geometries.size() > 1){
+        // Slower, but handles memory much better, especially considering it
+        // may involve large amounts of memory.
+        // Fortunately, it should be done only once.
+        std::vector<size_t> mesh_size_per_geom(geometries.size(), 0);
+        for(auto& e:this->element_list){
+            for(size_t i = 0; i < geometries.size(); ++i){
+                auto& g = geometries[i];
+                if(g->is_inside(e->get_centroid())){
+                    ++mesh_size_per_geom[i];
+                    break;
+                }
             }
         }
+        for(size_t i = 0; i < geometries.size(); ++i){
+            auto& g = geometries[i];
+            g->mesh.reserve(mesh_size_per_geom[i]);
+        }
+        for(auto& e:this->element_list){
+            for(auto& g:geometries){
+                if(g->is_inside(e->get_centroid())){
+                    g->mesh.push_back(e.get());
+                    break;
+                }
+            }
+        }
+    } else {
+        auto& g = geometries[0];
+        for(auto& e:this->element_list){
+            g->mesh.push_back(e.get());
+        }
     }
-
 }
 
 std::vector<ElementShape> Meshing::prune(const std::vector<double>& rho, double threshold){
