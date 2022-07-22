@@ -56,7 +56,6 @@ void Meshing::prepare_for_FEM(const std::vector<ElementShape>& base_mesh,
     std::sort(this->node_list.begin(), this->node_list.end(), comp);
 
     size_t dof = this->elem_maker->get_dof_per_node();
-    size_t k_size = this->elem_maker->get_k_dimension();
 
     size_t current = 0;
     for(size_t i = 0; i < this->node_list.size(); ++i){
@@ -281,12 +280,14 @@ std::vector<long> Meshing::get_support_dof(size_t& offset, size_t id, const Supp
             pos[5] = support.MZ ? -1 : (id + offset++);
             pos[4] = support.MY ? -1 : (id + offset++);
             pos[3] = support.MX ? -1 : (id + offset++);
+            [[fallthrough]];
         case 3:
             if(prob_type == utils::PROBLEM_TYPE_2D){
                 pos[2] = support.MZ ? -1 : (id + offset++);
             } else {
                 pos[2] = support.Z ? -1 : (id + offset++);
             }
+            [[fallthrough]];
         case 2:
             pos[1] = support.Y ? -1 : (id + offset++);
             pos[0] = support.X ? -1 : (id + offset++);
@@ -301,10 +302,12 @@ std::vector<double> Meshing::get_force_dof(const Force& force, const MeshElement
     std::vector<double> f(size);
     switch(size){
         case 6:
+            [[fallthrough]];
         case 3:
             if(prob_type == utils::PROBLEM_TYPE_3D){
                 f[2] = -force.vec.Z();
             }
+            [[fallthrough]];
         case 2:
             f[1] = -force.vec.Y();
             f[0] = -force.vec.X();
