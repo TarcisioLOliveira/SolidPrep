@@ -45,7 +45,7 @@ namespace utils{
      *
      * @return Formatted string.
      */
-    static std::string format(std::string str){
+    inline std::string format(std::string str){
         return str;
     }
 
@@ -60,7 +60,7 @@ namespace utils{
      * @return Formatted string.
      */
     template <typename Arg1>
-    static std::string format(std::string str, Arg1&& a){
+    inline std::string format(std::string str, Arg1&& a){
         size_t pos = str.find("{}");
 
         if(pos == std::string::npos){
@@ -71,7 +71,7 @@ namespace utils{
     }
 
     template<>
-    std::string format<std::string>(std::string str, std::string&& a){
+    inline std::string format<std::string>(std::string str, std::string&& a){
         size_t pos = str.find("{}");
 
         if(pos == std::string::npos){
@@ -82,7 +82,7 @@ namespace utils{
     }
 
     template<>
-    std::string format<std::string&>(std::string str, std::string& a){
+    inline std::string format<std::string&>(std::string str, std::string& a){
         size_t pos = str.find("{}");
 
         if(pos == std::string::npos){
@@ -93,7 +93,7 @@ namespace utils{
     }
 
     template<>
-    std::string format<const char*>(std::string str, const char*&& a){
+    inline std::string format<const char*>(std::string str, const char*&& a){
         size_t pos = str.find("{}");
 
         if(pos == std::string::npos){
@@ -114,7 +114,7 @@ namespace utils{
      * @return Formatted string.
      */
     template <typename Arg1, typename ... Args>
-    static std::string format(std::string str, Arg1&& a1, Args&& ... args){
+    inline std::string format(std::string str, Arg1&& a1, Args&& ... args){
         return format(format(str, std::forward<Arg1>(a1)), std::forward<Args>(args) ...);
     }
 
