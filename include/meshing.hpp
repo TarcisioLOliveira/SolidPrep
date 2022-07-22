@@ -34,7 +34,15 @@ class ProjectData;
 
 class Meshing{
     public:
-    Meshing(double size):size(size){}
+    Meshing(const std::vector<std::unique_ptr<Geometry>>& geometries,
+            const MeshElementFactory* const elem_type):
+        elem_info(elem_type), geometries(utils::extract_pointers(geometries)),
+        shape(this->make_compound(geometries)){}
+
+    Meshing(TopoDS_Shape shape,
+            const MeshElementFactory* const elem_type):
+        elem_info(elem_type), geometries(),
+        shape(shape){}
 
     /**
      * Just generates a mesh from a group of geometries, depending on analysis
@@ -47,19 +55,37 @@ class Meshing{
      * @return collection of ElementShapes (which are just a collection of
      *         MeshNodes
      */
-    virtual std::vector<ElementShape> mesh(const std::vector<std::unique_ptr<Geometry>>& geometries, const MeshElementFactory* const elem_type) = 0;
+    virtual void mesh(const std::vector<Force>& forces, 
+                      const std::vector<Support>& supports,
+                      const double thickness) = 0;
+
     /**
-     * Just generates a mesh from a shape according to the child class's input
-     * parameters set in its construction. Returns ElementShape instances,
-     * not elements. Elements should be made using prepare_for_FEM().
+     * Removes elements below a certain density threshold. Useful for
+     * validating and saving results.
      *
-     * @param s The shape to be meshed
-     * @param elem_type Element type
-     *
-     * @return collection of ElementShapes (which are just a collection of
-     *         MeshNodes
+     * @param rho Density vector
+     * @param threshold Density threshold
      */
-    virtual std::vector<ElementShape> mesh(const TopoDS_Shape& s, const MeshElementFactory* const elem_type) = 0;
+    virtual void prune(const std::vector<Force>& forces, 
+                       const std::vector<Support>& supports,
+                       const double thickness,
+                       const std::vector<double>& rho, double threshold);
+
+    const MeshElementFactory * const elem_info;
+    const std::vector<Geometry*> geometries;
+    const TopoDS_Shape shape;
+
+    std::vector<std::unique_ptr<MeshNode>> node_list;
+    std::vector<std::unique_ptr<MeshElement>> element_list;
+    std::vector<double> load_vector;
+
+    protected:
+    std::vector<long> get_support_dof(size_t& offset, size_t id, const Support& support, const MeshElementFactory* elem_maker) const;
+    std::vector<double> get_force_dof(const Force& force, const MeshElementFactory* elem_maker) const;
+    void reverse_cuthill_mckee(const std::vector<ElementShape>& elem_list);
+    // Inside and not on boundary
+    bool is_strictly_inside2D(gp_Pnt p, TopoDS_Shape s) const;
+
     /**
      * Takes a mesh and boundary conditions and returns a collection of
      * elements and its load vector, to be used later in a FiniteElement
@@ -76,52 +102,9 @@ class Meshing{
      * @param force List of forces
      */
     virtual void prepare_for_FEM(const std::vector<ElementShape>& base_mesh,
-                                 const std::unique_ptr<MeshElementFactory>& element_type,
-                                 ProjectData* data, bool force_only = false);
-    /**
-     *
-     * The same as the other prepare_for_FEM, but also distributes the mesh
-     * among the different geometries.
-     *
-     * @param base_mesh Mesh obtained from mesh()
-     * @param element_type Type of element to be used
-     * @param supports List of supports
-     * @param force List of forces
-     * @param geometries Geometries
-     */
-    virtual void prepare_for_FEM(const std::vector<ElementShape>& base_mesh,
-                                 const std::unique_ptr<MeshElementFactory>& element_type,
-                                 ProjectData* data,
-                                 const std::vector<std::unique_ptr<Geometry>>& geometries,
-                                 bool force_only = false);
-
-    /**
-     * Removes elements below a certain density threshold. Useful for
-     * validating and saving results.
-     *
-     * @param rho Density vector
-     * @param threshold Density threshold
-     */
-    virtual std::vector<ElementShape> prune(const std::vector<double>& rho, double threshold);
-
-    std::vector<std::unique_ptr<MeshNode>> node_list;
-    std::vector<std::unique_ptr<MeshElement>> element_list;
-    std::vector<double> load_vector;
-    TopoDS_Shape shape;
-
-    protected:
-    double size;
-    const MeshElementFactory* elem_maker;
-
-    public:
-    const MeshElementFactory * const & elem_info = elem_maker;
-
-    protected:
-    std::vector<long> get_support_dof(size_t& offset, size_t id, const Support& support, const MeshElementFactory* elem_maker) const;
-    std::vector<double> get_force_dof(const Force& force, const MeshElementFactory* elem_maker) const;
-    void reverse_cuthill_mckee(const std::vector<ElementShape>& elem_list);
-    // Inside and not on boundary
-    bool is_strictly_inside2D(gp_Pnt p, TopoDS_Shape s) const;
+                                 const std::vector<Force>& forces, 
+                                 const std::vector<Support>& supports,
+                                 const double thickness);
 
     /**
      * Prunes and optimizes list of nodes after generation.

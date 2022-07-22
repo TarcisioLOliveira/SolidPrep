@@ -30,16 +30,20 @@ namespace meshing{
 
 class Gmsh : public Meshing{
     public:
-    Gmsh(double size, int order, utils::ProblemType type, ProjectData* data, int algorithm = 6);
+    Gmsh(const std::vector<std::unique_ptr<Geometry>>& geometries,
+         const MeshElementFactory* const elem_type,
+         double size, int order, utils::ProblemType type,
+         int algorithm = 6);
 
-    virtual std::vector<ElementShape> mesh(const std::vector<std::unique_ptr<Geometry>>& geometries, const MeshElementFactory* const elem_type) override;
-    virtual std::vector<ElementShape> mesh(const TopoDS_Shape& s, const MeshElementFactory* const elem_type) override;
+    virtual void mesh(const std::vector<Force>& forces, 
+                      const std::vector<Support>& supports,
+                      const double thickness) override;
 
     private:
+    double size;
     int order;
     int dim;
     int algorithm;
-    ProjectData* data;
 
     void gmsh_meshing(bool has_condition_inside, TopoDS_Shape sh, std::vector<size_t>& elem_tags, std::vector<size_t>& elem_node_tags, const MeshElementFactory* const elem_type);
 };

@@ -101,11 +101,6 @@ ProjectData::ProjectData(std::string project_file){
     if(this->log_data(doc, "material", TYPE_ARRAY, true)){
         this->materials = this->load_materials(doc);
     }
-    if(this->log_data(doc, "mesher", TYPE_OBJECT, true)){
-        this->log_data(doc["mesher"], "element_type", TYPE_STRING, true);
-        this->topopt_element = this->get_element_type(doc["mesher"]["element_type"]);
-        this->topopt_mesher = this->load_mesher(doc);
-    }
     if(this->log_data(doc, "finite_element", TYPE_OBJECT, false)){
         this->topopt_fea = this->load_fea(doc);
     }
@@ -135,6 +130,11 @@ ProjectData::ProjectData(std::string project_file){
             this->sizer_fea = this->load_fea(doc["sizing"]);
         }
         this->sizer = this->load_sizer(doc);
+    }
+    if(this->log_data(doc, "mesher", TYPE_OBJECT, true)){
+        this->log_data(doc["mesher"], "element_type", TYPE_STRING, true);
+        this->topopt_element = this->get_element_type(doc["mesher"]["element_type"]);
+        this->topopt_mesher = this->load_mesher(doc);
     }
 
 
@@ -364,7 +364,7 @@ std::unique_ptr<Meshing> ProjectData::load_mesher(const rapidjson::GenericValue<
             algorithm = mesh["algorithm"].GetInt();
         }
         double size = mesh["element_size"].GetDouble();
-        mesher.reset(new meshing::Gmsh(size, this->topopt_element->get_element_order(), this->type, this, algorithm));
+        mesher.reset(new meshing::Gmsh(this->geometries, this->topopt_element.get(), size, this->topopt_element->get_element_order(), this->type, algorithm));
     }
     return mesher;
 }

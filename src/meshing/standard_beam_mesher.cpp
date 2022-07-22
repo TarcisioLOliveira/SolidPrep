@@ -33,8 +33,12 @@
 
 namespace meshing{
 
-StandardBeamMesher::StandardBeamMesher(double size, int order, utils::ProblemType type, ProjectData* data, int algorithm):
-    BeamMeshing(size), order(order), dim(0), algorithm(algorithm), data(data){
+StandardBeamMesher::StandardBeamMesher(const std::vector<std::unique_ptr<Geometry>>& geometries,
+                                       const MeshElementFactory* const elem_type,
+                                       double size, int order, utils::ProblemType type,
+                                       int algorithm):
+    BeamMeshing(geometries, elem_type),
+    size(size), order(order), dim(0), algorithm(algorithm){
     if(type == utils::PROBLEM_TYPE_2D){
         dim = 2;
     } else if(type == utils::PROBLEM_TYPE_3D){
@@ -42,14 +46,28 @@ StandardBeamMesher::StandardBeamMesher(double size, int order, utils::ProblemTyp
     }
 }
 
-std::vector<ElementShape> StandardBeamMesher::mesh(const TopoDS_Shape& s, const MeshElementFactory* const elem_type){
-    this->shape = s;
+StandardBeamMesher::StandardBeamMesher(const TopoDS_Shape& shape,
+                                       const MeshElementFactory* const elem_type,
+                                       double size, int order, utils::ProblemType type,
+                                       int algorithm):
+    BeamMeshing(shape, elem_type),
+    size(size), order(order), dim(0), algorithm(algorithm){
+    if(type == utils::PROBLEM_TYPE_2D){
+        dim = 2;
+    } else if(type == utils::PROBLEM_TYPE_3D){
+        dim = 3;
+    }
+}
+
+void StandardBeamMesher::mesh(const std::vector<Force>& forces, 
+                              const std::vector<Support>& supports,
+                              const double thickness){
     this->node_list.clear();
 
     bool has_condition_inside = false;
 
-    TopoDS_Shape shape = BRepBuilderAPI_Copy(s);
-    for(auto& f:this->data->forces){
+    TopoDS_Shape shape = BRepBuilderAPI_Copy(this->shape);
+    for(auto& f:forces){
         if(this->is_strictly_inside2D(f.S.get_centroid(), this->shape)){
             has_condition_inside = true;
 
@@ -61,7 +79,7 @@ std::vector<ElementShape> StandardBeamMesher::mesh(const TopoDS_Shape& s, const 
             shape = splitter.Shape();
         }
     }
-    for(auto& s:this->data->supports){
+    for(auto& s:supports){
         if(this->is_strictly_inside2D(s.S.get_centroid(), this->shape)){
             has_condition_inside = true;
 
@@ -191,9 +209,9 @@ std::vector<ElementShape> StandardBeamMesher::mesh(const TopoDS_Shape& s, const 
         gp_Pnt p = boundary_nodes[i].node->point.Translated(dir);
         bool outside = true;
         if(this->dim == 2){
-            outside = !this->is_inside_2D(p, s);
+            outside = !this->is_inside_2D(p, this->shape);
         } else if(this->dim == 3){
-            outside = !this->is_inside_3D(p, s);
+            outside = !this->is_inside_3D(p, this->shape);
         }
         if(outside){
             boundary_nodes[i].normal = std::move(dir);
@@ -203,7 +221,7 @@ std::vector<ElementShape> StandardBeamMesher::mesh(const TopoDS_Shape& s, const 
         }
     }
 
-    auto nodes_per_elem = elem_type->get_nodes_per_element();
+    auto nodes_per_elem = elem_info->get_nodes_per_element();
 
     std::vector<ElementShape> list;
     list.reserve(elemTags.size());
@@ -274,7 +292,7 @@ std::vector<ElementShape> StandardBeamMesher::mesh(const TopoDS_Shape& s, const 
     gmsh::clear();
     gmsh::finalize();
 
-    return list;
+    this->prepare_for_FEM(list, forces, supports, thickness);
 }
 
 bool StandardBeamMesher::is_inside_2D(gp_Pnt p, const TopoDS_Shape& t){

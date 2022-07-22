@@ -28,6 +28,7 @@
 #include <STEPControl_StepModelType.hxx>
 #include <TopoDS_Wire.hxx>
 #include <vector>
+#include <memory>
 
 namespace utils{
 
@@ -35,6 +36,16 @@ namespace utils{
         PROBLEM_TYPE_2D,
         PROBLEM_TYPE_3D
     };
+
+    template<typename T>
+    inline std::vector<T*> extract_pointers(const std::vector<std::unique_ptr<T>>& vec){
+        std::vector<T*> v;
+        v.reserve(vec.size());
+        for(auto& e:vec){
+            v.push_back(e.get());
+        }
+        return v;
+    }
 
     /**
      * Formats string, replacing each "{}" with one of the arguments. Fails

@@ -42,22 +42,15 @@ class BeamMeshing : public Meshing{
         gp_Dir normal; ///< Normal to the node, pointing outward from the topology
     };
 
-    /**
-     * Constructs an object by predetermining element size.
-     *
-     * @param size Element size.
-     */
-    BeamMeshing(double size):Meshing(size){}
-
     std::vector<BoundaryNode> boundary_nodes;
 
-    private:
-    // Currently unsupported, as it can't be used well in the current implementation.
-    virtual std::vector<ElementShape> mesh(const std::vector<std::unique_ptr<Geometry>>& geometries, const MeshElementFactory* const elem_type) override final{
-        (void)geometries;
-        (void)elem_type;
-        return std::vector<ElementShape>();
-    }
+    BeamMeshing(const std::vector<std::unique_ptr<Geometry>>& geometries,
+            const MeshElementFactory* const elem_type):
+        Meshing(geometries, elem_type){}
+
+    BeamMeshing(TopoDS_Shape shape,
+            const MeshElementFactory* const elem_type):
+        Meshing(shape, elem_type){}
 };
 
 #endif

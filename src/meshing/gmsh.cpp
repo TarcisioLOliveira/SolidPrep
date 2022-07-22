@@ -30,8 +30,12 @@
 
 namespace meshing{
 
-Gmsh::Gmsh(double size, int order, utils::ProblemType type, ProjectData* data, int algorithm):
-    Meshing(size), order(order), dim(0), algorithm(algorithm), data(data){
+Gmsh::Gmsh(const std::vector<std::unique_ptr<Geometry>>& geometries,
+           const MeshElementFactory* const elem_type,
+           double size, int order, utils::ProblemType type,
+           int algorithm):
+    Meshing(geometries, elem_type),
+    size(size), order(order), dim(0), algorithm(algorithm){
     if(type == utils::PROBLEM_TYPE_2D){
         dim = 2;
     } else if(type == utils::PROBLEM_TYPE_3D){
@@ -39,48 +43,27 @@ Gmsh::Gmsh(double size, int order, utils::ProblemType type, ProjectData* data, i
     }
 }
 
-std::vector<ElementShape> Gmsh::mesh(const std::vector<std::unique_ptr<Geometry>>& geometries, const MeshElementFactory* const elem_type){
-    this->shape = this->make_compound(geometries);
-    this->node_list.clear();
-
+void Gmsh:: mesh(const std::vector<Force>& forces, 
+                 const std::vector<Support>& supports,
+                 const double thickness){
     TopoDS_Shape sh = BRepBuilderAPI_Copy(this->shape);
-    bool has_condition_inside = this->adapt_for_boundary_condition_inside(sh, this->data->forces, this->data->supports);
+    bool has_condition_inside = this->adapt_for_boundary_condition_inside(sh, forces, supports);
 
     std::vector<size_t> elem_tags, elem_node_tags;
-    this->gmsh_meshing(has_condition_inside, std::move(sh), elem_tags, elem_node_tags, elem_type);
+    this->gmsh_meshing(has_condition_inside, std::move(sh), elem_tags, elem_node_tags, this->elem_info);
 
     std::unordered_map<size_t, size_t> duplicate_map;
     if(geometries.size() > 1){
         duplicate_map = this->find_duplicates();
     }
 
-    size_t nodes_per_elem = elem_type->get_nodes_per_element();
+    size_t nodes_per_elem = this->elem_info->get_nodes_per_element();
 
     auto list = this->generate_element_shapes(elem_tags, elem_node_tags, nodes_per_elem, duplicate_map);
 
     this->prune(list);
 
-    return list;
-}
-
-
-std::vector<ElementShape> Gmsh::mesh(const TopoDS_Shape& s, const MeshElementFactory* const elem_type){
-    this->shape = s;
-    this->node_list.clear();
-
-    TopoDS_Shape sh = BRepBuilderAPI_Copy(this->shape);
-    bool has_condition_inside = this->adapt_for_boundary_condition_inside(sh, this->data->forces, this->data->supports);
-
-    std::vector<size_t> elem_tags, elem_node_tags;
-    this->gmsh_meshing(has_condition_inside, std::move(sh), elem_tags, elem_node_tags, elem_type);
-
-    size_t nodes_per_elem = elem_type->get_nodes_per_element();
-
-    auto list = this->generate_element_shapes(elem_tags, elem_node_tags, nodes_per_elem);
-
-    this->prune(list);
-
-    return list;
+    this->prepare_for_FEM(list, forces, supports, thickness);
 }
 
 void Gmsh::gmsh_meshing(bool has_condition_inside, TopoDS_Shape sh, std::vector<size_t>& elem_tags, std::vector<size_t>& elem_node_tags, const MeshElementFactory* const elem_type){
@@ -119,6 +102,7 @@ void Gmsh::gmsh_meshing(bool has_condition_inside, TopoDS_Shape sh, std::vector<
     gmsh::clear();
     gmsh::finalize();
 
+    this->node_list.clear();
     this->node_list.reserve(node_tags.size());
     for(size_t i = 0; i < node_tags.size(); ++i){
         gp_Pnt p(node_coords[i*3], node_coords[i*3+1], node_coords[i*3+2]);

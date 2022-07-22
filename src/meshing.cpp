@@ -35,27 +35,17 @@
 
 
 void Meshing::prepare_for_FEM(const std::vector<ElementShape>& base_mesh,
-                              const std::unique_ptr<MeshElementFactory>& element_type,
-                              ProjectData* data, bool force_only){
-    logger::log_assert(this->node_list.size() > 0, logger::ERROR, "the object's node list is empty. Ensure you are using the same Meshing instance as the one used to obtain the list of ElementShape instances");
-    auto test = base_mesh[0].nodes[0];
-    bool correct = false;
-    for(auto& n : this->node_list){
-        if(n.get() == test){
-            correct = true;
-            break;
-        }
-    }
-    logger::log_assert(correct, logger::ERROR, "object mismatch. Please ensure that the Meshing instance used to generate the list of ElementShape instances is the same as the one being used to prepare the mesh for FEM.");
+                              const std::vector<Force>& forces, 
+                              const std::vector<Support>& supports,
+                              const double thickness){
 
-    this->elem_maker = element_type.get();
     this->element_list.clear();
     this->element_list.reserve(base_mesh.size());
 
     auto comp = [](const std::unique_ptr<MeshNode>& a, const std::unique_ptr<MeshNode>& b){ return a->id < b->id;};
     std::sort(this->node_list.begin(), this->node_list.end(), comp);
 
-    size_t dof = this->elem_maker->get_dof_per_node();
+    size_t dof = this->elem_info->get_dof_per_node();
 
     size_t current = 0;
     for(size_t i = 0; i < this->node_list.size(); ++i){
@@ -65,10 +55,10 @@ void Meshing::prepare_for_FEM(const std::vector<ElementShape>& base_mesh,
         }
         n->u_pos = new long[dof]();
         bool supported = false;
-        for(auto& s : data->supports){
-            if(s.S.is_inside(n->point)){//s.S.get_distance(n->point) <= this->size/4){//
+        for(auto& s : supports){
+            if(s.S.is_inside(n->point)){
                 size_t offset = 0;
-                std::vector<long> sup_pos = this->get_support_dof(offset, 0, s, this->elem_maker);
+                std::vector<long> sup_pos = this->get_support_dof(offset, 0, s, this->elem_info);
                 for(size_t j = 0; j < dof; ++j){
                     if(sup_pos[j] >= 0){
                         if(n->u_pos[j] == 0){
@@ -94,143 +84,113 @@ void Meshing::prepare_for_FEM(const std::vector<ElementShape>& base_mesh,
     this->load_vector.resize(current);
 
     for(auto& e : base_mesh){
-        this->element_list.emplace_back(this->elem_maker->make_element(e));
+        this->element_list.emplace_back(this->elem_info->make_element(e));
     }
 
 
-    if(data->type == utils::PROBLEM_TYPE_2D){
-        if(force_only){
-            for(auto& f : data->forces){
-                std::vector<MeshNode*> node_list;
-                for(auto& n : this->node_list){
-                    if(f.S.is_inside(n->point)){//f.S.get_distance(n->point) < this->size/3){//
-                        node_list.push_back(n.get());
-                    }
-                }
-                for(auto& n : node_list){
-                    for(size_t i = 0; i < dof; ++i){
-                        std::vector<double> f_vec = this->get_force_dof(f, this->elem_maker);
-                        if(n->u_pos[i] >= 0){
-                            this->load_vector[n->u_pos[i]] += f_vec[i]/node_list.size();
-                        }
-                    }
-                }
+    if(this->elem_info->get_problem_type() == utils::PROBLEM_TYPE_2D){
+        for(auto& f : forces){
+            double norm = f.vec.Magnitude()/(thickness*f.S.get_dimension());
+            gp_Dir dir(f.vec);
+
+            if(this->is_strictly_inside2D(f.S.get_centroid(), this->shape)){
+                norm = norm/2;
             }
-        } else {
-            // Distributed loading
-            for(auto& f : data->forces){
-                double norm = f.vec.Magnitude()/(data->thickness*f.S.get_dimension());
-                gp_Dir dir(f.vec);
 
-                if(this->is_strictly_inside2D(f.S.get_centroid(), this->shape)){
-                    norm = norm/2;
-                }
+            gp_Dir Snormal = f.S.get_normal();
+            double Ssize = f.S.get_dimension();
+            gp_Pnt center = f.S.get_centroid();
+            gp_Dir line_dir = Snormal.Rotated(gp_Ax1(center, gp_Dir(0,0,1)), M_PI/2);
+            gp_Pnt p1 = center.Translated( 0.5*Ssize*line_dir);
+            gp_Pnt p2 = center.Translated(-0.5*Ssize*line_dir);
 
-                gp_Dir Snormal = f.S.get_normal();
-                double Ssize = f.S.get_dimension();
-                gp_Pnt center = f.S.get_centroid();
-                gp_Dir line_dir = Snormal.Rotated(gp_Ax1(center, gp_Dir(0,0,1)), M_PI/2);
-                gp_Pnt p1 = center.Translated( 0.5*Ssize*line_dir);
-                gp_Pnt p2 = center.Translated(-0.5*Ssize*line_dir);
+            TopoDS_Edge line = BRepBuilderAPI_MakeEdge(p1, p2);
 
-                TopoDS_Edge line = BRepBuilderAPI_MakeEdge(p1, p2);
-
-                auto is_inside = [&](gp_Pnt p)->bool{
-                    if(p.IsEqual(center, Precision::Confusion())){
-                        return true;
-                    } else {
-                        bool in_line = std::abs(Snormal.Dot(gp_Vec(p, center))) < Precision::Confusion();
-                        bool within_bounds = p.Distance(p1) - p1.Distance(p2) < Precision::Confusion() &&
-                                             p.Distance(p2) - p1.Distance(p2) < Precision::Confusion();
-                        return in_line && within_bounds;
-                    }
-                };
-
-                auto is_between_points = [](gp_Pnt p1, gp_Pnt p2, gp_Pnt p)->bool{
-                    gp_Mat M(1, p1.X(), p1.Y(), 1, p2.X(), p2.Y(), 1, p.X(), p.Y());
-                    bool in_line = std::abs(M.Determinant()) < Precision::Confusion();
+            auto is_inside = [&](gp_Pnt p)->bool{
+                if(p.IsEqual(center, Precision::Confusion())){
+                    return true;
+                } else {
+                    bool in_line = std::abs(Snormal.Dot(gp_Vec(p, center))) < Precision::Confusion();
                     bool within_bounds = p.Distance(p1) - p1.Distance(p2) < Precision::Confusion() &&
                                          p.Distance(p2) - p1.Distance(p2) < Precision::Confusion();
-
                     return in_line && within_bounds;
-                };
+                }
+            };
 
-                for(auto& e : this->element_list){
-                    std::vector<Node*> list;
-                    int last = -1;
-                    size_t N = e->nodes.size();
+            auto is_between_points = [](gp_Pnt p1, gp_Pnt p2, gp_Pnt p)->bool{
+                gp_Mat M(1, p1.X(), p1.Y(), 1, p2.X(), p2.Y(), 1, p.X(), p.Y());
+                bool in_line = std::abs(M.Determinant()) < Precision::Confusion();
+                bool within_bounds = p.Distance(p1) - p1.Distance(p2) < Precision::Confusion() &&
+                                     p.Distance(p2) - p1.Distance(p2) < Precision::Confusion();
+
+                return in_line && within_bounds;
+            };
+
+            for(auto& e : this->element_list){
+                std::vector<Node*> list;
+                int last = -1;
+                size_t N = e->nodes.size();
+                for(size_t i = 0; i < N; ++i){
+                    auto n = e->nodes[i];
+                    if(is_inside(n->point)){
+                        // maintain ordering
+                        if(last == -1){
+                            list.push_back(n);
+                            last = i;
+                        } else if(i - last == 1){
+                            list.push_back(n);
+                        } else {
+                            list.insert(list.begin(), n);
+                        }
+                    }
+                }
+                std::vector<double> fe;
+                if(list.size() == 2){
+                    fe = e->get_f(thickness, dir, norm, {list[0]->point, list[1]->point});
+                } else if(list.size() == 1){
                     for(size_t i = 0; i < N; ++i){
-                        auto n = e->nodes[i];
-                        if(is_inside(n->point)){
-                            // maintain ordering
-                            if(last == -1){
-                                list.push_back(n);
-                                last = i;
-                            } else if(i - last == 1){
-                                list.push_back(n);
-                            } else {
-                                list.insert(list.begin(), n);
-                            }
+                        size_t j = (i+1)%N;
+                        auto n1 = e->nodes[i]->point;
+                        auto n2 = e->nodes[j]->point;
+                        if(p1.IsEqual(n1, Precision::Confusion()) || p1.IsEqual(n2, Precision::Confusion()) ||
+                           p2.IsEqual(n1, Precision::Confusion()) || p2.IsEqual(n2, Precision::Confusion())){
+                            break;
+                        }
+                        if(is_between_points(n1, n2, p1)){
+                            fe = e->get_f(thickness, dir, norm, {n1, p1});
+                            // logger::quick_log(n1.X(), n1.Y(), p1.X(), p1.Y(), n2.X(), n2.Y());
+                            // logger::quick_log(fe);
+                            break;
+                        } else if(is_between_points(n1, n2, p2)){
+                            fe = e->get_f(thickness, dir, norm, {n1, p2});
+                            // logger::quick_log(n1.X(), n1.Y(), p2.X(), p2.Y(), n2.X(), n2.Y());
+                            // logger::quick_log(fe);
+                            break;
                         }
                     }
-                    std::vector<double> fe;
-                    if(list.size() == 2){
-                        fe = e->get_f(data->thickness, dir, norm, {list[0]->point, list[1]->point});
-                    } else if(list.size() == 1){
-                        for(size_t i = 0; i < N; ++i){
-                            size_t j = (i+1)%N;
-                            auto n1 = e->nodes[i]->point;
-                            auto n2 = e->nodes[j]->point;
-                            if(p1.IsEqual(n1, Precision::Confusion()) || p1.IsEqual(n2, Precision::Confusion()) ||
-                               p2.IsEqual(n1, Precision::Confusion()) || p2.IsEqual(n2, Precision::Confusion())){
-                                break;
-                            }
-                            if(is_between_points(n1, n2, p1)){
-                                fe = e->get_f(data->thickness, dir, norm, {n1, p1});
-                                // logger::quick_log(n1.X(), n1.Y(), p1.X(), p1.Y(), n2.X(), n2.Y());
-                                // logger::quick_log(fe);
-                                break;
-                            } else if(is_between_points(n1, n2, p2)){
-                                fe = e->get_f(data->thickness, dir, norm, {n1, p2});
-                                // logger::quick_log(n1.X(), n1.Y(), p2.X(), p2.Y(), n2.X(), n2.Y());
-                                // logger::quick_log(fe);
-                                break;
-                            }
-                        }
-                    }
-                    // if(fe.size() == 0){
-                    //     std::vector<gp_Pnt> points = e->get_intersection_points(line);
-                    //     if(points.size() == 2){
-                    //         fe = e->get_f(dir, norm, {points[0], points[1]});
-                    //     }
-                    // }
-                    if(fe.size() > 0){
-                        logger::quick_log(fe);
-                        for(size_t i = 0; i < N; ++i){
-                            for(size_t j = 0; j < dof; ++j){
-                                auto n = e->nodes[i];
-                                if(n->u_pos[j] >= 0){
-                                    this->load_vector[n->u_pos[j]] += fe[i*dof+j];
-                                }
+                }
+                // if(fe.size() == 0){
+                //     std::vector<gp_Pnt> points = e->get_intersection_points(line);
+                //     if(points.size() == 2){
+                //         fe = e->get_f(dir, norm, {points[0], points[1]});
+                //     }
+                // }
+                if(fe.size() > 0){
+                    logger::quick_log(fe);
+                    for(size_t i = 0; i < N; ++i){
+                        for(size_t j = 0; j < dof; ++j){
+                            auto n = e->nodes[i];
+                            if(n->u_pos[j] >= 0){
+                                this->load_vector[n->u_pos[j]] += fe[i*dof+j];
                             }
                         }
                     }
                 }
             }
         }
-    } else if(data->type == utils::PROBLEM_TYPE_3D){
+    } else if(this->elem_info->get_problem_type() == utils::PROBLEM_TYPE_3D){
         // TODO
     }
-
-}
-
-void Meshing::prepare_for_FEM(const std::vector<ElementShape>& base_mesh,
-                              const std::unique_ptr<MeshElementFactory>& element_type,
-                              ProjectData* data,
-                              const std::vector<std::unique_ptr<Geometry>>& geometries,
-                              bool force_only){
-
-    this->prepare_for_FEM(base_mesh, element_type, data, force_only);
 
     if(geometries.size() > 1){
         // Slower, but handles memory much better, especially considering it
@@ -258,7 +218,7 @@ void Meshing::prepare_for_FEM(const std::vector<ElementShape>& base_mesh,
                 }
             }
         }
-    } else {
+    } else if(geometries.size() == 1){
         auto& g = geometries[0];
         for(auto& e:this->element_list){
             g->mesh.push_back(e.get());
@@ -266,7 +226,10 @@ void Meshing::prepare_for_FEM(const std::vector<ElementShape>& base_mesh,
     }
 }
 
-std::vector<ElementShape> Meshing::prune(const std::vector<double>& rho, double threshold){
+void Meshing::prune(const std::vector<Force>& forces, 
+                    const std::vector<Support>& supports,
+                    const double thickness,
+                    const std::vector<double>& rho, double threshold){
     std::vector<ElementShape> list;
     { // Remove elements
         auto r = rho.begin();
@@ -281,40 +244,14 @@ std::vector<ElementShape> Meshing::prune(const std::vector<double>& rho, double 
         }
     }
 
-    std::vector<bool> used(this->node_list.size(), false);
-    for(auto& e:list){
-        for(auto& n:e.nodes){
-            used[n->id] = true;
-        }
-    }   
+    this->prune(list);
 
-    bool renumber = false;
-    auto it = this->node_list.begin();
-    while(it < this->node_list.end()){
-        if(!used[(*it)->id]){
-            it = this->node_list.erase(it);
-            renumber = true;
-        } else {
-            ++it;
-        }
-    }
-
-    size_t new_id;
-    if(renumber){
-        new_id = 0;
-        for(auto& n : this->node_list){
-            n->id = new_id;
-            ++new_id;
-        }
-    }
-    this->reverse_cuthill_mckee(list);
-
-    return list;
+    this->prepare_for_FEM(list, forces, supports, thickness);
 }
 
-std::vector<long> Meshing::get_support_dof(size_t& offset, size_t id, const Support& support, const MeshElementFactory* elem_maker) const{
-    size_t size = elem_maker->get_dof_per_node();
-    utils::ProblemType prob_type = elem_maker->get_problem_type();
+std::vector<long> Meshing::get_support_dof(size_t& offset, size_t id, const Support& support, const MeshElementFactory* elem_info) const{
+    size_t size = elem_info->get_dof_per_node();
+    utils::ProblemType prob_type = elem_info->get_problem_type();
     std::vector<long> pos(size);
     id *= size;
     switch(size){
@@ -338,9 +275,9 @@ std::vector<long> Meshing::get_support_dof(size_t& offset, size_t id, const Supp
     return pos;
 }
 
-std::vector<double> Meshing::get_force_dof(const Force& force, const MeshElementFactory* elem_maker) const{
-    size_t size = elem_maker->get_dof_per_node();
-    utils::ProblemType prob_type = elem_maker->get_problem_type();
+std::vector<double> Meshing::get_force_dof(const Force& force, const MeshElementFactory* elem_info) const{
+    size_t size = elem_info->get_dof_per_node();
+    utils::ProblemType prob_type = elem_info->get_problem_type();
     std::vector<double> f(size);
     switch(size){
         case 6:
