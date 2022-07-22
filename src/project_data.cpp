@@ -243,27 +243,25 @@ std::vector<std::unique_ptr<Geometry>> ProjectData::load_geometries(const rapidj
         std::string geom_path = geom["file_path"].GetString();
         absolute_path.append(geom_path);
 
-        double scale;
-        bool do_topopt;
-        Material* material;
+        this->log_data(geom, "do_topopt", TYPE_BOOL, true);
+        this->log_data(geom, "material", TYPE_STRING, true);
+
+        double scale = 1;
         std::vector<Material*> alt_materials;
         if(this->log_data(geom, "scale", TYPE_DOUBLE, false)){
             scale = geom["scale"].GetDouble();
-        } else {
-            scale = 1;
         }
-        if(this->log_data(geom, "do_topopt", TYPE_BOOL, true)){
-            do_topopt = geom["do_topopt"].GetBool();
-        }
-        if(this->log_data(geom, "material", TYPE_STRING, true)){
-            std::string mat_name(geom["material"].GetString());
-            auto equal_name = [&mat_name](const std::unique_ptr<Material>& m)->bool{
-                return mat_name == m->name;
-            };
-            auto it = std::find_if(this->materials.begin(), this->materials.end(), equal_name);
-            logger::log_assert(it != this->materials.end(), logger::ERROR, "material with name '{}' not found", mat_name);
-            material = it->get();
-        }
+
+        bool do_topopt = geom["do_topopt"].GetBool();
+
+        std::string mat_name(geom["material"].GetString());
+        auto equal_name = [&mat_name](const std::unique_ptr<Material>& m)->bool{
+            return mat_name == m->name;
+        };
+        auto it = std::find_if(this->materials.begin(), this->materials.end(), equal_name);
+        logger::log_assert(it != this->materials.end(), logger::ERROR, "material with name '{}' not found", mat_name);
+        Material* material = it->get();
+
         if(this->log_data(geom, "alt_materials", TYPE_ARRAY, false)){
             const auto& alt = geom["alt_materials"].GetArray();
             if(alt.Size() > 0){
