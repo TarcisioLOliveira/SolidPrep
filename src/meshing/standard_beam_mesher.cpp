@@ -208,7 +208,7 @@ std::vector<ElementShape> StandardBeamMesher::mesh(const TopoDS_Shape& s, const 
     std::vector<ElementShape> list;
     list.reserve(elemTags.size());
     list.emplace_back();
-    int i = 0;
+    size_t i = 0;
     for(auto& n:elemNodeTags[0]){
         auto get_id = [&n](const std::unique_ptr<MeshNode>& m)->bool{ return n == m->id; };
         MeshNode* node = std::find_if(this->node_list.begin(), this->node_list.end(), get_id)->get();

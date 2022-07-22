@@ -281,6 +281,7 @@ void MinimalVolume::update_c(){
 }
 
 double MinimalVolume::fc_norm(const std::vector<double>& x){
+    (void)x;
     double pc = this->pc;
     double pt = 1.0/2;
 

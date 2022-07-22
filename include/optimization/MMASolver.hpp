@@ -66,7 +66,7 @@ class MMASolver {
 
 	void SetAsymptotes(double init, double decrease, double increase);
 
-	void ConstraintModification(bool conMod) {}
+	// void ConstraintModification(bool conMod) {}
 
 	void Update(double *xval, const double *dfdx, const double *gx, const double *dgdx, const double *xmin,
 	            const double *xmax);

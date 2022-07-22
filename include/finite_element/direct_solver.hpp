@@ -35,7 +35,7 @@ class DirectSolver : public FiniteElement{
     size_t N = 0;
     std::vector<double> calculate_displacements_simple(ProjectData* data, Meshing* mesh, bool use_stored_matrix);
 
-    void insert_element_matrix(std::vector<double>& K, const std::vector<double>& k, const std::vector<long>& pos, size_t w, size_t n) const;
+    void insert_element_matrix(std::vector<double>& K, const std::vector<double>& k, const std::vector<long>& pos, size_t n) const;
 };
 
 }

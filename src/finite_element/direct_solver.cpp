@@ -65,8 +65,9 @@ std::vector<double> DirectSolver::calculate_displacements(ProjectData* data, Mes
                     max_i = i;
                 }
             }
-            if(pos[max_i] - pos[min_i] + 1 > N){
-                N = pos[max_i] - pos[min_i] + 1;
+            size_t N_candidate = pos[max_i] - pos[min_i] + 1;
+            if(N_candidate > N){
+                N = N_candidate;
             }
             ++ei;
         }
@@ -87,7 +88,7 @@ std::vector<double> DirectSolver::calculate_displacements(ProjectData* data, Mes
                     }
                 }
                 std::vector<double> k = e->get_k(D, t);
-                this->insert_element_matrix(K, k, u_pos, W, N);
+                this->insert_element_matrix(K, k, u_pos, N);
             }
         } else {
             logger::quick_log("Generating stiffness matrix...");
@@ -103,11 +104,11 @@ std::vector<double> DirectSolver::calculate_displacements(ProjectData* data, Mes
                     std::vector<double> k = e->get_k(D, t);
                     double rho_scal = rho_min + (1-rho_min)*std::pow(*rho, pc);
                     cblas_dscal(k.size(), rho_scal, k.data(), 1);
-                    this->insert_element_matrix(K, k, u_pos, W, N);
+                    this->insert_element_matrix(K, k, u_pos, N);
                     ++rho;
                 } else {
                     std::vector<double> k = e->get_k(D, t);
-                    this->insert_element_matrix(K, k, u_pos, W, N);
+                    this->insert_element_matrix(K, k, u_pos, N);
                 }
             }
         }
@@ -137,9 +138,8 @@ std::vector<double> DirectSolver::calculate_displacements(ProjectData* data, Mes
 }
 
 
-void DirectSolver::insert_element_matrix(std::vector<double>& K, const std::vector<double>& k, const std::vector<long>& pos, size_t w, size_t n) const{
+void DirectSolver::insert_element_matrix(std::vector<double>& K, const std::vector<double>& k, const std::vector<long>& pos, size_t n) const{
     size_t W = pos.size();
-    size_t N = 0;
     for(size_t i = 0; i < W; ++i){
         for(size_t j = i; j < W; ++j){
             if(pos[i] > -1 && pos[j] > -1){
@@ -182,8 +182,9 @@ std::vector<double> DirectSolver::calculate_displacements_simple(ProjectData* da
                     max_i = i;
                 }
             }
-            if(pos[max_i] - pos[min_i] + 1 > N){
-                N = pos[max_i] - pos[min_i] + 1;
+            size_t N_candidate = pos[max_i] - pos[min_i] + 1;
+            if(N_candidate > N){
+                N = N_candidate;
             }
             ++ei;
         }
@@ -201,7 +202,7 @@ std::vector<double> DirectSolver::calculate_displacements_simple(ProjectData* da
                 }
             }
             std::vector<double> k = e->get_k(D, t);
-            this->insert_element_matrix(K, k, u_pos, W, N);
+            this->insert_element_matrix(K, k, u_pos, N);
         }
 
         int info = LAPACKE_dpbtrf_work(LAPACK_COL_MAJOR, 'L', W, N-1, K.data(), N);

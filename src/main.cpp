@@ -36,6 +36,7 @@
 #include <chrono>
 
 int main(int argc, char* argv[]){
+    (void)argc;
     typedef std::chrono::time_point<std::chrono::high_resolution_clock> Clock;
 
     double size_time = 0;

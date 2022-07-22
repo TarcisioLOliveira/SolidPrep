@@ -500,8 +500,6 @@ StandardSizing::ExpansionNode StandardSizing::get_expansion_node_2D(const gp_Dir
 
     // Calculate new position for neutral axis, if desired
     if(edges_init.size() > 0){
-        double min_dist1 = Precision::Infinite();
-        double min_dist2 = Precision::Infinite();
         double norm1 = 0;
         double norm2 = 0;
         gp_Pnt p1(0,0,0);
