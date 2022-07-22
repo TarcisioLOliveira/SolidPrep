@@ -51,8 +51,8 @@ endif()
 
 include_directories(
     ${PROJECT_SOURCE_DIR}/include
-    ${PROJECT_SOURCE_DIR}/rapidjson/include
     SYSTEM
+    ${PROJECT_SOURCE_DIR}/rapidjson/include
     ${OpenCASCADE_INCLUDE_DIR}
     ${LAPACK_INCLUDE_DIR}
     ${LAPACKE_INCLUDE_DIR}
