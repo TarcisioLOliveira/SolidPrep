@@ -161,11 +161,10 @@ std::vector<double> BeamGraph::run(){
     // Calculate reactions
     std::vector<double> reactions;
     reactions.reserve((elems.size()+1)*3);
-    for(size_t i = 0; i < elems.size(); ++i){
-        if(elems[i]->get_node(0)->id < 0){
-            auto res = elems[i]->get_internal_loads(0, F);
-            reactions.insert(reactions.end(), res.begin(), res.end());
-        }
+
+    auto res = elems[0]->get_internal_loads(0, F);
+    reactions.insert(reactions.end(), res.begin(), res.end());
+    for(size_t i = 1; i < elems.size(); ++i){
         auto res = elems[i]->get_internal_loads(1, F);
         reactions.insert(reactions.end(), res.begin(), res.end());
     }
