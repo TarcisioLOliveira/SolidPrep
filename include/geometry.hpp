@@ -58,7 +58,7 @@ class Geometry{
     const MeshElementFactory* const element_type;
     const bool do_topopt;
 
-    std::vector<Element*> mesh;
+    std::vector<MeshElement*> mesh;
     private:
     utils::ProblemType type;
 

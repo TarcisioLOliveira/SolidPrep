@@ -78,6 +78,22 @@ class Meshing{
     virtual void prepare_for_FEM(const std::vector<ElementShape>& base_mesh,
                                  const std::unique_ptr<MeshElementFactory>& element_type,
                                  ProjectData* data, bool force_only = false);
+    /**
+     *
+     * The same as the other prepare_for_FEM, but also distributes the mesh
+     * among the different geometries.
+     *
+     * @param base_mesh Mesh obtained from mesh()
+     * @param element_type Type of element to be used
+     * @param supports List of supports
+     * @param force List of forces
+     * @param geometries Geometries
+     */
+    virtual void prepare_for_FEM(const std::vector<ElementShape>& base_mesh,
+                                 const std::unique_ptr<MeshElementFactory>& element_type,
+                                 ProjectData* data,
+                                 const std::vector<std::unique_ptr<Geometry>>& geometries,
+                                 bool force_only = false);
 
     /**
      * Removes elements below a certain density threshold. Useful for

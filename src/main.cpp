@@ -66,7 +66,7 @@ int main(int argc, char* argv[]){
     // Meshing
     std::vector<MeshElement*> elems;
     std::vector<double> loads;
-    proj.topopt_mesher->prepare_for_FEM(m, proj.topopt_element, &proj);
+    proj.topopt_mesher->prepare_for_FEM(m, proj.topopt_element, &proj, proj.geometries);
     auto stop_mesh = std::chrono::high_resolution_clock::now();
     if(proj.analysis == ProjectData::FEA_ONLY || proj.analysis == ProjectData::BEAMS_ONLY){
 

@@ -224,6 +224,24 @@ void Meshing::prepare_for_FEM(const std::vector<ElementShape>& base_mesh,
 
 }
 
+void Meshing::prepare_for_FEM(const std::vector<ElementShape>& base_mesh,
+                              const std::unique_ptr<MeshElementFactory>& element_type,
+                              ProjectData* data,
+                              const std::vector<std::unique_ptr<Geometry>>& geometries,
+                              bool force_only){
+
+    this->prepare_for_FEM(base_mesh, element_type, data, force_only);
+
+    for(auto& e:this->element_list){
+        for(auto& g:geometries){
+            if(g->is_inside(e->get_centroid())){
+                g->mesh.push_back(e.get());
+            }
+        }
+    }
+
+}
+
 std::vector<ElementShape> Meshing::prune(const std::vector<double>& rho, double threshold){
     std::vector<ElementShape> list;
     { // Remove elements
