@@ -263,19 +263,22 @@ void MinimalCompliance::init_convolution_filter(size_t x_size){
     size_t j = 0;
     for(const auto& g:this->mesh->geometries){
         if(g->do_topopt){
-            j = i;
-            while(j < x_size){
-                double dist = this->get_distance(i, j);
-                if(dist <= this->r_o){
-                    this->neighbors[i].push_back(j);
-                    this->neighbors[j].push_back(i);
-                    double w = 1 - dist/this->r_o;
-                    this->w[i] += w;
-                    this->w[j] += w;
+            for(const auto& e:g->mesh){
+                (void)e;
+                j = i;
+                while(j < x_size){
+                    double dist = this->get_distance(i, j);
+                    if(dist <= this->r_o){
+                        this->neighbors[i].push_back(j);
+                        this->neighbors[j].push_back(i);
+                        double w = 1 - dist/this->r_o;
+                        this->w[i] += w;
+                        this->w[j] += w;
+                    }
+                    ++j;
                 }
-                ++j;
+                ++i;
             }
-            ++i;
         }
     }
 }
