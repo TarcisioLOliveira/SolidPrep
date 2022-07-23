@@ -43,6 +43,10 @@ TopoDS_Shape MinimalVolume::optimize(Visualization* viz, FiniteElement* fem, Mes
 
     logger::quick_log("Preparing for optimization...");
 
+    this->viz = viz;
+    this->fem = fem;
+    this->mesh = mesh;
+
     size_t x_size = 0;
     this->elem_number = 0;
     for(const auto& g:this->mesh->geometries){
@@ -52,9 +56,6 @@ TopoDS_Shape MinimalVolume::optimize(Visualization* viz, FiniteElement* fem, Mes
         this->elem_number += g->mesh.size();
     }
 
-    this->viz = viz;
-    this->fem = fem;
-    this->mesh = mesh;
     this->c  = 1;
     this->new_x = std::vector<double>(x_size, this->rho_init);
     this->grad_V = std::vector<double>(x_size, 0);

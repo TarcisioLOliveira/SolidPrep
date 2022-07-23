@@ -41,6 +41,10 @@ TopoDS_Shape MinimalCompliance::optimize(Visualization* viz, FiniteElement* fem,
 
     logger::quick_log("Preparing for optimization...");
 
+    this->viz = viz;
+    this->fem = fem;
+    this->mesh = mesh;
+
     size_t x_size = 0;
     this->elem_number = 0;
     for(const auto& g:this->mesh->geometries){
@@ -50,9 +54,6 @@ TopoDS_Shape MinimalCompliance::optimize(Visualization* viz, FiniteElement* fem,
         this->elem_number += g->mesh.size();
     }
 
-    this->viz = viz;
-    this->fem = fem;
-    this->mesh = mesh;
     this->grad_V = std::vector<double>(x_size, 0);
     this->alpha = 1;
 
