@@ -34,29 +34,47 @@ namespace topology_optimization{
 
 
 MinimalCompliance::MinimalCompliance(double r_o, ProjectData* data, double Vfinal, double xtol_abs, double ftol_rel, double result_threshold, bool save, int pc):
-    r_o(r_o), data(data), Vfinal(Vfinal), xtol_abs(xtol_abs), ftol_rel(ftol_rel), result_threshold(result_threshold), save_result(save), pc(pc), viz(nullptr), fem(nullptr), mesh(nullptr),   max_V(0), cur_V(0), alpha(1), neighbors(), p(), w(){}
+    r_o(r_o), data(data), Vfinal(Vfinal), xtol_abs(xtol_abs), ftol_rel(ftol_rel), result_threshold(result_threshold), save_result(save), pc(pc), elem_number(0), viz(nullptr), fem(nullptr), mesh(nullptr),   max_V(0), cur_V(0), alpha(1), neighbors(), p(), w(){}
 
 
 TopoDS_Shape MinimalCompliance::optimize(Visualization* viz, FiniteElement* fem, Meshing* mesh){
 
     logger::quick_log("Preparing for optimization...");
 
+    size_t x_size = 0;
+    this->elem_number = 0;
+    for(const auto& g:this->mesh->geometries){
+        if(g->do_topopt){
+            x_size += g->mesh.size();
+        }
+        this->elem_number += g->mesh.size();
+    }
+
     this->viz = viz;
     this->fem = fem;
     this->mesh = mesh;
-    this->grad_V = std::vector<double>(mesh->element_list.size(), 0);
+    this->grad_V = std::vector<double>(x_size, 0);
     this->alpha = 1;
 
-    this->init_convolution_filter();
+    this->fem->set_steps(1);
 
-    for(size_t i = 0; i < mesh->element_list.size(); ++i){
-        this->grad_V[i] = mesh->element_list[i]->get_volume(this->data->thickness);
-        this->max_V += this->grad_V[i];
+    this->init_convolution_filter(x_size);
+
+    auto v_it = this->grad_V.begin();
+    for(const auto& g:this->mesh->geometries){
+        if(g->do_topopt){
+            for(const auto& e:g->mesh){
+                *v_it = e->get_volume(data->thickness);
+                this->max_V += *v_it;
+
+                ++v_it;
+            }
+        }
     }
 
     this->cur_V = this->max_V;
 
-    std::vector<double> x = std::vector<double>(mesh->element_list.size(), this->Vfinal);
+    std::vector<double> x = std::vector<double>(x_size, this->Vfinal);
 
     logger::quick_log("Done.");
     auto start_to = std::chrono::high_resolution_clock::now();
@@ -148,7 +166,7 @@ TopoDS_Shape MinimalCompliance::optimize(Visualization* viz, FiniteElement* fem,
 
     // Validate results
     this->mesh->prune(this->data->forces, this->data->supports, newx, this->result_threshold);
-    std::vector<double> u = this->fem->calculate_displacements(this->data, this->mesh);
+    std::vector<double> u = this->fem->calculate_displacements(this->mesh, this->mesh->load_vector);
     double c = cblas_ddot(u.size(), this->mesh->load_vector.data(), 1, u.data(), 1);
     logger::quick_log(" ");
     logger::quick_log("Compliance error: ", 100*(ff/c-1), "%");
@@ -161,7 +179,7 @@ double MinimalCompliance::fobj(const std::vector<double>& x){
     double pc = this->pc;
     double c = 0;
 
-    std::vector<double> u = this->fem->calculate_displacements(this->data, this->mesh, x, pc);
+    std::vector<double> u = this->fem->calculate_displacements(this->mesh, this->mesh->load_vector, x, pc);
 
     c = cblas_ddot(u.size(), this->mesh->load_vector.data(), 1, u.data(), 1);
 
@@ -174,14 +192,20 @@ double MinimalCompliance::fobj_grad(const std::vector<double>& x, std::vector<do
 
     this->viz->update_density_view(x);
 
-    std::vector<double> u = this->fem->calculate_displacements(this->data, this->mesh, x, pc);
+    std::vector<double> u = this->fem->calculate_displacements(this->mesh, this->mesh->load_vector, x, pc);
     this->viz->update_vector_view(this->mesh->node_list, u);
 
-    const auto D = this->data->geometries[0]->get_D();
-    for(size_t i = 0; i < x.size(); ++i){
-        auto& e = this->mesh->element_list[i];
-        double uKu = e->get_compliance(D, this->data->thickness, u);
-        grad[i] = -pc*std::pow(x[i], pc-1)*uKu;
+    size_t i = 0;
+    for(const auto& g:this->mesh->geometries){
+        if(g->do_topopt){
+            const auto D = g->get_D(0);
+            for(const auto& e:g->mesh){
+                double uKu = e->get_compliance(D, this->mesh->thickness, u);
+                grad[i] = -pc*std::pow(x[i], pc-1)*uKu;
+
+                ++i;
+            }
+        }
     }
     c = cblas_ddot(u.size(), this->mesh->load_vector.data(), 1, u.data(), 1);
 
@@ -211,31 +235,46 @@ double MinimalCompliance::fc_norm_grad(const std::vector<double>& x, std::vector
     return V - this->Vfinal*this->max_V;
 }
 
-void MinimalCompliance::init_convolution_filter(){
-    this->neighbors = std::vector<std::vector<size_t>>(mesh->element_list.size());
-    this->p = std::vector<double>(mesh->element_list.size()*3);
-    this->w = std::vector<double>(mesh->element_list.size());
+void MinimalCompliance::init_convolution_filter(size_t x_size){
+    this->neighbors = std::vector<std::vector<size_t>>(x_size);
+    this->p = std::vector<double>(x_size*3);
+    this->w = std::vector<double>(x_size);
 
 
-    for(size_t i = 0; i < mesh->element_list.size(); ++i){
-        gp_Pnt c = mesh->element_list[i]->get_centroid();
-        this->p[3*i] = c.X();
-        this->p[3*i+1] = c.Y();
-        this->p[3*i+2] = c.Z();
+    // Caching positions, because this calculation is expensive.
+    auto p_it = this->p.begin();
+    for(const auto& g:this->mesh->geometries){
+        if(g->do_topopt){
+            for(const auto& e:g->mesh){
+                gp_Pnt c = e->get_centroid();
+                *p_it = c.X();
+                ++p_it;
+                *p_it = c.Y();
+                ++p_it;
+                *p_it = c.Z();
+                ++p_it;
+            }
+        }
     }
 
     // Uses more memory but is much faster
-    for(size_t i = 0; i < mesh->element_list.size(); ++i){
-        for(size_t j = i; j < mesh->element_list.size(); ++j){
-            // double dist = data.mesh->element_list[i]->get_centroid().Distance(data.mesh->element_list[j]->get_centroid());
-            double dist = std::sqrt(std::pow(this->p[3*i] - this->p[3*j], 2) + std::pow(this->p[3*i+1] - this->p[3*j+1], 2) + std::pow(this->p[3*i+2] - this->p[3*j+2], 2));
-            if(dist <= this->r_o){
-                this->neighbors[i].push_back(j);
-                this->neighbors[j].push_back(i);
-                double wj = 1 - dist/this->r_o;
-                this->w[i] += wj;
-                this->w[j] += wj;
+    size_t i = 0;
+    size_t j = 0;
+    for(const auto& g:this->mesh->geometries){
+        if(g->do_topopt){
+            j = i;
+            while(j < x_size){
+                double dist = this->get_distance(i, j);
+                if(dist <= this->r_o){
+                    this->neighbors[i].push_back(j);
+                    this->neighbors[j].push_back(i);
+                    double w = 1 - dist/this->r_o;
+                    this->w[i] += w;
+                    this->w[j] += w;
+                }
+                ++j;
             }
+            ++i;
         }
     }
 }
@@ -244,7 +283,7 @@ std::vector<double> MinimalCompliance::convolution_filter_density(const std::vec
     for(size_t i = 0; i < x.size(); ++i){
         for(const auto& j:this->neighbors[i]){
             // double dist = this->mesh->element_list[i]->get_centroid().Distance(this->mesh->element_list[j]->get_centroid());
-            double dist = std::sqrt(std::pow(this->p[3*i] - this->p[3*j], 2) + std::pow(this->p[3*i+1] - this->p[3*j+1], 2) + std::pow(this->p[3*i+2] - this->p[3*j+2], 2));
+            double dist = this->get_distance(i, j);
             double wj = 1 - dist/this->r_o;
             newx[i] += wj*x[j];
         }
@@ -257,7 +296,7 @@ std::vector<double> MinimalCompliance::convolution_grad_correction(const std::ve
     for(size_t i = 0; i < df.size(); ++i){
          for(const auto& j:this->neighbors[i]){
              // double dist = this->mesh->element_list[i]->get_centroid().Distance(this->mesh->element_list[j]->get_centroid());
-             double dist = std::sqrt(std::pow(this->p[3*i] - this->p[3*j], 2) + std::pow(this->p[3*i+1] - this->p[3*j+1], 2) + std::pow(this->p[3*i+2] - this->p[3*j+2], 2));
+             double dist = this->get_distance(i, j);
              double wj = 1 - dist/this->r_o;
              // Yes, it is w[j] instead of w[i] here
              grad[i] += wj*df[j]/this->w[j];

@@ -36,45 +36,73 @@ namespace topology_optimization{
 
 
 MinimalVolume::MinimalVolume(double r_o, double Smax, ProjectData* data, double rho_init, double xtol_abs, double Vfrac_abs, double result_threshold, bool save, int P, int pc):
-    r_o(r_o), Smax(Smax), data(data), rho_init(rho_init), xtol_abs(xtol_abs), Vfrac_abs(Vfrac_abs), result_threshold(result_threshold), save_result(save), P(P), pc(pc), viz(nullptr), fem(nullptr), mesh(nullptr), c(1), new_x(), max_V(0), cur_V(0), alpha(1), neighbors(), p(), w(), Spn(1), Sm(1){}
+    r_o(r_o), Smax(Smax), data(data), rho_init(rho_init), xtol_abs(xtol_abs), Vfrac_abs(Vfrac_abs), result_threshold(result_threshold), save_result(save), P(P), pc(pc), viz(nullptr), fem(nullptr), mesh(nullptr), c(1), new_x(), max_V(0), cur_V(0), alpha(1), neighbors(), p(), w(), Spn(1), Sm(1), elem_number(0){}
 
 
 TopoDS_Shape MinimalVolume::optimize(Visualization* viz, FiniteElement* fem, Meshing* mesh){
 
     logger::quick_log("Preparing for optimization...");
 
+    size_t x_size = 0;
+    this->elem_number = 0;
+    for(const auto& g:this->mesh->geometries){
+        if(g->do_topopt){
+            x_size += g->mesh.size();
+        }
+        this->elem_number += g->mesh.size();
+    }
+
     this->viz = viz;
     this->fem = fem;
     this->mesh = mesh;
     this->c  = 1;
-    this->new_x = std::vector<double>(mesh->element_list.size(), this->rho_init);
-    this->grad_V = std::vector<double>(mesh->element_list.size(), 0);
+    this->new_x = std::vector<double>(x_size, this->rho_init);
+    this->grad_V = std::vector<double>(x_size, 0);
     this->alpha = 1;
-    this->neighbors = std::vector<std::vector<size_t>>(mesh->element_list.size()), std::vector<double>();
-    this->p = std::vector<double>(mesh->element_list.size()*3);
-    this->w = std::vector<double>(mesh->element_list.size());
+    this->neighbors = std::vector<std::vector<size_t>>(x_size), std::vector<double>();
+    this->p = std::vector<double>(x_size*3);
+    this->w = std::vector<double>(x_size);
 
-    
-    for(size_t i = 0; i < mesh->element_list.size(); ++i){
-        gp_Pnt c = mesh->element_list[i]->get_centroid();
-        this->p[3*i] = c.X();
-        this->p[3*i+1] = c.Y();
-        this->p[3*i+2] = c.Z();
+    this->fem->set_steps(2);
+
+    // Caching positions, because this calculation is expensive.
+    auto p_it = this->p.begin();
+    for(const auto& g:this->mesh->geometries){
+        if(g->do_topopt){
+            for(const auto& e:g->mesh){
+                gp_Pnt c = e->get_centroid();
+                *p_it = c.X();
+                ++p_it;
+                *p_it = c.Y();
+                ++p_it;
+                *p_it = c.Z();
+                ++p_it;
+            }
+        }
     }
 
     // Uses more memory but is much faster
-    for(size_t i = 0; i < mesh->element_list.size(); ++i){
-        this->grad_V[i] = mesh->element_list[i]->get_volume(data->thickness);
-        this->max_V += this->grad_V[i];
-        for(size_t j = i; j < mesh->element_list.size(); ++j){
-            // double dist = data.mesh->element_list[i]->get_centroid().Distance(data.mesh->element_list[j]->get_centroid());
-            double dist = std::sqrt(std::pow(this->p[3*i] - this->p[3*j], 2) + std::pow(this->p[3*i+1] - this->p[3*j+1], 2) + std::pow(this->p[3*i+2] - this->p[3*j+2], 2));
-            if(dist <= this->r_o){
-                this->neighbors[i].push_back(j);
-                this->neighbors[j].push_back(i);
-                double wj = 1 - dist/this->r_o;
-                this->w[i] += wj;
-                this->w[j] += wj;
+    size_t i = 0;
+    size_t j = 0;
+    for(const auto& g:this->mesh->geometries){
+        if(g->do_topopt){
+            for(const auto& e:g->mesh){
+                this->grad_V[i] = e->get_volume(data->thickness);
+                this->max_V += this->grad_V[i];
+                
+                j = i;
+                while(j < x_size){
+                    double dist = this->get_distance(i, j);
+                    if(dist <= this->r_o){
+                        this->neighbors[i].push_back(j);
+                        this->neighbors[j].push_back(i);
+                        double w = 1 - dist/this->r_o;
+                        this->w[i] += w;
+                        this->w[j] += w;
+                    }
+                    ++j;
+                }
+                ++i;
             }
         }
     }
@@ -233,7 +261,7 @@ double MinimalVolume::fobj(const std::vector<double>& x){
     for(size_t i = 0; i < x.size(); ++i){
         this->new_x[i] = 0;
         for(const auto& j:this->neighbors[i]){
-             double dist = std::sqrt(std::pow(this->p[3*i] - this->p[3*j], 2) + std::pow(this->p[3*i+1] - this->p[3*j+1], 2) + std::pow(this->p[3*i+2] - this->p[3*j+2], 2));
+             double dist = this->get_distance(i, j);
              double wj = 1 - dist/this->r_o;
              this->new_x[i] += wj*x[j];
         }
@@ -252,7 +280,7 @@ double MinimalVolume::fobj_grad(const std::vector<double>& x, std::vector<double
         grad[i] = 0;
         this->new_x[i] = 0;
         for(const auto& j:this->neighbors[i]){
-             double dist = std::sqrt(std::pow(this->p[3*i] - this->p[3*j], 2) + std::pow(this->p[3*i+1] - this->p[3*j+1], 2) + std::pow(this->p[3*i+2] - this->p[3*j+2], 2));
+             double dist = this->get_distance(i, j);
              double wj = 1 - dist/this->r_o;
              this->new_x[i] += wj*x[j];
              // Yes, it is w[j] instead of w[i] here
@@ -285,24 +313,30 @@ double MinimalVolume::fc_norm(const std::vector<double>& x){
     double pc = this->pc;
     double pt = 1.0/2;
 
-    std::vector<double> u(this->fem->calculate_displacements(this->data, this->mesh, this->new_x, pc));
+    std::vector<double> u(this->fem->calculate_displacements(this->mesh, this->mesh->load_vector, this->new_x, pc));
 
     // Calculating global stress
     int P = this->P;
     double Spn = 0;
     double Smax = 0;
 
-    const auto D = this->data->geometries[0]->get_D();
-    std::vector<double> stress_list(this->mesh->element_list.size());
-    for(size_t i = 0; i < this->mesh->element_list.size(); ++i){
-        auto& e = this->mesh->element_list[i];
-        double S = e->get_stress_at(D, e->get_centroid(), u);
-        double Se = std::pow(this->new_x[i], pt)*S;
-        if(Se > Smax){
-            Smax = Se;
+    auto x_it = this->new_x.begin();
+    auto v_it = this->grad_V.begin();
+    for(const auto& g:this->mesh->geometries){
+        if(g->do_topopt){
+            const auto D = g->get_D(0);
+            for(const auto& e:g->mesh){
+                double S = e->get_stress_at(D, e->get_centroid(), u);
+                double Se = std::pow(*x_it, pt)*S;
+                if(Se > Smax){
+                    Smax = Se;
+                }
+                double v = *v_it;
+                Spn += v*std::pow(Se, P);
+                ++x_it;
+                ++v_it;
+            }
         }
-        double v = this->grad_V[i];
-        Spn += v*std::pow(Se, P);
     }
 
     Spn = std::pow(Spn, 1.0/P);
@@ -316,7 +350,7 @@ double MinimalVolume::fc_norm_grad(const std::vector<double>& x, std::vector<dou
     double pc = this->pc;
     double pt = 1.0/2;
 
-    std::vector<double> u(this->fem->calculate_displacements(this->data, this->mesh, this->new_x, pc));
+    std::vector<double> u(this->fem->calculate_displacements(this->mesh, this->mesh->load_vector, this->new_x, pc));
 
     // Calculating stresses
     std::vector<double> fl(u.size(), 0);
@@ -326,20 +360,36 @@ double MinimalVolume::fc_norm_grad(const std::vector<double>& x, std::vector<dou
     double Spn = 0;
     double Smax = 0;
 
-    const auto D = this->data->geometries[0]->get_D();
-    std::vector<double> stress_list(this->mesh->element_list.size());
-    for(size_t i = 0; i < this->mesh->element_list.size(); ++i){
-        auto& e = this->mesh->element_list[i];
-        double S = e->get_stress_at(D, e->get_centroid(), u);
-        double Se = std::pow(this->new_x[i], pt)*S;
-        stress_list[i] = this->new_x[i]*S;//std::pow(this->new_x[i],pc)*S;//Se;
-        if(Se > Smax){
-            Smax = Se;
-        }
-        double v = this->grad_V[i];
-        Spn += v*std::pow(Se, P);
+    std::vector<double> stress_list(elem_number);
+    auto x_it = this->new_x.begin();
+    auto v_it = this->grad_V.begin();
+    auto stress_it = stress_list.begin();
+    for(const auto& g:this->mesh->geometries){
+        if(g->do_topopt){
+            const auto D = g->get_D(0);
+            for(const auto& e:g->mesh){
+                double S = e->get_stress_at(D, e->get_centroid(), u);
+                double Se = std::pow(*x_it, pt)*S;
+                *stress_it = *x_it*S;//std::pow(this->new_x[i],pc)*S;//Se;
+                if(Se > Smax){
+                    Smax = Se;
+                }
+                double v = *v_it;
+                Spn += v*std::pow(Se, P);
+                e->get_virtual_load(D, v*std::pow(*x_it, pt*P)*std::pow(S, P-2), e->get_centroid(), u, fl);
 
-        e->get_virtual_load(D, v*std::pow(this->new_x[i], pt*P)*std::pow(S, P-2), e->get_centroid(), u, fl);
+                ++x_it;
+                ++v_it;
+                ++stress_it;
+            }
+        } else {
+            const auto D = g->get_D(0);
+            for(const auto& e:g->mesh){
+                double S = e->get_stress_at(D, e->get_centroid(), u);
+                *stress_it = S;
+                ++stress_it;
+            }
+        }
     }
     this->viz->update_stress_view(stress_list);
     this->viz->update_density_view(this->new_x);
@@ -359,25 +409,37 @@ double MinimalVolume::fc_norm_grad(const std::vector<double>& x, std::vector<dou
     double Sg = this->c*std::pow(Spn, 1 - P);
 
     logger::quick_log("Calculating adjoint problem...{");
-    auto l = this->fem->calculate_displacements(this->data, this->mesh, this->new_x, pc, true, fl);
+    auto l = this->fem->calculate_displacements(this->mesh, fl, this->new_x, pc);
     logger::quick_log("} Done.");
 
     logger::quick_log("Calculating stress gradient...");
-    std::vector<double> grad_tmp(grad);
-    for(size_t i = 0; i < this->mesh->element_list.size(); ++i){
-        auto& e = this->mesh->element_list[i];
-        double lKu = pc*std::pow(this->new_x[i], pc-1)*e->get_compliance(D, this->data->thickness, u, l);
-        double v = this->grad_V[i];
-        double S = e->get_stress_at(D, e->get_centroid(), u);
-        double Se = pt*v*std::pow(this->new_x[i], pt*P-1)*std::pow(S, P);
 
-        grad_tmp[i] = Sg*(Se - lKu);
+    std::vector<double> grad_tmp(grad);
+    x_it = this->new_x.begin();
+    v_it = this->grad_V.begin();
+    auto grad_it = grad_tmp.begin();
+    for(const auto& g:this->mesh->geometries){
+        if(g->do_topopt){
+            const auto D = g->get_D(0);
+            for(const auto& e:g->mesh){
+                double lKu = pc*std::pow(*x_it, pc-1)*e->get_compliance(D, this->data->thickness, u, l);
+                double v = *v_it;
+                double S = e->get_stress_at(D, e->get_centroid(), u);
+                double Se = pt*v*std::pow(*x_it, pt*P-1)*std::pow(S, P);
+
+                *grad_it = Sg*(Se - lKu);
+
+                ++x_it;
+                ++v_it;
+                ++grad_it;
+            }
+        }
     }
     // Sensitivity filtering (implied by the density filtering)
     for(size_t i = 0; i < x.size(); ++i){
          grad[i] = 0;
          for(const auto& j:this->neighbors[i]){
-             double dist = std::sqrt(std::pow(this->p[3*i] - this->p[3*j], 2) + std::pow(this->p[3*i+1] - this->p[3*j+1], 2) + std::pow(this->p[3*i+2] - this->p[3*j+2], 2));
+             double dist = this->get_distance(i, j);
              double wj = 1 - dist/this->r_o;
              // Yes, it is w[j] instead of w[i] here
              grad[i] += wj*grad_tmp[j]/this->w[j];

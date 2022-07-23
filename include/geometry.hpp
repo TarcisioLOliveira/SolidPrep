@@ -44,11 +44,19 @@ class Geometry{
         return false;
     }
 
-    inline std::vector<double> get_D() const{
+    inline std::vector<double> get_D(size_t i) const{
         if(this->type == utils::PROBLEM_TYPE_2D){
-            return this->material->stiffness_2D();
+            if(i == 0){
+                return this->material->stiffness_2D();
+            } else {
+                return this->alternate_materials[i-1]->stiffness_2D();
+            }
         } else if(this->type == utils::PROBLEM_TYPE_3D){
-            return this->material->stiffness_3D();
+            if(i == 0){
+                return this->material->stiffness_3D();
+            } else {
+                return this->alternate_materials[i-1]->stiffness_3D();
+            }
         }
         return std::vector<double>();
     }

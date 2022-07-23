@@ -40,6 +40,7 @@ class MinimalCompliance : public TopologyOptimization{
     double result_threshold;
     bool save_result;
     int pc;
+    size_t elem_number;
 
     Visualization* viz;
     FiniteElement* fem;
@@ -58,9 +59,13 @@ class MinimalCompliance : public TopologyOptimization{
     double fc_norm(const std::vector<double>& x);
     double fc_norm_grad(const std::vector<double>& x, std::vector<double>& grad);
 
-    void init_convolution_filter();
+    void init_convolution_filter(size_t x_size);
     std::vector<double> convolution_filter_density(const std::vector<double>& x);
     std::vector<double> convolution_grad_correction(const std::vector<double>& df);
+
+    inline double get_distance(const size_t i, const size_t j) const{
+        return std::sqrt(std::pow(this->p[3*i] - this->p[3*j], 2) + std::pow(this->p[3*i+1] - this->p[3*j+1], 2) + std::pow(this->p[3*i+2] - this->p[3*j+2], 2));
+    }
 };
 
 }

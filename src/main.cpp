@@ -66,7 +66,7 @@ int main(int argc, char* argv[]){
     if(proj.analysis == ProjectData::FEA_ONLY || proj.analysis == ProjectData::BEAMS_ONLY){
 
         // Finite element analysis
-        auto u = proj.topopt_fea->calculate_displacements(&proj, proj.topopt_mesher.get());
+        auto u = proj.topopt_fea->calculate_displacements(proj.topopt_mesher.get(), proj.topopt_mesher->load_vector);
         std::vector<double> stresses;
         std::vector<double> stressesX;
         std::vector<double> stressesY;
@@ -75,13 +75,15 @@ int main(int argc, char* argv[]){
         stressesX.reserve(proj.topopt_mesher->element_list.size());
         stressesY.reserve(proj.topopt_mesher->element_list.size());
         stressesXY.reserve(proj.topopt_mesher->element_list.size());
-        const auto D = proj.geometries[0]->get_D();
-        for(auto& e:proj.topopt_mesher->element_list){
-            stresses.push_back(e->get_stress_at(D, e->get_centroid(), u));
-            auto tensor = e->get_stress_tensor(D, e->get_centroid(), u);
-            stressesX.push_back(tensor[0]);
-            stressesY.push_back(tensor[3]);
-            stressesXY.push_back(tensor[1]);
+        for(auto& g:proj.geometries){
+            const auto D = g->get_D(0);
+            for(auto& e:g->mesh){
+                stresses.push_back(e->get_stress_at(D, e->get_centroid(), u));
+                auto tensor = e->get_stress_tensor(D, e->get_centroid(), u);
+                stressesX.push_back(tensor[0]);
+                stressesY.push_back(tensor[3]);
+                stressesXY.push_back(tensor[1]);
+            }
         }
 
         if(proj.analysis == ProjectData::BEAMS_ONLY){

@@ -32,10 +32,36 @@ class ProjectData;
 
 class FiniteElement{
     public:
+    const double K_MIN = 1e-6;
 
-    virtual std::vector<double> calculate_displacements(ProjectData* data, Meshing* mesh, const std::vector<double>& density = std::vector<double>(), double pc = 3, bool use_stored_matrix = false, const std::vector<double>& virtual_load = std::vector<double>()) = 0;
+    virtual std::vector<double> calculate_displacements(Meshing* mesh, std::vector<double> load, const std::vector<double>& density = std::vector<double>(), double pc = 3) = 0;
 
-    virtual std::vector<double> calculate_forces(const Meshing* mesh, const std::unique_ptr<Geometry>& geometry, const double t, const std::vector<double>& displacements, const std::unique_ptr<MeshElementFactory>& elem_maker) const;
+    inline virtual void set_steps(size_t s){
+        this->steps = s;
+    }
+    inline virtual void recalculate_dimensions(){
+        this->W = 0;
+        this->N = 0;
+    }
+
+    virtual std::vector<double> calculate_forces(const Meshing* const mesh, const std::vector<double>& displacements) const;
+
+    protected:
+    size_t steps = 1;
+    std::vector<double> K = std::vector<double>();
+    size_t W = 0;
+    size_t N = 0;
+    size_t current_step = 0;
+
+    virtual void calculate_dimensions(const MeshElementFactory* const element, Meshing* mesh, const std::vector<double>& load);
+
+    virtual void generate_K(Meshing* mesh, const std::vector<double>& density, const double pc);
+
+    virtual void add_geometry_to_K(Meshing* mesh, Geometry* g);
+
+    virtual void add_geometry_to_K(Meshing* mesh, Geometry* g, std::vector<double>::const_iterator rho, const double pc);
+
+    virtual void insert_element_matrix(std::vector<double>& K, const std::vector<double>& k, const std::vector<long>& pos, size_t n) const;
 };
 
 #endif

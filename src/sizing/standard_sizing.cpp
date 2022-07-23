@@ -86,7 +86,7 @@ TopoDS_Shape StandardSizing::boundary_expansion_approach(){
     ggeom.push_back(std::move(geom));
     meshing::StandardBeamMesher mesh(ggeom, gt9_maker.get(), this->element_size, 1, utils::PROBLEM_TYPE_2D, this->data->thickness);
     mesh.mesh(this->data->forces, this->data->supports);
-    auto u = this->solver->calculate_displacements(this->data, &mesh);
+    auto u = this->solver->calculate_displacements(&mesh, mesh.load_vector);
 
     if(this->data->type == utils::PROBLEM_TYPE_2D){
         return this->expansion_2D(mesh, u, beams);
@@ -187,7 +187,7 @@ TopoDS_Shape StandardSizing::expansion_2D(const meshing::StandardBeamMesher& mes
         //
         // This way, the function can also calculate reactions for each geoemtry
         // separately.
-        auto reactions = this->solver->calculate_forces(&mesh, this->data->geometries[0], t, u, this->data->topopt_element);
+        auto reactions = this->solver->calculate_forces(&mesh, mesh.load_vector);
         auto dof = this->data->topopt_element->get_dof_per_node();
         double Fx = 0;
         double Fy = 0;

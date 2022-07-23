@@ -57,6 +57,7 @@ class MinimalVolume : public TopologyOptimization{
     std::vector<double> w;
     double Spn;
     double Sm;
+    size_t elem_number;
 
     double fobj(const std::vector<double>& x);
     double fobj_grad(const std::vector<double>& x, std::vector<double>& grad);
@@ -65,6 +66,10 @@ class MinimalVolume : public TopologyOptimization{
     void update_c();
     double fc_norm(const std::vector<double>& x);
     double fc_norm_grad(const std::vector<double>& x, std::vector<double>& grad);
+
+    inline double get_distance(const size_t i, const size_t j) const{
+        return std::sqrt(std::pow(this->p[3*i] - this->p[3*j], 2) + std::pow(this->p[3*i+1] - this->p[3*j+1], 2) + std::pow(this->p[3*i+2] - this->p[3*j+2], 2));
+    }
 };
 
 }
