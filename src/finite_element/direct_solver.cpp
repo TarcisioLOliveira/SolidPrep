@@ -34,8 +34,8 @@ std::vector<double> DirectSolver::calculate_displacements(ProjectData* data, Mes
     if(!use_stored_matrix || this->K.size() == 0){
         this->K.clear();
 
-        const size_t k_dim = data->topopt_element->get_k_dimension();
-        const size_t dof = data->topopt_element->get_dof_per_node();
+        const size_t k_dim = mesh->elem_info->get_k_dimension();
+        const size_t dof   = mesh->elem_info->get_dof_per_node();
 
         W = mesh->load_vector.size();
         N = k_dim;
