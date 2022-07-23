@@ -45,8 +45,8 @@ class BeamMeshing : public Meshing{
     std::vector<BoundaryNode> boundary_nodes;
 
     BeamMeshing(const std::vector<std::unique_ptr<Geometry>>& geometries,
-            const MeshElementFactory* const elem_type):
-        Meshing(geometries, elem_type){}
+            const MeshElementFactory* const elem_type, double thickness):
+        Meshing(geometries, elem_type, thickness){}
 };
 
 #endif

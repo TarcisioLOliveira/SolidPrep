@@ -58,7 +58,7 @@ int main(int argc, char* argv[]){
 
     // Meshing
     auto start_mesh = std::chrono::high_resolution_clock::now();
-    proj.topopt_mesher->mesh(proj.forces, proj.supports, proj.thickness);
+    proj.topopt_mesher->mesh(proj.forces, proj.supports);
     std::vector<MeshElement*> elems;
     std::vector<double> loads;
     auto stop_mesh = std::chrono::high_resolution_clock::now();

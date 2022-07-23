@@ -36,8 +36,8 @@ namespace meshing{
 StandardBeamMesher::StandardBeamMesher(const std::vector<std::unique_ptr<Geometry>>& geometries,
                                        const MeshElementFactory* const elem_type,
                                        double size, int order, utils::ProblemType type,
-                                       int algorithm):
-    BeamMeshing(geometries, elem_type),
+                                       double thickness, int algorithm):
+    BeamMeshing(geometries, elem_type, thickness),
     size(size), order(order), dim(0), algorithm(algorithm){
     if(type == utils::PROBLEM_TYPE_2D){
         dim = 2;
@@ -47,8 +47,7 @@ StandardBeamMesher::StandardBeamMesher(const std::vector<std::unique_ptr<Geometr
 }
 
 void StandardBeamMesher::mesh(const std::vector<Force>& forces, 
-                              const std::vector<Support>& supports,
-                              const double thickness){
+                              const std::vector<Support>& supports){
     this->node_list.clear();
 
     bool has_condition_inside = false;
@@ -279,7 +278,7 @@ void StandardBeamMesher::mesh(const std::vector<Force>& forces,
     gmsh::clear();
     gmsh::finalize();
 
-    this->prepare_for_FEM(list, forces, supports, thickness);
+    this->prepare_for_FEM(list, forces, supports);
 }
 
 bool StandardBeamMesher::is_inside_2D(gp_Pnt p, const TopoDS_Shape& t){

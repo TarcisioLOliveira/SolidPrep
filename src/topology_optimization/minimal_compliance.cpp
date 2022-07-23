@@ -147,7 +147,7 @@ TopoDS_Shape MinimalCompliance::optimize(Visualization* viz, FiniteElement* fem,
     }
 
     // Validate results
-    this->mesh->prune(this->data->forces, this->data->supports, this->data->thickness, newx, this->result_threshold);
+    this->mesh->prune(this->data->forces, this->data->supports, newx, this->result_threshold);
     std::vector<double> u = this->fem->calculate_displacements(this->data, this->mesh);
     double c = cblas_ddot(u.size(), this->mesh->load_vector.data(), 1, u.data(), 1);
     logger::quick_log(" ");

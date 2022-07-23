@@ -35,9 +35,11 @@ class ProjectData;
 class Meshing{
     public:
     Meshing(const std::vector<std::unique_ptr<Geometry>>& geometries,
-            const MeshElementFactory* const elem_type):
+            const MeshElementFactory* const elem_type,
+            const double thickness):
         elem_info(elem_type), geometries(utils::extract_pointers(geometries)),
-        shape(this->make_compound(geometries)){}
+        shape(this->make_compound(geometries)),
+        thickness(thickness){}
 
     /**
      * Just generates a mesh from a group of geometries, depending on analysis
@@ -51,8 +53,7 @@ class Meshing{
      *         MeshNodes
      */
     virtual void mesh(const std::vector<Force>& forces, 
-                      const std::vector<Support>& supports,
-                      const double thickness) = 0;
+                      const std::vector<Support>& supports) = 0;
 
     /**
      * Removes elements below a certain density threshold. Useful for
@@ -63,12 +64,12 @@ class Meshing{
      */
     virtual void prune(const std::vector<Force>& forces, 
                        const std::vector<Support>& supports,
-                       const double thickness,
                        const std::vector<double>& rho, double threshold);
 
     const MeshElementFactory * const elem_info;
     const std::vector<Geometry*> geometries;
     const TopoDS_Shape shape;
+    const double thickness;
 
     std::vector<std::unique_ptr<MeshNode>> node_list;
     std::vector<std::unique_ptr<MeshElement>> element_list;
@@ -98,8 +99,7 @@ class Meshing{
      */
     virtual void prepare_for_FEM(const std::vector<ElementShape>& base_mesh,
                                  const std::vector<Force>& forces, 
-                                 const std::vector<Support>& supports,
-                                 const double thickness);
+                                 const std::vector<Support>& supports);
 
     /**
      * Prunes and optimizes list of nodes after generation.

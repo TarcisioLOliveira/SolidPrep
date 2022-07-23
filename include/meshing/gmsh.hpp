@@ -33,11 +33,10 @@ class Gmsh : public Meshing{
     Gmsh(const std::vector<std::unique_ptr<Geometry>>& geometries,
          const MeshElementFactory* const elem_type,
          double size, int order, utils::ProblemType type,
-         int algorithm = 6);
+         double thickness, int algorithm = 6);
 
     virtual void mesh(const std::vector<Force>& forces, 
-                      const std::vector<Support>& supports,
-                      const double thickness) override;
+                      const std::vector<Support>& supports) override;
 
     private:
     double size;

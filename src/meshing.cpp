@@ -36,8 +36,7 @@
 
 void Meshing::prepare_for_FEM(const std::vector<ElementShape>& base_mesh,
                               const std::vector<Force>& forces, 
-                              const std::vector<Support>& supports,
-                              const double thickness){
+                              const std::vector<Support>& supports){
 
     this->element_list.clear();
     this->element_list.reserve(base_mesh.size());
@@ -228,7 +227,6 @@ void Meshing::prepare_for_FEM(const std::vector<ElementShape>& base_mesh,
 
 void Meshing::prune(const std::vector<Force>& forces, 
                     const std::vector<Support>& supports,
-                    const double thickness,
                     const std::vector<double>& rho, double threshold){
     std::vector<ElementShape> list;
     { // Remove elements
@@ -246,7 +244,7 @@ void Meshing::prune(const std::vector<Force>& forces,
 
     this->prune(list);
 
-    this->prepare_for_FEM(list, forces, supports, thickness);
+    this->prepare_for_FEM(list, forces, supports);
 }
 
 std::vector<long> Meshing::get_support_dof(size_t& offset, size_t id, const Support& support, const MeshElementFactory* elem_info) const{

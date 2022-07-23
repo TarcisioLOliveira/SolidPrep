@@ -364,7 +364,7 @@ std::unique_ptr<Meshing> ProjectData::load_mesher(const rapidjson::GenericValue<
             algorithm = mesh["algorithm"].GetInt();
         }
         double size = mesh["element_size"].GetDouble();
-        mesher.reset(new meshing::Gmsh(this->geometries, this->topopt_element.get(), size, this->topopt_element->get_element_order(), this->type, algorithm));
+        mesher.reset(new meshing::Gmsh(this->geometries, this->topopt_element.get(), size, this->topopt_element->get_element_order(), this->type, this->thickness, algorithm));
     }
     return mesher;
 }

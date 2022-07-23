@@ -33,8 +33,8 @@ namespace meshing{
 Gmsh::Gmsh(const std::vector<std::unique_ptr<Geometry>>& geometries,
            const MeshElementFactory* const elem_type,
            double size, int order, utils::ProblemType type,
-           int algorithm):
-    Meshing(geometries, elem_type),
+           double thickness, int algorithm):
+    Meshing(geometries, elem_type, thickness),
     size(size), order(order), dim(0), algorithm(algorithm){
     if(type == utils::PROBLEM_TYPE_2D){
         dim = 2;
@@ -44,8 +44,7 @@ Gmsh::Gmsh(const std::vector<std::unique_ptr<Geometry>>& geometries,
 }
 
 void Gmsh:: mesh(const std::vector<Force>& forces, 
-                 const std::vector<Support>& supports,
-                 const double thickness){
+                 const std::vector<Support>& supports){
     TopoDS_Shape sh = BRepBuilderAPI_Copy(this->shape);
     bool has_condition_inside = this->adapt_for_boundary_condition_inside(sh, forces, supports);
 
@@ -63,7 +62,7 @@ void Gmsh:: mesh(const std::vector<Force>& forces,
 
     this->prune(list);
 
-    this->prepare_for_FEM(list, forces, supports, thickness);
+    this->prepare_for_FEM(list, forces, supports);
 }
 
 void Gmsh::gmsh_meshing(bool has_condition_inside, TopoDS_Shape sh, std::vector<size_t>& elem_tags, std::vector<size_t>& elem_node_tags, const MeshElementFactory* const elem_type){
