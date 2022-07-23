@@ -33,6 +33,8 @@ class Geometry{
     public:
     Geometry(const std::string& path, double scale, utils::ProblemType type, MeshElementFactory* elem_type, bool do_topopt, Material* material, std::vector<Material*> alt_materials = std::vector<Material*>());
 
+    Geometry(TopoDS_Shape shape, utils::ProblemType type, MeshElementFactory* elem_type, bool do_topopt, Material* material, std::vector<Material*> alt_materials = std::vector<Material*>());
+
     inline bool is_inside(const gp_Pnt& p) const{
         if(this->type == utils::PROBLEM_TYPE_2D){
             return this->is_inside_2D(p);

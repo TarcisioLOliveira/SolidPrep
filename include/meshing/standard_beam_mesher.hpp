@@ -35,11 +35,6 @@ class StandardBeamMesher : public BeamMeshing{
                        double size, int order, utils::ProblemType type,
                        int algorithm = 6);
 
-    StandardBeamMesher(const TopoDS_Shape& shape,
-                       const MeshElementFactory* const elem_type,
-                       double size, int order, utils::ProblemType type,
-                       int algorithm = 6);
-
     virtual void mesh(const std::vector<Force>& forces, 
                       const std::vector<Support>& supports,
                       const double thickness) override;

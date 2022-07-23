@@ -39,11 +39,6 @@ class Meshing{
         elem_info(elem_type), geometries(utils::extract_pointers(geometries)),
         shape(this->make_compound(geometries)){}
 
-    Meshing(TopoDS_Shape shape,
-            const MeshElementFactory* const elem_type):
-        elem_info(elem_type), geometries(),
-        shape(shape){}
-
     /**
      * Just generates a mesh from a group of geometries, depending on analysis
      * parameters set in their construction. Returns ElementShape instances,

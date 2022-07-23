@@ -80,7 +80,11 @@ TopoDS_Shape StandardSizing::boundary_expansion_approach(){
     TopoDS_Shape beams = this->build_initial_topology();
     utils::shape_to_file("beams.step", beams);
     std::unique_ptr<MeshElementFactory> gt9_maker(new MeshElementFactoryImpl<element::GT9>());
-    meshing::StandardBeamMesher mesh(beams, gt9_maker.get(), this->element_size, 1, utils::PROBLEM_TYPE_2D);
+
+    std::unique_ptr<Geometry> geom(new Geometry(beams, utils::PROBLEM_TYPE_2D, gt9_maker.get(), true, this->data->materials[0].get()));
+    std::vector<std::unique_ptr<Geometry>> ggeom;
+    ggeom.push_back(std::move(geom));
+    meshing::StandardBeamMesher mesh(ggeom, gt9_maker.get(), this->element_size, 1, utils::PROBLEM_TYPE_2D);
     mesh.mesh(this->data->forces, this->data->supports, this->data->thickness);
     auto u = this->solver->calculate_displacements(this->data, &mesh);
 

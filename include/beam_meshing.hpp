@@ -47,10 +47,6 @@ class BeamMeshing : public Meshing{
     BeamMeshing(const std::vector<std::unique_ptr<Geometry>>& geometries,
             const MeshElementFactory* const elem_type):
         Meshing(geometries, elem_type){}
-
-    BeamMeshing(TopoDS_Shape shape,
-            const MeshElementFactory* const elem_type):
-        Meshing(shape, elem_type){}
 };
 
 #endif

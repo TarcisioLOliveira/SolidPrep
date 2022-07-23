@@ -28,6 +28,12 @@ Geometry::Geometry(const std::string& path, double scale, utils::ProblemType typ
     element_type(elem_type), do_topopt(do_topopt), mesh(), 
     type(type){}
 
+Geometry::Geometry(TopoDS_Shape shape, utils::ProblemType type,
+        MeshElementFactory* elem_type, bool do_topopt, Material* material, std::vector<Material*> alt_materials ):
+    shape(std::move(shape)), scale(1), material(material), alternate_materials(alt_materials.begin(), alt_materials.end()),
+    element_type(elem_type), do_topopt(do_topopt), mesh(), 
+    type(type){}
+
 TopoDS_Shape Geometry::load_shape(const std::string& path, double scale) const{
     TopoDS_Shape s;
     

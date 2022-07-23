@@ -46,19 +46,6 @@ StandardBeamMesher::StandardBeamMesher(const std::vector<std::unique_ptr<Geometr
     }
 }
 
-StandardBeamMesher::StandardBeamMesher(const TopoDS_Shape& shape,
-                                       const MeshElementFactory* const elem_type,
-                                       double size, int order, utils::ProblemType type,
-                                       int algorithm):
-    BeamMeshing(shape, elem_type),
-    size(size), order(order), dim(0), algorithm(algorithm){
-    if(type == utils::PROBLEM_TYPE_2D){
-        dim = 2;
-    } else if(type == utils::PROBLEM_TYPE_3D){
-        dim = 3;
-    }
-}
-
 void StandardBeamMesher::mesh(const std::vector<Force>& forces, 
                               const std::vector<Support>& supports,
                               const double thickness){
