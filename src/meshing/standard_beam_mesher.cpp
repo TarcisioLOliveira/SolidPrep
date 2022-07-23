@@ -48,13 +48,14 @@ StandardBeamMesher::StandardBeamMesher(const std::vector<std::unique_ptr<Geometr
 
 void StandardBeamMesher::mesh(const std::vector<Force>& forces, 
                               const std::vector<Support>& supports){
+    auto sh = this->make_compound(this->geometries);
     this->node_list.clear();
 
     bool has_condition_inside = false;
 
-    TopoDS_Shape shape = BRepBuilderAPI_Copy(this->shape);
+    TopoDS_Shape shape = BRepBuilderAPI_Copy(sh);
     for(auto& f:forces){
-        if(this->is_strictly_inside2D(f.S.get_centroid(), this->shape)){
+        if(this->is_strictly_inside2D(f.S.get_centroid(), sh)){
             has_condition_inside = true;
 
             BOPAlgo_Splitter splitter;
@@ -66,7 +67,7 @@ void StandardBeamMesher::mesh(const std::vector<Force>& forces,
         }
     }
     for(auto& s:supports){
-        if(this->is_strictly_inside2D(s.S.get_centroid(), this->shape)){
+        if(this->is_strictly_inside2D(s.S.get_centroid(), sh)){
             has_condition_inside = true;
 
             BOPAlgo_Splitter splitter;
@@ -195,9 +196,9 @@ void StandardBeamMesher::mesh(const std::vector<Force>& forces,
         gp_Pnt p = boundary_nodes[i].node->point.Translated(dir);
         bool outside = true;
         if(this->dim == 2){
-            outside = !this->is_inside_2D(p, this->shape);
+            outside = !this->is_inside_2D(p, sh);
         } else if(this->dim == 3){
-            outside = !this->is_inside_3D(p, this->shape);
+            outside = !this->is_inside_3D(p, sh);
         }
         if(outside){
             boundary_nodes[i].normal = std::move(dir);
@@ -278,7 +279,7 @@ void StandardBeamMesher::mesh(const std::vector<Force>& forces,
     gmsh::clear();
     gmsh::finalize();
 
-    this->prepare_for_FEM(list, forces, supports);
+    this->prepare_for_FEM(sh, list, forces, supports);
 }
 
 bool StandardBeamMesher::is_inside_2D(gp_Pnt p, const TopoDS_Shape& t){

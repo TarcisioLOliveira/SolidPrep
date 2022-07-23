@@ -53,8 +53,7 @@ class Geometry{
         return std::vector<double>();
     }
 
-    const TopoDS_Shape shape;
-    const double scale;
+    TopoDS_Shape shape;
     const Material* const material;
     const std::vector<const Material*> alternate_materials;
     const MeshElementFactory* const element_type;

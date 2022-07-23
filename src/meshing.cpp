@@ -32,9 +32,11 @@
 #include <limits>
 #include <set>
 #include <queue>
+#include <BRepBuilderAPI_Copy.hxx>
 
 
-void Meshing::prepare_for_FEM(const std::vector<ElementShape>& base_mesh,
+void Meshing::prepare_for_FEM(const TopoDS_Shape& shape,
+                              const std::vector<ElementShape>& base_mesh,
                               const std::vector<Force>& forces, 
                               const std::vector<Support>& supports){
 
@@ -92,7 +94,7 @@ void Meshing::prepare_for_FEM(const std::vector<ElementShape>& base_mesh,
             double norm = f.vec.Magnitude()/(thickness*f.S.get_dimension());
             gp_Dir dir(f.vec);
 
-            if(this->is_strictly_inside2D(f.S.get_centroid(), this->shape)){
+            if(this->is_strictly_inside2D(f.S.get_centroid(), shape)){
                 norm = norm/2;
             }
 
@@ -207,6 +209,7 @@ void Meshing::prepare_for_FEM(const std::vector<ElementShape>& base_mesh,
         }
         for(size_t i = 0; i < geometries.size(); ++i){
             auto& g = geometries[i];
+            g->mesh.clear();
             g->mesh.reserve(mesh_size_per_geom[i]);
         }
         for(auto& e:this->element_list){
@@ -228,6 +231,7 @@ void Meshing::prepare_for_FEM(const std::vector<ElementShape>& base_mesh,
 void Meshing::prune(const std::vector<Force>& forces, 
                     const std::vector<Support>& supports,
                     const std::vector<double>& rho, double threshold){
+    auto shape = this->make_compound(this->geometries);
     std::vector<ElementShape> list;
     { // Remove elements
         auto r = rho.begin();
@@ -244,7 +248,7 @@ void Meshing::prune(const std::vector<Force>& forces,
 
     this->prune(list);
 
-    this->prepare_for_FEM(list, forces, supports);
+    this->prepare_for_FEM(shape, list, forces, supports);
 }
 
 std::vector<long> Meshing::get_support_dof(size_t& offset, size_t id, const Support& support, const MeshElementFactory* elem_info) const{
@@ -499,7 +503,7 @@ std::unordered_map<size_t, size_t> Meshing::find_duplicates(){
     return duplicate_map;
 }
 
-TopoDS_Shape Meshing::make_compound(const std::vector<std::unique_ptr<Geometry>>& geometries) const{
+TopoDS_Shape Meshing::make_compound(const std::vector<Geometry*>& geometries) const{
     // Assuming linear with a single element type
     BRep_Builder builder;
     TopoDS_Compound comp;
@@ -509,12 +513,13 @@ TopoDS_Shape Meshing::make_compound(const std::vector<std::unique_ptr<Geometry>>
     }
     return comp;
 }
-bool Meshing::adapt_for_boundary_condition_inside(TopoDS_Shape& sh, const std::vector<Force>& forces, const std::vector<Support>& supports){
+bool Meshing::adapt_for_boundary_condition_inside(TopoDS_Shape& shape, const std::vector<Force>& forces, const std::vector<Support>& supports){
     bool has_condition_inside = false;
     // TODO: adapt for 3D, maybe (methods to insert loads/supports into the
     // geometry if needed).
+    TopoDS_Shape sh = BRepBuilderAPI_Copy(shape);
     for(auto& f:forces){
-        if(this->is_strictly_inside2D(f.S.get_centroid(), this->shape)){
+        if(this->is_strictly_inside2D(f.S.get_centroid(), shape)){
             has_condition_inside = true;
 
             BOPAlgo_Splitter splitter;
@@ -526,7 +531,7 @@ bool Meshing::adapt_for_boundary_condition_inside(TopoDS_Shape& sh, const std::v
         }
     }
     for(auto& s:supports){
-        if(this->is_strictly_inside2D(s.S.get_centroid(), this->shape)){
+        if(this->is_strictly_inside2D(s.S.get_centroid(), shape)){
             has_condition_inside = true;
 
             BOPAlgo_Splitter splitter;

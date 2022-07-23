@@ -26,7 +26,6 @@
 #include <limits>
 #include "project_data.hpp"
 #include <unordered_map>
-#include <BRepBuilderAPI_Copy.hxx>
 
 namespace meshing{
 
@@ -43,13 +42,13 @@ Gmsh::Gmsh(const std::vector<std::unique_ptr<Geometry>>& geometries,
     }
 }
 
-void Gmsh:: mesh(const std::vector<Force>& forces, 
-                 const std::vector<Support>& supports){
-    TopoDS_Shape sh = BRepBuilderAPI_Copy(this->shape);
-    bool has_condition_inside = this->adapt_for_boundary_condition_inside(sh, forces, supports);
+void Gmsh::mesh(const std::vector<Force>& forces, 
+                const std::vector<Support>& supports){
+    TopoDS_Shape shape = this->make_compound(this->geometries);
+    bool has_condition_inside = this->adapt_for_boundary_condition_inside(shape, forces, supports);
 
     std::vector<size_t> elem_tags, elem_node_tags;
-    this->gmsh_meshing(has_condition_inside, std::move(sh), elem_tags, elem_node_tags, this->elem_info);
+    this->gmsh_meshing(has_condition_inside, shape, elem_tags, elem_node_tags, this->elem_info);
 
     std::unordered_map<size_t, size_t> duplicate_map;
     if(geometries.size() > 1){
@@ -62,7 +61,7 @@ void Gmsh:: mesh(const std::vector<Force>& forces,
 
     this->prune(list);
 
-    this->prepare_for_FEM(list, forces, supports);
+    this->prepare_for_FEM(shape, list, forces, supports);
 }
 
 void Gmsh::gmsh_meshing(bool has_condition_inside, TopoDS_Shape sh, std::vector<size_t>& elem_tags, std::vector<size_t>& elem_node_tags, const MeshElementFactory* const elem_type){

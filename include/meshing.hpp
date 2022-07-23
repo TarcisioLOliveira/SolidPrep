@@ -38,7 +38,6 @@ class Meshing{
             const MeshElementFactory* const elem_type,
             const double thickness):
         elem_info(elem_type), geometries(utils::extract_pointers(geometries)),
-        shape(this->make_compound(geometries)),
         thickness(thickness){}
 
     /**
@@ -68,7 +67,6 @@ class Meshing{
 
     const MeshElementFactory * const elem_info;
     const std::vector<Geometry*> geometries;
-    const TopoDS_Shape shape;
     const double thickness;
 
     std::vector<std::unique_ptr<MeshNode>> node_list;
@@ -97,7 +95,8 @@ class Meshing{
      * @param supports List of supports
      * @param force List of forces
      */
-    virtual void prepare_for_FEM(const std::vector<ElementShape>& base_mesh,
+    virtual void prepare_for_FEM(const TopoDS_Shape& shape,
+                                 const std::vector<ElementShape>& base_mesh,
                                  const std::vector<Force>& forces, 
                                  const std::vector<Support>& supports);
 
@@ -137,9 +136,9 @@ class Meshing{
      *
      * @return OCCT compound as TopoDS_Shape
      */
-    virtual TopoDS_Shape make_compound(const std::vector<std::unique_ptr<Geometry>>& geometries) const;
+    virtual TopoDS_Shape make_compound(const std::vector<Geometry*>& geometries) const;
 
-    virtual bool adapt_for_boundary_condition_inside(TopoDS_Shape& sh, const std::vector<Force>& forces, const std::vector<Support>& supports);
+    virtual bool adapt_for_boundary_condition_inside(TopoDS_Shape& shape, const std::vector<Force>& forces, const std::vector<Support>& supports);
 };
 
 #endif

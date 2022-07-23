@@ -54,6 +54,7 @@ int main(int argc, char* argv[]){
         auto sizing_duration = std::chrono::duration_cast<std::chrono::seconds>(stop_sizing-start_sizing);
         size_time = sizing_duration.count()/60.0;
         utils::shape_to_file("sized.step", shape);
+        proj.geometries[0]->shape = shape;
     }
 
     // Meshing
