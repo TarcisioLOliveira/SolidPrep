@@ -64,7 +64,10 @@ class MinimalCompliance : public TopologyOptimization{
     std::vector<double> convolution_grad_correction(const std::vector<double>& df);
 
     inline double get_distance(const size_t i, const size_t j) const{
-        return std::sqrt(std::pow(this->p[3*i] - this->p[3*j], 2) + std::pow(this->p[3*i+1] - this->p[3*j+1], 2) + std::pow(this->p[3*i+2] - this->p[3*j+2], 2));
+        auto dx = this->p[3*i  ] - this->p[3*j+0];
+        auto dy = this->p[3*i+1] - this->p[3*j+1];
+        auto dz = this->p[3*i+2] - this->p[3*j+2];
+        return std::sqrt(dx*dx + dy*dy + dz*dz);
     }
 };
 
