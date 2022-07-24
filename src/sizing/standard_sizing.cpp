@@ -125,6 +125,17 @@ TopoDS_Shape StandardSizing::expansion_2D(const meshing::StandardBeamMesher& mes
         external_forces.push_back(ef);
     }
     // Get reaction forces
+    //
+    // Might worthy to remove this entire section in the future. The current
+    // method of calculating interior loads from slicing seems to be working
+    // well already, and doesn't depend on `FiniteElement::calculate_forces()`.
+    // Also makes it so there is one less section in this function to maintain.
+    // This section made more sense when it was required to calculate the
+    // internal reactions in the old, arithmetic method.
+    //
+    // To fully remove this part, `is_valid_boundary_point()` will need to be
+    // modified to consider the vertices of support edges to be valid points,
+    // otherwise they'll be skipped.
     size_t Mn = 0;
     for(size_t i = 0; i < this->end_points.size(); ++i){
         // Get supports
@@ -180,13 +191,6 @@ TopoDS_Shape StandardSizing::expansion_2D(const meshing::StandardBeamMesher& mes
             }
         }
 
-        // `calculate_forces()` still needs to be adapted to support multiple geometries
-        // It'll likely result in multiple reaction vectors, one per geometry,
-        // which will then need to be summed afterwards by the caller function
-        // in order to obtain the final result (if so desired).
-        //
-        // This way, the function can also calculate reactions for each geoemtry
-        // separately.
         auto reactions = this->solver->calculate_forces(&mesh, mesh.load_vector);
         auto dof = mesh.elem_info->get_dof_per_node();
         double Fx = 0;
