@@ -110,8 +110,6 @@ TopoDS_Shape StandardSizing::expansion_2D(const meshing::StandardBeamMesher& mes
     for (TopExp_Explorer exp(beams, TopAbs_EDGE); exp.More(); exp.Next()){
         edges_beam.push_back(TopoDS::Edge(exp.Current()));
     }
-    auto D = this->data->geometries[0]->material->stiffness_2D();
-    auto t = this->data->thickness;
 
     std::vector<ExternalForce> external_forces;
     // Get applied forces
@@ -318,31 +316,35 @@ TopoDS_Shape StandardSizing::expansion_2D(const meshing::StandardBeamMesher& mes
         nn.Normalize();
 
         std::vector<IntersectionNode> int_nodes;
-        for(auto& e:mesh.element_list){
-            // Heuristic filter
-            TopoDS_Vertex v = BRepBuilderAPI_MakeVertex(e->get_centroid());
-            auto extrema = BRepExtrema_DistShapeShape(crosssection, v, Extrema_ExtFlag_MIN);
-            double dist = extrema.Value();
-            if(dist > this->element_size){
-                continue;
-            }
+        size_t dof = mesh.elem_info->get_dof_per_node();
+        for(auto& g:mesh.geometries){
+            const auto D = g->get_D(0);
+            for(auto& e:g->mesh){
 
-            std::vector<gp_Pnt> points = e->get_intersection_points(crosssection);
-            if(points.size() == 0){
-                continue;
-            }
+                // Heuristic filter
+                TopoDS_Vertex v = BRepBuilderAPI_MakeVertex(e->get_centroid());
+                auto extrema = BRepExtrema_DistShapeShape(crosssection, v, Extrema_ExtFlag_MIN);
+                double dist = extrema.Value();
+                if(dist > this->element_size){
+                    continue;
+                }
 
-            std::vector<double> force = e->get_internal_loads(D, t, u);
-            size_t dof = e->get_element_info()->get_dof_per_node();
-            for(size_t j = 0; j < e->nodes.size(); ++j){
-                auto& ne = e->nodes[j];
-                double line_pos_rel = nn.Dot(gp_Vec(ne->point, n.node->point));
-                // Check for nodes that are on the same side
-                if(line_pos_rel > Precision::Confusion()){
-                    int_nodes.push_back({
-                        ne->point,
-                        gp_Vec(force[j*dof+0], force[j*dof+1], 0)
-                    });
+                std::vector<gp_Pnt> points = e->get_intersection_points(crosssection);
+                if(points.size() == 0){
+                    continue;
+                }
+
+                std::vector<double> force = e->get_internal_loads(D, mesh.thickness, u);
+                for(size_t j = 0; j < e->nodes.size(); ++j){
+                    auto& ne = e->nodes[j];
+                    double line_pos_rel = nn.Dot(gp_Vec(ne->point, n.node->point));
+                    // Check for nodes that are on the same side
+                    if(line_pos_rel > Precision::Confusion()){
+                        int_nodes.push_back({
+                            ne->point,
+                            gp_Vec(force[j*dof+0], force[j*dof+1], 0)
+                        });
+                    }
                 }
             }
         }
