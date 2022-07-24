@@ -189,7 +189,7 @@ TopoDS_Shape StandardSizing::expansion_2D(const meshing::StandardBeamMesher& mes
             }
         }
 
-        auto reactions = this->solver->calculate_forces(&mesh, mesh.load_vector);
+        auto reactions = this->solver->calculate_forces(&mesh, u);
         auto dof = mesh.elem_info->get_dof_per_node();
         double Fx = 0;
         double Fy = 0;
