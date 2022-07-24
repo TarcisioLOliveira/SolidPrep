@@ -188,7 +188,7 @@ TopoDS_Shape StandardSizing::expansion_2D(const meshing::StandardBeamMesher& mes
         // This way, the function can also calculate reactions for each geoemtry
         // separately.
         auto reactions = this->solver->calculate_forces(&mesh, mesh.load_vector);
-        auto dof = this->data->topopt_element->get_dof_per_node();
+        auto dof = mesh.elem_info->get_dof_per_node();
         double Fx = 0;
         double Fy = 0;
         double Mz = 0;
