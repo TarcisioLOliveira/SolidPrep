@@ -222,6 +222,8 @@ void Meshing::prepare_for_FEM(const TopoDS_Shape& shape,
         }
     } else if(geometries.size() == 1){
         auto& g = geometries[0];
+        g->mesh.clear();
+        g->mesh.reserve(this->element_list.size());
         for(auto& e:this->element_list){
             g->mesh.push_back(e.get());
         }
