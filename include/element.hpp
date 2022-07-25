@@ -342,12 +342,14 @@ class MeshElement : public Element{
     virtual gp_Pnt get_centroid() const{
         double x = 0;
         double y = 0;
+        double z = 0;
         for(auto& n : this->nodes){
             x += n->point.X();
             y += n->point.Y();
+            z += n->point.Z();
         }
 
-        return gp_Pnt(x/this->nodes.size(), y/this->nodes.size(), 0);
+        return gp_Pnt(x/this->nodes.size(), y/this->nodes.size(), z/this->nodes.size());
     }
     /**
      * Returns a factory pointer, from which still possible to obtain
