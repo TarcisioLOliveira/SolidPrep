@@ -31,15 +31,9 @@ namespace meshing{
 
 Gmsh::Gmsh(const std::vector<std::unique_ptr<Geometry>>& geometries,
            const MeshElementFactory* const elem_type,
-           double size, int order, utils::ProblemType type,
-           double thickness, int algorithm):
+           double size, double thickness, int algorithm):
     Meshing(geometries, elem_type, thickness),
-    size(size), order(order), dim(0), algorithm(algorithm){
-    if(type == utils::PROBLEM_TYPE_2D){
-        dim = 2;
-    } else if(type == utils::PROBLEM_TYPE_3D){
-        dim = 3;
-    }
+    size(size), algorithm(algorithm){
 }
 
 void Gmsh::mesh(const std::vector<Force>& forces, 
@@ -78,19 +72,27 @@ void Gmsh::gmsh_meshing(bool has_condition_inside, TopoDS_Shape sh, std::vector<
 
     gmsh::option::setNumber("Mesh.Algorithm", this->algorithm);
 
-    gmsh::option::setNumber("Mesh.ElementOrder", this->order);
+    gmsh::option::setNumber("Mesh.ElementOrder", this->elem_info->get_element_order());
     gmsh::option::setNumber("Mesh.HighOrderOptimize", 2);
     gmsh::option::setNumber("Mesh.Optimize", 1);
     gmsh::option::setNumber("Mesh.OptimizeNetgen", 1);
 
-    gmsh::model::mesh::generate(this->dim);
+    size_t dim = 0;
+    auto problem_type = this->elem_info->get_problem_type();
+    if(problem_type == utils::PROBLEM_TYPE_2D){
+        dim = 2;
+    } else if(problem_type == utils::PROBLEM_TYPE_3D){
+        dim = 3;
+    }
+
+    gmsh::model::mesh::generate(dim);
 
     std::vector<std::size_t> node_tags;
     std::vector<double> node_coords, node_params;
     if(has_condition_inside){
         gmsh::model::mesh::getNodes(node_tags, node_coords, node_params, -1, -1, true);
     } else {
-        gmsh::model::mesh::getNodes(node_tags, node_coords, node_params, this->dim, -1, true);
+        gmsh::model::mesh::getNodes(node_tags, node_coords, node_params, dim, -1, true);
     }
 
     // Would need to be changed to support multiple elements

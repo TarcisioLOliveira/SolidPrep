@@ -32,16 +32,13 @@ class StandardBeamMesher : public BeamMeshing{
     public:
     StandardBeamMesher(const std::vector<std::unique_ptr<Geometry>>& geometries,
                        const MeshElementFactory* const elem_type,
-                       double size, int order, utils::ProblemType type,
-                       double thickness, int algorithm = 6);
+                       double size, double thickness, int algorithm = 6);
 
     virtual void mesh(const std::vector<Force>& forces, 
                       const std::vector<Support>& supports) override;
 
     private:
     double size;
-    int order;
-    int dim;
     int algorithm;
 
     MeshNode* find_node(size_t id) const;

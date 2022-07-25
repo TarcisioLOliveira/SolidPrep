@@ -35,15 +35,9 @@ namespace meshing{
 
 StandardBeamMesher::StandardBeamMesher(const std::vector<std::unique_ptr<Geometry>>& geometries,
                                        const MeshElementFactory* const elem_type,
-                                       double size, int order, utils::ProblemType type,
-                                       double thickness, int algorithm):
+                                       double size, double thickness, int algorithm):
     BeamMeshing(geometries, elem_type, thickness),
-    size(size), order(order), dim(0), algorithm(algorithm){
-    if(type == utils::PROBLEM_TYPE_2D){
-        dim = 2;
-    } else if(type == utils::PROBLEM_TYPE_3D){
-        dim = 3;
-    }
+    size(size), algorithm(algorithm){
 }
 
 void StandardBeamMesher::mesh(const std::vector<Force>& forces, 
@@ -93,33 +87,41 @@ void StandardBeamMesher::mesh(const std::vector<Force>& forces,
 
     gmsh::option::setNumber("Mesh.Algorithm", this->algorithm);
 
-    gmsh::option::setNumber("Mesh.ElementOrder", this->order);
+    gmsh::option::setNumber("Mesh.ElementOrder", this->elem_info->get_element_order());
     gmsh::option::setNumber("Mesh.HighOrderOptimize", 2);
 
-    gmsh::model::mesh::generate(this->dim);
+    size_t dim = 0;
+    auto problem_type = this->elem_info->get_problem_type();
+    if(problem_type == utils::PROBLEM_TYPE_2D){
+        dim = 2;
+    } else if(problem_type == utils::PROBLEM_TYPE_3D){
+        dim = 3;
+    }
+
+    gmsh::model::mesh::generate(dim);
 
     std::vector<std::size_t> nodeTags;
     std::vector<double> nodeCoords, nodeParams;
     if(has_condition_inside){
         gmsh::model::mesh::getNodes(nodeTags, nodeCoords, nodeParams, -1, -1, true);
     } else {
-      gmsh::model::mesh::getNodes(nodeTags, nodeCoords, nodeParams, this->dim, -1, true);
+      gmsh::model::mesh::getNodes(nodeTags, nodeCoords, nodeParams, dim, -1, true);
     }
 
     std::vector<std::size_t> boundNodeTags;
     std::vector<double> boundNodeCoords, boundNodeParams;
-    gmsh::model::mesh::getNodes(boundNodeTags, boundNodeCoords, boundNodeParams, this->dim-1, -1, true);
+    gmsh::model::mesh::getNodes(boundNodeTags, boundNodeCoords, boundNodeParams, dim-1, -1, true);
 
     std::vector<int> elemTypes;
     std::vector<std::vector<size_t> > elemTags, elemNodeTags;
-    gmsh::model::mesh::getElements(elemTypes, elemTags, elemNodeTags, this->dim, -1);
+    gmsh::model::mesh::getElements(elemTypes, elemTags, elemNodeTags, dim, -1);
 
     std::vector<int> boundElemTypes;
     std::vector<std::vector<size_t> > boundElemTags, boundElemNodeTags;
-    gmsh::model::mesh::getElements(boundElemTypes, boundElemTags, boundElemNodeTags, this->dim-1, -1);
+    gmsh::model::mesh::getElements(boundElemTypes, boundElemTags, boundElemNodeTags, dim-1, -1);
 
     this->node_list.reserve(nodeTags.size());
-    if(this->dim == 2){
+    if(dim == 2){
         for(size_t i = 0; i < nodeTags.size(); ++i){
             gp_Pnt p(nodeCoords[i*3], nodeCoords[i*3+1], nodeCoords[i*3+2]);
             this->node_list.emplace_back(new MeshNode(p, nodeTags[i]));
@@ -140,9 +142,9 @@ void StandardBeamMesher::mesh(const std::vector<Force>& forces,
     }
     std::vector<std::vector<size_t>> neighbors(boundary_nodes.size());
     size_t nodes_per_bound_elem = 0;
-    if(this->dim == 2){
+    if(dim == 2){
         nodes_per_bound_elem = 2;
-    } else if(this->dim == 3){
+    } else if(dim == 3){
         nodes_per_bound_elem = 3;
     }
 
@@ -174,7 +176,7 @@ void StandardBeamMesher::mesh(const std::vector<Force>& forces,
         }
         // If colinear/coplanar
         if(vec.IsEqual(gp_Vec(0, 0, 0), Precision::Confusion(), Precision::Angular())){
-            if(this->dim == 2){
+            if(dim == 2){
                 // Get the line's vector and rotate it 90 degrees
                 gp_Pnt p1 = boundary_nodes[neighbors[i][0]].node->point;
                 gp_Pnt p2 = boundary_nodes[neighbors[i][1]].node->point;
@@ -182,7 +184,7 @@ void StandardBeamMesher::mesh(const std::vector<Force>& forces,
                 vec = gp_Vec(p1, p2);
                 gp_Ax1 ax(p3, gp_Dir(0, 0, 1));
                 vec.Rotate(ax, M_PI/2);
-            } else if(this->dim == 3){
+            } else if(dim == 3){
                 // Get two other points and get the normal to the plane
                 gp_Pnt p1 = boundary_nodes[neighbors[i][0]].node->point;
                 gp_Pnt p2 = boundary_nodes[neighbors[i][1]].node->point;
@@ -195,9 +197,9 @@ void StandardBeamMesher::mesh(const std::vector<Force>& forces,
         gp_Dir dir(vec);
         gp_Pnt p = boundary_nodes[i].node->point.Translated(dir);
         bool outside = true;
-        if(this->dim == 2){
+        if(dim == 2){
             outside = !this->is_inside_2D(p, sh);
-        } else if(this->dim == 3){
+        } else if(dim == 3){
             outside = !this->is_inside_3D(p, sh);
         }
         if(outside){
