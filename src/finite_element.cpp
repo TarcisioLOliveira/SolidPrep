@@ -46,7 +46,7 @@ std::vector<double> FiniteElement::calculate_forces(const Meshing* const mesh, c
     return results;
 }
 
-void FiniteElement::calculate_dimensions(Meshing* mesh, const std::vector<double>& load){
+void FiniteElement::calculate_dimensions(const Meshing* const mesh, const std::vector<double>& load){
     const size_t k_dim    = mesh->elem_info->get_k_dimension();
     const size_t dof      = mesh->elem_info->get_dof_per_node();
     const size_t node_num = mesh->elem_info->get_nodes_per_element();
@@ -65,6 +65,7 @@ void FiniteElement::calculate_dimensions(Meshing* mesh, const std::vector<double
             long min = std::numeric_limits<long>::max();
             long max = -1;
             std::vector<long> pos;
+            pos.reserve(k_dim);
             for(size_t i = 0; i < node_num; ++i){
                 const auto& n = e->nodes[i];
                 for(size_t j = 0; j < dof; ++j){
@@ -92,7 +93,7 @@ void FiniteElement::calculate_dimensions(Meshing* mesh, const std::vector<double
     }
 }
 
-void FiniteElement::generate_K(Meshing* mesh, const std::vector<double>& density, const double pc){
+void FiniteElement::generate_K(const Meshing* const mesh, const std::vector<double>& density, const double pc){
     if(this->recalculated_dimensions){
         this->K.clear();
         this->K.resize(W*N,0);
@@ -117,7 +118,7 @@ void FiniteElement::generate_K(Meshing* mesh, const std::vector<double>& density
     }
 }
 
-void FiniteElement::add_geometry_to_K(Meshing* mesh, Geometry* g){
+void FiniteElement::add_geometry_to_K(const Meshing* const mesh, const Geometry* const g){
     const auto D = g->get_D(0);
     const double t = mesh->thickness;
     const size_t dof      = mesh->elem_info->get_dof_per_node();
@@ -125,6 +126,7 @@ void FiniteElement::add_geometry_to_K(Meshing* mesh, Geometry* g){
 
     for(auto& e : g->mesh){
         std::vector<long> u_pos;
+        u_pos.reserve(dof*node_num);
         for(size_t i = 0; i < node_num; ++i){
             const auto& n = e->nodes[i];
             for(size_t j = 0; j < dof; ++j){
@@ -136,7 +138,7 @@ void FiniteElement::add_geometry_to_K(Meshing* mesh, Geometry* g){
     }
 }
 
-void FiniteElement::add_geometry_to_K(Meshing* mesh, Geometry* g, std::vector<double>::const_iterator rho, const double pc){
+void FiniteElement::add_geometry_to_K(const Meshing* const mesh, const Geometry* const g, std::vector<double>::const_iterator rho, const double pc){
     const auto D = g->get_D(0);
     const double t = mesh->thickness;
     const size_t dof      = mesh->elem_info->get_dof_per_node();
@@ -145,6 +147,7 @@ void FiniteElement::add_geometry_to_K(Meshing* mesh, Geometry* g, std::vector<do
     if(g->alternate_materials.empty()){
         for(auto& e : g->mesh){
             std::vector<long> u_pos;
+            u_pos.reserve(dof*node_num);
             for(size_t i = 0; i < node_num; ++i){
                 const auto& n = e->nodes[i];
                 for(size_t j = 0; j < dof; ++j){
@@ -164,6 +167,7 @@ void FiniteElement::add_geometry_to_K(Meshing* mesh, Geometry* g, std::vector<do
         const auto D2 = g->get_D(1);
         for(auto& e : g->mesh){
             std::vector<long> u_pos;
+            u_pos.reserve(dof*node_num);
             for(size_t i = 0; i < node_num; ++i){
                 const auto& n = e->nodes[i];
                 for(size_t j = 0; j < dof; ++j){
@@ -185,12 +189,12 @@ void FiniteElement::add_geometry_to_K(Meshing* mesh, Geometry* g, std::vector<do
     }
 }
 
-void FiniteElement::insert_element_matrix(std::vector<double>& K, const std::vector<double>& k, const std::vector<long>& pos, size_t n) const{
-    size_t W = pos.size();
-    for(size_t i = 0; i < W; ++i){
-        for(size_t j = i; j < W; ++j){
+void FiniteElement::insert_element_matrix(std::vector<double>& K, const std::vector<double>& k, const std::vector<long>& pos, const size_t n) const{
+    const size_t w = pos.size();
+    for(size_t i = 0; i < w; ++i){
+        for(size_t j = i; j < w; ++j){
             if(pos[i] > -1 && pos[j] > -1){
-                K[utils::to_lower_band(pos[i], pos[j], n)] += k[W*i + j];
+                K[utils::to_lower_band(pos[i], pos[j], n)] += k[w*i + j];
             }
         }
     }

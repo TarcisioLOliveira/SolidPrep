@@ -36,7 +36,7 @@ class FiniteElement{
 
     virtual ~FiniteElement() = default;
 
-    virtual std::vector<double> calculate_displacements(Meshing* mesh, std::vector<double> load, const std::vector<double>& density = std::vector<double>(), double pc = 3) = 0;
+    virtual std::vector<double> calculate_displacements(const Meshing* const mesh, std::vector<double> load, const std::vector<double>& density = std::vector<double>(), double pc = 3) = 0;
 
     inline virtual void set_steps(size_t s){
         this->steps = s;
@@ -52,15 +52,15 @@ class FiniteElement{
     size_t current_step = 0;
     bool recalculated_dimensions = false;
 
-    virtual void calculate_dimensions(Meshing* mesh, const std::vector<double>& load);
+    virtual void calculate_dimensions(const Meshing * const mesh, const std::vector<double>& load);
 
-    virtual void generate_K(Meshing* mesh, const std::vector<double>& density, const double pc);
+    virtual void generate_K(const Meshing * const mesh, const std::vector<double>& density, const double pc);
 
-    virtual void add_geometry_to_K(Meshing* mesh, Geometry* g);
+    virtual void add_geometry_to_K(const Meshing * const mesh, const Geometry * const g);
 
-    virtual void add_geometry_to_K(Meshing* mesh, Geometry* g, std::vector<double>::const_iterator rho, const double pc);
+    virtual void add_geometry_to_K(const Meshing * const mesh, const Geometry * const g, std::vector<double>::const_iterator rho, const double pc);
 
-    virtual void insert_element_matrix(std::vector<double>& K, const std::vector<double>& k, const std::vector<long>& pos, size_t n) const;
+    virtual void insert_element_matrix(std::vector<double>& K, const std::vector<double>& k, const std::vector<long>& pos, const size_t n) const;
 };
 
 #endif
