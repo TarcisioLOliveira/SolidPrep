@@ -49,6 +49,8 @@ void FiniteElement::calculate_dimensions(const MeshElementFactory* const element
     const size_t k_dim = element->get_k_dimension();
     const size_t dof =   element->get_dof_per_node();
 
+    this->recalculated_dimensions = true;
+
     W = load.size();
     N = k_dim;
 
@@ -88,8 +90,13 @@ void FiniteElement::calculate_dimensions(const MeshElementFactory* const element
 }
 
 void FiniteElement::generate_K(Meshing* mesh, const std::vector<double>& density, const double pc){
-    this->K.clear();
-    this->K.resize(W*N,0);
+    if(this->recalculated_dimensions){
+        this->K.clear();
+        this->K.resize(W*N,0);
+        this->recalculated_dimensions = false;
+    } else {
+        std::fill(this->K.begin(), this->K.end(), 0);
+    }
     logger::quick_log("Generating stiffness matrix...");
     if(density.size() == 0){
         for(auto& g : mesh->geometries){

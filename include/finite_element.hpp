@@ -39,10 +39,6 @@ class FiniteElement{
     inline virtual void set_steps(size_t s){
         this->steps = s;
     }
-    inline virtual void recalculate_dimensions(){
-        this->W = 0;
-        this->N = 0;
-    }
 
     virtual std::vector<double> calculate_forces(const Meshing* const mesh, const std::vector<double>& displacements) const;
 
@@ -52,6 +48,7 @@ class FiniteElement{
     size_t W = 0;
     size_t N = 0;
     size_t current_step = 0;
+    bool recalculated_dimensions = false;
 
     virtual void calculate_dimensions(const MeshElementFactory* const element, Meshing* mesh, const std::vector<double>& load);
 
