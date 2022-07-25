@@ -162,6 +162,21 @@ class MeshElementCommon : public MeshElement{
         return result;
     }
 
+    inline virtual gp_Pnt get_centroid() const{
+        const size_t N = T::NODES_PER_ELEM;
+
+        double x = 0;
+        double y = 0;
+        double z = 0;
+        for(size_t i = 0; i < N; ++i){
+            const auto& n = this->nodes[i];
+            x += n->point.X();
+            y += n->point.Y();
+            z += n->point.Z();
+        }
+
+        return gp_Pnt(x/N, y/N, z/N);
+    }
 
     protected:
     MeshElementCommon(const std::vector<MeshNode*>& nodes):

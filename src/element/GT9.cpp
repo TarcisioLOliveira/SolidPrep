@@ -34,7 +34,8 @@ std::vector<double> GT9::get_k(const std::vector<double>& D, const double t) con
     size_t N = this->NODES_PER_ELEM;
 
     std::vector<gp_Pnt> p;
-    for(auto n:this->nodes){
+    for(size_t i = 0; i < N; ++i){
+        const auto& n = this->nodes[i];
         p.push_back(n->point);
     }
 
@@ -238,10 +239,11 @@ t*(0.0104166666666667*b0*b0*b2*b2*d0 + 0.0104166666666667*b0*b0*b2*c2*d2 + 0.010
 
 
 std::vector<double> GT9::get_DB(const std::vector<double>& D, const gp_Pnt& point) const{
-    size_t N = this->nodes.size();
+    size_t N = this->NODES_PER_ELEM;
 
     std::vector<gp_Pnt> p;
-    for(auto n:this->nodes){
+    for(size_t i = 0; i < N; ++i){
+        const auto& n = this->nodes[i];
         p.push_back(n->point);
     }
 
@@ -340,9 +342,11 @@ std::vector<double> GT9::get_DB(const std::vector<double>& D, const gp_Pnt& poin
 }
 
 std::vector<double> GT9::get_Nf(const double t, const std::vector<gp_Pnt>& points) const{
+    const size_t N = this->NODES_PER_ELEM;
 
     std::vector<gp_Pnt> p;
-    for(auto n:this->nodes){
+    for(size_t i = 0; i < N; ++i){
+        const auto& n = this->nodes[i];
         p.push_back(n->point);
     }
 
@@ -351,7 +355,7 @@ std::vector<double> GT9::get_Nf(const double t, const std::vector<gp_Pnt>& point
     double delta = 0.5*deltaM.Determinant();
 
     std::vector<double> a, b, c;
-    for(size_t i = 0; i < this->nodes.size(); ++i){
+    for(size_t i = 0; i < N; ++i){
         size_t j = (i + 1) % 3;
         size_t k = (i + 2) % 3;
 

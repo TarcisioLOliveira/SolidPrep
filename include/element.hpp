@@ -147,9 +147,13 @@ struct ElementShape{
 class Element{
     public:
 
-    std::vector<Node*> nodes;
+    // Dynamically allocated array of nodes.
+    // The Node pointers themselves are not owned by the element.
+    Node** const nodes;
 
-    virtual ~Element() = default;
+    virtual ~Element(){
+        delete[] nodes;
+    }
     /**
      * Creates and returns the elemental stiffness matrix.
      *
@@ -164,7 +168,19 @@ class Element{
      *
      * @param n Nodes.
      */
-    Element(std::vector<Node*> n):nodes(std::move(n)){}
+    Element(const std::vector<Node*>& n):nodes(this->allocate_nodes(n)){}
+    /**
+     * Sets the elements from the element vector.
+     *
+     * @param n Nodes
+     *
+     * @return Newly allocated matrix containing pointer to node array.
+     */
+    Node** allocate_nodes(const std::vector<Node*>& n){
+        Node** nodes(new Node*[n.size()]);
+        std::copy(n.begin(), n.end(), nodes);
+        return nodes;
+    }
 };
 
 /**
@@ -339,18 +355,7 @@ class MeshElement : public Element{
      *
      * @return The centroid.
      */
-    virtual gp_Pnt get_centroid() const{
-        double x = 0;
-        double y = 0;
-        double z = 0;
-        for(auto& n : this->nodes){
-            x += n->point.X();
-            y += n->point.Y();
-            z += n->point.Z();
-        }
-
-        return gp_Pnt(x/this->nodes.size(), y/this->nodes.size(), z/this->nodes.size());
-    }
+    virtual gp_Pnt get_centroid() const = 0;
     /**
      * Returns a factory pointer, from which it'll possible to obtain
      * information on the element being used.

@@ -316,7 +316,8 @@ TopoDS_Shape StandardSizing::expansion_2D(const meshing::StandardBeamMesher& mes
         nn.Normalize();
 
         std::vector<IntersectionNode> int_nodes;
-        size_t dof = mesh.elem_info->get_dof_per_node();
+        const size_t dof = mesh.elem_info->get_dof_per_node();
+        const size_t num_nodes = mesh.elem_info->get_nodes_per_element();
         for(auto& g:mesh.geometries){
             const auto D = g->get_D(0);
             for(auto& e:g->mesh){
@@ -335,7 +336,7 @@ TopoDS_Shape StandardSizing::expansion_2D(const meshing::StandardBeamMesher& mes
                 }
 
                 std::vector<double> force = e->get_internal_loads(D, mesh.thickness, u);
-                for(size_t j = 0; j < e->nodes.size(); ++j){
+                for(size_t j = 0; j < num_nodes; ++j){
                     auto& ne = e->nodes[j];
                     double line_pos_rel = nn.Dot(gp_Vec(ne->point, n.node->point));
                     // Check for nodes that are on the same side

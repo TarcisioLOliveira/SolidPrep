@@ -89,6 +89,7 @@ void Meshing::prepare_for_FEM(const TopoDS_Shape& shape,
     }
 
 
+    const size_t N = this->elem_info->get_nodes_per_element();
     if(this->elem_info->get_problem_type() == utils::PROBLEM_TYPE_2D){
         for(auto& f : forces){
             double norm = f.vec.Magnitude()/(thickness*f.S.get_dimension());
@@ -130,7 +131,6 @@ void Meshing::prepare_for_FEM(const TopoDS_Shape& shape,
             for(auto& e : element_list){
                 std::vector<Node*> list;
                 int last = -1;
-                size_t N = e->nodes.size();
                 for(size_t i = 0; i < N; ++i){
                     auto n = e->nodes[i];
                     if(is_inside(n->point)){
@@ -236,12 +236,14 @@ void Meshing::prune(const std::vector<Force>& forces,
     auto shape = this->make_compound(this->geometries);
     std::vector<ElementShape> list;
     { // Remove elements
+        size_t N = this->elem_info->get_nodes_per_element();
         auto r = rho.begin();
         for(const auto& g:this->geometries){
             for(const auto& e:g->mesh){
                 if(*r >= threshold){
                     list.emplace_back();
-                    for(const auto& n:e->nodes){
+                    for(size_t i = 0; i < N; ++i){
+                        auto& n = e->nodes[i];
                         list.back().nodes.push_back(static_cast<MeshNode*>(n));
                     }
                 }

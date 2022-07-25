@@ -36,12 +36,13 @@ TRI3::TRI3(ElementShape s):
     MeshElementCommon2DTri<TRI3>(s.nodes){}
 
 std::vector<double> TRI3::get_k(const std::vector<double>& D, const double t) const{
-    size_t N = this->nodes.size();
+    const size_t N = this->NODES_PER_ELEM;
 
     std::vector<double> B(3*2*N, 0);
 
     std::vector<gp_Pnt> p;
-    for(auto n:this->nodes){
+    for(size_t i = 0; i < N; ++i){
+        const auto& n = this->nodes[i];
         p.push_back(n->point);
     }
 
@@ -82,12 +83,13 @@ std::vector<double> TRI3::get_k(const std::vector<double>& D, const double t) co
 
 std::vector<double> TRI3::get_DB(const std::vector<double>& D, const gp_Pnt& point) const{
     (void)point;
-    size_t N = this->nodes.size();
+    const size_t N = this->NODES_PER_ELEM;
 
     std::vector<double> B(3*2*N, 0);
 
     std::vector<gp_Pnt> p;
-    for(auto n:this->nodes){
+    for(size_t i = 0; i < N; ++i){
+        const auto& n = this->nodes[i];
         p.push_back(n->point);
     }
 
@@ -122,9 +124,11 @@ std::vector<double> TRI3::get_DB(const std::vector<double>& D, const gp_Pnt& poi
 }
 
 std::vector<double> TRI3::get_Nf(const double t, const std::vector<gp_Pnt>& points) const{
+    const size_t N = this->NODES_PER_ELEM;
 
     std::vector<gp_Pnt> p;
-    for(auto n:this->nodes){
+    for(size_t i = 0; i < N; ++i){
+        const auto& n = this->nodes[i];
         p.push_back(n->point);
     }
 
@@ -133,7 +137,7 @@ std::vector<double> TRI3::get_Nf(const double t, const std::vector<gp_Pnt>& poin
     double delta = 0.5*deltaM.Determinant();
 
     std::vector<double> a, b, c;
-    for(size_t i = 0; i < this->nodes.size(); ++i){
+    for(size_t i = 0; i < N; ++i){
         size_t j = (i + 1) % 3;
         size_t k = (i + 2) % 3;
 

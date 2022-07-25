@@ -62,10 +62,12 @@ void Visualization::load_mesh(Meshing* mesh, utils::ProblemType type){
     std::vector<size_t> elem_nodes;
     elem_nodes.reserve(s_size*mesh->elem_info->get_nodes_per_element());
     size_t etag = 1;
+    const size_t nodes_num = mesh->elem_info->get_nodes_per_element();
     for(auto& g:mesh->geometries){
         for(auto& e:g->mesh){
             elem_tags.push_back(etag++);
-            for(auto& n:e->nodes){
+            for(size_t i = 0; i < nodes_num; ++i){
+                const auto& n = e->nodes[i];
                 elem_nodes.push_back(n->id+1);
             }
         }

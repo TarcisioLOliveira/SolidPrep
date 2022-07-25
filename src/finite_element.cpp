@@ -25,14 +25,15 @@
 
 std::vector<double> FiniteElement::calculate_forces(const Meshing* const mesh, const std::vector<double>& displacements) const{
     logger::quick_log("Calculating forces...");
-    size_t dof = mesh->elem_info->get_dof_per_node();
+    const size_t dof       = mesh->elem_info->get_dof_per_node();
+    const size_t node_num = mesh->elem_info->get_nodes_per_element();
     std::vector<double> results(mesh->node_list.size()*dof, 0);
   
    for(auto& g:mesh->geometries){ 
         const auto D = g->get_D(0); 
         for(auto& e:g->mesh){
             auto f = e->get_internal_loads(D, mesh->thickness, displacements);
-            for(size_t n = 0; n < e->nodes.size(); ++n){
+            for(size_t n = 0; n < node_num; ++n){
                 auto& node = e->nodes[n];
                 for(size_t i = 0; i < dof; ++i){
                     results[node->id*dof + i] += f[n*dof+i];
@@ -46,8 +47,9 @@ std::vector<double> FiniteElement::calculate_forces(const Meshing* const mesh, c
 }
 
 void FiniteElement::calculate_dimensions(const MeshElementFactory* const element, Meshing* mesh, const std::vector<double>& load){
-    const size_t k_dim = element->get_k_dimension();
-    const size_t dof =   element->get_dof_per_node();
+    const size_t k_dim    = element->get_k_dimension();
+    const size_t dof      = element->get_dof_per_node();
+    const size_t node_num = element->get_nodes_per_element();
 
     this->recalculated_dimensions = true;
 
@@ -63,9 +65,10 @@ void FiniteElement::calculate_dimensions(const MeshElementFactory* const element
             long min = std::numeric_limits<long>::max();
             long max = -1;
             std::vector<long> pos;
-            for(auto& n : e->nodes){
-                for(size_t i = 0; i < dof; ++i){
-                    pos.push_back(n->u_pos[i]);
+            for(size_t i = 0; i < node_num; ++i){
+                const auto& n = e->nodes[i];
+                for(size_t j = 0; j < dof; ++j){
+                    pos.push_back(n->u_pos[j]);
                 }
             }
             for(size_t i = 0; i < pos.size(); ++i){
@@ -117,12 +120,15 @@ void FiniteElement::generate_K(Meshing* mesh, const std::vector<double>& density
 void FiniteElement::add_geometry_to_K(Meshing* mesh, Geometry* g){
     const auto D = g->get_D(0);
     const double t = mesh->thickness;
-    const size_t dof = mesh->elem_info->get_dof_per_node();
+    const size_t dof      = mesh->elem_info->get_dof_per_node();
+    const size_t node_num = mesh->elem_info->get_nodes_per_element();
+
     for(auto& e : g->mesh){
         std::vector<long> u_pos;
-        for(auto& n : e->nodes){
-            for(size_t i = 0; i < dof; ++i){
-                u_pos.push_back(n->u_pos[i]);
+        for(size_t i = 0; i < node_num; ++i){
+            const auto& n = e->nodes[i];
+            for(size_t j = 0; j < dof; ++j){
+                u_pos.push_back(n->u_pos[j]);
             }
         }
         std::vector<double> k = e->get_k(D, t);
@@ -133,13 +139,16 @@ void FiniteElement::add_geometry_to_K(Meshing* mesh, Geometry* g){
 void FiniteElement::add_geometry_to_K(Meshing* mesh, Geometry* g, std::vector<double>::const_iterator rho, const double pc){
     const auto D = g->get_D(0);
     const double t = mesh->thickness;
-    const size_t dof = mesh->elem_info->get_dof_per_node();
+    const size_t dof      = mesh->elem_info->get_dof_per_node();
+    const size_t node_num = mesh->elem_info->get_nodes_per_element();
+
     if(g->alternate_materials.empty()){
         for(auto& e : g->mesh){
             std::vector<long> u_pos;
-            for(auto& n : e->nodes){
-                for(size_t i = 0; i < dof; ++i){
-                    u_pos.push_back(n->u_pos[i]);
+            for(size_t i = 0; i < node_num; ++i){
+                const auto& n = e->nodes[i];
+                for(size_t j = 0; j < dof; ++j){
+                    u_pos.push_back(n->u_pos[j]);
                 }
             }
             auto rhoD = D;
@@ -155,9 +164,10 @@ void FiniteElement::add_geometry_to_K(Meshing* mesh, Geometry* g, std::vector<do
         const auto D2 = g->get_D(1);
         for(auto& e : g->mesh){
             std::vector<long> u_pos;
-            for(auto& n : e->nodes){
-                for(size_t i = 0; i < dof; ++i){
-                    u_pos.push_back(n->u_pos[i]);
+            for(size_t i = 0; i < node_num; ++i){
+                const auto& n = e->nodes[i];
+                for(size_t j = 0; j < dof; ++j){
+                    u_pos.push_back(n->u_pos[j]);
                 }
             }
             std::vector<double> rhoD(D.size());
