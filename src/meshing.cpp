@@ -30,6 +30,7 @@
 #include <BOPAlgo_Splitter.hxx>
 #include <BOPAlgo_Builder.hxx>
 #include <limits>
+#include <memory>
 #include <set>
 #include <queue>
 #include <BRepBuilderAPI_Copy.hxx>
@@ -40,8 +41,8 @@ void Meshing::prepare_for_FEM(const TopoDS_Shape& shape,
                               const std::vector<Force>& forces, 
                               const std::vector<Support>& supports){
 
-    this->element_list.clear();
-    this->element_list.reserve(base_mesh.size());
+    std::vector<std::unique_ptr<MeshElement>> element_list;
+    element_list.reserve(base_mesh.size());
 
     auto comp = [](const std::unique_ptr<MeshNode>& a, const std::unique_ptr<MeshNode>& b){ return a->id < b->id;};
     std::sort(this->node_list.begin(), this->node_list.end(), comp);
@@ -85,7 +86,7 @@ void Meshing::prepare_for_FEM(const TopoDS_Shape& shape,
     this->load_vector.resize(current);
 
     for(auto& e : base_mesh){
-        this->element_list.emplace_back(this->elem_info->make_element(e));
+        element_list.emplace_back(this->elem_info->make_element(e));
     }
 
 
@@ -127,7 +128,7 @@ void Meshing::prepare_for_FEM(const TopoDS_Shape& shape,
                 return in_line && within_bounds;
             };
 
-            for(auto& e : this->element_list){
+            for(auto& e : element_list){
                 std::vector<Node*> list;
                 int last = -1;
                 size_t N = e->nodes.size();
@@ -198,7 +199,7 @@ void Meshing::prepare_for_FEM(const TopoDS_Shape& shape,
         // may involve large amounts of memory.
         // Fortunately, it should be done only once.
         std::vector<size_t> mesh_size_per_geom(geometries.size(), 0);
-        for(auto& e:this->element_list){
+        for(auto& e:element_list){
             for(size_t i = 0; i < geometries.size(); ++i){
                 auto& g = geometries[i];
                 if(g->is_inside(e->get_centroid())){
@@ -212,10 +213,10 @@ void Meshing::prepare_for_FEM(const TopoDS_Shape& shape,
             g->mesh.clear();
             g->mesh.reserve(mesh_size_per_geom[i]);
         }
-        for(auto& e:this->element_list){
+        for(auto& e:element_list){
             for(auto& g:geometries){
                 if(g->is_inside(e->get_centroid())){
-                    g->mesh.push_back(e.get());
+                    g->mesh.push_back(std::move(e));
                     break;
                 }
             }
@@ -223,9 +224,9 @@ void Meshing::prepare_for_FEM(const TopoDS_Shape& shape,
     } else if(geometries.size() == 1){
         auto& g = geometries[0];
         g->mesh.clear();
-        g->mesh.reserve(this->element_list.size());
-        for(auto& e:this->element_list){
-            g->mesh.push_back(e.get());
+        g->mesh.reserve(element_list.size());
+        for(auto& e:element_list){
+            g->mesh.push_back(std::move(e));
         }
     }
 }
@@ -237,14 +238,16 @@ void Meshing::prune(const std::vector<Force>& forces,
     std::vector<ElementShape> list;
     { // Remove elements
         auto r = rho.begin();
-        for(auto& e:this->element_list){
-            if(*r >= threshold){
-                list.emplace_back();
-                for(auto& n:e->nodes){
-                    list.back().nodes.push_back(static_cast<MeshNode*>(n));
+        for(const auto& g:this->geometries){
+            for(const auto& e:g->mesh){
+                if(*r >= threshold){
+                    list.emplace_back();
+                    for(const auto& n:e->nodes){
+                        list.back().nodes.push_back(static_cast<MeshNode*>(n));
+                    }
                 }
+                ++r;
             }
-            ++r;
         }
     }
 

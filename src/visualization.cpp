@@ -53,15 +53,21 @@ void Visualization::load_mesh(Meshing* mesh, utils::ProblemType type){
         gmsh::model::mesh::addNodes(3, this->tag, node_tags, coords);
     }
 
+    size_t s_size = 0;
+    for(auto& g:mesh->geometries){
+        s_size += g->mesh.size();
+    }
     std::vector<size_t> elem_tags;
-    elem_tags.reserve(mesh->element_list.size());
+    elem_tags.reserve(s_size);
     std::vector<size_t> elem_nodes;
-    elem_nodes.reserve(mesh->element_list.size()*mesh->elem_info->get_nodes_per_element());
+    elem_nodes.reserve(s_size*mesh->elem_info->get_nodes_per_element());
     size_t etag = 1;
-    for(auto& e:mesh->element_list){
-        elem_tags.push_back(etag++);
-        for(auto& n:e->nodes){
-            elem_nodes.push_back(n->id+1);
+    for(auto& g:mesh->geometries){
+        for(auto& e:g->mesh){
+            elem_tags.push_back(etag++);
+            for(auto& n:e->nodes){
+                elem_nodes.push_back(n->id+1);
+            }
         }
     }
     gmsh::model::mesh::addElementsByType(this->tag, mesh->elem_info->get_gmsh_element_type(), elem_tags, elem_nodes);
@@ -93,7 +99,11 @@ void Visualization::update_stress_view(const std::vector<double>& s, size_t id){
     logger::quick_log("Updating view...");
 
     std::vector<std::vector<double>> stress;
-    stress.reserve(mesh->element_list.size());
+    size_t s_size = 0;
+    for(auto& g:mesh->geometries){
+        s_size += g->mesh.size();
+    }
+    stress.reserve(s_size);
     std::vector<size_t> elem_tags;
     elem_tags.reserve(s.size());
     for(size_t i = 0; i < s.size(); ++i){
@@ -135,11 +145,33 @@ void Visualization::update_density_view(const std::vector<double>& d){
     std::vector<std::vector<double>> density;
     density.reserve(mesh->node_list.size());
     std::vector<size_t> elem_tags;
-    elem_tags.reserve(mesh->element_list.size());
-    for(size_t i = 0; i < mesh->element_list.size(); ++i){
-        elem_tags.push_back(i+1);
-        std::vector<double> tmp{d[i]};
-        density.push_back(tmp);
+
+    size_t s_size = 0;
+    for(auto& g:mesh->geometries){
+        s_size += g->mesh.size();
+    }
+    elem_tags.reserve(s_size);
+    size_t i = 0;
+    size_t di = 0;
+    for(auto& g:mesh->geometries){
+        if(g->do_topopt){
+            for(auto& e:g->mesh){
+                (void)e;
+                elem_tags.push_back(i+1);
+                std::vector<double> tmp{d[di]};
+                density.push_back(tmp);
+                ++i;
+                ++di;
+            }
+        } else {
+            for(auto& e:g->mesh){
+                (void)e;
+                elem_tags.push_back(i+1);
+                std::vector<double> tmp{1.0};
+                density.push_back(tmp);
+                ++i;
+            }
+        }
     }
     gmsh::view::addModelData(5, 0, this->MODEL_NAME, "ElementData", elem_tags, density, 0, 1);
 

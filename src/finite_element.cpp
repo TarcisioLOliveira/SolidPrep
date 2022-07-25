@@ -53,36 +53,38 @@ void FiniteElement::calculate_dimensions(const MeshElementFactory* const element
     N = k_dim;
 
     size_t ei = 0;
-    for(auto& e:mesh->element_list){
-        size_t min_i = 0;
-        size_t max_i = 0;
-        long min = std::numeric_limits<long>::max();
-        long max = -1;
-        std::vector<long> pos;
-        for(auto& n : e->nodes){
-            for(size_t i = 0; i < dof; ++i){
-                pos.push_back(n->u_pos[i]);
-            }
-        }
-        for(size_t i = 0; i < pos.size(); ++i){
-            if(pos[i] > -1){
-                if(pos[i] < min){
-                    min = pos[i];
-                    min_i = i;
+   for(auto& g:mesh->geometries){ 
+        const auto D = g->get_D(0); 
+        for(auto& e:g->mesh){
+            size_t min_i = 0;
+            size_t max_i = 0;
+            long min = std::numeric_limits<long>::max();
+            long max = -1;
+            std::vector<long> pos;
+            for(auto& n : e->nodes){
+                for(size_t i = 0; i < dof; ++i){
+                    pos.push_back(n->u_pos[i]);
                 }
             }
-            if(pos[i] > max){
-                max = pos[i];
-                max_i = i;
+            for(size_t i = 0; i < pos.size(); ++i){
+                if(pos[i] > -1){
+                    if(pos[i] < min){
+                        min = pos[i];
+                        min_i = i;
+                    }
+                }
+                if(pos[i] > max){
+                    max = pos[i];
+                    max_i = i;
+                }
             }
+            size_t N_candidate = pos[max_i] - pos[min_i] + 1;
+            if(N_candidate > N){
+                N = N_candidate;
+            }
+            ++ei;
         }
-        size_t N_candidate = pos[max_i] - pos[min_i] + 1;
-        if(N_candidate > N){
-            N = N_candidate;
-        }
-        ++ei;
     }
-
 }
 
 void FiniteElement::generate_K(Meshing* mesh, const std::vector<double>& density, const double pc){

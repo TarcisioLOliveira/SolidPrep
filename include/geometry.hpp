@@ -67,7 +67,9 @@ class Geometry{
     const MeshElementFactory* const element_type;
     const bool do_topopt;
 
-    std::vector<MeshElement*> mesh;
+    std::vector<std::unique_ptr<MeshElement>> mesh;
+    // Only used for non-linear FEA
+    std::vector<std::unique_ptr<MeshNode>> node_list; 
     private:
     utils::ProblemType type;
 

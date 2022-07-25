@@ -154,7 +154,7 @@ TopoDS_Shape MinimalCompliance::optimize(Visualization* viz, FiniteElement* fem,
         TopoDS_Shape result = BRepBuilderAPI_Copy(this->data->geometries[0]->shape);
         for(size_t i = 0; i < x.size(); ++i){
             if(x[i] >= this->result_threshold){
-                result = utils::cut_shape(result, mesh->element_list[i]->get_shape());
+                result = utils::cut_shape(result, this->data->geometries[0]->mesh[i]->get_shape());
             }
             double pc = i/(double)(x.size()-1);
             std::cout << "\r" << pc*100 << "%         ";

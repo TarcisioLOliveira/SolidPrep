@@ -240,7 +240,7 @@ TopoDS_Shape MinimalVolume::optimize(Visualization* viz, FiniteElement* fem, Mes
         TopoDS_Shape result = BRepBuilderAPI_Copy(this->data->geometries[0]->shape);
         for(size_t i = 0; i < this->new_x.size(); ++i){
             if(this->new_x[i] >= this->result_threshold){
-                result = utils::cut_shape(result, mesh->element_list[i]->get_shape());
+                result = utils::cut_shape(result, this->data->geometries[0]->mesh[i]->get_shape());
             }
             double pc = i/(double)(this->new_x.size()-1);
             std::cout << "\r" << pc*100 << "%         ";

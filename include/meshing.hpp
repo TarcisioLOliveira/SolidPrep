@@ -70,7 +70,6 @@ class Meshing{
     const double thickness;
 
     std::vector<std::unique_ptr<MeshNode>> node_list;
-    std::vector<std::unique_ptr<MeshElement>> element_list;
     std::vector<double> load_vector;
 
     protected:

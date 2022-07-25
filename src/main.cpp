@@ -71,10 +71,14 @@ int main(int argc, char* argv[]){
         std::vector<double> stressesX;
         std::vector<double> stressesY;
         std::vector<double> stressesXY;
-        stresses.reserve(proj.topopt_mesher->element_list.size());
-        stressesX.reserve(proj.topopt_mesher->element_list.size());
-        stressesY.reserve(proj.topopt_mesher->element_list.size());
-        stressesXY.reserve(proj.topopt_mesher->element_list.size());
+        size_t s_size = 0;
+        for(auto& g:proj.geometries){
+            s_size += g->mesh.size();
+        }
+        stresses  .reserve(s_size);
+        stressesX .reserve(s_size);
+        stressesY .reserve(s_size);
+        stressesXY.reserve(s_size);
         for(auto& g:proj.geometries){
             const auto D = g->get_D(0);
             for(auto& e:g->mesh){
