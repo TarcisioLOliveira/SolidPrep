@@ -352,8 +352,16 @@ class MeshElement : public Element{
         return gp_Pnt(x/this->nodes.size(), y/this->nodes.size(), z/this->nodes.size());
     }
     /**
-     * Returns a factory pointer, from which still possible to obtain
+     * Returns a factory pointer, from which it'll possible to obtain
      * information on the element being used.
+     *
+     * It returns a unique_ptr because it requires a pointer (due to poly-
+     * morphism and template stuff), but it's generated on the fly, so that
+     * the element doesn't have to store a pointer just to return it.
+     *
+     * Dirty and kind of slow, but it works. Just avoid using it. It's better
+     * to plan ahead and use the `elem_info`variable from Meshing or the
+     * 'topopt_element` variable from ProjectData.
      *
      * @return Unique pointer to MeshElementFactory instance.
      */
