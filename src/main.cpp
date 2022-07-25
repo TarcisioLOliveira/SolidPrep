@@ -26,6 +26,7 @@
 #include "sizing/beam_sizing.hpp"
 #include "utils.hpp"
 #include <gmsh.h>
+#include <ratio>
 #include <set>
 #include "meshing/gmsh.hpp"
 #include "finite_element/direct_solver.hpp"
@@ -66,7 +67,10 @@ int main(int argc, char* argv[]){
     if(proj.analysis == ProjectData::FEA_ONLY || proj.analysis == ProjectData::BEAMS_ONLY){
 
         // Finite element analysis
+        auto start_fea = std::chrono::high_resolution_clock::now();
         auto u = proj.topopt_fea->calculate_displacements(proj.topopt_mesher.get(), proj.topopt_mesher->load_vector);
+        auto stop_fea = std::chrono::high_resolution_clock::now();
+        double fea_duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop_fea-start_fea).count()/60000.0;
         std::vector<double> stresses;
         std::vector<double> stressesX;
         std::vector<double> stressesY;
@@ -95,6 +99,9 @@ int main(int argc, char* argv[]){
             logger::quick_log("Sizing time: ", size_time, " minutes");
             logger::quick_log("");
         }
+        logger::quick_log("");
+        logger::quick_log("FEA time: ", fea_duration, " minutes");
+        logger::quick_log("");
 
         // Display results
         Visualization v;
