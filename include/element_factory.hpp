@@ -61,6 +61,8 @@ class BeamElementFactory{
 
 class MeshElementFactory{
     public:
+    virtual ~MeshElementFactory() = default;
+
     inline virtual MeshElement* make_element(const ElementShape& shape) const = 0;
     inline virtual size_t get_k_dimension() const = 0;
     inline virtual size_t get_dof_per_node() const = 0;

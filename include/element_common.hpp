@@ -38,6 +38,8 @@
 template<class T>
 class MeshElementCommon : public MeshElement{
     public:
+    virtual ~MeshElementCommon() = default;
+
     virtual double get_stress_at(const std::vector<double>& D, const gp_Pnt& point, const std::vector<double>& u) const override{
         const size_t N = T::NODES_PER_ELEM;
         const size_t K_DIM = T::K_DIM;
@@ -177,6 +179,8 @@ class MeshElementCommon2D : public MeshElementCommon<T>{
 
     static const utils::ProblemType PROBLEM_TYPE = utils::PROBLEM_TYPE_2D;
 
+    virtual ~MeshElementCommon2D() = default;
+
     virtual std::vector<double> get_stress_tensor(const std::vector<double>& D, const gp_Pnt& p, const std::vector<double>& u) const override{
         const size_t N = T::NODES_PER_ELEM;
         const size_t K_DIM = T::K_DIM;
@@ -278,6 +282,8 @@ class MeshElementCommon2D : public MeshElementCommon<T>{
 template<class T>
 class MeshElementCommon2DTri : public MeshElementCommon2D<T>{
     public:
+    virtual ~MeshElementCommon2DTri() = default;
+
     virtual std::vector<gp_Pnt> get_intersection_points(const TopoDS_Shape& crosssection) const override{
         const size_t N = T::NODES_PER_ELEM;
         std::vector<gp_Pnt> points;

@@ -32,6 +32,7 @@ class Material{
         LINEAR_ELASTIC_ORTHOTROPIC
     };
 
+    virtual ~Material() = default;
 
     /**
      * Initializes a basic material function with only maximum design stress

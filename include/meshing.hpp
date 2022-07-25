@@ -40,6 +40,8 @@ class Meshing{
         elem_info(elem_type), geometries(utils::extract_pointers(geometries)),
         thickness(thickness){}
 
+    virtual ~Meshing() = default;
+
     /**
      * Just generates a mesh from a group of geometries, depending on analysis
      * parameters set in their construction. Returns ElementShape instances,

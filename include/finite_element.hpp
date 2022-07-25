@@ -34,6 +34,8 @@ class FiniteElement{
     public:
     const double K_MIN = 1e-6;
 
+    virtual ~FiniteElement() = default;
+
     virtual std::vector<double> calculate_displacements(Meshing* mesh, std::vector<double> load, const std::vector<double>& density = std::vector<double>(), double pc = 3) = 0;
 
     inline virtual void set_steps(size_t s){

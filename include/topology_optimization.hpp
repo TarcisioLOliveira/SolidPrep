@@ -27,6 +27,7 @@
 
 class TopologyOptimization{
     public:
+    virtual ~TopologyOptimization() = default;
 
     virtual TopoDS_Shape optimize(Visualization* viz, FiniteElement* fem, Meshing* mesh) = 0;
 

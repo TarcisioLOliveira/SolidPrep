@@ -42,6 +42,8 @@ class BeamMeshing : public Meshing{
         gp_Dir normal; ///< Normal to the node, pointing outward from the topology
     };
 
+    virtual ~BeamMeshing() = default;
+
     std::vector<BoundaryNode> boundary_nodes;
 
     BeamMeshing(const std::vector<std::unique_ptr<Geometry>>& geometries,
