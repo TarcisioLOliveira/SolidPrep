@@ -32,7 +32,7 @@ namespace finite_element{
 std::vector<double> DirectSolver::calculate_displacements(Meshing* mesh, std::vector<double> load, const std::vector<double>& density, double pc){
 
     if(this->W == 0 || this->N == 0){
-        this->calculate_dimensions(mesh->elem_info, mesh, load);
+        this->calculate_dimensions(mesh, load);
     }
 
     if(this->current_step == 0){

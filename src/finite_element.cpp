@@ -46,10 +46,10 @@ std::vector<double> FiniteElement::calculate_forces(const Meshing* const mesh, c
     return results;
 }
 
-void FiniteElement::calculate_dimensions(const MeshElementFactory* const element, Meshing* mesh, const std::vector<double>& load){
-    const size_t k_dim    = element->get_k_dimension();
-    const size_t dof      = element->get_dof_per_node();
-    const size_t node_num = element->get_nodes_per_element();
+void FiniteElement::calculate_dimensions(Meshing* mesh, const std::vector<double>& load){
+    const size_t k_dim    = mesh->elem_info->get_k_dimension();
+    const size_t dof      = mesh->elem_info->get_dof_per_node();
+    const size_t node_num = mesh->elem_info->get_nodes_per_element();
 
     this->recalculated_dimensions = true;
 

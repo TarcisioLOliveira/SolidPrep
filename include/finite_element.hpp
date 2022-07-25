@@ -52,7 +52,7 @@ class FiniteElement{
     size_t current_step = 0;
     bool recalculated_dimensions = false;
 
-    virtual void calculate_dimensions(const MeshElementFactory* const element, Meshing* mesh, const std::vector<double>& load);
+    virtual void calculate_dimensions(Meshing* mesh, const std::vector<double>& load);
 
     virtual void generate_K(Meshing* mesh, const std::vector<double>& density, const double pc);
 
