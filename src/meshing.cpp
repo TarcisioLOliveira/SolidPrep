@@ -389,7 +389,7 @@ bool Meshing::is_strictly_inside2D(gp_Pnt p, TopoDS_Shape s) const{
     return insider.State() == TopAbs_ON && !on_edge;
 }
 
-void Meshing::prune(const std::vector<ElementShape>& list){
+void Meshing::prune(std::vector<ElementShape>& list){
     // Prune unused nodes
     size_t new_id = 0;
     for(auto& n : this->node_list){
@@ -424,6 +424,16 @@ void Meshing::prune(const std::vector<ElementShape>& list){
         }
     }
     this->reverse_cuthill_mckee(list);
+
+    this->sort_nodes(list);
+}
+void Meshing::sort_nodes(std::vector<ElementShape>& list) const{
+    auto comp = [](MeshNode* n1, MeshNode* n2){
+        return n1->id < n2->id;
+    };
+    for(auto& e:list){
+        std::sort(e.nodes.begin(), e.nodes.end(), comp);
+    }
 }
 
 std::vector<ElementShape> Meshing::generate_element_shapes(const std::vector<size_t>& elem_tags, const std::vector<size_t>& elem_node_tags, size_t nodes_per_elem, const std::unordered_map<size_t, size_t>& duplicate_map){

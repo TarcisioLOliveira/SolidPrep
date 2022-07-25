@@ -104,7 +104,7 @@ class Meshing{
      *
      * @param list List of element shapes.
      */
-    virtual void prune(const std::vector<ElementShape>& list);
+    virtual void prune(std::vector<ElementShape>& list);
 
     /**
      * Generates the list of element shapes from mesh information.
@@ -138,6 +138,9 @@ class Meshing{
     virtual TopoDS_Shape make_compound(const std::vector<Geometry*>& geometries) const;
 
     virtual bool adapt_for_boundary_condition_inside(TopoDS_Shape& shape, const std::vector<Force>& forces, const std::vector<Support>& supports);
+
+    void sort_nodes(std::vector<ElementShape>& list) const;
+
 };
 
 #endif

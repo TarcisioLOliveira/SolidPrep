@@ -180,7 +180,7 @@ void FiniteElement::insert_element_matrix(std::vector<double>& K, const std::vec
     for(size_t i = 0; i < W; ++i){
         for(size_t j = i; j < W; ++j){
             if(pos[i] > -1 && pos[j] > -1){
-                K[utils::to_band(pos[j], pos[i], n)] += k[W*i + j];
+                K[utils::to_lower_band(pos[i], pos[j], n)] += k[W*i + j];
             }
         }
     }

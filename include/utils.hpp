@@ -153,6 +153,11 @@ namespace utils{
             return (j-i) + i*w;
         }
     }
+    inline size_t to_lower_band(size_t i, size_t j, int w){
+        // lower triangle
+        // i >= j
+        return (j-i) + i*w;
+    }
 
     /**
      * Compares two gp_Pnt for equality based on specified precision.
