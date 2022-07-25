@@ -120,11 +120,12 @@ void StandardBeamMesher::mesh(const std::vector<Force>& forces,
     std::vector<std::vector<size_t> > boundElemTags, boundElemNodeTags;
     gmsh::model::mesh::getElements(boundElemTypes, boundElemTags, boundElemNodeTags, dim-1, -1);
 
+    size_t dof = this->elem_info->get_dof_per_node();
     this->node_list.reserve(nodeTags.size());
     if(dim == 2){
         for(size_t i = 0; i < nodeTags.size(); ++i){
             gp_Pnt p(nodeCoords[i*3], nodeCoords[i*3+1], nodeCoords[i*3+2]);
-            this->node_list.emplace_back(new MeshNode(p, nodeTags[i]));
+            this->node_list.emplace_back(new MeshNode(p, nodeTags[i], dof));
         }
     } else {
         // for(size_t i = 0; i < nodeTags.size(); ++i){

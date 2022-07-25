@@ -52,10 +52,9 @@ void Meshing::prepare_for_FEM(const TopoDS_Shape& shape,
     size_t current = 0;
     for(size_t i = 0; i < this->node_list.size(); ++i){
         auto& n = this->node_list[i];
-        if(n->u_pos != nullptr){
-            delete[] n->u_pos;
-        }
-        n->u_pos = new long[dof]();
+
+        std::fill(n->u_pos, n->u_pos+dof, 0);
+
         bool supported = false;
         for(auto& s : supports){
             if(s.S.is_inside(n->point)){

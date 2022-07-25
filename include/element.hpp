@@ -42,6 +42,10 @@ class Node{
      */
     long * u_pos;
 
+    virtual ~Node(){
+        delete[] u_pos;
+    }
+
     protected:
     /**
      * Constructs the node instance.
@@ -49,7 +53,7 @@ class Node{
      * @param p Node position.
      * @param id Node id.
      */
-    Node(gp_Pnt p, size_t id):point(std::move(p)), id(id), u_pos(nullptr){}
+    Node(gp_Pnt p, size_t id, size_t u_size):point(std::move(p)), id(id), u_pos(new long[u_size]){}
 };
 
 /**
@@ -71,7 +75,7 @@ class BeamNode : public Node{
      * @param dim Height of the cross-section at point p.
      * @param normal Normal of the cross-section at point p.
      */
-    BeamNode(gp_Pnt p, size_t id, double dim, gp_Dir n):Node(p, id),dim(dim), normal(n){}
+    BeamNode(gp_Pnt p, size_t id, double dim, gp_Dir n, size_t u_size):Node(p, id, u_size),dim(dim), normal(n){}
 };
 
 /**
@@ -88,7 +92,7 @@ class BeamNode2D : public BeamNode{
      * @param dim Height of the cross-section at point p.
      * @param n Normal of the cross-section at point p.
      */
-    BeamNode2D(gp_Pnt p, size_t id, double dim, gp_Dir n):BeamNode(p, id, dim, n){}
+    BeamNode2D(gp_Pnt p, size_t id, double dim, gp_Dir n):BeamNode(p, id, dim, n, 3){}
 };
 
 /**
@@ -124,7 +128,7 @@ class MeshNode : public Node{
      * @param p Position.
      * @param id Node id.
      */
-    MeshNode(gp_Pnt p, size_t id): Node(std::move(p), id){}
+    MeshNode(gp_Pnt p, size_t id, size_t u_size): Node(std::move(p), id, u_size){}
 };
 
 /**

@@ -102,11 +102,13 @@ void Gmsh::gmsh_meshing(bool has_condition_inside, TopoDS_Shape sh, std::vector<
     gmsh::clear();
     gmsh::finalize();
 
+    size_t dof = elem_type->get_dof_per_node();
+
     this->node_list.clear();
     this->node_list.reserve(node_tags.size());
     for(size_t i = 0; i < node_tags.size(); ++i){
         gp_Pnt p(node_coords[i*3], node_coords[i*3+1], node_coords[i*3+2]);
-        this->node_list.emplace_back(std::make_unique<MeshNode>(p, node_tags[i]));
+        this->node_list.emplace_back(std::make_unique<MeshNode>(p, node_tags[i], dof));
     }
 
 }
