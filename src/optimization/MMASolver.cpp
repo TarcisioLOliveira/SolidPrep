@@ -376,10 +376,14 @@ void MMASolver::GenSub(const double *xval, const double *dfdx, const double *gx,
 
 			double xmami = std::max(xmamieps, xmax[i] - xmin[i]);
 
-			low[i] = std::max(low[i], xval[i] - 100.0 * xmami);
-			low[i] = std::min(low[i], xval[i] - 1e-3 * xmami);
-			upp[i] = std::max(upp[i], xval[i] + 1e-3 * xmami);
-			upp[i] = std::min(upp[i], xval[i] + 100.0 * xmami);
+			low[i] = std::max(low[i], xval[i] - 1e4 * xmami);
+			low[i] = std::min(low[i], xval[i] - 1e-5 * xmami);
+			upp[i] = std::max(upp[i], xval[i] + 1e-5 * xmami);
+			upp[i] = std::min(upp[i], xval[i] + 1e4 * xmami);
+			// low[i] = std::max(low[i], xval[i] - 100.0 * xmami);
+			// low[i] = std::min(low[i], xval[i] - 1e-3 * xmami);
+			// upp[i] = std::max(upp[i], xval[i] + 1e-3 * xmami);
+			// upp[i] = std::min(upp[i], xval[i] + 100.0 * xmami);
 
 			// double xmami = xmax[i] - xmin[i];
 			//low[i] = std::max(low[i], xval[i] - 100.0 * xmami);

@@ -116,8 +116,8 @@ TopoDS_Shape MinimalVolume::optimize(Visualization* viz, FiniteElement* fem, Mes
     auto start_to = std::chrono::high_resolution_clock::now();
     
     //optimization::GCMMASolver gcmma(x.size(), 1, 0, 1e6, 1); //1e5
-    optimization::MMASolver mma(x.size(), 1, 0, 1e4, 1); //1e5
-    mma.SetAsymptotes(0.05, 0.2, 1.01);
+    optimization::MMASolver mma(x.size(), 1, 0, 1e6, 1); //1e5
+    mma.SetAsymptotes(0.005, 0.2, 1.02);
 
     double ff;
     std::vector<double> df(x.size());
