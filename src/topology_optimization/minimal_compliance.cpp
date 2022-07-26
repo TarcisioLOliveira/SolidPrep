@@ -261,25 +261,20 @@ void MinimalCompliance::init_convolution_filter(size_t x_size){
     // Uses more memory but is much faster
     size_t i = 0;
     size_t j = 0;
-    for(const auto& g:this->mesh->geometries){
-        if(g->do_topopt){
-            for(const auto& e:g->mesh){
-                (void)e;
-                j = i;
-                while(j < x_size){
-                    double dist = this->get_distance(i, j);
-                    if(dist <= this->r_o){
-                        this->neighbors[i].push_back(j);
-                        this->neighbors[j].push_back(i);
-                        double w = 1 - dist/this->r_o;
-                        this->w[i] += w;
-                        this->w[j] += w;
-                    }
-                    ++j;
-                }
-                ++i;
+    while(i < x_size){
+        j = i;
+        while(j < x_size){
+            double dist = this->get_distance(i, j);
+            if(dist <= this->r_o){
+                this->neighbors[i].push_back(j);
+                this->neighbors[j].push_back(i);
+                double w = 1 - dist/this->r_o;
+                this->w[i] += w;
+                this->w[j] += w;
             }
+            ++j;
         }
+        ++i;
     }
 }
 std::vector<double> MinimalCompliance::convolution_filter_density(const std::vector<double>& x){
