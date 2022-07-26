@@ -194,7 +194,7 @@ double MinimalCompliance::fobj_grad(const std::vector<double>& x, std::vector<do
     this->viz->update_density_view(x);
 
     std::vector<double> u = this->fem->calculate_displacements(this->mesh, this->mesh->load_vector, x, pc);
-    this->viz->update_vector_view(this->mesh->node_list, u);
+    //this->viz->update_vector_view(this->mesh->node_list, u);
 
     size_t i = 0;
     for(const auto& g:this->mesh->geometries){
