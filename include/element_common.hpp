@@ -162,7 +162,7 @@ class MeshElementCommon : public MeshElement{
         return result;
     }
 
-    inline virtual gp_Pnt get_centroid() const{
+    virtual gp_Pnt get_centroid() const override{
         const size_t N = T::NODES_PER_ELEM;
 
         double x = 0;
