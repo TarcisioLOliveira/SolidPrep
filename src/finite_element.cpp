@@ -57,7 +57,7 @@ void FiniteElement::calculate_dimensions(const Meshing* const mesh, const std::v
     N = k_dim;
 
     size_t ei = 0;
-   for(auto& g:mesh->geometries){ 
+    for(auto& g:mesh->geometries){ 
         const auto D = g->get_D(0); 
         for(auto& e:g->mesh){
             size_t min_i = 0;
@@ -138,7 +138,7 @@ void FiniteElement::add_geometry_to_K(const Meshing* const mesh, const Geometry*
     }
 }
 
-void FiniteElement::add_geometry_to_K(const Meshing* const mesh, const Geometry* const g, std::vector<double>::const_iterator rho, const double pc){
+void FiniteElement::add_geometry_to_K(const Meshing* const mesh, const Geometry* const g, std::vector<double>::const_iterator& rho, const double pc){
     const auto D = g->get_D(0);
     const double t = mesh->thickness;
     const size_t dof      = mesh->elem_info->get_dof_per_node();
