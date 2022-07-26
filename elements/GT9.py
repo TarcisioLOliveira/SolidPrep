@@ -6,6 +6,7 @@ from sympy.abc import x, y, delta
 from sympy.core.function import *
 import sympy.physics.vector as spv
 import sys
+import re
 
 
 a = sympy.symbols('a:3')
@@ -110,7 +111,7 @@ def init_DB():
 
     B = sympy.Matrix([B0, B1, B2])
 
-    d = sympy.symbols('d:9')
+    d = sympy.symbols('D:9')
     D = sympy.Matrix([[d[0], d[1], d[2]],
                       [d[3], d[4], d[5]],
                       [d[6], d[7], d[8]]])
@@ -128,17 +129,17 @@ def make_Nf():
     NN = t*sympy.Matrix([NN1, NN2]).T
 
     # Set up variables for line integral
-    x1, x2, y1, y2 = sympy.symbols("x1 x2 y1 y2")
+    x0, x1, y0, y1 = sympy.symbols("x0 x1 y0 y1")
 
     M = spv.ReferenceFrame("M")
 
     s = sympy.symbols("s")
 
-    rx = ((1-s)*x1+s*x2)
-    ry = ((1-s)*y1+s*y2)
-    dr = (x2-x1)*M.x + (y2-y1)*M.y
+    rx = ((1-s)*x0+s*x1)
+    ry = ((1-s)*y0+s*y1)
+    dr = (x1-x0)*M.x + (y1-y0)*M.y
 
-    drnorm = sympy.sqrt((x2-x1)**2 + (y2-y1)**2)
+    drnorm = sympy.sqrt((x1-x0)**2 + (y1-y0)**2)
 
     print("std::vector<double> Nf{")
     for i in range(len(NN)):
@@ -149,23 +150,12 @@ def make_Nf():
 
 
         # Prepare for printing
-        NN[i] = sympy.simplify(NN[i])
+        NN[i] = sympy.simplify(sympy.nsimplify(NN[i], rational=True))
 
         # Format output for use with C++
         formatted = str(NN[i])
-        for j in range(3):
-            ai = "a"+str(j)
-            bi = "b"+str(j)
-            ci = "c"+str(j)
-            formatted = formatted.replace(ai+"**2", ai+"*"+ai)
-            formatted = formatted.replace(bi+"**2", bi+"*"+bi)
-            formatted = formatted.replace(ci+"**2", ci+"*"+ci)
-
-        for j in range(1,3):
-            xi = "x"+str(j)
-            yi = "y"+str(j)
-            formatted = formatted.replace(xi+"**2", xi+"*"+xi)
-            formatted = formatted.replace(yi+"**2", yi+"*"+yi)
+        formatted = re.sub(r"([abcxy]\d)\*\*2", r"\1*\1", formatted)
+        formatted = re.sub(r"([abcxy])(\d)", r"\1[\2]", formatted)
 
         formatted = formatted.replace("delta**2", "(delta*delta)")
         formatted = formatted.replace("sqrt", "std::sqrt")
@@ -188,9 +178,10 @@ def make_DB():
     print("std::vector<double> DB{")
     for i in range(len(DB)):
         # Prepare for printing
-        DB[i] = sympy.simplify(sympy.collect(sympy.expand(DB[i]), L))
+        DB[i] = sympy.simplify(sympy.nsimplify(sympy.collect(sympy.expand(DB[i]), L)), rational=True)
         # Format output for use with C++
         formatted = str(DB[i]).replace("(x, y)","")
+        formatted = re.sub(r"([abcD])(\d)", r"\1[\2]", formatted)
 
         if i > 0:
             print(",")
@@ -247,17 +238,12 @@ def make_k():
         for l in L:
             k[i] = k[i].subs(l, 2/(3*2))
 
-        k[i] = sympy.simplify(k[i])
+        k[i] = sympy.simplify(sympy.nsimplify(sympy.expand(k[i]), rational=True))
 
         # Format output for use with C++
         formatted = str(k[i])
-        for j in range(3):
-            ai = "a"+str(j)
-            bi = "b"+str(j)
-            ci = "c"+str(j)
-            formatted = formatted.replace(ai+"**2", ai+"*"+ai)
-            formatted = formatted.replace(bi+"**2", bi+"*"+bi)
-            formatted = formatted.replace(ci+"**2", ci+"*"+ci)
+        formatted = re.sub(r"([abcD]\d)\*\*2", r"\1*\1", formatted)
+        formatted = re.sub(r"([abcD])(\d)", r"\1[\2]", formatted)
 
         if i > 0:
             print(",")

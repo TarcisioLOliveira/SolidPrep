@@ -146,46 +146,34 @@ std::vector<double> TRI3::get_Nf(const double t, const std::vector<gp_Pnt>& poin
         c.push_back(p[k].X() - p[j].X());
     }
 
-    double a0 = a[0];
-    double a1 = a[1];
-    double a2 = a[2];
-    double b0 = b[0];
-    double b1 = b[1];
-    double b2 = b[2];
-    double c0 = c[0];
-    double c1 = c[1];
-    double c2 = c[2];
-
-    double x1 = points[0].X();
-    double y1 = points[0].Y();
-    double x2 = points[1].X();
-    double y2 = points[1].Y();
+    const double x[]{points[0].X(), points[1].X()};
+    const double y[]{points[0].Y(), points[1].Y()};
 
     std::vector<double> Nf({
-        t*(2*a0 + b0*x1 + b0*x2 + c0*y1 + c0*y2)*sqrt(x1*x1 - 2*x1*x2 + x2*x2 + y1*y1 - 2*y1*y2 + y2*y2)/(4*delta)
-        ,
-        0
-        ,
-        0
-        ,
-        t*(2*a0 + b0*x1 + b0*x2 + c0*y1 + c0*y2)*sqrt(x1*x1 - 2*x1*x2 + x2*x2 + y1*y1 - 2*y1*y2 + y2*y2)/(4*delta)
-        ,
-        t*(2*a1 + b1*x1 + b1*x2 + c1*y1 + c1*y2)*sqrt(x1*x1 - 2*x1*x2 + x2*x2 + y1*y1 - 2*y1*y2 + y2*y2)/(4*delta)
-        ,
-        0
-        ,
-        0
-        ,
-        t*(2*a1 + b1*x1 + b1*x2 + c1*y1 + c1*y2)*sqrt(x1*x1 - 2*x1*x2 + x2*x2 + y1*y1 - 2*y1*y2 + y2*y2)/(4*delta)
-        ,
-        t*(2*a2 + b2*x1 + b2*x2 + c2*y1 + c2*y2)*sqrt(x1*x1 - 2*x1*x2 + x2*x2 + y1*y1 - 2*y1*y2 + y2*y2)/(4*delta)
-        ,
-        0
-        ,
-        0
-        ,
-        t*(2*a2 + b2*x1 + b2*x2 + c2*y1 + c2*y2)*sqrt(x1*x1 - 2*x1*x2 + x2*x2 + y1*y1 - 2*y1*y2 + y2*y2)/(4*delta)
-    });
+t*(2*a[0] + b[0]*x[0] + b[0]*x[1] + c[0]*y[0] + c[0]*y[1])*std::sqrt(x[0]*x[0] - 2*x[0]*x[1] + x[1]*x[1] + y[0]*y[0] - 2*y[0]*y[1] + y[1]*y[1])/(4*delta)
+,
+0
+,
+0
+,
+t*(2*a[0] + b[0]*x[0] + b[0]*x[1] + c[0]*y[0] + c[0]*y[1])*std::sqrt(x[0]*x[0] - 2*x[0]*x[1] + x[1]*x[1] + y[0]*y[0] - 2*y[0]*y[1] + y[1]*y[1])/(4*delta)
+,
+t*(2*a[1] + b[1]*x[0] + b[1]*x[1] + c[1]*y[0] + c[1]*y[1])*std::sqrt(x[0]*x[0] - 2*x[0]*x[1] + x[1]*x[1] + y[0]*y[0] - 2*y[0]*y[1] + y[1]*y[1])/(4*delta)
+,
+0
+,
+0
+,
+t*(2*a[1] + b[1]*x[0] + b[1]*x[1] + c[1]*y[0] + c[1]*y[1])*std::sqrt(x[0]*x[0] - 2*x[0]*x[1] + x[1]*x[1] + y[0]*y[0] - 2*y[0]*y[1] + y[1]*y[1])/(4*delta)
+,
+t*(2*a[2] + b[2]*x[0] + b[2]*x[1] + c[2]*y[0] + c[2]*y[1])*std::sqrt(x[0]*x[0] - 2*x[0]*x[1] + x[1]*x[1] + y[0]*y[0] - 2*y[0]*y[1] + y[1]*y[1])/(4*delta)
+,
+0
+,
+0
+,
+t*(2*a[2] + b[2]*x[0] + b[2]*x[1] + c[2]*y[0] + c[2]*y[1])*std::sqrt(x[0]*x[0] - 2*x[0]*x[1] + x[1]*x[1] + y[0]*y[0] - 2*y[0]*y[1] + y[1]*y[1])/(4*delta)
+});
     
     return Nf;
 }
