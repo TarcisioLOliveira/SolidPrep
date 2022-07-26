@@ -41,7 +41,7 @@ class Gmsh : public Meshing{
     double size;
     int algorithm;
 
-    void gmsh_meshing(bool has_condition_inside, TopoDS_Shape sh, std::vector<size_t>& elem_tags, std::vector<size_t>& elem_node_tags, const MeshElementFactory* const elem_type);
+    void gmsh_meshing(bool has_condition_inside, TopoDS_Shape sh, std::vector<size_t>& geom_elem_mapping, std::vector<size_t>& elem_tags, std::vector<size_t>& elem_node_tags, const MeshElementFactory* const elem_type);
 };
 
 }

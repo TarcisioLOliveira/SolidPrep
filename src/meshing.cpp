@@ -37,6 +37,7 @@
 
 
 void Meshing::prepare_for_FEM(const TopoDS_Shape& shape,
+                              const std::vector<size_t>& geom_elem_mapping,
                               const std::vector<ElementShape>& base_mesh,
                               const std::vector<Force>& forces, 
                               const std::vector<Support>& supports){
@@ -194,31 +195,27 @@ void Meshing::prepare_for_FEM(const TopoDS_Shape& shape,
     }
 
     if(geometries.size() > 1){
-        // Slower, but handles memory much better, especially considering it
-        // may involve large amounts of memory.
-        // Fortunately, it should be done only once.
-        std::vector<size_t> mesh_size_per_geom(geometries.size(), 0);
-        for(auto& e:element_list){
-            for(size_t i = 0; i < geometries.size(); ++i){
-                auto& g = geometries[i];
-                if(g->is_inside(e->get_centroid())){
-                    ++mesh_size_per_geom[i];
-                    break;
-                }
-            }
-        }
         for(size_t i = 0; i < geometries.size(); ++i){
             auto& g = geometries[i];
             g->mesh.clear();
-            g->mesh.reserve(mesh_size_per_geom[i]);
-        }
-        for(auto& e:element_list){
-            for(auto& g:geometries){
-                if(g->is_inside(e->get_centroid())){
-                    g->mesh.push_back(std::move(e));
-                    break;
-                }
+            if(i == 0){
+                g->mesh.resize(geom_elem_mapping[i]);
+            } else {
+                g->mesh.resize(geom_elem_mapping[i] - geom_elem_mapping[i-1]);
             }
+        }
+        size_t geom_num = 0;
+        auto& g = geometries[geom_num];
+        std::move(element_list.begin(), 
+                  element_list.begin() + geom_elem_mapping[geom_num], 
+                  g->mesh.begin());
+        ++geom_num;
+        while(geom_num < geometries.size()){
+            auto& g = geometries[geom_num];
+            std::move(element_list.begin() + geom_elem_mapping[geom_num-1], 
+                      element_list.begin() + geom_elem_mapping[geom_num], 
+                      g->mesh.begin());
+            ++geom_num;
         }
     } else if(geometries.size() == 1){
         auto& g = geometries[0];
@@ -235,6 +232,8 @@ void Meshing::prune(const std::vector<Force>& forces,
                     const std::vector<double>& rho, double threshold){
     auto shape = this->make_compound(this->geometries);
     std::vector<ElementShape> list;
+    std::vector<size_t> geom_elem_mapping;
+    geom_elem_mapping.reserve(this->geometries.size());
     { // Remove elements
         size_t N = this->elem_info->get_nodes_per_element();
         auto r = rho.begin();
@@ -249,12 +248,13 @@ void Meshing::prune(const std::vector<Force>& forces,
                 }
                 ++r;
             }
+            geom_elem_mapping.push_back(list.size());
         }
     }
 
     this->prune(list);
 
-    this->prepare_for_FEM(shape, list, forces, supports);
+    this->prepare_for_FEM(shape, geom_elem_mapping, list, forces, supports);
 }
 
 std::vector<long> Meshing::get_support_dof(size_t& offset, size_t id, const Support& support, const MeshElementFactory* elem_info) const{

@@ -39,10 +39,27 @@ Gmsh::Gmsh(const std::vector<std::unique_ptr<Geometry>>& geometries,
 void Gmsh::mesh(const std::vector<Force>& forces, 
                 const std::vector<Support>& supports){
     TopoDS_Shape shape = this->make_compound(this->geometries);
-    bool has_condition_inside = this->adapt_for_boundary_condition_inside(shape, forces, supports);
 
-    std::vector<size_t> elem_tags, elem_node_tags;
-    this->gmsh_meshing(has_condition_inside, shape, elem_tags, elem_node_tags, this->elem_info);
+    bool has_condition_inside = false;
+    // Workaround so that this does not break current (faster) method of
+    // distributing elements to the different geometry instances, at least
+    // considering global meshing for linear analysis.
+    //
+    // Its current use is mostly for simple topopt/beam sizing, so it's a good
+    // workaround for now.
+    //
+    // Otherwise, the simpler idea would be to test for the center of mass
+    // of each geometry, which would be a problem if the geometry has a 
+    // hole in its center.
+    //
+    // Seemed better to sacrifice this gimmick than something more useful
+    // such as support for complex geometries.
+    if(this->geometries.size() == 1){
+        has_condition_inside = this->adapt_for_boundary_condition_inside(shape, forces, supports);
+    }
+
+    std::vector<size_t> geom_elem_mapping, elem_tags, elem_node_tags;
+    this->gmsh_meshing(has_condition_inside, shape, geom_elem_mapping, elem_tags, elem_node_tags, this->elem_info);
 
     std::unordered_map<size_t, size_t> duplicate_map;
     if(geometries.size() > 1){
@@ -55,10 +72,10 @@ void Gmsh::mesh(const std::vector<Force>& forces,
 
     this->prune(list);
 
-    this->prepare_for_FEM(shape, list, forces, supports);
+    this->prepare_for_FEM(shape, geom_elem_mapping, list, forces, supports);
 }
 
-void Gmsh::gmsh_meshing(bool has_condition_inside, TopoDS_Shape sh, std::vector<size_t>& elem_tags, std::vector<size_t>& elem_node_tags, const MeshElementFactory* const elem_type){
+void Gmsh::gmsh_meshing(bool has_condition_inside, TopoDS_Shape sh, std::vector<size_t>& geom_elem_mapping, std::vector<size_t>& elem_tags, std::vector<size_t>& elem_node_tags, const MeshElementFactory* const elem_type){
     gmsh::initialize();
 
     gmsh::model::add("base");
@@ -97,7 +114,23 @@ void Gmsh::gmsh_meshing(bool has_condition_inside, TopoDS_Shape sh, std::vector<
 
     // Would need to be changed to support multiple elements
     size_t type = elem_type->get_gmsh_element_type();
-    gmsh::model::mesh::getElementsByType(type, elem_tags, elem_node_tags, -1);
+    geom_elem_mapping.resize(geometries.size());
+    if(geometries.size() == 1){
+        gmsh::model::mesh::getElementsByType(type, elem_tags, elem_node_tags, -1);
+        geom_elem_mapping[0] = elem_tags.size();
+    } else {
+        // I'm assuming here that the geometry's id and the internal model id
+        // in Gmsh/OCCT are the same.
+        size_t end = gmsh::model::occ::getMaxTag(dim);
+        for(size_t i = 1; i <= end; ++i){
+            std::vector<size_t> elem_tags_tmp;
+            std::vector<size_t> elem_node_tags_tmp;
+            gmsh::model::mesh::getElementsByType(type, elem_tags_tmp, elem_node_tags_tmp, i);
+            elem_tags.insert(elem_tags.end(), elem_tags_tmp.begin(), elem_tags_tmp.end());
+            elem_node_tags.insert(elem_node_tags.end(), elem_node_tags_tmp.begin(), elem_node_tags_tmp.end());
+            geom_elem_mapping[i-1] = elem_tags.size();
+        }
+    }
 
     gmsh::clear();
     gmsh::finalize();

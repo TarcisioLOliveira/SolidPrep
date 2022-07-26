@@ -97,6 +97,7 @@ class Meshing{
      * @param force List of forces
      */
     virtual void prepare_for_FEM(const TopoDS_Shape& shape,
+                                 const std::vector<size_t>& geom_elem_mapping,
                                  const std::vector<ElementShape>& base_mesh,
                                  const std::vector<Force>& forces, 
                                  const std::vector<Support>& supports);

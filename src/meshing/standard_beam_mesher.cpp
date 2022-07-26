@@ -249,7 +249,7 @@ void StandardBeamMesher::mesh(const std::vector<Force>& forces,
     gmsh::clear();
     gmsh::finalize();
 
-    this->prepare_for_FEM(sh, list, forces, supports);
+    this->prepare_for_FEM(sh, std::vector<size_t>{list.size()}, list, forces, supports);
 }
 
 bool StandardBeamMesher::is_inside_2D(gp_Pnt p, const TopoDS_Shape& t){
