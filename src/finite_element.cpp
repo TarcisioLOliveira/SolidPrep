@@ -188,14 +188,3 @@ void FiniteElement::add_geometry_to_K(const Meshing* const mesh, const Geometry*
         logger::log_assert(false, logger::ERROR, "use of more than two materials for topology optimization is not currently supported.");
     }
 }
-
-void FiniteElement::insert_element_matrix(std::vector<double>& K, const std::vector<double>& k, const std::vector<long>& pos, const size_t n) const{
-    const size_t w = pos.size();
-    for(size_t i = 0; i < w; ++i){
-        for(size_t j = i; j < w; ++j){
-            if(pos[i] > -1 && pos[j] > -1){
-                K[utils::to_lower_band(pos[i], pos[j], n)] += k[w*i + j];
-            }
-        }
-    }
-}
