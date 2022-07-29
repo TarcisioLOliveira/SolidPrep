@@ -324,18 +324,41 @@ double MinimalVolume::fc_norm(const std::vector<double>& x){
     auto x_it = this->new_x.begin();
     auto v_it = this->grad_V.begin();
     for(const auto& g:this->mesh->geometries){
+        const size_t num_den = g->number_of_densities_needed();
+        const size_t num_mat = g->number_of_materials();
         if(g->do_topopt){
-            const auto D = g->get_D(0);
-            for(const auto& e:g->mesh){
-                double S = e->get_stress_at(D, e->get_centroid(), u);
-                double Se = std::pow(*x_it, pt)*S;
-                if(Se > Smax){
-                    Smax = Se;
+            if(num_den == 1){
+                if(num_mat == 1){
+                    const auto D = g->get_D(0);
+                    for(const auto& e:g->mesh){
+                        double S = e->get_stress_at(D, e->get_centroid(), u);
+                        double Se = std::pow(*x_it, pt)*S;
+                        if(Se > Smax){
+                            Smax = Se;
+                        }
+                        double v = *v_it;
+                        Spn += v*std::pow(Se, P);
+                        ++x_it;
+                        ++v_it;
+                    }
+                } else {
+                    for(const auto& e:g->mesh){
+                        const auto D = g->get_D_topopt(*x_it, 1);
+                        double S = e->get_stress_at(D, e->get_centroid(), u);
+                        // No relaxation when there is no void?
+                        // Will do for now
+                        double Se = S;
+                        if(Se > Smax){
+                            Smax = Se;
+                        }
+                        double v = *v_it;
+                        Spn += v*std::pow(Se, P);
+                        ++x_it;
+                        ++v_it;
+                    }
                 }
-                double v = *v_it;
-                Spn += v*std::pow(Se, P);
-                ++x_it;
-                ++v_it;
+            } else {
+                logger::log_assert(num_den == 1, logger::ERROR, "minimal volume problems that require more than 1 design variables are currently not supported.");
             }
         }
     }
@@ -362,26 +385,53 @@ double MinimalVolume::fc_norm_grad(const std::vector<double>& x, std::vector<dou
     double Smax = 0;
 
     std::vector<double> stress_list(elem_number);
-    auto x_it = this->new_x.begin();
-    auto v_it = this->grad_V.begin();
+    auto x_it = this->new_x.cbegin();
+    auto v_it = this->grad_V.cbegin();
     auto stress_it = stress_list.begin();
     for(const auto& g:this->mesh->geometries){
+        const size_t num_den = g->number_of_densities_needed();
+        const size_t num_mat = g->number_of_materials();
         if(g->do_topopt){
-            const auto D = g->get_D(0);
-            for(const auto& e:g->mesh){
-                double S = e->get_stress_at(D, e->get_centroid(), u);
-                double Se = std::pow(*x_it, pt)*S;
-                *stress_it = *x_it*S;//std::pow(this->new_x[i],pc)*S;//Se;
-                if(Se > Smax){
-                    Smax = Se;
-                }
-                double v = *v_it;
-                Spn += v*std::pow(Se, P);
-                e->get_virtual_load(D, v*std::pow(*x_it, pt*P)*std::pow(S, P-2), e->get_centroid(), u, fl);
+            if(num_den == 1){
+                if(num_mat == 1){
+                    const auto D = g->get_D(0);
+                    for(const auto& e:g->mesh){
+                        double S = e->get_stress_at(D, e->get_centroid(), u);
+                        double Se = std::pow(*x_it, pt)*S;
+                        *stress_it = *x_it*S;//std::pow(this->new_x[i],pc)*S;//Se;
+                        if(Se > Smax){
+                            Smax = Se;
+                        }
+                        double v = *v_it;
+                        Spn += v*std::pow(Se, P);
+                        e->get_virtual_load(D, v*std::pow(*x_it, pt*P)*std::pow(S, P-2), e->get_centroid(), u, fl);
 
-                ++x_it;
-                ++v_it;
-                ++stress_it;
+                        ++x_it;
+                        ++v_it;
+                        ++stress_it;
+                    }
+                } else {
+                    for(const auto& e:g->mesh){
+                        const auto D = g->get_D_topopt(*x_it, 1);
+                        double S = e->get_stress_at(D, e->get_centroid(), u);
+                        // No relaxation when there is no void?
+                        // Will do for now
+                        double Se = S;
+                        *stress_it = S;
+                        if(Se > Smax){
+                            Smax = Se;
+                        }
+                        double v = *v_it;
+                        Spn += v*std::pow(Se, P);
+                        e->get_virtual_load(D, v*std::pow(*x_it, pt*P)*std::pow(S, P-2), e->get_centroid(), u, fl);
+
+                        ++x_it;
+                        ++v_it;
+                        ++stress_it;
+                    }
+                }
+            } else {
+                logger::log_assert(num_den == 1, logger::ERROR, "minimal volume problems that require more than 1 design variables are currently not supported.");
             }
         } else {
             const auto D = g->get_D(0);
@@ -416,23 +466,47 @@ double MinimalVolume::fc_norm_grad(const std::vector<double>& x, std::vector<dou
     logger::quick_log("Calculating stress gradient...");
 
     std::vector<double> grad_tmp(grad);
-    x_it = this->new_x.begin();
-    v_it = this->grad_V.begin();
+    x_it = this->new_x.cbegin();
+    v_it = this->grad_V.cbegin();
     auto grad_it = grad_tmp.begin();
     for(const auto& g:this->mesh->geometries){
+        const size_t num_den = g->number_of_densities_needed();
+        const size_t num_mat = g->number_of_materials();
         if(g->do_topopt){
-            const auto D = g->get_D(0);
-            for(const auto& e:g->mesh){
-                double lKu = pc*std::pow(*x_it, pc-1)*e->get_compliance(D, this->data->thickness, u, l);
-                double v = *v_it;
-                double S = e->get_stress_at(D, e->get_centroid(), u);
-                double Se = pt*v*std::pow(*x_it, pt*P-1)*std::pow(S, P);
+            if(num_den == 1){
+                const auto D = g->get_D(0);
+                auto x_it2    = x_it;
+                auto v_it2    = v_it;
+                auto grad_it2 = grad_it;
+                for(const auto& e:g->mesh){
+                    double lKu = pc*std::pow(*x_it, pc-1)*e->get_compliance(D, this->data->thickness, u, l);
+                    double v = *v_it;
+                    double S = e->get_stress_at(D, e->get_centroid(), u);
+                    double Se = pt*v*std::pow(*x_it, pt*P-1)*std::pow(S, P);
 
-                *grad_it = Sg*(Se - lKu);
+                    *grad_it = Sg*(Se - lKu);
 
-                ++x_it;
-                ++v_it;
-                ++grad_it;
+                    ++x_it;
+                    ++v_it;
+                    ++grad_it;
+                }
+                if(num_mat == 2){
+                    const auto D = g->get_D(1);
+                    for(const auto& e:g->mesh){
+                        double lKu = -pc*std::pow(1 - *x_it2, pc-1)*e->get_compliance(D, this->data->thickness, u, l);
+                        double v = *v_it2;
+                        double S = e->get_stress_at(D, e->get_centroid(), u);
+                        double Se = -pt*v*std::pow(1 - *x_it2, pt*P-1)*std::pow(S, P);
+
+                        *grad_it2 += Sg*(Se - lKu);
+
+                        ++x_it2;
+                        ++v_it2;
+                        ++grad_it2;
+                    }
+                }
+            } else {
+                logger::log_assert(num_den == 1, logger::ERROR, "minimal volume problems that require more than 1 design variables are currently not supported.");
             }
         }
     }

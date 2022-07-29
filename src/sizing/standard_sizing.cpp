@@ -81,7 +81,10 @@ TopoDS_Shape StandardSizing::boundary_expansion_approach(){
     utils::shape_to_file("beams.step", beams);
     std::unique_ptr<MeshElementFactory> gt9_maker(new MeshElementFactoryImpl<element::GT9>());
 
-    std::unique_ptr<Geometry> geom(new Geometry(beams, utils::PROBLEM_TYPE_2D, gt9_maker.get(), true, this->data->materials[0].get()));
+    std::unique_ptr<Geometry> geom(new Geometry(beams, utils::PROBLEM_TYPE_2D, gt9_maker.get(), 
+                                                this->data->geometries[0]->do_topopt, 
+                                                this->data->geometries[0]->with_void,
+                                                this->data->materials[0].get()));
     std::vector<std::unique_ptr<Geometry>> ggeom;
     ggeom.push_back(std::move(geom));
     meshing::StandardBeamMesher mesh(ggeom, gt9_maker.get(), this->element_size, this->data->thickness);

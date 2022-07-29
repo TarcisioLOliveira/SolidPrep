@@ -148,10 +148,12 @@ TopoDS_Shape MinimalCompliance::optimize(Visualization* viz, FiniteElement* fem,
     logger::quick_log("Number of iterations (topology optimization): ", iter);
    
     logger::quick_log(" "); 
+
+    TopoDS_Shape result;
     if(this->save_result){
         logger::quick_log("Saving resulting topology...");
         std::cout << "\r" << 0 << "%         ";
-        TopoDS_Shape result = BRepBuilderAPI_Copy(this->data->geometries[0]->shape);
+        result = BRepBuilderAPI_Copy(this->data->geometries[0]->shape);
         for(size_t i = 0; i < x.size(); ++i){
             if(x[i] >= this->result_threshold){
                 result = utils::cut_shape(result, this->data->geometries[0]->mesh[i]->get_shape());
@@ -160,20 +162,27 @@ TopoDS_Shape MinimalCompliance::optimize(Visualization* viz, FiniteElement* fem,
             std::cout << "\r" << pc*100 << "%         ";
         }
         result = utils::cut_shape(this->data->geometries[0]->shape, result);
-        return result;
         std::cout << "\r" << 100 << "%         ";
         logger::quick_log(" "); 
     }
 
     // Validate results
-    this->mesh->prune(this->data->forces, this->data->supports, newx, this->result_threshold);
-    std::vector<double> u = this->fem->calculate_displacements(this->mesh, this->mesh->load_vector);
-    double c = cblas_ddot(u.size(), this->mesh->load_vector.data(), 1, u.data(), 1);
-    logger::quick_log(" ");
-    logger::quick_log("Compliance error: ", 100*(ff/c-1), "%");
-    logger::quick_log(" ");
+    bool validate = true;
+    for(const auto& g:this->mesh->geometries){
+        if(g->number_of_materials() > 1){
+            validate = false;
+        }
+    }
+    if(validate){
+        this->mesh->prune(this->data->forces, this->data->supports, newx, this->result_threshold);
+        std::vector<double> u = this->fem->calculate_displacements(this->mesh, this->mesh->load_vector);
+        double c = cblas_ddot(u.size(), this->mesh->load_vector.data(), 1, u.data(), 1);
+        logger::quick_log(" ");
+        logger::quick_log("Compliance error: ", 100*(ff/c-1), "%");
+        logger::quick_log(" ");
+    }
 
-    return TopoDS_Shape();
+    return result;
 }
 
 double MinimalCompliance::fobj(const std::vector<double>& x){
@@ -198,13 +207,29 @@ double MinimalCompliance::fobj_grad(const std::vector<double>& x, std::vector<do
 
     size_t i = 0;
     for(const auto& g:this->mesh->geometries){
+        const size_t num_den = g->number_of_densities_needed();
+        const size_t num_mat = g->number_of_materials();
         if(g->do_topopt){
-            const auto D = g->get_D(0);
-            for(const auto& e:g->mesh){
-                double uKu = e->get_compliance(D, this->mesh->thickness, u);
-                grad[i] = -pc*std::pow(x[i], pc-1)*uKu;
+            if(num_den == 1){
+                const auto D = g->get_D(0);
+                size_t j = i;
+                for(const auto& e:g->mesh){
+                    double uKu = e->get_compliance(D, this->mesh->thickness, u);
+                    grad[i] = -pc*std::pow(x[i], pc-1)*uKu;
 
-                ++i;
+                    ++i;
+                }
+                if(num_mat == 2){
+                    const auto D = g->get_D(1);
+                    for(const auto& e:g->mesh){
+                        double uKu = e->get_compliance(D, this->mesh->thickness, u);
+                        grad[j] += pc*std::pow(1 - x[j], pc-1)*uKu;
+
+                        ++j;
+                    }
+                }
+            } else {
+                logger::log_assert(num_den == 1, logger::ERROR, "minimal compliance problems that require more than 1 design variables are currently not supported.");
             }
         }
     }

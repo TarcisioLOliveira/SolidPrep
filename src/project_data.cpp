@@ -277,7 +277,13 @@ std::vector<std::unique_ptr<Geometry>> ProjectData::load_geometries(const rapidj
                 }
             }
         }
-        geometry.emplace_back(new Geometry(absolute_path, scale, this->type, this->topopt_element.get(), do_topopt, material, alt_materials));
+
+        bool with_void = (alt_materials.size() == 0) ? true : false;
+        if(this->log_data(geom, "with_void", TYPE_BOOL, false) && alt_materials.size() > 0){
+            with_void = geom["with_void"].GetBool();
+        }
+
+        geometry.emplace_back(new Geometry(absolute_path, scale, this->type, this->topopt_element.get(), do_topopt, with_void,  material, alt_materials));
     }
     return geometry;
 }

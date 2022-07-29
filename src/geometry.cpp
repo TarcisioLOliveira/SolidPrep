@@ -23,15 +23,19 @@
 #include <BRepBuilderAPI_Transform.hxx>
 
 Geometry::Geometry(const std::string& path, double scale, utils::ProblemType type,
-        MeshElementFactory* elem_type, bool do_topopt, Material* material, std::vector<Material*> alt_materials ):
-    shape(this->load_shape(path, scale)), material(material), alternate_materials(alt_materials.begin(), alt_materials.end()),
-    element_type(elem_type), do_topopt(do_topopt), mesh(), 
+        MeshElementFactory* elem_type, bool do_topopt, bool with_void, Material* material, std::vector<Material*> alt_materials ):
+    shape(this->load_shape(path, scale)),
+    material(material), alternative_materials(alt_materials.begin(), alt_materials.end()),
+    element_type(elem_type), do_topopt(do_topopt), with_void(with_void),
+    constitutive_matrices(this->init_constitutive_matrices(type)), mesh(), 
     type(type){}
 
 Geometry::Geometry(TopoDS_Shape shape, utils::ProblemType type,
-        MeshElementFactory* elem_type, bool do_topopt, Material* material, std::vector<Material*> alt_materials ):
-    shape(std::move(shape)), material(material), alternate_materials(alt_materials.begin(), alt_materials.end()),
-    element_type(elem_type), do_topopt(do_topopt), mesh(), 
+        MeshElementFactory* elem_type, bool do_topopt, bool with_void, Material* material, std::vector<Material*> alt_materials ):
+    shape(std::move(shape)),
+    material(material), alternative_materials(alt_materials.begin(), alt_materials.end()),
+    element_type(elem_type), do_topopt(do_topopt), with_void(with_void),
+    constitutive_matrices(this->init_constitutive_matrices(type)), mesh(), 
     type(type){}
 
 TopoDS_Shape Geometry::load_shape(const std::string& path, double scale) const{

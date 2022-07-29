@@ -139,13 +139,14 @@ void FiniteElement::add_geometry_to_K(const Meshing* const mesh, const Geometry*
 }
 
 void FiniteElement::add_geometry_to_K(const Meshing* const mesh, const Geometry* const g, std::vector<double>::const_iterator& rho, const double pc){
-    const auto D = g->get_D(0);
     const double t = mesh->thickness;
     const size_t dof      = mesh->elem_info->get_dof_per_node();
     const size_t node_num = mesh->elem_info->get_nodes_per_element();
 
-    if(g->alternate_materials.empty()){
-        for(auto& e : g->mesh){
+    const size_t num_den = g->number_of_densities_needed();
+    // const size_t num_mat = g->number_of_materials();
+    if(num_den == 1){
+        for(const auto& e:g->mesh){
             std::vector<long> u_pos;
             u_pos.reserve(dof*node_num);
             for(size_t i = 0; i < node_num; ++i){
@@ -154,37 +155,12 @@ void FiniteElement::add_geometry_to_K(const Meshing* const mesh, const Geometry*
                     u_pos.push_back(n->u_pos[j]);
                 }
             }
-            auto rhoD = D;
-            double rho_scal = this->K_MIN + (1-this->K_MIN)*std::pow(*rho, pc);
-            for(auto& d:rhoD){
-                d *= rho_scal;
-            }
-            std::vector<double> k = e->get_k(rhoD, t);
-            this->insert_element_matrix(K, k, u_pos, N);
-            ++rho;
-        }
-    } else if(g->alternate_materials.size() == 1){
-        const auto D2 = g->get_D(1);
-        for(auto& e : g->mesh){
-            std::vector<long> u_pos;
-            u_pos.reserve(dof*node_num);
-            for(size_t i = 0; i < node_num; ++i){
-                const auto& n = e->nodes[i];
-                for(size_t j = 0; j < dof; ++j){
-                    u_pos.push_back(n->u_pos[j]);
-                }
-            }
-            std::vector<double> rhoD(D.size());
-            double r = std::pow(*rho, pc);
-            for(size_t i = 0; i < rhoD.size(); ++i){
-                rhoD[i] = r*D[i] + (1-r)*D2[i];
-            }
-            std::vector<double> k = e->get_k(rhoD, t);
+            const auto D = g->get_D_topopt(*rho, pc, this->K_MIN);
+            const std::vector<double> k = e->get_k(D, t);
             this->insert_element_matrix(K, k, u_pos, N);
             ++rho;
         }
     } else {
-        // TODO
-        logger::log_assert(false, logger::ERROR, "use of more than two materials for topology optimization is not currently supported.");
+        logger::log_assert(num_den == 1, logger::ERROR, "FEA problems that require more than 1 design variables are currently not supported.");
     }
 }
