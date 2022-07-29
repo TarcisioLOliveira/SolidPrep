@@ -22,7 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fully refactor meshing classes.
 - Many optimizations.
 
-### Deprecated
+### Removed
 - `GroundStructure`class.
 
 ## [v0.1.2]
