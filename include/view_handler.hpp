@@ -43,11 +43,23 @@ class ViewHandler{
     };
 
     ViewHandler(const Meshing* const mesh, const std::string& model_name, const std::string& view_name, const ViewType view_type, const DataType data_type, const size_t view_id);
+    ~ViewHandler(){
+        this->remove_view();
+    }
 
     /**
      * The `geometries` parameter is currently unused for nodal views.
      */
     void update_view(const std::vector<double>& data, const std::vector<size_t>& geometries = std::vector<size_t>()) const;
+
+    inline bool is_removed() const{
+        return this->removed;
+    }
+    inline void remove_view() const{
+        if(!this->removed){
+            gmsh::view::remove(view_id);
+        }
+    }
 
     const std::string model_name;
     const ViewType view_type;
@@ -59,6 +71,7 @@ class ViewHandler{
     const size_t elem_num;
     const size_t node_num;
     const size_t mat_color_num;
+    bool removed = false;
 
     size_t get_number_of_elements() const;
     size_t get_number_of_nodes() const;

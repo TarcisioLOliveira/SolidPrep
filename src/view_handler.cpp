@@ -31,6 +31,9 @@ ViewHandler::ViewHandler(const Meshing* const mesh, const std::string& model_nam
 
 
 void ViewHandler::update_view(const std::vector<double>& data, const std::vector<size_t>& geometries) const{
+    if(this->removed){
+        return;
+    }
     std::vector<size_t> tags;
     // All geometries
     if(geometries.size() == 0 || this->view_type != ELEMENTAL){ // Default
