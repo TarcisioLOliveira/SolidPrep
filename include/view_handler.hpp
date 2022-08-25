@@ -49,12 +49,12 @@ class ViewHandler{
      */
     void update_view(const std::vector<double>& data, const std::vector<size_t>& geometries = std::vector<size_t>()) const;
 
-    const size_t view_id;
     const std::string model_name;
     const ViewType view_type;
     const DataType data_type;
 
     private:
+    const size_t view_id;
     const Meshing* const mesh;
     const size_t elem_num;
     const size_t node_num;

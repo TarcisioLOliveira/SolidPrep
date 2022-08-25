@@ -21,7 +21,7 @@
 #include "view_handler.hpp"
 
 ViewHandler::ViewHandler(const Meshing* const mesh, const std::string& model_name, const std::string& view_name, const ViewType view_type, const DataType data_type, const size_t view_id)
-    : view_id(view_id), model_name(model_name), view_type(view_type), data_type(data_type), mesh(mesh), 
+    : model_name(model_name), view_type(view_type), data_type(data_type), view_id(view_id), mesh(mesh),
       elem_num(this->get_number_of_elements()),
       node_num(this->get_number_of_nodes()),
       mat_color_num(this->get_number_of_material_colors()){
