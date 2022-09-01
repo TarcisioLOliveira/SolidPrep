@@ -27,6 +27,10 @@ ViewHandler::ViewHandler(const Meshing* const mesh, const std::string& model_nam
       mat_color_num(this->get_number_of_material_colors()){
 
     gmsh::view::add(view_name, view_id);
+    if(this->mat_color_num == 2 && data_type == MATERIAL){
+        gmsh::view::option::setNumber(view_id, "ColormapNumber", 9); //grayscale
+        gmsh::view::option::setNumber(view_id, "ColormapInvert", 1.0); //inverted
+    }
 }
 
 
