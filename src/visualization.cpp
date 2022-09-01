@@ -97,9 +97,10 @@ void Visualization::load_mesh(Meshing* mesh, utils::ProblemType type){
 
 }
 
-ViewHandler Visualization::add_view(const std::string& view_name, ViewHandler::ViewType view_type, ViewHandler::DataType data_type){
+ViewHandler* Visualization::add_view(const std::string& view_name, ViewHandler::ViewType view_type, ViewHandler::DataType data_type){
     ++this->last_view_tag;
-    return ViewHandler(this->mesh, this->MODEL_NAME, view_name, view_type, data_type, this->type, this->last_view_tag);
+    this->handler_list.emplace_back(std::make_unique<ViewHandler>(this->mesh, this->MODEL_NAME, view_name, view_type, data_type, this->type, this->last_view_tag));
+    return this->handler_list.back().get();
 }
 
 void Visualization::update_stress_view(const std::vector<double>& s, size_t id){

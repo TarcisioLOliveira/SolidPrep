@@ -34,7 +34,7 @@ class Visualization{
     inline void start() const {gmsh::initialize();}
 
     void load_mesh(Meshing* mesh, utils::ProblemType type);
-    ViewHandler add_view(const std::string& view_name, ViewHandler::ViewType view_type, ViewHandler::DataType data_type);
+    ViewHandler* add_view(const std::string& view_name, ViewHandler::ViewType view_type, ViewHandler::DataType data_type);
 
     void update_stress_view(const std::vector<double>& s, size_t id = 1);
     void update_nodal_stress_view(const std::vector<double>& s);
@@ -47,6 +47,7 @@ class Visualization{
 
     void wait();
     inline void end(){
+        this->handler_list.clear();
         this->hide();
         gmsh::finalize();
     }
@@ -60,6 +61,7 @@ class Visualization{
     int mesh_tag = 0;
     int last_view_tag = 0;
     utils::ProblemType type = utils::PROBLEM_TYPE_2D;
+    std::vector<std::unique_ptr<ViewHandler>> handler_list;
 };
 
 #endif
