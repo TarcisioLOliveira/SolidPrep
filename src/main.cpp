@@ -71,6 +71,7 @@ int main(int argc, char* argv[]){
         auto u = proj.topopt_fea->calculate_displacements(proj.topopt_mesher.get(), proj.topopt_mesher->load_vector);
         auto stop_fea = std::chrono::high_resolution_clock::now();
         double fea_duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop_fea-start_fea).count()/60000.0;
+
         std::vector<double> stresses;
         std::vector<double> stressesX;
         std::vector<double> stressesY;
@@ -107,10 +108,16 @@ int main(int argc, char* argv[]){
         Visualization v;
         v.start();
         v.load_mesh(proj.topopt_mesher.get(), proj.type);
-        v.update_stress_view(stresses, 1);
-        v.update_stress_view(stressesX, 2);
-        v.update_stress_view(stressesY, 3);
-        v.update_stress_view(stressesXY, 4);
+
+        auto stressview_VM = v.add_view("Von Mises Stress",       ViewHandler::ViewType::ELEMENTAL, ViewHandler::DataType::STRESS);
+        auto stressview_X  = v.add_view("Normal Stress (X axis)", ViewHandler::ViewType::ELEMENTAL, ViewHandler::DataType::STRESS);
+        auto stressview_Y  = v.add_view("Normal Stress (Y axis)", ViewHandler::ViewType::ELEMENTAL, ViewHandler::DataType::STRESS);
+        auto stressview_XY = v.add_view("Shear Stress",           ViewHandler::ViewType::ELEMENTAL, ViewHandler::DataType::STRESS);
+
+        stressview_VM->update_view(stresses);
+        stressview_X ->update_view(stressesX);
+        stressview_Y ->update_view(stressesY);
+        stressview_XY->update_view(stressesXY);
         v.show();
         v.wait();
         v.end();
