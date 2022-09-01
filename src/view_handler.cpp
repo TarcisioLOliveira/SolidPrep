@@ -20,11 +20,12 @@
 
 #include "view_handler.hpp"
 
-ViewHandler::ViewHandler(const Meshing* const mesh, const std::string& model_name, const std::string& view_name, const ViewType view_type, const DataType data_type, const size_t view_id)
+ViewHandler::ViewHandler(const Meshing* const mesh, const std::string& model_name, const std::string& view_name, const ViewType view_type, const DataType data_type, utils::ProblemType problem_type, const size_t view_id)
     : model_name(model_name), view_type(view_type), data_type(data_type), view_id(view_id), mesh(mesh),
       elem_num(this->get_number_of_elements()),
       node_num(this->get_number_of_nodes()),
-      mat_color_num(this->get_number_of_material_colors()){
+      mat_color_num(this->get_number_of_material_colors()),
+      problem_type(problem_type){
 
     gmsh::view::add(view_name, view_id);
     if(this->mat_color_num == 2 && data_type == MATERIAL){
@@ -75,7 +76,7 @@ void ViewHandler::update_view(const std::vector<double>& data, const std::vector
     } else if(this->data_type == DISPLACEMENT){ // Can only be VECTOR
         std::vector<double> vecs;
         vecs.reserve(tags.size()*3);
-        if(this->mesh->elem_info->get_problem_type() == utils::PROBLEM_TYPE_2D){
+        if(this->problem_type == utils::PROBLEM_TYPE_2D){
             for(const auto i:tags){
                 const auto& node = this->mesh->node_list[i];
                 for(size_t j = 0; j < 2; ++j){
@@ -87,7 +88,7 @@ void ViewHandler::update_view(const std::vector<double>& data, const std::vector
                 }
                 vecs.push_back(0);
             }
-        } else if(this->mesh->elem_info->get_problem_type() == utils::PROBLEM_TYPE_3D){
+        } else if(this->problem_type == utils::PROBLEM_TYPE_3D){
             for(const auto i:tags){
                 const auto& node = this->mesh->node_list[i];
                 for(size_t j = 0; j < 3; ++j){

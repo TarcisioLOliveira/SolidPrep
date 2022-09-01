@@ -42,7 +42,7 @@ class ViewHandler{
         OTHER
     };
 
-    ViewHandler(const Meshing* const mesh, const std::string& model_name, const std::string& view_name, const ViewType view_type, const DataType data_type, const size_t view_id);
+    ViewHandler(const Meshing* const mesh, const std::string& model_name, const std::string& view_name, const ViewType view_type, const DataType data_type, utils::ProblemType problem_type, const size_t view_id);
     ~ViewHandler(){
         this->remove_view();
     }
@@ -71,6 +71,7 @@ class ViewHandler{
     const size_t elem_num;
     const size_t node_num;
     const size_t mat_color_num;
+    utils::ProblemType problem_type;
     bool removed = false;
 
     size_t get_number_of_elements() const;
