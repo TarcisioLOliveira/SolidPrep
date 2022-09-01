@@ -46,11 +46,11 @@ void Visualization::load_mesh(Meshing* mesh, utils::ProblemType type){
     }
 
     if(type == utils::PROBLEM_TYPE_2D){
-        this->tag = gmsh::model::addDiscreteEntity(2);
-        gmsh::model::mesh::addNodes(2, this->tag, node_tags, coords);
+        this->mesh_tag = gmsh::model::addDiscreteEntity(2);
+        gmsh::model::mesh::addNodes(2, this->mesh_tag, node_tags, coords);
     } else if(type == utils::PROBLEM_TYPE_3D){
-        this->tag = gmsh::model::addDiscreteEntity(3);
-        gmsh::model::mesh::addNodes(3, this->tag, node_tags, coords);
+        this->mesh_tag = gmsh::model::addDiscreteEntity(3);
+        gmsh::model::mesh::addNodes(3, this->mesh_tag, node_tags, coords);
     }
 
     size_t s_size = 0;
@@ -72,7 +72,7 @@ void Visualization::load_mesh(Meshing* mesh, utils::ProblemType type){
             }
         }
     }
-    gmsh::model::mesh::addElementsByType(this->tag, mesh->elem_info->get_gmsh_element_type(), elem_tags, elem_nodes);
+    gmsh::model::mesh::addElementsByType(this->mesh_tag, mesh->elem_info->get_gmsh_element_type(), elem_tags, elem_nodes);
 
     // gmsh::option::setNumber("View.DrawLines", 0);
     // gmsh::option::setNumber("View.DrawPoints", 0);
@@ -95,6 +95,11 @@ void Visualization::load_mesh(Meshing* mesh, utils::ProblemType type){
     gmsh::view::option::setNumber(5, "ColormapInvert", 1.0); //inverted
     gmsh::view::add("Displacement View", 6);
 
+}
+
+ViewHandler Visualization::add_view(const std::string& view_name, ViewHandler::ViewType view_type, ViewHandler::DataType data_type){
+    ++this->last_view_tag;
+    return ViewHandler(this->mesh, this->MODEL_NAME, view_name, view_type, data_type, this->type, this->last_view_tag);
 }
 
 void Visualization::update_stress_view(const std::vector<double>& s, size_t id){
