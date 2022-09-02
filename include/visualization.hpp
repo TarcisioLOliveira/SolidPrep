@@ -44,6 +44,11 @@ class Visualization{
     inline void hide(){
         this->shown = false;
     }
+    inline void redraw() const{
+        if(this->shown){
+            gmsh::graphics::draw();
+        }
+    }
 
     void wait();
     inline void end(){
