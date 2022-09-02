@@ -132,7 +132,7 @@ size_t ViewHandler::get_number_of_material_colors() const{
     size_t num = 0;
     for(const auto& g:this->mesh->geometries){
         if(g->do_topopt){
-            if(g->with_void){
+            if(g->with_void || g->number_of_materials() == 1){
                 ++num;
             }
             num += g->number_of_materials();
