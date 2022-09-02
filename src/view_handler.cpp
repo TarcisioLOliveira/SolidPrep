@@ -41,7 +41,7 @@ void ViewHandler::update_view(const std::vector<double>& data, const std::vector
     }
     std::vector<size_t> tags;
     // All geometries
-    if(geometries.size() == 0 || this->view_type != ELEMENTAL){ // Default
+    if(geometries.size() == 0 && this->view_type == ELEMENTAL){ // Default
         tags.resize(this->elem_num);
         std::iota(tags.begin(), tags.end(), 1);
     } else if(this->view_type == ELEMENTAL){ // Elemental with select geometries
@@ -78,7 +78,7 @@ void ViewHandler::update_view(const std::vector<double>& data, const std::vector
         vecs.reserve(tags.size()*3);
         if(this->problem_type == utils::PROBLEM_TYPE_2D){
             for(const auto i:tags){
-                const auto& node = this->mesh->node_list[i];
+                const auto& node = this->mesh->node_list[i-1];
                 for(size_t j = 0; j < 2; ++j){
                     if(node->u_pos[j] > -1){
                         vecs.push_back(data[node->u_pos[j]]);
@@ -90,7 +90,7 @@ void ViewHandler::update_view(const std::vector<double>& data, const std::vector
             }
         } else if(this->problem_type == utils::PROBLEM_TYPE_3D){
             for(const auto i:tags){
-                const auto& node = this->mesh->node_list[i];
+                const auto& node = this->mesh->node_list[i-1];
                 for(size_t j = 0; j < 3; ++j){
                     if(node->u_pos[j] > -1){
                         vecs.push_back(data[node->u_pos[j]]);
