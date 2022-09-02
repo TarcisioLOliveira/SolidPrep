@@ -448,8 +448,9 @@ double MinimalVolume::fc_norm_grad(const std::vector<double>& x, std::vector<dou
             }
         }
     }
-    this->viz->update_stress_view(stress_list);
-    this->viz->update_density_view(this->new_x);
+    this->stress_view->update_view(stress_list);
+    this->density_view->update_view(this->new_x);
+    this->viz->redraw();
 
     Spn = std::pow(Spn, 1.0/P);
 
