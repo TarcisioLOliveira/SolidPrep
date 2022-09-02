@@ -36,10 +36,6 @@ class Visualization{
     void load_mesh(Meshing* mesh, utils::ProblemType type);
     ViewHandler* add_view(const std::string& view_name, ViewHandler::ViewType view_type, ViewHandler::DataType data_type);
 
-    void update_stress_view(const std::vector<double>& s, size_t id = 1);
-    void update_nodal_stress_view(const std::vector<double>& s);
-    void update_density_view(const std::vector<double>& d);
-    void update_vector_view(const std::vector<std::unique_ptr<MeshNode>>& nodes, const std::vector<double>& values);
     void show();
     inline void hide(){
         this->shown = false;
