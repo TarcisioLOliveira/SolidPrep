@@ -29,7 +29,8 @@ class MinimalCompliance : public TopologyOptimization{
     public:
         MinimalCompliance(double r_o, ProjectData* data, double Vfinal, double xtol_abs, double ftol_rel, double result_threshold, bool save, int pc);
 
-    virtual TopoDS_Shape optimize(Visualization* viz, FiniteElement* fem, Meshing* mesh) override;
+    virtual void initialize_views(Visualization* viz) override;
+    virtual TopoDS_Shape optimize(FiniteElement* fem, Meshing* mesh) override;
 
     private:
     double r_o;
@@ -52,6 +53,9 @@ class MinimalCompliance : public TopologyOptimization{
     std::vector<std::vector<size_t>> neighbors;
     std::vector<double> p;
     std::vector<double> w;
+
+    ViewHandler* density_view = nullptr;
+    ViewHandler* disp_view = nullptr;
 
     double fobj(const std::vector<double>& x);
     double fobj_grad(const std::vector<double>& x, std::vector<double>& grad);

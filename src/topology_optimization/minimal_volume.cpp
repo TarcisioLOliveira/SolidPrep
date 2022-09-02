@@ -38,8 +38,14 @@ namespace topology_optimization{
 MinimalVolume::MinimalVolume(double r_o, double Smax, ProjectData* data, double rho_init, double xtol_abs, double Vfrac_abs, double result_threshold, bool save, int P, int pc):
     r_o(r_o), Smax(Smax), data(data), rho_init(rho_init), xtol_abs(xtol_abs), Vfrac_abs(Vfrac_abs), result_threshold(result_threshold), save_result(save), P(P), pc(pc), viz(nullptr), fem(nullptr), mesh(nullptr), c(1), new_x(), max_V(0), cur_V(0), alpha(1), neighbors(), p(), w(), Spn(1), Sm(1), elem_number(0){}
 
+void MinimalVolume::initialize_views(Visualization* viz){
+    this->viz = viz;
 
-TopoDS_Shape MinimalVolume::optimize(Visualization* viz, FiniteElement* fem, Meshing* mesh){
+    this->stress_view = viz->add_view("Von Mises Stress", ViewHandler::ViewType::ELEMENTAL, ViewHandler::DataType::STRESS);
+    this->density_view = viz->add_view("Elemental Density", ViewHandler::ViewType::ELEMENTAL, ViewHandler::DataType::MATERIAL);
+}
+
+TopoDS_Shape MinimalVolume::optimize(FiniteElement* fem, Meshing* mesh){
 
     logger::quick_log("Preparing for optimization...");
 

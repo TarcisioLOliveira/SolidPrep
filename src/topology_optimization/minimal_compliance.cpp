@@ -36,12 +36,17 @@ namespace topology_optimization{
 MinimalCompliance::MinimalCompliance(double r_o, ProjectData* data, double Vfinal, double xtol_abs, double ftol_rel, double result_threshold, bool save, int pc):
     r_o(r_o), data(data), Vfinal(Vfinal), xtol_abs(xtol_abs), ftol_rel(ftol_rel), result_threshold(result_threshold), save_result(save), pc(pc), elem_number(0), viz(nullptr), fem(nullptr), mesh(nullptr),   max_V(0), cur_V(0), alpha(1), neighbors(), p(), w(){}
 
+void MinimalCompliance::initialize_views(Visualization* viz){
+    this->viz = viz;
 
-TopoDS_Shape MinimalCompliance::optimize(Visualization* viz, FiniteElement* fem, Meshing* mesh){
+    this->density_view = viz->add_view("Elemental Density", ViewHandler::ViewType::ELEMENTAL, ViewHandler::DataType::MATERIAL);
+    this->disp_view = viz->add_view("Displacement", ViewHandler::ViewType::VECTOR, ViewHandler::DataType::DISPLACEMENT);
+}
+
+TopoDS_Shape MinimalCompliance::optimize(FiniteElement* fem, Meshing* mesh){
 
     logger::quick_log("Preparing for optimization...");
 
-    this->viz = viz;
     this->fem = fem;
     this->mesh = mesh;
 

@@ -29,7 +29,8 @@ class MinimalVolume : public TopologyOptimization{
     public:
     MinimalVolume(double r_o, double Smax, ProjectData* data, double rho_init, double xtol_abs, double Vfrac_abs, double result_threshold, bool save, int P, int pc);
 
-    virtual TopoDS_Shape optimize(Visualization* viz, FiniteElement* fem, Meshing* mesh) override;
+    virtual void initialize_views(Visualization* viz) override;
+    virtual TopoDS_Shape optimize(FiniteElement* fem, Meshing* mesh) override;
 
     private:
     double r_o;
@@ -58,6 +59,9 @@ class MinimalVolume : public TopologyOptimization{
     double Spn;
     double Sm;
     size_t elem_number;
+
+    ViewHandler* stress_view = nullptr;
+    ViewHandler* density_view = nullptr;
 
     double fobj(const std::vector<double>& x);
     double fobj_grad(const std::vector<double>& x, std::vector<double>& grad);
