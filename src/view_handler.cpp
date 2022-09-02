@@ -70,9 +70,17 @@ void ViewHandler::update_view(const std::vector<double>& data, const std::vector
     } else if(this->view_type == NODAL && (this->data_type == STRESS || this->data_type == OTHER)){
         this->update_tensor(data, tags);
     } else if(this->view_type == ELEMENTAL && this->data_type == MATERIAL){
-        // TODO
+        if(this->mat_color_num == 2){
+            this->update_elemental(data, tags);
+        } else {
+            // TODO
+        }
     } else if(this->view_type == NODAL && this->data_type == MATERIAL){
-        // TODO
+        if(this->mat_color_num == 2){
+            this->update_elemental(data, tags);
+        } else {
+            // TODO
+        }
     } else if(this->data_type == DISPLACEMENT){ // Can only be VECTOR
         std::vector<double> vecs;
         vecs.reserve(tags.size()*3);
