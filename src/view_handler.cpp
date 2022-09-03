@@ -73,13 +73,53 @@ void ViewHandler::update_view(const std::vector<double>& data, const std::vector
         if(this->mat_color_num == 2){
             this->update_elemental(data, tags);
         } else {
-            // TODO
+            std::vector<double> mat(tags.size());
+            double cur_mat = 0.0;
+            size_t mat_pos = 0;
+            if(geometries.size() == 0){
+                for(const auto& g:this->mesh->geometries){
+                    if(g->number_of_densities_needed() == 1){
+                        for(size_t i = mat_pos; i < mat_pos+g->mesh.size(); ++i){
+                            mat[i] = cur_mat + data[i];
+                        }
+                        mat_pos += g->mesh.size();
+                        cur_mat += 2.0;
+                    } else {
+                        // TODO
+                        // Probably needs an overhaul of visualizaiton method,
+                        // e.g. a custom viewer.
+                    }
+                }
+            } else {
+                // TODO
+            }
+            this->update_elemental(mat, tags);
         }
     } else if(this->view_type == NODAL && this->data_type == MATERIAL){
         if(this->mat_color_num == 2){
             this->update_elemental(data, tags);
         } else {
-            // TODO
+            std::vector<double> mat(tags.size());
+            double cur_mat = 0.0;
+            size_t mat_pos = 0;
+            if(geometries.size() == 0){
+                for(const auto& g:this->mesh->geometries){
+                    if(g->number_of_densities_needed() == 1){
+                        for(size_t i = mat_pos; i < mat_pos+g->mesh.size(); ++i){
+                            mat[i] = cur_mat + data[i];
+                        }
+                        mat_pos += g->mesh.size();
+                        cur_mat += 2.0;
+                    } else {
+                        // TODO
+                        // Probably needs an overhaul of visualizaiton method,
+                        // e.g. a custom viewer.
+                    }
+                }
+            } else {
+                // TODO
+            }
+            this->update_elemental(mat, tags);
         }
     } else if(this->data_type == DISPLACEMENT){ // Can only be VECTOR
         std::vector<double> vecs;
