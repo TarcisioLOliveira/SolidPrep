@@ -40,7 +40,7 @@ void MinimalCompliance::initialize_views(Visualization* viz){
     this->viz = viz;
 
     this->density_view = viz->add_view("Elemental Density", ViewHandler::ViewType::ELEMENTAL, ViewHandler::DataType::MATERIAL);
-    this->disp_view = viz->add_view("Displacement", ViewHandler::ViewType::VECTOR, ViewHandler::DataType::DISPLACEMENT);
+    // this->disp_view = viz->add_view("Displacement", ViewHandler::ViewType::VECTOR, ViewHandler::DataType::DISPLACEMENT);
 }
 
 TopoDS_Shape MinimalCompliance::optimize(FiniteElement* fem, Meshing* mesh){
@@ -208,7 +208,7 @@ double MinimalCompliance::fobj_grad(const std::vector<double>& x, std::vector<do
     std::vector<double> u = this->fem->calculate_displacements(this->mesh, this->mesh->load_vector, x, pc);
 
     this->density_view->update_view(x);
-    this->disp_view->update_view(u);
+    //this->disp_view->update_view(u);
     this->viz->redraw();
 
     size_t i = 0;
