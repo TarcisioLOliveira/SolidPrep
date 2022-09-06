@@ -179,8 +179,8 @@ class MeshElementCommon : public MeshElement{
     }
 
     protected:
-    MeshElementCommon(const std::vector<MeshNode*>& nodes):
-            MeshElement(nodes)
+    MeshElementCommon(const std::vector<MeshNode*>& nodes, const std::vector<MeshNode*>& nodes_sorted):
+            MeshElement(nodes, nodes_sorted)
             {}
 
 };
@@ -289,8 +289,8 @@ class MeshElementCommon2D : public MeshElementCommon<T>{
     }
 
     protected:
-    MeshElementCommon2D(const std::vector<MeshNode*>& nodes):
-            MeshElementCommon<T>(nodes)
+    MeshElementCommon2D(const std::vector<MeshNode*>& nodes, const std::vector<MeshNode*>& nodes_sorted):
+            MeshElementCommon<T>(nodes, nodes_sorted)
             {}
 };
 
@@ -360,8 +360,8 @@ class MeshElementCommon2DTri : public MeshElementCommon2D<T>{
     }
 
     protected:
-    MeshElementCommon2DTri(const std::vector<MeshNode*>& nodes):
-            MeshElementCommon2D<T>(nodes)
+    MeshElementCommon2DTri(const std::vector<MeshNode*>& nodes, const std::vector<MeshNode*>& nodes_sorted):
+            MeshElementCommon2D<T>(nodes, nodes_sorted)
             {}
 
     inline TopoDS_Face generate_geometry(const gp_Pnt& p1, const gp_Pnt& p2, const gp_Pnt& p3) const{

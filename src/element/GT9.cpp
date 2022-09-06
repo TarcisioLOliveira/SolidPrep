@@ -26,7 +26,7 @@
 namespace element{
 
 GT9::GT9(ElementShape s):
-    MeshElementCommon2DTri<GT9>(s.nodes)
+    MeshElementCommon2DTri<GT9>(s.nodes, s.nodes_sorted)
     {}
 
 std::vector<double> GT9::get_k(const std::vector<double>& D, const double t) const{

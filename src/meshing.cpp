@@ -54,7 +54,7 @@ void Meshing::prepare_for_FEM(const TopoDS_Shape& shape,
     for(size_t i = 0; i < this->node_list.size(); ++i){
         auto& n = this->node_list[i];
 
-        std::fill(n->u_pos, n->u_pos+dof, 0);
+        std::fill((long*)n->u_pos, (long*)n->u_pos+dof, 0);
 
         bool supported = false;
         for(auto& s : supports){
@@ -433,7 +433,9 @@ void Meshing::sort_nodes(std::vector<ElementShape>& list) const{
         return n1->id < n2->id;
     };
     for(auto& e:list){
+        e.nodes_sorted = e.nodes;
         std::sort(e.nodes.begin(), e.nodes.end(), comp);
+        std::sort(e.nodes_sorted.begin(), e.nodes_sorted.end(), comp);
     }
 }
 
@@ -443,9 +445,6 @@ std::vector<ElementShape> Meshing::generate_element_shapes(const std::vector<siz
     list.emplace_back();
     size_t i = 0;
     for(auto n:elem_node_tags){
-        // gp_Pnt p(nodeCoords[n*3], nodeCoords[n*3+1], nodeCoords[n*3+2]);
-        // auto get_id = [&p](const std::unique_ptr<MeshNode>& m)->bool{ return p.IsEqual(m->point, Precision::Confusion()); };
-        
         // If there are duplicates, redirect the node tag to the correct,
         // deduplicated node.
         auto map_find(duplicate_map.find(n));
@@ -461,22 +460,6 @@ std::vector<ElementShape> Meshing::generate_element_shapes(const std::vector<siz
 
         // Begin next element
         if(i == nodes_per_elem){
-            // Checking for colinear points. Implemented when there some
-            // problems with mesh generation, but were due to a bad imple-
-            // mentation of mine. Probably not needed anymore.
-            //
-            // auto& nodes = list.back().nodes;
-            // double Delta = 0;
-            // if(node_per_elem % 3 == 0){
-            //     gp_Pnt p[3] = {nodes[0]->point, nodes[1]->point, nodes[2]->point};
-            //     gp_Mat deltaM(1, p[0].X(), p[0].Y(), 1, p[1].X(), p[1].Y(), 1, p[2].X(), p[2].Y());
-            //     Delta = std::abs(deltaM.Determinant());
-            // } else {
-            //     // TODO: Checking for 3D
-            // }
-            // if(Delta < 1e-3){
-            //     list.pop_back();
-            // }
 
             list.emplace_back();
             i = 0;

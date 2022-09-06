@@ -33,7 +33,7 @@
 namespace element{
 
 TRI3::TRI3(ElementShape s):
-    MeshElementCommon2DTri<TRI3>(s.nodes){}
+    MeshElementCommon2DTri<TRI3>(s.nodes, s.nodes_sorted){}
 
 std::vector<double> TRI3::get_k(const std::vector<double>& D, const double t) const{
     const size_t N = this->NODES_PER_ELEM;

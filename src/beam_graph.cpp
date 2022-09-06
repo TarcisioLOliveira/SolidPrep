@@ -102,8 +102,10 @@ std::vector<double> BeamGraph::run(){
             } else {
                 E = this->data->materials[0]->beam_E_3D(v1);
             }
-            this->nodes[0]->u_pos = new long[3]{pos[0], pos[1], pos[2]};
-            this->nodes[1]->u_pos = new long[3]{pos[3], pos[4], pos[5]};
+            for(size_t i = 0; i < 3; ++i){
+                this->nodes[0]->u_pos[i] = pos[i];
+                this->nodes[1]->u_pos[i] = pos[i+3];
+            }
             elems[0] = BeamElementFactory::make_element(BeamElementFactory::BEAM_LINEAR_2D, this->nodes[0], this->nodes[1], I, A, E);
             this->insert_element_matrix(K, elems[0]->get_k(), pos, W, N);
         }
@@ -131,7 +133,9 @@ std::vector<double> BeamGraph::run(){
             } else {
                 E = this->data->materials[0]->beam_E_3D(v);
             }
-            this->nodes[true_pos+1]->u_pos = new long[3]{pos[3], pos[4], pos[5]};
+            for(size_t i = 0; i < 3; ++i){
+                this->nodes[true_pos+1]->u_pos[i] = pos[i+3];
+            }
             elems[true_pos] = BeamElementFactory::make_element(BeamElementFactory::BEAM_LINEAR_2D, this->nodes[true_pos], this->nodes[true_pos+1], I, A, E);
             this->insert_element_matrix(K, elems[true_pos]->get_k(), pos, W, N);
             ++cur_id;
