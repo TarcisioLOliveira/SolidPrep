@@ -306,7 +306,7 @@ class MeshElementCommon2DTri : public MeshElementCommon2D<T>{
         const TopoDS_Edge line_edge = TopoDS::Edge(crosssection);
 
         for(size_t i = 0; i < N; ++i){
-            size_t j = (i + 1) % 3;
+            size_t j = (i + 1) % N;
 
             const TopoDS_Edge e = BRepBuilderAPI_MakeEdge(this->nodes[i]->point, this->nodes[j]->point);
             const gp_Dir dir(gp_Vec(this->nodes[i]->point, this->nodes[j]->point));
