@@ -34,7 +34,7 @@ std::vector<double> FiniteElement::calculate_forces(const Meshing* const mesh, c
         for(auto& e:g->mesh){
             auto f = e->get_internal_loads(D, mesh->thickness, displacements);
             for(size_t n = 0; n < node_num; ++n){
-                auto& node = e->nodes[n];
+                auto& node = e->nodes_sorted[n];
                 for(size_t i = 0; i < dof; ++i){
                     results[node->id*dof + i] += f[n*dof+i];
                 }
@@ -67,7 +67,7 @@ void FiniteElement::calculate_dimensions(const Meshing* const mesh, const std::v
             std::vector<long> pos;
             pos.reserve(k_dim);
             for(size_t i = 0; i < node_num; ++i){
-                const auto& n = e->nodes[i];
+                const auto& n = e->nodes_sorted[i];
                 for(size_t j = 0; j < dof; ++j){
                     pos.push_back(n->u_pos[j]);
                 }
@@ -128,7 +128,7 @@ void FiniteElement::add_geometry_to_K(const Meshing* const mesh, const Geometry*
         std::vector<long> u_pos;
         u_pos.reserve(dof*node_num);
         for(size_t i = 0; i < node_num; ++i){
-            const auto& n = e->nodes[i];
+            const auto& n = e->nodes_sorted[i];
             for(size_t j = 0; j < dof; ++j){
                 u_pos.push_back(n->u_pos[j]);
             }
@@ -150,7 +150,7 @@ void FiniteElement::add_geometry_to_K(const Meshing* const mesh, const Geometry*
             std::vector<long> u_pos;
             u_pos.reserve(dof*node_num);
             for(size_t i = 0; i < node_num; ++i){
-                const auto& n = e->nodes[i];
+                const auto& n = e->nodes_sorted[i];
                 for(size_t j = 0; j < dof; ++j){
                     u_pos.push_back(n->u_pos[j]);
                 }

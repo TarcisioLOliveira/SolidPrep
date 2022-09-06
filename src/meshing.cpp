@@ -133,7 +133,7 @@ void Meshing::prepare_for_FEM(const TopoDS_Shape& shape,
                 std::vector<Node*> list;
                 int last = -1;
                 for(size_t i = 0; i < N; ++i){
-                    auto n = e->nodes[i];
+                    auto n = e->nodes_sorted[i];
                     if(is_inside(n->point)){
                         // maintain ordering
                         if(last == -1){
@@ -152,8 +152,8 @@ void Meshing::prepare_for_FEM(const TopoDS_Shape& shape,
                 } else if(list.size() == 1){
                     for(size_t i = 0; i < N; ++i){
                         size_t j = (i+1)%N;
-                        auto n1 = e->nodes[i]->point;
-                        auto n2 = e->nodes[j]->point;
+                        auto n1 = e->nodes_sorted[i]->point;
+                        auto n2 = e->nodes_sorted[j]->point;
                         if(p1.IsEqual(n1, Precision::Confusion()) || p1.IsEqual(n2, Precision::Confusion()) ||
                            p2.IsEqual(n1, Precision::Confusion()) || p2.IsEqual(n2, Precision::Confusion())){
                             break;
@@ -181,7 +181,7 @@ void Meshing::prepare_for_FEM(const TopoDS_Shape& shape,
                     logger::quick_log(fe);
                     for(size_t i = 0; i < N; ++i){
                         for(size_t j = 0; j < dof; ++j){
-                            auto n = e->nodes[i];
+                            auto n = e->nodes_sorted[i];
                             if(n->u_pos[j] >= 0){
                                 this->load_vector[n->u_pos[j]] += fe[i*dof+j];
                             }
@@ -434,7 +434,6 @@ void Meshing::sort_nodes(std::vector<ElementShape>& list) const{
     };
     for(auto& e:list){
         e.nodes_sorted = e.nodes;
-        std::sort(e.nodes.begin(), e.nodes.end(), comp);
         std::sort(e.nodes_sorted.begin(), e.nodes_sorted.end(), comp);
     }
 }

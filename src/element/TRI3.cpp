@@ -42,7 +42,7 @@ std::vector<double> TRI3::get_k(const std::vector<double>& D, const double t) co
 
     std::vector<gp_Pnt> p;
     for(size_t i = 0; i < N; ++i){
-        const auto& n = this->nodes[i];
+        const auto& n = this->nodes_sorted[i];
         p.push_back(n->point);
     }
 
@@ -89,7 +89,7 @@ std::vector<double> TRI3::get_DB(const std::vector<double>& D, const gp_Pnt& poi
 
     std::vector<gp_Pnt> p;
     for(size_t i = 0; i < N; ++i){
-        const auto& n = this->nodes[i];
+        const auto& n = this->nodes_sorted[i];
         p.push_back(n->point);
     }
 
@@ -128,7 +128,7 @@ std::vector<double> TRI3::get_Nf(const double t, const std::vector<gp_Pnt>& poin
 
     std::vector<gp_Pnt> p;
     for(size_t i = 0; i < N; ++i){
-        const auto& n = this->nodes[i];
+        const auto& n = this->nodes_sorted[i];
         p.push_back(n->point);
     }
 
