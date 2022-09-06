@@ -381,4 +381,63 @@ class MeshElementCommon2DTri : public MeshElementCommon2D<T>{
     }
 };
 
+template<class T>
+class MeshElementCommon2DQuad : public MeshElementCommon2D<T>{
+    public:
+    virtual ~MeshElementCommon2DQuad() = default;
+
+    virtual double get_volume(const double t) const override{
+        const gp_Mat deltaM(1, this->nodes[0]->point.X(), this->nodes[0]->point.Y(),
+                            1, this->nodes[1]->point.X(), this->nodes[1]->point.Y(),
+                            1, this->nodes[2]->point.X(), this->nodes[2]->point.Y());
+
+        const gp_Mat deltaM2(1, this->nodes[2]->point.X(), this->nodes[2]->point.Y(),
+                             1, this->nodes[3]->point.X(), this->nodes[3]->point.Y(),
+                             1, this->nodes[0]->point.X(), this->nodes[0]->point.Y());
+
+        return 0.5*(std::abs(deltaM.Determinant()) + std::abs(deltaM2.Determinant()))*t;
+    }
+
+    virtual TopoDS_Shape get_shape() const override{
+        const gp_Pnt p1 = this->nodes[0]->point;
+        const gp_Pnt p2 = this->nodes[1]->point;
+        const gp_Pnt p3 = this->nodes[2]->point;
+        const gp_Pnt p4 = this->nodes[3]->point;
+
+        return this->generate_geometry(p1, p2, p3);
+    }
+
+    virtual TopoDS_Shape get_shape(const std::vector<gp_Vec>& disp) const override{
+        const gp_Pnt p1 = this->nodes[0]->point.Translated(disp[0]);
+        const gp_Pnt p2 = this->nodes[1]->point.Translated(disp[1]);
+        const gp_Pnt p3 = this->nodes[2]->point.Translated(disp[2]);
+        const gp_Pnt p4 = this->nodes[3]->point.Translated(disp[3]);
+
+        return this->generate_geometry(p1, p2, p3, p4);
+    }
+
+    protected:
+    MeshElementCommon2DQuad(const std::vector<MeshNode*>& nodes, const std::vector<MeshNode*>& nodes_sorted):
+            MeshElementCommon2D<T>(nodes, nodes_sorted)
+            {}
+
+    inline TopoDS_Face generate_geometry(const gp_Pnt& p1, const gp_Pnt& p2, const gp_Pnt& p3, const gp_Pnt& p4) const{
+        const TopoDS_Vertex v1 = BRepBuilderAPI_MakeVertex(p1);
+        const TopoDS_Vertex v2 = BRepBuilderAPI_MakeVertex(p2);
+        const TopoDS_Vertex v3 = BRepBuilderAPI_MakeVertex(p3);
+        const TopoDS_Vertex v4 = BRepBuilderAPI_MakeVertex(p4);
+
+        const TopoDS_Edge e1 = BRepBuilderAPI_MakeEdge(v1, v2);
+        const TopoDS_Edge e2 = BRepBuilderAPI_MakeEdge(v2, v3);
+        const TopoDS_Edge e3 = BRepBuilderAPI_MakeEdge(v3, v4);
+        const TopoDS_Edge e4 = BRepBuilderAPI_MakeEdge(v4, v1);
+
+        const TopoDS_Wire w = BRepBuilderAPI_MakeWire(e1, e2, e3, e4);
+
+        const TopoDS_Face f = BRepBuilderAPI_MakeFace(w);
+
+        return f;
+    }
+};
+
 #endif
