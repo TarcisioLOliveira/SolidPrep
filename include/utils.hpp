@@ -37,6 +37,47 @@ namespace utils{
         PROBLEM_TYPE_3D
     };
 
+    /**
+     * Simple dynamic array that manages its own lifetime.
+     */
+    template<typename T>
+    class DynArray{
+        public:
+        DynArray(const size_t size):
+            array(new T[size]){}
+        DynArray(const std::vector<T>& values):
+            array(new T[values.size()]){
+            std::copy(values.begin(), values.end(), this->array);
+        }
+        DynArray(std::vector<T>&& values):
+            array(new T[values.size()]){
+            std::move(values.begin(), values.end(), this->array);
+        }
+        ~DynArray(){
+            delete[] this->array;
+        }
+        DynArray(DynArray&) = delete;
+        DynArray(DynArray&&) = delete;
+        bool operator=(DynArray&) = delete;
+        bool operator=(DynArray&&) = delete;
+
+        inline T& operator[](const size_t pos){
+            return this->array[pos];
+        }
+        inline T& operator[](const size_t pos) const{
+            return this->array[pos];
+        }
+        inline operator T*(){
+            return this->array;
+        }
+        inline operator T*() const{
+            return this->array;
+        }
+
+        private:
+        T* array;
+    };
+
     template<typename T>
     inline std::vector<T*> extract_pointers(const std::vector<std::unique_ptr<T>>& vec){
         std::vector<T*> v;
