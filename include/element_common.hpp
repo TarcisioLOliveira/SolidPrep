@@ -288,17 +288,6 @@ class MeshElementCommon2D : public MeshElementCommon<T>{
         return f;
     }
 
-    protected:
-    MeshElementCommon2D(const std::vector<MeshNode*>& nodes, const std::vector<MeshNode*>& nodes_sorted):
-            MeshElementCommon<T>(nodes, nodes_sorted)
-            {}
-};
-
-template<class T>
-class MeshElementCommon2DTri : public MeshElementCommon2D<T>{
-    public:
-    virtual ~MeshElementCommon2DTri() = default;
-
     virtual std::vector<gp_Pnt> get_intersection_points(const TopoDS_Shape& crosssection) const override{
         const size_t N = T::NODES_PER_ELEM;
         std::vector<gp_Pnt> points;
@@ -334,6 +323,17 @@ class MeshElementCommon2DTri : public MeshElementCommon2D<T>{
 
         return points;
     }
+
+    protected:
+    MeshElementCommon2D(const std::vector<MeshNode*>& nodes, const std::vector<MeshNode*>& nodes_sorted):
+            MeshElementCommon<T>(nodes, nodes_sorted)
+            {}
+};
+
+template<class T>
+class MeshElementCommon2DTri : public MeshElementCommon2D<T>{
+    public:
+    virtual ~MeshElementCommon2DTri() = default;
 
     virtual double get_volume(const double t) const override{
         const gp_Mat deltaM(1, this->nodes[0]->point.X(), this->nodes[0]->point.Y(),
