@@ -404,7 +404,7 @@ class MeshElementCommon2DQuad : public MeshElementCommon2D<T>{
         const gp_Pnt p3 = this->nodes[2]->point;
         const gp_Pnt p4 = this->nodes[3]->point;
 
-        return this->generate_geometry(p1, p2, p3);
+        return this->generate_geometry(p1, p2, p3, p4);
     }
 
     virtual TopoDS_Shape get_shape(const std::vector<gp_Vec>& disp) const override{
