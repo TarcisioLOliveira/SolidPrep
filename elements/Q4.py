@@ -79,8 +79,8 @@ def make_Nf():
     """
     init_N()
 
-    NN1 = [N[0],   0 , N[1],   0 , N[2],   0 , N[2],   0 ]
-    NN2 = [  0 , N[0],   0 , N[1],   0 , N[2],   0 , N[2]] 
+    NN1 = [N[0],   0 , N[1],   0 , N[2],   0 , N[3],   0 ]
+    NN2 = [  0 , N[0],   0 , N[1],   0 , N[2],   0 , N[3]] 
     NN = t*sympy.Matrix([NN1, NN2]).T
 
     # Set up variables for line integral
