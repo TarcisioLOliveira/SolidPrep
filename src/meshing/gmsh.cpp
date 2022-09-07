@@ -31,9 +31,9 @@ namespace meshing{
 
 Gmsh::Gmsh(const std::vector<std::unique_ptr<Geometry>>& geometries,
            const MeshElementFactory* const elem_type,
-           double size, double thickness, int algorithm):
+           double size, double thickness, int algorithm2D, int algorithm3D):
     Meshing(geometries, elem_type, thickness),
-    size(size), algorithm(algorithm){
+    size(size), algorithm2D(algorithm2D), algorithm3D(algorithm3D){
 }
 
 void Gmsh::mesh(const std::vector<Force>& forces, 
@@ -87,7 +87,8 @@ void Gmsh::gmsh_meshing(bool has_condition_inside, TopoDS_Shape sh, std::vector<
     gmsh::option::setNumber("Mesh.MeshSizeMin", this->size);
     gmsh::option::setNumber("Mesh.MeshSizeMax", this->size);
 
-    gmsh::option::setNumber("Mesh.Algorithm", this->algorithm);
+    gmsh::option::setNumber("Mesh.Algorithm", this->algorithm2D);
+    gmsh::option::setNumber("Mesh.Algorithm3D", this->algorithm3D);
 
     gmsh::option::setNumber("Mesh.ElementOrder", this->elem_info->get_element_order());
     gmsh::option::setNumber("Mesh.HighOrderOptimize", 2);

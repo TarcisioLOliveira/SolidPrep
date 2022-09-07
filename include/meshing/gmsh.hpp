@@ -32,14 +32,15 @@ class Gmsh : public Meshing{
     public:
     Gmsh(const std::vector<std::unique_ptr<Geometry>>& geometries,
          const MeshElementFactory* const elem_type,
-         double size, double thickness, int algorithm = 6);
+         double size, double thickness, int algorithm2D = 6, int algorithm3D = 4);
 
     virtual void mesh(const std::vector<Force>& forces, 
                       const std::vector<Support>& supports) override;
 
     private:
     double size;
-    int algorithm;
+    int algorithm2D;
+    int algorithm3D;
 
     void gmsh_meshing(bool has_condition_inside, TopoDS_Shape sh, std::vector<size_t>& geom_elem_mapping, std::vector<size_t>& elem_tags, std::vector<size_t>& elem_node_tags, const MeshElementFactory* const elem_type);
 };

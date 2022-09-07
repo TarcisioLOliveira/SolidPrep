@@ -23,7 +23,7 @@
         "type": "direct_solver"
     },
     "sizing":{
-        "type": "standard_sizing", // Sizing algorithm
+        "type": "standard_sizing", // Sizing algorithm2D
         "element_size": 4, // Element size for beam analysis
         "oversizing": 1.0, // Oversizing constant, optional
         "finite_element":{
@@ -40,7 +40,7 @@
         "type": "gmsh",
         "element_size": 5,
         "element_type": "GT9", //YUQIU and YIN, 1994
-        "algorithm": 6 // Gmsh meshing algorithm, optional
+        "algorithm2D": 6 // Gmsh meshing algorithm2D, optional
     },
     "topopt":{
         "type": "minimal_volume", // LE et al, 2009
