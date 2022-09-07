@@ -144,6 +144,10 @@ struct ElementShape{
  */
 class Element{
     public:
+    enum class Shape{
+        TRI,
+        QUAD
+    };
 
     // Nodes sorted according to Gmsh's style.
     // Used for rendering element and other functions which require knowing

@@ -335,6 +335,8 @@ class MeshElementCommon2DTri : public MeshElementCommon2D<T>{
     public:
     virtual ~MeshElementCommon2DTri() = default;
 
+    static const Element::Shape SHAPE_TYPE = Element::Shape::TRI;
+
     virtual double get_volume(const double t) const override{
         const gp_Mat deltaM(1, this->nodes[0]->point.X(), this->nodes[0]->point.Y(),
                             1, this->nodes[1]->point.X(), this->nodes[1]->point.Y(),
@@ -385,6 +387,8 @@ template<class T>
 class MeshElementCommon2DQuad : public MeshElementCommon2D<T>{
     public:
     virtual ~MeshElementCommon2DQuad() = default;
+
+    static const Element::Shape SHAPE_TYPE = Element::Shape::QUAD;
 
     virtual double get_volume(const double t) const override{
         const gp_Mat deltaM(1, this->nodes[0]->point.X(), this->nodes[0]->point.Y(),

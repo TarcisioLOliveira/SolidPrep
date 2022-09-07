@@ -76,6 +76,7 @@ class MeshElementFactory{
     inline virtual size_t get_gmsh_element_type() const = 0;
     inline virtual size_t get_element_order() const = 0;
     inline virtual utils::ProblemType get_problem_type() const = 0;
+    inline virtual Element::Shape get_shape_type() const = 0;
 };
 
 template<class T>
@@ -107,6 +108,9 @@ class MeshElementFactoryImpl : public MeshElementFactory{
     }
     inline size_t get_element_order() const override{
         return T::ORDER;
+    }
+    inline virtual Element::Shape get_shape_type() const override{
+        return T::SHAPE_TYPE;
     }
 };
 
