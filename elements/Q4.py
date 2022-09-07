@@ -14,10 +14,10 @@ t = sympy.symbols("t")
 D = []
 B = sympy.Matrix(np.zeros((3, 8)))
 J = 0
-a = sympy.symbols('a:4')# [0]*4
-b = sympy.symbols('b:4')# [0]*4
-c = sympy.symbols('c:4')# [0]*4
-d = sympy.symbols('d:4')# [0]*4
+a = sympy.symbols('a:4')
+b = sympy.symbols('b:4')
+c = sympy.symbols('c:4')
+d = sympy.symbols('d:4')
 x, y = sympy.symbols('x, y')
 
 def init_N():
@@ -26,29 +26,8 @@ def init_N():
     """
     global N
 
-    # M = sympy.Matrix([[1, x[0], y[0], x[0]*y[0]],
-    #                   [1, x[1], y[1], x[1]*y[1]],
-    #                   [1, x[2], y[2], x[2]*y[2]],
-    #                   [1, x[3], y[3], x[3]*y[3]]]).inv(method="LU")
-    # # M = sympy.simplify(M)
-    # sympy.pprint(M)
-
     for i in range(4):
-        # truth = np.zeros(4)
-        # truth[i] = 1
-        # truth = sympy.Matrix(truth)
-        # v = M*truth
-        # a[i] = v[0]
-        # b[i] = v[1]
-        # c[i] = v[2]
-        # d[i] = v[3]
-
         N[i] = a[i] + b[i]*x + c[i]*y + d[i]*x*y
-
-    # N[0] = 0.25*(1-xi)*(1-eta)
-    # N[1] = 0.25*(1+xi)*(1-eta)
-    # N[2] = 0.25*(1+xi)*(1+eta)
-    # N[3] = 0.25*(1-xi)*(1+eta)
 
 def init_DB():
     """ 
