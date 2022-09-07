@@ -109,8 +109,8 @@ def make_Nf():
 
         # Format output for use with C++
         formatted = str(NN[i])
-        formatted = re.sub(r"([abcxy]\d)\*\*2", r"\1*\1", formatted)
-        formatted = re.sub(r"([abcxy])(\d)", r"\1[\2]", formatted)
+        formatted = re.sub(r"([abcdxy]\d)\*\*2", r"\1*\1", formatted)
+        formatted = re.sub(r"([abcdxy])(\d)", r"\1[\2]", formatted)
 
         formatted = formatted.replace("sqrt", "std::sqrt")
 
@@ -133,7 +133,7 @@ def make_DB():
         DB[i] = sympy.simplify(sympy.nsimplify(sympy.collect(sympy.expand(DB[i]), [x, y])), rational=True)
         # Format output for use with C++
         formatted = str(DB[i])
-        formatted = re.sub(r"([abcD])(\d)", r"\1[\2]", formatted)
+        formatted = re.sub(r"([abcdD])(\d)", r"\1[\2]", formatted)
 
         if i > 0:
             print(",")
