@@ -244,7 +244,7 @@ void StandardBeamMesher::mesh(const std::vector<Force>& forces,
     }
     list.pop_back();
 
-    this->prune(list);
+    this->optimize(list, true);
 
     gmsh::clear();
     gmsh::finalize();

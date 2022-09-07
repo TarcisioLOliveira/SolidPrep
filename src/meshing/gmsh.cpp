@@ -70,7 +70,7 @@ void Gmsh::mesh(const std::vector<Force>& forces,
 
     auto list = this->generate_element_shapes(elem_tags, elem_node_tags, nodes_per_elem, duplicate_map);
 
-    this->prune(list);
+    this->optimize(list, has_condition_inside);
 
     this->prepare_for_FEM(shape, geom_elem_mapping, list, forces, supports);
 }
@@ -105,16 +105,16 @@ void Gmsh::gmsh_meshing(bool has_condition_inside, TopoDS_Shape sh, std::vector<
 
     gmsh::model::mesh::generate(dim);
 
+    size_t type = elem_type->get_gmsh_element_type();
     std::vector<std::size_t> node_tags;
     std::vector<double> node_coords, node_params;
     if(has_condition_inside){
         gmsh::model::mesh::getNodes(node_tags, node_coords, node_params, -1, -1, true);
     } else {
-        gmsh::model::mesh::getNodes(node_tags, node_coords, node_params, dim, -1, true);
+        gmsh::model::mesh::getNodesByElementType(type, node_tags, node_coords, node_params, -1, false);
     }
 
     // Would need to be changed to support multiple elements
-    size_t type = elem_type->get_gmsh_element_type();
     geom_elem_mapping.resize(geometries.size());
     if(geometries.size() == 1){
         gmsh::model::mesh::getElementsByType(type, elem_tags, elem_node_tags, -1);

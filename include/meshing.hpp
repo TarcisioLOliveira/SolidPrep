@@ -107,7 +107,7 @@ class Meshing{
      *
      * @param list List of element shapes.
      */
-    virtual void prune(std::vector<ElementShape>& list);
+    virtual void optimize(std::vector<ElementShape>& list, const bool prune);
 
     /**
      * Generates the list of element shapes from mesh information.

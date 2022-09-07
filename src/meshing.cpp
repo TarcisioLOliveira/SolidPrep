@@ -252,7 +252,7 @@ void Meshing::prune(const std::vector<Force>& forces,
         }
     }
 
-    this->prune(list);
+    this->optimize(list, true);
 
     this->prepare_for_FEM(shape, geom_elem_mapping, list, forces, supports);
 }
@@ -390,7 +390,7 @@ bool Meshing::is_strictly_inside2D(gp_Pnt p, TopoDS_Shape s) const{
     return insider.State() == TopAbs_ON && !on_edge;
 }
 
-void Meshing::prune(std::vector<ElementShape>& list){
+void Meshing::optimize(std::vector<ElementShape>& list, const bool prune){
     // Prune unused nodes
     size_t new_id = 0;
     for(auto& n : this->node_list){
@@ -398,32 +398,35 @@ void Meshing::prune(std::vector<ElementShape>& list){
         ++new_id;
     }
 
-    std::vector<bool> used(this->node_list.size(), false);
-    for(size_t i = 0; i < list.size(); ++i){
-        for(auto& n:list[i].nodes){
-            used[n->id] = true;
-        }   
-    }
+    if(prune){
+        std::vector<bool> used(this->node_list.size(), false);
+        for(size_t i = 0; i < list.size(); ++i){
+            for(auto& n:list[i].nodes){
+                used[n->id] = true;
+            }   
+        }
 
-    bool renumber = false;
-    auto it = this->node_list.begin();
-    while(it < this->node_list.end()){
-        if(!used[(*it)->id]){
-            it = this->node_list.erase(it);
-            renumber = true;
-        } else {
-            ++it;
+        bool renumber = false;
+        auto it = this->node_list.begin();
+        while(it < this->node_list.end()){
+            if(!used[(*it)->id]){
+                it = this->node_list.erase(it);
+                renumber = true;
+            } else {
+                ++it;
+            }
+        }
+        used.clear();
+
+        if(renumber){
+            new_id = 0;
+            for(auto& n : this->node_list){
+                n->id = new_id;
+                ++new_id;
+            }
         }
     }
-    used.clear();
 
-    if(renumber){
-        new_id = 0;
-        for(auto& n : this->node_list){
-            n->id = new_id;
-            ++new_id;
-        }
-    }
     this->reverse_cuthill_mckee(list);
 
     this->sort_nodes(list);
