@@ -300,8 +300,6 @@ std::vector<double> Meshing::get_force_dof(const Force& force, const MeshElement
             f[0] = -force.vec.X();
     }
 
-
-
     return f;
 }
 
@@ -317,7 +315,7 @@ void Meshing::reverse_cuthill_mckee(const std::vector<ElementShape>& elem_list){
             }
         }
     }
-    std::vector<bool> added(elem_list.size(), false);
+    std::vector<bool> added(this->node_list.size(), false);
 
     // Get node with least degree
     size_t min_degree = adjacents[0].size();
