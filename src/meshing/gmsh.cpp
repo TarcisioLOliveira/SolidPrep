@@ -106,6 +106,13 @@ void Gmsh::gmsh_meshing(bool has_condition_inside, TopoDS_Shape sh, std::vector<
     gmsh::model::mesh::generate(dim);
 
     size_t type = elem_type->get_gmsh_element_type();
+    std::vector<int> elem_types;
+    gmsh::model::mesh::getElementTypes(elem_types);
+    // Check if meshing went well
+    logger::log_assert(std::find(elem_types.begin(), elem_types.end(), type) != elem_types.end(), logger::ERROR,
+                        "element type not found in mesh's list of element types (this shouldn't happen).");
+
+    // Get nodes and their tags
     std::vector<std::size_t> node_tags;
     std::vector<double> node_coords, node_params;
     if(has_condition_inside){
