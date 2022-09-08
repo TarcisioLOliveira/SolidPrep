@@ -91,7 +91,6 @@ void Gmsh::gmsh_meshing(bool has_condition_inside, TopoDS_Shape sh, std::vector<
     gmsh::option::setNumber("Mesh.Algorithm3D", this->algorithm3D);
 
     gmsh::option::setNumber("Mesh.ElementOrder", this->elem_info->get_element_order());
-    gmsh::option::setNumber("Mesh.HighOrderOptimize", 2);
     gmsh::option::setNumber("Mesh.Optimize", 1);
     gmsh::option::setNumber("Mesh.OptimizeNetgen", 1);
 
