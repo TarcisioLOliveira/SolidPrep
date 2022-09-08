@@ -94,8 +94,15 @@ void Gmsh::gmsh_meshing(bool has_condition_inside, TopoDS_Shape sh, std::vector<
     gmsh::option::setNumber("Mesh.Optimize", 1);
     gmsh::option::setNumber("Mesh.OptimizeNetgen", 1);
 
-    size_t dim = 0;
+    // Quad/hex recombination
     auto problem_type = this->elem_info->get_problem_type();
+    if(elem_type->get_shape_type() == Element::Shape::QUAD){
+        gmsh::option::setNumber("Mesh.RecombinationAlgorithm", 2);
+        gmsh::option::setNumber("Mesh.RecombineAll", 1);
+        gmsh::option::setNumber("Mesh.Recombine3DAll", 1);
+    }
+
+    size_t dim = 0;
     if(problem_type == utils::PROBLEM_TYPE_2D){
         dim = 2;
     } else if(problem_type == utils::PROBLEM_TYPE_3D){
