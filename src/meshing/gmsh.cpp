@@ -152,6 +152,20 @@ void Gmsh::gmsh_meshing(bool has_condition_inside, TopoDS_Shape sh, std::vector<
         this->node_list.emplace_back(std::make_unique<MeshNode>(p, node_tags[i], dof));
     }
 
+    // Gmsh tends to return fully duplicated nodes (id + point) for some
+    // reason, so it's necessary to remove them before creating the elements.
+    auto idsort = [](const std::unique_ptr<MeshNode>& n1, const std::unique_ptr<MeshNode>& n2){
+        return n1->id < n2->id;
+    };
+    std::sort(this->node_list.begin(), this->node_list.end(), idsort);
+    auto i = this->node_list.begin();
+    while(i < this->node_list.end()-1){
+        if((*i)->id == (*(i+1))->id){
+            this->node_list.erase(i+1);
+        } else {
+            ++i;
+        }
+    }
 }
 
 }
