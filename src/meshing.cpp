@@ -59,10 +59,9 @@ void Meshing::prepare_for_FEM(const TopoDS_Shape& shape,
         bool supported = false;
         for(auto& s : supports){
             if(s.S.is_inside(n->point)){
-                size_t offset = 0;
-                std::vector<long> sup_pos = this->get_support_dof(offset, 0, s, this->elem_info);
+                std::vector<bool> sup_pos = this->get_support_dof(s, this->elem_info);
                 for(size_t j = 0; j < dof; ++j){
-                    if(sup_pos[j] >= 0){
+                    if(!sup_pos[j]){
                         if(n->u_pos[j] == 0){
                             n->u_pos[j] = current;
                             ++current;
@@ -257,27 +256,26 @@ void Meshing::prune(const std::vector<Force>& forces,
     this->prepare_for_FEM(shape, geom_elem_mapping, list, forces, supports);
 }
 
-std::vector<long> Meshing::get_support_dof(size_t& offset, size_t id, const Support& support, const MeshElementFactory* elem_info) const{
+std::vector<bool> Meshing::get_support_dof(const Support& support, const MeshElementFactory* elem_info) const{
     size_t size = elem_info->get_dof_per_node();
     utils::ProblemType prob_type = elem_info->get_problem_type();
-    std::vector<long> pos(size);
-    id *= size;
+    std::vector<bool> pos(size);
     switch(size){
         case 6:
-            pos[5] = support.MZ ? -1 : (id + offset++);
-            pos[4] = support.MY ? -1 : (id + offset++);
-            pos[3] = support.MX ? -1 : (id + offset++);
+            pos[5] = support.MZ;
+            pos[4] = support.MY;
+            pos[3] = support.MX;
             [[fallthrough]];
         case 3:
             if(prob_type == utils::PROBLEM_TYPE_2D){
-                pos[2] = support.MZ ? -1 : (id + offset++);
+                pos[2] = support.MZ;
             } else {
-                pos[2] = support.Z ? -1 : (id + offset++);
+                pos[2] = support.Z;
             }
             [[fallthrough]];
         case 2:
-            pos[1] = support.Y ? -1 : (id + offset++);
-            pos[0] = support.X ? -1 : (id + offset++);
+            pos[1] = support.Y;
+            pos[0] = support.X;
     }
 
     return pos;

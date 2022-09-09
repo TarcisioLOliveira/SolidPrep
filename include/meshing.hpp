@@ -75,7 +75,7 @@ class Meshing{
     std::vector<double> load_vector;
 
     protected:
-    std::vector<long> get_support_dof(size_t& offset, size_t id, const Support& support, const MeshElementFactory* elem_maker) const;
+    std::vector<bool> get_support_dof(const Support& support, const MeshElementFactory* elem_maker) const;
     std::vector<double> get_force_dof(const Force& force, const MeshElementFactory* elem_maker) const;
     void reverse_cuthill_mckee(const std::vector<ElementShape>& elem_list);
     // Inside and not on boundary
