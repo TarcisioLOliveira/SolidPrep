@@ -58,7 +58,6 @@ void FiniteElement::calculate_dimensions(const Meshing* const mesh, const std::v
 
     size_t ei = 0;
     for(auto& g:mesh->geometries){ 
-        const auto D = g->get_D(0); 
         for(auto& e:g->mesh){
             size_t min_i = 0;
             size_t max_i = 0;
