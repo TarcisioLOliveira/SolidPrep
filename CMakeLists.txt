@@ -34,7 +34,7 @@ endif()
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
     set(CMAKE_CXX_FLAGS "-Wall -Wextra")
     set(CMAKE_CXX_FLAGS_RELEASE "-O3 -march=native -pipe -fomit-frame-pointer -DNDEBUG")
-    #set(CMAKE_CXX_FLAGS_DEBUG  "-g -fsanitize=address")
+    set(CMAKE_CXX_FLAGS_DEBUG  "-g -Og")# -fsanitize=address")
 endif()
 
 # Enable link time optimization if supported
