@@ -54,7 +54,9 @@ void Meshing::prepare_for_FEM(const TopoDS_Shape& shape,
     for(size_t i = 0; i < this->node_list.size(); ++i){
         auto& n = this->node_list[i];
 
-        std::fill((long*)n->u_pos, (long*)n->u_pos+dof, 0);
+        for(size_t j = 0; j < dof; ++j){
+            n->u_pos[j] = 0;
+        }
 
         bool supported = false;
         for(auto& s : supports){
