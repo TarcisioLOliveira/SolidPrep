@@ -7,6 +7,9 @@ import sympy.physics.vector as spv
 import sys
 import re
 
+# Partially based on: 
+# MATLAB Guide to Finite Elements: An Interactive Approach (Kattan, 2008)
+
 xi = sympy.symbols('xi')
 eta = sympy.symbols('eta')
 N = [0]*4
