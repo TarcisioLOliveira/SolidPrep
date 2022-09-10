@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `Geometry` class, replacing `GroundStructure`.
 - Support for multiple geometries.
 - Support for multiple materials.
+- Q4 element.
 
 ### Fixed
 
