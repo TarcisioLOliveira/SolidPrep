@@ -27,7 +27,7 @@
 namespace element{
 
 Q4S::Q4S(ElementShape s):
-    MeshElementCommon2DQuad<Q4S>(s.nodes, s.nodes_sorted){
+    MeshElementCommon2DQuad<Q4S>(s.nodes){
 
     constexpr size_t N = Q4S::NODES_PER_ELEM;
     double maxx = this->nodes[0]->point.X();
@@ -63,38 +63,7 @@ Q4S::Q4S(ElementShape s):
 
 std::vector<double> Q4S::get_k(const std::vector<double>& D, const double t) const{
 
-    const auto k0 = this->get_k_base(D, t);
-
-    // Node ordering is important in this case, so we need to use the same
-    // ordering that Gmsh uses, as it's the same one that is used for the
-    // calculations too.
-    //
-    // Otherwise, the global matrix will have a ton of zeros.
-    constexpr size_t N = Q4S::NODES_PER_ELEM;
-    std::vector<size_t> pos;
-    for(size_t i = 0; i < N; ++i){
-        for(size_t j = 0; j < N; ++j){
-            if(this->nodes_sorted[j]->id == this->nodes[i]->id){
-                pos.push_back(j*2);
-                pos.push_back(j*2+1);
-                break;
-            }
-        }
-    }
-
-    // Afterwards, we need to get the matrix into a sorted-by-id composition,
-    // which can easily be node in a way analogous to how the global matrix
-    // K is formed.
-    std::vector<double> k(Q4S::K_DIM*Q4S::K_DIM);
-    for(size_t i = 0; i < Q4S::K_DIM; ++i){
-        for(size_t j = 0; j < Q4S::K_DIM; ++j){
-            const size_t p = i*Q4S::K_DIM+j;
-            const size_t ps = pos[i]*Q4S::K_DIM+pos[j];
-            k[ps] = k0[p];
-        }
-    }
-
-    return k;
+    return this->get_k_base(D, t);
 }
 
 std::vector<double> Q4S::get_DB(const std::vector<double>& D, const gp_Pnt& point) const{
@@ -104,38 +73,7 @@ std::vector<double> Q4S::get_DB(const std::vector<double>& D, const gp_Pnt& poin
     const double xi = p.X();
     const double eta = p.Y();
 
-    const auto DB0 = this->get_DB_base(D, xi, eta);
-
-    // Node ordering is important in this case, so we need to use the same
-    // ordering that Gmsh uses, as it's the same one that is used for the
-    // calculations too.
-    //
-    // Otherwise, the global matrix will have a ton of zeros.
-    constexpr size_t N = Q4S::NODES_PER_ELEM;
-    std::vector<size_t> pos;
-    for(size_t i = 0; i < N; ++i){
-        for(size_t j = 0; j < N; ++j){
-            if(this->nodes_sorted[j]->id == this->nodes[i]->id){
-                pos.push_back(j*2);
-                pos.push_back(j*2+1);
-                break;
-            }
-        }
-    }
-
-    // Afterwards, we need to get the matrix into a sorted-by-id composition,
-    // which can easily be node in a way analogous to how the global matrix
-    // K is formed.
-    std::vector<double> DB(DB0.size());
-    for(size_t i = 0; i < Q4S::K_DIM; ++i){
-        for(size_t j = 0; j < 3; ++j){
-            const size_t p = j*Q4S::K_DIM+i;
-            const size_t ps = j*Q4S::K_DIM+pos[i];
-            DB[ps] = DB0[p];
-        }
-    }
-
-    return DB;
+    return this->get_DB_base(D, xi, eta);
 }
 
 std::vector<double> Q4S::get_Nf(const double t, const std::vector<gp_Pnt>& points) const{
@@ -149,39 +87,7 @@ std::vector<double> Q4S::get_Nf(const double t, const std::vector<gp_Pnt>& point
     logger::quick_log(x[0], y[0], x[1], y[1]);
     logger::quick_log("");
 
-    const auto Nf0 = this->get_Nf_base(t, x, y);
-
-    // Node ordering is important in this case, so we need to use the same
-    // ordering that Gmsh uses, as it's the same one that is used for the
-    // calculations too.
-    //
-    // Otherwise, the global matrix will have a ton of zeros.
-    constexpr size_t N = Q4S::NODES_PER_ELEM;
-    std::vector<size_t> pos;
-    for(size_t i = 0; i < N; ++i){
-        for(size_t j = 0; j < N; ++j){
-            if(this->nodes_sorted[j]->id == this->nodes[i]->id){
-                pos.push_back(j*2);
-                pos.push_back(j*2+1);
-                break;
-            }
-        }
-    }
-    logger::quick_log(pos);
-
-    // Afterwards, we need to get the matrix into a sorted-by-id composition,
-    // which can easily be node in a way analogous to how the global matrix
-    // K is formed.
-    std::vector<double> Nf(Nf0.size());
-    for(size_t i = 0; i < Q4S::K_DIM; ++i){
-        for(size_t j = 0; j < Q4S::NODE_DOF; ++j){
-            const size_t p = i*Q4S::NODE_DOF+j;
-            const size_t ps = pos[i]*Q4S::NODE_DOF+j;
-            Nf[ps] = Nf0[p];
-        }
-    }
-
-    return Nf;
+    return this->get_Nf_base(t, x, y);
 }
 
 std::vector<double> Q4S::get_k_base(const std::vector<double>& D, const double t) const{

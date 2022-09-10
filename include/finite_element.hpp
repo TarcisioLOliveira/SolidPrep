@@ -65,7 +65,7 @@ class FiniteElement{
         for(size_t i = 0; i < w; ++i){
             for(size_t j = i; j < w; ++j){
                 if(pos[i] > -1 && pos[j] > -1){
-                    K[utils::to_lower_band(pos[i], pos[j], n)] += k[w*i + j];
+                    K[utils::to_band(pos[i], pos[j], n)] += k[w*i + j];
                 }
             }
         }

@@ -134,7 +134,7 @@ void Meshing::prepare_for_FEM(const TopoDS_Shape& shape,
                 std::vector<Node*> list;
                 int last = -1;
                 for(size_t i = 0; i < N; ++i){
-                    auto n = e->nodes_sorted[i];
+                    auto n = e->nodes[i];
                     if(is_inside(n->point)){
                         // maintain ordering
                         if(last == -1){
@@ -153,8 +153,8 @@ void Meshing::prepare_for_FEM(const TopoDS_Shape& shape,
                 } else if(list.size() == 1){
                     for(size_t i = 0; i < N; ++i){
                         size_t j = (i+1)%N;
-                        auto n1 = e->nodes_sorted[i]->point;
-                        auto n2 = e->nodes_sorted[j]->point;
+                        auto n1 = e->nodes[i]->point;
+                        auto n2 = e->nodes[j]->point;
                         if(p1.IsEqual(n1, Precision::Confusion()) || p1.IsEqual(n2, Precision::Confusion()) ||
                            p2.IsEqual(n1, Precision::Confusion()) || p2.IsEqual(n2, Precision::Confusion())){
                             break;
@@ -182,7 +182,7 @@ void Meshing::prepare_for_FEM(const TopoDS_Shape& shape,
                     logger::quick_log(fe);
                     for(size_t i = 0; i < N; ++i){
                         for(size_t j = 0; j < dof; ++j){
-                            auto n = e->nodes_sorted[i];
+                            auto n = e->nodes[i];
                             if(n->u_pos[j] >= 0){
                                 this->load_vector[n->u_pos[j]] += fe[i*dof+j];
                             }
@@ -426,17 +426,6 @@ void Meshing::optimize(std::vector<ElementShape>& list, const bool prune){
     }
 
     this->reverse_cuthill_mckee(list);
-
-    this->sort_nodes(list);
-}
-void Meshing::sort_nodes(std::vector<ElementShape>& list) const{
-    auto comp = [](MeshNode* n1, MeshNode* n2){
-        return n1->id < n2->id;
-    };
-    for(auto& e:list){
-        e.nodes_sorted = e.nodes;
-        std::sort(e.nodes_sorted.begin(), e.nodes_sorted.end(), comp);
-    }
 }
 
 std::vector<ElementShape> Meshing::generate_element_shapes(const std::vector<size_t>& elem_tags, const std::vector<size_t>& elem_node_tags, size_t nodes_per_elem, const std::unordered_map<size_t, size_t>& duplicate_map){

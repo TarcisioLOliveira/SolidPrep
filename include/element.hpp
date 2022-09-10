@@ -41,7 +41,11 @@ class Node{
      * Stores the position of the values of local displacement in the global
      * displacement vector.
      */
-    utils::DynArray<long> u_pos;
+    long* u_pos;
+
+    virtual ~Node(){
+        delete[] u_pos;
+    }
 
     protected:
     /**
@@ -50,7 +54,7 @@ class Node{
      * @param p Node position.
      * @param id Node id.
      */
-    Node(gp_Pnt p, size_t id, size_t u_size):point(std::move(p)), id(id), u_pos(u_size){}
+    Node(gp_Pnt p, size_t id, size_t u_size):point(std::move(p)), id(id), u_pos(new long[u_size]){}
 };
 
 /**
@@ -136,7 +140,6 @@ class MeshNode : public Node{
  */
 struct ElementShape{
     std::vector<MeshNode*> nodes;
-    std::vector<MeshNode*> nodes_sorted;
 };
 
 /**
@@ -152,10 +155,11 @@ class Element{
     // Nodes sorted according to Gmsh's style.
     // Used for rendering element and other functions which require knowing
     // the geometry and its edges.
-    utils::DynArray<Node*> const nodes;
-    // Nodes sorted according to id. Used for functions related to linear
-    // algebra.
-    utils::DynArray<Node*> const nodes_sorted;
+    Node** const nodes;
+
+    virtual ~Element(){
+        delete[] nodes;
+    }
 
     /**
      * Creates and returns the elemental stiffness matrix.
@@ -171,8 +175,20 @@ class Element{
      *
      * @param n Nodes.
      */
-    Element(const std::vector<Node*>& n, const std::vector<Node*>& nsort):
-        nodes(n), nodes_sorted(nsort){}
+    Element(const std::vector<Node*>& n):
+        nodes(allocate_nodes(n)){}
+        /**
+     * Sets the elements from the element vector.
+     *
+     * @param n Nodes
+     *
+     * @return Newly allocated matrix containing pointer to node array.
+     */
+    Node** allocate_nodes(const std::vector<Node*>& n){
+        Node** nodes(new Node*[n.size()]);
+        std::copy(n.begin(), n.end(), nodes);
+        return nodes;
+    }
 };
 
 /**
@@ -218,7 +234,7 @@ class BeamElement : public Element{
      * @param p1 Beam node 1.
      * @param p2 Beam node 2.
      */
-    BeamElement(BeamNode* p1, BeamNode* p2):Element({p1,p2}, {p1,p2}){}
+    BeamElement(BeamNode* p1, BeamNode* p2):Element({p1,p2}){}
 };
 
 class MeshElementFactory;
@@ -379,8 +395,8 @@ class MeshElement : public Element{
      *
      * @param nodes List of nodes.
      */
-    MeshElement(const std::vector<MeshNode*>& nodes, const std::vector<MeshNode*>& nodes_sorted):
-        Element(std::vector<Node*>(nodes.begin(), nodes.end()),std::vector<Node*>(nodes_sorted.begin(), nodes_sorted.end()))
+    MeshElement(const std::vector<MeshNode*>& nodes):
+        Element(std::vector<Node*>(nodes.begin(), nodes.end()))
         {}
 
     /**

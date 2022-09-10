@@ -27,7 +27,7 @@
 namespace element{
 
 Q4::Q4(ElementShape s):
-    MeshElementCommon2DQuad<Q4>(s.nodes, s.nodes_sorted),
+    MeshElementCommon2DQuad<Q4>(s.nodes),
     coeffs(this->get_coeffs())
     {}
 
@@ -35,8 +35,8 @@ std::array<double, Q4::NODES_PER_ELEM*Q4::NODES_PER_ELEM> Q4::get_coeffs() const
     constexpr size_t N = Q4::NODES_PER_ELEM;
     std::array<double, N> x, y;
     for(size_t i = 0; i < N; ++i){
-        x[i] = this->nodes_sorted[i]->point.X();
-        y[i] = this->nodes_sorted[i]->point.Y();
+        x[i] = this->nodes[i]->point.X();
+        y[i] = this->nodes[i]->point.Y();
     }
     std::array<double, N*N> M = 
         {1, x[0], y[0], x[0]*y[0],
@@ -62,7 +62,6 @@ std::array<double, Q4::NODES_PER_ELEM*Q4::NODES_PER_ELEM> Q4::get_coeffs() const
 std::vector<double> Q4::get_k(const std::vector<double>& D, const double t) const{
     constexpr size_t N = Q4::NODES_PER_ELEM;
     std::array<double, N> x, y;
-    std::vector<size_t> pos;
     // Node ordering is important in this case, so we need to use the same
     // ordering that Gmsh uses, as it's the same one that is used for the
     // calculations too.
@@ -71,13 +70,6 @@ std::vector<double> Q4::get_k(const std::vector<double>& D, const double t) cons
     for(size_t i = 0; i < N; ++i){
         x[i] = this->nodes[i]->point.X();
         y[i] = this->nodes[i]->point.Y();
-        for(size_t j = 0; j < N; ++j){
-            if(this->nodes_sorted[j]->id == this->nodes[i]->id){
-                pos.push_back(j*2);
-                pos.push_back(j*2+1);
-                break;
-            }
-        }
     }
 
     const double p = std::sqrt(3.0)/3.0;
@@ -91,12 +83,8 @@ std::vector<double> Q4::get_k(const std::vector<double>& D, const double t) cons
     // which can easily be node in a way analogous to how the global matrix
     // K is formed.
     std::vector<double> k(Q4::K_DIM*Q4::K_DIM);
-    for(size_t i = 0; i < Q4::K_DIM; ++i){
-        for(size_t j = 0; j < Q4::K_DIM; ++j){
-            const size_t p = i*Q4::K_DIM+j;
-            const size_t ps = pos[i]*Q4::K_DIM+pos[j];
-            k[ps] = k0[p]+k1[p]+k2[p]+k3[p];
-        }
+    for(size_t i = 0; i < Q4::K_DIM*Q4::K_DIM; ++i){
+        k[i] = k0[i]+k1[i]+k2[i]+k3[i];
     }
 
     return k;

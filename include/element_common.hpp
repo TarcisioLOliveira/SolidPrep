@@ -51,8 +51,8 @@ class MeshElementCommon : public MeshElement{
         std::vector<double> u_vec(K_DIM, 0);
         for(size_t l = 0; l < N; ++l){
             for(size_t j = 0; j < NODE_DOF; ++j){
-                if(this->nodes_sorted[l]->u_pos[j] > -1){
-                    u_vec[l*NODE_DOF + j] = u[this->nodes_sorted[l]->u_pos[j]];
+                if(this->nodes[l]->u_pos[j] > -1){
+                    u_vec[l*NODE_DOF + j] = u[this->nodes[l]->u_pos[j]];
                 }
             }
         }
@@ -76,8 +76,8 @@ class MeshElementCommon : public MeshElement{
         std::vector<double> U(K_DIM, 0);
         for(size_t l = 0; l < N; ++l){
             for(size_t j = 0; j < NODE_DOF; ++j){
-                if(this->nodes_sorted[l]->u_pos[j] > -1){
-                    U[l*NODE_DOF + j] = u[this->nodes_sorted[l]->u_pos[j]];
+                if(this->nodes[l]->u_pos[j] > -1){
+                    U[l*NODE_DOF + j] = u[this->nodes[l]->u_pos[j]];
                 }
             }
         }
@@ -100,8 +100,8 @@ class MeshElementCommon : public MeshElement{
         std::vector<double> u_vec(K_DIM, 0);
         for(size_t i = 0; i < N; ++i){
             for(size_t j = 0; j < NODE_DOF; ++j){
-                if(this->nodes_sorted[i]->u_pos[j] > -1){
-                    u_vec[i*NODE_DOF+j] = u[this->nodes_sorted[i]->u_pos[j]];
+                if(this->nodes[i]->u_pos[j] > -1){
+                    u_vec[i*NODE_DOF+j] = u[this->nodes[i]->u_pos[j]];
                 }
             }
         }
@@ -132,8 +132,8 @@ class MeshElementCommon : public MeshElement{
         std::vector<double> u_vec(K_DIM, 0);
         for(size_t i = 0; i < N; ++i){
             for(size_t j = 0; j < NODE_DOF; ++j){
-                if(this->nodes_sorted[i]->u_pos[j] > -1){
-                    u_vec[i*NODE_DOF+j] = u[this->nodes_sorted[i]->u_pos[j]];
+                if(this->nodes[i]->u_pos[j] > -1){
+                    u_vec[i*NODE_DOF+j] = u[this->nodes[i]->u_pos[j]];
                 }
             }
         }
@@ -150,8 +150,8 @@ class MeshElementCommon : public MeshElement{
         std::vector<double> l_vec(9, 0);
         for(size_t i = 0; i < N; ++i){
             for(size_t j = 0; j < NODE_DOF; ++j){
-                if(this->nodes_sorted[i]->u_pos[j] > -1){
-                    l_vec[i*NODE_DOF+j] = l[this->nodes_sorted[i]->u_pos[j]];
+                if(this->nodes[i]->u_pos[j] > -1){
+                    l_vec[i*NODE_DOF+j] = l[this->nodes[i]->u_pos[j]];
                 }
             }
         }
@@ -179,8 +179,8 @@ class MeshElementCommon : public MeshElement{
     }
 
     protected:
-    MeshElementCommon(const std::vector<MeshNode*>& nodes, const std::vector<MeshNode*>& nodes_sorted):
-            MeshElement(nodes, nodes_sorted)
+    MeshElementCommon(const std::vector<MeshNode*>& nodes):
+            MeshElement(nodes)
             {}
 
 };
@@ -207,8 +207,8 @@ class MeshElementCommon2D : public MeshElementCommon<T>{
         std::vector<double> U(K_DIM, 0);
         for(size_t l = 0; l < N; ++l){
             for(size_t j = 0; j < NODE_DOF; ++j){
-                if(this->nodes_sorted[l]->u_pos[j] > -1){
-                    U[l*NODE_DOF + j] = u[this->nodes_sorted[l]->u_pos[j]];
+                if(this->nodes[l]->u_pos[j] > -1){
+                    U[l*NODE_DOF + j] = u[this->nodes[l]->u_pos[j]];
                 }
             }
         }
@@ -237,8 +237,8 @@ class MeshElementCommon2D : public MeshElementCommon<T>{
         std::vector<double> u_vec(K_DIM, 0);
         for(size_t i = 0; i < N; ++i){
             for(size_t j = 0; j < NODE_DOF; ++j){
-                if(this->nodes_sorted[i]->u_pos[j] > -1){
-                    u_vec[i*NODE_DOF+j] = u[this->nodes_sorted[i]->u_pos[j]];
+                if(this->nodes[i]->u_pos[j] > -1){
+                    u_vec[i*NODE_DOF+j] = u[this->nodes[i]->u_pos[j]];
                 }
             }
         }
@@ -265,8 +265,8 @@ class MeshElementCommon2D : public MeshElementCommon<T>{
 
         for(size_t k = 0; k < N; ++k){
             for(size_t j = 0; j < NODE_DOF; ++j){
-                if(this->nodes_sorted[k]->u_pos[j] > -1){
-                    l[this->nodes_sorted[k]->u_pos[j]] += mult*vec3[k*NODE_DOF+j];
+                if(this->nodes[k]->u_pos[j] > -1){
+                    l[this->nodes[k]->u_pos[j]] += mult*vec3[k*NODE_DOF+j];
                 }
             }
         }
@@ -325,8 +325,8 @@ class MeshElementCommon2D : public MeshElementCommon<T>{
     }
 
     protected:
-    MeshElementCommon2D(const std::vector<MeshNode*>& nodes, const std::vector<MeshNode*>& nodes_sorted):
-            MeshElementCommon<T>(nodes, nodes_sorted)
+    MeshElementCommon2D(const std::vector<MeshNode*>& nodes):
+            MeshElementCommon<T>(nodes)
             {}
 };
 
@@ -362,8 +362,8 @@ class MeshElementCommon2DTri : public MeshElementCommon2D<T>{
     }
 
     protected:
-    MeshElementCommon2DTri(const std::vector<MeshNode*>& nodes, const std::vector<MeshNode*>& nodes_sorted):
-            MeshElementCommon2D<T>(nodes, nodes_sorted)
+    MeshElementCommon2DTri(const std::vector<MeshNode*>& nodes):
+            MeshElementCommon2D<T>(nodes)
             {}
 
     inline TopoDS_Face generate_geometry(const gp_Pnt& p1, const gp_Pnt& p2, const gp_Pnt& p3) const{
@@ -421,8 +421,8 @@ class MeshElementCommon2DQuad : public MeshElementCommon2D<T>{
     }
 
     protected:
-    MeshElementCommon2DQuad(const std::vector<MeshNode*>& nodes, const std::vector<MeshNode*>& nodes_sorted):
-            MeshElementCommon2D<T>(nodes, nodes_sorted)
+    MeshElementCommon2DQuad(const std::vector<MeshNode*>& nodes):
+            MeshElementCommon2D<T>(nodes)
             {}
 
     inline TopoDS_Face generate_geometry(const gp_Pnt& p1, const gp_Pnt& p2, const gp_Pnt& p3, const gp_Pnt& p4) const{
