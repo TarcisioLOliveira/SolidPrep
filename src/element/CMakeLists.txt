@@ -5,6 +5,7 @@ set(SOURCES_ELEMENT
     GT9.cpp
     TRI3.cpp
     Q4.cpp
+    Q4S.cpp
 )
 
 add_library(element ${SOURCES_ELEMENT})
