@@ -69,6 +69,10 @@ def init_N_norm():
     N[3] = 0.25*(1-xi)*(1+eta)
 
 def init_DB_norm():
+    """ 
+        Initializes the linear elasticity matrix B and the constitutive matrix 
+        D with normalized coordinates.
+    """
     global B
     global D
     global J
