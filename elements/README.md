@@ -15,19 +15,10 @@ arguments `-k`, `-DB`, and `-Nf`. The result is printed and can be copy-pasted
 into the C++ source file, only requiring the necessary variables to be properly
 defined in the same scope.
 
-Unlike what's usually done, the matrices are calculated using symbolic methods.
-The resulting formulas are therefore as exact as can be, but the results
-printed tend to be quite verbose because of that.
-
-It was the quickest method to obtain those matrices at the time I implemented
-them, being based on the method used by [topy](https://github.com/williamhunter/topy).
-It's unknown if it's faster than the usual method of Gaussian numeric
-integration, but it's definitely more exact. It may or may not benefit from
-the use of `-ffast-math`, but this is untested.
-
-To extend it, just take one of the elements as a base and work on it from
-there. You'll mostly need to change the interpolation functions and how they
-work with derivation and integration.
+Simpler elements (TRI3 and GT9) have `k` calculated using symbolic integration,
+as they are much simpler. Others (like Q4) have much more complex and verbose
+integrals, so the resulting matrix is not integrated, being integrated by
+Gaussian quadrature during runtime.
 
 As it involves symbolic computations, expect it to be a bit slow, especially
 for `k` with high-order elements.
