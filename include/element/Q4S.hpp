@@ -48,22 +48,19 @@ class Q4S : public MeshElementCommon2DQuad<Q4S>{
     }
 
     private:
+    double a, b, x0, y0 = 0;
+
     virtual std::vector<double> get_DB(const std::vector<double>& D, const gp_Pnt& point) const override;
     virtual std::vector<double> get_Nf(const double t, const std::vector<gp_Pnt>& points) const override;
 
-    std::vector<double> get_k_base(const std::vector<double>& D, const double t, const double a, const double b) const;
-    std::vector<double> get_DB_base(const std::vector<double>& D, const double xi, const double eta, const double a, const double b) const;
-    std::vector<double> get_Nf_base(const double t, const std::array<double, 2> x, const std::array<double, 2> y, const double a, const double b) const;
+    std::vector<double> get_k_base(const std::vector<double>& D, const double t) const;
+    std::vector<double> get_DB_base(const std::vector<double>& D, const double xi, const double eta) const;
+    std::vector<double> get_Nf_base(const double t, const std::array<double, 2> x, const std::array<double, 2> y) const;
 
-    inline void get_dimensions(double& a, double& b) const{
-        a = this->nodes[1]->point.X() - this->nodes[0]->point.X();
-        b = this->nodes[3]->point.Y() - this->nodes[0]->point.Y();
-    }
-
-    inline gp_Pnt normalize(const gp_Pnt& point, const double a, const double b) const{
+    inline gp_Pnt normalize(const gp_Pnt& point) const{
         return gp_Pnt(
-            (point.X() - this->nodes[0]->point.X() - a/2)/(2*a),
-            (point.Y() - this->nodes[0]->point.Y() - b/2)/(2*b),
+            point.X() - x0 - a,
+            point.Y() - y0 - b,
              0);
     }
 };
