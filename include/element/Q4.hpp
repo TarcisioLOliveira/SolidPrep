@@ -51,6 +51,9 @@ class Q4 : public MeshElementCommon2DQuad<Q4>{
     virtual std::vector<double> get_DB(const std::vector<double>& D, const gp_Pnt& point) const override;
     virtual std::vector<double> get_Nf(const double t, const std::vector<gp_Pnt>& points) const override;
 
+    virtual std::vector<double> get_k_base(const std::vector<double>& D, const double t, const double xi, const double eta, 
+                                           const std::array<double, NODES_PER_ELEM>& x, const std::array<double, NODES_PER_ELEM>& y) const;
+
     std::array<double, NODES_PER_ELEM*NODES_PER_ELEM> get_coeffs() const;
 
     const std::array<double, NODES_PER_ELEM*NODES_PER_ELEM> coeffs;
