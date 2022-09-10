@@ -14,30 +14,32 @@ t = sympy.symbols("t")
 D = []
 B = sympy.Matrix(np.zeros((3, 8)))
 J = 0
-a = sympy.symbols('a:4')
-b = sympy.symbols('b:4')
-c = sympy.symbols('c:4')
-d = sympy.symbols('d:4')
 x, y = sympy.symbols('x, y')
 
-def init_N():
+def init_N_nat():
     """ 
-        Initializes the interpolation matrix N.
+        Initializes the interpolation matrix N with natural coordinates.
     """
     global N
+
+    a = sympy.symbols('a:4')
+    b = sympy.symbols('b:4')
+    c = sympy.symbols('c:4')
+    d = sympy.symbols('d:4')
 
     for i in range(4):
         N[i] = a[i] + b[i]*x + c[i]*y + d[i]*x*y
 
-def init_DB():
+def init_DB_nat():
     """ 
-        Initializes the linear elasticity matrix B and the constitutive matrix D.
+        Initializes the linear elasticity matrix B and the constitutive matrix 
+        D with natural coordinates.
     """
     global B
     global D
     global J
 
-    init_N()
+    init_N_nat()
 
     for i in range(4):
         dNidx = sympy.diff(N[i], x)
@@ -52,11 +54,66 @@ def init_DB():
                       [d[3], d[4], d[5]],
                       [d[6], d[7], d[8]]])
 
+def init_N_norm():
+    """ 
+        Initializes the interpolation matrix N with normalized coordinates.
+    """
+    global N
+
+    N[0] = 0.25*(1-xi)*(1-eta)
+    N[1] = 0.25*(1+xi)*(1-eta)
+    N[2] = 0.25*(1+xi)*(1+eta)
+    N[3] = 0.25*(1-xi)*(1+eta)
+
+def init_DB_norm():
+    global B
+    global D
+    global J
+
+    init_N_norm()
+
+    x = sympy.symbols('x:4')
+    y = sympy.symbols('y:4')
+
+    a = sympy.Rational(0.25)*(y[0]*(xi-1)+ y[1]*(-1-xi)+y[2]*(1+xi) +y[3]*(1-xi))
+    b = sympy.Rational(0.25)*(y[0]*(eta-1)+y[1]*(1-eta)+y[2]*(1+eta)+y[3]*(-1-eta))
+    c = sympy.Rational(0.25)*(x[0]*(eta-1)+x[1]*(1-eta)+x[2]*(1+eta)+x[3]*(-1-eta))
+    d = sympy.Rational(0.25)*(x[0]*(xi-1)+ x[1]*(-1-xi)+x[2]*(1+xi) +x[3]*(1-xi))
+    a = sympy.expand(a)
+    b = sympy.expand(b)
+    c = sympy.expand(c)
+    d = sympy.expand(d)
+
+    for i in range(4):
+        dNidxi = sympy.diff(N[i], xi)
+        dNideta = sympy.diff(N[i], eta)
+        B[0, 2*i] = a*dNidxi - b*dNideta
+        B[1, 2*i + 1] = c*dNideta - d*dNidxi
+        B[2, 2*i] = c*dNideta - d*dNidxi
+        B[2, 2*i + 1] = a*dNidxi - b*dNideta
+
+    yy = sympy.Matrix([y[0], y[1], y[2], y[3]])
+    xx = sympy.Matrix([x[0], x[1], x[2], x[3]])
+
+    Jn = sympy.Matrix(
+            [[0, 1-eta, eta-xi, xi-1],
+             [eta-1, 0, xi+1, -xi-eta],
+             [xi-eta, -xi-1, 0, eta+1],
+             [1-xi, xi+eta, -eta-1, 0]])
+
+    J = sympy.simplify(sympy.collect(sympy.expand((sympy.Rational(1, 8)*xx.T*(Jn*yy))[0]), [xi**2, eta**2, xi*eta, xi, eta]), rational=True)
+    B = sympy.expand(B)
+
+    d = sympy.symbols('D:9')
+    D = sympy.Matrix([[d[0], d[1], d[2]],
+                      [d[3], d[4], d[5]],
+                      [d[6], d[7], d[8]]])
+
 def make_Nf():
     """
         Creates the Nf matrix.
     """
-    init_N()
+    init_N_nat()
 
     NN1 = [N[0],   0 , N[1],   0 , N[2],   0 , N[3],   0 ]
     NN2 = [  0 , N[0],   0 , N[1],   0 , N[2],   0 , N[3]] 
@@ -102,7 +159,7 @@ def make_DB():
     """
         Creates the DB matrix.
     """
-    init_DB()
+    init_DB_nat()
 
     DB = D*B
 
@@ -121,29 +178,24 @@ def make_DB():
 
 def make_k():
     """
-        Creates the k matrix.
+        Creates the k matrix (non-integrated, as numerical integration is
+        necessary).
     """
-    init_DB()
+    init_DB_norm()
 
     # Create the non-integrated matrix
-    k = t*B.T*D*B
+    k = sympy.Matrix(t*B.T*D*B/J)
 
     print("std::vector<double> k{")
     for i in range(len(k)):
-        # Prepare for integration
-        k[i] = sympy.simplify(sympy.collect(sympy.expand(k[i]), [x, y]))
-
-
-        # The integration step
-        k[i] = k[i].integrate((x, -1, 1))
-        k[i] = k[i].integrate((y, -1, 1))
-
-        k[i] = sympy.simplify(sympy.nsimplify(sympy.expand(k[i]), rational=True))
+        # No integration step in this case, as the integral is too complex
+        k[i] = sympy.simplify(sympy.collect(sympy.expand(k[i]), [xi**2, eta**2, xi*eta, xi, eta]), rational=True)
 
         # Format output for use with C++
         formatted = str(k[i])
-        formatted = re.sub(r"([abcdD]\d)\*\*2", r"\1*\1", formatted)
-        formatted = re.sub(r"([abcdD])(\d)", r"\1[\2]", formatted)
+        formatted = re.sub(r"([xyD]\d)\*\*2", r"\1*\1", formatted)
+        formatted = re.sub(r"(\w+)\*\*2", r"\1*\1", formatted)
+        formatted = re.sub(r"([xyD])(\d)", r"\1[\2]", formatted)
 
         if i > 0:
             print(",")
