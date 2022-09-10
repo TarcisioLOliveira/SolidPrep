@@ -46,6 +46,7 @@
 #include "element/GT9.hpp"
 #include "element/TRI3.hpp"
 #include "element/Q4.hpp"
+#include "element/Q4S.hpp"
 #include "topology_optimization/minimal_volume.hpp"
 #include "topology_optimization/minimal_compliance.hpp"
 
@@ -438,6 +439,10 @@ std::unique_ptr<MeshElementFactory> ProjectData::get_element_type(const rapidjso
     } else if(name == "Q4"){
         return std::unique_ptr<MeshElementFactory>(static_cast<MeshElementFactory*>(
                     new MeshElementFactoryImpl<element::Q4>()
+                ));
+    } else if(name == "Q4S"){
+        return std::unique_ptr<MeshElementFactory>(static_cast<MeshElementFactory*>(
+                    new MeshElementFactoryImpl<element::Q4S>()
                 ));
     }
     return nullptr;
