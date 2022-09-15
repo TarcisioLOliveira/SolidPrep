@@ -52,8 +52,8 @@ Q4S::Q4S(ElementShape s):
     this->y0 = miny;
     this->a = (maxx-minx)/2;
     this->b = (maxy-miny)/2;
-    std::array<double, N> xl{minx, maxx, maxx, minx};// x0, x0+2*a, x0+2*a, x0};
-    std::array<double, N> yl{miny, miny, maxy, maxy};// y0, y0, y0+2*b, y0+2*b};
+    // std::array<double, N> xl{minx, maxx, maxx, minx};// x0, x0+2*a, x0+2*a, x0};
+    // std::array<double, N> yl{miny, miny, maxy, maxy};// y0, y0, y0+2*b, y0+2*b};
 
     // for(size_t i = 0; i < N; ++i){
     //     for(size_t j = 0; j < N; ++j){
@@ -65,18 +65,24 @@ Q4S::Q4S(ElementShape s):
     // }
     // std::cout << std::endl;
 
-    // Enforce node ordering
+    // Enforce node ordering by rotating array
     constexpr double eps = 1e-1;
-    for(size_t i = 0; i < N-1; ++i){
-        if(!this->nodes[i]->point.IsEqual({xl[i], yl[i], 0.0}, eps)){
-            for(size_t j = i+1; j < N; ++j){
-                if(this->nodes[j]->point.IsEqual({xl[i], yl[i], 0.0}, eps)){
-                    std::swap(this->nodes[i], this->nodes[j]);
-                    break;
-                }
-            }
+    while(!this->nodes[0]->point.IsEqual({x0, y0, 0.0}, eps)){
+        for(size_t i = 0; i < N-1; ++i){
+            std::swap(this->nodes[i], this->nodes[i+1]);
         }
-    }  
+    }
+            
+    // for(size_t i = 0; i < N-1; ++i){
+    //     if(!this->nodes[i]->point.IsEqual({xl[i], yl[i], 0.0}, eps)){
+    //         for(size_t j = i+1; j < N; ++j){
+    //             if(this->nodes[j]->point.IsEqual({xl[i], yl[i], 0.0}, eps)){
+    //                 std::swap(this->nodes[i], this->nodes[j]);
+    //                 break;
+    //             }
+    //         }
+    //     }
+    // }  
 }
 
 std::vector<double> Q4S::get_k(const std::vector<double>& D, const double t) const{
