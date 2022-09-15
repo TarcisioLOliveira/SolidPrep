@@ -81,33 +81,6 @@ Q4S::Q4S(ElementShape s):
 
 std::vector<double> Q4S::get_k(const std::vector<double>& D, const double t) const{
 
-    return this->get_k_base(D, t);
-}
-
-std::vector<double> Q4S::get_DB(const std::vector<double>& D, const gp_Pnt& point) const{
-
-    const gp_Pnt p = this->normalize(point);
-
-    const double xi = p.X();
-    const double eta = p.Y();
-
-    return this->get_DB_base(D, xi, eta);
-}
-
-std::vector<double> Q4S::get_Nf(const double t, const std::vector<gp_Pnt>& points) const{
-
-    const gp_Pnt p0 = this->normalize(points[0]);
-    const gp_Pnt p1 = this->normalize(points[1]);
-
-    const std::array<double, 2> x{p0.X(), p1.X()};
-    const std::array<double, 2> y{p0.Y(), p1.Y()};
-    logger::quick_log(x[0], y[0], x[1], y[1]);
-
-    return this->get_Nf_base(t, x, y);
-}
-
-std::vector<double> Q4S::get_k_base(const std::vector<double>& D, const double t) const{
-
     std::vector<double> k{
     D[2]*t/4 + D[6]*t/4 + (D[0]*b*b*t + D[8]*a*a*t)/(3*a*b)
     ,
@@ -241,7 +214,12 @@ std::vector<double> Q4S::get_k_base(const std::vector<double>& D, const double t
     return k;
 }
 
-std::vector<double> Q4S::get_DB_base(const std::vector<double>& D, const double xi, const double eta) const{
+std::vector<double> Q4S::get_DB(const std::vector<double>& D, const gp_Pnt& point) const{
+
+    const gp_Pnt p = this->normalize(point);
+
+    const double xi = p.X();
+    const double eta = p.Y();
 
     std::vector<double> DB{
     (-D[0]*b + D[0]*eta - D[2]*a + D[2]*xi)/(4*a*b)
@@ -292,11 +270,18 @@ std::vector<double> Q4S::get_DB_base(const std::vector<double>& D, const double 
     ,
     (D[7]*a - D[7]*xi - D[8]*b - D[8]*eta)/(4*a*b)
     };
-
-
+     
     return DB;
 }
-std::vector<double> Q4S::get_Nf_base(const double t, const std::array<double, 2> x, const std::array<double, 2> y) const{
+
+std::vector<double> Q4S::get_Nf(const double t, const std::vector<gp_Pnt>& points) const{
+
+    const gp_Pnt p0 = this->normalize(points[0]);
+    const gp_Pnt p1 = this->normalize(points[1]);
+
+    const std::array<double, 2> x{p0.X(), p1.X()};
+    const std::array<double, 2> y{p0.Y(), p1.Y()};
+    logger::quick_log(x[0], y[0], x[1], y[1]);
 
     std::vector<double> Nf{
     t*std::sqrt(x[0]*x[0] - 2*x[0]*x[1] + x[1]*x[1] + y[0]*y[0] - 2*y[0]*y[1] + y[1]*y[1])*(6*a*b - 3*a*(y[0] + y[1]) - 3*b*(x[0] + x[1]) + 2*x[0]*y[0] + x[0]*y[1] + x[1]*y[0] + 2*x[1]*y[1])/(24*a*b)
