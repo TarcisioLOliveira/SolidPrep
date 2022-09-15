@@ -30,21 +30,20 @@ Q4S::Q4S(ElementShape s):
     MeshElementCommon2DQuad<Q4S>(s.nodes){
 
     constexpr size_t N = Q4S::NODES_PER_ELEM;
+
     double maxx = this->nodes[0]->point.X();
     double minx = this->nodes[0]->point.X();
     double maxy = this->nodes[0]->point.Y();
     double miny = this->nodes[0]->point.Y();
+    auto c = this->get_centroid();
     for(size_t i = 1; i < N; ++i){
-        double x = this->nodes[i]->point.X();
-        double y = this->nodes[i]->point.Y();
-        if(x > maxx){
+        const double x = this->nodes[i]->point.X();
+        const double y = this->nodes[i]->point.Y();
+        if(x > c.X() && y > c.Y()){
             maxx = x;
-        } else if(x < minx){
-            minx = x;
-        }
-        if(y > maxy){
             maxy = y;
-        } else if(y < miny){
+        } else if(x < c.X() && y < c.Y()){
+            minx = x;
             miny = y;
         }
     }
@@ -66,8 +65,7 @@ Q4S::Q4S(ElementShape s):
     // std::cout << std::endl;
 
     // Enforce node ordering by rotating array
-    constexpr double eps = 1e-1;
-    while(!this->nodes[0]->point.IsEqual({x0, y0, 0.0}, eps)){
+    while(!this->nodes[0]->point.IsEqual({x0, y0, 0.0}, Precision::Confusion())){
         for(size_t i = 0; i < N-1; ++i){
             std::swap(this->nodes[i], this->nodes[i+1]);
         }
