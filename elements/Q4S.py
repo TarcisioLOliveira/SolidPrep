@@ -17,7 +17,6 @@ N = [0]*4
 t = sympy.symbols("t")
 D = []
 B = sympy.Matrix(np.zeros((3, 8)))
-x, y = sympy.symbols('x, y')
 
 def init_N():
     """ 
@@ -25,10 +24,10 @@ def init_N():
     """
     global N
 
-    N[0] = ((a-xi)*(b-eta))/(4*a*b)
-    N[1] = ((a+xi)*(b-eta))/(4*a*b)
-    N[2] = ((a+xi)*(b+eta))/(4*a*b)
-    N[3] = ((a-xi)*(b+eta))/(4*a*b)
+    N[0] = (a-xi)*(b-eta)/(4*a*b)
+    N[1] = (a+xi)*(b-eta)/(4*a*b)
+    N[2] = (a+xi)*(b+eta)/(4*a*b)
+    N[3] = (a-xi)*(b+eta)/(4*a*b)
 
 def init_DB():
     """ 
@@ -111,7 +110,7 @@ def make_DB():
     print("std::vector<double> DB{")
     for i in range(len(DB)):
         # Prepare for printing
-        DB[i] = sympy.simplify(sympy.collect(sympy.expand(DB[i]), [x, y]), rational=True)
+        DB[i] = sympy.simplify(sympy.expand(DB[i]), rational=True)
         # Format output for use with C++
         formatted = str(DB[i])
         formatted = re.sub(r"([abcdD])(\d)", r"\1[\2]", formatted)
@@ -132,9 +131,9 @@ def make_k():
 
     print("std::vector<double> k{")
     for i in range(len(k)):
-        # No integration step in this case, as the integral is too complex
-        k[i] = sympy.integrate(k[i], (xi, -1, 1), (eta, -1, 1))
-        k[i] = sympy.simplify(sympy.expand(k[i]), rational=True)
+        # Integration step
+        k[i] = sympy.integrate(k[i], (xi, -a, a), (eta, -b, b))
+        k[i] = sympy.ratsimp(sympy.simplify(sympy.expand(k[i]), rational=True))
 
         # Format output for use with C++
         formatted = str(k[i])
