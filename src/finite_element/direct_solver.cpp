@@ -45,7 +45,6 @@ std::vector<double> DirectSolver::calculate_displacements(const Meshing* const m
     logger::quick_log("Done.");
     logger::quick_log("Calculating displacements...");
     logger::quick_log("W: ",W," N: ", N);
-    logger::quick_log(load.size());
 
     int info = LAPACKE_dpbtrs_work(LAPACK_COL_MAJOR, 'L', W, N-1, 1, K.data(), N, load.data(), W);
     logger::log_assert(info == 0, logger::ERROR, "LAPACKE returned {} while calculating displacements.", info);
