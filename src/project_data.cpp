@@ -17,6 +17,7 @@
  *   along with SolidPrep.  If not, see <https://www.gnu.org/licenses/>.
  *
  */
+#include "finite_element/gradient_descent.hpp"
 #define _USE_MATH_DEFINES
 #include <cmath>
 #include <BRepGProp.hxx>
@@ -357,6 +358,14 @@ std::unique_ptr<FiniteElement> ProjectData::load_fea(const rapidjson::GenericVal
     std::unique_ptr<FiniteElement> finite_element;
     if(fea["type"] == "direct_solver"){
         finite_element.reset(new finite_element::DirectSolver());
+    } else if(fea["type"] == "gradient_descent"){
+        this->log_data(fea, "eps", TYPE_DOUBLE, true);
+        double eps = fea["eps"].GetDouble();
+        double step = 0;
+        if(this->log_data(fea, "step", TYPE_DOUBLE, false)){
+            step = fea["step"].GetDouble();
+        }
+        finite_element.reset(new finite_element::GradientDescent(eps, step));
     }
 
     return finite_element;
