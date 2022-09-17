@@ -115,8 +115,6 @@ void PCG::generate_P(){
         for(size_t i = 0; i < W; ++i){
             this->P[i] = 1.0/this->K[i*N];
         }
-    } else if(this->precond == Preconditioner::SSOR){
-
     }
 }
 
