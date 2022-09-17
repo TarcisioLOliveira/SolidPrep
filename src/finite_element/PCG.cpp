@@ -20,6 +20,7 @@
 
 #include <algorithm>
 #include <cblas.h>
+#include <lapacke.h>
 #include "finite_element/PCG.hpp"
 #include "logger.hpp"
 
@@ -55,7 +56,10 @@ std::vector<double> PCG::calculate_displacements(const Meshing* const mesh, std:
     if(this->precond == Preconditioner::JACOBI){
         cblas_dsbmv(CblasColMajor, CblasLower, W, 0, 1.0, this->P.data(), 1, r.data(), 1, 0.0, z.data(), 1);
     } else if(this->precond == Preconditioner::SSOR){
-
+        LAPACKE_dtbtrs_work(LAPACK_COL_MAJOR, 'L', 'N', 'N', W, N-1, 1, this->K.data(), N, z.data(), W);
+        auto z2 = z;
+        cblas_dsbmv(CblasColMajor, CblasLower, W, 0, 1.0, this->P.data(), 1, z2.data(), 1, 0.0, z.data(), 1);
+        LAPACKE_dtbtrs_work(LAPACK_COL_MAJOR, 'L', 'T', 'N', W, N-1, 1, this->K.data(), N, z.data(), W);
     }
     double rho1 = cblas_ddot(W, z.data(), 1, r.data(), 1);
     double rho2 = 0;
@@ -75,7 +79,11 @@ std::vector<double> PCG::calculate_displacements(const Meshing* const mesh, std:
         if(this->precond == Preconditioner::JACOBI){
             cblas_dsbmv(CblasColMajor, CblasLower, W, 0, 1.0, this->P.data(), 1, r.data(), 1, 0.0, z.data(), 1);
         } else if(this->precond == Preconditioner::SSOR){
-
+            cblas_dcopy(W, r.data(), 1, z.data(), 1);
+            LAPACKE_dtbtrs_work(LAPACK_COL_MAJOR, 'L', 'N', 'N', W, N-1, 1, this->K.data(), N, z.data(), W);
+            auto z2 = z;
+            cblas_dsbmv(CblasColMajor, CblasLower, W, 0, 1.0, this->P.data(), 1, z2.data(), 1, 0.0, z.data(), 1);
+            LAPACKE_dtbtrs_work(LAPACK_COL_MAJOR, 'L', 'T', 'N', W, N-1, 1, this->K.data(), N, z.data(), W);
         }
         rho2 = rho1;
         rho1 = cblas_ddot(W, z.data(), 1, r.data(), 1);
@@ -102,7 +110,7 @@ std::vector<double> PCG::calculate_displacements(const Meshing* const mesh, std:
 
 
 void PCG::generate_P(){
-    if(this->precond == Preconditioner::JACOBI){
+    if(this->precond == Preconditioner::JACOBI || this->precond == Preconditioner::SSOR){
         #pragma omp parallel for
         for(size_t i = 0; i < W; ++i){
             this->P[i] = 1.0/this->K[i*N];
