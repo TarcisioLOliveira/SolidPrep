@@ -51,7 +51,7 @@ std::vector<double> GradientDescent::calculate_displacements(const Meshing* cons
         auto comp_abs = [](const double a, const double b){
             return std::abs(a) < std::abs(b);
         };
-        while(*std::max_element(d.begin(), d.end(),  comp_abs) > this->eps){
+        while(std::abs(*std::max_element(d.begin(), d.end(),  comp_abs)) > this->eps){
             cblas_dcopy(W, load.data(), 1, d.data(), 1);
             cblas_dsymm(CblasColMajor, CblasLeft, CblasLower, W, N-1, 1.0, this->K.data(), N, u.data(), W, -1.0, d.data(), W);
             cblas_daxpy(W, -step, d.data(), 1, u.data(), 1);
