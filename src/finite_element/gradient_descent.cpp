@@ -26,7 +26,7 @@
 namespace finite_element{
 
 GradientDescent::GradientDescent(const double eps, const double step):
-    eps(eps),step(step), displacement(){}
+    eps(eps),step(step), displacement(1){}
 
 std::vector<double> GradientDescent::calculate_displacements(const Meshing* const mesh, std::vector<double> load, const std::vector<double>& density, double pc){
 
