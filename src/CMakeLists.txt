@@ -29,7 +29,13 @@ add_subdirectory(optimization)
 
 add_executable(${PROJECT_NAME} ${SOURCES} ${SOURCES_PATHFINDING} ${SOURCES_SIZING} ${SOURCES_ELEMENT} ${SOURCES_MATERIAL} ${SOURCES_MESHING} ${SOURCES_FINITE_ELEMENT} ${SOURCES_TOPOLOGY_OPTIMIZATION} ${SOURCES_UTILS} ${SOURCES_OPTIMIZATION})
 
-target_link_libraries(${PROJECT_NAME} sizing pathfinding topology_optimization finite_element meshing element material utils optimization ${GMSH_LIB} ${OpenCASCADE_LIBRARIES} ${LAPACKE_LIBRARIES} ${LAPACK_LIBRARIES} cblas)
+set(REQ_LIBS sizing pathfinding topology_optimization finite_element meshing element material utils optimization ${GMSH_LIB} ${OpenCASCADE_LIBRARIES} ${LAPACKE_LIBRARIES} ${LAPACK_LIBRARIES} cblas)
+
+if(OpenMP_CXX_FOUND)
+    target_link_libraries(${PROJECT_NAME} ${REQ_LIBS} OpenMP::OpenMP_CXX)
+else()
+    target_link_libraries(${PROJECT_NAME} ${REQ_LIBS})
+endif()
 
 install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION .
                                 LIBRARY DESTINATION .

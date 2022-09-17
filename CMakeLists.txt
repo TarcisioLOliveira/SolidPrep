@@ -12,6 +12,8 @@ enable_language(CXX)
 enable_language(Fortran)
 set(CMAKE_CXX_STANDARD 17)
 
+set(NO_OPENMP OFF CACHE BOOL "Compile without OpenMP support")
+
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
 find_package(OpenCASCADE REQUIRED)
@@ -27,14 +29,21 @@ find_library(GMSH_LIB gmsh REQUIRED)
 find_path(GMSH_INC gmsh.h REQUIRED)
 find_package(VTK REQUIRED)
 
+if(NOT NO_OPENMP)
+    find_package(OpenMP)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp")
+else()
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unknown-pragmas")
+endif()
+
 if(WIN32 OR CYGWIN)
     list(APPEND GMSH_LIB winmm wsock32 ws2_32 psapi)
 endif()
 
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
-    set(CMAKE_CXX_FLAGS "-Wall -Wextra")
-    set(CMAKE_CXX_FLAGS_RELEASE "-O3 -march=native -pipe -fomit-frame-pointer -DNDEBUG")
-    set(CMAKE_CXX_FLAGS_DEBUG  "-g -Og")# -fsanitize=address")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra")
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -march=native -pipe -fomit-frame-pointer -DNDEBUG")
+    set(CMAKE_CXX_FLAGS_DEBUG  "${CMAKE_CXX_FLAGS_DEBUG} -g -Og")# -fsanitize=address")
 endif()
 
 # Enable link time optimization if supported
