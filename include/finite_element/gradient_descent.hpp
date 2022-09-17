@@ -29,6 +29,11 @@ class GradientDescent : public FiniteElement{
     public:
     GradientDescent(const double eps, const double step = 0.0);
 
+    inline virtual void set_steps(size_t s) override{
+        this->steps = s;
+        this->displacement.resize(s);
+    }
+
     virtual std::vector<double> calculate_displacements(const Meshing* const mesh, std::vector<double> load, const std::vector<double>& density = std::vector<double>(), double pc = 3) override;
 
     private:
