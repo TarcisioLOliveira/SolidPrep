@@ -81,7 +81,7 @@ std::vector<double> GradientDescent::calculate_displacements(const Meshing* cons
 
     this->current_step = (this->current_step + 1) % this->steps;
    
-    return load; 
+    return u;
 }
 
 }

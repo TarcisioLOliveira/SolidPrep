@@ -105,7 +105,7 @@ std::vector<double> PCG::calculate_displacements(const Meshing* const mesh, std:
 
     this->current_step = (this->current_step + 1) % this->steps;
    
-    return load; 
+    return u;
 }
 
 
