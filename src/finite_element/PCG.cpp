@@ -78,11 +78,11 @@ std::vector<double> PCG::calculate_displacements(const Meshing* const mesh, std:
         rho1 = cblas_ddot(W, z.data(), 1, r.data(), 1);
         beta = rho1/rho2;
         cblas_daxpy(W, beta, p.data(), 1, z.data(), 1);
-        auto& p2 = z;
+        std::swap(z, p);
 
-        cblas_dsbmv(CblasColMajor, CblasLower, W, N-1, 1.0, this->K.data(), N, p2.data(), 1, 0.0, q.data(), 1);
-        alpha = rho1/cblas_ddot(W, p2.data(), 1, q.data(), 1);
-        cblas_daxpy(W, alpha, p2.data(), 1, u.data(), 1);
+        cblas_dsbmv(CblasColMajor, CblasLower, W, N-1, 1.0, this->K.data(), N, p.data(), 1, 0.0, q.data(), 1);
+        alpha = rho1/cblas_ddot(W, p.data(), 1, q.data(), 1);
+        cblas_daxpy(W, alpha, p.data(), 1, u.data(), 1);
         cblas_daxpy(W, -alpha, q.data(), 1, r.data(), 1);
 
         ++it;
