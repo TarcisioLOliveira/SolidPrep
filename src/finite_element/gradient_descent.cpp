@@ -53,7 +53,7 @@ std::vector<double> GradientDescent::calculate_displacements(const Meshing* cons
         };
         while(std::abs(*std::max_element(d.begin(), d.end(),  comp_abs)) > this->eps){
             cblas_dcopy(W, load.data(), 1, d.data(), 1);
-            cblas_dsymm(CblasColMajor, CblasLeft, CblasLower, W, N-1, 1.0, this->K.data(), N, u.data(), W, -1.0, d.data(), W);
+            cblas_dsbmv(CblasColMajor, CblasLower, W, N-1, 1.0, this->K.data(), N, u.data(), 1, -1.0, d.data(), 1);
             cblas_daxpy(W, -step, d.data(), 1, u.data(), 1);
             ++it;
         }
@@ -63,10 +63,10 @@ std::vector<double> GradientDescent::calculate_displacements(const Meshing* cons
         auto d2 = d;
         while(alpha > this->eps){
             cblas_dcopy(W, load.data(), 1, d.data(), 1);
-            cblas_dsymm(CblasColMajor, CblasLeft, CblasLower, W, N-1, 1.0, this->K.data(), N, u.data(), W, -1.0, d.data(), W);
+            cblas_dsbmv(CblasColMajor, CblasLower, W, N-1, 1.0, this->K.data(), N, u.data(), 1, -1.0, d.data(), 1);
             
             top = cblas_ddot(W, d.data(), 1, d.data(), 1);
-            cblas_dsymm(CblasColMajor, CblasLeft, CblasLower, W, N-1, 1.0, this->K.data(), N, d.data(), W, 0.0, d2.data(), W);
+            cblas_dsbmv(CblasColMajor, CblasLower, W, N-1, 1.0, this->K.data(), N, d.data(), 1, 0.0, d2.data(), 1);
             bot = cblas_ddot(W, d.data(), 1, d2.data(), 1);
             alpha = top/bot;
 
