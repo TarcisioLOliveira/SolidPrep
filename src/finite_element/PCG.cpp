@@ -68,7 +68,10 @@ std::vector<double> PCG::calculate_displacements(const Meshing* const mesh, std:
 
     double beta = 0;
     size_t it = 1;
-    while(alpha > this->eps){
+    auto comp_abs = [](const double a, const double b){
+        return std::abs(a) < std::abs(b);
+    };
+    while(std::abs(*std::max_element(r.begin(), r.end(),  comp_abs)) > this->eps){
         if(this->precond == Preconditioner::JACOBI){
             cblas_dsbmv(CblasColMajor, CblasLower, W, 0, 1.0, this->P.data(), 1, r.data(), 1, 0.0, z.data(), 1);
         } else if(this->precond == Preconditioner::SSOR){
