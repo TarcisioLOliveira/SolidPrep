@@ -17,7 +17,6 @@
  *   along with SolidPrep.  If not, see <https://www.gnu.org/licenses/>.
  *
  */
-#include "finite_element/gradient_descent.hpp"
 #define _USE_MATH_DEFINES
 #include <cmath>
 #include <BRepGProp.hxx>
@@ -42,6 +41,8 @@
 #include "material/linear_elastic_orthotropic.hpp"
 #include "sizing/standard_sizing.hpp"
 #include "finite_element/direct_solver.hpp"
+#include "finite_element/gradient_descent.hpp"
+#include "finite_element/PCG.hpp"
 #include "meshing/gmsh.hpp"
 #include "sizing/beam_sizing.hpp"
 #include "element/GT9.hpp"
@@ -366,6 +367,20 @@ std::unique_ptr<FiniteElement> ProjectData::load_fea(const rapidjson::GenericVal
             step = fea["step"].GetDouble();
         }
         finite_element.reset(new finite_element::GradientDescent(eps, step));
+    } else if(fea["type"] == "PCG"){
+        this->log_data(fea, "eps", TYPE_DOUBLE, true);
+        this->log_data(fea, "preconditioner", TYPE_STRING, true);
+        double eps = fea["eps"].GetDouble();
+        std::string precond = fea["preconditioner"].GetString();
+        finite_element::PCG::Preconditioner p = finite_element::PCG::Preconditioner::JACOBI;
+        if(precond == "jacobi"){
+            p = finite_element::PCG::Preconditioner::JACOBI;
+        } else if(precond == "ssor"){
+            p = finite_element::PCG::Preconditioner::SSOR;
+        } else {
+            logger::log_assert(false, logger::ERROR, "Unknown preconditioner: ", precond);
+        }
+        finite_element.reset(new finite_element::PCG(eps, p));
     }
 
     return finite_element;
