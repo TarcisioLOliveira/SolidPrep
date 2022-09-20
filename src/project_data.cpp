@@ -373,7 +373,7 @@ std::unique_ptr<FiniteElement> ProjectData::load_fea(const rapidjson::GenericVal
         } else if(s == "lagrange_mma"){
             solver = finite_element::GradientDescent::Solver::LAGRANGE_MMA;
         } else {
-            logger::log_assert(false, logger::ERROR, "Unknown solver: ", s);
+            logger::log_assert(false, logger::ERROR, "Unknown solver: {}", s);
         }
         finite_element.reset(new finite_element::GradientDescent(eps, solver));
     } else if(fea["type"] == "PCG"){
@@ -387,7 +387,7 @@ std::unique_ptr<FiniteElement> ProjectData::load_fea(const rapidjson::GenericVal
         } else if(precond == "ssor"){
             p = finite_element::PCG::Preconditioner::SSOR;
         } else {
-            logger::log_assert(false, logger::ERROR, "Unknown preconditioner: ", precond);
+            logger::log_assert(false, logger::ERROR, "Unknown preconditioner: {}", precond);
         }
         finite_element.reset(new finite_element::PCG(eps, p));
     }
