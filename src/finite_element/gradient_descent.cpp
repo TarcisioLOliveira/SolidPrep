@@ -83,6 +83,47 @@ std::vector<double> GradientDescent::calculate_displacements(const Meshing* cons
         }
     } else if(this->solver == Solver::LAGRANGE_MMA){
 
+        const double xmin = 0;
+        const double xmax = 1;
+
+        const double delta_max = 1e2;
+        const double delta_min = 1e-3;
+        const double delta = delta_min;
+        std::vector<double> delta_e(W, delta);
+
+        auto uold1 = u;
+        auto uold2 = u;
+
+        while(std::abs(*std::max_element(d.begin(), d.end(),  comp_abs)) > this->eps){
+            cblas_dcopy(W, load.data(), 1, d.data(), 1);
+            cblas_dsbmv(CblasColMajor, CblasLower, W, N-1, 1.0, this->K.data(), N, u.data(), 1, -1.0, d.data(), 1);
+
+            #pragma omp parallel for
+            for(size_t i = 0; i < W; ++i){
+                double d_e = (u[i] - uold1[i])*(uold1[i] - uold2[i]);
+                if(d_e < 0){
+                    delta_e[i] = std::max(0.7*delta_e[i], delta_min);
+                } else if(d_e > 0){
+                    delta_e[i] = std::min(1.2*delta_e[i], delta_max);
+                }
+                double x_inf = u[i] - delta_e[i];
+                double x_sup = u[i] + delta_e[i];
+                double L = u[i] - 2*delta_max;
+                double U = u[i] + 2*delta_max;
+                double a = std::max({x_inf, xmin, 0.9*L+0.1*u[i]});
+                double b = std::min({x_sup, xmax, 0.9*U+0.1*u[i]});
+
+                double p = std::pow(U-u[i], 2)*(std::max(d[i], 0.0) + 0.001*std::abs(d[i]) + 0.5*1e-6*(U-L));
+                double q = std::pow(u[i]-L, 2)*(std::max(-d[i], 0.0) + 0.001*std::abs(d[i]) + 0.5*1e-6*(U-L));
+                double sqrtp = std::sqrt(p);
+                double sqrtq = std::sqrt(q);
+                uold2[i] = uold1[i];
+                uold1[i] = u[i];
+                u[i] = std::max(a, std::min(b, (L*sqrtp+U*sqrtq)/(sqrtp+sqrtq)));
+            }
+            
+            ++it;
+        }
     }
 
     logger::quick_log("Required iterations: ", it);
