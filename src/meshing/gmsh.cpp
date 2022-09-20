@@ -124,7 +124,7 @@ void Gmsh::gmsh_meshing(bool has_condition_inside, TopoDS_Shape sh, std::vector<
     if(has_condition_inside){
         gmsh::model::mesh::getNodes(node_tags, node_coords, node_params, -1, -1, true);
     } else {
-        gmsh::model::mesh::getNodesByElementType(type, node_tags, node_coords, node_params, -1, false);
+        gmsh::model::mesh::getNodes(node_tags, node_coords, node_params, dim, -1, true);
     }
 
     // Would need to be changed to support multiple elements
@@ -156,21 +156,6 @@ void Gmsh::gmsh_meshing(bool has_condition_inside, TopoDS_Shape sh, std::vector<
     for(size_t i = 0; i < node_tags.size(); ++i){
         gp_Pnt p(node_coords[i*3], node_coords[i*3+1], node_coords[i*3+2]);
         this->node_list.emplace_back(std::make_unique<MeshNode>(p, node_tags[i], dof));
-    }
-
-    // Gmsh tends to return fully duplicated nodes (id + point) for some
-    // reason, so it's necessary to remove them before creating the elements.
-    auto idsort = [](const std::unique_ptr<MeshNode>& n1, const std::unique_ptr<MeshNode>& n2){
-        return n1->id < n2->id;
-    };
-    std::sort(this->node_list.begin(), this->node_list.end(), idsort);
-    auto i = this->node_list.begin();
-    while(i < this->node_list.end()-1){
-        if((*i)->id == (*(i+1))->id){
-            this->node_list.erase(i+1);
-        } else {
-            ++i;
-        }
     }
 }
 
