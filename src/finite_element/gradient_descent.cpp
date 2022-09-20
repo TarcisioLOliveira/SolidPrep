@@ -25,8 +25,8 @@
 
 namespace finite_element{
 
-GradientDescent::GradientDescent(const double eps, const double step):
-    eps(eps),step(step), displacement(1){}
+GradientDescent::GradientDescent(const double eps):
+    eps(eps), displacement(1){}
 
 std::vector<double> GradientDescent::calculate_displacements(const Meshing* const mesh, std::vector<double> load, const std::vector<double>& density, double pc){
 
@@ -50,29 +50,21 @@ std::vector<double> GradientDescent::calculate_displacements(const Meshing* cons
     auto comp_abs = [](const double a, const double b){
         return std::abs(a) < std::abs(b);
     };
-    if(this->step > 0){
-        while(std::abs(*std::max_element(d.begin(), d.end(),  comp_abs)) > this->eps){
-            cblas_dcopy(W, load.data(), 1, d.data(), 1);
-            cblas_dsbmv(CblasColMajor, CblasLower, W, N-1, -1.0, this->K.data(), N, u.data(), 1, 1.0, d.data(), 1);
-            cblas_daxpy(W, step, d.data(), 1, u.data(), 1);
-            ++it;
-        }
-    } else {
-        double alpha = 1000;
-        double top, bot;
-        auto d2 = d;
-        while(std::abs(*std::max_element(d.begin(), d.end(),  comp_abs)) > this->eps){
-            cblas_dcopy(W, load.data(), 1, d.data(), 1);
-            cblas_dsbmv(CblasColMajor, CblasLower, W, N-1, -1.0, this->K.data(), N, u.data(), 1, 1.0, d.data(), 1);
-            
-            top = cblas_ddot(W, d.data(), 1, d.data(), 1);
-            cblas_dsbmv(CblasColMajor, CblasLower, W, N-1, 1.0, this->K.data(), N, d.data(), 1, 0.0, d2.data(), 1);
-            bot = cblas_ddot(W, d.data(), 1, d2.data(), 1);
-            alpha = top/bot;
 
-            cblas_daxpy(W, alpha, d.data(), 1, u.data(), 1);
-            ++it;
-        }
+    double alpha = 1000;
+    double top, bot;
+    auto d2 = d;
+    while(std::abs(*std::max_element(d.begin(), d.end(),  comp_abs)) > this->eps){
+        cblas_dcopy(W, load.data(), 1, d.data(), 1);
+        cblas_dsbmv(CblasColMajor, CblasLower, W, N-1, -1.0, this->K.data(), N, u.data(), 1, 1.0, d.data(), 1);
+        
+        top = cblas_ddot(W, d.data(), 1, d.data(), 1);
+        cblas_dsbmv(CblasColMajor, CblasLower, W, N-1, 1.0, this->K.data(), N, d.data(), 1, 0.0, d2.data(), 1);
+        bot = cblas_ddot(W, d.data(), 1, d2.data(), 1);
+        alpha = top/bot;
+
+        cblas_daxpy(W, alpha, d.data(), 1, u.data(), 1);
+        ++it;
     }
 
     logger::quick_log("Required iterations: ", it);

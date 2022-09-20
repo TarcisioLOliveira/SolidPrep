@@ -27,7 +27,7 @@ namespace finite_element{
 
 class GradientDescent : public FiniteElement{
     public:
-    GradientDescent(const double eps, const double step = 0.0);
+    GradientDescent(const double eps);
 
     inline virtual void set_steps(size_t s) override{
         this->steps = s;
@@ -38,7 +38,6 @@ class GradientDescent : public FiniteElement{
 
     private:
     const double eps;
-    const double step;
     std::vector<std::vector<double>> displacement;
 
 };

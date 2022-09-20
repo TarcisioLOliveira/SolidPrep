@@ -362,11 +362,7 @@ std::unique_ptr<FiniteElement> ProjectData::load_fea(const rapidjson::GenericVal
     } else if(fea["type"] == "gradient_descent"){
         this->log_data(fea, "eps", TYPE_DOUBLE, true);
         double eps = fea["eps"].GetDouble();
-        double step = 0;
-        if(this->log_data(fea, "step", TYPE_DOUBLE, false)){
-            step = fea["step"].GetDouble();
-        }
-        finite_element.reset(new finite_element::GradientDescent(eps, step));
+        finite_element.reset(new finite_element::GradientDescent(eps));
     } else if(fea["type"] == "PCG"){
         this->log_data(fea, "eps", TYPE_DOUBLE, true);
         this->log_data(fea, "preconditioner", TYPE_STRING, true);
