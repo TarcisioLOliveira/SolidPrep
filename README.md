@@ -49,9 +49,6 @@ cmake ..
 make
 ```
 
-The scripts `build_debug.sh` and `build_release.sh` can also be used if you 
-have access to a shell.
-
 The program has not been tested on Windows nor MacOS. It should work, but it is 
 possible that some modifications may be needed.
 
