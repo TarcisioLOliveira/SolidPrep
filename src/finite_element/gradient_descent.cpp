@@ -22,6 +22,7 @@
 #include <cblas.h>
 #include "finite_element/gradient_descent.hpp"
 #include "logger.hpp"
+#include "optimization/MMASolver.hpp"
 
 namespace finite_element{
 
@@ -68,7 +69,18 @@ std::vector<double> GradientDescent::calculate_displacements(const Meshing* cons
             ++it;
         }
     } else if(this->solver == Solver::MMA){
+        optimization::MMASolver mma(W, 0, 0, 0, 0); //1e5
+        mma.SetAsymptotes(0.5, 0.7, 1.2);
+        std::vector<double> xmin(W, -1000);
+        std::vector<double> xmax(W,  1000);
 
+        while(std::abs(*std::max_element(d.begin(), d.end(),  comp_abs)) > this->eps){
+            cblas_dcopy(W, load.data(), 1, d.data(), 1);
+            cblas_dsbmv(CblasColMajor, CblasLower, W, N-1, 1.0, this->K.data(), N, u.data(), 1, -1.0, d.data(), 1);
+
+            mma.Update(u.data(), d.data(), nullptr, nullptr, xmin.data(), xmax.data());
+            ++it;
+        }
     } else if(this->solver == Solver::LAGRANGE_MMA){
 
     }
