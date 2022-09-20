@@ -27,7 +27,13 @@ namespace finite_element{
 
 class GradientDescent : public FiniteElement{
     public:
-    GradientDescent(const double eps);
+    enum class Solver{
+        STANDARD,
+        MMA,
+        LAGRANGE_MMA
+    };
+
+    GradientDescent(const double eps, Solver solver);
 
     inline virtual void set_steps(size_t s) override{
         this->steps = s;
@@ -39,6 +45,7 @@ class GradientDescent : public FiniteElement{
     private:
     const double eps;
     std::vector<std::vector<double>> displacement;
+    Solver solver;
 
 };
 

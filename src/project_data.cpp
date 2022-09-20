@@ -17,6 +17,7 @@
  *   along with SolidPrep.  If not, see <https://www.gnu.org/licenses/>.
  *
  */
+#include <cstring>
 #define _USE_MATH_DEFINES
 #include <cmath>
 #include <BRepGProp.hxx>
@@ -361,8 +362,20 @@ std::unique_ptr<FiniteElement> ProjectData::load_fea(const rapidjson::GenericVal
         finite_element.reset(new finite_element::DirectSolver());
     } else if(fea["type"] == "gradient_descent"){
         this->log_data(fea, "eps", TYPE_DOUBLE, true);
+        this->log_data(fea, "solver", TYPE_STRING, true);
         double eps = fea["eps"].GetDouble();
-        finite_element.reset(new finite_element::GradientDescent(eps));
+        std::string s = fea["solver"].GetString();
+        finite_element::GradientDescent::Solver solver = finite_element::GradientDescent::Solver::STANDARD;
+        if(s == "standard"){
+            solver = finite_element::GradientDescent::Solver::STANDARD;
+        } else if(s == "mma"){
+            solver = finite_element::GradientDescent::Solver::MMA;
+        } else if(s == "lagrange_mma"){
+            solver = finite_element::GradientDescent::Solver::LAGRANGE_MMA;
+        } else {
+            logger::log_assert(false, logger::ERROR, "Unknown solver: ", s);
+        }
+        finite_element.reset(new finite_element::GradientDescent(eps, solver));
     } else if(fea["type"] == "PCG"){
         this->log_data(fea, "eps", TYPE_DOUBLE, true);
         this->log_data(fea, "preconditioner", TYPE_STRING, true);
