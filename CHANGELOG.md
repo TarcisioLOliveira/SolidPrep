@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Support for multiple geometries.
 - Support for multiple materials.
 - Q4 element.
+- Iterative solvers (gradient descent and PCG).
 
 ### Fixed
 
