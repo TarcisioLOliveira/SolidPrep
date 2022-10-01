@@ -29,12 +29,11 @@ Dependencies:
 - [VTK](https://vtk.org/)
 - [RapidJSON](https://github.com/Tencent/rapidjson) (included as submodule)
 
-Also includes code from  and 
-[jdumas/mma](https://github.com/jdumas/mma).
+Also includes code from [jdumas/mma](https://github.com/jdumas/mma).
 
 Installation consists on installing the dependencies somewhere CMake can find 
-them (which should be done automatically when building them with CMake or using 
-a package manager such as `apt`). Then, load submodule with:
+them (which should be done automatically when building them with CMake or using
+a Linux package manager). Then, load submodule with:
 
 ```bash
 git submodule update --init
