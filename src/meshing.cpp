@@ -429,32 +429,26 @@ void Meshing::optimize(std::vector<ElementShape>& list, const bool prune){
 }
 
 std::vector<ElementShape> Meshing::generate_element_shapes(const std::vector<size_t>& elem_tags, const std::vector<size_t>& elem_node_tags, size_t nodes_per_elem, const std::unordered_map<size_t, size_t>& duplicate_map){
-    std::vector<ElementShape> list;
-    list.reserve(elem_tags.size());
-    list.emplace_back();
-    size_t i = 0;
-    for(auto n:elem_node_tags){
-        // If there are duplicates, redirect the node tag to the correct,
-        // deduplicated node.
-        auto map_find(duplicate_map.find(n));
-        if(map_find != duplicate_map.end()){
-            n = map_find->second;
-        }
+    logger::log_assert(elem_tags.size()*nodes_per_elem == elem_node_tags.size(), logger::ERROR, "Differing vector dimensions in Meshing::generate_element_shapes().");
+    std::vector<ElementShape> list(elem_tags.size());
+    #pragma omp parallel for
+    for(size_t j = 0; j < elem_tags.size(); ++j){
+        list[j].nodes.resize(nodes_per_elem);
+        for(size_t i = 0; i < nodes_per_elem; ++i){
+            size_t n = elem_node_tags[j*nodes_per_elem + i];
+            // If there are duplicates, redirect the node tag to the correct,
+            // deduplicated node.
+            auto map_find(duplicate_map.find(n));
+            if(map_find != duplicate_map.end()){
+                n = map_find->second;
+            }
 
-        // Find node with id `n`
-        auto get_id = [n](const std::unique_ptr<MeshNode>& m)->bool{ return n == m->id; };
-        MeshNode* node = std::find_if(this->node_list.begin(), this->node_list.end(), get_id)->get();
-        list.back().nodes.push_back(node);
-        ++i;
-
-        // Begin next element
-        if(i == nodes_per_elem){
-
-            list.emplace_back();
-            i = 0;
+            // Find node with id `n`
+            auto get_id = [n](const std::unique_ptr<MeshNode>& m)->bool{ return n == m->id; };
+            MeshNode* node = std::find_if(this->node_list.begin(), this->node_list.end(), get_id)->get();
+            list[j].nodes[i] = node;
         }
     }
-    list.pop_back();
 
     return list;
 }
