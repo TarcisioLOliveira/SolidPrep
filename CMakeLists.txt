@@ -24,6 +24,7 @@ if(OpenCASCADE_FOUND)
     message("-- OpenCASCADE include directory: ${OpenCASCADE_INCLUDE_DIR}")
     message("-- OpenCASCADE libraries: ${OpenCASCADE_LIBRARIES}")
 endif()
+find_package(BLAS REQUIRED)
 find_package(LAPACK REQUIRED)
 find_package(LAPACKE REQUIRED)
 find_package(CBLAS REQUIRED)
@@ -69,6 +70,7 @@ include_directories(
     ${PROJECT_SOURCE_DIR}/rapidjson/include
     ${OpenCASCADE_INCLUDE_DIR}
     ${LAPACK_INCLUDE_DIR}
+    ${BLAS_INCLUDE_DIR}
     ${LAPACKE_INCLUDE_DIR}
     ${GMSH_INC}
     ${VTK_INCLUDE_DIR}
