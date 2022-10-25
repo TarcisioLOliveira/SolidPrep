@@ -37,7 +37,8 @@
 #include <chrono>
 
 int main(int argc, char* argv[]){
-    (void)argc;
+
+    logger::log_assert(argc > 1, logger::ERROR, "missing path to configuration file.");
 
     double size_time = 0;
 
