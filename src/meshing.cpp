@@ -428,7 +428,7 @@ void Meshing::optimize(std::vector<ElementShape>& list, const bool prune){
     this->reverse_cuthill_mckee(list);
 }
 
-std::vector<ElementShape> Meshing::generate_element_shapes(const std::vector<size_t>& elem_tags, const std::vector<size_t>& elem_node_tags, size_t nodes_per_elem, const std::unordered_map<size_t, size_t>& duplicate_map){
+std::vector<ElementShape> Meshing::generate_element_shapes(const std::vector<size_t>& elem_tags, const std::vector<size_t>& elem_node_tags, size_t nodes_per_elem, const std::unordered_map<size_t, MeshNode*>& id_map){
     logger::log_assert(elem_tags.size()*nodes_per_elem == elem_node_tags.size(), logger::ERROR, "Differing vector dimensions in Meshing::generate_element_shapes().");
     std::vector<ElementShape> list(elem_tags.size());
     #pragma omp parallel for
@@ -436,16 +436,8 @@ std::vector<ElementShape> Meshing::generate_element_shapes(const std::vector<siz
         list[j].nodes.resize(nodes_per_elem);
         for(size_t i = 0; i < nodes_per_elem; ++i){
             size_t n = elem_node_tags[j*nodes_per_elem + i];
-            // If there are duplicates, redirect the node tag to the correct,
-            // deduplicated node.
-            auto map_find(duplicate_map.find(n));
-            if(map_find != duplicate_map.end()){
-                n = map_find->second;
-            }
 
-            // Find node with id `n`
-            auto get_id = [n](const std::unique_ptr<MeshNode>& m)->bool{ return n == m->id; };
-            MeshNode* node = std::find_if(this->node_list.begin(), this->node_list.end(), get_id)->get();
+            MeshNode* node = id_map.at(n);
             list[j].nodes[i] = node;
         }
     }
@@ -453,8 +445,7 @@ std::vector<ElementShape> Meshing::generate_element_shapes(const std::vector<siz
     return list;
 }
 
-std::unordered_map<size_t, size_t> Meshing::find_duplicates(){
-    std::unordered_map<size_t, size_t> duplicate_map;
+std::vector<size_t> Meshing::find_duplicates(std::unordered_map<size_t, MeshNode*>& id_map){
     const auto point_sort = 
         [](const std::unique_ptr<MeshNode>& n1, const std::unique_ptr<MeshNode>& n2)->bool{
             if(n1->point.X() < n2->point.X()){
@@ -466,6 +457,8 @@ std::unordered_map<size_t, size_t> Meshing::find_duplicates(){
             }
             return false;
         };
+
+    std::vector<size_t> duplicates;
     // The usual method to find duplicates is to test each one against the
     // other, which is O(N^2). However, std::sort() is Nlog2N, then,
     // figuring out the duplicates is O(N), so it's a much better
@@ -475,14 +468,14 @@ std::unordered_map<size_t, size_t> Meshing::find_duplicates(){
     auto i = this->node_list.begin();
     while(i < this->node_list.end()-1){
         if((*i)->point.IsEqual((*(i+1))->point, Precision::Confusion())){
-            duplicate_map.emplace((*(i+1))->id, (*i)->id);
+            id_map[(*(i+1))->id] = id_map[(*i)->id];
             this->node_list.erase(i+1);
         } else {
             ++i;
         }
     }
     
-    return duplicate_map;
+    return duplicates;
 }
 
 TopoDS_Shape Meshing::make_compound(const std::vector<Geometry*>& geometries) const{

@@ -59,23 +59,22 @@ void Gmsh::mesh(const std::vector<Force>& forces,
     }
 
     std::vector<size_t> geom_elem_mapping, elem_tags, elem_node_tags;
-    this->gmsh_meshing(has_condition_inside, shape, geom_elem_mapping, elem_tags, elem_node_tags, this->elem_info);
+    auto id_map = this->gmsh_meshing(has_condition_inside, shape, geom_elem_mapping, elem_tags, elem_node_tags, this->elem_info);
 
-    std::unordered_map<size_t, size_t> duplicate_map;
     if(geometries.size() > 1){
-        duplicate_map = this->find_duplicates();
+       this->find_duplicates(id_map);
     }
 
     size_t nodes_per_elem = this->elem_info->get_nodes_per_element();
 
-    auto list = this->generate_element_shapes(elem_tags, elem_node_tags, nodes_per_elem, duplicate_map);
+    auto list = this->generate_element_shapes(elem_tags, elem_node_tags, nodes_per_elem, id_map);
 
     this->optimize(list, has_condition_inside);
 
     this->prepare_for_FEM(shape, geom_elem_mapping, list, forces, supports);
 }
 
-void Gmsh::gmsh_meshing(bool has_condition_inside, TopoDS_Shape sh, std::vector<size_t>& geom_elem_mapping, std::vector<size_t>& elem_tags, std::vector<size_t>& elem_node_tags, const MeshElementFactory* const elem_type){
+std::unordered_map<size_t, MeshNode*> Gmsh::gmsh_meshing(bool has_condition_inside, TopoDS_Shape sh, std::vector<size_t>& geom_elem_mapping, std::vector<size_t>& elem_tags, std::vector<size_t>& elem_node_tags, const MeshElementFactory* const elem_type){
     gmsh::initialize();
 
     gmsh::model::add("base");
@@ -151,12 +150,18 @@ void Gmsh::gmsh_meshing(bool has_condition_inside, TopoDS_Shape sh, std::vector<
 
     size_t dof = elem_type->get_dof_per_node();
 
+    std::unordered_map<size_t, MeshNode*> id_map;
+    id_map.reserve(node_tags.size());
+
     this->node_list.clear();
     this->node_list.reserve(node_tags.size());
     for(size_t i = 0; i < node_tags.size(); ++i){
         gp_Pnt p(node_coords[i*3], node_coords[i*3+1], node_coords[i*3+2]);
         this->node_list.emplace_back(std::make_unique<MeshNode>(p, node_tags[i], dof));
+        id_map.emplace(node_tags[i], this->node_list[i].get());
     }
+
+    return id_map;
 }
 
 }

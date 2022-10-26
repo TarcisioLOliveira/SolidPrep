@@ -115,21 +115,22 @@ class Meshing{
      * @param elem_tags Element tags
      * @param elem_node_tags Node tags per element
      * @param nodes_per_elem Number of nodes in each element
-     * @param duplicate_map Map of duplicate nodes (optional)
+     * @param id_map Map of original ids to nodes
      *
      * @return Vector of element shapes
      */
-    virtual std::vector<ElementShape> generate_element_shapes(const std::vector<size_t>& elem_tags, const std::vector<size_t>& elem_node_tags, size_t nodes_per_elem,const std::unordered_map<size_t, size_t>& duplicate_map = std::unordered_map<size_t, size_t>());
+    virtual std::vector<ElementShape> generate_element_shapes(const std::vector<size_t>& elem_tags, const std::vector<size_t>& elem_node_tags, size_t nodes_per_elem,const std::unordered_map<size_t, MeshNode*>& id_map = std::unordered_map<size_t, MeshNode*>());
 
     /**
      * Search for duplicate nodes (different tag but same position)
      * That may happen also for single geometries that get cut by a boundary
      * condition, but they behave correctly without this workaround.
      *
-     * @return Mapping of duplicate nodes, redirecting the duplicates to single
-     * one.
+     * @param id_map Mapping of node tags to node_list indices.
+     *
+     * @return Indices of duplicated nodes, to be used late in remove_duplicates().
      */
-    virtual std::unordered_map<size_t, size_t> find_duplicates();
+    virtual std::vector<size_t> find_duplicates(std::unordered_map<size_t, MeshNode*>& id_map);
 
     /**
      * Turns a vector of geometries into a single compound geometry.
