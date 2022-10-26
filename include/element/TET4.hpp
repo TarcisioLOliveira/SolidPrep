@@ -31,7 +31,7 @@
 
 namespace element{
 
-class TET4 : public MeshElementCommon2DTri<TET4>{
+class TET4 : public MeshElementCommon3DTet<TET4>{
     public:
     static const size_t ORDER          = 1;
     static const size_t GMSH_TYPE      = 4;

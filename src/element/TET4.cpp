@@ -33,7 +33,7 @@
 namespace element{
 
 TET4::TET4(ElementShape s):
-    MeshElementCommon2DTri<TET4>(s.nodes), coeffs(this->get_coeffs()){}
+    MeshElementCommon3DTet<TET4>(s.nodes), coeffs(this->get_coeffs()){}
 
 std::array<double, TET4::NODES_PER_ELEM*TET4::NODES_PER_ELEM> TET4::get_coeffs() const{
     constexpr size_t N = TET4::NODES_PER_ELEM;
