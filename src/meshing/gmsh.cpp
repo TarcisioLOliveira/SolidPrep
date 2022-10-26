@@ -26,6 +26,8 @@
 #include <limits>
 #include "project_data.hpp"
 #include <unordered_map>
+#include <BOPAlgo_Splitter.hxx>
+#include <BRepBuilderAPI_Copy.hxx>
 
 namespace meshing{
 
@@ -54,8 +56,28 @@ void Gmsh::mesh(const std::vector<Force>& forces,
     //
     // Seemed better to sacrifice this gimmick than something more useful
     // such as support for complex geometries.
-    if(this->geometries.size() == 1){
+    auto problem_type = this->elem_info->get_problem_type();
+    if(this->geometries.size() == 1 && problem_type == utils::PROBLEM_TYPE_2D){
         has_condition_inside = this->adapt_for_boundary_condition_inside(shape, forces, supports);
+    } else {
+        TopoDS_Shape sh = BRepBuilderAPI_Copy(shape);
+        for(auto& f:forces){
+            BOPAlgo_Splitter splitter;
+            splitter.SetNonDestructive(true);
+            splitter.AddArgument(shape);
+            splitter.AddTool(f.S.get_shape());
+            splitter.Perform();
+            sh = splitter.Shape();
+        }
+        for(auto& s:supports){
+            BOPAlgo_Splitter splitter;
+            splitter.SetNonDestructive(true);
+            splitter.AddArgument(shape);
+            splitter.AddTool(s.S.get_shape());
+            splitter.Perform();
+            sh = splitter.Shape();
+        }
+        shape = sh;
     }
 
     std::vector<size_t> geom_elem_mapping, elem_tags, elem_node_tags;
