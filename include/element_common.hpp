@@ -468,7 +468,7 @@ class MeshElementCommon3D : public MeshElementCommon<T>{
     static const size_t S_SIZE = 6; // Size of the stress and strain vectors
     static const size_t DIM    = 3; // Number of dimensions
 
-    static const utils::ProblemType PROBLEM_TYPE = utils::PROBLEM_TYPE_2D;
+    static const utils::ProblemType PROBLEM_TYPE = utils::PROBLEM_TYPE_3D;
 
     virtual ~MeshElementCommon3D() = default;
 
