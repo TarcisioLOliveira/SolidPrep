@@ -147,7 +147,7 @@ class MeshElementCommon : public MeshElement{
         }
 
         double result = 0;
-        std::vector<double> l_vec(9, 0);
+        std::vector<double> l_vec(K_DIM, 0);
         for(size_t i = 0; i < N; ++i){
             for(size_t j = 0; j < NODE_DOF; ++j){
                 if(this->nodes[i]->u_pos[j] > -1){
