@@ -26,7 +26,7 @@ Dependencies:
 - [OpenCascade](https://git.dev.opencascade.org/gitweb/?p=occt.git;a=summary)
 - [LAPACK, LAPACKE, CBLAS](http://www.netlib.org/lapack/)
 - [Gmsh](https://gmsh.info/)
-- [VTK](https://vtk.org/)
+- [VTK](https://vtk.org/) (Dependency for OpenCascade, may not be bundled with it)
 - [RapidJSON](https://github.com/Tencent/rapidjson) (included as submodule)
 
 Also includes code from [jdumas/mma](https://github.com/jdumas/mma).

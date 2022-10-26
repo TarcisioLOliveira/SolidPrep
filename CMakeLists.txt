@@ -31,7 +31,7 @@ find_package(CBLAS REQUIRED)
 find_package(Threads REQUIRED)
 find_library(GMSH_LIB gmsh REQUIRED)
 find_path(GMSH_INC gmsh.h REQUIRED)
-find_package(VTK REQUIRED)
+find_package(VTK)
 
 if(NOT NO_OPENMP)
     find_package(OpenMP)
