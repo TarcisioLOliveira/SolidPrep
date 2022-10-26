@@ -25,14 +25,19 @@
 #include <BRepBuilderAPI_MakeEdge.hxx>
 #include <BRepBuilderAPI_MakeWire.hxx>
 #include <BRepBuilderAPI_MakeFace.hxx>
+#include <BRepBuilderAPI_MakeSolid.hxx>
 #include <TopoDS_Wire.hxx>
 #include <TopoDS_Face.hxx>
+#include <TopoDS_Shell.hxx>
+#include <TopoDS_Solid.hxx>
 #include <TopoDS.hxx>
 #include <IntTools_EdgeEdge.hxx>
 #include <Standard_Handle.hxx>
 #include <vector>
+#include <BRepOffsetAPI_Sewing.hxx>
 
 #include "element.hpp"
+#include "logger.hpp"
 #include "utils.hpp"
 
 template<class T>
@@ -453,6 +458,160 @@ class MeshElementCommon2DQuad : public MeshElementCommon2D<T>{
         const TopoDS_Face f = BRepBuilderAPI_MakeFace(w);
 
         return f;
+    }
+};
+
+
+template<class T>
+class MeshElementCommon3D : public MeshElementCommon<T>{
+    public:
+    static const size_t S_SIZE = 6; // Size of the stress and strain vectors
+    static const size_t DIM    = 3; // Number of dimensions
+
+    static const utils::ProblemType PROBLEM_TYPE = utils::PROBLEM_TYPE_2D;
+
+    virtual ~MeshElementCommon3D() = default;
+
+    virtual std::vector<double> get_stress_tensor(const std::vector<double>& D, const gp_Pnt& p, const std::vector<double>& u) const override{
+        const std::vector<size_t> indices{0, 3, 4, 3, 1, 5, 4, 5, 3};
+        return this->_get_stress_tensor(D, p, u, indices, S_SIZE);
+    }
+
+    virtual void get_virtual_load(const std::vector<double>& D, double mult, const gp_Pnt& point, const std::vector<double>& u, std::vector<double>& l) const override{
+        const std::vector<double> V{   1, -0.5, -0.5, 0, 0, 0,
+                                    -0.5,    1, -0.5, 0, 0, 0,
+                                    -0.5, -0.5,    1, 0, 0, 0,
+                                       0,    0,    0, 3, 0, 0,
+                                       0,    0,    0, 0, 3, 0,
+                                       0,    0,    0, 0, 0, 3};
+
+        this->_get_virtual_load(D, mult, point, u, l, V, S_SIZE);
+    }
+
+    protected:
+    MeshElementCommon3D(const std::vector<MeshNode*>& nodes):
+            MeshElementCommon<T>(nodes)
+            {}
+};
+
+
+template<class T>
+class MeshElementCommon3DTet : public MeshElementCommon3D<T>{
+    public:
+    virtual ~MeshElementCommon3DTet() = default;
+
+    static const Element::Shape SHAPE_TYPE = Element::Shape::TRI;
+
+    virtual double get_volume(const double t) const override{
+        (void)t;
+        const gp_Pnt p0 = this->nodes[0]->point;
+        const gp_Pnt p1 = this->nodes[1]->point;
+        const gp_Pnt p2 = this->nodes[2]->point;
+        const gp_Pnt p3 = this->nodes[3]->point;
+
+        const gp_Vec v0(p0, p1);
+        const gp_Vec v1(p0, p2);
+        const gp_Vec v2(p0, p3);
+
+        return std::abs(v1.DotCross(v1, v2))/6;
+    }
+
+    virtual TopoDS_Shape get_shape() const override{
+        const gp_Pnt p1 = this->nodes[0]->point;
+        const gp_Pnt p2 = this->nodes[1]->point;
+        const gp_Pnt p3 = this->nodes[2]->point;
+        const gp_Pnt p4 = this->nodes[3]->point;
+
+        return this->generate_geometry(p1, p2, p3, p4);
+    }
+
+    virtual TopoDS_Shape get_shape(const std::vector<gp_Vec>& disp) const override{
+        const gp_Pnt p1 = this->nodes[0]->point.Translated(disp[0]);
+        const gp_Pnt p2 = this->nodes[1]->point.Translated(disp[1]);
+        const gp_Pnt p3 = this->nodes[2]->point.Translated(disp[2]);
+        const gp_Pnt p4 = this->nodes[3]->point.Translated(disp[3]);
+
+        return this->generate_geometry(p1, p2, p3, p4);
+    }
+
+    virtual std::vector<gp_Pnt> get_intersection_points(const TopoDS_Shape& crosssection) const override{
+        logger::log_assert(false, logger::ERROR, "get_intersection_points is not implemented for 3D elements.");
+
+        const size_t N = T::NODES_PER_ELEM;
+        std::vector<gp_Pnt> points;
+
+        const TopoDS_Edge line_edge = TopoDS::Edge(crosssection);
+
+        for(size_t i = 0; i < N; ++i){
+            size_t j = (i + 1) % N;
+
+            const TopoDS_Edge e = BRepBuilderAPI_MakeEdge(this->nodes[i]->point, this->nodes[j]->point);
+            const gp_Dir dir(gp_Vec(this->nodes[i]->point, this->nodes[j]->point));
+
+            IntTools_EdgeEdge tool(line_edge, e);
+            tool.Perform();
+            auto common = tool.CommonParts();
+            if(common.Size() > 0){
+                for(auto& c:common){
+                    double dist = std::abs(c.VertexParameter2()); // n.normal is a unit vector, and the line starts at 0
+                    gp_Pnt p = this->nodes[i]->point.Translated(dist*dir);
+                    bool contained = false;
+                    for(auto& pp:points){
+                        if(p.IsEqual(pp, Precision::Confusion())){
+                            contained = true;
+                            break;
+                        }
+                    }
+                    if(!contained){
+                        points.push_back(p);
+                    }
+                }
+            }
+        }
+
+        return points;
+    }
+
+    protected:
+    MeshElementCommon3DTet(const std::vector<MeshNode*>& nodes):
+            MeshElementCommon3D<T>(nodes)
+            {}
+
+    inline TopoDS_Solid generate_geometry(const gp_Pnt& p1, const gp_Pnt& p2, const gp_Pnt& p3, const gp_Pnt& p4) const{
+        const TopoDS_Vertex v1 = BRepBuilderAPI_MakeVertex(p1);
+        const TopoDS_Vertex v2 = BRepBuilderAPI_MakeVertex(p2);
+        const TopoDS_Vertex v3 = BRepBuilderAPI_MakeVertex(p3);
+        const TopoDS_Vertex v4 = BRepBuilderAPI_MakeVertex(p4);
+
+        const TopoDS_Edge e1 = BRepBuilderAPI_MakeEdge(v1, v2);
+        const TopoDS_Edge e2 = BRepBuilderAPI_MakeEdge(v1, v3);
+        const TopoDS_Edge e3 = BRepBuilderAPI_MakeEdge(v1, v4);
+        const TopoDS_Edge e4 = BRepBuilderAPI_MakeEdge(v2, v3);
+        const TopoDS_Edge e5 = BRepBuilderAPI_MakeEdge(v3, v4);
+        const TopoDS_Edge e6 = BRepBuilderAPI_MakeEdge(v4, v2);
+
+        const TopoDS_Wire w1 = BRepBuilderAPI_MakeWire(e1, e4, e2);
+        const TopoDS_Face f1 = BRepBuilderAPI_MakeFace(w1);
+
+        const TopoDS_Wire w2 = BRepBuilderAPI_MakeWire(e2, e5, e3);
+        const TopoDS_Face f2 = BRepBuilderAPI_MakeFace(w2);
+
+        const TopoDS_Wire w3 = BRepBuilderAPI_MakeWire(e3, e6, e1);
+        const TopoDS_Face f3 = BRepBuilderAPI_MakeFace(w3);
+
+        const TopoDS_Wire w4 = BRepBuilderAPI_MakeWire(e4, e5, e6);
+        const TopoDS_Face f4 = BRepBuilderAPI_MakeFace(w4);
+
+        BRepOffsetAPI_Sewing sew;
+        sew.Add(f1);
+        sew.Add(f2);
+        sew.Add(f3);
+        sew.Add(f4);
+
+        sew.Perform();
+        const TopoDS_Shell s = TopoDS::Shell(sew.SewedShape());
+
+        return BRepBuilderAPI_MakeSolid(s);
     }
 };
 
