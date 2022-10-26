@@ -517,6 +517,7 @@ bool Meshing::adapt_for_boundary_condition_inside(TopoDS_Shape& shape, const std
             sh = splitter.Shape();
         }
     }
+    shape = sh;
 
     return has_condition_inside;
 }
