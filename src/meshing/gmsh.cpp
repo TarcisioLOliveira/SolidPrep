@@ -113,7 +113,6 @@ std::unordered_map<size_t, MeshNode*> Gmsh::gmsh_meshing(bool has_condition_insi
 
     gmsh::option::setNumber("Mesh.ElementOrder", this->elem_info->get_element_order());
     gmsh::option::setNumber("Mesh.Optimize", 1);
-    gmsh::option::setNumber("Mesh.OptimizeNetgen", 1);
 
     // Quad/hex recombination
     auto problem_type = this->elem_info->get_problem_type();
