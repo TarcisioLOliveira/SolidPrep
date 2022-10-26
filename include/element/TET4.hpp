@@ -39,8 +39,6 @@ class TET4 : public MeshElementCommon3DTet<TET4>{
     static const size_t NODES_PER_ELEM = 4;
     static const size_t K_DIM          = NODE_DOF*NODES_PER_ELEM;
 
-    static const utils::ProblemType PROBLEM_TYPE = utils::PROBLEM_TYPE_2D;
-
     TET4(ElementShape s);
 
     virtual std::vector<double> get_k(const std::vector<double>& D, const double t) const override;
