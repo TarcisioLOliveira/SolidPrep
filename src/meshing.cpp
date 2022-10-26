@@ -192,7 +192,29 @@ void Meshing::prepare_for_FEM(const TopoDS_Shape& shape,
             }
         }
     } else if(this->elem_info->get_problem_type() == utils::PROBLEM_TYPE_3D){
-        // TODO
+        for(auto& f : forces){
+            double norm = f.vec.Magnitude()/f.S.get_dimension();
+            gp_Dir dir(f.vec);
+
+            for(auto& e : element_list){
+                if(f.S.is_inside(e->get_centroid())){
+                    std::vector<gp_Pnt> points(N);
+                    for(size_t i = 0; i < N; ++i){
+                        points[i] = e->nodes[i]->point;
+                    }
+                    auto fe = e->get_f(1, dir, norm, points);
+                    logger::quick_log(fe);
+                    for(size_t i = 0; i < N; ++i){
+                        for(size_t j = 0; j < dof; ++j){
+                            auto n = e->nodes[i];
+                            if(n->u_pos[j] >= 0){
+                                this->load_vector[n->u_pos[j]] += fe[i*dof+j];
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     if(geometries.size() > 1){
