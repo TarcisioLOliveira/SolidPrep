@@ -29,6 +29,7 @@
 #include <TopoDS_Face.hxx>
 #include <TopoDS.hxx>
 #include <IntTools_EdgeEdge.hxx>
+#include <lapacke.h>
 
 namespace element{
 
@@ -43,30 +44,24 @@ std::array<double, TET4::NODES_PER_ELEM*TET4::NODES_PER_ELEM> TET4::get_coeffs()
         y[i] = this->nodes[i]->point.Y();
         z[i] = this->nodes[i]->point.Z();
     }
-    std::array<double, N*N> M;
 
-    double* a = M.data();
-    double* b = a + N;
-    double* c = b + N;
-    double* d = c + N;
+    std::array<double, N*N> M = 
+        {1, x[0], y[0], z[0],
+         1, x[1], y[1], z[1],
+         1, x[2], y[2], z[2],
+         1, x[3], y[3], z[3]};
 
-    gp_Mat A, B, C, D;
-    for(size_t i = 0; i < N; ++i){
-        size_t row = 1;
-        for(size_t j = 0; j < N; ++j){
-            if(i != j){
-                A.SetRow(row, gp_XYZ(x[j], y[j], z[j]));
-                B.SetRow(row, gp_XYZ(   1, y[j], z[j]));
-                C.SetRow(row, gp_XYZ(x[j],    1, z[j]));
-                D.SetRow(row, gp_XYZ(x[j], y[j],    1));
-                ++row;
-            }
-        }
-        a[i] =  A.Determinant();
-        b[i] = -B.Determinant();
-        c[i] = -C.Determinant();
-        d[i] = -D.Determinant();
-    }
+    std::array<int, N> ipiv;
+
+    // M*C = I -> C=M^-1
+    // C = {a[0], a[1], a[2], a[3],
+    //      b[0], b[1], b[2], b[3],
+    //      c[0], c[1], c[2], c[3],
+    //      d[0], d[1], d[2], d[3]}
+    int info = LAPACKE_dgetrf(LAPACK_COL_MAJOR, N, N, M.data(), N, ipiv.data());
+    logger::log_assert(info == 0, logger::ERROR, "LAPACKE returned {} while calculating LU in Q4.", info);
+    info = LAPACKE_dgetri(LAPACK_COL_MAJOR, N, M.data(), N, ipiv.data());
+    logger::log_assert(info == 0, logger::ERROR, "LAPACKE returned {} while calculating computing inverse from LU in Q4.", info);
 
     return M;
 }
