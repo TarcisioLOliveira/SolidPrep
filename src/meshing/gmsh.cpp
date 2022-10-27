@@ -64,7 +64,7 @@ void Gmsh::mesh(const std::vector<Force>& forces,
         for(auto& f:forces){
             BOPAlgo_Splitter splitter;
             splitter.SetNonDestructive(true);
-            splitter.AddArgument(shape);
+            splitter.AddArgument(sh);
             splitter.AddTool(f.S.get_shape());
             splitter.Perform();
             sh = splitter.Shape();
@@ -72,7 +72,7 @@ void Gmsh::mesh(const std::vector<Force>& forces,
         for(auto& s:supports){
             BOPAlgo_Splitter splitter;
             splitter.SetNonDestructive(true);
-            splitter.AddArgument(shape);
+            splitter.AddArgument(sh);
             splitter.AddTool(s.S.get_shape());
             splitter.Perform();
             sh = splitter.Shape();
