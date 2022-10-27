@@ -37,7 +37,8 @@ class CrossSection{
     struct Rectangle{
         double w, h;
         gp_Pnt center;
-        gp_Vec rotation;
+        gp_Dir normal;
+        double rot_ang;
     };
     /**
      * Represents a circle. Used to create a circular cross-section.
@@ -45,7 +46,7 @@ class CrossSection{
     struct Circle{
         double r;
         gp_Pnt center;
-        gp_Vec rotation;
+        gp_Dir normal;
     };
 
     /**
@@ -66,7 +67,6 @@ class CrossSection{
 
     /**
      * Creates a rectangular cross section for 3D problems.
-     * Not yet implemented.
      *
      * @param r Rectangle object.
      */

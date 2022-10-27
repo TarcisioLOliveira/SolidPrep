@@ -132,6 +132,48 @@ CrossSection::CrossSection(gp_Pnt p, utils::ProblemType type, double radius):
     } 
 }
 
+CrossSection::CrossSection(Rectangle r):
+    centroid(r.center), inertia(), normal(r.normal), max_dim(std::max(r.w, r.h)), 
+    shape(), area(r.w*r.h){
+ 
+    gp_Ax1 ax1(r.center, r.normal.Crossed(gp_Dir(0,0,1))); 
+    double ang1 = r.normal.AngleWithRef(gp_Dir(0,0,1), ax1.Direction());
+    gp_Ax1 ax2(r.center, r.normal);
+    gp_Pnt p1(r.center.X() - r.w/2, r.center.Y() - r.h/2, 0);
+    p1.Rotate(ax1, ang1);
+    p1.Rotate(ax2, r.rot_ang);
+    gp_Pnt p2(r.center.X() + r.w/2, r.center.Y() - r.h/2, 0);
+    p2.Rotate(ax1, ang1);
+    p2.Rotate(ax2, r.rot_ang);
+    gp_Pnt p3(r.center.X() + r.w/2, r.center.Y() + r.h/2, 0);
+    p3.Rotate(ax1, ang1);
+    p3.Rotate(ax2, r.rot_ang);
+    gp_Pnt p4(r.center.X() - r.w/2, r.center.Y() + r.h/2, 0);
+    p4.Rotate(ax1, ang1);
+    p4.Rotate(ax2, r.rot_ang);
+
+    const TopoDS_Vertex v1 = BRepBuilderAPI_MakeVertex(p1);
+    const TopoDS_Vertex v2 = BRepBuilderAPI_MakeVertex(p2);
+    const TopoDS_Vertex v3 = BRepBuilderAPI_MakeVertex(p3);
+    const TopoDS_Vertex v4 = BRepBuilderAPI_MakeVertex(p4);
+
+    const TopoDS_Edge e1 = BRepBuilderAPI_MakeEdge(v1, v2);
+    const TopoDS_Edge e2 = BRepBuilderAPI_MakeEdge(v2, v3);
+    const TopoDS_Edge e3 = BRepBuilderAPI_MakeEdge(v3, v4);
+    const TopoDS_Edge e4 = BRepBuilderAPI_MakeEdge(v4, v1);
+
+    const TopoDS_Wire w = BRepBuilderAPI_MakeWire(e1, e2, e3, e4);
+
+    TopoDS_Face f = BRepBuilderAPI_MakeFace(w);
+
+    GProp_GProps props;
+    BRepGProp::SurfaceProperties(f, props);
+
+    this->inertia = props.MatrixOfInertia();
+
+    this->shape = std::move(f);
+}
+
 CrossSection::CrossSection(std::vector<gp_Pnt> vertices){
     (void)vertices;
     // TODO
