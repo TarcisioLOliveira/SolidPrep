@@ -513,7 +513,7 @@ class MeshElementCommon3DTet : public MeshElementCommon3D<T>{
         const gp_Vec v1(p0, p2);
         const gp_Vec v2(p0, p3);
 
-        return std::abs(v1.DotCross(v1, v2))/6;
+        return std::abs(v0.DotCross(v1, v2))/6;
     }
 
     virtual TopoDS_Shape get_shape() const override{
