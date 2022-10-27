@@ -61,11 +61,11 @@ std::array<double, TET4::NODES_PER_ELEM*TET4::NODES_PER_ELEM> TET4::get_coeffs()
                 D.SetRow(row, gp_XYZ(x[j], y[j],    1));
                 ++row;
             }
-            a[i] =  A.Determinant();
-            b[i] = -B.Determinant();
-            c[i] = -C.Determinant();
-            d[i] = -D.Determinant();
         }
+        a[i] =  A.Determinant();
+        b[i] = -B.Determinant();
+        c[i] = -C.Determinant();
+        d[i] = -D.Determinant();
     }
 
     return M;
