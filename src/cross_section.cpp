@@ -139,17 +139,17 @@ CrossSection::CrossSection(Rectangle r):
     gp_Ax1 ax1(r.center, r.normal.Crossed(gp_Dir(0,0,1))); 
     double ang1 = r.normal.AngleWithRef(gp_Dir(0,0,1), ax1.Direction());
     gp_Ax1 ax2(r.center, r.normal);
-    gp_Pnt p1(r.center.X() - r.w/2, r.center.Y() - r.h/2, 0);
+    gp_Pnt p1(r.center.X() - r.w/2, r.center.Y() - r.h/2, r.center.Z());
+    gp_Pnt p2(r.center.X() + r.w/2, r.center.Y() - r.h/2, r.center.Z());
+    gp_Pnt p3(r.center.X() + r.w/2, r.center.Y() + r.h/2, r.center.Z());
+    gp_Pnt p4(r.center.X() - r.w/2, r.center.Y() + r.h/2, r.center.Z());
     p1.Rotate(ax1, ang1);
-    p1.Rotate(ax2, r.rot_ang);
-    gp_Pnt p2(r.center.X() + r.w/2, r.center.Y() - r.h/2, 0);
     p2.Rotate(ax1, ang1);
-    p2.Rotate(ax2, r.rot_ang);
-    gp_Pnt p3(r.center.X() + r.w/2, r.center.Y() + r.h/2, 0);
     p3.Rotate(ax1, ang1);
-    p3.Rotate(ax2, r.rot_ang);
-    gp_Pnt p4(r.center.X() - r.w/2, r.center.Y() + r.h/2, 0);
     p4.Rotate(ax1, ang1);
+    p1.Rotate(ax2, r.rot_ang);
+    p2.Rotate(ax2, r.rot_ang);
+    p3.Rotate(ax2, r.rot_ang);
     p4.Rotate(ax2, r.rot_ang);
 
     const TopoDS_Vertex v1 = BRepBuilderAPI_MakeVertex(p1);
