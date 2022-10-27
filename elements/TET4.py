@@ -159,20 +159,6 @@ def make_Nf():
 
     NN = sympy.Matrix([NN1, NN2, NN3]).T
 
-    # Prepare for "integration" by defining the variables that should be
-    # collected
-    LL = []
-    for l1 in L:
-        for l2 in L:
-            LL.append(l1*l2)
-
-    for l1 in L:
-        for l2 in L:
-            for l3 in L:
-                LL.append(l1*l2*l3)
-
-    LL.extend(L)
-
     # Set up variables for line integral
     x0, x1, x2, y0, y1, y2, z0, z1, z2 = sympy.symbols("x0 x1 x2 y0 y1 y2 z0 z1 z2")
 
