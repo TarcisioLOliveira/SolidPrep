@@ -43,18 +43,18 @@ LinearElasticIsotropic::LinearElasticIsotropic(const std::string& name, double E
     }
 
     this->D_3D.resize(36);
-    this->D_3D[ 0] = ((E*nu)/((1+nu)*(1-2*nu)))*(1-nu);
-    this->D_3D[ 1] = ((E*nu)/((1+nu)*(1-2*nu)))*(nu);
-    this->D_3D[ 2] = ((E*nu)/((1+nu)*(1-2*nu)))*(nu);
-    this->D_3D[ 6] = ((E*nu)/((1+nu)*(1-2*nu)))*(nu);
-    this->D_3D[ 7] = ((E*nu)/((1+nu)*(1-2*nu)))*(1-nu);
-    this->D_3D[ 8] = ((E*nu)/((1+nu)*(1-2*nu)))*(nu);
-    this->D_3D[12] = ((E*nu)/((1+nu)*(1-2*nu)))*(nu);
-    this->D_3D[13] = ((E*nu)/((1+nu)*(1-2*nu)))*(nu);
-    this->D_3D[14] = ((E*nu)/((1+nu)*(1-2*nu)))*(1-nu);
-    this->D_3D[21] = (E*nu)/(2*(1+nu));
-    this->D_3D[28] = (E*nu)/(2*(1+nu));
-    this->D_3D[35] = (E*nu)/(2*(1+nu));
+    this->D_3D[ 0] = (E/((1+nu)*(1-2*nu)))*(1-nu);
+    this->D_3D[ 1] = (E/((1+nu)*(1-2*nu)))*(nu);
+    this->D_3D[ 2] = (E/((1+nu)*(1-2*nu)))*(nu);
+    this->D_3D[ 6] = (E/((1+nu)*(1-2*nu)))*(nu);
+    this->D_3D[ 7] = (E/((1+nu)*(1-2*nu)))*(1-nu);
+    this->D_3D[ 8] = (E/((1+nu)*(1-2*nu)))*(nu);
+    this->D_3D[12] = (E/((1+nu)*(1-2*nu)))*(nu);
+    this->D_3D[13] = (E/((1+nu)*(1-2*nu)))*(nu);
+    this->D_3D[14] = (E/((1+nu)*(1-2*nu)))*(1-nu);
+    this->D_3D[21] = E/(2*(1+nu));
+    this->D_3D[28] = E/(2*(1+nu));
+    this->D_3D[35] = E/(2*(1+nu));
 }
 
 std::vector<double> LinearElasticIsotropic::stiffness_2D() const{
