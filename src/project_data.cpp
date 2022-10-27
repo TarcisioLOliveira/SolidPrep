@@ -505,7 +505,7 @@ std::vector<Force> ProjectData::get_loads(const rapidjson::GenericValue<rapidjso
             logger::log_assert(f.IsObject(), logger::ERROR, "Each load must be stored as a JSON object");
             this->log_data(f, "load", TYPE_ARRAY, true);
             auto loads = f["load"].GetArray();
-            logger::log_assert(loads.Size() == 2, logger::ERROR, "Load vector must have exactly three dimensions in 3D problems");
+            logger::log_assert(loads.Size() == 3, logger::ERROR, "Load vector must have exactly three dimensions in 3D problems");
 
             gp_Vec l(loads[0].GetDouble(), loads[1].GetDouble(), loads[2].GetDouble());
 
