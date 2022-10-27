@@ -111,6 +111,8 @@ class ProjectData {
     std::vector<Force> get_loads(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc);
 
     std::vector<Support> get_support(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc);
+
+    CrossSection get_cross_section(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc) const;
 };
 
 

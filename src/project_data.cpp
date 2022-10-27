@@ -491,37 +491,25 @@ std::vector<Force> ProjectData::get_loads(const rapidjson::GenericValue<rapidjso
     if(this->type == utils::PROBLEM_TYPE_2D){
         for(auto& f : doc.GetArray()){
             logger::log_assert(f.IsObject(), logger::ERROR, "Each load must be stored as a JSON object");
-            this->log_data(f, "vertices", TYPE_ARRAY, true);
             this->log_data(f, "load", TYPE_ARRAY, true);
-            auto vertices = f["vertices"].GetArray();
             auto loads = f["load"].GetArray();
             logger::log_assert(loads.Size() == 2, logger::ERROR, "Load vector must have exactly two dimensions in 2D problems");
 
             gp_Vec l(loads[0].GetDouble(), loads[1].GetDouble(), 0);
-            std::vector<gp_Pnt> vlist;
-            for(auto& v : vertices){
-                logger::log_assert(v.Size() == 2, logger::ERROR, "Vertices must have exactly two dimensions in 2D problems");
-                vlist.emplace_back(v[0].GetDouble(), v[1].GetDouble(), 0);
-            }
-            CrossSection S(vlist, this->thickness);
+
+            auto S = this->get_cross_section(f);
             forces.emplace_back(S, l);
         }
     } else if(this->type == utils::PROBLEM_TYPE_3D) {
         for(auto& f : doc.GetArray()){
             logger::log_assert(f.IsObject(), logger::ERROR, "Each load must be stored as a JSON object");
-            this->log_data(f, "vertices", TYPE_ARRAY, true);
             this->log_data(f, "load", TYPE_ARRAY, true);
-            auto vertices = f["vertices"].GetArray();
             auto loads = f["load"].GetArray();
             logger::log_assert(loads.Size() == 2, logger::ERROR, "Load vector must have exactly three dimensions in 3D problems");
 
             gp_Vec l(loads[0].GetDouble(), loads[1].GetDouble(), loads[2].GetDouble());
-            std::vector<gp_Pnt> vlist;
-            for(auto& v : vertices){
-                logger::log_assert(v.Size() == 2, logger::ERROR, "Vertices must have exactly three dimensions in 3D problems");
-                vlist.emplace_back(v[0].GetDouble(), v[1].GetDouble(), v[2].GetDouble());
-            }
-            CrossSection S(vlist);
+
+            auto S = this->get_cross_section(f);
             forces.emplace_back(S, l);
         }
     }
@@ -533,7 +521,6 @@ std::vector<Support> ProjectData::get_support(const rapidjson::GenericValue<rapi
     if(this->type == utils::PROBLEM_TYPE_2D){
         for(auto& f : doc.GetArray()){
             logger::log_assert(f.IsObject(), logger::ERROR, "Each support must be stored as a JSON object");
-            this->log_data(f, "vertices", TYPE_ARRAY, true);
             this->log_data(f, "X", TYPE_BOOL, true);
             this->log_data(f, "Y", TYPE_BOOL, true);
             this->log_data(f, "MZ", TYPE_BOOL, true);
@@ -541,19 +528,12 @@ std::vector<Support> ProjectData::get_support(const rapidjson::GenericValue<rapi
             bool Y = f["Y"].GetBool();
             bool MZ = f["MZ"].GetBool();
 
-            auto vertices = f["vertices"].GetArray();
-            std::vector<gp_Pnt> vlist;
-            for(auto& v : vertices){
-                logger::log_assert(v.Size() == 2, logger::ERROR, "Vertices must have exactly two dimensions in 2D problems");
-                vlist.emplace_back(v[0].GetDouble(), v[1].GetDouble(), 0);
-            }
-            CrossSection S(vlist, this->thickness);
+            auto S = this->get_cross_section(f);
             supports.emplace_back(X, Y, MZ, S);
         }
     } else if(this->type == utils::PROBLEM_TYPE_3D) {
         for(auto& f : doc.GetArray()){
             logger::log_assert(f.IsObject(), logger::ERROR, "Each support must be stored as a JSON object");
-            this->log_data(f, "vertices", TYPE_ARRAY, true);
             this->log_data(f, "X", TYPE_BOOL, true);
             this->log_data(f, "Y", TYPE_BOOL, true);
             this->log_data(f, "Z", TYPE_BOOL, true);
@@ -567,15 +547,60 @@ std::vector<Support> ProjectData::get_support(const rapidjson::GenericValue<rapi
             bool MY = f["MY"].GetBool();
             bool MZ = f["MZ"].GetBool();
 
-            auto vertices = f["vertices"].GetArray();
-            std::vector<gp_Pnt> vlist;
-            for(auto& v : vertices){
-                logger::log_assert(v.Size() == 2, logger::ERROR, "Vertices must have exactly three dimensions in 3D problems");
-                vlist.emplace_back(v[0].GetDouble(), v[1].GetDouble(), v[2].GetDouble());
-            }
-            CrossSection S(vlist);
+            auto S = this->get_cross_section(f);
             supports.emplace_back(X, Y, Z, MX, MY, MZ, S);
         }
     }
     return supports;
+}
+
+
+CrossSection ProjectData::get_cross_section(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc) const{
+    if(this->type == utils::PROBLEM_TYPE_2D){
+        bool has_vertices = this->log_data(doc, "vertices", TYPE_ARRAY, false);
+
+        logger::log_assert(has_vertices, logger::ERROR, "invalid cross-section definition in configuration file.");
+        if(has_vertices){
+            auto vertices = doc["vertices"].GetArray();
+
+            std::vector<gp_Pnt> vlist;
+            for(auto& v : vertices){
+                logger::log_assert(v.Size() == 2, logger::ERROR, "Vertices must have exactly two dimensions in 2D problems");
+                vlist.emplace_back(v[0].GetDouble(), v[1].GetDouble(), 0);
+            }
+            return CrossSection(vlist, this->thickness);
+        }
+    } else if(this->type == utils::PROBLEM_TYPE_3D) {
+        bool has_rect = this->log_data(doc, "rectangle", TYPE_OBJECT, false);
+
+        logger::log_assert(has_rect, logger::ERROR, "invalid cross-section definition in configuration file.");
+        if(has_rect){
+            const auto& rect = doc["rectangle"];
+            this->log_data(rect, "center", TYPE_ARRAY, true);
+            this->log_data(rect, "normal", TYPE_ARRAY, true);
+            this->log_data(rect, "w", TYPE_DOUBLE, true);
+            this->log_data(rect, "h", TYPE_DOUBLE, true);
+            this->log_data(rect, "rotation", TYPE_DOUBLE, true);
+            auto c = rect["center"].GetArray();
+            auto n = rect["normal"].GetArray();
+            CrossSection::Rectangle r{
+                rect["w"].GetDouble(),
+                rect["h"].GetDouble(),
+                gp_Pnt(
+                    c[0].GetDouble(), 
+                    c[1].GetDouble(),
+                    c[2].GetDouble()
+                ),
+                gp_Dir(
+                    n[0].GetDouble(), 
+                    n[1].GetDouble(),
+                    n[2].GetDouble()
+                ),
+                rect["rotation"].GetDouble()
+            };
+            return CrossSection(r);
+        }
+    }
+    logger::log_assert(false, logger::ERROR, "unknown problem type detected in get_cross_section(), this shouldn't have happened.");
+    return CrossSection(gp_Pnt(0,0,0));
 }
