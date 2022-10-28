@@ -39,6 +39,9 @@ class Q4 : public MeshElementCommon2DQuad<Q4>{
     static const size_t NODES_PER_ELEM = 4;
     static const size_t K_DIM          = NODE_DOF*NODES_PER_ELEM;
 
+    static const size_t BOUNDARY_NODES_PER_ELEM = 2;
+    static const size_t BOUNDARY_GMSH_TYPE = 1;
+
     Q4(ElementShape s);
 
     virtual std::vector<double> get_k(const std::vector<double>& D, const double t) const override;

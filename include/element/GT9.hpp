@@ -38,6 +38,9 @@ class GT9 : public MeshElementCommon2DTri<GT9>{
     static const size_t NODES_PER_ELEM = 3;
     static const size_t K_DIM          = NODE_DOF*NODES_PER_ELEM;
 
+    static const size_t BOUNDARY_NODES_PER_ELEM = 2;
+    static const size_t BOUNDARY_GMSH_TYPE = 1;
+
     GT9(ElementShape s);
 
     virtual std::vector<double> get_k(const std::vector<double>& D, const double t) const override;

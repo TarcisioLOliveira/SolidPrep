@@ -38,6 +38,9 @@ class TRI3 : public MeshElementCommon2DTri<TRI3>{
     static const size_t NODES_PER_ELEM = 3;
     static const size_t K_DIM          = NODE_DOF*NODES_PER_ELEM;
 
+    static const size_t BOUNDARY_NODES_PER_ELEM = 2;
+    static const size_t BOUNDARY_GMSH_TYPE = 1;
+
     static const utils::ProblemType PROBLEM_TYPE = utils::PROBLEM_TYPE_2D;
 
     TRI3(ElementShape s);
