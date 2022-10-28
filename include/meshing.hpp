@@ -32,6 +32,32 @@
 
 class ProjectData;
 
+class BoundaryElement{
+    public:
+    const Node** const nodes;
+    const Element* const parent;
+    
+    ~BoundaryElement(){
+        delete[] nodes;
+    }
+    BoundaryElement(const std::vector<MeshNode*>& n, const Element* const parent):
+        nodes(allocate_nodes(n)), parent(parent){}
+
+    private:
+    /**
+     * Sets the elements from the element vector.
+     *
+     * @param n Nodes
+     *
+     * @return Newly allocated matrix containing pointer to node array.
+     */
+    const Node** allocate_nodes(const std::vector<MeshNode*>& n){
+        const Node** nodes(new const Node*[n.size()]);
+        std::copy(n.begin(), n.end(), nodes);
+        return nodes;
+    }
+};
+
 class Meshing{
     public:
     Meshing(const std::vector<std::unique_ptr<Geometry>>& geometries,
@@ -74,6 +100,7 @@ class Meshing{
     std::vector<std::unique_ptr<MeshNode>> node_list;
     std::vector<double> load_vector;
     std::unordered_multimap<size_t, Element*> inverse_mesh;
+    std::vector<BoundaryElement> boundary_elements;
 
     protected:
     std::vector<bool> get_support_dof(const Support& support, const MeshElementFactory* elem_maker) const;
