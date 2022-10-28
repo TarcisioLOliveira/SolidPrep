@@ -71,6 +71,16 @@ std::vector<std::unique_ptr<MeshElement>> Meshing::create_element_list(
     return element_list;
 }
 
+void Meshing::populate_inverse_mesh(const std::vector<std::unique_ptr<MeshElement>>& element_list){
+    const size_t N = this->elem_info->get_nodes_per_element();
+    this->inverse_mesh.clear();
+    for(const auto& e : element_list){
+        for(size_t i = 0; i < N; ++i){
+            this->inverse_mesh.emplace(e->nodes[i]->id, e.get());
+        }
+    }
+}
+
 void Meshing::prepare_for_FEM(const TopoDS_Shape& shape,
                               const std::vector<size_t>& geom_elem_mapping,
                               const std::vector<ElementShape>& base_mesh,

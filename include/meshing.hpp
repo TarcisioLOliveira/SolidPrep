@@ -120,6 +120,13 @@ class Meshing{
                                    const MeshElementFactory * const elem_info) const;
 
     /**
+     * Populates the inverse_mesh member variable.
+     *
+     * @param element_list List of MeshElement instances (created e.g. using create_element_list())
+     */
+    virtual void populate_inverse_mesh(const std::vector<std::unique_ptr<MeshElement>>& element_list);
+
+    /**
      * DEPRECATED. Only used by StandardBeamMesher (which is also being
      * deprecated).
      *
