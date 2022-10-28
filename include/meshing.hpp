@@ -113,14 +113,16 @@ class Meshing{
     /**
      * Generates the list of element shapes from mesh information.
      *
-     * @param elem_tags Element tags
      * @param elem_node_tags Node tags per element
      * @param nodes_per_elem Number of nodes in each element
      * @param id_map Map of original ids to nodes
      *
      * @return Vector of element shapes
      */
-    virtual std::vector<ElementShape> generate_element_shapes(const std::vector<size_t>& elem_tags, const std::vector<size_t>& elem_node_tags, size_t nodes_per_elem,const std::unordered_map<size_t, MeshNode*>& id_map = std::unordered_map<size_t, MeshNode*>());
+    virtual std::vector<ElementShape> generate_element_shapes(
+            const std::vector<size_t>& elem_node_tags, 
+            size_t bound_nodes_per_elem,
+            const std::unordered_map<size_t, MeshNode*>& id_map);
 
     /**
      * Search for duplicate nodes (different tag but same position)

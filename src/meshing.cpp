@@ -463,11 +463,14 @@ void Meshing::optimize(std::vector<ElementShape>& list, const bool prune){
     this->reverse_cuthill_mckee(list);
 }
 
-std::vector<ElementShape> Meshing::generate_element_shapes(const std::vector<size_t>& elem_tags, const std::vector<size_t>& elem_node_tags, size_t nodes_per_elem, const std::unordered_map<size_t, MeshNode*>& id_map){
-    logger::log_assert(elem_tags.size()*nodes_per_elem == elem_node_tags.size(), logger::ERROR, "Differing vector dimensions in Meshing::generate_element_shapes().");
-    std::vector<ElementShape> list(elem_tags.size());
+std::vector<ElementShape> Meshing::generate_element_shapes(
+            const std::vector<size_t>& elem_node_tags, 
+            size_t nodes_per_elem,
+            const std::unordered_map<size_t, MeshNode*>& id_map){
+    const size_t N = elem_node_tags.size()/nodes_per_elem;
+    std::vector<ElementShape> list(N);
     #pragma omp parallel for
-    for(size_t j = 0; j < elem_tags.size(); ++j){
+    for(size_t j = 0; j < N; ++j){
         list[j].nodes.resize(nodes_per_elem);
         for(size_t i = 0; i < nodes_per_elem; ++i){
             size_t n = elem_node_tags[j*nodes_per_elem + i];
