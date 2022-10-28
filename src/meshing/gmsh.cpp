@@ -80,8 +80,8 @@ void Gmsh::mesh(const std::vector<Force>& forces,
         shape = sh;
     }
 
-    std::vector<size_t> geom_elem_mapping, elem_tags, elem_node_tags;
-    auto id_map = this->gmsh_meshing(has_condition_inside, shape, geom_elem_mapping, elem_tags, elem_node_tags, this->elem_info);
+    std::vector<size_t> geom_elem_mapping, elem_tags, elem_node_tags, bound_elem_node_tags;
+    auto id_map = this->gmsh_meshing(has_condition_inside, shape, geom_elem_mapping, elem_tags, elem_node_tags, bound_elem_node_tags, this->elem_info);
 
     if(geometries.size() > 1){
        this->find_duplicates(id_map);
@@ -96,7 +96,7 @@ void Gmsh::mesh(const std::vector<Force>& forces,
     this->prepare_for_FEM(shape, geom_elem_mapping, list, forces, supports);
 }
 
-std::unordered_map<size_t, MeshNode*> Gmsh::gmsh_meshing(bool has_condition_inside, TopoDS_Shape sh, std::vector<size_t>& geom_elem_mapping, std::vector<size_t>& elem_tags, std::vector<size_t>& elem_node_tags, const MeshElementFactory* const elem_type){
+std::unordered_map<size_t, MeshNode*> Gmsh::gmsh_meshing(bool has_condition_inside, TopoDS_Shape sh, std::vector<size_t>& geom_elem_mapping, std::vector<size_t>& elem_tags, std::vector<size_t>& elem_node_tags, std::vector<size_t>& bound_elem_node_tags, const MeshElementFactory* const elem_type){
     gmsh::initialize();
 
     gmsh::model::add("base");
@@ -132,6 +132,7 @@ std::unordered_map<size_t, MeshNode*> Gmsh::gmsh_meshing(bool has_condition_insi
     gmsh::model::mesh::generate(dim);
 
     size_t type = elem_type->get_gmsh_element_type();
+    size_t bound_type = elem_type->get_boundary_gmsh_element_type();
     std::vector<int> elem_types;
     gmsh::model::mesh::getElementTypes(elem_types);
     // Check if meshing went well
@@ -153,6 +154,9 @@ std::unordered_map<size_t, MeshNode*> Gmsh::gmsh_meshing(bool has_condition_insi
         gmsh::model::mesh::getElementsByType(type, elem_tags, elem_node_tags, -1);
         geom_elem_mapping[0] = elem_tags.size();
     } else {
+        // Boundary elements
+        gmsh::model::mesh::getElementsByType(bound_type, elem_tags, bound_elem_node_tags);
+        elem_tags.clear();
         // I'm assuming here that the geometry's id and the internal model id
         // in Gmsh/OCCT are the same.
         size_t end = gmsh::model::occ::getMaxTag(dim);
