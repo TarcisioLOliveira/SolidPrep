@@ -36,6 +36,29 @@
 #include <BRepBuilderAPI_Copy.hxx>
 
 
+void Meshing::generate_elements(const TopoDS_Shape& shape,
+                                const std::vector<size_t>& geom_elem_mapping, 
+                                const std::vector<size_t>& elem_node_tags, 
+                                const std::vector<size_t>& bound_elem_node_tags,
+                                std::unordered_map<size_t, MeshNode*>& id_map,
+                                const std::vector<Force>& forces, 
+                                const std::vector<Support>& supports,
+                                const bool deduplicate,
+                                const bool prune){
+
+    if(deduplicate){
+       this->find_duplicates(id_map);
+    }
+
+    size_t nodes_per_elem = this->elem_info->get_nodes_per_element();
+
+    auto list = this->generate_element_shapes(elem_node_tags, nodes_per_elem, id_map);
+
+    this->optimize(list, prune);
+
+    this->prepare_for_FEM(shape, geom_elem_mapping, list, forces, supports);
+}
+
 void Meshing::prepare_for_FEM(const TopoDS_Shape& shape,
                               const std::vector<size_t>& geom_elem_mapping,
                               const std::vector<ElementShape>& base_mesh,

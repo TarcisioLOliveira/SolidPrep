@@ -83,17 +83,19 @@ void Gmsh::mesh(const std::vector<Force>& forces,
     std::vector<size_t> geom_elem_mapping, elem_tags, elem_node_tags, bound_elem_node_tags;
     auto id_map = this->gmsh_meshing(has_condition_inside, shape, geom_elem_mapping, elem_node_tags, bound_elem_node_tags, this->elem_info);
 
+    bool deduplicate = false;
     if(geometries.size() > 1){
-       this->find_duplicates(id_map);
+        deduplicate = true;
     }
-
-    size_t nodes_per_elem = this->elem_info->get_nodes_per_element();
-
-    auto list = this->generate_element_shapes(elem_node_tags, nodes_per_elem, id_map);
-
-    this->optimize(list, has_condition_inside);
-
-    this->prepare_for_FEM(shape, geom_elem_mapping, list, forces, supports);
+    this->generate_elements(shape,
+                            geom_elem_mapping, 
+                            elem_node_tags, 
+                            bound_elem_node_tags,
+                            id_map,
+                            forces, 
+                            supports,
+                            deduplicate,
+                            has_condition_inside);
 }
 
 std::unordered_map<size_t, MeshNode*> Gmsh::gmsh_meshing(bool has_condition_inside, TopoDS_Shape sh, std::vector<size_t>& geom_elem_mapping, std::vector<size_t>& elem_node_tags, std::vector<size_t>& bound_elem_node_tags, const MeshElementFactory* const elem_type){

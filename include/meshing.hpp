@@ -83,6 +83,31 @@ class Meshing{
     bool is_strictly_inside2D(gp_Pnt p, TopoDS_Shape s) const;
 
     /**
+     * Main function for populating each geometry's element list. Uses the other
+     * protected functions in this class to do so. Can be overriden if desired,
+     * as can the other functions.
+     *
+     * @param shape Shape being meshed
+     * @param geom_elem_mapping Maps element ranges to the geometries which should contain them
+     * @param elem_node_tags Map each node to its elements
+     * @param bound_elem_node_tags Maps each boundary node to boundary elements
+     * @param id_map Maps the original node tags (e.g. from Gmsh) to their MeshNode instance
+     * @param forces Forces to be used
+     * @param supports Supports to be used
+     * @param deduplicate Whether to deduplicate nodes
+     * @param prune Whether to prune unused nodes
+     */
+    virtual void generate_elements(const TopoDS_Shape& shape,
+                                   const std::vector<size_t>& geom_elem_mapping, 
+                                   const std::vector<size_t>& elem_node_tags, 
+                                   const std::vector<size_t>& bound_elem_node_tags,
+                                   std::unordered_map<size_t, MeshNode*>& id_map,
+                                   const std::vector<Force>& forces, 
+                                   const std::vector<Support>& supports,
+                                   const bool deduplicate,
+                                   const bool prune);
+
+    /**
      * Takes a mesh and boundary conditions and returns a collection of
      * elements and its load vector, to be used later in a FiniteElement
      * object.
