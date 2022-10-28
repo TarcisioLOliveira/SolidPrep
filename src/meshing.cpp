@@ -59,6 +59,18 @@ void Meshing::generate_elements(const TopoDS_Shape& shape,
     this->prepare_for_FEM(shape, geom_elem_mapping, list, forces, supports);
 }
 
+std::vector<std::unique_ptr<MeshElement>> Meshing::create_element_list(
+                               const std::vector<ElementShape>& base_mesh, 
+                               const MeshElementFactory * const elem_info) const{
+    std::vector<std::unique_ptr<MeshElement>> element_list(base_mesh.size());
+
+    for(size_t i = 0; i < base_mesh.size(); ++i){
+        element_list[i].reset(elem_info->make_element(base_mesh[i]));
+    }
+
+    return element_list;
+}
+
 void Meshing::prepare_for_FEM(const TopoDS_Shape& shape,
                               const std::vector<size_t>& geom_elem_mapping,
                               const std::vector<ElementShape>& base_mesh,

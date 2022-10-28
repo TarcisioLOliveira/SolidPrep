@@ -108,6 +108,18 @@ class Meshing{
                                    const bool prune);
 
     /**
+     * Creates a list of elements from the list of element shapes.
+     *
+     * @param base_mesh List of ElementShape
+     * @param elem_info Element type
+     *
+     * @return Vector of MeshElement instances
+     */
+    virtual std::vector<std::unique_ptr<MeshElement>> create_element_list(
+                                   const std::vector<ElementShape>& base_mesh, 
+                                   const MeshElementFactory * const elem_info) const;
+
+    /**
      * DEPRECATED. Only used by StandardBeamMesher (which is also being
      * deprecated).
      *
