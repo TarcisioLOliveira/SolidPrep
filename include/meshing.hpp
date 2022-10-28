@@ -73,6 +73,7 @@ class Meshing{
 
     std::vector<std::unique_ptr<MeshNode>> node_list;
     std::vector<double> load_vector;
+    std::unordered_multimap<size_t, Element*> inverse_mesh;
 
     protected:
     std::vector<bool> get_support_dof(const Support& support, const MeshElementFactory* elem_maker) const;

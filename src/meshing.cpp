@@ -92,6 +92,14 @@ void Meshing::prepare_for_FEM(const TopoDS_Shape& shape,
 
 
     const size_t N = this->elem_info->get_nodes_per_element();
+    this->inverse_mesh.clear();
+    for(const auto& e : element_list){
+        for(size_t i = 0; i < N; ++i){
+            this->inverse_mesh.emplace(e->nodes[i]->id, e.get());
+        }
+    }
+
+
     if(this->elem_info->get_problem_type() == utils::PROBLEM_TYPE_2D){
         for(auto& f : forces){
             double norm = f.vec.Magnitude()/(thickness*f.S.get_dimension());
