@@ -154,6 +154,13 @@ class Meshing{
     virtual void populate_inverse_mesh(const std::vector<std::unique_ptr<MeshElement>>& element_list);
 
     /**
+     * Populates the boundary_elements member variable.
+     *
+     * @param boundary_base_mesh List of shapes of boundary elements
+     */
+    virtual void populate_boundary_elements(const std::vector<ElementShape>& boundary_base_mesh);
+
+    /**
      * DEPRECATED. Only used by StandardBeamMesher (which is also being
      * deprecated).
      *

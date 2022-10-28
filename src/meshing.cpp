@@ -81,6 +81,34 @@ void Meshing::populate_inverse_mesh(const std::vector<std::unique_ptr<MeshElemen
     }
 }
 
+void Meshing::populate_boundary_elements(const std::vector<ElementShape>& boundary_base_mesh){
+    const size_t N = this->elem_info->get_boundary_nodes_per_element();
+    this->boundary_elements.clear();
+    this->boundary_elements.reserve(boundary_base_mesh.size());
+    for(size_t i = 0; i < boundary_base_mesh.size(); ++i){
+        const auto& b = boundary_base_mesh[i];
+        std::set<Element*> common_nodes;
+        auto eq_range = this->inverse_mesh.equal_range(b.nodes[0]->id);
+        for(auto k = eq_range.first; k != eq_range.second; ++k){
+            common_nodes.insert(k->second);
+        }
+        for(size_t j = 1; j < N; ++j){
+            std::set<Element*> tmp_common_nodes;
+            std::set<Element*> tmp_comp;
+            eq_range = this->inverse_mesh.equal_range(b.nodes[j]->id);
+            for(auto k = eq_range.first; k != eq_range.second; ++k){
+                tmp_comp.insert(k->second);
+            }
+            std::set_intersection(common_nodes.begin(), common_nodes.end(),
+                                  tmp_comp.begin(), tmp_comp.end(),
+                                  std::inserter(tmp_common_nodes, tmp_common_nodes.begin()));
+            common_nodes = std::move(tmp_common_nodes);
+        }
+        logger::log_assert(common_nodes.size() == 1, logger::WARNING, "boundary element associated to more than one element.");
+        this->boundary_elements.emplace_back(b.nodes, *common_nodes.begin());
+    }
+}
+
 void Meshing::prepare_for_FEM(const TopoDS_Shape& shape,
                               const std::vector<size_t>& geom_elem_mapping,
                               const std::vector<ElementShape>& base_mesh,
@@ -332,6 +360,7 @@ void Meshing::prune(const std::vector<Force>& forces,
             geom_elem_mapping.push_back(list.size());
         }
     }
+    // Redo boundary mesh? Hopefully it's not necessary
 
     this->optimize(list, true);
 
