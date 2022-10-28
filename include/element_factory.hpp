@@ -77,6 +77,10 @@ class MeshElementFactory{
     inline virtual size_t get_element_order() const = 0;
     inline virtual utils::ProblemType get_problem_type() const = 0;
     inline virtual Element::Shape get_shape_type() const = 0;
+
+    // Boundary information
+    inline virtual size_t get_boundary_nodes_per_element() const = 0;
+    inline virtual size_t get_boundary_gmsh_element_type() const = 0;
 };
 
 template<class T>
@@ -109,8 +113,14 @@ class MeshElementFactoryImpl : public MeshElementFactory{
     inline size_t get_element_order() const override{
         return T::ORDER;
     }
-    inline virtual Element::Shape get_shape_type() const override{
+    inline Element::Shape get_shape_type() const override{
         return T::SHAPE_TYPE;
+    }
+    inline size_t get_boundary_nodes_per_element() const override{
+        return T::BOUNDARY_NODES_PER_ELEM;
+    }
+    inline size_t get_boundary_gmsh_element_type() const override{
+        return T::BOUNDARY_GMSH_TYPE;
     }
 };
 
