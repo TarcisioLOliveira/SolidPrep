@@ -108,6 +108,9 @@ class Meshing{
                                    const bool prune);
 
     /**
+     * DEPRECATED. Only used by StandardBeamMesher (which is also being
+     * deprecated).
+     *
      * Takes a mesh and boundary conditions and returns a collection of
      * elements and its load vector, to be used later in a FiniteElement
      * object.
