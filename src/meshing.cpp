@@ -46,13 +46,14 @@ void Meshing::generate_elements(const TopoDS_Shape& shape,
                                 const bool deduplicate,
                                 const bool prune){
 
+    logger::quick_log("Generating elements and preparing for finite element analysis...");
+
     if(deduplicate){
        this->find_duplicates(id_map);
     }
 
     const size_t nodes_per_elem = this->elem_info->get_nodes_per_element();
     const size_t bound_nodes_per_elem = this->elem_info->get_boundary_nodes_per_element();
-
 
     auto list = this->generate_element_shapes(elem_node_tags, nodes_per_elem, id_map);
     this->optimize(list, prune);
@@ -71,6 +72,8 @@ void Meshing::generate_elements(const TopoDS_Shape& shape,
 
     this->distribute_elements(geom_elem_mapping, elements);
     elements.clear();
+
+    logger::quick_log("Done.");
 }
 
 std::vector<std::unique_ptr<MeshElement>> Meshing::create_element_list(
