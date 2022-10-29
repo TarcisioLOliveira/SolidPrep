@@ -145,6 +145,8 @@ std::unordered_map<size_t, MeshNode*> Gmsh::gmsh_meshing(bool has_condition_insi
     // Check if meshing went well
     logger::log_assert(std::find(elem_types.begin(), elem_types.end(), type) != elem_types.end(), logger::ERROR,
                         "element type not found in mesh's list of element types (this shouldn't happen).");
+    logger::log_assert(std::find(elem_types.begin(), elem_types.end(), bound_type) != elem_types.end(), logger::ERROR,
+                        "element type of boundary elements not found in mesh's list of element types (this shouldn't happen).");
 
     // Get nodes and their tags
     std::vector<std::size_t> node_tags;
@@ -162,6 +164,7 @@ std::unordered_map<size_t, MeshNode*> Gmsh::gmsh_meshing(bool has_condition_insi
         gmsh::model::mesh::getElementsByType(type, elem_tags, elem_node_tags, -1);
         geom_elem_mapping[0] = elem_tags.size();
         elem_tags.clear();
+        gmsh::model::mesh::getElementsByType(bound_type, elem_tags, bound_elem_node_tags);
     } else {
         std::vector<size_t> elem_tags;
         // Boundary elements
