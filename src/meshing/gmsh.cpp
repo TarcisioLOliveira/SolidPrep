@@ -43,25 +43,14 @@ void Gmsh::mesh(const std::vector<Force>& forces,
     TopoDS_Shape shape = this->make_compound(this->geometries);
 
     bool has_condition_inside = false;
-    // Workaround so that this does not break current (faster) method of
-    // distributing elements to the different geometry instances, at least
-    // considering global meshing for linear analysis.
-    //
-    // Its current use is mostly for simple topopt/beam sizing, so it's a good
-    // workaround for now.
-    //
-    // Otherwise, the simpler idea would be to test for the center of mass
-    // of each geometry, which would be a problem if the geometry has a 
-    // hole in its center.
-    //
-    // Seemed better to sacrifice this gimmick than something more useful
-    // such as support for complex geometries.
     auto problem_type = this->elem_info->get_problem_type();
-    if(this->geometries.size() == 1 && problem_type == utils::PROBLEM_TYPE_2D){
+    TopoDS_Shape sh = BRepBuilderAPI_Copy(shape);
+    if(problem_type == utils::PROBLEM_TYPE_2D){
         has_condition_inside = this->adapt_for_boundary_condition_inside(shape, forces, supports);
     } else {
-        TopoDS_Shape sh = BRepBuilderAPI_Copy(shape);
+        // Maybe disable for cubic elements?
         for(auto& f:forces){
+            has_condition_inside = this->is_strictly_inside3D(f.S.get_centroid(), shape);
             BOPAlgo_Splitter splitter;
             splitter.SetNonDestructive(true);
             splitter.AddArgument(sh);
@@ -70,6 +59,7 @@ void Gmsh::mesh(const std::vector<Force>& forces,
             sh = splitter.Shape();
         }
         for(auto& s:supports){
+            has_condition_inside = this->is_strictly_inside3D(s.S.get_centroid(), shape);
             BOPAlgo_Splitter splitter;
             splitter.SetNonDestructive(true);
             splitter.AddArgument(sh);
@@ -77,11 +67,26 @@ void Gmsh::mesh(const std::vector<Force>& forces,
             splitter.Perform();
             sh = splitter.Shape();
         }
-        shape = sh;
+    }
+    if(has_condition_inside){
+        // Workaround so that this does not break current (faster) method of
+        // distributing elements to the different geometry instances, at least
+        // considering global meshing for linear analysis.
+        //
+        // Its current use is mostly for simple topopt/beam sizing, so it's a good
+        // workaround for now.
+        //
+        // Otherwise, the simpler idea would be to test for the center of mass
+        // of each geometry, which would be a problem if the geometry has a 
+        // hole in its center.
+        //
+        // Seemed better to sacrifice this gimmick than something more useful
+        // such as support for complex geometries.
+        logger::log_assert(this->geometries.size() == 1, logger::ERROR, "applying boundary conditions inside a geometry is currently not supported when the number of geometries is greater than 1.");
     }
 
     std::vector<size_t> geom_elem_mapping, elem_tags, elem_node_tags, bound_elem_node_tags;
-    auto id_map = this->gmsh_meshing(has_condition_inside, shape, geom_elem_mapping, elem_node_tags, bound_elem_node_tags, this->elem_info);
+    auto id_map = this->gmsh_meshing(has_condition_inside, sh, geom_elem_mapping, elem_node_tags, bound_elem_node_tags, this->elem_info);
 
     bool deduplicate = false;
     if(geometries.size() > 1){
