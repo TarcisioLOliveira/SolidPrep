@@ -7,7 +7,7 @@ title: >-
   optimization
 message: >-
   If you use this software, please cite it using the
-  metadata from this file. To cite a specific version
+  metadata from this file, to cite a specific version
   visit the Zenodo page: https://zenodo.org/record/7075851
 type: software
 authors:
@@ -22,3 +22,4 @@ identifiers:
     value: 10.5281/zenodo.7075851
 repository-code: 'https://github.com/TarcisioLOliveira/SolidPrep'
 license: GPL-3.0
+year: 2021
