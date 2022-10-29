@@ -1,10 +1,24 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
 cff-version: 1.2.0
-message: "If you use this software, please cite it as below."
+title: >-
+  SolidPrep - Structural design automation and
+  optimization
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file. To cite a specific version
+  visit the Zenodo page: https://zenodo.org/record/7075851
+type: software
 authors:
-  - family-names: de Oliveira
-    given-names: Tarcísio Ladeia
-    orcid: https://orcid.org/0000-0001-5115-7348
-title: SolidPrep
-version: v0.1.2
-doi: 10.5281/zenodo.7075852
-date-released: 2022-05-12
+  - given-names: Tarcísio Ladeia
+    name-particle: de
+    family-names: Oliveira
+    email: tarcisio.oliveira@usp.br
+    affiliation: University of Sao Paulo
+    orcid: 'https://orcid.org/0000-0001-5115-7348'
+identifiers:
+  - type: doi
+    value: 10.5281/zenodo.7075851
+repository-code: 'https://github.com/TarcisioLOliveira/SolidPrep'
+license: GPL-3.0
