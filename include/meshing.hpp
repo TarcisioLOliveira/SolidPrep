@@ -168,6 +168,15 @@ class Meshing{
      */
     void apply_supports(const std::vector<Support>& supports);
 
+
+    /**
+     * Distributes elements to their respective geometries.
+     *
+     * @param element_list List of elements
+     */
+    void distribute_elements(const std::vector<size_t>& geom_elem_mapping, 
+                             std::vector<std::unique_ptr<MeshElement>>& element_list);
+
     /**
      * DEPRECATED. Only used by StandardBeamMesher (which is also being
      * deprecated).

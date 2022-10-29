@@ -139,6 +139,42 @@ void Meshing::apply_supports(const std::vector<Support>& supports){
     }
 }
 
+
+void Meshing::distribute_elements(const std::vector<size_t>& geom_elem_mapping, 
+                                  std::vector<std::unique_ptr<MeshElement>>& element_list){
+    if(geometries.size() > 1){
+        for(size_t i = 0; i < geometries.size(); ++i){
+            auto& g = geometries[i];
+            g->mesh.clear();
+            if(i == 0){
+                g->mesh.resize(geom_elem_mapping[i]);
+            } else {
+                g->mesh.resize(geom_elem_mapping[i] - geom_elem_mapping[i-1]);
+            }
+        }
+        size_t geom_num = 0;
+        auto& g = geometries[geom_num];
+        std::move(element_list.begin(), 
+                  element_list.begin() + geom_elem_mapping[geom_num], 
+                  g->mesh.begin());
+        ++geom_num;
+        while(geom_num < geometries.size()){
+            auto& g = geometries[geom_num];
+            std::move(element_list.begin() + geom_elem_mapping[geom_num-1], 
+                      element_list.begin() + geom_elem_mapping[geom_num], 
+                      g->mesh.begin());
+            ++geom_num;
+        }
+    } else if(geometries.size() == 1){
+        auto& g = geometries[0];
+        g->mesh.clear();
+        g->mesh.reserve(element_list.size());
+        for(auto& e:element_list){
+            g->mesh.push_back(std::move(e));
+        }
+    }
+}
+
 void Meshing::prepare_for_FEM(const TopoDS_Shape& shape,
                               const std::vector<size_t>& geom_elem_mapping,
                               const std::vector<ElementShape>& base_mesh,
