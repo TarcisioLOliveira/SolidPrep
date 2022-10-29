@@ -207,6 +207,14 @@ void Meshing::generate_load_vector(const TopoDS_Shape& shape,
     size_t dof = this->elem_info->get_dof_per_node();
 
     if(this->elem_info->get_problem_type() == utils::PROBLEM_TYPE_2D){
+        auto is_between_points = [](gp_Pnt p1, gp_Pnt p2, gp_Pnt p)->bool{
+            gp_Mat M(1, p1.X(), p1.Y(), 1, p2.X(), p2.Y(), 1, p.X(), p.Y());
+            bool in_line = std::abs(M.Determinant()) < Precision::Confusion();
+            bool within_bounds = p.Distance(p1) - p1.Distance(p2) < Precision::Confusion() &&
+                                 p.Distance(p2) - p1.Distance(p2) < Precision::Confusion();
+
+            return in_line && within_bounds;
+        };
         /**
          * This is a mess, but I didn't have too much of a choice. The clean
          * approach is the one used in the 3D, but it doesn't work well for
@@ -243,79 +251,42 @@ void Meshing::generate_load_vector(const TopoDS_Shape& shape,
 
             TopoDS_Edge line = BRepBuilderAPI_MakeEdge(p1, p2);
 
-            auto is_inside = [&](gp_Pnt p)->bool{
-                if(p.IsEqual(center, Precision::Confusion())){
-                    return true;
-                } else {
-                    bool in_line = std::abs(Snormal.Dot(gp_Vec(p, center))) < Precision::Confusion();
-                    bool within_bounds = p.Distance(p1) - p1.Distance(p2) < Precision::Confusion() &&
-                                         p.Distance(p2) - p1.Distance(p2) < Precision::Confusion();
-                    return in_line && within_bounds;
-                }
-            };
-
-            auto is_between_points = [](gp_Pnt p1, gp_Pnt p2, gp_Pnt p)->bool{
-                gp_Mat M(1, p1.X(), p1.Y(), 1, p2.X(), p2.Y(), 1, p.X(), p.Y());
-                bool in_line = std::abs(M.Determinant()) < Precision::Confusion();
-                bool within_bounds = p.Distance(p1) - p1.Distance(p2) < Precision::Confusion() &&
-                                     p.Distance(p2) - p1.Distance(p2) < Precision::Confusion();
-
-                return in_line && within_bounds;
-            };
-
-            for(auto& e : element_list){
-                std::vector<Node*> list;
-                int last = -1;
-                for(size_t i = 0; i < N; ++i){
-                    auto n = e->nodes[i];
-                    if(is_inside(n->point)){
-                        // maintain ordering
-                        if(last == -1){
-                            list.push_back(n);
-                            last = i;
-                        } else if(i - last == 1){
-                            list.push_back(n);
-                        } else {
-                            list.insert(list.begin(), n);
-                        }
+            for(const auto& e : this->boundary_elements){
+                std::vector<gp_Pnt> list;
+                list.reserve(Nb);
+                for(size_t i = 0; i < Nb; ++i){
+                    auto n = e.nodes[i];
+                    if(is_between_points(p1, p2, n->point)){
+                        list.push_back(n->point);
                     }
                 }
                 std::vector<double> fe;
-                if(list.size() == 2){
-                    fe = e->get_f(thickness, dir, norm, {list[0]->point, list[1]->point});
-                } else if(list.size() == 1){
-                    for(size_t i = 0; i < N; ++i){
-                        size_t j = (i+1)%N;
-                        auto n1 = e->nodes[i]->point;
-                        auto n2 = e->nodes[j]->point;
+                if(list.size() >= 2){
+                    fe = e.parent->get_f(thickness, dir, norm, list);
+                } else if(list.size() > 1) {
+                    for(size_t i = 0; i < Nb; ++i){
+                        size_t j = (i+1)%Nb;
+                        auto n1 = e.nodes[i]->point;
+                        auto n2 = e.nodes[j]->point;
                         if(p1.IsEqual(n1, Precision::Confusion()) || p1.IsEqual(n2, Precision::Confusion()) ||
                            p2.IsEqual(n1, Precision::Confusion()) || p2.IsEqual(n2, Precision::Confusion())){
-                            break;
+                            continue;
                         }
                         if(is_between_points(n1, n2, p1)){
-                            fe = e->get_f(thickness, dir, norm, {n1, p1});
-                            // logger::quick_log(n1.X(), n1.Y(), p1.X(), p1.Y(), n2.X(), n2.Y());
-                            // logger::quick_log(fe);
+                            list.push_back(p1);
                             break;
                         } else if(is_between_points(n1, n2, p2)){
-                            fe = e->get_f(thickness, dir, norm, {n1, p2});
-                            // logger::quick_log(n1.X(), n1.Y(), p2.X(), p2.Y(), n2.X(), n2.Y());
-                            // logger::quick_log(fe);
+                            list.push_back(p2);
                             break;
                         }
                     }
+                    fe = e.parent->get_f(thickness, dir, norm, list);
                 }
-                // if(fe.size() == 0){
-                //     std::vector<gp_Pnt> points = e->get_intersection_points(line);
-                //     if(points.size() == 2){
-                //         fe = e->get_f(dir, norm, {points[0], points[1]});
-                //     }
-                // }
                 if(fe.size() > 0){
                     logger::quick_log(fe);
                     for(size_t i = 0; i < N; ++i){
                         for(size_t j = 0; j < dof; ++j){
-                            auto n = e->nodes[i];
+                            auto n = e.parent->nodes[i];
                             if(n->u_pos[j] >= 0){
                                 this->load_vector[n->u_pos[j]] += fe[i*dof+j];
                             }
