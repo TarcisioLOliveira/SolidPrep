@@ -43,6 +43,16 @@ class BoundaryElement{
     BoundaryElement(const std::vector<MeshNode*>& n, const MeshElement* const parent):
         nodes(allocate_nodes(n)), parent(parent){}
 
+    inline gp_Pnt get_centroid(const size_t N) const{
+        double x = 0, y = 0, z = 0;
+        for(size_t i = 0; i < N; ++i){
+            x += this->nodes[i]->point.X();
+            y += this->nodes[i]->point.Y();
+            z += this->nodes[i]->point.Z();
+        }
+        return gp_Pnt(x/N, y/N, z/N);
+    }
+
     private:
     /**
      * Sets the elements from the element vector.
