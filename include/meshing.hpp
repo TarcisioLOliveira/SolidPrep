@@ -169,6 +169,18 @@ class Meshing{
      */
     void apply_supports(const std::vector<Support>& supports);
 
+    /**
+     * Generates the load vector member variable based on the mesh, shape and
+     * loads applied.
+     *
+     * @param shape Shape being meshed
+     * @param forces Loads being applied
+     * @param element_list Elements in the mesh
+     */
+    void generate_load_vector(const TopoDS_Shape& shape,
+                              const std::vector<Force>& forces,
+                              const std::vector<std::unique_ptr<MeshElement>>& element_list);
+
 
     /**
      * Distributes elements to their respective geometries.
