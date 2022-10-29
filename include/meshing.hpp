@@ -186,11 +186,9 @@ class Meshing{
      *
      * @param shape Shape being meshed
      * @param forces Loads being applied
-     * @param element_list Elements in the mesh
      */
     void generate_load_vector(const TopoDS_Shape& shape,
-                              const std::vector<Force>& forces,
-                              const std::vector<std::unique_ptr<MeshElement>>& element_list);
+                              const std::vector<Force>& forces);
 
 
     /**

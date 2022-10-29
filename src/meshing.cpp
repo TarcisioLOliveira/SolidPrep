@@ -68,7 +68,7 @@ void Meshing::generate_elements(const TopoDS_Shape& shape,
 
     this->apply_supports(supports);
 
-    this->generate_load_vector(shape, forces, elements);
+    this->generate_load_vector(shape, forces);
 
     this->distribute_elements(geom_elem_mapping, elements);
     elements.clear();
@@ -200,8 +200,7 @@ void Meshing::distribute_elements(const std::vector<size_t>& geom_elem_mapping,
 }
 
 void Meshing::generate_load_vector(const TopoDS_Shape& shape,
-                                   const std::vector<Force>& forces,
-                                   const std::vector<std::unique_ptr<MeshElement>>& element_list){
+                                   const std::vector<Force>& forces){
     const size_t N = this->elem_info->get_nodes_per_element();
     const size_t Nb = this->elem_info->get_boundary_nodes_per_element();
     size_t dof = this->elem_info->get_dof_per_node();
