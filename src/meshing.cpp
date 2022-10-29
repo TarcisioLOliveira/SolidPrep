@@ -78,6 +78,7 @@ std::vector<std::unique_ptr<MeshElement>> Meshing::create_element_list(
                                const MeshElementFactory * const elem_info) const{
     std::vector<std::unique_ptr<MeshElement>> element_list(base_mesh.size());
 
+    #pragma omp parallel for
     for(size_t i = 0; i < base_mesh.size(); ++i){
         element_list[i].reset(elem_info->make_element(base_mesh[i]));
     }
