@@ -50,13 +50,27 @@ void Meshing::generate_elements(const TopoDS_Shape& shape,
        this->find_duplicates(id_map);
     }
 
-    size_t nodes_per_elem = this->elem_info->get_nodes_per_element();
+    const size_t nodes_per_elem = this->elem_info->get_nodes_per_element();
+    const size_t bound_nodes_per_elem = this->elem_info->get_boundary_nodes_per_element();
+
 
     auto list = this->generate_element_shapes(elem_node_tags, nodes_per_elem, id_map);
-
     this->optimize(list, prune);
+    auto elements = this->create_element_list(list, this->elem_info);
+    list.clear();
+    populate_inverse_mesh(elements);
 
-    this->prepare_for_FEM(shape, geom_elem_mapping, list, forces, supports);
+    {
+        auto bound_list = this->generate_element_shapes(bound_elem_node_tags, bound_nodes_per_elem, id_map);
+        this->populate_boundary_elements(bound_list);
+    }
+
+    this->apply_supports(supports);
+
+    this->generate_load_vector(shape, forces, elements);
+
+    this->distribute_elements(geom_elem_mapping, elements);
+    elements.clear();
 }
 
 std::vector<std::unique_ptr<MeshElement>> Meshing::create_element_list(
