@@ -109,6 +109,36 @@ void Meshing::populate_boundary_elements(const std::vector<ElementShape>& bounda
     }
 }
 
+void Meshing::apply_supports(const std::vector<Support>& supports){
+    size_t dof = this->elem_info->get_dof_per_node();
+
+    size_t current = 0;
+    for(size_t i = 0; i < this->node_list.size(); ++i){
+        auto& n = this->node_list[i];
+
+        for(size_t j = 0; j < dof; ++j){
+            n->u_pos[j] = 0;
+        }
+
+        for(auto& s : supports){
+            if(s.S.is_inside(n->point)){
+                std::vector<bool> sup_pos = this->get_support_dof(s, this->elem_info);
+                for(size_t j = 0; j < dof; ++j){
+                    if(sup_pos[j]){
+                        n->u_pos[j] = -1;
+                    }
+                }
+            }
+        }
+        for(size_t j = 0; j < dof; ++j){
+            if(n->u_pos[j] != -1){
+                n->u_pos[j] = current;
+                ++current;
+            }
+        }
+    }
+}
+
 void Meshing::prepare_for_FEM(const TopoDS_Shape& shape,
                               const std::vector<size_t>& geom_elem_mapping,
                               const std::vector<ElementShape>& base_mesh,

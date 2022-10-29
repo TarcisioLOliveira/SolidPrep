@@ -161,6 +161,14 @@ class Meshing{
     virtual void populate_boundary_elements(const std::vector<ElementShape>& boundary_base_mesh);
 
     /**
+     * Generate positioning information for node degrees of freedom, including
+     * which DOFs should be removed.
+     *
+     * @param supports List of supports to be applied.
+     */
+    void apply_supports(const std::vector<Support>& supports);
+
+    /**
      * DEPRECATED. Only used by StandardBeamMesher (which is also being
      * deprecated).
      *
