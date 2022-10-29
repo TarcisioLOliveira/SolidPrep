@@ -22,4 +22,5 @@ identifiers:
     value: 10.5281/zenodo.7075851
 repository-code: 'https://github.com/TarcisioLOliveira/SolidPrep'
 license: GPL-3.0
-year: 2021
+version: v0.1.2
+date-released: 2022-05-12
