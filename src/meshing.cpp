@@ -55,11 +55,15 @@ void Meshing::generate_elements(const TopoDS_Shape& shape,
     const size_t nodes_per_elem = this->elem_info->get_nodes_per_element();
     const size_t bound_nodes_per_elem = this->elem_info->get_boundary_nodes_per_element();
 
-    auto list = this->generate_element_shapes(elem_node_tags, nodes_per_elem, id_map);
-    this->optimize(list, prune);
-    auto elements = this->create_element_list(list, this->elem_info);
-    list.clear();
-    populate_inverse_mesh(elements);
+    {
+        auto list = this->generate_element_shapes(elem_node_tags, nodes_per_elem, id_map);
+        this->optimize(list, prune);
+        auto elements = this->create_element_list(list, this->elem_info);
+        list.clear();
+        populate_inverse_mesh(elements);
+        this->distribute_elements(geom_elem_mapping, elements);
+        elements.clear();
+    }
 
     {
         auto bound_list = this->generate_element_shapes(bound_elem_node_tags, bound_nodes_per_elem, id_map);
@@ -69,9 +73,6 @@ void Meshing::generate_elements(const TopoDS_Shape& shape,
     this->apply_supports(supports);
 
     this->generate_load_vector(shape, forces);
-
-    this->distribute_elements(geom_elem_mapping, elements);
-    elements.clear();
 
     logger::quick_log("Done.");
 }
