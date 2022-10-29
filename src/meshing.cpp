@@ -101,14 +101,14 @@ void Meshing::populate_boundary_elements(const std::vector<ElementShape>& bounda
     this->boundary_elements.reserve(boundary_base_mesh.size());
     for(size_t i = 0; i < boundary_base_mesh.size(); ++i){
         const auto& b = boundary_base_mesh[i];
-        std::set<Element*> common_nodes;
+        std::set<MeshElement*> common_nodes;
         auto eq_range = this->inverse_mesh.equal_range(b.nodes[0]->id);
         for(auto k = eq_range.first; k != eq_range.second; ++k){
             common_nodes.insert(k->second);
         }
         for(size_t j = 1; j < N; ++j){
-            std::set<Element*> tmp_common_nodes;
-            std::set<Element*> tmp_comp;
+            std::set<MeshElement*> tmp_common_nodes;
+            std::set<MeshElement*> tmp_comp;
             eq_range = this->inverse_mesh.equal_range(b.nodes[j]->id);
             for(auto k = eq_range.first; k != eq_range.second; ++k){
                 tmp_comp.insert(k->second);
