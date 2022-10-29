@@ -198,6 +198,25 @@ void Meshing::generate_load_vector(const TopoDS_Shape& shape,
     size_t dof = this->elem_info->get_dof_per_node();
 
     if(this->elem_info->get_problem_type() == utils::PROBLEM_TYPE_2D){
+        /**
+         * This is a mess, but I didn't have too much of a choice. The clean
+         * approach is the one used in the 3D, but it doesn't work well for
+         * regular square meshes for some reason (it's probably due to how
+         * the meshing is implemented in gmsh or something).
+         *
+         * So, this is what thing does:
+         * 1. Gets info on each load and caches it
+         * 2. Goes through the elements and checks if the nodes are completely
+         *    inside it
+         * 3. If they are, create local load vector and apply it to the global
+         *    one
+         * 4. Otherwise, check if it *partially* overlaps it. If it does, get
+         *    the end point and the point inside it to do the calculations. The
+         *    resulting local load vector is a bit weird, but it works. Apply
+         *    it to the global vector and continue
+         * 5. Otherwise, just proceed to the next element
+         * 6. Do so for every load applied
+         */
         for(auto& f : forces){
             double norm = f.vec.Magnitude()/(thickness*f.S.get_dimension());
             gp_Dir dir(f.vec);
