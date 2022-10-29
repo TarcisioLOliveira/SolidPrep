@@ -131,25 +131,18 @@ void Meshing::prepare_for_FEM(const TopoDS_Shape& shape,
             n->u_pos[j] = 0;
         }
 
-        bool supported = false;
         for(auto& s : supports){
             if(s.S.is_inside(n->point)){
                 std::vector<bool> sup_pos = this->get_support_dof(s, this->elem_info);
                 for(size_t j = 0; j < dof; ++j){
-                    if(!sup_pos[j]){
-                        if(n->u_pos[j] == 0){
-                            n->u_pos[j] = current;
-                            ++current;
-                        }
-                    } else {
+                    if(sup_pos[j]){
                         n->u_pos[j] = -1;
                     }
                 }
-                supported = true;
             }
         }
-        if(!supported){
-            for(size_t j = 0; j < dof; ++j){
+        for(size_t j = 0; j < dof; ++j){
+            if(n->u_pos[j] != -1){
                 n->u_pos[j] = current;
                 ++current;
             }
