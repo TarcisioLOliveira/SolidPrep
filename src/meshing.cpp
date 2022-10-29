@@ -323,15 +323,11 @@ void Meshing::generate_load_vector(const TopoDS_Shape& shape,
             gp_Dir dir(f.vec);
 
             for(const auto& e : this->boundary_elements){
-                std::vector<gp_Pnt> points;
-                points.reserve(N);
-                for(size_t i = 0; i < Nb; ++i){
-                    const auto& p = e.nodes[i]->point;
-                    if(f.S.is_inside(p)){
-                        points.push_back(p);
+                if(f.S.is_inside(e.get_centroid(Nb))){
+                    std::vector<gp_Pnt> points(Nb);
+                    for(size_t i = 0; i < Nb; ++i){
+                        points[i] = e.nodes[i]->point;
                     }
-                }
-                if(points.size() == Nb){
                     const auto fe = e.parent->get_f(1, dir, norm, points);
                     logger::quick_log(fe);
                     for(size_t i = 0; i < N; ++i){
