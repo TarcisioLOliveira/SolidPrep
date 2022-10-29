@@ -149,12 +149,14 @@ std::unordered_map<size_t, MeshNode*> Gmsh::gmsh_meshing(bool has_condition_insi
                         "element type of boundary elements not found in mesh's list of element types (this shouldn't happen).");
 
     // Get nodes and their tags
-    std::vector<std::size_t> node_tags;
+    std::vector<std::size_t> node_tags, boundary_node_tags;
     std::vector<double> node_coords, node_params;
     if(has_condition_inside){
         gmsh::model::mesh::getNodes(node_tags, node_coords, node_params, -1, -1, true);
     } else {
         gmsh::model::mesh::getNodes(node_tags, node_coords, node_params, dim, -1, true);
+        std::vector<double> bnode_coords, bnode_params;
+        gmsh::model::mesh::getNodes(boundary_node_tags, bnode_coords, bnode_params, dim-1, -1, true);
     }
 
     // Would need to be changed to support multiple elements
@@ -196,6 +198,11 @@ std::unordered_map<size_t, MeshNode*> Gmsh::gmsh_meshing(bool has_condition_insi
         gp_Pnt p(node_coords[i*3], node_coords[i*3+1], node_coords[i*3+2]);
         this->node_list.emplace_back(std::make_unique<MeshNode>(p, node_tags[i], dof));
         id_map.emplace(node_tags[i], this->node_list[i].get());
+    }
+    this->boundary_node_list.clear();
+    this->boundary_node_list.reserve(boundary_node_tags.size());
+    for(size_t i = 0; i < boundary_node_tags.size(); ++i){
+        this->boundary_node_list.push_back(id_map.at(boundary_node_tags[i]));
     }
 
     return id_map;

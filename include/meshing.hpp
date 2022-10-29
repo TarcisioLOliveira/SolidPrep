@@ -111,6 +111,7 @@ class Meshing{
     std::vector<double> load_vector;
     std::unordered_multimap<size_t, MeshElement*> inverse_mesh;
     std::vector<BoundaryElement> boundary_elements;
+    std::vector<MeshNode*> boundary_node_list;
 
     protected:
     std::vector<bool> get_support_dof(const Support& support, const MeshElementFactory* elem_maker) const;
