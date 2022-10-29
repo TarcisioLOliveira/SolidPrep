@@ -108,6 +108,7 @@ class Meshing{
     void reverse_cuthill_mckee(const std::vector<ElementShape>& elem_list);
     // Inside and not on boundary
     bool is_strictly_inside2D(gp_Pnt p, TopoDS_Shape s) const;
+    bool is_strictly_inside3D(gp_Pnt p, TopoDS_Shape s) const;
 
     /**
      * Main function for populating each geometry's element list. Uses the other

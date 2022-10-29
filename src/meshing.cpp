@@ -556,6 +556,22 @@ bool Meshing::is_strictly_inside2D(gp_Pnt p, TopoDS_Shape s) const{
     return insider.State() == TopAbs_ON && !on_edge;
 }
 
+bool Meshing::is_strictly_inside3D(gp_Pnt p, TopoDS_Shape s) const{
+    BRepClass3d_SolidClassifier insider(s);
+    insider.Perform(p, Precision::Confusion());
+    bool on_bounds = false;
+    TopoDS_Vertex v = BRepBuilderAPI_MakeVertex(p);
+    for(TopExp_Explorer exp(s, TopAbs_FACE); exp.More(); exp.Next()){
+        BRepClass3d_SolidClassifier insider(exp.Current());
+        insider.Perform(p, Precision::Confusion());
+        if(insider.State() == TopAbs_ON){
+            on_bounds = true;
+            break;
+        }
+    }
+    return insider.State() == TopAbs_IN && !on_bounds;
+}
+
 void Meshing::optimize(std::vector<ElementShape>& list, const bool prune){
     // Prune unused nodes
     size_t new_id = 0;
