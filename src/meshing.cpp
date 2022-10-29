@@ -127,9 +127,9 @@ void Meshing::populate_boundary_elements(const std::vector<ElementShape>& bounda
 void Meshing::apply_supports(const std::vector<Support>& supports){
     size_t dof = this->elem_info->get_dof_per_node();
 
-    size_t current = 0;
-    for(size_t i = 0; i < this->node_list.size(); ++i){
-        auto& n = this->node_list[i];
+    #pragma omp parallel for
+    for(size_t i = 0; i < this->boundary_node_list.size(); ++i){
+        auto& n = this->boundary_node_list[i];
 
         for(size_t j = 0; j < dof; ++j){
             n->u_pos[j] = 0;
@@ -145,8 +145,12 @@ void Meshing::apply_supports(const std::vector<Support>& supports){
                 }
             }
         }
+    }
+    size_t current = 0;
+    for(size_t i = 0; i < this->node_list.size(); ++i){
+        auto& n = this->node_list[i];
         for(size_t j = 0; j < dof; ++j){
-            if(n->u_pos[j] != -1){
+            if(n->u_pos[j] > -1){
                 n->u_pos[j] = current;
                 ++current;
             }
