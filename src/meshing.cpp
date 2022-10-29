@@ -195,6 +195,7 @@ void Meshing::generate_load_vector(const TopoDS_Shape& shape,
                                    const std::vector<Force>& forces,
                                    const std::vector<std::unique_ptr<MeshElement>>& element_list){
     const size_t N = this->elem_info->get_nodes_per_element();
+    const size_t Nb = this->elem_info->get_boundary_nodes_per_element();
     size_t dof = this->elem_info->get_dof_per_node();
 
     if(this->elem_info->get_problem_type() == utils::PROBLEM_TYPE_2D){
@@ -320,22 +321,21 @@ void Meshing::generate_load_vector(const TopoDS_Shape& shape,
             double norm = f.vec.Magnitude()/f.S.get_dimension();
             gp_Dir dir(f.vec);
 
-            // TODO: generalize this and make it faster
-            for(auto& e : element_list){
+            for(const auto& e : this->boundary_elements){
                 std::vector<gp_Pnt> points;
                 points.reserve(N);
-                for(size_t i = 0; i < N; ++i){
-                    const auto& p = e->nodes[i]->point;
+                for(size_t i = 0; i < Nb; ++i){
+                    const auto& p = e.nodes[i]->point;
                     if(f.S.is_inside(p)){
                         points.push_back(p);
                     }
                 }
-                if(points.size() == 3){
-                    auto fe = e->get_f(1, dir, norm, points);
+                if(points.size() == Nb){
+                    const auto fe = e.parent->get_f(1, dir, norm, points);
                     logger::quick_log(fe);
                     for(size_t i = 0; i < N; ++i){
                         for(size_t j = 0; j < dof; ++j){
-                            auto n = e->nodes[i];
+                            const auto n = e.parent->nodes[i];
                             if(n->u_pos[j] >= 0){
                                 this->load_vector[n->u_pos[j]] += fe[i*dof+j];
                             }
