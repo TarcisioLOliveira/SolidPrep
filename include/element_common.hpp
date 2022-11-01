@@ -220,14 +220,14 @@ class MeshElementCommon : public MeshElement{
             }
         }
 
-        std::vector<double> vec(N, 0);
+        std::vector<double> vec(S_SIZE, 0);
 
         for(size_t i = 0; i < S_SIZE; ++i){
             for(size_t j = 0; j < K_DIM; ++j){
                 vec[i] += DB[i*K_DIM + j]*u_vec[j];
             }
         }
-        std::vector<double> vec2(N, 0);
+        std::vector<double> vec2(S_SIZE, 0);
         for(size_t i = 0; i < S_SIZE; ++i){
             for(size_t j = 0; j < S_SIZE; ++j){
                 vec2[i] += V[i*S_SIZE + j]*vec[j];
