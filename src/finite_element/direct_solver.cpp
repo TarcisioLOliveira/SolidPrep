@@ -39,10 +39,11 @@ std::vector<double> DirectSolver::calculate_displacements(const Meshing* const m
 
         this->generate_K(mesh, density, pc);
 
+        logger::quick_log("Decomposing...");
         int info = LAPACKE_dpbtrf_work(LAPACK_COL_MAJOR, 'L', W, N-1, K.data(), N);
         logger::log_assert(info == 0, logger::ERROR, "LAPACKE returned {} while factoring stiffness matrix.", info);
+        logger::quick_log("Done.");
     }
-    logger::quick_log("Done.");
     logger::quick_log("Calculating displacements...");
     logger::quick_log("W: ",W," N: ", N);
 

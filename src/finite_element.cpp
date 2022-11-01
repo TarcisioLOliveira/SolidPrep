@@ -115,6 +115,7 @@ void FiniteElement::generate_K(const Meshing* const mesh, const std::vector<doub
             }
         }
     }
+    logger::quick_log("Done.");
 }
 
 void FiniteElement::add_geometry_to_K(const Meshing* const mesh, const Geometry* const g){
