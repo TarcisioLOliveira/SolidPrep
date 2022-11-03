@@ -44,6 +44,7 @@
 #include "finite_element/direct_solver.hpp"
 #include "finite_element/gradient_descent.hpp"
 #include "finite_element/PCG.hpp"
+#include "finite_element/mumps_solver.hpp"
 #include "meshing/gmsh.hpp"
 #include "sizing/beam_sizing.hpp"
 #include "element/GT9.hpp"
@@ -391,6 +392,8 @@ std::unique_ptr<FiniteElement> ProjectData::load_fea(const rapidjson::GenericVal
             logger::log_assert(false, logger::ERROR, "Unknown preconditioner: {}", precond);
         }
         finite_element.reset(new finite_element::PCG(eps, p));
+    } else if(fea["type"] == "mumps"){
+        finite_element.reset(new finite_element::MUMPSSolver());
     }
 
     return finite_element;
