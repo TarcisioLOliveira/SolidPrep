@@ -48,9 +48,18 @@ class SparseMatrix{
     std::vector<double> multiply(std::vector<double> vec) const;
     std::vector<double> to_general_band(size_t diag_size, size_t& ku, size_t& kl) const;
     std::vector<size_t> affected_ids(const std::vector<size_t>& ids) const;
-    // Assumes you'll only use to_mumps_format(), so ku/kl are not calculated
-    void insert_matrix_symmetric_mumps(std::vector<double> M, std::vector<long> pos);
     void to_mumps_format(std::vector<double>& rows, std::vector<double>& cols, std::vector<double>& vals) const;
+    // Assumes you'll only use to_mumps_format(), so ku/kl are not calculated
+    inline void insert_matrix_symmetric_mumps(std::vector<double> M, std::vector<long> pos){
+        size_t W = pos.size();
+        for(size_t i = 0; i < W; ++i){
+            for(size_t j = 0; j < W; ++j){
+                if(pos[i] > -1 && pos[j] > -1){
+                    this->data[Point(pos[i], pos[j])] += M[i*W + j];
+                }
+            }
+        }
+    }
     inline void clear(){this->data.clear();}
 
     private:
