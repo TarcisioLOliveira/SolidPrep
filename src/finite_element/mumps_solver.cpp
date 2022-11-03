@@ -61,8 +61,17 @@ std::vector<double> MUMPSSolver::calculate_displacements(const Meshing* const me
     if(this->current_step == 0){
 
         this->generate_K(mesh, density, pc);
-
+        this->sK.to_mumps_format(this->rows, this->cols, this->vals);
+        this->sK.clear(); // Spare some RAM
         this->config.job = 4; // Prepare matrix and decompose
+        // Insert matrix data
+        // Do this after every regeneration as the vectors may expand, which
+        // will change their address.
+        this->config.n = load.size();
+        this->config.nz = this->vals.size();
+        this->config.a = this->vals.data();
+        this->config.irn = this->rows.data();
+        this->config.jcn = this->cols.data();
 
         logger::quick_log("Decomposing...");
         dmumps_c(&this->config);
