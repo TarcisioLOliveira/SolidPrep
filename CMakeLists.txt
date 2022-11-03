@@ -32,6 +32,8 @@ find_package(Threads REQUIRED)
 find_library(GMSH_LIB gmsh REQUIRED)
 find_path(GMSH_INC gmsh.h REQUIRED)
 find_package(VTK)
+find_package(MPI REQUIRED)
+find_package(MUMPS REQUIRED)
 
 if(NOT NO_OPENMP)
     find_package(OpenMP)
@@ -74,6 +76,8 @@ include_directories(
     ${LAPACKE_INCLUDE_DIR}
     ${GMSH_INC}
     ${VTK_INCLUDE_DIR}
+    ${MPI_INCLUDE_PATH}
+    ${MUMPS_INCLUDE_DIR}
 )
    
 add_subdirectory(src)
