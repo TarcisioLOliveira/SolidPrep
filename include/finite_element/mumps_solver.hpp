@@ -38,8 +38,8 @@ class MUMPSSolver : public FiniteElement{
 
     private:
     utils::SparseMatrix sK;
-    std::vector<double> rows;
-    std::vector<double> cols;
+    std::vector<int> rows;
+    std::vector<int> cols;
     std::vector<double> vals;
     DMUMPS_STRUC_C config;
 

@@ -100,7 +100,7 @@ std::vector<double> SparseMatrix::to_general_band(size_t diag_size, size_t& ku, 
 
     return band;
 }
-void SparseMatrix::to_mumps_format(std::vector<double>& rows, std::vector<double>& cols, std::vector<double>& vals) const{
+void SparseMatrix::to_mumps_format(std::vector<int>& rows, std::vector<int>& cols, std::vector<double>& vals) const{
     size_t N = this->data.size();
     if(N > rows.size()){
         rows.resize(N, 0);
