@@ -81,4 +81,9 @@ std::vector<double> MUMPSSolver::calculate_displacements(const Meshing* const me
     return load; 
 }
 
+void MUMPSSolver::insert_element_matrix(const std::vector<double>& k, const std::vector<long>& pos, const size_t n){
+    (void) n;
+    this->sK.insert_matrix_symmetric_mumps(k, pos);
+}
+
 }

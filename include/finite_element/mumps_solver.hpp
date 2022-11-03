@@ -43,9 +43,7 @@ class MUMPSSolver : public FiniteElement{
     std::vector<double> vals;
     DMUMPS_STRUC_C config;
 
-    virtual void add_geometry_to_K(const Meshing * const mesh, const Geometry * const g) override;
-
-    virtual void add_geometry_to_K(const Meshing * const mesh, const Geometry * const g, std::vector<double>::const_iterator& rho, const double pc) override;
+    virtual void insert_element_matrix(const std::vector<double>& k, const std::vector<long>& pos, const size_t n) override;
 };
 
 }
