@@ -164,3 +164,15 @@ void FiniteElement::add_geometry_to_K(const Meshing* const mesh, const Geometry*
         logger::log_assert(num_den == 1, logger::ERROR, "FEA problems that require more than 1 design variables are currently not supported.");
     }
 }
+
+
+void FiniteElement::insert_element_matrix(std::vector<double>& K, const std::vector<double>& k, const std::vector<long>& pos, const size_t n) const{
+    const size_t w = pos.size();
+    for(size_t i = 0; i < w; ++i){
+        for(size_t j = i; j < w; ++j){
+            if(pos[i] > -1 && pos[j] > -1){
+                K[utils::to_band(pos[i], pos[j], n)] += k[w*i + j];
+            }
+        }
+    }
+}
