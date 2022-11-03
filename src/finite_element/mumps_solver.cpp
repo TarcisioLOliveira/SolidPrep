@@ -53,6 +53,7 @@ MUMPSSolver::MUMPSSolver(){
     // Right-hand side
     this->config.ICNTL(20) = 0; // dense
     this->config.ICNTL(21) = 0; // assembled
+    this->config.nrhs = 1; // One calculation at a time
 
     dmumps_c(&this->config);
 }
@@ -79,6 +80,7 @@ std::vector<double> MUMPSSolver::calculate_displacements(const Meshing* const me
         logger::quick_log("Done.");
     }
     this->config.job = 3; // Solve using decomposed matrix
+    this->config.rhs = load.data(); // Set right-hand side
     logger::quick_log("Calculating displacements...");
 
     dmumps_c(&this->config);
