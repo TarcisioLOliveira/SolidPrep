@@ -77,6 +77,17 @@ void SparseMatrix::insert_matrix(std::vector<double> M, std::vector<long> pos){
     }
 }
 
+void SparseMatrix::insert_matrix_symmetric_mumps(std::vector<double> M, std::vector<long> pos){
+    size_t W = pos.size();
+    for(size_t i = 0; i < W; ++i){
+        for(size_t j = 0; j < W; ++j){
+            if(pos[i] > -1 && pos[j] > -1){
+                this->data[Point(pos[i], pos[j])] += M[i*W + j];
+            }
+        }
+    }
+}
+
 std::vector<double> SparseMatrix::multiply(std::vector<double> vec) const{
     std::vector<double> result(vec.size(), 0);
     for(auto& v:this->data){
