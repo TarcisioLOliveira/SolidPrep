@@ -100,6 +100,21 @@ std::vector<double> SparseMatrix::to_general_band(size_t diag_size, size_t& ku, 
 
     return band;
 }
+void SparseMatrix::to_mumps_format(std::vector<double>& rows, std::vector<double>& cols, std::vector<double>& vals) const{
+    size_t N = this->data.size();
+    if(N > rows.size()){
+        rows.resize(N, 0);
+        cols.resize(N, 0);
+        vals.resize(N, 0);
+    }
+    auto v = this->data.cbegin();
+    for(size_t i = 0; i < N; ++i){
+        rows[i] = v->first.i;
+        cols[i] = v->first.j;
+        vals[i] = v->second;
+        ++v;
+    }
+}
 
 SparseMatrix::Point SparseMatrix::point_to_general_band(Point p) const{
     long center = kl + ku;
