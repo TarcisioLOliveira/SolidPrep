@@ -28,7 +28,7 @@ Dependencies:
 - [Gmsh](https://gmsh.info/)
 - [VTK](https://vtk.org/) (Dependency for OpenCascade, may not be bundled with it)
 - [RapidJSON](https://github.com/Tencent/rapidjson) (included as submodule)
-- MPI (such as [MPICH](https://www.mpich.org/) or [OpenMPI](https://www.open-mpi.org/))
+- MPI (currently only [MPICH](https://www.mpich.org/))
 - [MUMPS](https://graal.ens-lyon.fr/MUMPS/index.php) ([CMake version](https://github.com/scivision/mumps))
 
 Also includes code from [jdumas/mma](https://github.com/jdumas/mma).
