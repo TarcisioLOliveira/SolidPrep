@@ -21,18 +21,27 @@
 #ifndef MUMPS_SOLVER_HPP
 #define MUMPS_SOLVER_HPP
 
+#include <dmumps_c.h>
 #include "finite_element.hpp"
 #include "utils/sparse_matrix.hpp"
+
+// Recommended by the documentation
+#define ICNTL( i ) icntl[ (i) - 1 ]
 
 namespace finite_element{
 
 class MUMPSSolver : public FiniteElement{
     public:
+    MUMPSSolver();
     virtual ~MUMPSSolver() = default;
     virtual std::vector<double> calculate_displacements(const Meshing* const mesh, std::vector<double> load, const std::vector<double>& density = std::vector<double>(), double pc = 3) override;
 
     private:
     utils::SparseMatrix sK;
+    std::vector<double> rows;
+    std::vector<double> cols;
+    std::vector<double> vals;
+    DMUMPS_STRUC_C config;
 
     virtual void add_geometry_to_K(const Meshing * const mesh, const Geometry * const g) override;
 
