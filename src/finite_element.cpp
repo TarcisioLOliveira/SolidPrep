@@ -134,7 +134,7 @@ void FiniteElement::add_geometry_to_K(const Meshing* const mesh, const Geometry*
             }
         }
         std::vector<double> k = e->get_k(D, t);
-        this->insert_element_matrix(K, k, u_pos, N);
+        this->insert_element_matrix(k, u_pos, N);
     }
 }
 
@@ -157,7 +157,7 @@ void FiniteElement::add_geometry_to_K(const Meshing* const mesh, const Geometry*
             }
             const auto D = g->get_D_topopt(*rho, pc, this->K_MIN);
             const std::vector<double> k = e->get_k(D, t);
-            this->insert_element_matrix(K, k, u_pos, N);
+            this->insert_element_matrix(k, u_pos, N);
             ++rho;
         }
     } else {
@@ -166,12 +166,12 @@ void FiniteElement::add_geometry_to_K(const Meshing* const mesh, const Geometry*
 }
 
 
-void FiniteElement::insert_element_matrix(std::vector<double>& K, const std::vector<double>& k, const std::vector<long>& pos, const size_t n) const{
+void FiniteElement::insert_element_matrix(const std::vector<double>& k, const std::vector<long>& pos, const size_t n){
     const size_t w = pos.size();
     for(size_t i = 0; i < w; ++i){
         for(size_t j = i; j < w; ++j){
             if(pos[i] > -1 && pos[j] > -1){
-                K[utils::to_band(pos[i], pos[j], n)] += k[w*i + j];
+                this->K[utils::to_band(pos[i], pos[j], n)] += k[w*i + j];
             }
         }
     }

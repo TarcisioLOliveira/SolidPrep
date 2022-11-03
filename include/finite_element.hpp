@@ -60,7 +60,7 @@ class FiniteElement{
 
     virtual void add_geometry_to_K(const Meshing * const mesh, const Geometry * const g, std::vector<double>::const_iterator& rho, const double pc);
 
-    virtual void insert_element_matrix(std::vector<double>& K, const std::vector<double>& k, const std::vector<long>& pos, const size_t n) const;
+    virtual void insert_element_matrix(const std::vector<double>& k, const std::vector<long>& pos, const size_t n);
 };
 
 #endif
