@@ -35,8 +35,11 @@
 #include <thread>
 #include "sizing/standard_sizing.hpp"
 #include <chrono>
+#include <mpich-x86_64/mpi.h>
 
 int main(int argc, char* argv[]){
+
+    MPI_Init(NULL, NULL);
 
     logger::log_assert(argc > 1, logger::ERROR, "missing path to configuration file.");
 
@@ -166,6 +169,8 @@ int main(int argc, char* argv[]){
         v.end();
 
     }
+
+    MPI_Finalize();
 
     return 0;
 }
