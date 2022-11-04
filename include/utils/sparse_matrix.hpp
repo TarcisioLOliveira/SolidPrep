@@ -21,11 +21,18 @@
 #ifndef SPARSE_MATRIX_HPP
 #define SPARSE_MATRIX_HPP
 
-#include <map>
+#include <string>
+#include <unordered_map>
 #include <vector>
 #include <cstddef>
 
 namespace utils{
+
+// from boost (functional/hash):
+// see http://www.boost.org/doc/libs/1_35_0/doc/html/hash/combine.html template
+template <class T> inline void hash_combine(size_t &seed, T const &v) {
+    seed ^= std::hash<T>()(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+}
 
 class SparseMatrix{
     public:
@@ -38,6 +45,20 @@ class SparseMatrix{
             if (i < other.i) return true;
             if (other.i < i) return false;
             return j < other.j;
+        }
+        bool operator==(const Point &other) const{
+            return this->i == other.i && this->j == other.j;
+        }
+    };
+
+    class HashPoint{
+        public:
+        HashPoint() = default;
+        size_t operator()(const SparseMatrix::Point& p) const{
+            size_t seed = 0;
+            hash_combine(seed, p.i);
+            hash_combine(seed, p.j);
+            return seed;
         }
     };
 
@@ -63,7 +84,7 @@ class SparseMatrix{
     inline void clear(){this->data.clear();}
 
     private:
-    std::map<Point, double> data;
+    std::unordered_map<Point, double, HashPoint> data;
     size_t ku = 0;
     size_t kl = 0;
 
