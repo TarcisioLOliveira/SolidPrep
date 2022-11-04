@@ -71,10 +71,10 @@ class SparseMatrix{
     std::vector<size_t> affected_ids(const std::vector<size_t>& ids) const;
     void to_mumps_format(std::vector<int>& rows, std::vector<int>& cols, std::vector<double>& vals) const;
     // Assumes you'll only use to_mumps_format(), so ku/kl are not calculated
-    inline void insert_matrix_symmetric_mumps(std::vector<double> M, std::vector<long> pos){
+    inline void insert_matrix_symmetric_mumps(const std::vector<double>& M, const std::vector<long>& pos){
         size_t W = pos.size();
         for(size_t i = 0; i < W; ++i){
-            for(size_t j = 0; j < W; ++j){
+            for(size_t j = i; j < W; ++j){
                 if(pos[i] > -1 && pos[j] > -1){
                     this->data[Point(pos[i], pos[j])] += M[i*W + j];
                 }
