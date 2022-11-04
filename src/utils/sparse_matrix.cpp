@@ -109,8 +109,8 @@ void SparseMatrix::to_mumps_format(std::vector<int>& rows, std::vector<int>& col
     }
     auto v = this->data.cbegin();
     for(size_t i = 0; i < N; ++i){
-        rows[i] = v->first.i;
-        cols[i] = v->first.j;
+        rows[i] = v->first.i+1;
+        cols[i] = v->first.j+1;
         vals[i] = v->second;
         ++v;
     }
