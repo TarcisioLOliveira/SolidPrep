@@ -53,7 +53,8 @@ MUMPSSolver::MUMPSSolver(){
     // Right-hand side
     this->config.ICNTL(20) = 0; // dense
     this->config.ICNTL(21) = 0; // assembled
-    this->config.nrhs = 1; // One calculation at a time
+    // complete factorization
+    this->config.ICNTL(19) = 0;
 
     dmumps_c(&this->config);
 }
@@ -69,7 +70,7 @@ std::vector<double> MUMPSSolver::calculate_displacements(const Meshing* const me
         // Do this after every regeneration as the vectors may expand, which
         // will change their address.
         this->config.n = load.size();
-        this->config.nz = this->vals.size();
+        this->config.nnz = this->vals.size();
         this->config.a = this->vals.data();
         this->config.irn = this->rows.data();
         this->config.jcn = this->cols.data();
