@@ -31,6 +31,11 @@ MUMPSSolver::MUMPSSolver(){
     this->config.job = -1; // Configuration initialization
     this->config.par = 1; // Host process also does computations
     this->config.comm_fortran = -987654; // Default communicator
+    // No text output
+    this->config.ICNTL(1) = 0;
+    this->config.ICNTL(2) = 0;
+    this->config.ICNTL(3) = 0;
+    this->config.ICNTL(4) = 0;
     // Matrix assembled in host
     this->config.ICNTL(5) = 0;
     this->config.ICNTL(18) = 0;
@@ -54,10 +59,15 @@ MUMPSSolver::MUMPSSolver(){
     // Right-hand side
     this->config.ICNTL(20) = 0; // dense
     this->config.ICNTL(21) = 0; // assembled
-    // complete factorization
+    // Complete factorization
     this->config.ICNTL(19) = 0;
 
     dmumps_c(&this->config);
+    // No text output, but for real now
+    this->config.ICNTL(1) = 0;
+    this->config.ICNTL(2) = 0;
+    this->config.ICNTL(3) = 0;
+    this->config.ICNTL(4) = 0;
 }
 
 std::vector<double> MUMPSSolver::calculate_displacements(const Meshing* const mesh, std::vector<double> load, const std::vector<double>& density, double pc){
@@ -81,6 +91,7 @@ std::vector<double> MUMPSSolver::calculate_displacements(const Meshing* const me
 
         logger::quick_log("Done.");
     }
+
     this->config.job = 3; // Solve using decomposed matrix
     this->config.rhs = load.data(); // Set right-hand side
     logger::quick_log("Calculating displacements...");
