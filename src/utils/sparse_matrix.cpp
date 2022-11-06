@@ -100,6 +100,13 @@ std::vector<double> SparseMatrix::to_general_band(size_t diag_size, size_t& ku, 
 
     return band;
 }
+void SparseMatrix::merge(SparseMatrix& M){
+    this->data.reserve(this->data.size() + M.data.size());
+    this->data.merge(M.data);
+    for(const auto& v:M.data){
+        this->data[v.first] += v.second;
+    }
+}
 void SparseMatrix::to_mumps_format(std::vector<int>& rows, std::vector<int>& cols, std::vector<double>& vals) const{
     size_t N = this->data.size();
     if(N > rows.size()){
