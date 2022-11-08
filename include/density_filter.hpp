@@ -28,11 +28,11 @@ class DensityFilter{
     public:
     virtual ~DensityFilter() = default;
 
-    virtual void initialize(const Meshing* const mesh) = 0;
+    virtual void initialize(const Meshing* const mesh, const size_t x_size) = 0;
 
-    virtual std::vector<double> filter_densities(const std::vector<double>& x) = 0;
+    virtual std::vector<double> filter_densities(const std::vector<double>& x) const = 0;
 
-    virtual std::vector<double> filter_gradient(const std::vector<double>& df) = 0;
+    virtual std::vector<double> filter_gradient(const std::vector<double>& df) const = 0;
 };
 
 #endif
