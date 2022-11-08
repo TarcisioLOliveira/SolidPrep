@@ -57,11 +57,10 @@ void Convolution::initialize(const Meshing* const mesh, const size_t x_size){
         }
     }
 }
-std::vector<double> Convolution::filter_densities(const std::vector<double>& x) const{
-    std::vector<double> new_x(x.size(),0);
-
+void Convolution::filter_densities(const std::vector<double>& x, std::vector<double>& new_x) const{
     #pragma omp parallel for
     for(size_t i = 0; i < x.size(); ++i){
+        new_x[i] = 0;
         for(const auto& j:this->neighbors[i]){
              double dist = this->get_distance(i, j);
              double wj = 1 - dist/this->radius;
@@ -69,22 +68,18 @@ std::vector<double> Convolution::filter_densities(const std::vector<double>& x) 
         }
         new_x[i] /= this->w[i];
     }
-
-    return new_x;
 }
 
-std::vector<double> Convolution::filter_gradient(const std::vector<double>& df) const{
-    std::vector<double> grad(df.size(),0);
-
+void Convolution::filter_gradient(const std::vector<double>& df, std::vector<double>& new_df) const{
     #pragma omp parallel for
     for(size_t i = 0; i < df.size(); ++i){
-         for(const auto& j:this->neighbors[i]){
-             double dist = this->get_distance(i, j);
-             double wj = 1 - dist/this->radius;
-             grad[i] += wj*df[j]/this->w[j];
-         }
+        new_df[i] = 0;
+        for(const auto& j:this->neighbors[i]){
+            double dist = this->get_distance(i, j);
+            double wj = 1 - dist/this->radius;
+            new_df[i] += wj*df[j]/this->w[j];
+        }
     }
-    return grad;
 }
 
 }
