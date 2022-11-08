@@ -35,6 +35,7 @@
 #include "finite_element.hpp"
 #include "topology_optimization.hpp"
 #include "geometry.hpp"
+#include "density_filter.hpp"
 
 /**
  * Reads and stores project data.
@@ -77,6 +78,7 @@ class ProjectData {
     std::unique_ptr<FiniteElement> topopt_fea;
     std::unique_ptr<Meshing> topopt_mesher;
     std::unique_ptr<MeshElementFactory> topopt_element;
+    std::unique_ptr<DensityFilter> density_filter;
     AnalysisType analysis;
     
     private:
@@ -105,6 +107,8 @@ class ProjectData {
     std::unique_ptr<Meshing> load_mesher(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc);
 
     std::unique_ptr<TopologyOptimization> load_topopt(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc);
+
+    std::unique_ptr<DensityFilter> load_density_filter(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc);
 
     std::unique_ptr<MeshElementFactory> get_element_type(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc);
 

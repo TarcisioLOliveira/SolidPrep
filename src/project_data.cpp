@@ -54,6 +54,7 @@
 #include "element/TET4.hpp"
 #include "topology_optimization/minimal_volume.hpp"
 #include "topology_optimization/minimal_compliance.hpp"
+#include "density_filter/convolution.hpp"
 
 ProjectData::ProjectData(std::string project_file){
 #ifdef _WIN32
@@ -432,6 +433,8 @@ std::unique_ptr<TopologyOptimization> ProjectData::load_topopt(const rapidjson::
         this->log_data(to, "P", TYPE_INT, true);
         this->log_data(to, "pc", TYPE_INT, true);
 
+        this->density_filter = this->load_density_filter(to);
+
         double r_o = to["r_o"].GetDouble();
         double Smax = to["Smax"].GetDouble();
         double rho_init = to["rho_init"].GetDouble();
@@ -451,6 +454,8 @@ std::unique_ptr<TopologyOptimization> ProjectData::load_topopt(const rapidjson::
         this->log_data(to, "save_result", TYPE_BOOL, true);
         this->log_data(to, "pc", TYPE_INT, true);
 
+        this->density_filter = this->load_density_filter(to);
+
         double r_o = to["r_o"].GetDouble();
         double V = to["V"].GetDouble();
         double xtol_abs = to["xtol_abs"].GetDouble();
@@ -461,6 +466,20 @@ std::unique_ptr<TopologyOptimization> ProjectData::load_topopt(const rapidjson::
         topopt.reset(new topology_optimization::MinimalCompliance(r_o, this, V, xtol_abs, ftol_rel, result_threshold, save_result, pc));
     }
     return topopt;
+}
+
+std::unique_ptr<DensityFilter> ProjectData::load_density_filter(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc){
+    this->log_data(doc, "density_filter", TYPE_OBJECT, true);
+
+    auto& f = doc["density_filter"];
+    std::unique_ptr<DensityFilter> filter;
+    if(f["type"] == "convolution"){
+        this->log_data(f, "radius", TYPE_DOUBLE, true);
+
+        double radius = f["radius"].GetDouble();
+        filter = std::make_unique<density_filter::Convolution>(radius);
+    }
+    return filter;
 }
 
 std::unique_ptr<MeshElementFactory> ProjectData::get_element_type(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc){
