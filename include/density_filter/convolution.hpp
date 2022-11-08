@@ -31,14 +31,24 @@ class Convolution : public DensityFilter{
 
     virtual ~Convolution() = default;
 
-    virtual void initialize(const Meshing* const mesh) = 0;
+    virtual void initialize(const Meshing* const mesh, const size_t x_size) override;
 
-    virtual std::vector<double> filter_densities(const std::vector<double>& x) = 0;
+    virtual std::vector<double> filter_densities(const std::vector<double>& x) const override;
 
-    virtual std::vector<double> filter_gradient(const std::vector<double>& df) = 0;
+    virtual std::vector<double> filter_gradient(const std::vector<double>& df) const override;
 
     private:
+    const double radius;
+    std::vector<std::vector<size_t>> neighbors;
+    std::vector<double> p;
+    std::vector<double> w;
 
+    inline double get_distance(const size_t i, const size_t j) const{
+        auto dx = this->p[3*i  ] - this->p[3*j  ];
+        auto dy = this->p[3*i+1] - this->p[3*j+1];
+        auto dz = this->p[3*i+2] - this->p[3*j+2];
+        return std::sqrt(dx*dx + dy*dy + dz*dz);
+    }
 };
 
 }
