@@ -49,7 +49,6 @@ TopoDS_Shape MinimalVolume::optimize(FiniteElement* fem, Meshing* mesh){
 
     logger::quick_log("Preparing for optimization...");
 
-    this->viz = viz;
     this->fem = fem;
     this->mesh = mesh;
 
