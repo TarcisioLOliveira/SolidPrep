@@ -58,6 +58,9 @@ void Convolution::initialize(const Meshing* const mesh, const size_t x_size){
     }
 }
 void Convolution::filter_densities(const std::vector<double>& x, std::vector<double>& new_x) const{
+    if(new_x.size() < x.size()){
+        new_x.resize(x.size());
+    }
     #pragma omp parallel for
     for(size_t i = 0; i < x.size(); ++i){
         new_x[i] = 0;
@@ -71,6 +74,9 @@ void Convolution::filter_densities(const std::vector<double>& x, std::vector<dou
 }
 
 void Convolution::filter_gradient(const std::vector<double>& df, std::vector<double>& new_df) const{
+    if(new_df.size() < df.size()){
+        new_df.resize(df.size());
+    }
     #pragma omp parallel for
     for(size_t i = 0; i < df.size(); ++i){
         new_df[i] = 0;
