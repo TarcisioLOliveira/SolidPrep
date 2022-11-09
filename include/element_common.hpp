@@ -45,31 +45,6 @@ class MeshElementCommon : public MeshElement{
     public:
     virtual ~MeshElementCommon() = default;
 
-    virtual double get_stress_at(const std::vector<double>& D, const gp_Pnt& point, const std::vector<double>& u) const override{
-        const size_t N = T::NODES_PER_ELEM;
-        const size_t K_DIM = T::K_DIM;
-        const size_t NODE_DOF = T::NODE_DOF;
-
-        const std::vector<double> DB = this->get_DB(D, point);
-
-        std::vector<double> results(N, 0);
-        std::vector<double> u_vec(K_DIM, 0);
-        for(size_t l = 0; l < N; ++l){
-            for(size_t j = 0; j < NODE_DOF; ++j){
-                if(this->nodes[l]->u_pos[j] > -1){
-                    u_vec[l*NODE_DOF + j] = u[this->nodes[l]->u_pos[j]];
-                }
-            }
-        }
-        for(size_t i = 0; i < N; ++i){
-            for(size_t j = 0; j < K_DIM; ++j){
-                results[i] += DB[i*K_DIM + j]*u_vec[j];
-            }
-        }
-
-        return std::sqrt(std::pow(results[0], 2) - results[0]*results[1] + std::pow(results[1], 2) + 3*std::pow(results[2], 2));
-    }
-
     virtual std::vector<double> get_internal_loads(const std::vector<double>& D, const double t, const std::vector<double>& u) const override{
         const size_t N = T::NODES_PER_ELEM;
         const size_t K_DIM = T::K_DIM;
@@ -249,8 +224,7 @@ class MeshElementCommon : public MeshElement{
         }
     }
 
-
-    virtual std::vector<double> _get_stress_tensor(const std::vector<double>& D, const gp_Pnt& p, const std::vector<double>& u, const std::vector<size_t> indices, const size_t S_SIZE) const{
+    virtual std::vector<double> _get_stress_vector(const std::vector<double>& D, const gp_Pnt& p, const std::vector<double>& u, const size_t S_SIZE) const{
         const size_t N = T::NODES_PER_ELEM;
         const size_t K_DIM = T::K_DIM;
         const size_t NODE_DOF = T::NODE_DOF;
@@ -272,6 +246,14 @@ class MeshElementCommon : public MeshElement{
             }
         }
 
+        return results;
+    }
+
+
+    virtual std::vector<double> _get_stress_tensor(const std::vector<double>& D, const gp_Pnt& p, const std::vector<double>& u, const std::vector<size_t> indices, const size_t S_SIZE) const{
+
+        auto results = this->_get_stress_vector(D, p, u, S_SIZE);
+
         std::vector<double> S(indices.size());
         for(size_t i = 0; i < indices.size(); ++i){
             S[i] = results[indices[i]];
@@ -291,6 +273,12 @@ class MeshElementCommon2D : public MeshElementCommon<T>{
     static const utils::ProblemType PROBLEM_TYPE = utils::PROBLEM_TYPE_2D;
 
     virtual ~MeshElementCommon2D() = default;
+
+    virtual double get_stress_at(const std::vector<double>& D, const gp_Pnt& point, const std::vector<double>& u) const override{
+        auto results = this->_get_stress_vector(D, point, u, S_SIZE);
+
+        return std::sqrt(results[0]*results[0] - results[0]*results[1] + results[1]*results[1] + 3*results[2]*results[2]);
+    }
 
     virtual std::vector<double> get_stress_tensor(const std::vector<double>& D, const gp_Pnt& p, const std::vector<double>& u) const override{
         const std::vector<size_t> indices{0, 2, 2, 1};
@@ -471,6 +459,16 @@ class MeshElementCommon3D : public MeshElementCommon<T>{
     static const utils::ProblemType PROBLEM_TYPE = utils::PROBLEM_TYPE_3D;
 
     virtual ~MeshElementCommon3D() = default;
+
+    virtual double get_stress_at(const std::vector<double>& D, const gp_Pnt& point, const std::vector<double>& u) const override{
+        auto s = this->_get_stress_vector(D, point, u, S_SIZE);
+
+        const double ds1 = s[0] - s[1];
+        const double ds2 = s[1] - s[2];
+        const double ds3 = s[2] - s[0];
+
+        return std::sqrt(0.5*(ds1*ds1 + ds2*ds2 + ds3*ds3 + 6*(s[3]*s[3] + s[4]*s[4] + s[5]*s[5])));
+    }
 
     virtual std::vector<double> get_stress_tensor(const std::vector<double>& D, const gp_Pnt& p, const std::vector<double>& u) const override{
         const std::vector<size_t> indices{0, 3, 4, 3, 1, 5, 4, 5, 3};
