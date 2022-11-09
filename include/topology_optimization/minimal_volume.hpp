@@ -22,18 +22,18 @@
 #define MINIMAL_VOLUME_HPP
 
 #include "topology_optimization.hpp"
+#include "density_filter.hpp"
 
 namespace topology_optimization{
 
 class MinimalVolume : public TopologyOptimization{
     public:
-    MinimalVolume(double r_o, double Smax, ProjectData* data, double rho_init, double xtol_abs, double Vfrac_abs, double result_threshold, bool save, int P, int pc);
+    MinimalVolume(DensityFilter* filter, double Smax, ProjectData* data, double rho_init, double xtol_abs, double Vfrac_abs, double result_threshold, bool save, int P, int pc);
 
     virtual void initialize_views(Visualization* viz) override;
     virtual TopoDS_Shape optimize(FiniteElement* fem, Meshing* mesh) override;
 
     private:
-    double r_o;
     double Smax;
     ProjectData* data;
     double rho_init;
@@ -44,18 +44,15 @@ class MinimalVolume : public TopologyOptimization{
     int P;
     int pc;
 
+    DensityFilter* filter;
     Visualization* viz;
     FiniteElement* fem;
     Meshing* mesh;
     double c;
-    std::vector<double> new_x;
     double max_V;
     double cur_V;
     std::vector<double> grad_V;
     double alpha;
-    std::vector<std::vector<size_t>> neighbors;
-    std::vector<double> p;
-    std::vector<double> w;
     double Spn;
     double Sm;
     size_t elem_number;
@@ -70,13 +67,6 @@ class MinimalVolume : public TopologyOptimization{
     void update_c();
     double fc_norm(const std::vector<double>& x);
     double fc_norm_grad(const std::vector<double>& x, std::vector<double>& grad);
-
-    inline double get_distance(const size_t i, const size_t j) const{
-        auto dx = this->p[3*i  ] - this->p[3*j+0];
-        auto dy = this->p[3*i+1] - this->p[3*j+1];
-        auto dz = this->p[3*i+2] - this->p[3*j+2];
-        return std::sqrt(dx*dx + dy*dy + dz*dz);
-    }
 };
 
 }

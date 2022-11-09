@@ -35,8 +35,8 @@
 namespace topology_optimization{
 
 
-MinimalVolume::MinimalVolume(double r_o, double Smax, ProjectData* data, double rho_init, double xtol_abs, double Vfrac_abs, double result_threshold, bool save, int P, int pc):
-    r_o(r_o), Smax(Smax), data(data), rho_init(rho_init), xtol_abs(xtol_abs), Vfrac_abs(Vfrac_abs), result_threshold(result_threshold), save_result(save), P(P), pc(pc), viz(nullptr), fem(nullptr), mesh(nullptr), c(1), new_x(), max_V(0), cur_V(0), alpha(1), neighbors(), p(), w(), Spn(1), Sm(1), elem_number(0){}
+MinimalVolume::MinimalVolume(DensityFilter* filter, double Smax, ProjectData* data, double rho_init, double xtol_abs, double Vfrac_abs, double result_threshold, bool save, int P, int pc):
+    Smax(Smax), data(data), rho_init(rho_init), xtol_abs(xtol_abs), Vfrac_abs(Vfrac_abs), result_threshold(result_threshold), save_result(save), P(P), pc(pc), filter(filter), viz(nullptr), fem(nullptr), mesh(nullptr), c(1), max_V(0), cur_V(0), alpha(1), Spn(1), Sm(1), elem_number(0){}
 
 void MinimalVolume::initialize_views(Visualization* viz){
     this->viz = viz;
@@ -62,60 +62,26 @@ TopoDS_Shape MinimalVolume::optimize(FiniteElement* fem, Meshing* mesh){
     }
 
     this->c  = 1;
-    this->new_x = std::vector<double>(x_size, this->rho_init);
     this->grad_V = std::vector<double>(x_size, 0);
     this->alpha = 1;
-    this->neighbors = std::vector<std::vector<size_t>>(x_size), std::vector<double>();
-    this->p = std::vector<double>(x_size*3);
-    this->w = std::vector<double>(x_size);
 
     this->fem->set_steps(2);
 
-    // Caching positions, because this calculation is expensive.
-    auto p_it = this->p.begin();
+    auto V_it = this->grad_V.begin();
     for(const auto& g:this->mesh->geometries){
         if(g->do_topopt){
             for(const auto& e:g->mesh){
-                gp_Pnt c = e->get_centroid();
-                *p_it = c.X();
-                ++p_it;
-                *p_it = c.Y();
-                ++p_it;
-                *p_it = c.Z();
-                ++p_it;
+                *V_it = e->get_volume(data->thickness);
+                this->max_V += *V_it;
+                ++V_it;
             }
         }
     }
 
-    // Uses more memory but is much faster
-    size_t i = 0;
-    size_t j = 0;
-    for(const auto& g:this->mesh->geometries){
-        if(g->do_topopt){
-            for(const auto& e:g->mesh){
-                this->grad_V[i] = e->get_volume(data->thickness);
-                this->max_V += this->grad_V[i];
-                
-                j = i;
-                while(j < x_size){
-                    double dist = this->get_distance(i, j);
-                    if(dist <= this->r_o){
-                        this->neighbors[i].push_back(j);
-                        this->neighbors[j].push_back(i);
-                        double w = 1 - dist/this->r_o;
-                        this->w[i] += w;
-                        this->w[j] += w;
-                    }
-                    ++j;
-                }
-                ++i;
-            }
-        }
-    }
+    this->cur_V = this->rho_init*this->max_V;
 
-    this->cur_V = this->max_V;
-
-    std::vector<double> x = this->new_x;
+    std::vector<double> x(x_size, this->rho_init);
+    std::vector<double> new_x(x_size, this->rho_init);
 
     logger::quick_log("Done.");
     auto start_to = std::chrono::high_resolution_clock::now();
@@ -125,6 +91,8 @@ TopoDS_Shape MinimalVolume::optimize(FiniteElement* fem, Meshing* mesh){
     mma.SetAsymptotes(0.005, 0.2, 1.02);
 
     double ff;
+    std::vector<double> dftmp(x.size());
+    std::vector<double> dgtmp(x.size());
     std::vector<double> df(x.size());
     std::vector<double> dg(x.size());
     std::vector<double> g(1);
@@ -138,12 +106,16 @@ TopoDS_Shape MinimalVolume::optimize(FiniteElement* fem, Meshing* mesh){
     xmin = std::vector<double>(x.size(), 0.0);
     xmax = std::vector<double>(x.size(), 1.0);
 
+    this->filter->initialize(mesh, x_size);
+
     double fnew = this->max_V;
     std::vector<double> gnew(1);
     g[0] = 1e3;
 
-    ff = this->fobj_grad(x, df);
-    g[0] = this->fc_norm_grad(x, dg);
+    ff = this->fobj_grad(new_x, dftmp);
+    this->filter->filter_densities(dftmp, df);
+    g[0] = this->fc_norm_grad(new_x, dgtmp);
+    this->filter->filter_densities(dgtmp, dg);
 
     // int max_innerit = 30;
     double ch = 1.0;
@@ -156,6 +128,7 @@ TopoDS_Shape MinimalVolume::optimize(FiniteElement* fem, Meshing* mesh){
         gnew = g;
 
         mma.Update(x.data(), df.data(), g.data(), dg.data(), xmin.data(), xmax.data());
+        this->filter->filter_densities(x, new_x);
 
         ch = 0.0;
         for (size_t i = 0; i < x.size(); ++i) {
@@ -163,8 +136,10 @@ TopoDS_Shape MinimalVolume::optimize(FiniteElement* fem, Meshing* mesh){
             xold[i] = x[i];
         }
 
-        ff = this->fobj_grad(x, df);
-        g[0] = this->fc_norm_grad(x, dg);
+        ff = this->fobj_grad(new_x, dftmp);
+        this->filter->filter_densities(dftmp, df);
+        g[0] = this->fc_norm_grad(new_x, dgtmp);
+        this->filter->filter_densities(dgtmp, dg);
 
         logger::quick_log("");
         logger::quick_log("");
@@ -243,11 +218,11 @@ TopoDS_Shape MinimalVolume::optimize(FiniteElement* fem, Meshing* mesh){
         logger::quick_log("Saving resulting topology...");
         std::cout << "\r" << 0 << "%         ";
         TopoDS_Shape result = BRepBuilderAPI_Copy(this->data->geometries[0]->shape);
-        for(size_t i = 0; i < this->new_x.size(); ++i){
-            if(this->new_x[i] >= this->result_threshold){
+        for(size_t i = 0; i < new_x.size(); ++i){
+            if(new_x[i] >= this->result_threshold){
                 result = utils::cut_shape(result, this->data->geometries[0]->mesh[i]->get_shape());
             }
-            double pc = i/(double)(this->new_x.size()-1);
+            double pc = i/(double)(new_x.size()-1);
             std::cout << "\r" << pc*100 << "%         ";
         }
         result = utils::cut_shape(this->data->geometries[0]->shape, result);
@@ -263,16 +238,9 @@ TopoDS_Shape MinimalVolume::optimize(FiniteElement* fem, Meshing* mesh){
 double MinimalVolume::fobj(const std::vector<double>& x){
     double V = 0;
 
-    // Density filtering
+    #pragma omp parallel for reduction(+:V)
     for(size_t i = 0; i < x.size(); ++i){
-        this->new_x[i] = 0;
-        for(const auto& j:this->neighbors[i]){
-             double dist = this->get_distance(i, j);
-             double wj = 1 - dist/this->r_o;
-             this->new_x[i] += wj*x[j];
-        }
-        this->new_x[i] /= this->w[i];
-        V += this->new_x[i]*this->grad_V[i];
+        V += x[i]*this->grad_V[i];
     }
 
     this->cur_V = V;
@@ -281,19 +249,10 @@ double MinimalVolume::fobj(const std::vector<double>& x){
 double MinimalVolume::fobj_grad(const std::vector<double>& x, std::vector<double>& grad){
     double V = 0;
 
-    // Density filtering
+    #pragma omp parallel for reduction(+:V)
     for(size_t i = 0; i < x.size(); ++i){
-        grad[i] = 0;
-        this->new_x[i] = 0;
-        for(const auto& j:this->neighbors[i]){
-             double dist = this->get_distance(i, j);
-             double wj = 1 - dist/this->r_o;
-             this->new_x[i] += wj*x[j];
-             // Yes, it is w[j] instead of w[i] here
-             grad[i] += wj*this->grad_V[j]/this->w[j];
-        }
-        this->new_x[i] /= this->w[i];
-        V += this->new_x[i]*this->grad_V[i];
+        grad[i] = this->grad_V[i];
+        V += x[i]*this->grad_V[i];
     }
 
     this->cur_V = V;
@@ -319,14 +278,14 @@ double MinimalVolume::fc_norm(const std::vector<double>& x){
     double pc = this->pc;
     double pt = 1.0/2;
 
-    std::vector<double> u(this->fem->calculate_displacements(this->mesh, this->mesh->load_vector, this->new_x, pc));
+    std::vector<double> u(this->fem->calculate_displacements(this->mesh, this->mesh->load_vector, x, pc));
 
     // Calculating global stress
     int P = this->P;
     double Spn = 0;
     double Smax = 0;
 
-    auto x_it = this->new_x.begin();
+    auto x_it = x.begin();
     auto v_it = this->grad_V.begin();
     for(const auto& g:this->mesh->geometries){
         const size_t num_den = g->number_of_densities_needed();
@@ -379,18 +338,17 @@ double MinimalVolume::fc_norm_grad(const std::vector<double>& x, std::vector<dou
     double pc = this->pc;
     double pt = 1.0/2;
 
-    std::vector<double> u(this->fem->calculate_displacements(this->mesh, this->mesh->load_vector, this->new_x, pc));
+    std::vector<double> u(this->fem->calculate_displacements(this->mesh, this->mesh->load_vector, x, pc));
 
     // Calculating stresses
     std::vector<double> fl(u.size(), 0);
 
     // Calculating global stress
-    int P = this->P;
     double Spn = 0;
     double Smax = 0;
 
     std::vector<double> stress_list(elem_number);
-    auto x_it = this->new_x.cbegin();
+    auto x_it = x.cbegin();
     auto v_it = this->grad_V.cbegin();
     auto stress_it = stress_list.begin();
     for(const auto& g:this->mesh->geometries){
@@ -448,7 +406,7 @@ double MinimalVolume::fc_norm_grad(const std::vector<double>& x, std::vector<dou
         }
     }
     this->stress_view->update_view(stress_list);
-    this->density_view->update_view(this->new_x);
+    this->density_view->update_view(x);
     this->viz->redraw();
 
     Spn = std::pow(Spn, 1.0/P);
@@ -466,15 +424,14 @@ double MinimalVolume::fc_norm_grad(const std::vector<double>& x, std::vector<dou
     double Sg = this->c*std::pow(Spn, 1 - P);
 
     logger::quick_log("Calculating adjoint problem...{");
-    auto l = this->fem->calculate_displacements(this->mesh, fl, this->new_x, pc);
+    auto l = this->fem->calculate_displacements(this->mesh, fl, x, pc);
     logger::quick_log("} Done.");
 
     logger::quick_log("Calculating stress gradient...");
 
-    std::vector<double> grad_tmp(grad);
-    x_it = this->new_x.cbegin();
+    x_it = x.cbegin();
     v_it = this->grad_V.cbegin();
-    auto grad_it = grad_tmp.begin();
+    auto grad_it = grad.begin();
     for(const auto& g:this->mesh->geometries){
         const size_t num_den = g->number_of_densities_needed();
         const size_t num_mat = g->number_of_materials();
@@ -516,16 +473,6 @@ double MinimalVolume::fc_norm_grad(const std::vector<double>& x, std::vector<dou
             }
         }
     }
-    // Sensitivity filtering (implied by the density filtering)
-    for(size_t i = 0; i < x.size(); ++i){
-         grad[i] = 0;
-         for(const auto& j:this->neighbors[i]){
-             double dist = this->get_distance(i, j);
-             double wj = 1 - dist/this->r_o;
-             // Yes, it is w[j] instead of w[i] here
-             grad[i] += wj*grad_tmp[j]/this->w[j];
-         }
-     }
     logger::quick_log("Done.");
 
     logger::quick_log(result, this->c, Spn, Smax, this->Smax, this->alpha, this->cur_V);

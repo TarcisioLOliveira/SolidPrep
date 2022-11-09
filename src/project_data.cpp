@@ -423,7 +423,6 @@ std::unique_ptr<TopologyOptimization> ProjectData::load_topopt(const rapidjson::
     auto& to = doc["topopt"];
     std::unique_ptr<TopologyOptimization> topopt;
     if(to["type"] == "minimal_volume"){
-        this->log_data(to, "r_o", TYPE_DOUBLE, true);
         this->log_data(to, "Smax", TYPE_DOUBLE, true);
         this->log_data(to, "rho_init", TYPE_DOUBLE, true);
         this->log_data(to, "xtol_abs", TYPE_DOUBLE, true);
@@ -435,7 +434,6 @@ std::unique_ptr<TopologyOptimization> ProjectData::load_topopt(const rapidjson::
 
         this->density_filter = this->load_density_filter(to);
 
-        double r_o = to["r_o"].GetDouble();
         double Smax = to["Smax"].GetDouble();
         double rho_init = to["rho_init"].GetDouble();
         double xtol_abs = to["xtol_abs"].GetDouble();
@@ -444,7 +442,7 @@ std::unique_ptr<TopologyOptimization> ProjectData::load_topopt(const rapidjson::
         bool save_result = to["save_result"].GetBool();
         int P = to["P"].GetInt();
         int pc = to["pc"].GetInt();
-        topopt.reset(new topology_optimization::MinimalVolume(r_o, Smax, this, rho_init, xtol_abs, Vfrac_abs, result_threshold, save_result, P, pc));
+        topopt.reset(new topology_optimization::MinimalVolume(this->density_filter.get(), Smax, this, rho_init, xtol_abs, Vfrac_abs, result_threshold, save_result, P, pc));
     } else if(to["type"] == "minimal_compliance"){
         this->log_data(to, "r_o", TYPE_DOUBLE, true);
         this->log_data(to, "V", TYPE_DOUBLE, true);
