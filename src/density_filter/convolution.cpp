@@ -57,7 +57,7 @@ void Convolution::initialize(const Meshing* const mesh, const size_t x_size){
         }
     }
 }
-void Convolution::filter_densities(const std::vector<double>& x, std::vector<double>& new_x) const{
+void Convolution::filter_densities(const std::vector<double>& x, std::vector<double>& new_x){
     if(new_x.size() < x.size()){
         new_x.resize(x.size());
     }
@@ -73,7 +73,7 @@ void Convolution::filter_densities(const std::vector<double>& x, std::vector<dou
     }
 }
 
-void Convolution::filter_gradient(const std::vector<double>& df, std::vector<double>& new_df) const{
+void Convolution::filter_gradient(const std::vector<double>& df, std::vector<double>& new_df){
     if(new_df.size() < df.size()){
         new_df.resize(df.size());
     }

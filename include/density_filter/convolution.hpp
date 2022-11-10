@@ -33,9 +33,9 @@ class Convolution : public DensityFilter{
 
     virtual void initialize(const Meshing* const mesh, const size_t x_size) override;
 
-    virtual void filter_densities(const std::vector<double>& x, std::vector<double>& new_x) const override;
+    virtual void filter_densities(const std::vector<double>& x, std::vector<double>& new_x) override;
 
-    virtual void filter_gradient(const std::vector<double>& df, std::vector<double>& new_df) const override;
+    virtual void filter_gradient(const std::vector<double>& df, std::vector<double>& new_df) override;
 
     private:
     const double radius;
