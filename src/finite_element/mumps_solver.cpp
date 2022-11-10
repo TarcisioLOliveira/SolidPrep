@@ -70,6 +70,13 @@ MUMPSSolver::MUMPSSolver(){
     this->config.ICNTL(4) = 0;
 }
 
+MUMPSSolver::~MUMPSSolver(){
+    // Clean up. Especially necessary if using out-of-core memory
+    this->config.job = -2;
+
+    dmumps_c(&this->config);
+}
+
 std::vector<double> MUMPSSolver::calculate_displacements(const Meshing* const mesh, std::vector<double> load, const std::vector<double>& density, double pc){
     if(this->current_step == 0){
 

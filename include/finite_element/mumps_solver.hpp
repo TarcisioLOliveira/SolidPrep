@@ -33,7 +33,7 @@ namespace finite_element{
 class MUMPSSolver : public FiniteElement{
     public:
     MUMPSSolver();
-    virtual ~MUMPSSolver() = default;
+    virtual ~MUMPSSolver();
     virtual std::vector<double> calculate_displacements(const Meshing* const mesh, std::vector<double> load, const std::vector<double>& density = std::vector<double>(), double pc = 3) override;
 
     private:
