@@ -83,7 +83,8 @@ TopoDS_Shape MinimalVolume::optimize(FiniteElement* fem, Meshing* mesh){
     std::vector<double> x(x_size, this->rho_init);
     std::vector<double> new_x(x_size, this->rho_init);
 
-    logger::quick_log("Done.");
+    this->filter->initialize(mesh, x_size);
+
     auto start_to = std::chrono::high_resolution_clock::now();
     
     //optimization::GCMMASolver gcmma(x.size(), 1, 0, 1e6, 1); //1e5
@@ -106,7 +107,7 @@ TopoDS_Shape MinimalVolume::optimize(FiniteElement* fem, Meshing* mesh){
     xmin = std::vector<double>(x.size(), 0.0);
     xmax = std::vector<double>(x.size(), 1.0);
 
-    this->filter->initialize(mesh, x_size);
+    logger::quick_log("Done.");
 
     double fnew = this->max_V;
     std::vector<double> gnew(1);
@@ -128,7 +129,6 @@ TopoDS_Shape MinimalVolume::optimize(FiniteElement* fem, Meshing* mesh){
         gnew = g;
 
         mma.Update(x.data(), df.data(), g.data(), dg.data(), xmin.data(), xmax.data());
-        this->filter->filter_densities(x, new_x);
 
         ch = 0.0;
         for (size_t i = 0; i < x.size(); ++i) {
@@ -136,6 +136,7 @@ TopoDS_Shape MinimalVolume::optimize(FiniteElement* fem, Meshing* mesh){
             xold[i] = x[i];
         }
 
+        this->filter->filter_densities(x, new_x);
         ff = this->fobj_grad(new_x, dftmp);
         this->filter->filter_densities(dftmp, df);
         g[0] = this->fc_norm_grad(new_x, dgtmp);
