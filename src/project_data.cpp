@@ -55,6 +55,7 @@
 #include "topology_optimization/minimal_volume.hpp"
 #include "topology_optimization/minimal_compliance.hpp"
 #include "density_filter/convolution.hpp"
+#include "density_filter/helmholtz.hpp"
 
 ProjectData::ProjectData(std::string project_file){
 #ifdef _WIN32
@@ -474,7 +475,13 @@ std::unique_ptr<DensityFilter> ProjectData::load_density_filter(const rapidjson:
 
         double radius = f["radius"].GetDouble();
         filter = std::make_unique<density_filter::Convolution>(radius);
+    } else if(f["type"] == "helmholtz"){
+        this->log_data(f, "radius", TYPE_DOUBLE, true);
+
+        double radius = f["radius"].GetDouble();
+        filter = std::make_unique<density_filter::Helmholtz>(radius);
     }
+
     return filter;
 }
 
