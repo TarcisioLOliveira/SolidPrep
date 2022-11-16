@@ -8,7 +8,8 @@ The scripts are used mainly to calculate the element-dependent matrices:
 - the `DB` matrix, that is, the matrix resulting from the multiplication of the
   constitutive matrix (D) and the linear elasticity matrix (B);
 - the `Nf` matrix, that is, the boundary integral of the interpolation matrix,
-  used for calculating the `f` vector (global and local nodal force vectors).
+  used for calculating the `f` vector (global and local nodal force vectors);
+- the `h` matrix, that is, the elemental tensor used for Helmholtz filtering.
 
 The respective matrices can be calculated by running the script with the
 arguments `-k`, `-DB`, and `-Nf`. The result is printed and can be copy-pasted

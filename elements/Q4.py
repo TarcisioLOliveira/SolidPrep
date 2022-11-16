@@ -14,6 +14,7 @@ xi = sympy.symbols('xi')
 eta = sympy.symbols('eta')
 N = [0]*4
 t = sympy.symbols("t")
+r = sympy.symbols("r")
 D = []
 B = sympy.Matrix(np.zeros((3, 8)))
 J = 0
@@ -209,12 +210,74 @@ def make_k():
         print(formatted)
     print("};")
 
+def init_J_matrix():
+    """
+        Initializes the global variable J as a matrix instead of as the
+        determinant of J.
+    """
+    global J
+
+    x = sympy.symbols('x:4')
+    y = sympy.symbols('y:4')
+
+    xx = sympy.Rational(1,4)*((1-xi)*(1-eta)*x[0]+(1+xi)*(1-eta)*x[1]+(1+xi)*(1+eta)*x[2]+(1-xi)*(1+eta)*x[3])
+    yy = sympy.Rational(1,4)*((1-xi)*(1-eta)*y[0]+(1+xi)*(1-eta)*y[1]+(1+xi)*(1+eta)*y[2]+(1-xi)*(1+eta)*y[3])
+
+    J = sympy.Matrix([[xx.diff(xi), yy.diff(xi)],[xx.diff(eta), yy.diff(eta)]])
+
+def print_matrix(M, name):
+    """
+        Prints the matrix M, item by item, in C++ format, with the specified
+        variable name.
+    """
+
+    print("std::vector<double> "+name+"{")
+    for i in range(len(M)):
+        M[i] = sympy.simplify(sympy.nsimplify(sympy.expand(M[i]), rational=True))
+
+        # Format output for use with C++
+        formatted = str(M[i])
+        formatted = re.sub(r"(eta)\*\*3", r"\1*\1*\1", formatted)
+        formatted = re.sub(r"(xi)\*\*3", r"\1*\1*\1", formatted)
+        formatted = re.sub(r"(eta)\*\*2", r"\1*\1", formatted)
+        formatted = re.sub(r"(xi)\*\*2", r"\1*\1", formatted)
+        formatted = re.sub(r"([xyr]\d?)\*\*2", r"\1*\1", formatted)
+        formatted = re.sub(r"([xy])(\d)", r"\1[\2]", formatted)
+
+        if i > 0:
+            print(",")
+        print(formatted)
+    print("};")
+
+def make_h():
+    """
+        Creates the elemental Helmholtz tensor.
+    """
+    init_N_norm()
+    init_J_matrix()
+    detJ = sympy.nsimplify(sympy.expand(J.det()), rational=True)
+    invJ = J.inv()
+
+    NN = sympy.Matrix([N[0], N[1], N[2], N[3]]).T
+    dNN = sympy.Matrix([NN.diff(xi), NN.diff(eta)])
+    for i in range(len(dNN)):
+        dNN[i] = sympy.expand(sympy.nsimplify(dNN[i], rational=True))
+
+    k = (r**2)*t*dNN.T*dNN
+    k2 = t*NN.T*NN*detJ
+
+    print_matrix(J, "J")
+    print_matrix(sympy.Matrix([detJ]), "detJ")
+    print_matrix(dNN, "dN")
+    print_matrix(k2, "h2")
+
 def main():
     # Backwards compatible switch statement
     args = {
         "-k":  make_k,
         "-DB": make_DB,
-        "-Nf": make_Nf
+        "-Nf": make_Nf,
+        "-h": make_h
     }
     for i in range(1, len(sys.argv)):
         args[sys.argv[i]]()
