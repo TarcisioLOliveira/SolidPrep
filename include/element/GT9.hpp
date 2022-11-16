@@ -44,6 +44,8 @@ class GT9 : public MeshElementCommon2DTri<GT9>{
     GT9(ElementShape s);
 
     virtual std::vector<double> get_k(const std::vector<double>& D, const double t) const override;
+    virtual std::vector<double> helmholtz_tensor(const double t, const double r) const override;
+    virtual std::vector<double> helmholtz_vector(const double t) const override;
 
     virtual inline std::unique_ptr<MeshElementFactory> get_element_info() const override{
         return std::unique_ptr<MeshElementFactory>(new MeshElementFactoryImpl<GT9>());

@@ -381,6 +381,24 @@ class MeshElement : public Element{
     virtual inline std::unique_ptr<MeshElementFactory> get_element_info() const = 0;
 
     /**
+     * Returns the elemental tensor used for the Helmoltz filter.
+     *
+     * @param t Geometry thickness.
+     * @param r Filtering radius
+     *
+     * @return NxN matrix
+     */
+    virtual std::vector<double> helmholtz_tensor(const double t, const double r) const = 0;
+    /**
+     * Returns the elemental vector used for the Helmholtz filter (RHS).
+     *
+     * @param t Geometry thickness.
+     *
+     * @return Nx1 vector
+     */
+    virtual std::vector<double> helmholtz_vector(const double t) const = 0;
+
+    /**
      * Returns an element node.
      *
      * @param node Number of the node within the element's list of nodes.

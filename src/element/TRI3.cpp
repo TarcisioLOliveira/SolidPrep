@@ -178,4 +178,54 @@ t*(2*a[2] + b[2]*x[0] + b[2]*x[1] + c[2]*y[0] + c[2]*y[1])*std::sqrt(x[0]*x[0] -
     return Nf;
 }
 
+std::vector<double> TRI3::helmholtz_tensor(const double t, const double r) const{
+    const size_t N = this->NODES_PER_ELEM;
+    const double delta = this->get_volume(1);
+
+    std::vector<gp_Pnt> p;
+    for(size_t i = 0; i < N; ++i){
+        const auto& n = this->nodes[i];
+        p.push_back(n->point);
+    }
+    std::vector<double> b, c;
+    for(size_t i = 0; i < N; ++i){
+        size_t j = (i + 1) % 3;
+        size_t k = (i + 2) % 3;
+
+        b.push_back(p[j].Y() - p[k].Y());
+        c.push_back(p[k].X() - p[j].X());
+    }
+    std::vector<double> h{
+    t*(3*b[0]*b[0]*r*r + 3*c[0]*c[0]*r*r + 2*delta*delta)/(12*delta)
+    ,
+    t*(9*b[0]*b[1]*r*r + 9*c[0]*c[1]*r*r + 4*delta*delta)/(36*delta)
+    ,
+    t*(9*b[0]*b[2]*r*r + 9*c[0]*c[2]*r*r + 4*delta*delta)/(36*delta)
+    ,
+    t*(9*b[0]*b[1]*r*r + 9*c[0]*c[1]*r*r + 4*delta*delta)/(36*delta)
+    ,
+    t*(3*b[1]*b[1]*r*r + 3*c[1]*c[1]*r*r + 2*delta*delta)/(12*delta)
+    ,
+    t*(9*b[1]*b[2]*r*r + 9*c[1]*c[2]*r*r + 4*delta*delta)/(36*delta)
+    ,
+    t*(9*b[0]*b[2]*r*r + 9*c[0]*c[2]*r*r + 4*delta*delta)/(36*delta)
+    ,
+    t*(9*b[1]*b[2]*r*r + 9*c[1]*c[2]*r*r + 4*delta*delta)/(36*delta)
+    ,
+    t*(3*b[2]*b[2]*r*r + 3*c[2]*c[2]*r*r + 2*delta*delta)/(12*delta)
+    };
+
+    return h;
+}
+
+std::vector<double> TRI3::helmholtz_vector(const double t) const{
+    const double txdelta = this->get_volume(t);
+
+    double Ni = txdelta/NODES_PER_ELEM;
+
+    std::vector<double> NT{Ni, Ni, Ni};
+
+    return NT;
+}
+
 }

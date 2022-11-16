@@ -45,6 +45,8 @@ class Q4 : public MeshElementCommon2DQuad<Q4>{
     Q4(ElementShape s);
 
     virtual std::vector<double> get_k(const std::vector<double>& D, const double t) const override;
+    virtual std::vector<double> helmholtz_tensor(const double t, const double r) const override;
+    virtual std::vector<double> helmholtz_vector(const double t) const override;
 
     virtual inline std::unique_ptr<MeshElementFactory> get_element_info() const override{
         return std::unique_ptr<MeshElementFactory>(new MeshElementFactoryImpl<Q4>());
@@ -56,6 +58,18 @@ class Q4 : public MeshElementCommon2DQuad<Q4>{
 
     virtual std::vector<double> get_k_base(const std::vector<double>& D, const double t, const double xi, const double eta, 
                                            const std::array<double, NODES_PER_ELEM>& x, const std::array<double, NODES_PER_ELEM>& y) const;
+
+    virtual std::vector<double> get_h_base(const double r, const double t, const double xi, const double eta, 
+                                           const std::array<double, NODES_PER_ELEM>& x, const std::array<double, NODES_PER_ELEM>& y) const;
+
+    virtual std::vector<double> get_J_base(const double xi, const double eta, 
+                                           const std::array<double, NODES_PER_ELEM>& x, const std::array<double, NODES_PER_ELEM>& y) const;
+    virtual double get_detJ_base(const double xi, const double eta, 
+                                 const std::array<double, NODES_PER_ELEM>& x, const std::array<double, NODES_PER_ELEM>& y) const;
+    virtual std::vector<double> get_dN_base(const double xi, const double eta) const;
+
+    virtual std::vector<double> get_h2_base(const double t, const double xi, const double eta, 
+                                            const std::array<double, NODES_PER_ELEM>& x, const std::array<double, NODES_PER_ELEM>& y) const;
 
     std::array<double, NODES_PER_ELEM*NODES_PER_ELEM> get_coeffs() const;
 
