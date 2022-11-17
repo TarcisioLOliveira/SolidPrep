@@ -5,10 +5,6 @@ cff-version: 1.2.0
 title: >-
   SolidPrep - Structural design automation and
   optimization
-message: >-
-  If you use this software, please cite it using the
-  metadata from this file, to cite a specific version
-  visit the Zenodo page: https://zenodo.org/record/7075851
 type: software
 authors:
   - given-names: Tarcísio Ladeia
