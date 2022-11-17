@@ -56,6 +56,7 @@
 #include "topology_optimization/minimal_compliance.hpp"
 #include "density_filter/convolution.hpp"
 #include "density_filter/helmholtz.hpp"
+#include "density_filter/averaging.hpp"
 
 ProjectData::ProjectData(std::string project_file){
 #ifdef _WIN32
@@ -480,6 +481,8 @@ std::unique_ptr<DensityFilter> ProjectData::load_density_filter(const rapidjson:
 
         double radius = f["radius"].GetDouble();
         filter = std::make_unique<density_filter::Helmholtz>(radius);
+    } else if(f["type"] == "averaging"){
+        filter = std::make_unique<density_filter::Averaging>();
     }
 
     return filter;
