@@ -57,6 +57,7 @@
 #include "density_filter/convolution.hpp"
 #include "density_filter/helmholtz.hpp"
 #include "density_filter/averaging.hpp"
+#include "projection/none.hpp"
 
 ProjectData::ProjectData(std::string project_file){
 #ifdef _WIN32
@@ -483,6 +484,20 @@ std::unique_ptr<DensityFilter> ProjectData::load_density_filter(const rapidjson:
         filter = std::make_unique<density_filter::Helmholtz>(radius);
     } else if(f["type"] == "averaging"){
         filter = std::make_unique<density_filter::Averaging>();
+    }
+
+    return filter;
+}
+
+std::unique_ptr<Projection> ProjectData::load_projection(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc){
+    if(!this->log_data(doc, "projection", TYPE_OBJECT, false)){
+        return std::make_unique<projection::None>();
+    }
+
+    std::unique_ptr<Projection> filter;
+    auto& f = doc["projection"];
+    if(f["type"] == "none"){
+        filter = std::make_unique<projection::None>();
     }
 
     return filter;

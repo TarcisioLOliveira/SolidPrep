@@ -24,6 +24,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include "projection.hpp"
 #include "rapidjson/document.h"
 #include "rapidjson/rapidjson.h"
 
@@ -79,6 +80,7 @@ class ProjectData {
     std::unique_ptr<Meshing> topopt_mesher;
     std::unique_ptr<MeshElementFactory> topopt_element;
     std::unique_ptr<DensityFilter> density_filter;
+    std::unique_ptr<Projection> projection;
     AnalysisType analysis;
     
     private:
@@ -109,6 +111,8 @@ class ProjectData {
     std::unique_ptr<TopologyOptimization> load_topopt(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc);
 
     std::unique_ptr<DensityFilter> load_density_filter(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc);
+
+    std::unique_ptr<Projection> load_projection(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc);
 
     std::unique_ptr<MeshElementFactory> get_element_type(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc);
 
