@@ -23,12 +23,13 @@
 
 #include "topology_optimization.hpp"
 #include "density_filter.hpp"
+#include "projection.hpp"
 
 namespace topology_optimization{
 
 class MinimalVolume : public TopologyOptimization{
     public:
-    MinimalVolume(DensityFilter* filter, double Smax, ProjectData* data, double rho_init, double xtol_abs, double Vfrac_abs, double result_threshold, bool save, int P, int pc);
+    MinimalVolume(DensityFilter* filter, Projection* projection, double Smax, ProjectData* data, double rho_init, double xtol_abs, double Vfrac_abs, double result_threshold, bool save, int P, int pc);
 
     virtual void initialize_views(Visualization* viz) override;
     virtual TopoDS_Shape optimize(FiniteElement* fem, Meshing* mesh) override;
@@ -45,6 +46,7 @@ class MinimalVolume : public TopologyOptimization{
     int pc;
 
     DensityFilter* filter;
+    Projection* projection;
     Visualization* viz;
     FiniteElement* fem;
     Meshing* mesh;

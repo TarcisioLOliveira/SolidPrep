@@ -23,12 +23,13 @@
 
 #include "topology_optimization.hpp"
 #include "density_filter.hpp"
+#include "projection.hpp"
 
 namespace topology_optimization{
 
 class MinimalCompliance : public TopologyOptimization{
     public:
-    MinimalCompliance(DensityFilter* filter, ProjectData* data, double Vfinal, double xtol_abs, double ftol_rel, double result_threshold, bool save, int pc);
+    MinimalCompliance(DensityFilter* filter, Projection* projection, ProjectData* data, double Vfinal, double xtol_abs, double ftol_rel, double result_threshold, bool save, int pc);
 
     virtual void initialize_views(Visualization* viz) override;
     virtual TopoDS_Shape optimize(FiniteElement* fem, Meshing* mesh) override;
@@ -44,6 +45,7 @@ class MinimalCompliance : public TopologyOptimization{
     size_t elem_number;
 
     DensityFilter* filter;
+    Projection* projection;
     Visualization* viz;
     FiniteElement* fem;
     Meshing* mesh;

@@ -436,6 +436,7 @@ std::unique_ptr<TopologyOptimization> ProjectData::load_topopt(const rapidjson::
         this->log_data(to, "pc", TYPE_INT, true);
 
         this->density_filter = this->load_density_filter(to);
+        this->projection = this->load_projection(to);
 
         double Smax = to["Smax"].GetDouble();
         double rho_init = to["rho_init"].GetDouble();
@@ -445,7 +446,7 @@ std::unique_ptr<TopologyOptimization> ProjectData::load_topopt(const rapidjson::
         bool save_result = to["save_result"].GetBool();
         int P = to["P"].GetInt();
         int pc = to["pc"].GetInt();
-        topopt.reset(new topology_optimization::MinimalVolume(this->density_filter.get(), Smax, this, rho_init, xtol_abs, Vfrac_abs, result_threshold, save_result, P, pc));
+        topopt.reset(new topology_optimization::MinimalVolume(this->density_filter.get(), this->projection.get(), Smax, this, rho_init, xtol_abs, Vfrac_abs, result_threshold, save_result, P, pc));
     } else if(to["type"] == "minimal_compliance"){
         this->log_data(to, "V", TYPE_DOUBLE, true);
         this->log_data(to, "xtol_abs", TYPE_DOUBLE, true);
@@ -455,6 +456,7 @@ std::unique_ptr<TopologyOptimization> ProjectData::load_topopt(const rapidjson::
         this->log_data(to, "pc", TYPE_INT, true);
 
         this->density_filter = this->load_density_filter(to);
+        this->projection = this->load_projection(to);
 
         double V = to["V"].GetDouble();
         double xtol_abs = to["xtol_abs"].GetDouble();
@@ -462,7 +464,7 @@ std::unique_ptr<TopologyOptimization> ProjectData::load_topopt(const rapidjson::
         double result_threshold = to["result_threshold"].GetDouble();
         bool save_result = to["save_result"].GetBool();
         int pc = to["pc"].GetInt();
-        topopt.reset(new topology_optimization::MinimalCompliance(this->density_filter.get(), this, V, xtol_abs, ftol_rel, result_threshold, save_result, pc));
+        topopt.reset(new topology_optimization::MinimalCompliance(this->density_filter.get(), this->projection.get(), this, V, xtol_abs, ftol_rel, result_threshold, save_result, pc));
     }
     return topopt;
 }

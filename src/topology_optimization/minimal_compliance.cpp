@@ -33,8 +33,8 @@
 namespace topology_optimization{
 
 
-MinimalCompliance::MinimalCompliance(DensityFilter* filter, ProjectData* data, double Vfinal, double xtol_abs, double ftol_rel, double result_threshold, bool save, int pc):
-    data(data), Vfinal(Vfinal), xtol_abs(xtol_abs), ftol_rel(ftol_rel), result_threshold(result_threshold), save_result(save), pc(pc), elem_number(0), filter(filter), viz(nullptr), fem(nullptr), mesh(nullptr), max_V(0), cur_V(0), alpha(1){}
+MinimalCompliance::MinimalCompliance(DensityFilter* filter, Projection* projection, ProjectData* data, double Vfinal, double xtol_abs, double ftol_rel, double result_threshold, bool save, int pc):
+    data(data), Vfinal(Vfinal), xtol_abs(xtol_abs), ftol_rel(ftol_rel), result_threshold(result_threshold), save_result(save), pc(pc), elem_number(0), filter(filter), projection(projection), viz(nullptr), fem(nullptr), mesh(nullptr), max_V(0), cur_V(0), alpha(1){}
 
 void MinimalCompliance::initialize_views(Visualization* viz){
     this->viz = viz;
@@ -109,9 +109,12 @@ TopoDS_Shape MinimalCompliance::optimize(FiniteElement* fem, Meshing* mesh){
     std::vector<double> gnew(1);
     g[0] = 1e3;
 
-    ff = this->fobj_grad(x, dftmp);
+    this->projection->project_densities(new_x);
+    ff = this->fobj_grad(new_x, dftmp);
+    this->projection->project_gradient(dftmp);
     this->filter->filter_gradient(dftmp, df);
-    g[0] = this->fc_norm_grad(x, dgtmp);
+    g[0] = this->fc_norm_grad(new_x, dgtmp);
+    this->projection->project_gradient(dgtmp);
     this->filter->filter_gradient(dgtmp, dg);
 
     // int max_innerit = 30;
@@ -131,9 +134,12 @@ TopoDS_Shape MinimalCompliance::optimize(FiniteElement* fem, Meshing* mesh){
         }
 
         this->filter->filter_densities(x, new_x);
+        this->projection->project_densities(new_x);
         ff = this->fobj_grad(new_x, dftmp);
+        this->projection->project_gradient(dftmp);
         this->filter->filter_gradient(dftmp, df);
         g[0] = this->fc_norm_grad(new_x, dgtmp);
+        this->projection->project_gradient(dgtmp);
         this->filter->filter_gradient(dgtmp, dg);
 
         logger::quick_log("");

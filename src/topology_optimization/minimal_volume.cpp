@@ -35,8 +35,8 @@
 namespace topology_optimization{
 
 
-MinimalVolume::MinimalVolume(DensityFilter* filter, double Smax, ProjectData* data, double rho_init, double xtol_abs, double Vfrac_abs, double result_threshold, bool save, int P, int pc):
-    Smax(Smax), data(data), rho_init(rho_init), xtol_abs(xtol_abs), Vfrac_abs(Vfrac_abs), result_threshold(result_threshold), save_result(save), P(P), pc(pc), filter(filter), viz(nullptr), fem(nullptr), mesh(nullptr), c(1), max_V(0), cur_V(0), alpha(1), Spn(1), Sm(1), elem_number(0){}
+MinimalVolume::MinimalVolume(DensityFilter* filter, Projection* projection, double Smax, ProjectData* data, double rho_init, double xtol_abs, double Vfrac_abs, double result_threshold, bool save, int P, int pc):
+    Smax(Smax), data(data), rho_init(rho_init), xtol_abs(xtol_abs), Vfrac_abs(Vfrac_abs), result_threshold(result_threshold), save_result(save), P(P), pc(pc), filter(filter), projection(projection), viz(nullptr), fem(nullptr), mesh(nullptr), c(1), max_V(0), cur_V(0), alpha(1), Spn(1), Sm(1), elem_number(0){}
 
 void MinimalVolume::initialize_views(Visualization* viz){
     this->viz = viz;
@@ -113,9 +113,12 @@ TopoDS_Shape MinimalVolume::optimize(FiniteElement* fem, Meshing* mesh){
     std::vector<double> gnew(1);
     g[0] = 1e3;
 
+    this->projection->project_densities(new_x);
     ff = this->fobj_grad(new_x, dftmp);
+    this->projection->project_gradient(dftmp);
     this->filter->filter_gradient(dftmp, df);
     g[0] = this->fc_norm_grad(new_x, dgtmp);
+    this->projection->project_gradient(dgtmp);
     this->filter->filter_gradient(dgtmp, dg);
 
     // int max_innerit = 30;
@@ -137,9 +140,12 @@ TopoDS_Shape MinimalVolume::optimize(FiniteElement* fem, Meshing* mesh){
         }
 
         this->filter->filter_densities(x, new_x);
+        this->projection->project_densities(new_x);
         ff = this->fobj_grad(new_x, dftmp);
+        this->projection->project_gradient(dftmp);
         this->filter->filter_gradient(dftmp, df);
         g[0] = this->fc_norm_grad(new_x, dgtmp);
+        this->projection->project_gradient(dgtmp);
         this->filter->filter_gradient(dgtmp, dg);
 
         logger::quick_log("");
