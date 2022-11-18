@@ -15,6 +15,7 @@ set(SOURCES
     visualization.cpp
     geometry.cpp
     view_handler.cpp
+    projection.cpp
 )
 
 add_subdirectory(pathfinding)

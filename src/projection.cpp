@@ -18,31 +18,11 @@
  *
  */
 
-#ifndef PROJECTION_HPP
-#define PROJECTION_HPP
+#include "projection.hpp"
 
-#include <cstddef>
-#include <vector>
 
-class Projection{
-    public:
-    struct Parameter{
-        double value;
-        double final_value;
-        double value_step;
-        size_t iteration_step;
-    };
-
-    virtual ~Projection() = default;
-    
-    virtual void update(const size_t iteration) = 0;
-
-    virtual void project_densities(std::vector<double>& new_x) const = 0;
-
-    virtual void project_gradient(std::vector<double>& new_df) const = 0;
-
-    protected:
-    virtual void update_parameter(Parameter& info, const size_t iteration) const;
-};
-
-#endif
+void Projection::update_parameter(Parameter& param, const size_t iteration) const{
+    if(iteration % param.iteration_step &&  param.value < param.final_value){
+        param.value = std::min(param.final_value, param.value + param.value_step);
+    }
+}
