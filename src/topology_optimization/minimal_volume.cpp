@@ -114,9 +114,9 @@ TopoDS_Shape MinimalVolume::optimize(FiniteElement* fem, Meshing* mesh){
     g[0] = 1e3;
 
     ff = this->fobj_grad(new_x, dftmp);
-    this->filter->filter_densities(dftmp, df);
+    this->filter->filter_gradient(dftmp, df);
     g[0] = this->fc_norm_grad(new_x, dgtmp);
-    this->filter->filter_densities(dgtmp, dg);
+    this->filter->filter_gradient(dgtmp, dg);
 
     // int max_innerit = 30;
     double ch = 1.0;
@@ -138,9 +138,9 @@ TopoDS_Shape MinimalVolume::optimize(FiniteElement* fem, Meshing* mesh){
 
         this->filter->filter_densities(x, new_x);
         ff = this->fobj_grad(new_x, dftmp);
-        this->filter->filter_densities(dftmp, df);
+        this->filter->filter_gradient(dftmp, df);
         g[0] = this->fc_norm_grad(new_x, dgtmp);
-        this->filter->filter_densities(dgtmp, dg);
+        this->filter->filter_gradient(dgtmp, dg);
 
         logger::quick_log("");
         logger::quick_log("");
