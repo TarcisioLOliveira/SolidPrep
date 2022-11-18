@@ -115,10 +115,10 @@ TopoDS_Shape MinimalVolume::optimize(FiniteElement* fem, Meshing* mesh){
 
     this->projection->project_densities(new_x);
     ff = this->fobj_grad(new_x, dftmp);
-    this->projection->project_gradient(dftmp);
+    this->projection->project_gradient(dftmp, new_x);
     this->filter->filter_gradient(dftmp, df);
     g[0] = this->fc_norm_grad(new_x, dgtmp);
-    this->projection->project_gradient(dgtmp);
+    this->projection->project_gradient(dgtmp, new_x);
     this->filter->filter_gradient(dgtmp, dg);
 
     // int max_innerit = 30;
@@ -132,6 +132,7 @@ TopoDS_Shape MinimalVolume::optimize(FiniteElement* fem, Meshing* mesh){
         gnew = g;
 
         mma.Update(x.data(), df.data(), g.data(), dg.data(), xmin.data(), xmax.data());
+        this->projection->update(iter);
 
         ch = 0.0;
         for (size_t i = 0; i < x.size(); ++i) {
@@ -142,10 +143,10 @@ TopoDS_Shape MinimalVolume::optimize(FiniteElement* fem, Meshing* mesh){
         this->filter->filter_densities(x, new_x);
         this->projection->project_densities(new_x);
         ff = this->fobj_grad(new_x, dftmp);
-        this->projection->project_gradient(dftmp);
+        this->projection->project_gradient(dftmp, new_x);
         this->filter->filter_gradient(dftmp, df);
         g[0] = this->fc_norm_grad(new_x, dgtmp);
-        this->projection->project_gradient(dgtmp);
+        this->projection->project_gradient(dgtmp, new_x);
         this->filter->filter_gradient(dgtmp, dg);
 
         logger::quick_log("");

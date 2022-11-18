@@ -33,7 +33,7 @@ class None : public Projection{
 
     virtual void project_densities(std::vector<double>& new_x) const override;
 
-    virtual void project_gradient(std::vector<double>& new_df) const override;
+    virtual void project_gradient(std::vector<double>& new_df, const std::vector<double>& new_x) const override;
 };
 
 }

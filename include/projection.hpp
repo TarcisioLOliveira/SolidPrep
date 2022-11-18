@@ -39,7 +39,7 @@ class Projection{
 
     virtual void project_densities(std::vector<double>& new_x) const = 0;
 
-    virtual void project_gradient(std::vector<double>& new_df) const = 0;
+    virtual void project_gradient(std::vector<double>& new_df, const std::vector<double>& new_x) const = 0;
 
     protected:
     virtual void update_parameter(Parameter& info, const size_t iteration) const;

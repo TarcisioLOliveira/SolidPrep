@@ -30,8 +30,9 @@ void None::project_densities(std::vector<double>& new_x) const{
     (void)new_x;
 }
 
-void None::project_gradient(std::vector<double>& new_df) const{
+void None::project_gradient(std::vector<double>& new_df, const std::vector<double>& new_x) const{
     (void)new_df;
+    (void)new_x;
 }
 
 }
