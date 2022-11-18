@@ -120,6 +120,8 @@ class ProjectData {
 
     std::vector<Support> get_support(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc);
 
+    Projection::Parameter get_projection_parameter(const rapidjson::GenericValue<rapidjson::UTF8<>>& p) const;
+
     CrossSection get_cross_section(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc) const;
 };
 

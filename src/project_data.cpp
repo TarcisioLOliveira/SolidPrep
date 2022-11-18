@@ -17,7 +17,9 @@
  *   along with SolidPrep.  If not, see <https://www.gnu.org/licenses/>.
  *
  */
+#include "projection/threshold.hpp"
 #include <cstring>
+#include <memory>
 #define _USE_MATH_DEFINES
 #include <cmath>
 #include <BRepGProp.hxx>
@@ -503,6 +505,21 @@ std::unique_ptr<Projection> ProjectData::load_projection(const rapidjson::Generi
     }
 
     return filter;
+}
+
+Projection::Parameter ProjectData::get_projection_parameter(const rapidjson::GenericValue<rapidjson::UTF8<>>& p) const{
+    this->log_data(p, "initial", TYPE_DOUBLE, true);
+    this->log_data(p, "final", TYPE_DOUBLE, true);
+    this->log_data(p, "value_step", TYPE_DOUBLE, true);
+    this->log_data(p, "iteration_step", TYPE_INT, true);
+
+    Projection::Parameter param;
+    param.value = p["initial"].GetDouble();
+    param.final_value = p["final"].GetDouble();
+    param.value_step = p["value_step"].GetDouble();
+    param.iteration_step = p["iteration_step"].GetInt();
+
+    return param;
 }
 
 std::unique_ptr<MeshElementFactory> ProjectData::get_element_type(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc){
