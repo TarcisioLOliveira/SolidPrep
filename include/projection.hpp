@@ -30,9 +30,9 @@ class Projection{
     
     virtual void update(const size_t iteration) = 0;
 
-    virtual void project_densities(const std::vector<double>& x, std::vector<double>& new_x) const = 0;
+    virtual void project_densities(std::vector<double>& new_x) const = 0;
 
-    virtual void project_gradient(const std::vector<double>& df, std::vector<double>& new_df) const = 0;
+    virtual void project_gradient(std::vector<double>& new_df) const = 0;
 };
 
 #endif
