@@ -502,6 +502,14 @@ std::unique_ptr<Projection> ProjectData::load_projection(const rapidjson::Generi
     auto& f = doc["projection"];
     if(f["type"] == "none"){
         filter = std::make_unique<projection::None>();
+    } else if(f["type"] == "threshold"){
+        this->log_data(f, "beta", TYPE_OBJECT, false);
+        this->log_data(f, "eta", TYPE_DOUBLE, false);
+
+        auto beta = this->get_projection_parameter(f["beta"]);
+        double eta = f["eta"].GetDouble();
+
+        filter = std::make_unique<projection::Threshold>(beta, eta);
     }
 
     return filter;
