@@ -26,6 +26,13 @@
 
 class Projection{
     public:
+    struct Parameter{
+        double value;
+        double final_value;
+        double value_step;
+        size_t iteration_step;
+    };
+
     virtual ~Projection() = default;
     
     virtual void update(const size_t iteration) = 0;
