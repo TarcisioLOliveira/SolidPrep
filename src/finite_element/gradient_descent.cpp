@@ -70,7 +70,7 @@ std::vector<double> GradientDescent::calculate_displacements(const Meshing* cons
         }
     } else if(this->solver == Solver::MMA){
         optimization::MMASolver mma(W, 0, 0, 0, 0); //1e5
-        mma.SetAsymptotes(0.5, 0.7, 1.2);
+        mma.SetAsymptotes(1e7, 0.08, 1.05);
         std::vector<double> xmin(W, -1000);
         std::vector<double> xmax(W,  1000);
 
@@ -83,16 +83,19 @@ std::vector<double> GradientDescent::calculate_displacements(const Meshing* cons
         }
     } else if(this->solver == Solver::LAGRANGE_MMA){
 
-        const double xmin = 0;
-        const double xmax = 1;
+        const double xmin = -100;
+        const double xmax =  100;
 
-        const double delta_max = 1e2;
-        const double delta_min = 1e-3;
-        const double delta = delta_min;
+        const double delta_max = 1e20;
+        const double delta_min = 1e-20;
+        const double delta = 1e8;
         std::vector<double> delta_e(W, delta);
 
         auto uold1 = u;
         auto uold2 = u;
+
+        const double INC = 2;
+        const double DEC = 0.08;
 
         while(std::abs(*std::max_element(d.begin(), d.end(),  comp_abs)) > this->eps){
             cblas_dcopy(W, load.data(), 1, d.data(), 1);
@@ -102,9 +105,9 @@ std::vector<double> GradientDescent::calculate_displacements(const Meshing* cons
             for(size_t i = 0; i < W; ++i){
                 double d_e = (u[i] - uold1[i])*(uold1[i] - uold2[i]);
                 if(d_e < 0){
-                    delta_e[i] = std::max(0.7*delta_e[i], delta_min);
+                    delta_e[i] = std::max(DEC*delta_e[i], delta_min);
                 } else if(d_e > 0){
-                    delta_e[i] = std::min(1.2*delta_e[i], delta_max);
+                    delta_e[i] = std::min(INC*delta_e[i], delta_max);
                 }
                 double x_inf = u[i] - delta_e[i];
                 double x_sup = u[i] + delta_e[i];
@@ -121,6 +124,7 @@ std::vector<double> GradientDescent::calculate_displacements(const Meshing* cons
                 uold1[i] = u[i];
                 u[i] = std::max(a, std::min(b, (L*sqrtp+U*sqrtq)/(sqrtp+sqrtq)));
             }
+            logger::quick_log(std::abs(*std::max_element(d.begin(), d.end(),  comp_abs)));
             
             ++it;
         }
