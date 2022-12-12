@@ -145,21 +145,6 @@ def make_Nf():
     """
         Creates the Nf matrix.
     """
-    init_L_function()
-    init_N()
-
-    # NN is the full interpolation matrix
-    NN1 = []
-    NN2 = []
-    NN3 = []
-    for i in range(4):
-        for j in range(3):
-            NN1.append(N[i][0,j])
-            NN2.append(N[i][1,j])
-            NN3.append(N[i][2,j])
-
-    NN = sympy.Matrix([NN1, NN2, NN3]).T
-
     # Set up variables for line integral
     x0, x1, x2, y0, y1, y2, z0, z1, z2 = sympy.symbols("x0 x1 x2 y0 y1 y2 z0 z1 z2")
 
@@ -176,27 +161,27 @@ def make_Nf():
     vv = v1.cross(v2)
     drnorm = sympy.sqrt(vv.dot(vv))
 
+    formatted = str(sympy.simplify(sympy.nsimplify(sympy.expand(drnorm/8), rational=True)))
+    formatted = re.sub(r"([abcdxyz]\d)\*\*2", r"\1*\1", formatted)
+    formatted = re.sub(r"([abcdxyz])(\d)", r"\1[\2]", formatted)
+    formatted = re.sub(r"sqrt", r"std::sqrt", formatted)
+
+    print("const double A3 = ", formatted)
+    print("")
+
     print("std::vector<double> Nf{")
-    for i in range(len(NN)):
-        # Apply line integration
-        NN[i] = NN[i].subs({x:rx, y:ry, z:rz})
-        NN[i] = NN[i]*drnorm
-        NN[i] = NN[i].integrate((u, 0, 1 - v),(v, 0, 1))
-
-
-        # Prepare for printing
-        NN[i] = sympy.simplify(sympy.nsimplify(NN[i], rational=True))
-
-        # Format output for use with C++
-        formatted = str(NN[i])
-        formatted = re.sub(r"([abcdxyz]\d)\*\*2", r"\1*\1", formatted)
-        formatted = re.sub(r"([abcdxyz])(\d)", r"\1[\2]", formatted)
-
-        formatted = formatted.replace("sqrt", "std::sqrt")
-
-        if i > 0:
-            print(",")
-        print(formatted)
+    print("    A3,  0,  0,")
+    print("     0, A3,  0,")
+    print("     0,  0, A3,")
+    print("    A3,  0,  0,")
+    print("     0, A3,  0,")
+    print("     0,  0, A3,")
+    print("    A3,  0,  0,")
+    print("     0, A3,  0,")
+    print("     0,  0, A3,")
+    print("    A3,  0,  0,")
+    print("     0, A3,  0,")
+    print("     0,  0, A3")
     print("};")
 
 def make_DB():
