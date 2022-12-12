@@ -158,22 +158,6 @@ class MeshElementCommon : public MeshElement{
         return gp_Pnt(x/N, y/N, z/N);
     }
 
-    virtual std::vector<double> get_f(const double t, const gp_Dir& dir, double norm, const std::vector<gp_Pnt>& points) const override{
-        const size_t K_DIM = T::K_DIM;
-
-        double px = dir.X()*norm;
-        double py = dir.Y()*norm;
-
-        auto Nf = this->get_Nf(t, points);
-
-        std::vector<double> f(K_DIM, 0);
-        for(size_t i = 0; i < K_DIM; ++i){
-            f[i] = Nf[T::DIM*i]*px + Nf[T::DIM*i+1]*py;
-        }
-
-        return f;
-    }
-
     protected:
     MeshElementCommon(const std::vector<MeshNode*>& nodes):
             MeshElement(nodes)
@@ -327,6 +311,22 @@ class MeshElementCommon2D : public MeshElementCommon<T>{
         }
 
         return points;
+    }
+
+    virtual std::vector<double> get_f(const double t, const gp_Dir& dir, double norm, const std::vector<gp_Pnt>& points) const override{
+        const size_t K_DIM = T::K_DIM;
+
+        const double px = dir.X()*norm;
+        const double py = dir.Y()*norm;
+
+        const auto Nf = this->get_Nf(t, points);
+
+        std::vector<double> f(K_DIM, 0);
+        for(size_t i = 0; i < K_DIM; ++i){
+            f[i] = Nf[T::DIM*i]*px + Nf[T::DIM*i+1]*py;
+        }
+
+        return f;
     }
 
     protected:
@@ -485,6 +485,24 @@ class MeshElementCommon3D : public MeshElementCommon<T>{
 
         this->_get_virtual_load(D, mult, point, u, l, V, S_SIZE);
     }
+
+    virtual std::vector<double> get_f(const double t, const gp_Dir& dir, double norm, const std::vector<gp_Pnt>& points) const override{
+        const size_t K_DIM = T::K_DIM;
+
+        const double px = dir.X()*norm;
+        const double py = dir.Y()*norm;
+        const double pz = dir.Z()*norm;
+
+        const auto Nf = this->get_Nf(t, points);
+
+        std::vector<double> f(K_DIM, 0);
+        for(size_t i = 0; i < K_DIM; ++i){
+            f[i] = Nf[T::DIM*i]*px + Nf[T::DIM*i+1]*py + Nf[T::DIM*i+2]*pz;
+        }
+
+        return f;
+    }
+
 
     protected:
     MeshElementCommon3D(const std::vector<MeshNode*>& nodes):
