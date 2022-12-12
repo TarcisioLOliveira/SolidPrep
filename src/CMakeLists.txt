@@ -29,10 +29,11 @@ add_subdirectory(utils)
 add_subdirectory(optimization)
 add_subdirectory(density_filter)
 add_subdirectory(projection)
+add_subdirectory(global_stiffness_matrix)
 
 add_executable(${PROJECT_NAME} ${SOURCES})
 
-target_link_libraries(${PROJECT_NAME} PUBLIC sizing pathfinding topology_optimization finite_element meshing element material utils optimization density_filter projection ${GMSH_LIB} ${OpenCASCADE_LIBRARIES} ${LAPACKE_LIBRARIES} cblas ${BLAS_LIBRARIES} ${LAPACKE_LIBRARIES} ${MPI_LIBRARIES} MUMPS::MUMPS Threads::Threads)
+target_link_libraries(${PROJECT_NAME} PUBLIC sizing pathfinding topology_optimization finite_element meshing element material utils optimization density_filter projection global_stiffness_matrix ${GMSH_LIB} ${OpenCASCADE_LIBRARIES} ${LAPACKE_LIBRARIES} cblas ${BLAS_LIBRARIES} ${LAPACKE_LIBRARIES} ${MPI_LIBRARIES} MUMPS::MUMPS Threads::Threads)
 
 if(OpenMP_CXX_FOUND)
     target_link_libraries(${PROJECT_NAME} PUBLIC OpenMP::OpenMP_CXX OpenMP::OpenMP_C OpenMP::OpenMP_Fortran)
