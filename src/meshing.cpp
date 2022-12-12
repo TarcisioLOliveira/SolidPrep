@@ -296,8 +296,9 @@ void Meshing::generate_load_vector(const TopoDS_Shape& shape,
             }
         }
     } else if(this->elem_info->get_problem_type() == utils::PROBLEM_TYPE_3D){
+        double F = 0;
         for(auto& f : forces){
-            double norm = f.vec.Magnitude()/f.S.get_dimension();
+            double norm = f.vec.Magnitude()/f.S.get_area();
             gp_Dir dir(f.vec);
 
             for(const auto& e : this->boundary_elements){
@@ -308,6 +309,9 @@ void Meshing::generate_load_vector(const TopoDS_Shape& shape,
                     }
                     const auto fe = e.parent->get_f(1, dir, norm, points);
                     logger::quick_log(fe);
+                    for(auto& ff:fe){
+                        F += ff;
+                    }
                     for(size_t i = 0; i < N; ++i){
                         for(size_t j = 0; j < dof; ++j){
                             const auto n = e.parent->nodes[i];
@@ -319,6 +323,7 @@ void Meshing::generate_load_vector(const TopoDS_Shape& shape,
                 }
             }
         }
+        logger::quick_log(F);
     }
 
 }
