@@ -181,7 +181,7 @@ def make_Nf():
         # Apply line integration
         NN[i] = NN[i].subs({x:rx, y:ry, z:rz})
         NN[i] = NN[i]*drnorm
-        NN[i] = NN[i].integrate((u, 0, 1),(v, 0, 1))
+        NN[i] = NN[i].integrate((u, 0, 1 - v),(v, 0, 1))
 
 
         # Prepare for printing
