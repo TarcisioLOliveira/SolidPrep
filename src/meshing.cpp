@@ -215,6 +215,7 @@ void Meshing::generate_load_vector(const TopoDS_Shape& shape,
 
             return in_line && within_bounds;
         };
+        double F = 0;
         /**
          * This is a mess, but I didn't have too much of a choice. The clean
          * approach is the one used in the 3D, but it doesn't work well for
@@ -284,6 +285,9 @@ void Meshing::generate_load_vector(const TopoDS_Shape& shape,
                 }
                 if(fe.size() > 0){
                     logger::quick_log(fe);
+                    for(auto& ff:fe){
+                        F += ff;
+                    }
                     for(size_t i = 0; i < N; ++i){
                         for(size_t j = 0; j < dof; ++j){
                             auto n = e.parent->nodes[i];
@@ -294,6 +298,7 @@ void Meshing::generate_load_vector(const TopoDS_Shape& shape,
                     }
                 }
             }
+            logger::quick_log(F);
         }
     } else if(this->elem_info->get_problem_type() == utils::PROBLEM_TYPE_3D){
         double F = 0;
