@@ -22,6 +22,7 @@
 #define DIRECT_SOLVER_HPP
 
 #include "finite_element.hpp"
+#include "global_stiffness_matrix/lapack_dense_symmetric_banded.hpp"
 
 namespace finite_element{
 
@@ -29,7 +30,8 @@ class DirectSolver : public FiniteElement{
     public:
     virtual std::vector<double> calculate_displacements(const Meshing* const mesh, std::vector<double> load, const std::vector<double>& density = std::vector<double>(), double pc = 3) override;
 
-
+    private:
+    global_stiffness_matrix::LAPACKDenseSymmetricBanded gsm;
 };
 
 }

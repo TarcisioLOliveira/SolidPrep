@@ -30,14 +30,17 @@
 namespace finite_element{
 
 std::vector<double> DirectSolver::calculate_displacements(const Meshing* const mesh, std::vector<double> load, const std::vector<double>& density, double pc){
+    const size_t& W = this->gsm.get_W();
+    const size_t& N = this->gsm.get_N();
+    std::vector<double>& K = this->gsm.get_K();
 
-    if(this->W == 0 || this->N == 0){
-        this->calculate_dimensions(mesh, load);
+    if(W == 0 || N == 0){
+        this->gsm.calculate_dimensions(mesh, load);
     }
 
     if(this->current_step == 0){
 
-        this->generate_K(mesh, density, pc);
+        this->gsm.generate(mesh, density, pc);
 
         logger::quick_log("Decomposing...");
         int info = LAPACKE_dpbtrf_work(LAPACK_COL_MAJOR, 'L', W, N-1, K.data(), N);
