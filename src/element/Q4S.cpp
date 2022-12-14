@@ -20,7 +20,6 @@
 
 #include "element/Q4S.hpp"
 #include "cblas.h"
-#include "logger.hpp"
 #include <vector>
 #include <lapacke.h>
 
@@ -285,7 +284,6 @@ std::vector<double> Q4S::get_Nf(const double t, const std::vector<gp_Pnt>& point
 
     const std::array<double, 2> x{p0.X(), p1.X()};
     const std::array<double, 2> y{p0.Y(), p1.Y()};
-    logger::quick_log(x[0], y[0], x[1], y[1]);
 
     std::vector<double> Nf{
     t*std::sqrt(x[0]*x[0] - 2*x[0]*x[1] + x[1]*x[1] + y[0]*y[0] - 2*y[0]*y[1] + y[1]*y[1])*(6*a*b - 3*a*(y[0] + y[1]) - 3*b*(x[0] + x[1]) + 2*x[0]*y[0] + x[0]*y[1] + x[1]*y[0] + 2*x[1]*y[1])/(24*a*b)
