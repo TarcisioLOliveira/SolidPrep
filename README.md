@@ -30,6 +30,7 @@ Dependencies:
 - [RapidJSON](https://github.com/Tencent/rapidjson) (included as submodule)
 - MPI (currently only [MPICH](https://www.mpich.org/))
 - [MUMPS](https://graal.ens-lyon.fr/MUMPS/index.php) ([CMake version](https://github.com/scivision/mumps))
+- [Eigen](https://eigen.tuxfamily.org/)
 
 Also includes code from [jdumas/mma](https://github.com/jdumas/mma).
 

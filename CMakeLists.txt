@@ -34,6 +34,7 @@ find_path(GMSH_INC gmsh.h REQUIRED)
 find_package(VTK)
 find_package(MPI REQUIRED)
 find_package(MUMPS REQUIRED)
+find_package(Eigen3 REQUIRED NO_MODULE)
 
 if(NOT NO_OPENMP)
     find_package(OpenMP)
@@ -78,6 +79,7 @@ include_directories(
     ${VTK_INCLUDE_DIR}
     ${MPI_INCLUDE_PATH}
     ${MUMPS_INCLUDE_DIR}
+    ${Eigen3_INCLUDE_DIR}
 )
    
 add_subdirectory(src)
