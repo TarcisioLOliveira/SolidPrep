@@ -23,7 +23,7 @@
 
 #include <dmumps_c.h>
 #include "finite_element.hpp"
-#include "utils/sparse_matrix.hpp"
+#include "global_stiffness_matrix/mumps_sparse_symmetric.hpp"
 
 // Recommended by the documentation
 #define ICNTL( i ) icntl[ (i) - 1 ]
@@ -37,17 +37,8 @@ class MUMPSSolver : public FiniteElement{
     virtual std::vector<double> calculate_displacements(const Meshing* const mesh, std::vector<double> load, const std::vector<double>& density = std::vector<double>(), double pc = 3) override;
 
     private:
-    utils::SparseMatrix sK;
-    std::vector<int> rows;
-    std::vector<int> cols;
-    std::vector<double> vals;
     DMUMPS_STRUC_C config;
-
-    virtual void insert_element_matrix(const std::vector<double>& k, const std::vector<long>& pos, const size_t n) override;
-
-    virtual void _add_geometry_to_K(const Meshing * const mesh, const Geometry * const g);
-
-    virtual void _add_geometry_to_K(const Meshing * const mesh, const Geometry * const g, std::vector<double>::const_iterator& rho, const double pc);
+    global_stiffness_matrix::MUMPSSparseSymmetric gsm;
 };
 
 }

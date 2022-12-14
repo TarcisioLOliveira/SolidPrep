@@ -79,19 +79,20 @@ MUMPSSolver::~MUMPSSolver(){
 
 std::vector<double> MUMPSSolver::calculate_displacements(const Meshing* const mesh, std::vector<double> load, const std::vector<double>& density, double pc){
     if(this->current_step == 0){
+        std::vector<int>& rows = this->gsm.get_rows();
+        std::vector<int>& cols = this->gsm.get_cols();
+        std::vector<double>& vals = this->gsm.get_vals();
 
-        this->generate_K(mesh, density, pc);
-        this->sK.to_mumps_format(this->rows, this->cols, this->vals);
-        this->sK.clear(); // Spare some RAM
+        this->gsm.generate(mesh, density, pc);
         this->config.job = 4; // Prepare matrix and decompose
         // Insert matrix data
         // Do this after every regeneration as the vectors may expand, which
         // will change their address.
         this->config.n = load.size();
-        this->config.nnz = this->vals.size();
-        this->config.a = this->vals.data();
-        this->config.irn = this->rows.data();
-        this->config.jcn = this->cols.data();
+        this->config.nnz = vals.size();
+        this->config.a   = vals.data();
+        this->config.irn = rows.data();
+        this->config.jcn = cols.data();
 
         logger::quick_log("Decomposing...");
         dmumps_c(&this->config);
@@ -110,67 +111,6 @@ std::vector<double> MUMPSSolver::calculate_displacements(const Meshing* const me
     this->current_step = (this->current_step + 1) % this->steps;
    
     return load; 
-}
-
-void MUMPSSolver::_add_geometry_to_K(const Meshing* const mesh, const Geometry* const g){
-    const auto D = g->get_D(0);
-    const double t = mesh->thickness;
-    const size_t dof      = mesh->elem_info->get_dof_per_node();
-    const size_t node_num = mesh->elem_info->get_nodes_per_element();
-
-    utils::SparseMatrix tmp;
-
-    #pragma omp declare reduction(merge : utils::SparseMatrix :\
-       omp_out.merge(omp_in))\
-       initializer (omp_priv=(omp_orig))
-
-    #pragma omp parallel for reduction(merge:tmp)
-    for(size_t id = 0; id < g->mesh.size(); ++id){
-        const auto& e = g->mesh[id];
-        std::vector<long> u_pos;
-        u_pos.reserve(dof*node_num);
-        for(size_t i = 0; i < node_num; ++i){
-            const auto& n = e->nodes[i];
-            for(size_t j = 0; j < dof; ++j){
-                u_pos.push_back(n->u_pos[j]);
-            }
-        }
-        std::vector<double> k = e->get_k(D, t);
-        tmp.insert_matrix_symmetric_mumps(k, u_pos);
-    }
-    this->sK = std::move(tmp);
-}
-
-void MUMPSSolver::_add_geometry_to_K(const Meshing* const mesh, const Geometry* const g, std::vector<double>::const_iterator& rho, const double pc){
-    const double t = mesh->thickness;
-    const size_t dof      = mesh->elem_info->get_dof_per_node();
-    const size_t node_num = mesh->elem_info->get_nodes_per_element();
-
-    const size_t num_den = g->number_of_densities_needed();
-    // const size_t num_mat = g->number_of_materials();
-    if(num_den == 1){
-        for(const auto& e:g->mesh){
-            std::vector<long> u_pos;
-            u_pos.reserve(dof*node_num);
-            for(size_t i = 0; i < node_num; ++i){
-                const auto& n = e->nodes[i];
-                for(size_t j = 0; j < dof; ++j){
-                    u_pos.push_back(n->u_pos[j]);
-                }
-            }
-            const auto D = g->get_D_topopt(*rho, pc, this->K_MIN);
-            const std::vector<double> k = e->get_k(D, t);
-            this->sK.insert_matrix_symmetric_mumps(k, u_pos);
-            ++rho;
-        }
-    } else {
-        logger::log_assert(num_den == 1, logger::ERROR, "FEA problems that require more than 1 design variables are currently not supported.");
-    }
-}
-
-void MUMPSSolver::insert_element_matrix(const std::vector<double>& k, const std::vector<long>& pos, const size_t n){
-    (void) n;
-    this->sK.insert_matrix_symmetric_mumps(k, pos);
 }
 
 }
