@@ -46,21 +46,7 @@ class FiniteElement{
 
     protected:
     size_t steps = 1;
-    std::vector<double> K = std::vector<double>();
-    size_t W = 0;
-    size_t N = 0;
     size_t current_step = 0;
-    bool recalculated_dimensions = false;
-
-    virtual void calculate_dimensions(const Meshing * const mesh, const std::vector<double>& load);
-
-    virtual void generate_K(const Meshing * const mesh, const std::vector<double>& density, const double pc);
-
-    virtual void add_geometry_to_K(const Meshing * const mesh, const Geometry * const g);
-
-    virtual void add_geometry_to_K(const Meshing * const mesh, const Geometry * const g, std::vector<double>::const_iterator& rho, const double pc);
-
-    virtual void insert_element_matrix(const std::vector<double>& k, const std::vector<long>& pos, const size_t n);
 };
 
 #endif
