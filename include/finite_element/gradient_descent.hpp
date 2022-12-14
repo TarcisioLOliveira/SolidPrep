@@ -22,6 +22,7 @@
 #define GRADIENT_DESCENT_HPP
 
 #include "finite_element.hpp"
+#include "global_stiffness_matrix/lapack_dense_symmetric_banded.hpp"
 
 namespace finite_element{
 
@@ -46,6 +47,7 @@ class GradientDescent : public FiniteElement{
     const double eps;
     std::vector<std::vector<double>> displacement;
     Solver solver;
+    global_stiffness_matrix::LAPACKDenseSymmetricBanded gsm;
 
 };
 

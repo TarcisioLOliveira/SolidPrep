@@ -30,16 +30,19 @@ GradientDescent::GradientDescent(const double eps, Solver solver):
     eps(eps), displacement(1), solver(solver){}
 
 std::vector<double> GradientDescent::calculate_displacements(const Meshing* const mesh, std::vector<double> load, const std::vector<double>& density, double pc){
+    const size_t& W = this->gsm.get_W();
+    const size_t& N = this->gsm.get_N();
+    std::vector<double>& K = this->gsm.get_K();
 
-    if(this->W == 0 || this->N == 0){
-        this->calculate_dimensions(mesh, load);
+    if(W == 0 || N == 0){
+        this->gsm.calculate_dimensions(mesh, load);
         for(auto& u:this->displacement){
             u.resize(W,0);
         }
     }
 
     if(this->current_step == 0){
-        this->generate_K(mesh, density, pc);
+        this->gsm.generate(mesh, density, pc);
     }
     logger::quick_log("Done.");
     logger::quick_log("Calculating displacements...");
@@ -58,10 +61,10 @@ std::vector<double> GradientDescent::calculate_displacements(const Meshing* cons
         auto d2 = d;
         while(std::abs(*std::max_element(d.begin(), d.end(),  comp_abs)) > this->eps){
             cblas_dcopy(W, load.data(), 1, d.data(), 1);
-            cblas_dsbmv(CblasColMajor, CblasLower, W, N-1, -1.0, this->K.data(), N, u.data(), 1, 1.0, d.data(), 1);
+            cblas_dsbmv(CblasColMajor, CblasLower, W, N-1, -1.0, K.data(), N, u.data(), 1, 1.0, d.data(), 1);
             
             top = cblas_ddot(W, d.data(), 1, d.data(), 1);
-            cblas_dsbmv(CblasColMajor, CblasLower, W, N-1, 1.0, this->K.data(), N, d.data(), 1, 0.0, d2.data(), 1);
+            cblas_dsbmv(CblasColMajor, CblasLower, W, N-1, 1.0, K.data(), N, d.data(), 1, 0.0, d2.data(), 1);
             bot = cblas_ddot(W, d.data(), 1, d2.data(), 1);
             alpha = top/bot;
 
@@ -76,7 +79,7 @@ std::vector<double> GradientDescent::calculate_displacements(const Meshing* cons
 
         while(std::abs(*std::max_element(d.begin(), d.end(),  comp_abs)) > this->eps){
             cblas_dcopy(W, load.data(), 1, d.data(), 1);
-            cblas_dsbmv(CblasColMajor, CblasLower, W, N-1, 1.0, this->K.data(), N, u.data(), 1, -1.0, d.data(), 1);
+            cblas_dsbmv(CblasColMajor, CblasLower, W, N-1, 1.0, K.data(), N, u.data(), 1, -1.0, d.data(), 1);
 
             mma.Update(u.data(), d.data(), nullptr, nullptr, xmin.data(), xmax.data());
             ++it;
@@ -99,7 +102,7 @@ std::vector<double> GradientDescent::calculate_displacements(const Meshing* cons
 
         while(std::abs(*std::max_element(d.begin(), d.end(),  comp_abs)) > this->eps){
             cblas_dcopy(W, load.data(), 1, d.data(), 1);
-            cblas_dsbmv(CblasColMajor, CblasLower, W, N-1, 1.0, this->K.data(), N, u.data(), 1, -1.0, d.data(), 1);
+            cblas_dsbmv(CblasColMajor, CblasLower, W, N-1, 1.0, K.data(), N, u.data(), 1, -1.0, d.data(), 1);
 
             #pragma omp parallel for
             for(size_t i = 0; i < W; ++i){
