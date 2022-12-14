@@ -22,6 +22,7 @@
 #define PCG_HPP
 
 #include "finite_element.hpp"
+#include "global_stiffness_matrix/lapack_dense_symmetric_banded.hpp"
 
 namespace finite_element{
 
@@ -46,6 +47,7 @@ class PCG : public FiniteElement{
     const Preconditioner precond;
     std::vector<std::vector<double>> displacement;
     std::vector<double> P;
+    global_stiffness_matrix::LAPACKDenseSymmetricBanded gsm;
 
     void generate_P();
 };

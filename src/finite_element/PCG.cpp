@@ -30,9 +30,12 @@ PCG::PCG(const double eps, const Preconditioner precond):
     eps(eps), precond(precond), displacement(1), P(){}
 
 std::vector<double> PCG::calculate_displacements(const Meshing* const mesh, std::vector<double> load, const std::vector<double>& density, double pc){
+    const size_t& W = this->gsm.get_W();
+    const size_t& N = this->gsm.get_N();
+    std::vector<double>& K = this->gsm.get_K();
 
-    if(this->W == 0 || this->N == 0){
-        this->calculate_dimensions(mesh, load);
+    if(W == 0 || N == 0){
+        this->gsm.calculate_dimensions(mesh, load);
         for(auto& u:this->displacement){
             u.resize(W,0);
         }
@@ -40,7 +43,7 @@ std::vector<double> PCG::calculate_displacements(const Meshing* const mesh, std:
     }
 
     if(this->current_step == 0){
-        this->generate_K(mesh, density, pc);
+        this->gsm.generate(mesh, density, pc);
         this->generate_P();
     }
     logger::quick_log("Done.");
@@ -52,20 +55,20 @@ std::vector<double> PCG::calculate_displacements(const Meshing* const mesh, std:
 
     auto r = load;
     auto z = r;
-    cblas_dsbmv(CblasColMajor, CblasLower, W, N-1, -1.0, this->K.data(), N, u.data(), 1, 1.0, r.data(), 1);
+    cblas_dsbmv(CblasColMajor, CblasLower, W, N-1, -1.0, K.data(), N, u.data(), 1, 1.0, r.data(), 1);
     if(this->precond == Preconditioner::JACOBI){
         cblas_dsbmv(CblasColMajor, CblasLower, W, 0, 1.0, this->P.data(), 1, r.data(), 1, 0.0, z.data(), 1);
     } else if(this->precond == Preconditioner::SSOR){
-        LAPACKE_dtbtrs_work(LAPACK_COL_MAJOR, 'L', 'N', 'N', W, N-1, 1, this->K.data(), N, z.data(), W);
+        LAPACKE_dtbtrs_work(LAPACK_COL_MAJOR, 'L', 'N', 'N', W, N-1, 1, K.data(), N, z.data(), W);
         auto z2 = z;
         cblas_dsbmv(CblasColMajor, CblasLower, W, 0, 1.0, this->P.data(), 1, z2.data(), 1, 0.0, z.data(), 1);
-        LAPACKE_dtbtrs_work(LAPACK_COL_MAJOR, 'L', 'T', 'N', W, N-1, 1, this->K.data(), N, z.data(), W);
+        LAPACKE_dtbtrs_work(LAPACK_COL_MAJOR, 'L', 'T', 'N', W, N-1, 1, K.data(), N, z.data(), W);
     }
     double rho1 = cblas_ddot(W, z.data(), 1, r.data(), 1);
     double rho2 = 0;
     auto p = z;
     auto q = p;
-    cblas_dsbmv(CblasColMajor, CblasLower, W, N-1, 1.0, this->K.data(), N, p.data(), 1, 0.0, q.data(), 1);
+    cblas_dsbmv(CblasColMajor, CblasLower, W, N-1, 1.0, K.data(), N, p.data(), 1, 0.0, q.data(), 1);
     double alpha = rho1/cblas_ddot(W, p.data(), 1, q.data(), 1);
     cblas_daxpy(W, alpha, p.data(), 1, u.data(), 1);
     cblas_daxpy(W, -alpha, q.data(), 1, r.data(), 1);
@@ -80,10 +83,10 @@ std::vector<double> PCG::calculate_displacements(const Meshing* const mesh, std:
             cblas_dsbmv(CblasColMajor, CblasLower, W, 0, 1.0, this->P.data(), 1, r.data(), 1, 0.0, z.data(), 1);
         } else if(this->precond == Preconditioner::SSOR){
             cblas_dcopy(W, r.data(), 1, z.data(), 1);
-            LAPACKE_dtbtrs_work(LAPACK_COL_MAJOR, 'L', 'N', 'N', W, N-1, 1, this->K.data(), N, z.data(), W);
+            LAPACKE_dtbtrs_work(LAPACK_COL_MAJOR, 'L', 'N', 'N', W, N-1, 1, K.data(), N, z.data(), W);
             auto z2 = z;
             cblas_dsbmv(CblasColMajor, CblasLower, W, 0, 1.0, this->P.data(), 1, z2.data(), 1, 0.0, z.data(), 1);
-            LAPACKE_dtbtrs_work(LAPACK_COL_MAJOR, 'L', 'T', 'N', W, N-1, 1, this->K.data(), N, z.data(), W);
+            LAPACKE_dtbtrs_work(LAPACK_COL_MAJOR, 'L', 'T', 'N', W, N-1, 1, K.data(), N, z.data(), W);
         }
         rho2 = rho1;
         rho1 = cblas_ddot(W, z.data(), 1, r.data(), 1);
@@ -91,7 +94,7 @@ std::vector<double> PCG::calculate_displacements(const Meshing* const mesh, std:
         cblas_daxpy(W, beta, p.data(), 1, z.data(), 1);
         std::swap(z, p);
 
-        cblas_dsbmv(CblasColMajor, CblasLower, W, N-1, 1.0, this->K.data(), N, p.data(), 1, 0.0, q.data(), 1);
+        cblas_dsbmv(CblasColMajor, CblasLower, W, N-1, 1.0, K.data(), N, p.data(), 1, 0.0, q.data(), 1);
         alpha = rho1/cblas_ddot(W, p.data(), 1, q.data(), 1);
         cblas_daxpy(W, alpha, p.data(), 1, u.data(), 1);
         cblas_daxpy(W, -alpha, q.data(), 1, r.data(), 1);
@@ -110,10 +113,13 @@ std::vector<double> PCG::calculate_displacements(const Meshing* const mesh, std:
 
 
 void PCG::generate_P(){
+    const size_t& W = this->gsm.get_W();
+    const size_t& N = this->gsm.get_N();
+    std::vector<double>& K = this->gsm.get_K();
     if(this->precond == Preconditioner::JACOBI || this->precond == Preconditioner::SSOR){
         #pragma omp parallel for
         for(size_t i = 0; i < W; ++i){
-            this->P[i] = 1.0/this->K[i*N];
+            this->P[i] = 1.0/K[i*N];
         }
     }
 }
