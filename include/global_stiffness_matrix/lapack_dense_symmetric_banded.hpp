@@ -42,10 +42,10 @@ class LAPACKDenseSymmetricBanded{
         return K;
     }
 
-    inline size_t get_W() const{
+    inline const size_t& get_W() const{
         return W;
     }
-    inline size_t get_N() const{
+    inline const size_t& get_N() const{
         return N;
     }
     inline bool calculated_dimensions() const{
