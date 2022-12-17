@@ -37,6 +37,10 @@ class EigenSparseSymmetric{
 
     virtual void generate(const Meshing * const mesh, const std::vector<double>& density, const double pc);
 
+    Eigen::SparseMatrix<double>& get_K() {
+        return K;
+    }
+
     protected:
     bool first_time = true;
     Eigen::SparseMatrix<double> K;
