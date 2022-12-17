@@ -26,7 +26,10 @@ namespace global_stiffness_matrix{
 
 void EigenSparseSymmetric::generate(const Meshing* const mesh, const std::vector<double>& density, const double pc){
     logger::quick_log("Generating stiffness matrix...");
-    this->K.setZero();
+    // I'm using about using nonZeros() as size in this case, but it seems
+    // to be working.
+    // Using setZeros() just causes this function to hang.
+    std::fill(this->K.valuePtr(), this->K.valuePtr() + this->K.nonZeros(), 0);
     if(this->first_time){
         this->calculate_dimensions(mesh, mesh->load_vector);
         this->K = Eigen::SparseMatrix<double>(mesh->load_vector.size(), mesh->load_vector.size());
