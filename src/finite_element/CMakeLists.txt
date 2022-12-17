@@ -5,6 +5,7 @@ set(SOURCES_FINITE_ELEMENT
     gradient_descent.cpp
     PCG.cpp
     mumps_solver.cpp
+    eigen_pcg.cpp
 )
 
 add_library(finite_element ${SOURCES_FINITE_ELEMENT})
