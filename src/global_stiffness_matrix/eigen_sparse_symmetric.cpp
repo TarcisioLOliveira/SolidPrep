@@ -53,15 +53,6 @@ void EigenSparseSymmetric::add_geometry(const Meshing* const mesh, const Geometr
     const size_t dof      = mesh->elem_info->get_dof_per_node();
     const size_t node_num = mesh->elem_info->get_nodes_per_element();
 
-    /*
-     * utils::SparseMatrix tmp;
-
-     * #pragma omp declare reduction(merge : utils::SparseMatrix :\
-     *    omp_out.merge(omp_in))\
-     *    initializer (omp_priv=(omp_orig))
-
-     * #pragma omp parallel for reduction(merge:tmp)
-     */
     for(auto& e : g->mesh){
         std::vector<long> u_pos;
         u_pos.reserve(dof*node_num);

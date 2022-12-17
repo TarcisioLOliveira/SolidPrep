@@ -22,7 +22,7 @@
 #define EIGEN_SPARSE_SYMMETRIC_HPP
 
 #include "meshing.hpp"
-#include "Eigen/SparseCore"
+#include <Eigen/SparseCore>
 #include <Eigen/src/SparseCore/SparseMatrix.h>
 
 namespace global_stiffness_matrix{
