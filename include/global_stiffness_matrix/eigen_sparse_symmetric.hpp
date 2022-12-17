@@ -33,8 +33,6 @@ class EigenSparseSymmetric{
 
     virtual ~EigenSparseSymmetric() = default;
 
-    virtual void calculate_dimensions(const Meshing * const mesh, const std::vector<double>& load);
-
     virtual void generate(const Meshing * const mesh, const std::vector<double>& density, const double pc);
 
     Eigen::SparseMatrix<double>& get_K() {
@@ -44,6 +42,10 @@ class EigenSparseSymmetric{
     protected:
     bool first_time = true;
     Eigen::SparseMatrix<double> K;
+    size_t W, N;
+
+
+    virtual void calculate_dimensions(const Meshing * const mesh, const std::vector<double>& load);
 
     virtual void add_geometry(const Meshing * const mesh, const Geometry * const g);
 

@@ -20,12 +20,18 @@
 
 #include "logger.hpp"
 #include "global_stiffness_matrix/eigen_sparse_symmetric.hpp"
+#include <Eigen/src/SparseCore/SparseMatrix.h>
 
 namespace global_stiffness_matrix{
 
 void EigenSparseSymmetric::generate(const Meshing* const mesh, const std::vector<double>& density, const double pc){
     logger::quick_log("Generating stiffness matrix...");
     this->K.setZero();
+    if(this->first_time){
+        this->calculate_dimensions(mesh, mesh->load_vector);
+        this->K = Eigen::SparseMatrix<double>(mesh->load_vector.size(), mesh->load_vector.size());
+        this->K.reserve(Eigen::VectorXi::Constant(W, N));
+    }
     if(density.size() == 0){
         for(auto& g : mesh->geometries){
             this->add_geometry(mesh, g);
@@ -42,7 +48,7 @@ void EigenSparseSymmetric::generate(const Meshing* const mesh, const std::vector
     }
     if(first_time){
         first_time = false;
-        this->K.prune(1e-15);
+        this->K.makeCompressed();
     }
     logger::quick_log("Done.");
 }
@@ -91,6 +97,48 @@ void EigenSparseSymmetric::add_geometry(const Meshing* const mesh, const Geometr
         }
     } else {
         logger::log_assert(num_den == 1, logger::ERROR, "FEA problems that require more than 1 design variables are currently not supported.");
+    }
+}
+
+void EigenSparseSymmetric::calculate_dimensions(const Meshing* const mesh, const std::vector<double>& load){
+    const size_t k_dim    = mesh->elem_info->get_k_dimension();
+    const size_t dof      = mesh->elem_info->get_dof_per_node();
+    const size_t node_num = mesh->elem_info->get_nodes_per_element();
+
+    W = load.size();
+    N = k_dim;
+
+    for(auto& g:mesh->geometries){ 
+        for(auto& e:g->mesh){
+            size_t min_i = 0;
+            size_t max_i = 0;
+            long min = std::numeric_limits<long>::max();
+            long max = -1;
+            std::vector<long> pos;
+            pos.reserve(k_dim);
+            for(size_t i = 0; i < node_num; ++i){
+                const auto& n = e->nodes[i];
+                for(size_t j = 0; j < dof; ++j){
+                    pos.push_back(n->u_pos[j]);
+                }
+            }
+            for(size_t i = 0; i < pos.size(); ++i){
+                if(pos[i] > -1){
+                    if(pos[i] < min){
+                        min = pos[i];
+                        min_i = i;
+                    }
+                }
+                if(pos[i] > max){
+                    max = pos[i];
+                    max_i = i;
+                }
+            }
+            size_t N_candidate = pos[max_i] - pos[min_i] + 1;
+            if(N_candidate > N){
+                N = N_candidate;
+            }
+        }
     }
 }
 
