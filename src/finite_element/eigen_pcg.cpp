@@ -25,6 +25,8 @@
 
 namespace finite_element{
 
+EigenPCG::EigenPCG():gsm(), u(1){}
+
 std::vector<double> EigenPCG::calculate_displacements(const Meshing* const mesh, std::vector<double> load, const std::vector<double>& density, double pc){
     if(this->current_step == 0){
         this->gsm.generate(mesh, density, pc);
@@ -34,9 +36,12 @@ std::vector<double> EigenPCG::calculate_displacements(const Meshing* const mesh,
     Eigen::VectorXd f = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(load.data(), load.size());
     Eigen::ConjugateGradient<Eigen::SparseMatrix<double>, Eigen::Upper> cg;
     cg.compute(K);
-    Eigen::VectorXd u = cg.solve(f);
+    if(u[current_step].size() == 0){
+        u[current_step] = f;
+    }
+    u[current_step] = cg.solveWithGuess(f, u[current_step]);
 
-    std::copy(u.cbegin(), u.cend(), load.begin());
+    std::copy(u[current_step].cbegin(), u[current_step].cend(), load.begin());
 
     this->current_step = (this->current_step + 1) % this->steps;
    

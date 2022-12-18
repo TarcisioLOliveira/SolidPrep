@@ -23,15 +23,24 @@
 
 #include "finite_element.hpp"
 #include "global_stiffness_matrix/eigen_sparse_symmetric.hpp"
+#include <Eigen/src/Core/Matrix.h>
 
 namespace finite_element{
 
 class EigenPCG : public FiniteElement{
     public:
+    EigenPCG();
+
     virtual std::vector<double> calculate_displacements(const Meshing* const mesh, std::vector<double> load, const std::vector<double>& density = std::vector<double>(), double pc = 3) override;
+
+    inline virtual void set_steps(size_t s) override{
+        this->steps = s;
+        this->u.resize(steps);
+    }
 
     private:
     global_stiffness_matrix::EigenSparseSymmetric gsm;
+    std::vector<Eigen::VectorXd> u;
 };
 
 }
