@@ -44,6 +44,8 @@
 #include <ShapeFix_Shape.hxx>
 #include <BRepBuilderAPI_Transform.hxx>
 #include <lapacke.h>
+#include <STEPCAFControl_Reader.hxx>
+#include <BRepBuilderAPI_Transform.hxx>
 
 namespace utils{
 
@@ -208,6 +210,36 @@ TopoDS_Shape fast_make_2D_beam(const std::vector<gp_Pnt>& spine, double diameter
     result = SFWF->Shape();
 
     return result;
+}
+
+TopoDS_Shape load_shape(const std::string& path, double scale) {
+    TopoDS_Shape s;
+    
+    STEPControl_Reader reader;
+    IFSelect_ReturnStatus stat = reader.ReadFile(path.c_str());
+    if(stat != IFSelect_RetDone){
+        reader.PrintCheckLoad(false, IFSelect_ItemsByEntity);
+        exit(EXIT_FAILURE);
+    }
+
+    Standard_Integer NbRoots = reader.NbRootsForTransfer();
+    Standard_Integer num = reader.TransferRoots();
+    (void) NbRoots;
+    (void) num;
+    s = reader.OneShape();
+    if(s.IsNull()){
+        reader.PrintCheckTransfer(true, IFSelect_ItemsByEntity);
+        exit(EXIT_FAILURE);
+    }
+
+    if(scale != 1){
+        gp_Trsf t;
+        t.SetScale(gp_Pnt(0, 0, 0), scale);
+        BRepBuilderAPI_Transform transf(s, t, true);
+        s = transf.Shape();
+    }
+
+    return s;
 }
 
 }

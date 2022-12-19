@@ -170,8 +170,6 @@ class Geometry{
     private:
     const utils::ProblemType type;
 
-    TopoDS_Shape load_shape(const std::string& path, double scale) const;
-
     inline std::vector<std::vector<double>> init_constitutive_matrices(const utils::ProblemType type) const{
         std::vector<std::vector<double>> D;
         D.reserve(1 + this->alternative_materials.size());

@@ -217,6 +217,8 @@ namespace utils{
 
     void shape_to_file(const std::string& s, const TopoDS_Shape& t);
 
+    TopoDS_Shape load_shape(const std::string& path, double scale);
+
     TopoDS_Shape sweep_surface(const std::vector<gp_Pnt>& spine, const TopoDS_Shape& surface, const TopoDS_Shape& base);
 
     // Not really very fast actually
