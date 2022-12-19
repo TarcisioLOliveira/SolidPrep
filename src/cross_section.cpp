@@ -179,6 +179,20 @@ CrossSection::CrossSection(std::vector<gp_Pnt> vertices){
     // TODO
 }
 
+CrossSection::CrossSection(const std::string& s):
+    centroid(), inertia(), normal(), max_dim(),
+    shape(utils::load_shape(s, 1.0)), area(){
+
+    GProp_GProps props;
+    BRepGProp::SurfaceProperties(this->shape, props);
+    this->area = props.Mass();
+    this->inertia = props.MatrixOfInertia();
+    this->centroid = props.CentreOfMass();
+
+    // TODO: this->normal, this->max_dim
+    // maybe allow normal to be user-defined?
+}
+
 bool CrossSection::is_inside(gp_Pnt p) const{
     BRepClass3d_SolidClassifier insider(this->shape);
     insider.Perform(p, Precision::Confusion());

@@ -22,6 +22,7 @@
 #define CROSS_SECTION_HPP
 
 #include "utils.hpp"
+#include <string_view>
 #include <vector>
 #include <gp_Pnt.hxx>
 #include <TopoDS_Shape.hxx>
@@ -79,6 +80,13 @@ class CrossSection{
      * @param c Circular object.
      */
     CrossSection(Circle c);
+
+    /**
+     * Creates a general-shape cross-section based on a geometry file.
+     *
+     * @param path Path to file.
+     */
+    CrossSection(const std::string& s);
 
     /**
      * Creates a dummy point cross section, for pathfinding.
