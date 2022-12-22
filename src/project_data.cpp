@@ -647,7 +647,7 @@ CrossSection ProjectData::get_cross_section(const rapidjson::GenericValue<rapidj
         }
     } else if(this->type == utils::PROBLEM_TYPE_3D) {
         bool has_rect = this->log_data(doc, "rectangle", TYPE_OBJECT, false);
-        bool has_file = this->log_data(doc, "file", TYPE_OBJECT, false);
+        bool has_file = this->log_data(doc, "file", TYPE_STRING, false);
 
         logger::log_assert(has_rect || has_file, logger::ERROR, "invalid cross-section definition in configuration file.");
         if(has_rect){
