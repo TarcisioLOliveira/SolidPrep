@@ -135,22 +135,26 @@ CrossSection::CrossSection(gp_Pnt p, utils::ProblemType type, double radius):
 CrossSection::CrossSection(Rectangle r):
     centroid(r.center), inertia(), normal(r.normal), max_dim(std::max(r.w, r.h)), 
     shape(), area(r.w*r.h){
- 
-    gp_Ax1 ax1(r.center, r.normal.Crossed(gp_Dir(0,0,1))); 
-    double ang1 = r.normal.AngleWithRef(gp_Dir(0,0,1), ax1.Direction());
-    gp_Ax1 ax2(r.center, r.normal);
+
     gp_Pnt p1(r.center.X() - r.w/2, r.center.Y() - r.h/2, r.center.Z());
     gp_Pnt p2(r.center.X() + r.w/2, r.center.Y() - r.h/2, r.center.Z());
     gp_Pnt p3(r.center.X() + r.w/2, r.center.Y() + r.h/2, r.center.Z());
     gp_Pnt p4(r.center.X() - r.w/2, r.center.Y() + r.h/2, r.center.Z());
-    p1.Rotate(ax1, ang1);
-    p2.Rotate(ax1, ang1);
-    p3.Rotate(ax1, ang1);
-    p4.Rotate(ax1, ang1);
-    p1.Rotate(ax2, r.rot_ang);
-    p2.Rotate(ax2, r.rot_ang);
-    p3.Rotate(ax2, r.rot_ang);
-    p4.Rotate(ax2, r.rot_ang);
+    if(std::abs(r.normal.Z()) != 1){
+        gp_Ax1 ax1(r.center, r.normal.Crossed(gp_Dir(0,0,1)));
+        double ang1 = r.normal.AngleWithRef(gp_Dir(0,0,1), ax1.Direction());
+        p1.Rotate(ax1, ang1);
+        p2.Rotate(ax1, ang1);
+        p3.Rotate(ax1, ang1);
+        p4.Rotate(ax1, ang1);
+    }
+    if(r.rot_ang != 0){
+        gp_Ax1 ax2(r.center, r.normal);
+        p1.Rotate(ax2, r.rot_ang);
+        p2.Rotate(ax2, r.rot_ang);
+        p3.Rotate(ax2, r.rot_ang);
+        p4.Rotate(ax2, r.rot_ang);
+    }
 
     const TopoDS_Vertex v1 = BRepBuilderAPI_MakeVertex(p1);
     const TopoDS_Vertex v2 = BRepBuilderAPI_MakeVertex(p2);
