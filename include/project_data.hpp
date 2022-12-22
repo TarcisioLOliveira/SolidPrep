@@ -82,6 +82,7 @@ class ProjectData {
     std::unique_ptr<DensityFilter> density_filter;
     std::unique_ptr<Projection> projection;
     AnalysisType analysis;
+    std::string folder_path;
     
     private:
     /**
@@ -96,9 +97,11 @@ class ProjectData {
      */
     bool log_data(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc, std::string name, DataType type, bool required) const;
 
+    std::string get_folder_path(const std::string& project_file_path) const;
+
     std::vector<std::unique_ptr<Material>> load_materials(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc);
 
-    std::vector<std::unique_ptr<Geometry>> load_geometries(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc, const std::string& folder_path);
+    std::vector<std::unique_ptr<Geometry>> load_geometries(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc);
 
     std::unique_ptr<Pathfinding> load_pathfinder(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc);
 

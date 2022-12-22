@@ -77,6 +77,8 @@ ProjectData::ProjectData(std::string project_file){
     logger::log_assert(ok, logger::ERROR, "JSON parse error: {} ({}) \n", rapidjson::GetParseError_En(ok.Code()), ok.Offset());
     logger::log_assert(doc.IsObject(), logger::ERROR, "The root of the JSON file must be an object.");
 
+    this->folder_path = this->get_folder_path(project_file);
+
     logger::log_assert(doc.HasMember("solid_type"), logger::ERROR, "Missing member: ");
     if(this->log_data(doc, "solid_type", TYPE_STRING, true)){
         std::string solid_type = doc["solid_type"].GetString();
@@ -130,13 +132,7 @@ ProjectData::ProjectData(std::string project_file){
         this->supports = this->get_support(doc["supports"]);
     }
     if(this->log_data(doc, "geometry", TYPE_ARRAY, true)){
-#ifdef _WIN32
-        size_t last_slash = project_file.rfind("\\");
-#else
-        size_t last_slash = project_file.rfind("/");
-#endif
-        std::string absolute_path = project_file.substr(0, last_slash+1);
-        this->geometries = this->load_geometries(doc, absolute_path);
+        this->geometries = this->load_geometries(doc);
     }
     if(this->log_data(doc, "sizing", TYPE_OBJECT, needs_sizing)){
         if(this->log_data(doc["sizing"], "pathfinding", TYPE_OBJECT, false)){
@@ -155,6 +151,17 @@ ProjectData::ProjectData(std::string project_file){
 
 
     fclose(fp);
+}
+
+
+std::string ProjectData::get_folder_path(const std::string& project_file_path) const{
+#ifdef _WIN32
+    size_t last_slash = project_file_path.rfind("\\");
+#else
+    size_t last_slash = project_file_path.rfind("/");
+#endif
+
+    return project_file_path.substr(0, last_slash+1);
 }
 
 bool ProjectData::log_data(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc, std::string name, ProjectData::DataType type, bool required) const{
@@ -251,7 +258,7 @@ std::vector<std::unique_ptr<Material>> ProjectData::load_materials(const rapidjs
     return material;
 }
 
-std::vector<std::unique_ptr<Geometry>> ProjectData::load_geometries(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc, const std::string& folder_path){
+std::vector<std::unique_ptr<Geometry>> ProjectData::load_geometries(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc){
     const auto& geometries = doc["geometry"].GetArray();
     std::vector<std::unique_ptr<Geometry>> geometry;
     for(const auto& geom:geometries){
@@ -681,8 +688,11 @@ CrossSection ProjectData::get_cross_section(const rapidjson::GenericValue<rapidj
             this->log_data(doc, "file", TYPE_STRING, true);
             const auto& file = doc["file"];
 
+            std::string absolute_path = folder_path;
             std::string path = file.GetString();
-            return CrossSection(path);
+            absolute_path.append(path);
+
+            return CrossSection(absolute_path);
         }
     }
     logger::log_assert(false, logger::ERROR, "unknown problem type detected in get_cross_section(), this shouldn't have happened.");
