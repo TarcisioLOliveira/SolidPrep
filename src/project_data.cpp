@@ -109,8 +109,10 @@ ProjectData::ProjectData(std::string project_file){
             needs_sizing = false;
         }
     }
-    logger::log_assert(needs_sizing ^ (this->type != utils::PROBLEM_TYPE_2D),
-                       logger::ERROR, "sizing is currently only implemented for 2D elasticity problems.");
+    if(needs_sizing){
+        logger::log_assert(this->type == utils::PROBLEM_TYPE_2D,
+                           logger::ERROR, "sizing is currently only implemented for 2D elasticity problems.");
+    }
     if(this->type == utils::PROBLEM_TYPE_2D){
         if(this->log_data(doc, "thickness", TYPE_DOUBLE, true)){
             this->thickness = doc["thickness"].GetDouble();
