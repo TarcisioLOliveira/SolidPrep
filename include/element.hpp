@@ -47,6 +47,10 @@ class Node{
         delete[] u_pos;
     }
 
+    Node(Node&) = delete;
+
+    Node& operator=(Node&) = delete;
+
     protected:
     /**
      * Constructs the node instance.
