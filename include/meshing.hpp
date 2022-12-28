@@ -134,7 +134,7 @@ class Meshing{
      * @param forces Forces to be used
      * @param supports Supports to be used
      * @param deduplicate Whether to deduplicate nodes
-     * @param prune Whether to prune unused nodes
+     * @param boundary_condition_inside Whether there is one or more boundary conditions inside the geometry
      */
     virtual void generate_elements(const TopoDS_Shape& shape,
                                    const std::vector<size_t>& geom_elem_mapping, 
@@ -144,7 +144,7 @@ class Meshing{
                                    const std::vector<Force>& forces, 
                                    const std::vector<Support>& supports,
                                    const bool deduplicate,
-                                   const bool prune);
+                                   const bool boundary_condition_inside);
 
     /**
      * Creates a list of elements from the list of element shapes.
@@ -169,8 +169,10 @@ class Meshing{
      * Populates the boundary_elements member variable.
      *
      * @param boundary_base_mesh List of shapes of boundary elements
+     * @param boundary_condition_inside Whether there is one or more boundary conditions inside the geometry
      */
-    virtual void populate_boundary_elements(const std::vector<ElementShape>& boundary_base_mesh);
+    virtual void populate_boundary_elements(const std::vector<ElementShape>& boundary_base_mesh,
+                                            const bool boundary_condition_inside);
 
     /**
      * Generate positioning information for node degrees of freedom, including
@@ -228,7 +230,7 @@ class Meshing{
      *
      * @param list List of element shapes.
      */
-    virtual void optimize(std::vector<ElementShape>& list, const bool prune);
+    virtual void optimize(std::vector<ElementShape>& list, std::unordered_map<size_t, MeshNode*>* id_map = nullptr);
 
     /**
      * Generates the list of element shapes from mesh information.

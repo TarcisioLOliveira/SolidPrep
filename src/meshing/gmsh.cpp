@@ -21,13 +21,16 @@
 #include "meshing/gmsh.hpp"
 #include "logger.hpp"
 #include "utils.hpp"
+#include <cmath>
 #include <gmsh.h>
 #include <algorithm>
+#include <iomanip>
 #include <limits>
 #include "project_data.hpp"
 #include <unordered_map>
 #include <BOPAlgo_Splitter.hxx>
 #include <BRepBuilderAPI_Copy.hxx>
+#include <set>
 
 namespace meshing{
 
@@ -68,24 +71,24 @@ void Gmsh::mesh(const std::vector<Force>& forces,
             sh = splitter.Shape();
         }
     }
-    if(has_condition_inside){
-        // Workaround so that this does not break current (faster) method of
-        // distributing elements to the different geometry instances, at least
-        // considering global meshing for linear analysis.
-        //
-        // Its current use is mostly for simple topopt/beam sizing, so it's a good
-        // workaround for now.
-        //
-        // Otherwise, the simpler idea would be to test for the center of mass
-        // of each geometry, which would be a problem if the geometry has a 
-        // hole in its center.
-        //
-        // Seemed better to sacrifice this gimmick than something more useful
-        // such as support for complex geometries.
-        logger::log_assert(this->geometries.size() == 1, logger::ERROR, "applying boundary conditions inside a geometry is currently not supported when the number of geometries is greater than 1.");
-    }
+    // if(has_condition_inside){
+    //     // Workaround so that this does not break current (faster) method of
+    //     // distributing elements to the different geometry instances, at least
+    //     // considering global meshing for linear analysis.
+    //     //
+    //     // Its current use is mostly for simple topopt/beam sizing, so it's a good
+    //     // workaround for now.
+    //     //
+    //     // Otherwise, the simpler idea would be to test for the center of mass
+    //     // of each geometry, which would be a problem if the geometry has a 
+    //     // hole in its center.
+    //     //
+    //     // Seemed better to sacrifice this gimmick than something more useful
+    //     // such as support for complex geometries.
+    //     logger::log_assert(this->geometries.size() == 1, logger::ERROR, "applying boundary conditions inside a geometry is currently not supported when the number of geometries is greater than 1.");
+    // }
 
-    std::vector<size_t> geom_elem_mapping, elem_tags, elem_node_tags, bound_elem_node_tags;
+    std::vector<size_t> geom_elem_mapping, elem_node_tags, bound_elem_node_tags;
     auto id_map = this->gmsh_meshing(has_condition_inside, sh, geom_elem_mapping, elem_node_tags, bound_elem_node_tags, this->elem_info);
 
     bool deduplicate = false;
@@ -120,6 +123,9 @@ std::unordered_map<size_t, MeshNode*> Gmsh::gmsh_meshing(bool has_condition_insi
 
     gmsh::option::setNumber("Mesh.ElementOrder", this->elem_info->get_element_order());
     gmsh::option::setNumber("Mesh.Optimize", 1);
+
+    gmsh::option::setNumber("Mesh.AngleToleranceFacetOverlap", 0.00001);
+    gmsh::option::setNumber("Mesh.MeshSizeFromCurvature", 3);
 
     // Quad/hex recombination
     auto problem_type = this->elem_info->get_problem_type();
@@ -160,8 +166,8 @@ std::unordered_map<size_t, MeshNode*> Gmsh::gmsh_meshing(bool has_condition_insi
     }
 
     // Would need to be changed to support multiple elements
-    geom_elem_mapping.resize(geometries.size());
-    if(geometries.size() == 1){
+    geom_elem_mapping.resize(geometries.size(),0);
+    if(geom_elem_mapping.size() == 1){
         std::vector<size_t> elem_tags;
         gmsh::model::mesh::getElementsByType(type, elem_tags, elem_node_tags, -1);
         geom_elem_mapping[0] = elem_tags.size();
@@ -175,34 +181,81 @@ std::unordered_map<size_t, MeshNode*> Gmsh::gmsh_meshing(bool has_condition_insi
         // I'm assuming here that the geometry's id and the internal model id
         // in Gmsh/OCCT are the same.
         size_t end = gmsh::model::occ::getMaxTag(dim);
-        for(size_t i = 1; i <= end; ++i){
-            std::vector<size_t> elem_tags_tmp;
-            std::vector<size_t> elem_node_tags_tmp;
-            gmsh::model::mesh::getElementsByType(type, elem_tags_tmp, elem_node_tags_tmp, i);
-            elem_node_tags.insert(elem_node_tags.end(), elem_node_tags_tmp.begin(), elem_node_tags_tmp.end());
-            geom_elem_mapping[i-1] = elem_tags.size();
+        if(end == geometries.size()){
+            for(size_t i = 1; i <= end; ++i){
+                std::vector<size_t> elem_tags_tmp;
+                std::vector<size_t> elem_node_tags_tmp;
+                gmsh::model::mesh::getElementsByType(type, elem_tags_tmp, elem_node_tags_tmp, i);
+                elem_node_tags.insert(elem_node_tags.end(), elem_node_tags_tmp.begin(), elem_node_tags_tmp.end());
+                geom_elem_mapping[i-1] = elem_tags_tmp.size();
+            }
+            for(size_t j = 1; j < geom_elem_mapping.size(); ++j){
+                geom_elem_mapping[j] += geom_elem_mapping[j-1];
+            }
+        } else {
+            const size_t nodes_per_elem = elem_type->get_nodes_per_element();
+            // Sometimes Gmsh finds more volumes than there are input geometries,
+            // so this is used in that case
+            for(size_t i = 1; i <= end; ++i){
+                std::vector<size_t> elem_tags_tmp;
+                std::vector<size_t> elem_node_tags_tmp;
+                double x, y, z;
+                gmsh::model::occ::getCenterOfMass(dim, i, x, y, z);
+                gp_Pnt p(x, y, z);
+                for(size_t j = 0; j < geometries.size(); ++j){
+                    const auto& g = geometries[j];
+                    if(g->is_inside(p)){
+                        gmsh::model::mesh::getElementsByType(type, elem_tags_tmp, elem_node_tags_tmp, i);
+                        elem_node_tags.insert(elem_node_tags.begin()+geom_elem_mapping[j]*nodes_per_elem, elem_node_tags_tmp.begin(), elem_node_tags_tmp.end());
+                        geom_elem_mapping[j] += elem_tags_tmp.size();
+                        break;
+                    }
+                }
+            }
+            for(size_t j = 1; j < geom_elem_mapping.size(); ++j){
+                geom_elem_mapping[j] += geom_elem_mapping[j-1];
+            }
         }
     }
 
     gmsh::clear();
     gmsh::finalize();
 
-    size_t dof = elem_type->get_dof_per_node();
+    const size_t dof = elem_type->get_dof_per_node();
 
-    std::unordered_map<size_t, MeshNode*> id_map;
-    id_map.reserve(node_tags.size());
-
-    this->node_list.clear();
-    this->node_list.reserve(node_tags.size());
+    const auto node_comp = [](const MeshNode& n1, const MeshNode& n2) -> bool{
+        return n1.id < n2.id;
+    };
+    std::set<MeshNode, decltype(node_comp)> node_set(node_comp);
     for(size_t i = 0; i < node_tags.size(); ++i){
         gp_Pnt p(node_coords[i*3], node_coords[i*3+1], node_coords[i*3+2]);
-        this->node_list.emplace_back(std::make_unique<MeshNode>(p, node_tags[i], dof));
-        id_map.emplace(node_tags[i], this->node_list[i].get());
+
+        node_set.emplace(p, node_tags[i], dof);
     }
+    for(size_t i = 0; i < node_tags.size(); ++i){
+        gp_Pnt p(node_coords[i*3], node_coords[i*3+1], node_coords[i*3+2]);
+
+        node_set.emplace(p, node_tags[i], dof);
+    }
+
+    std::unordered_map<size_t, MeshNode*> id_map;
+    id_map.reserve(node_set.size());
+
+    this->node_list.clear();
+    this->node_list.reserve(node_set.size());
+    for(auto it = node_set.cbegin(); it != node_set.cend(); ++it){
+
+        this->node_list.emplace_back(std::make_unique<MeshNode>(it->point, it->id, dof));
+        id_map.emplace(it->id, this->node_list.back().get());
+    }
+    node_set.clear();
+
+    std::set<size_t> boundary_node_set(boundary_node_tags.begin(), boundary_node_tags.end());
+
     this->boundary_node_list.clear();
-    this->boundary_node_list.reserve(boundary_node_tags.size());
-    for(size_t i = 0; i < boundary_node_tags.size(); ++i){
-        this->boundary_node_list.push_back(id_map.at(boundary_node_tags[i]));
+    this->boundary_node_list.reserve(boundary_node_set.size());
+    for(auto it = boundary_node_set.cbegin(); it != boundary_node_set.cend(); ++it){
+        this->boundary_node_list.push_back(id_map.at(*it));
     }
 
     return id_map;

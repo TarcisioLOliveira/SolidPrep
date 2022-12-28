@@ -44,7 +44,7 @@ void Meshing::generate_elements(const TopoDS_Shape& shape,
                                 const std::vector<Force>& forces, 
                                 const std::vector<Support>& supports,
                                 const bool deduplicate,
-                                const bool prune){
+                                const bool boundary_condition_inside){
 
     logger::quick_log("Generating elements and preparing for finite element analysis...");
 
@@ -57,7 +57,7 @@ void Meshing::generate_elements(const TopoDS_Shape& shape,
 
     {
         auto list = this->generate_element_shapes(elem_node_tags, nodes_per_elem, id_map);
-        this->optimize(list, prune);
+        this->optimize(list, &id_map);
         auto elements = this->create_element_list(list, this->elem_info);
         list.clear();
         populate_inverse_mesh(elements);
@@ -67,11 +67,13 @@ void Meshing::generate_elements(const TopoDS_Shape& shape,
 
     {
         auto bound_list = this->generate_element_shapes(bound_elem_node_tags, bound_nodes_per_elem, id_map);
-        this->populate_boundary_elements(bound_list);
+        this->populate_boundary_elements(bound_list, boundary_condition_inside);
     }
 
+    logger::quick_log("supports");
     this->apply_supports(supports);
 
+    logger::quick_log("loads");
     this->generate_load_vector(shape, forces);
 
     logger::quick_log("Done.");
@@ -100,21 +102,22 @@ void Meshing::populate_inverse_mesh(const std::vector<std::unique_ptr<MeshElemen
     }
 }
 
-void Meshing::populate_boundary_elements(const std::vector<ElementShape>& boundary_base_mesh){
+void Meshing::populate_boundary_elements(const std::vector<ElementShape>& boundary_base_mesh,
+                                         const bool boundary_condition_inside){
     const size_t N = this->elem_info->get_boundary_nodes_per_element();
     this->boundary_elements.clear();
     this->boundary_elements.reserve(boundary_base_mesh.size());
     for(size_t i = 0; i < boundary_base_mesh.size(); ++i){
         const auto& b = boundary_base_mesh[i];
         std::set<MeshElement*> common_nodes;
-        auto eq_range = this->inverse_mesh.equal_range(b.nodes[0]->id);
+        const auto eq_range = this->inverse_mesh.equal_range(b.nodes[0]->id);
         for(auto k = eq_range.first; k != eq_range.second; ++k){
             common_nodes.insert(k->second);
         }
         for(size_t j = 1; j < N; ++j){
             std::set<MeshElement*> tmp_common_nodes;
             std::set<MeshElement*> tmp_comp;
-            eq_range = this->inverse_mesh.equal_range(b.nodes[j]->id);
+            const auto eq_range = this->inverse_mesh.equal_range(b.nodes[j]->id);
             for(auto k = eq_range.first; k != eq_range.second; ++k){
                 tmp_comp.insert(k->second);
             }
@@ -123,8 +126,13 @@ void Meshing::populate_boundary_elements(const std::vector<ElementShape>& bounda
                                   std::inserter(tmp_common_nodes, tmp_common_nodes.begin()));
             common_nodes = std::move(tmp_common_nodes);
         }
-        logger::log_assert(common_nodes.size() == 1, logger::WARNING, "boundary element associated to more than one element.");
-        this->boundary_elements.emplace_back(b.nodes, *common_nodes.begin());
+        if(common_nodes.size() > 0){
+            if(boundary_condition_inside){
+                this->boundary_elements.emplace_back(b.nodes, *common_nodes.begin());
+            } else if(common_nodes.size() == 1){
+                this->boundary_elements.emplace_back(b.nodes, *common_nodes.begin());
+            }
+        }
     }
 }
 
@@ -306,8 +314,16 @@ void Meshing::generate_load_vector(const TopoDS_Shape& shape,
             double norm = f.vec.Magnitude()/f.S.get_area();
             gp_Dir dir(f.vec);
 
-            for(const auto& e : this->boundary_elements){
-                if(f.S.is_inside(e.get_centroid(Nb))){
+            std::vector<bool> apply_force(this->boundary_elements.size());
+            #pragma omp parallel for
+            for(size_t i = 0; i < apply_force.size(); ++i){
+                const auto& e = this->boundary_elements[i];
+                apply_force[i] = f.S.is_inside(e.get_centroid(Nb));
+            }
+
+            for(size_t i = 0; i < apply_force.size(); ++i){
+                if(apply_force[i]){
+                    const auto& e = this->boundary_elements[i];
                     std::vector<gp_Pnt> points(Nb);
                     for(size_t i = 0; i < Nb; ++i){
                         points[i] = e.nodes[i]->point;
@@ -579,7 +595,7 @@ void Meshing::prune(const std::vector<Force>& forces,
     }
     // Redo boundary mesh? Hopefully it's not necessary
 
-    this->optimize(list, true);
+    this->optimize(list);
 
     this->prepare_for_FEM(shape, geom_elem_mapping, list, forces, supports);
 }
@@ -636,8 +652,8 @@ void Meshing::reverse_cuthill_mckee(const std::vector<ElementShape>& elem_list){
     for(auto& e:elem_list){
         for(size_t i = 0; i < e.nodes.size(); ++i){
             for(size_t j = 1; j < e.nodes.size(); ++j){
-                size_t k = (i+j) % e.nodes.size();
-                adjacents[e.nodes[i]->id].insert(e.nodes[k]->id);
+                adjacents[e.nodes[i]->id].insert(e.nodes[j]->id);
+                adjacents[e.nodes[j]->id].insert(e.nodes[i]->id);
             }
         }
     }
@@ -683,7 +699,7 @@ void Meshing::reverse_cuthill_mckee(const std::vector<ElementShape>& elem_list){
         result.push_back(node);
         queue.pop();
     }
-    logger::log_assert(result.size() == this->node_list.size(), logger::ERROR, "Mesh contains disconnected nodes.");
+    logger::log_assert(result.size() == this->node_list.size(), logger::ERROR, "Mesh contains disconnected nodes. result: {}, node_list: {}.", result.size(), node_list.size());
 
     // Reorder node list
     std::vector<std::unique_ptr<MeshNode>> new_node_list(this->node_list.size());
@@ -730,7 +746,7 @@ bool Meshing::is_strictly_inside3D(gp_Pnt p, TopoDS_Shape s) const{
     return insider.State() == TopAbs_IN && !on_bounds;
 }
 
-void Meshing::optimize(std::vector<ElementShape>& list, const bool prune){
+void Meshing::optimize(std::vector<ElementShape>& list, std::unordered_map<size_t, MeshNode*>* id_map){
     // Prune unused nodes
     size_t new_id = 0;
     for(auto& n : this->node_list){
@@ -738,32 +754,61 @@ void Meshing::optimize(std::vector<ElementShape>& list, const bool prune){
         ++new_id;
     }
 
-    if(prune){
-        std::vector<bool> used(this->node_list.size(), false);
-        for(size_t i = 0; i < list.size(); ++i){
-            for(auto& n:list[i].nodes){
-                used[n->id] = true;
-            }   
-        }
+    std::vector<bool> used(this->node_list.size(), false);
+    for(size_t i = 0; i < list.size(); ++i){
+        for(auto& n:list[i].nodes){
+            used[n->id] = true;
+        }   
+    }
 
-        bool renumber = false;
-        auto it = this->node_list.begin();
-        while(it < this->node_list.end()){
-            if(!used[(*it)->id]){
-                it = this->node_list.erase(it);
-                renumber = true;
-            } else {
-                ++it;
+    bool renumber = false;
+    std::vector<size_t> ndel;
+    std::vector<size_t> bndel;
+    auto it = this->node_list.begin();
+    while(it < this->node_list.end()){
+        if(!used[(*it)->id]){
+            ndel.push_back(it - this->node_list.begin());
+            renumber = true;
+            if(id_map != nullptr){
+                auto mit = id_map->begin();
+                while(mit != id_map->end()){
+                    if(mit->second == it->get()){
+                        mit = id_map->erase(mit);
+                    } else {
+                        ++mit;
+                    }
+                }
             }
         }
-        used.clear();
+        ++it;
+    }
+    auto itb = this->boundary_node_list.begin();
+    while(itb < this->boundary_node_list.end()){
+        if(!used[(*itb)->id]){
+            bndel.push_back(itb - this->boundary_node_list.begin());
+            renumber = true;
+        }
+        ++itb;
+    }
+    it = this->node_list.begin();
+    size_t offset = 0;
+    for(auto n:ndel){
+        this->node_list.erase(it+n - offset);
+        ++offset;
+    }
+    itb = this->boundary_node_list.begin();
+    offset = 0;
+    for(auto n:bndel){
+        this->boundary_node_list.erase(itb+n - offset);
+        ++offset;
+    }
+    used.clear();
 
-        if(renumber){
-            new_id = 0;
-            for(auto& n : this->node_list){
-                n->id = new_id;
-                ++new_id;
-            }
+    if(renumber){
+        new_id = 0;
+        for(auto& n : this->node_list){
+            n->id = new_id;
+            ++new_id;
         }
     }
 
@@ -774,13 +819,34 @@ std::vector<ElementShape> Meshing::generate_element_shapes(
             const std::vector<size_t>& elem_node_tags, 
             size_t nodes_per_elem,
             const std::unordered_map<size_t, MeshNode*>& id_map){
-    const size_t N = elem_node_tags.size()/nodes_per_elem;
+    std::vector<size_t> filtered_tags;
+    filtered_tags.reserve(elem_node_tags.size());
+    std::vector<size_t> elem_tmp(nodes_per_elem);
+    const size_t N0 = elem_node_tags.size()/nodes_per_elem;
+    for(size_t i = 0; i < N0; ++i){
+        bool found_all_nodes = true;
+        for(size_t j = 0; j < nodes_per_elem; ++j){
+            size_t n = elem_node_tags[i*nodes_per_elem + j];
+            auto pos = id_map.find(n);
+            if(pos != id_map.end()){
+                elem_tmp[j] = n;
+            } else {
+                found_all_nodes = false;
+                break;
+            }
+        }
+        if(found_all_nodes){
+            filtered_tags.insert(filtered_tags.end(), elem_tmp.begin(), elem_tmp.end());
+        }
+    }
+
+    const size_t N = filtered_tags.size()/nodes_per_elem;
     std::vector<ElementShape> list(N);
     #pragma omp parallel for
     for(size_t j = 0; j < N; ++j){
         list[j].nodes.resize(nodes_per_elem);
         for(size_t i = 0; i < nodes_per_elem; ++i){
-            size_t n = elem_node_tags[j*nodes_per_elem + i];
+            size_t n = filtered_tags[j*nodes_per_elem + i];
 
             MeshNode* node = id_map.at(n);
             list[j].nodes[i] = node;
@@ -795,30 +861,37 @@ std::vector<size_t> Meshing::find_duplicates(std::unordered_map<size_t, MeshNode
         [](const std::unique_ptr<MeshNode>& n1, const std::unique_ptr<MeshNode>& n2)->bool{
             if(n1->point.X() < n2->point.X()){
                 return true;
-            } else if(n1->point.Y() < n2->point.Y()){
+            } else if(n1->point.X() == n2->point.X() && n1->point.Y() < n2->point.Y()){
                 return true;
-            } else if(n1->point.Z() < n2->point.Z()){
+            } else if(n1->point.X() == n2->point.X() && n1->point.Y() == n2->point.Y() && n1->point.Z() < n2->point.Z()){
                 return true;
             }
             return false;
         };
 
     std::vector<size_t> duplicates;
+
     // The usual method to find duplicates is to test each one against the
     // other, which is O(N^2). However, std::sort() is Nlog2N, then,
     // figuring out the duplicates is O(N), so it's a much better
     // alternative.
     std::sort(this->node_list.begin(), this->node_list.end(), point_sort);
 
+    logger::quick_log(node_list.size());
     auto i = this->node_list.begin();
     while(i < this->node_list.end()-1){
         if((*i)->point.IsEqual((*(i+1))->point, Precision::Confusion())){
             id_map[(*(i+1))->id] = id_map[(*i)->id];
+            auto bn = std::find(this->boundary_node_list.begin(), this->boundary_node_list.end(), (i+1)->get());
+            if(bn != this->boundary_node_list.end()){
+                this->boundary_node_list.erase(bn);
+            }
             this->node_list.erase(i+1);
         } else {
             ++i;
         }
     }
+    logger::quick_log(node_list.size());
     
     return duplicates;
 }
