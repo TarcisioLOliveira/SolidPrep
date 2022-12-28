@@ -34,7 +34,7 @@
 #include <BRepExtrema_DistShapeShape.hxx>
 #include <TopoDS_Shell.hxx>
 #include <BRep_Builder.hxx>
-#include <BRepClass3d_SolidClassifier.hxx>
+#include <BRepClass_FaceClassifier.hxx>
 #include "utils.hpp"
 #include <gp_Circ.hxx>
 #include <BRepPrimAPI_MakeSphere.hxx>
@@ -106,6 +106,7 @@ CrossSection::CrossSection(std::vector<gp_Pnt> vertices, double thickness){
     }
 
     this->shape = sh;
+    this->get_bounding_box();
 }
 CrossSection::CrossSection(gp_Pnt p):
     centroid(p), inertia(), normal(), max_dim(0), shape(BRepBuilderAPI_MakeVertex(p)), area(0){
@@ -130,6 +131,7 @@ CrossSection::CrossSection(gp_Pnt p, utils::ProblemType type, double radius):
         BRepBuilderAPI_Transform transf(this->shape, t, true);
         this->shape = transf.Shape();
     } 
+    this->get_bounding_box();
 }
 
 CrossSection::CrossSection(Rectangle r):
@@ -176,6 +178,8 @@ CrossSection::CrossSection(Rectangle r):
     this->inertia = props.MatrixOfInertia();
 
     this->shape = std::move(f);
+
+    this->get_bounding_box();
 }
 
 CrossSection::CrossSection(std::vector<gp_Pnt> vertices){
@@ -195,15 +199,23 @@ CrossSection::CrossSection(const std::string& s):
 
     // TODO: this->normal, this->max_dim
     // maybe allow normal to be user-defined?
+
+    this->get_bounding_box();
 }
 
-bool CrossSection::is_inside(gp_Pnt p) const{
-    BRepClass3d_SolidClassifier insider(this->shape);
-    insider.Perform(p, Precision::Confusion());
-    return insider.State() == TopAbs_ON;
+bool CrossSection::is_inside(const gp_Pnt& p) const{
+    if(this->is_inside_bounding_box(p)){
+        for(TopExp_Explorer exp(this->shape, TopAbs_FACE); exp.More(); exp.Next()){
+            BRepClass_FaceClassifier insider(TopoDS::Face(exp.Current()), p, 1e-3);
+            if(insider.State() == TopAbs_IN || insider.State() == TopAbs_ON){
+                return true;
+            }
+        }
+    }
+    return false;
 }
 
-double CrossSection::get_distance(gp_Pnt p) const{
+double CrossSection::get_distance(const gp_Pnt& p) const{
     TopoDS_Vertex v = BRepBuilderAPI_MakeVertex(p);
 
     BRepExtrema_DistShapeShape d(v, this->shape);
@@ -217,4 +229,6 @@ void CrossSection::set_centroid(gp_Pnt p){
     BRepBuilderAPI_Transform transf(this->shape, t, true);
     this->shape = transf.Shape();
     this->centroid = p;
+
+    this->get_bounding_box();
 }

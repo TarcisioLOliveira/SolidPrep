@@ -21,11 +21,14 @@
 #ifndef CROSS_SECTION_HPP
 #define CROSS_SECTION_HPP
 
+#include "logger.hpp"
 #include "utils.hpp"
 #include <string_view>
 #include <vector>
 #include <gp_Pnt.hxx>
 #include <TopoDS_Shape.hxx>
+#include <Bnd_Box.hxx>
+#include <BRepBndLib.hxx>
 
 /**
  * Represents the cross-section of a beam.
@@ -109,7 +112,7 @@ class CrossSection{
      *
      * @return Whether it's inside or not.
      */
-    bool is_inside(gp_Pnt p) const;
+    bool is_inside(const gp_Pnt& p) const;
     /**
      * Gets the shortest Euclidian distance to the cross-section.
      *
@@ -117,7 +120,7 @@ class CrossSection{
      *
      * @return Shortest distance.
      */
-    double get_distance(gp_Pnt p) const;
+    double get_distance(const gp_Pnt& p) const;
 
     /**
      * Gets a component of the moment of inertia (second moment of area) of the
@@ -172,7 +175,19 @@ class CrossSection{
     Standard_Real max_dim;
     TopoDS_Shape shape;
     double area;
+    double xmin = 0, xmax = 0, ymin = 0, ymax = 0, zmin = 0, zmax = 0;
 
+    inline void get_bounding_box(){
+        Bnd_Box bounding_box;
+        BRepBndLib::AddOptimal(this->shape, bounding_box, false);
+        bounding_box.Get(xmin, ymin, zmin, xmax, ymax, zmax);
+    }
+
+    inline bool is_inside_bounding_box(const gp_Pnt& p) const{
+        return p.X() - xmin >= -Precision::Confusion() && p.X() - xmax <= Precision::Confusion() &&
+               p.Y() - ymin >= -Precision::Confusion() && p.Y() - ymax <= Precision::Confusion() &&
+               p.Z() - zmin >= -Precision::Confusion() && p.Z() - zmax <= Precision::Confusion();
+    }
 };
 
 #endif
