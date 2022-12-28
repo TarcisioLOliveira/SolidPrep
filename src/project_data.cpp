@@ -656,7 +656,7 @@ CrossSection ProjectData::get_cross_section(const rapidjson::GenericValue<rapidj
         }
     } else if(this->type == utils::PROBLEM_TYPE_3D) {
         bool has_rect = this->log_data(doc, "rectangle", TYPE_OBJECT, false);
-        bool has_file = this->log_data(doc, "file", TYPE_STRING, false);
+        bool has_file = this->log_data(doc, "file", TYPE_OBJECT, false);
 
         logger::log_assert(has_rect || has_file, logger::ERROR, "invalid cross-section definition in configuration file.");
         if(has_rect){
@@ -687,14 +687,19 @@ CrossSection ProjectData::get_cross_section(const rapidjson::GenericValue<rapidj
         } else if(has_file) {
             logger::log_assert(this->analysis != this->COMPLETE && this->analysis != this->BEAMS_ONLY,
                                logger::ERROR, "cross-section of type file is currently not fully compatible with beam generation");
-            this->log_data(doc, "file", TYPE_STRING, true);
             const auto& file = doc["file"];
+            this->log_data(file, "path", TYPE_STRING, true);
+
+            double scale = 1;
+            if(this->log_data(file, "scale", TYPE_DOUBLE, false)){
+                scale = file["scale"].GetDouble();
+            }
 
             std::string absolute_path = folder_path;
-            std::string path = file.GetString();
+            std::string path = file["path"].GetString();
             absolute_path.append(path);
 
-            return CrossSection(absolute_path);
+            return CrossSection(absolute_path, scale);
         }
     }
     logger::log_assert(false, logger::ERROR, "unknown problem type detected in get_cross_section(), this shouldn't have happened.");

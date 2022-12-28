@@ -187,9 +187,9 @@ CrossSection::CrossSection(std::vector<gp_Pnt> vertices){
     // TODO
 }
 
-CrossSection::CrossSection(const std::string& s):
+CrossSection::CrossSection(const std::string& s, const double scale):
     centroid(), inertia(), normal(), max_dim(),
-    shape(utils::load_shape(s, 1.0)), area(){
+    shape(utils::load_shape(s, scale)), area(){
 
     GProp_GProps props;
     BRepGProp::SurfaceProperties(this->shape, props);

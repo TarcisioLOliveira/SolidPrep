@@ -88,8 +88,9 @@ class CrossSection{
      * Creates a general-shape cross-section based on a geometry file.
      *
      * @param path Path to file.
+     * @param scale Constant for scaling geometry.
      */
-    CrossSection(const std::string& s);
+    CrossSection(const std::string& s, const double scale);
 
     /**
      * Creates a dummy point cross section, for pathfinding.
