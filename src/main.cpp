@@ -37,10 +37,12 @@
 #include <chrono>
 #include <mpich-x86_64/mpi.h>
 #include <cblas.h>
+#include <Eigen/Core>
 
 int main(int argc, char* argv[]){
 
     MPI_Init(NULL, NULL);
+    Eigen::initParallel();
 
     logger::log_assert(argc > 1, logger::ERROR, "missing path to configuration file.");
 
