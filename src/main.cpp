@@ -36,6 +36,7 @@
 #include "sizing/standard_sizing.hpp"
 #include <chrono>
 #include <mpich-x86_64/mpi.h>
+#include <cblas.h>
 
 int main(int argc, char* argv[]){
 
@@ -106,6 +107,8 @@ int main(int argc, char* argv[]){
         }
         logger::quick_log("");
         logger::quick_log("FEA time: ", fea_duration, " minutes");
+        logger::quick_log("");
+        logger::quick_log("Compliance: ", cblas_ddot(u.size(), u.data(), 1, proj.topopt_mesher.get()->load_vector.data(), 1));
         logger::quick_log("");
 
         // Display results
