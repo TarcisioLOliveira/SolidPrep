@@ -535,21 +535,30 @@ std::vector<double> TET4::get_Nf(const double t, const std::vector<gp_Pnt>& poin
     const gp_Vec v1(points[0], points[1]);
     const gp_Vec v2(points[0], points[2]);
 
-    const double A3 = v1.Crossed(v2).Magnitude()/8;
+    const double AA = v1.Crossed(v2).Magnitude()/6;
+    double A[4] = {0,0,0,0};
+    for(size_t i = 0; i < 4; ++i){
+        for(size_t j = 0; j < 3; ++j){
+            if(points[j].IsEqual(this->nodes[i]->point, Precision::Confusion())){
+                A[i] = AA;
+                break;
+            }
+        }
+    }
 
     std::vector<double> Nf{
-        A3,  0,  0,
-         0, A3,  0,
-         0,  0, A3,
-        A3,  0,  0,
-         0, A3,  0,
-         0,  0, A3,
-        A3,  0,  0,
-         0, A3,  0,
-         0,  0, A3,
-        A3,  0,  0,
-         0, A3,  0,
-         0,  0, A3
+        A[0],  0,  0,
+         0, A[0],  0,
+         0,  0, A[0],
+        A[1],  0,  0,
+         0, A[1],  0,
+         0,  0, A[1],
+        A[2],  0,  0,
+         0, A[2],  0,
+         0,  0, A[2],
+        A[3],  0,  0,
+         0, A[3],  0,
+         0,  0, A[3]
     };
 
     return Nf;
