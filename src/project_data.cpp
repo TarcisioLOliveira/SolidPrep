@@ -57,6 +57,7 @@
 #include "element/TET4.hpp"
 #include "topology_optimization/minimal_volume.hpp"
 #include "topology_optimization/minimal_compliance.hpp"
+#include "topology_optimization/compliance_constraint_simple.hpp"
 #include "density_filter/convolution.hpp"
 #include "density_filter/helmholtz.hpp"
 #include "density_filter/averaging.hpp"
@@ -481,7 +482,28 @@ std::unique_ptr<TopologyOptimization> ProjectData::load_topopt(const rapidjson::
         bool save_result = to["save_result"].GetBool();
         int pc = to["pc"].GetInt();
         topopt.reset(new topology_optimization::MinimalCompliance(this->density_filter.get(), this->projection.get(), this, V, xtol_abs, ftol_rel, result_threshold, save_result, pc));
+    } else if(to["type"] == "compliance_constraint_simple"){
+        this->log_data(to, "c_max", TYPE_DOUBLE, true);
+        this->log_data(to, "rho_init", TYPE_DOUBLE, true);
+        this->log_data(to, "xtol_abs", TYPE_DOUBLE, true);
+        this->log_data(to, "result_threshold", TYPE_DOUBLE, true);
+        this->log_data(to, "save_result", TYPE_BOOL, true);
+        this->log_data(to, "P", TYPE_INT, true);
+        this->log_data(to, "pc", TYPE_INT, true);
+
+        this->density_filter = this->load_density_filter(to);
+        this->projection = this->load_projection(to);
+
+        double c_max = to["c_max"].GetDouble();
+        double rho_init = to["rho_init"].GetDouble();
+        double xtol_abs = to["xtol_abs"].GetDouble();
+        double result_threshold = to["result_threshold"].GetDouble();
+        bool save_result = to["save_result"].GetBool();
+        int P = to["P"].GetInt();
+        int pc = to["pc"].GetInt();
+        topopt.reset(new topology_optimization::ComplianceConstraintSimple(this->density_filter.get(), this->projection.get(), c_max, this, rho_init, xtol_abs, result_threshold, save_result, P, pc));
     }
+
     return topopt;
 }
 
