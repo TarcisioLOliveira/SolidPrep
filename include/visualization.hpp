@@ -55,8 +55,6 @@ class Visualization{
 
     private:
     const std::string MODEL_NAME = "loaded_model";
-    const std::string STRESS_VIEW = "Von Mises Stress";
-    const std::string DENSITY_VIEW = "Elemental Density";
     bool shown = false;
     Meshing* mesh = nullptr;
     int mesh_tag = 0;
