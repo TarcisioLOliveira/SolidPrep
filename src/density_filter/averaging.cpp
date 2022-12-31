@@ -18,7 +18,6 @@
  *
  */
 
-#include <set>
 #include "density_filter/averaging.hpp"
 
 namespace density_filter{
@@ -29,19 +28,23 @@ void Averaging::initialize(const Meshing* const mesh, const size_t x_size){
     this->mesh = mesh;
     const double t = this->mesh->thickness;
 
-    std::set<size_t> involved_nodes;
     for(const auto& g:mesh->geometries){
         if(g->do_topopt){
+            this->id_mapping.reserve(this->id_mapping.size()+g->mesh.size());
             for(const auto& e:g->mesh){
                 for(size_t i = 0; i < num_nodes; ++i){
                     const auto& n = e->nodes[i];
-                    involved_nodes.emplace(n->id);
+                    this->id_mapping[n->id] = 0;
                 }
             }
         }
     }
-    size_t len = involved_nodes.size();
-    involved_nodes.clear();
+    size_t len = this->id_mapping.size();
+    size_t id = 0;
+    for(auto it = this->id_mapping.begin(); it != this->id_mapping.end(); ++it){
+        it->second = id;
+        ++id;
+    }
     this->nodal_densities.resize(len,0);
     this->nodal_gradient.resize(len,0);
     this->D.resize(len,0);
@@ -51,7 +54,7 @@ void Averaging::initialize(const Meshing* const mesh, const size_t x_size){
                 const double V = e->get_volume(t)/num_nodes;
                 for(size_t i = 0; i < num_nodes; ++i){
                     const auto& n = e->nodes[i];
-                    this->D[n->id] += V;
+                    this->D[this->id_mapping[n->id]] += V;
                 }
             }
         }
@@ -72,7 +75,7 @@ void Averaging::filter_densities(const std::vector<double>& x, std::vector<doubl
                 const double V = e->get_volume(t)/num_nodes;
                 for(size_t i = 0; i < num_nodes; ++i){
                     const auto& n = e->nodes[i];
-                    this->nodal_densities[n->id] += V*(*x_it);
+                    this->nodal_densities[this->id_mapping[n->id]] += V*(*x_it);
                 }
                 ++x_it;
             }
@@ -88,7 +91,7 @@ void Averaging::filter_densities(const std::vector<double>& x, std::vector<doubl
                 *newx_it = 0;
                 for(size_t i = 0; i < num_nodes; ++i){
                     const auto& n = e->nodes[i];
-                    *newx_it += this->nodal_densities[n->id];
+                    *newx_it += this->nodal_densities[this->id_mapping[n->id]];
                 }
                 *newx_it /= num_nodes;
                 ++newx_it;
@@ -112,7 +115,7 @@ void Averaging::filter_gradient(const std::vector<double>& df, std::vector<doubl
                 const double V = e->get_volume(t)/num_nodes;
                 for(size_t i = 0; i < num_nodes; ++i){
                     const auto& n = e->nodes[i];
-                    this->nodal_gradient[n->id] += V*(*x_it);
+                    this->nodal_gradient[this->id_mapping[n->id]] += V*(*x_it);
                 }
                 ++x_it;
             }
@@ -128,7 +131,7 @@ void Averaging::filter_gradient(const std::vector<double>& df, std::vector<doubl
                 *newx_it = 0;
                 for(size_t i = 0; i < num_nodes; ++i){
                     const auto& n = e->nodes[i];
-                    *newx_it += this->nodal_gradient[n->id];
+                    *newx_it += this->nodal_gradient[this->id_mapping[n->id]];
                 }
                 *newx_it /= num_nodes;
                 ++newx_it;

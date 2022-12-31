@@ -22,6 +22,7 @@
 #define AVERAGING_HPP
 
 #include "density_filter.hpp"
+#include <unordered_map>
 
 namespace density_filter{
 
@@ -39,6 +40,7 @@ class Averaging : public DensityFilter{
     std::vector<double> D;
     std::vector<double> nodal_densities;
     std::vector<double> nodal_gradient;
+    std::unordered_map<size_t, size_t> id_mapping;
     const Meshing* mesh;
 };
 
