@@ -28,7 +28,7 @@ ViewHandler::ViewHandler(const Meshing* const mesh, const std::string& model_nam
       problem_type(problem_type){
 
     gmsh::view::add(view_name, view_id);
-    if(this->mat_color_num == 2 && data_type == MATERIAL){
+    if((this->mat_color_num == 2 && data_type == MATERIAL) || data_type == DENSITY){
         gmsh::view::option::setNumber(view_id, "ColormapNumber", 9); //grayscale
         gmsh::view::option::setNumber(view_id, "ColormapInvert", 1.0); //inverted
     }
@@ -67,8 +67,34 @@ void ViewHandler::update_view(const std::vector<double>& data, const std::vector
         this->update_elemental(data, tags);
     } else if(this->view_type == NODAL && (this->data_type == STRESS || this->data_type == OTHER)){
         this->update_nodal(data, tags);
-    } else if(this->view_type == NODAL && (this->data_type == STRESS || this->data_type == OTHER)){
+    } else if(this->view_type == TENSOR && (this->data_type == STRESS || this->data_type == OTHER)){
         this->update_tensor(data, tags);
+    } else if(this->data_type == DENSITY){
+        if(geometries.size() == 1){
+            if(view_type == ELEMENTAL){
+                this->update_elemental(data, tags);
+            } else if(view_type == NODAL){
+                this->update_nodal(data, tags);
+            }
+        } else {
+            std::vector<double> mat(tags.size(), 1.0);
+            auto m = mat.begin();
+            auto d = data.cbegin();
+            for(const auto& g:this->mesh->geometries){
+                if(g->do_topopt){
+                    for(size_t i = 0; i < g->mesh.size(); ++i){
+                        *m = *d;
+                        ++m;
+                        ++d;
+                    }
+                }
+            }
+            if(view_type == ELEMENTAL){
+                this->update_elemental(mat, tags);
+            } else if(view_type == NODAL){
+                this->update_nodal(mat, tags);
+            }
+        }
     } else if(this->view_type == ELEMENTAL && this->data_type == MATERIAL){
         if(this->mat_color_num == 2){
             this->update_elemental(data, tags);
@@ -97,7 +123,7 @@ void ViewHandler::update_view(const std::vector<double>& data, const std::vector
         }
     } else if(this->view_type == NODAL && this->data_type == MATERIAL){
         if(this->mat_color_num == 2){
-            this->update_elemental(data, tags);
+            this->update_nodal(data, tags);
         } else {
             std::vector<double> mat(tags.size());
             double cur_mat = 0.0;
@@ -119,7 +145,7 @@ void ViewHandler::update_view(const std::vector<double>& data, const std::vector
             } else {
                 // TODO
             }
-            this->update_elemental(mat, tags);
+            this->update_nodal(mat, tags);
         }
     } else if(this->data_type == DISPLACEMENT){ // Can only be VECTOR
         std::vector<double> vecs;

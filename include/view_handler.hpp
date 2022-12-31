@@ -39,6 +39,7 @@ class ViewHandler{
         STRESS,
         MATERIAL,
         DISPLACEMENT,
+        DENSITY,
         OTHER
     };
 
