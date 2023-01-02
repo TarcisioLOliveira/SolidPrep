@@ -49,33 +49,33 @@ int main(int argc, char* argv[]){
     double size_time = 0;
 
     // Load project file
-    ProjectData proj(argv[1]);
+    std::unique_ptr<ProjectData> proj(std::make_unique<ProjectData>(argv[1]));
     auto start_sizing = std::chrono::high_resolution_clock::now();
     TopoDS_Shape shape;
 
     // Sizing step
     std::vector<ElementShape> m;
 
-    if(proj.analysis == ProjectData::COMPLETE || proj.analysis == ProjectData::BEAMS_ONLY){
-        shape = proj.sizer->run();
+    if(proj->analysis == ProjectData::COMPLETE || proj->analysis == ProjectData::BEAMS_ONLY){
+        shape = proj->sizer->run();
         auto stop_sizing = std::chrono::high_resolution_clock::now();
         auto sizing_duration = std::chrono::duration_cast<std::chrono::seconds>(stop_sizing-start_sizing);
         size_time = sizing_duration.count()/60.0;
         utils::shape_to_file("sized.step", shape);
-        proj.geometries[0]->shape = shape;
+        proj->geometries[0]->shape = shape;
     }
 
     // Meshing
     auto start_mesh = std::chrono::high_resolution_clock::now();
-    proj.topopt_mesher->mesh(proj.forces, proj.supports);
+    proj->topopt_mesher->mesh(proj->forces, proj->supports);
     std::vector<MeshElement*> elems;
     std::vector<double> loads;
     auto stop_mesh = std::chrono::high_resolution_clock::now();
-    if(proj.analysis == ProjectData::FEA_ONLY || proj.analysis == ProjectData::BEAMS_ONLY){
+    if(proj->analysis == ProjectData::FEA_ONLY || proj->analysis == ProjectData::BEAMS_ONLY){
 
         // Finite element analysis
         auto start_fea = std::chrono::high_resolution_clock::now();
-        auto u = proj.topopt_fea->calculate_displacements(proj.topopt_mesher.get(), proj.topopt_mesher->load_vector);
+        auto u = proj->topopt_fea->calculate_displacements(proj->topopt_mesher.get(), proj->topopt_mesher->load_vector);
         auto stop_fea = std::chrono::high_resolution_clock::now();
         double fea_duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop_fea-start_fea).count()/60000.0;
 
@@ -84,14 +84,14 @@ int main(int argc, char* argv[]){
         std::vector<double> stressesY;
         std::vector<double> stressesXY;
         size_t s_size = 0;
-        for(auto& g:proj.geometries){
+        for(auto& g:proj->geometries){
             s_size += g->mesh.size();
         }
         stresses  .reserve(s_size);
         stressesX .reserve(s_size);
         stressesY .reserve(s_size);
         stressesXY.reserve(s_size);
-        for(auto& g:proj.geometries){
+        for(auto& g:proj->geometries){
             const auto D = g->get_D(0);
             for(auto& e:g->mesh){
                 stresses.push_back(e->get_stress_at(D, e->get_centroid(), u));
@@ -102,7 +102,7 @@ int main(int argc, char* argv[]){
             }
         }
 
-        if(proj.analysis == ProjectData::BEAMS_ONLY){
+        if(proj->analysis == ProjectData::BEAMS_ONLY){
             logger::quick_log("");
             logger::quick_log("Sizing time: ", size_time, " minutes");
             logger::quick_log("");
@@ -110,13 +110,13 @@ int main(int argc, char* argv[]){
         logger::quick_log("");
         logger::quick_log("FEA time: ", fea_duration, " minutes");
         logger::quick_log("");
-        logger::quick_log("Compliance: ", cblas_ddot(u.size(), u.data(), 1, proj.topopt_mesher.get()->load_vector.data(), 1));
+        logger::quick_log("Compliance: ", cblas_ddot(u.size(), u.data(), 1, proj->topopt_mesher.get()->load_vector.data(), 1));
         logger::quick_log("");
 
         // Display results
         Visualization v;
         v.start();
-        v.load_mesh(proj.topopt_mesher.get(), proj.type);
+        v.load_mesh(proj->topopt_mesher.get(), proj->type);
 
         auto stressview_VM = v.add_view("Von Mises Stress",       ViewHandler::ViewType::ELEMENTAL, ViewHandler::DataType::STRESS);
         auto stressview_X  = v.add_view("Normal Stress (X axis)", ViewHandler::ViewType::ELEMENTAL, ViewHandler::DataType::STRESS);
@@ -130,14 +130,14 @@ int main(int argc, char* argv[]){
         v.show();
         v.wait();
         v.end();
-    } else if(proj.analysis == ProjectData::OPTIMIZE_ONLY || proj.analysis == ProjectData::COMPLETE){
+    } else if(proj->analysis == ProjectData::OPTIMIZE_ONLY || proj->analysis == ProjectData::COMPLETE){
 
         // Display progress
         Visualization v;
         v.start();
-        v.load_mesh(proj.topopt_mesher.get(), proj.type);
+        v.load_mesh(proj->topopt_mesher.get(), proj->type);
 
-        proj.topopt->initialize_views(&v);
+        proj->topopt->initialize_views(&v);
 
         v.show();
         auto f = [&](){
@@ -148,7 +148,7 @@ int main(int argc, char* argv[]){
         auto start_to = std::chrono::high_resolution_clock::now();
 
         // Optimization
-        TopoDS_Shape result = proj.topopt->optimize(proj.topopt_fea.get(), proj.topopt_mesher.get());
+        TopoDS_Shape result = proj->topopt->optimize(proj->topopt_fea.get(), proj->topopt_mesher.get());
 
         // Display time
         auto stop_to = std::chrono::high_resolution_clock::now();
@@ -174,6 +174,9 @@ int main(int argc, char* argv[]){
         v.end();
 
     }
+
+    // Finalize MPI objects before MPI
+    proj.reset(nullptr);
 
     MPI_Finalize();
 
