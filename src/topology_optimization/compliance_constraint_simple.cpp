@@ -34,7 +34,7 @@ void ComplianceConstraintSimple::initialize_views(Visualization* viz){
     this->viz = viz;
 
     this->stress_view = viz->add_view("Von Mises Stress", ViewHandler::ViewType::ELEMENTAL, ViewHandler::DataType::STRESS);
-    this->density_view = viz->add_view("Elemental Density", ViewHandler::ViewType::ELEMENTAL, ViewHandler::DataType::MATERIAL);
+    this->density_view = viz->add_view("Density", ViewHandler::ViewType::ELEMENTAL, ViewHandler::DataType::DENSITY);
 }
 
 TopoDS_Shape ComplianceConstraintSimple::optimize(FiniteElement* fem, Meshing* mesh){
@@ -76,7 +76,7 @@ TopoDS_Shape ComplianceConstraintSimple::optimize(FiniteElement* fem, Meshing* m
     
     //optimization::GCMMASolver gcmma(x.size(), 1, 0, 1e6, 1); //1e5
     optimization::MMASolver mma(x.size(), 1, 0, 1e6, 1); //1e5
-    mma.SetAsymptotes(0.005, 0.2, 1.02);
+    mma.SetAsymptotes(0.05, 0.7, 1.2);
 
     double ff;
     std::vector<double> dftmp(x.size());
@@ -305,18 +305,12 @@ double ComplianceConstraintSimple::fobj_grad(const std::vector<double>& x, std::
     }
     logger::quick_log("Done.");
 
-    logger::quick_log(result);
-
     return result;
 }
 
 double ComplianceConstraintSimple::fc_grad(const std::vector<double>& x, std::vector<double>& grad){
     double pc = this->pc;
     double c = 0;
-
-    this->density_view->update_view(x);
-    //this->disp_view->update_view(u);
-    this->viz->redraw();
 
     size_t i = 0;
     for(const auto& g:this->mesh->geometries){
@@ -348,7 +342,7 @@ double ComplianceConstraintSimple::fc_grad(const std::vector<double>& x, std::ve
     }
     c = cblas_ddot(u.size(), this->mesh->load_vector.data(), 1, u.data(), 1);
 
-    return c;
+    return c - this->c_max;
 }
 
 }
