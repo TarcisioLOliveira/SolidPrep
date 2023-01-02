@@ -42,7 +42,7 @@ void MinimalVolume::initialize_views(Visualization* viz){
     this->viz = viz;
 
     this->stress_view = viz->add_view("Von Mises Stress", ViewHandler::ViewType::ELEMENTAL, ViewHandler::DataType::STRESS);
-    this->density_view = viz->add_view("Elemental Density", ViewHandler::ViewType::ELEMENTAL, ViewHandler::DataType::MATERIAL);
+    this->density_view = viz->add_view("Elemental Density", ViewHandler::ViewType::ELEMENTAL, ViewHandler::DataType::DENSITY);
 }
 
 TopoDS_Shape MinimalVolume::optimize(FiniteElement* fem, Meshing* mesh){
@@ -89,7 +89,7 @@ TopoDS_Shape MinimalVolume::optimize(FiniteElement* fem, Meshing* mesh){
     
     //optimization::GCMMASolver gcmma(x.size(), 1, 0, 1e6, 1); //1e5
     optimization::MMASolver mma(x.size(), 1, 0, 1e6, 1); //1e5
-    mma.SetAsymptotes(0.005, 0.2, 1.02);
+    mma.SetAsymptotes(0.05, 0.7, 1.2);
 
     double ff;
     std::vector<double> dftmp(x.size());
