@@ -115,7 +115,7 @@ std::unordered_map<size_t, MeshNode*> Gmsh::gmsh_meshing(bool has_condition_insi
     gmsh::model::occ::importShapesNativePointer(static_cast<const void*>(&sh), vec);
     gmsh::model::occ::synchronize();
 
-    gmsh::option::setNumber("Mesh.MeshSizeMin", this->size);
+    gmsh::option::setNumber("Mesh.MeshSizeMin", 0);
     gmsh::option::setNumber("Mesh.MeshSizeMax", this->size);
 
     gmsh::option::setNumber("Mesh.Algorithm", this->algorithm2D);
@@ -125,7 +125,6 @@ std::unordered_map<size_t, MeshNode*> Gmsh::gmsh_meshing(bool has_condition_insi
     gmsh::option::setNumber("Mesh.Optimize", 1);
 
     gmsh::option::setNumber("Mesh.AngleToleranceFacetOverlap", 0.00001);
-    gmsh::option::setNumber("Mesh.MeshSizeFromCurvature", 3);
 
     // Quad/hex recombination
     auto problem_type = this->elem_info->get_problem_type();
@@ -143,6 +142,8 @@ std::unordered_map<size_t, MeshNode*> Gmsh::gmsh_meshing(bool has_condition_insi
     }
 
     gmsh::model::mesh::generate(dim);
+
+    gmsh::write("mesh.msh");
 
     size_t type = elem_type->get_gmsh_element_type();
     size_t bound_type = elem_type->get_boundary_gmsh_element_type();
