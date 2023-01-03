@@ -22,6 +22,7 @@
 #define FUNCTION_HPP
 
 #include <vector>
+#include <cstdlib>
 
 class DensityBasedFunction{
     public:
@@ -30,6 +31,7 @@ class DensityBasedFunction{
     virtual void update(){}
     virtual double calculate(const std::vector<double>& u, const std::vector<double>& x) = 0;
     virtual double calculate_with_gradient(const std::vector<double>& u, const std::vector<double>& x, std::vector<double>& grad) = 0;
+    virtual size_t additional_steps() const = 0;
 };
 
 #endif
