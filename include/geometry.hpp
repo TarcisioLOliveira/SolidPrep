@@ -29,11 +29,15 @@
 #include "material.hpp"
 #include <BRepClass3d_SolidClassifier.hxx>
 
+class Meshing;
+
 class Geometry{
     public:
     Geometry(const std::string& path, double scale, utils::ProblemType type, MeshElementFactory* elem_type, bool do_topopt, bool with_void, Material* material, std::vector<Material*> alt_materials = std::vector<Material*>());
 
     Geometry(TopoDS_Shape shape, utils::ProblemType type, MeshElementFactory* elem_type, bool do_topopt, bool with_void, Material* material, std::vector<Material*> alt_materials = std::vector<Material*>());
+
+    void get_stresses(const std::vector<double>& u, std::vector<double>::iterator& stress_it) const;
 
     /**
      * Check if point is inside the geometry.
