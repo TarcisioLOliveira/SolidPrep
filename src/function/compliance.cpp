@@ -26,13 +26,15 @@ namespace function{
 Compliance::Compliance(const Meshing* const mesh, double pc):
     pc(pc), mesh(mesh){}
 
-double Compliance::calculate(const std::vector<double>& u, const std::vector<double>& x){
+double Compliance::calculate(const Optimizer* const op, const std::vector<double>& u, const std::vector<double>& x){
     (void)x;
+    (void)op;
     const double c = cblas_ddot(u.size(), this->mesh->load_vector.data(), 1, u.data(), 1);
 
     return c;
 }
-double Compliance::calculate_with_gradient(const std::vector<double>& u, const std::vector<double>& x, std::vector<double>& grad){
+double Compliance::calculate_with_gradient(const Optimizer* const op, const std::vector<double>& u, const std::vector<double>& x, std::vector<double>& grad){
+    (void)op;
     size_t i = 0;
     for(const auto& g:this->mesh->geometries){
         const size_t num_den = g->number_of_densities_needed();

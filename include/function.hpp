@@ -23,14 +23,15 @@
 
 #include <vector>
 #include <cstdlib>
+#include "optimizer.hpp"
 
 class DensityBasedFunction{
     public:
 
-    virtual void initialize(){}
+    virtual void initialize(const Optimizer* const op){(void)op;}
     virtual void update(){}
-    virtual double calculate(const std::vector<double>& u, const std::vector<double>& x) = 0;
-    virtual double calculate_with_gradient(const std::vector<double>& u, const std::vector<double>& x, std::vector<double>& grad) = 0;
+    virtual double calculate(const Optimizer* const op, const std::vector<double>& u, const std::vector<double>& x) = 0;
+    virtual double calculate_with_gradient(const Optimizer* const op, const std::vector<double>& u, const std::vector<double>& x, std::vector<double>& grad) = 0;
     virtual size_t additional_steps() const = 0;
 };
 

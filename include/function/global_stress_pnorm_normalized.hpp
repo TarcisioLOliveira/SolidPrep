@@ -33,10 +33,9 @@ class GlobalStressPnormNormalized : public DensityBasedFunction{
 
     virtual ~GlobalStressPnormNormalized() = default;
 
-    virtual void initialize() override;
     virtual void update() override;
-    virtual double calculate(const std::vector<double>& u, const std::vector<double>& x) override;
-    virtual double calculate_with_gradient(const std::vector<double>& u, const std::vector<double>& x, std::vector<double>& grad) override;
+    virtual double calculate(const Optimizer* const op, const std::vector<double>& u, const std::vector<double>& x) override;
+    virtual double calculate_with_gradient(const Optimizer* const op, const std::vector<double>& u, const std::vector<double>& x, std::vector<double>& grad) override;
     virtual size_t additional_steps() const override{
         return 1;
     }
@@ -47,7 +46,6 @@ class GlobalStressPnormNormalized : public DensityBasedFunction{
     double pc;
     double P;
     double pt;
-    std::vector<double> grad_V;
     size_t elem_number = 0;
     double c = 1;
     double alpha = 1;

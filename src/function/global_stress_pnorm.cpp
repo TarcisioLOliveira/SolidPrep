@@ -26,74 +26,51 @@ namespace function{
 GlobalStressPnorm::GlobalStressPnorm(const Meshing* const mesh, FiniteElement* fem, double pc, double P, double pt):
     mesh(mesh), fem(fem), pc(pc), P(P), pt(pt){}
 
-void GlobalStressPnorm::initialize(){
-    size_t x_size = 0;
-    for(const auto& g:this->mesh->geometries){
-        if(g->do_topopt){
-            x_size += g->mesh.size();
-        }
-        this->elem_number += g->mesh.size();
-    }
-
-    this->grad_V.resize(x_size, 0);
-
-    auto V_it = this->grad_V.begin();
-    for(const auto& g:this->mesh->geometries){
-        if(g->do_topopt){
-            for(const auto& e:g->mesh){
-                *V_it = e->get_volume(mesh->thickness);
-                ++V_it;
-            }
-        }
-    }
-}
-
-double GlobalStressPnorm::calculate(const std::vector<double>& u, const std::vector<double>& x){
+double GlobalStressPnorm::calculate(const Optimizer* const op, const std::vector<double>& u, const std::vector<double>& x){
     (void)x;
+    auto grad_V = op->get_volumes();
+    auto stresses = op->get_stresses();
 
     // Calculating global stress
     double Spn = 0;
     double Smax = 0;
 
-    auto x_it = x.begin();
-    auto v_it = this->grad_V.begin();
+    auto stress_it = stresses.cbegin();
+    auto x_it = x.cbegin();
+    auto v_it = grad_V.cbegin();
     for(const auto& g:this->mesh->geometries){
         const size_t num_den = g->number_of_densities_needed();
         const size_t num_mat = g->number_of_materials();
         if(g->do_topopt){
             if(num_den == 1){
                 if(num_mat == 1){
-                    const auto D = g->get_D(0);
-                    for(const auto& e:g->mesh){
-                        double S = e->get_stress_at(D, e->get_centroid(), u);
-                        double Se = std::pow(*x_it, pt)*S;
+                    for(auto si = stress_it; si < stress_it+g->mesh.size(); ++si, ++x_it, ++v_it){
+                        const double S = *stress_it;
+                        const double Se = std::pow(*x_it, pt)*S;
                         if(Se > Smax){
                             Smax = Se;
                         }
-                        double v = *v_it;
+                        const double v = *v_it;
                         Spn += v*std::pow(Se, P);
-                        ++x_it;
-                        ++v_it;
                     }
+                    stress_it += g->mesh.size();
                 } else {
-                    for(const auto& e:g->mesh){
-                        const auto D = g->get_D_topopt(*x_it, 1);
-                        double S = e->get_stress_at(D, e->get_centroid(), u);
-                        // No relaxation when there is no void?
-                        // Will do for now
-                        double Se = S;
-                        if(Se > Smax){
-                            Smax = Se;
-                        }
-                        double v = *v_it;
-                        Spn += v*std::pow(Se, P);
-                        ++x_it;
-                        ++v_it;
-                    }
+                    logger::log_assert(num_mat == 1, logger::ERROR, "problems that require more than 1 materials are currently not supported.");
                 }
             } else {
-                logger::log_assert(num_den == 1, logger::ERROR, "minimal volume problems that require more than 1 design variables are currently not supported.");
+                logger::log_assert(num_den == 1, logger::ERROR, "problems that require more than 1 design variables are currently not supported.");
             }
+        } else {
+            for(auto si = stress_it; si < stress_it+g->mesh.size(); ++si, ++v_it){
+                const double S = *stress_it;
+                const double Se = S;
+                if(Se > Smax){
+                    Smax = Se;
+                }
+                const double v = *v_it;
+                Spn += v*std::pow(Se, P);
+            }
+            stress_it += g->mesh.size();
         }
     }
 
@@ -101,70 +78,54 @@ double GlobalStressPnorm::calculate(const std::vector<double>& u, const std::vec
 
     return Spn;
 }
-double GlobalStressPnorm::calculate_with_gradient(const std::vector<double>& u, const std::vector<double>& x, std::vector<double>& grad){
+
+double GlobalStressPnorm::calculate_with_gradient(const Optimizer* const op, const std::vector<double>& u, const std::vector<double>& x, std::vector<double>& grad){
     // Calculating stresses
     std::vector<double> fl(u.size(), 0);
+
+    auto grad_V = op->get_volumes();
+    auto stresses = op->get_stresses();
 
     // Calculating global stress
     double Spn = 0;
     double Smax = 0;
 
-    std::vector<double> stress_list(elem_number);
+    auto stress_it = stresses.cbegin();
     auto x_it = x.cbegin();
-    auto v_it = this->grad_V.cbegin();
-    auto stress_it = stress_list.begin();
+    auto v_it = grad_V.cbegin();
     for(const auto& g:this->mesh->geometries){
         const size_t num_den = g->number_of_densities_needed();
         const size_t num_mat = g->number_of_materials();
         if(g->do_topopt){
             if(num_den == 1){
                 if(num_mat == 1){
-                    const auto D = g->get_D(0);
-                    for(const auto& e:g->mesh){
-                        double S = e->get_stress_at(D, e->get_centroid(), u);
-                        double Se = std::pow(*x_it, pt)*S;
-                        *stress_it = *x_it*S;//std::pow(this->new_x[i],pc)*S;//Se;
+                    for(auto si = stress_it; si < stress_it+g->mesh.size(); ++si, ++x_it, ++v_it){
+                        const double S = *stress_it;
+                        const double Se = std::pow(*x_it, pt)*S;
                         if(Se > Smax){
                             Smax = Se;
                         }
-                        double v = *v_it;
+                        const double v = *v_it;
                         Spn += v*std::pow(Se, P);
-                        e->get_virtual_load(D, v*std::pow(*x_it, pt*P)*std::pow(S, P-2), e->get_centroid(), u, fl);
-
-                        ++x_it;
-                        ++v_it;
-                        ++stress_it;
                     }
+                    stress_it += g->mesh.size();
                 } else {
-                    for(const auto& e:g->mesh){
-                        const auto D = g->get_D_topopt(*x_it, 1);
-                        double S = e->get_stress_at(D, e->get_centroid(), u);
-                        // No relaxation when there is no void?
-                        // Will do for now
-                        double Se = S;
-                        *stress_it = S;
-                        if(Se > Smax){
-                            Smax = Se;
-                        }
-                        double v = *v_it;
-                        Spn += v*std::pow(Se, P);
-                        e->get_virtual_load(D, v*std::pow(*x_it, pt*P)*std::pow(S, P-2), e->get_centroid(), u, fl);
-
-                        ++x_it;
-                        ++v_it;
-                        ++stress_it;
-                    }
+                    logger::log_assert(num_mat == 1, logger::ERROR, "problems that require more than 1 materials are currently not supported.");
                 }
             } else {
-                logger::log_assert(num_den == 1, logger::ERROR, "minimal volume problems that require more than 1 design variables are currently not supported.");
+                logger::log_assert(num_den == 1, logger::ERROR, "problems that require more than 1 design variables are currently not supported.");
             }
         } else {
-            const auto D = g->get_D(0);
-            for(const auto& e:g->mesh){
-                double S = e->get_stress_at(D, e->get_centroid(), u);
-                *stress_it = S;
-                ++stress_it;
+            for(auto si = stress_it; si < stress_it+g->mesh.size(); ++si, ++v_it){
+                const double S = *stress_it;
+                const double Se = S;
+                if(Se > Smax){
+                    Smax = Se;
+                }
+                const double v = *v_it;
+                Spn += v*std::pow(Se, P);
             }
+            stress_it += g->mesh.size();
         }
     }
 
@@ -181,7 +142,8 @@ double GlobalStressPnorm::calculate_with_gradient(const std::vector<double>& u, 
     logger::quick_log("Calculating stress gradient...");
 
     x_it = x.cbegin();
-    v_it = this->grad_V.cbegin();
+    v_it = grad_V.cbegin();
+    stress_it = stresses.cbegin();
     auto grad_it = grad.begin();
     for(const auto& g:this->mesh->geometries){
         const size_t num_den = g->number_of_densities_needed();
@@ -189,13 +151,10 @@ double GlobalStressPnorm::calculate_with_gradient(const std::vector<double>& u, 
         if(g->do_topopt){
             if(num_den == 1){
                 const auto D = g->get_D(0);
-                auto x_it2    = x_it;
-                auto v_it2    = v_it;
-                auto grad_it2 = grad_it;
                 for(const auto& e:g->mesh){
                     double lKu = pc*std::pow(*x_it, pc-1)*e->get_compliance(D, this->mesh->thickness, u, l);
                     double v = *v_it;
-                    double S = e->get_stress_at(D, e->get_centroid(), u);
+                    double S = *stress_it;
                     double Se = pt*v*std::pow(*x_it, pt*P-1)*std::pow(S, P);
 
                     *grad_it = Sg*(Se - lKu);
@@ -203,21 +162,10 @@ double GlobalStressPnorm::calculate_with_gradient(const std::vector<double>& u, 
                     ++x_it;
                     ++v_it;
                     ++grad_it;
+                    ++stress_it;
                 }
                 if(num_mat == 2){
-                    const auto D = g->get_D(1);
-                    for(const auto& e:g->mesh){
-                        double lKu = -pc*std::pow(1 - *x_it2, pc-1)*e->get_compliance(D, this->mesh->thickness, u, l);
-                        double v = *v_it2;
-                        double S = e->get_stress_at(D, e->get_centroid(), u);
-                        double Se = -pt*v*std::pow(1 - *x_it2, pt*P-1)*std::pow(S, P);
-
-                        *grad_it2 += Sg*(Se - lKu);
-
-                        ++x_it2;
-                        ++v_it2;
-                        ++grad_it2;
-                    }
+                    logger::log_assert(num_mat == 1, logger::ERROR, "problems that require more than 1 materials are currently not supported.");
                 }
             } else {
                 logger::log_assert(num_den == 1, logger::ERROR, "minimal volume problems that require more than 1 design variables are currently not supported.");

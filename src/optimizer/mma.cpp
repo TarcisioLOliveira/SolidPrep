@@ -47,18 +47,19 @@ TopoDS_Shape MMA::optimize(FiniteElement* fem, Meshing* mesh){
 
     fem->set_steps(fem_steps);
 
-    this->objective->initialize();
+    this->initialize_optimizer(mesh);
+    auto stress_render = this->stresses;
+
+    this->objective->initialize(this);
     for(auto& f:this->constraints){
-        f->initialize();
+        f->initialize(this);
     }
 
     size_t x_size = 0;
-    size_t elem_number = 0;
     for(const auto& g:mesh->geometries){
         if(g->do_topopt){
             x_size += g->mesh.size();
         }
-        elem_number += g->mesh.size();
     }
 
     auto start_to = std::chrono::high_resolution_clock::now();
@@ -71,7 +72,7 @@ TopoDS_Shape MMA::optimize(FiniteElement* fem, Meshing* mesh){
     size_t M = this->constraints.size();
 
     optimization::MMASolver mma(x_size, M, 0, 1e6, 1); //1e5
-    mma.SetAsymptotes(0.05, 0.7, 1.2);
+    mma.SetAsymptotes(0.005, 0.7, 1.2);
 
     double ff;
     std::vector<double> dftmp(x.size());
@@ -96,19 +97,26 @@ TopoDS_Shape MMA::optimize(FiniteElement* fem, Meshing* mesh){
 
     this->projection->project_densities(new_x);
     auto u = fem->calculate_displacements(mesh, mesh->load_vector, new_x, this->pc);
+    this->get_stresses(mesh->geometries, u, new_x, this->stresses);
+    std::copy(stresses.begin(), stresses.end(), stress_render.begin());
+    this->apply_densities(mesh->geometries, new_x, stress_render);
 
-    ff = this->objective->calculate_with_gradient(u, new_x, dftmp);
+    this->density_view->update_view(new_x);
+    this->stress_view->update_view(stress_render);
+    this->viz->redraw();
+
+    ff = this->objective->calculate_with_gradient(this, u, new_x, dftmp);
     this->projection->project_gradient(dftmp, new_x);
     this->filter->filter_gradient(dftmp, df);
 
     if(M == 1){
-        g[0] = this->constraints[0]->calculate_with_gradient(u,new_x, dgtmp1)
+        g[0] = this->constraints[0]->calculate_with_gradient(this, u, new_x, dgtmp1)
                - this->constraint_bounds[0];
         this->projection->project_gradient(dgtmp1, new_x);
         this->filter->filter_gradient(dgtmp1, dg);
     } else if(M > 1){
         for(size_t i = 0; i < M; ++i){
-            g[i] = this->constraints[i]->calculate_with_gradient(u,new_x, dgtmp1)
+            g[i] = this->constraints[i]->calculate_with_gradient(this, u, new_x, dgtmp1)
                    - this->constraint_bounds[i];
             this->projection->project_gradient(dgtmp1, new_x);
             this->filter->filter_gradient(dgtmp1, dgtmp2);
@@ -139,21 +147,29 @@ TopoDS_Shape MMA::optimize(FiniteElement* fem, Meshing* mesh){
             xold[i] = x[i];
         }
 
+        this->filter->filter_densities(x, new_x);
         this->projection->project_densities(new_x);
         u = fem->calculate_displacements(mesh, mesh->load_vector, new_x, this->pc);
+        this->get_stresses(mesh->geometries, u, new_x, this->stresses);
+        std::copy(stresses.begin(), stresses.end(), stress_render.begin());
+        this->apply_densities(mesh->geometries, new_x, stress_render);
 
-        ff = this->objective->calculate_with_gradient(u, new_x, dftmp);
+        this->density_view->update_view(new_x);
+        this->stress_view->update_view(stress_render);
+        this->viz->redraw();
+
+        ff = this->objective->calculate_with_gradient(this, u, new_x, dftmp);
         this->projection->project_gradient(dftmp, new_x);
         this->filter->filter_gradient(dftmp, df);
 
         if(M == 1){
-            g[0] = this->constraints[0]->calculate_with_gradient(u,new_x, dgtmp1)
+            g[0] = this->constraints[0]->calculate_with_gradient(this, u, new_x, dgtmp1)
                    - this->constraint_bounds[0];
             this->projection->project_gradient(dgtmp1, new_x);
             this->filter->filter_gradient(dgtmp1, dg);
         } else if(M > 1){
             for(size_t i = 0; i < M; ++i){
-                g[i] = this->constraints[i]->calculate_with_gradient(u,new_x, dgtmp1)
+                g[i] = this->constraints[i]->calculate_with_gradient(this, u, new_x, dgtmp1)
                        - this->constraint_bounds[i];
                 this->projection->project_gradient(dgtmp1, new_x);
                 this->filter->filter_gradient(dgtmp1, dgtmp2);
@@ -171,8 +187,10 @@ TopoDS_Shape MMA::optimize(FiniteElement* fem, Meshing* mesh){
         logger::quick_log("");
         logger::quick_log("Design var change: ", ch);
         logger::quick_log("fobj change: ", std::abs(ff-fnew)/ff);
+        logger::quick_log("");
 	}
 
+    logger::quick_log("");
     auto stop_to = std::chrono::high_resolution_clock::now();
     logger::quick_log("Final result: ", ff);
     auto to_duration = std::chrono::duration_cast<std::chrono::seconds>(stop_to-start_to);
