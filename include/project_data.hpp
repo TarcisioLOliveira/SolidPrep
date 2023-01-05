@@ -37,6 +37,8 @@
 #include "topology_optimization.hpp"
 #include "geometry.hpp"
 #include "density_filter.hpp"
+#include "function.hpp"
+#include "optimizer.hpp"
 
 /**
  * Reads and stores project data.
@@ -81,6 +83,7 @@ class ProjectData {
     std::unique_ptr<MeshElementFactory> topopt_element;
     std::unique_ptr<DensityFilter> density_filter;
     std::unique_ptr<Projection> projection;
+    std::unique_ptr<Optimizer> optimizer;
     AnalysisType analysis;
     std::string folder_path;
     
@@ -116,6 +119,12 @@ class ProjectData {
     std::unique_ptr<DensityFilter> load_density_filter(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc);
 
     std::unique_ptr<Projection> load_projection(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc);
+
+    std::unique_ptr<Optimizer> load_optimizer(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc);
+
+    std::unique_ptr<DensityBasedFunction> get_function(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc, double pc);
+
+    void get_constraints(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc, double pc, std::vector<std::unique_ptr<DensityBasedFunction>>& functions, std::vector<double>& bounds);
 
     std::unique_ptr<MeshElementFactory> get_element_type(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc);
 

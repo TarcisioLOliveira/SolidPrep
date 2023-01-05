@@ -137,7 +137,8 @@ int main(int argc, char* argv[]){
         v.start();
         v.load_mesh(proj->topopt_mesher.get(), proj->type);
 
-        proj->topopt->initialize_views(&v);
+        //proj->topopt->initialize_views(&v);
+        proj->optimizer->initialize_views(&v);
 
         v.show();
         auto f = [&](){
@@ -148,7 +149,8 @@ int main(int argc, char* argv[]){
         auto start_to = std::chrono::high_resolution_clock::now();
 
         // Optimization
-        TopoDS_Shape result = proj->topopt->optimize(proj->topopt_fea.get(), proj->topopt_mesher.get());
+        //TopoDS_Shape result = proj->topopt->optimize(proj->topopt_fea.get(), proj->topopt_mesher.get());
+        TopoDS_Shape result = proj->optimizer->optimize(proj->topopt_fea.get(), proj->topopt_mesher.get());
 
         // Display time
         auto stop_to = std::chrono::high_resolution_clock::now();

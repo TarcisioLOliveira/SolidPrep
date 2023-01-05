@@ -62,6 +62,11 @@
 #include "density_filter/helmholtz.hpp"
 #include "density_filter/averaging.hpp"
 #include "projection/none.hpp"
+#include "optimizer/mma.hpp"
+#include "function/compliance.hpp"
+#include "function/volume.hpp"
+#include "function/global_stress_pnorm_normalized.hpp"
+#include "function/global_stress_pnorm.hpp"
 
 ProjectData::ProjectData(std::string project_file){
 #ifdef _WIN32
@@ -125,9 +130,6 @@ ProjectData::ProjectData(std::string project_file){
     if(this->log_data(doc, "finite_element", TYPE_OBJECT, false)){
         this->topopt_fea = this->load_fea(doc);
     }
-    if(this->log_data(doc, "topopt", TYPE_OBJECT, needs_topopt)){
-        this->topopt = this->load_topopt(doc);
-    }
     if(this->log_data(doc, "loads", TYPE_ARRAY, true)){
         this->forces = this->get_loads(doc["loads"]);
     }
@@ -150,6 +152,10 @@ ProjectData::ProjectData(std::string project_file){
         this->log_data(doc["mesher"], "element_type", TYPE_STRING, true);
         this->topopt_element = this->get_element_type(doc["mesher"]["element_type"]);
         this->topopt_mesher = this->load_mesher(doc);
+    }
+    if(this->log_data(doc, "topopt", TYPE_OBJECT, needs_topopt)){
+        //this->topopt = this->load_topopt(doc);
+        this->optimizer = this->load_optimizer(doc);
     }
 
 
@@ -549,6 +555,73 @@ std::unique_ptr<Projection> ProjectData::load_projection(const rapidjson::Generi
     }
 
     return filter;
+}
+
+std::unique_ptr<Optimizer> ProjectData::load_optimizer(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc){
+    auto& to = doc["topopt"];
+    this->log_data(to, "type", TYPE_STRING, true);
+    if(to["type"] == "mma"){
+        this->log_data(to, "rho_init", TYPE_DOUBLE, true);
+        this->log_data(to, "xtol_abs", TYPE_DOUBLE, true);
+        this->log_data(to, "ftol_rel", TYPE_DOUBLE, true);
+        this->log_data(to, "result_threshold", TYPE_DOUBLE, true);
+        this->log_data(to, "save_result", TYPE_BOOL, true);
+        this->log_data(to, "pc", TYPE_INT, true);
+        this->log_data(to, "objective", TYPE_OBJECT, true);
+        this->log_data(to, "constraints", TYPE_ARRAY, true);
+
+        this->density_filter = this->load_density_filter(to);
+        this->projection = this->load_projection(to);
+
+        double rho_init = to["rho_init"].GetDouble();
+        double xtol_abs = to["xtol_abs"].GetDouble();
+        double ftol_rel = to["ftol_rel"].GetDouble();
+        double result_threshold = to["result_threshold"].GetDouble();
+        bool save_result = to["save_result"].GetBool();
+        int pc = to["pc"].GetInt();
+
+        std::unique_ptr<DensityBasedFunction> objective = this->get_function(to["objective"], pc);
+        std::vector<std::unique_ptr<DensityBasedFunction>> constraints;
+        std::vector<double> constraint_bounds;
+
+        this->get_constraints(to["constraints"], pc, constraints, constraint_bounds);
+
+        return std::make_unique<optimizer::MMA>(this->density_filter.get(), this->projection.get(), this, std::move(objective), std::move(constraints), std::move(constraint_bounds), pc, rho_init, xtol_abs, ftol_rel, result_threshold, save_result);
+    }
+
+    return nullptr;
+}
+
+std::unique_ptr<DensityBasedFunction> ProjectData::get_function(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc, double pc){
+    this->log_data(doc, "type", TYPE_STRING, true);
+    std::string type = doc["type"].GetString();
+    if(type == "compliance"){
+        return std::make_unique<function::Compliance>(this->topopt_mesher.get(), pc);
+    } else if(type == "volume"){
+        return std::make_unique<function::Volume>(this->topopt_mesher.get());
+    } else if(type == "global_stress_pnorm_normalized"){
+        this->log_data(doc, "P", TYPE_DOUBLE, true);
+        this->log_data(doc, "pt", TYPE_DOUBLE, true);
+        double P = doc["P"].GetDouble();
+        double pt = doc["pt"].GetDouble();
+        return std::make_unique<function::GlobalStressPnormNormalized>(this->topopt_mesher.get(), this->topopt_fea.get(), pc, P, pt);
+    } else if(type == "global_stress_pnorm"){
+        this->log_data(doc, "P", TYPE_DOUBLE, true);
+        this->log_data(doc, "pt", TYPE_DOUBLE, true);
+        double P = doc["P"].GetDouble();
+        double pt = doc["pt"].GetDouble();
+        return std::make_unique<function::GlobalStressPnorm>(this->topopt_mesher.get(), this->topopt_fea.get(), pc, P, pt);
+    }
+
+    return nullptr;
+}
+
+void ProjectData::get_constraints(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc, double pc, std::vector<std::unique_ptr<DensityBasedFunction>>& functions, std::vector<double>& bounds){
+    auto array = doc.GetArray();
+    for(auto& f:array){
+        functions.push_back(this->get_function(f, pc));
+        bounds.push_back(f["less_than"].GetDouble());
+    }
 }
 
 Projection::Parameter ProjectData::get_projection_parameter(const rapidjson::GenericValue<rapidjson::UTF8<>>& p) const{
