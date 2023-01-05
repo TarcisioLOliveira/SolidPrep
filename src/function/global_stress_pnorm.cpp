@@ -99,16 +99,21 @@ double GlobalStressPnorm::calculate_with_gradient(const Optimizer* const op, con
         if(g->do_topopt){
             if(num_den == 1){
                 if(num_mat == 1){
-                    for(auto si = stress_it; si < stress_it+g->mesh.size(); ++si, ++x_it, ++v_it){
+                    const auto D = g->get_D(0);
+                    for(const auto& e:g->mesh){
                         const double S = *stress_it;
                         const double Se = std::pow(*x_it, pt)*S;
                         if(Se > Smax){
                             Smax = Se;
                         }
                         const double v = *v_it;
+                        e->get_virtual_load(D, v*std::pow(*x_it, pt*P)*std::pow(S, P-2), e->get_centroid(), u, fl);
                         Spn += v*std::pow(Se, P);
+
+                        ++x_it;
+                        ++v_it;
+                        ++stress_it;
                     }
-                    stress_it += g->mesh.size();
                 } else {
                     logger::log_assert(num_mat == 1, logger::ERROR, "problems that require more than 1 materials are currently not supported.");
                 }
@@ -170,6 +175,9 @@ double GlobalStressPnorm::calculate_with_gradient(const Optimizer* const op, con
             } else {
                 logger::log_assert(num_den == 1, logger::ERROR, "minimal volume problems that require more than 1 design variables are currently not supported.");
             }
+        } else {
+            v_it += g->mesh.size();
+            stress_it += g->mesh.size();
         }
     }
     logger::quick_log("Done.");
