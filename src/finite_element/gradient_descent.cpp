@@ -20,6 +20,7 @@
 
 #include <algorithm>
 #include <cblas.h>
+#include <mpich-x86_64/mpi.h>
 #include "finite_element/gradient_descent.hpp"
 #include "logger.hpp"
 #include "optimization/MMASolver.hpp"
@@ -30,6 +31,13 @@ GradientDescent::GradientDescent(const double eps, Solver solver):
     eps(eps), displacement(1), solver(solver){}
 
 std::vector<double> GradientDescent::calculate_displacements(const Meshing* const mesh, std::vector<double> load, const std::vector<double>& density, double pc){
+    int mpi_id = 0;
+    MPI_Comm_rank(MPI_COMM_WORLD, &mpi_id);
+
+    if(mpi_id != 0){
+        return std::vector<double>();
+    }
+
     const size_t& W = this->gsm.get_W();
     const size_t& N = this->gsm.get_N();
     std::vector<double>& K = this->gsm.get_K();

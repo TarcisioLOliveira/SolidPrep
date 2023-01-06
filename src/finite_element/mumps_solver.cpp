@@ -78,35 +78,47 @@ MUMPSSolver::~MUMPSSolver(){
 }
 
 std::vector<double> MUMPSSolver::calculate_displacements(const Meshing* const mesh, std::vector<double> load, const std::vector<double>& density, double pc){
+    int mpi_id = 0;
+    MPI_Comm_rank(MPI_COMM_WORLD, &mpi_id);
+
     if(this->current_step == 0){
-        std::vector<int>& rows = this->gsm.get_rows();
-        std::vector<int>& cols = this->gsm.get_cols();
-        std::vector<double>& vals = this->gsm.get_vals();
 
-        this->gsm.generate(mesh, density, pc);
         this->config.job = 4; // Prepare matrix and decompose
-        // Insert matrix data
-        // Do this after every regeneration as the vectors may expand, which
-        // will change their address.
-        this->config.n = load.size();
-        this->config.nnz = vals.size();
-        this->config.a   = vals.data();
-        this->config.irn = rows.data();
-        this->config.jcn = cols.data();
+        if(mpi_id == 0){
+            std::vector<int>& rows = this->gsm.get_rows();
+            std::vector<int>& cols = this->gsm.get_cols();
+            std::vector<double>& vals = this->gsm.get_vals();
 
-        logger::quick_log("Decomposing...");
+            this->gsm.generate(mesh, density, pc);
+            // Insert matrix data
+            // Do this after every regeneration as the vectors may expand, which
+            // will change their address.
+            this->config.n = load.size();
+            this->config.nnz = vals.size();
+            this->config.a   = vals.data();
+            this->config.irn = rows.data();
+            this->config.jcn = cols.data();
+
+            logger::quick_log("Decomposing...");
+        }
         dmumps_c(&this->config);
 
-        logger::quick_log("Done.");
+        if(mpi_id == 0){
+            logger::quick_log("Done.");
+        }
     }
 
     this->config.job = 3; // Solve using decomposed matrix
-    this->config.rhs = load.data(); // Set right-hand side
-    logger::quick_log("Calculating displacements...");
+    if(mpi_id == 0){
+        this->config.rhs = load.data(); // Set right-hand side
+        logger::quick_log("Calculating displacements...");
+    }
 
     dmumps_c(&this->config);
 
-    logger::quick_log("Done.");
+    if(mpi_id == 0){
+        logger::quick_log("Done.");
+    }
 
     this->current_step = (this->current_step + 1) % this->steps;
    

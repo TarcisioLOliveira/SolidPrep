@@ -20,6 +20,7 @@
 
 #include <Eigen/IterativeLinearSolvers>
 #include <Eigen/src/Core/util/Constants.h>
+#include <mpich-x86_64/mpi.h>
 #include "finite_element/eigen_pcg.hpp"
 #include "logger.hpp"
 
@@ -28,6 +29,13 @@ namespace finite_element{
 EigenPCG::EigenPCG():gsm(), u(1){}
 
 std::vector<double> EigenPCG::calculate_displacements(const Meshing* const mesh, std::vector<double> load, const std::vector<double>& density, double pc){
+    int mpi_id = 0;
+    MPI_Comm_rank(MPI_COMM_WORLD, &mpi_id);
+
+    if(mpi_id != 0){
+        return std::vector<double>();
+    }
+
     if(this->current_step == 0){
         this->gsm.generate(mesh, density, pc);
     }
