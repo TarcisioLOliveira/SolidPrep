@@ -20,6 +20,7 @@
 
 #include "function/compliance.hpp"
 #include <cblas.h>
+#include <mpich-x86_64/mpi.h>
 
 namespace function{
 
@@ -35,6 +36,13 @@ double Compliance::calculate(const Optimizer* const op, const std::vector<double
 }
 double Compliance::calculate_with_gradient(const Optimizer* const op, const std::vector<double>& u, const std::vector<double>& x, std::vector<double>& grad){
     (void)op;
+    int mpi_id = 0;
+    MPI_Comm_rank(MPI_COMM_WORLD, &mpi_id);
+
+    if(mpi_id == 0){
+        return 0;
+    }
+
     size_t i = 0;
     for(const auto& g:this->mesh->geometries){
         const size_t num_den = g->number_of_densities_needed();

@@ -22,6 +22,7 @@
 #include "logger.hpp"
 #include "optimization/MMASolver.hpp"
 #include <chrono>
+#include <mpich-x86_64/mpi.h>
 
 namespace optimizer{
 
@@ -37,7 +38,12 @@ void MMA::initialize_views(Visualization* viz){
 }
 
 TopoDS_Shape MMA::optimize(FiniteElement* fem, Meshing* mesh){
-    logger::quick_log("Preparing for optimization...");
+    int mpi_id = 0;
+    MPI_Comm_rank(MPI_COMM_WORLD, &mpi_id);
+
+    if(mpi_id == 0){
+        logger::quick_log("Preparing for optimization...");
+    }
 
     size_t fem_steps = 1;
     fem_steps += this->objective->additional_steps();
@@ -47,18 +53,22 @@ TopoDS_Shape MMA::optimize(FiniteElement* fem, Meshing* mesh){
 
     fem->set_steps(fem_steps);
 
-    this->initialize_optimizer(mesh);
+    if(mpi_id == 0){
+        this->initialize_optimizer(mesh);
+    }
     auto stress_render = this->stresses;
 
-    this->objective->initialize(this);
-    for(auto& f:this->constraints){
-        f->initialize(this);
-    }
-
     size_t x_size = 0;
-    for(const auto& g:mesh->geometries){
-        if(g->do_topopt){
-            x_size += g->mesh.size();
+    if(mpi_id == 0){
+        this->objective->initialize(this);
+        for(auto& f:this->constraints){
+            f->initialize(this);
+        }
+
+        for(const auto& g:mesh->geometries){
+            if(g->do_topopt){
+                x_size += g->mesh.size();
+            }
         }
     }
 
@@ -67,14 +77,16 @@ TopoDS_Shape MMA::optimize(FiniteElement* fem, Meshing* mesh){
     std::vector<double> x(x_size, this->rho_init);
     std::vector<double> new_x(x_size, this->rho_init);
 
-    this->filter->initialize(mesh, x_size);
+    if(mpi_id == 0){
+        this->filter->initialize(mesh, x_size);
+    }
 
     size_t M = this->constraints.size();
 
     optimization::MMASolver mma(x_size, M, 0, 1e6, 1); //1e5
     mma.SetAsymptotes(0.005, 0.7, 1.2);
 
-    double ff;
+    double ff = 0;
     std::vector<double> dftmp(x.size());
     std::vector<double> dgtmp1(x.size());
     std::vector<double> dgtmp2(x.size());
@@ -91,37 +103,48 @@ TopoDS_Shape MMA::optimize(FiniteElement* fem, Meshing* mesh){
     xmin = std::vector<double>(x.size(), 0.0);
     xmax = std::vector<double>(x.size(), 1.0);
 
-    logger::quick_log("Done.");
+    if(mpi_id == 0){
+        logger::quick_log("Done.");
+    }
 
     double fnew = 0;
 
-    this->projection->project_densities(new_x);
+    if(mpi_id == 0){
+        this->projection->project_densities(new_x);
+    }
     auto u = fem->calculate_displacements(mesh, mesh->load_vector, new_x, this->pc);
-    this->get_stresses(mesh->geometries, u, new_x, this->stresses);
-    std::copy(stresses.begin(), stresses.end(), stress_render.begin());
-    this->apply_densities(mesh->geometries, new_x, stress_render);
+    if(mpi_id == 0){
+        this->get_stresses(mesh->geometries, u, new_x, this->stresses);
+        std::copy(stresses.begin(), stresses.end(), stress_render.begin());
+        this->apply_densities(mesh->geometries, new_x, stress_render);
 
-    this->density_view->update_view(new_x);
-    this->stress_view->update_view(stress_render);
-    this->viz->redraw();
-
+        this->density_view->update_view(new_x);
+        this->stress_view->update_view(stress_render);
+        this->viz->redraw();
+    }
     ff = this->objective->calculate_with_gradient(this, u, new_x, dftmp);
-    this->projection->project_gradient(dftmp, new_x);
-    this->filter->filter_gradient(dftmp, df);
-
+    MPI_Bcast(&ff, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    if(mpi_id == 0){
+        this->projection->project_gradient(dftmp, new_x);
+        this->filter->filter_gradient(dftmp, df);
+    }
     if(M == 1){
         g[0] = this->constraints[0]->calculate_with_gradient(this, u, new_x, dgtmp1)
                - this->constraint_bounds[0];
-        this->projection->project_gradient(dgtmp1, new_x);
-        this->filter->filter_gradient(dgtmp1, dg);
+        if(mpi_id == 0){
+            this->projection->project_gradient(dgtmp1, new_x);
+            this->filter->filter_gradient(dgtmp1, dg);
+        }
     } else if(M > 1){
         for(size_t i = 0; i < M; ++i){
             g[i] = this->constraints[i]->calculate_with_gradient(this, u, new_x, dgtmp1)
                    - this->constraint_bounds[i];
-            this->projection->project_gradient(dgtmp1, new_x);
-            this->filter->filter_gradient(dgtmp1, dgtmp2);
-            for(size_t j = 0; j < x_size; ++j){
-                dg[M*j + i] = dgtmp2[j];
+            if(mpi_id == 0){
+                this->projection->project_gradient(dgtmp1, new_x);
+                this->filter->filter_gradient(dgtmp1, dgtmp2);
+                for(size_t j = 0; j < x_size; ++j){
+                    dg[M*j + i] = dgtmp2[j];
+                }
             }
         }
     }
@@ -131,76 +154,93 @@ TopoDS_Shape MMA::optimize(FiniteElement* fem, Meshing* mesh){
     int iter;
 	for (iter = 0; (ch > this->xtol_abs && std::abs(ff-fnew)/ff > this->ftol_rel); ++iter){
 
-        this->objective->update();
-        for(auto& f:this->constraints){
-            f->update();
+        if(mpi_id == 0){
+            this->objective->update();
+            for(auto& f:this->constraints){
+                f->update();
+            }
         }
 
         fnew = ff;
 
-        mma.Update(x.data(), df.data(), g.data(), dg.data(), xmin.data(), xmax.data());
-        this->projection->update(iter);
+        if(mpi_id == 0){
+            mma.Update(x.data(), df.data(), g.data(), dg.data(), xmin.data(), xmax.data());
+            this->projection->update(iter);
 
-        ch = 0.0;
-        for (size_t i = 0; i < x.size(); ++i) {
-            ch = std::max(ch, std::abs(xold[i] - x[i]));
-            xold[i] = x[i];
+            ch = 0.0;
+            for (size_t i = 0; i < x.size(); ++i) {
+                ch = std::max(ch, std::abs(xold[i] - x[i]));
+                xold[i] = x[i];
+            }
+
+            this->filter->filter_densities(x, new_x);
+            this->projection->project_densities(new_x);
         }
+        MPI_Bcast(&ch, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
-        this->filter->filter_densities(x, new_x);
-        this->projection->project_densities(new_x);
         u = fem->calculate_displacements(mesh, mesh->load_vector, new_x, this->pc);
-        this->get_stresses(mesh->geometries, u, new_x, this->stresses);
-        std::copy(stresses.begin(), stresses.end(), stress_render.begin());
-        this->apply_densities(mesh->geometries, new_x, stress_render);
+        if(mpi_id == 0){
+            this->get_stresses(mesh->geometries, u, new_x, this->stresses);
+            std::copy(stresses.begin(), stresses.end(), stress_render.begin());
+            this->apply_densities(mesh->geometries, new_x, stress_render);
 
-        this->density_view->update_view(new_x);
-        this->stress_view->update_view(stress_render);
-        this->viz->redraw();
-
+            this->density_view->update_view(new_x);
+            this->stress_view->update_view(stress_render);
+            this->viz->redraw();
+        }
         ff = this->objective->calculate_with_gradient(this, u, new_x, dftmp);
-        this->projection->project_gradient(dftmp, new_x);
-        this->filter->filter_gradient(dftmp, df);
-
+        MPI_Bcast(&ff, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+        if(mpi_id == 0){
+            this->projection->project_gradient(dftmp, new_x);
+            this->filter->filter_gradient(dftmp, df);
+        }
         if(M == 1){
             g[0] = this->constraints[0]->calculate_with_gradient(this, u, new_x, dgtmp1)
                    - this->constraint_bounds[0];
-            this->projection->project_gradient(dgtmp1, new_x);
-            this->filter->filter_gradient(dgtmp1, dg);
+            if(mpi_id == 0){
+                this->projection->project_gradient(dgtmp1, new_x);
+                this->filter->filter_gradient(dgtmp1, dg);
+            }
         } else if(M > 1){
             for(size_t i = 0; i < M; ++i){
                 g[i] = this->constraints[i]->calculate_with_gradient(this, u, new_x, dgtmp1)
                        - this->constraint_bounds[i];
-                this->projection->project_gradient(dgtmp1, new_x);
-                this->filter->filter_gradient(dgtmp1, dgtmp2);
-                for(size_t j = 0; j < x_size; ++j){
-                    dg[M*j + i] = dgtmp2[j];
+                if(mpi_id == 0){
+                    this->projection->project_gradient(dgtmp1, new_x);
+                    this->filter->filter_gradient(dgtmp1, dgtmp2);
+                    for(size_t j = 0; j < x_size; ++j){
+                        dg[M*j + i] = dgtmp2[j];
+                    }
                 }
             }
         }
 
-        logger::quick_log("");
-        logger::quick_log("");
-        logger::quick_log("Iteration: ", iter);
-        logger::quick_log("Results: ", ff);
-        logger::quick_log(g);
-        logger::quick_log("");
-        logger::quick_log("Design var change: ", ch);
-        logger::quick_log("fobj change: ", std::abs(ff-fnew)/ff);
-        logger::quick_log("");
+        if(mpi_id == 0){
+            logger::quick_log("");
+            logger::quick_log("");
+            logger::quick_log("Iteration: ", iter);
+            logger::quick_log("Results: ", ff);
+            logger::quick_log(g);
+            logger::quick_log("");
+            logger::quick_log("Design var change: ", ch);
+            logger::quick_log("fobj change: ", std::abs(ff-fnew)/ff);
+            logger::quick_log("");
+        }
 	}
 
-    logger::quick_log("");
-    auto stop_to = std::chrono::high_resolution_clock::now();
-    logger::quick_log("Final result: ", ff);
-    auto to_duration = std::chrono::duration_cast<std::chrono::seconds>(stop_to-start_to);
-    double to_time = to_duration.count();
-    double it_time = to_time/iter;
-    logger::quick_log("Time per iteration (topology optimization): ", it_time, " seconds");
-    logger::quick_log("Number of iterations (topology optimization): ", iter);
+    if(mpi_id == 0){
+        logger::quick_log("");
+        auto stop_to = std::chrono::high_resolution_clock::now();
+        logger::quick_log("Final result: ", ff);
+        auto to_duration = std::chrono::duration_cast<std::chrono::seconds>(stop_to-start_to);
+        double to_time = to_duration.count();
+        double it_time = to_time/iter;
+        logger::quick_log("Time per iteration (topology optimization): ", it_time, " seconds");
+        logger::quick_log("Number of iterations (topology optimization): ", iter);
 
-    if(this->save_result){
-        return this->make_shape(new_x, mesh->geometries, this->result_threshold);
+        if(this->save_result){
+            return this->make_shape(new_x, mesh->geometries, this->result_threshold);
+        }
     }
 
     return TopoDS_Shape();

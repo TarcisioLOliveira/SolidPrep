@@ -40,8 +40,10 @@
 #include <Eigen/Core>
 
 int main(int argc, char* argv[]){
-
     MPI_Init(NULL, NULL);
+
+    // std::cout << "pid: " << getpid() << std::endl;
+    // sleep(10);
     
     int mpi_id = 0;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi_id);
@@ -142,19 +144,22 @@ int main(int argc, char* argv[]){
         }
     } else if(proj->analysis == ProjectData::OPTIMIZE_ONLY || proj->analysis == ProjectData::COMPLETE){
 
-        // Display progress
         Visualization v;
-        v.start();
-        v.load_mesh(proj->topopt_mesher.get(), proj->type);
+        std::thread t;
+        if(mpi_id == 0){
+            // Display progress
+            v.start();
+            v.load_mesh(proj->topopt_mesher.get(), proj->type);
 
-        //proj->topopt->initialize_views(&v);
-        proj->optimizer->initialize_views(&v);
+            //proj->topopt->initialize_views(&v);
+            proj->optimizer->initialize_views(&v);
 
-        v.show();
-        auto f = [&](){
-          v.wait();
-        };
-        std::thread t(f);
+            v.show();
+            auto f = [&](){
+              v.wait();
+            };
+            t = std::thread(f);
+        }
 
         auto start_to = std::chrono::high_resolution_clock::now();
 
@@ -162,29 +167,30 @@ int main(int argc, char* argv[]){
         //TopoDS_Shape result = proj->topopt->optimize(proj->topopt_fea.get(), proj->topopt_mesher.get());
         TopoDS_Shape result = proj->optimizer->optimize(proj->topopt_fea.get(), proj->topopt_mesher.get());
 
-        // Display time
-        auto stop_to = std::chrono::high_resolution_clock::now();
-        auto to_duration = std::chrono::duration_cast<std::chrono::seconds>(stop_to-start_to);
-        double to_time = to_duration.count()/60.0;
-        auto total_duration = std::chrono::duration_cast<std::chrono::seconds>(stop_to-start_sizing);
-        double total_time = total_duration.count()/60.0;
-        auto mesh_duration = std::chrono::duration_cast<std::chrono::seconds>(stop_mesh-start_mesh);
-        double mesh_time = mesh_duration.count()/60.0;
+        if(mpi_id == 0){
+            // Display time
+            auto stop_to = std::chrono::high_resolution_clock::now();
+            auto to_duration = std::chrono::duration_cast<std::chrono::seconds>(stop_to-start_to);
+            double to_time = to_duration.count()/60.0;
+            auto total_duration = std::chrono::duration_cast<std::chrono::seconds>(stop_to-start_sizing);
+            double total_time = total_duration.count()/60.0;
+            auto mesh_duration = std::chrono::duration_cast<std::chrono::seconds>(stop_mesh-start_mesh);
+            double mesh_time = mesh_duration.count()/60.0;
 
-        logger::quick_log("Sizing time: ", size_time, " minutes");
-        logger::quick_log("Topology optimization time (including preparations for TO): ", to_time+mesh_time, " minutes");
-        logger::quick_log("Total optimization time: ", to_time+size_time+mesh_time, " minutes");
-        logger::quick_log("Total runtime (including GUI loading, excluding saving result as STEP): ", total_time, " minutes");
+            logger::quick_log("Sizing time: ", size_time, " minutes");
+            logger::quick_log("Topology optimization time (including preparations for TO): ", to_time+mesh_time, " minutes");
+            logger::quick_log("Total optimization time: ", to_time+size_time+mesh_time, " minutes");
+            logger::quick_log("Total runtime (including GUI loading, excluding saving result as STEP): ", total_time, " minutes");
 
-        logger::quick_log("Finished.");
+            logger::quick_log("Finished.");
 
-        //t.join();
-        v.hide();
-        v.show();
-        v.wait();
+            //t.join();
+            v.hide();
+            v.show();
+            v.wait();
 
-        v.end();
-
+            v.end();
+        }
     }
 
     // Finalize MPI objects before MPI

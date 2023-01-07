@@ -19,6 +19,7 @@
  */
 
 #include "function/volume.hpp"
+#include <mpich-x86_64/mpi.h>
 #include <numeric>
 
 namespace function{
@@ -33,6 +34,12 @@ void Volume::initialize(const Optimizer* const op){
 
 double Volume::calculate(const Optimizer* const op, const std::vector<double>& u, const std::vector<double>& x){
     (void)u;
+    int mpi_id = 0;
+    MPI_Comm_rank(MPI_COMM_WORLD, &mpi_id);
+
+    if(mpi_id == 0){
+        return 0;
+    }
     double V = 0;
     auto v = op->get_volumes();
 
