@@ -103,7 +103,7 @@ int main(int argc, char* argv[]){
             stressesY .reserve(s_size);
             stressesXY.reserve(s_size);
             for(auto& g:proj->geometries){
-                const auto D = g->get_D(0);
+                const auto D = g->materials.get_D();
                 for(auto& e:g->mesh){
                     stresses.push_back(e->get_stress_at(D, e->get_centroid(), u));
                     auto tensor = e->get_stress_tensor(D, e->get_centroid(), u);

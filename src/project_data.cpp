@@ -279,7 +279,6 @@ std::vector<std::unique_ptr<Geometry>> ProjectData::load_geometries(const rapidj
         this->log_data(geom, "material", TYPE_STRING, true);
 
         double scale = 1;
-        std::vector<Material*> alt_materials;
         if(this->log_data(geom, "scale", TYPE_DOUBLE, false)){
             scale = geom["scale"].GetDouble();
         }
@@ -292,7 +291,7 @@ std::vector<std::unique_ptr<Geometry>> ProjectData::load_geometries(const rapidj
         };
         auto it = std::find_if(this->materials.begin(), this->materials.end(), equal_name);
         logger::log_assert(it != this->materials.end(), logger::ERROR, "material with name '{}' not found", mat_name);
-        Material* material = it->get();
+        std::vector<Material*> mats{it->get()};
 
         if(this->log_data(geom, "alt_materials", TYPE_ARRAY, false)){
             const auto& alt = geom["alt_materials"].GetArray();
@@ -305,17 +304,17 @@ std::vector<std::unique_ptr<Geometry>> ProjectData::load_geometries(const rapidj
                     };
                     auto it = std::find_if(this->materials.begin(), this->materials.end(), equal_name);
                     logger::log_assert(it != this->materials.end(), logger::ERROR, "material with name '{}' not found", mat_name);
-                    alt_materials.push_back(it->get());
+                    mats.push_back(it->get());
                 }
             }
         }
 
-        bool with_void = (alt_materials.size() == 0) ? true : false;
-        if(this->log_data(geom, "with_void", TYPE_BOOL, false) && alt_materials.size() > 0){
+        bool with_void = (mats.size() == 1) ? true : false;
+        if(this->log_data(geom, "with_void", TYPE_BOOL, false) && mats.size() > 1){
             with_void = geom["with_void"].GetBool();
         }
 
-        geometry.emplace_back(new Geometry(absolute_path, scale, this->type, this->topopt_element.get(), do_topopt, with_void,  material, alt_materials));
+        geometry.emplace_back(new Geometry(absolute_path, scale, this->type, this->topopt_element.get(), do_topopt, with_void, mats));
     }
     return geometry;
 }
@@ -448,6 +447,7 @@ std::unique_ptr<Meshing> ProjectData::load_mesher(const rapidjson::GenericValue<
 std::unique_ptr<TopologyOptimization> ProjectData::load_topopt(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc){
     auto& to = doc["topopt"];
     std::unique_ptr<TopologyOptimization> topopt;
+    /*
     if(to["type"] == "minimal_volume"){
         this->log_data(to, "Smax", TYPE_DOUBLE, true);
         this->log_data(to, "rho_init", TYPE_DOUBLE, true);
@@ -509,7 +509,7 @@ std::unique_ptr<TopologyOptimization> ProjectData::load_topopt(const rapidjson::
         int pc = to["pc"].GetInt();
         topopt.reset(new topology_optimization::ComplianceConstraintSimple(this->density_filter.get(), this->projection.get(), c_max, this, rho_init, xtol_abs, result_threshold, save_result, P, pc));
     }
-
+    */
     return topopt;
 }
 
@@ -567,6 +567,7 @@ std::unique_ptr<Optimizer> ProjectData::load_optimizer(const rapidjson::GenericV
         this->log_data(to, "result_threshold", TYPE_DOUBLE, true);
         this->log_data(to, "save_result", TYPE_BOOL, true);
         this->log_data(to, "pc", TYPE_INT, true);
+        this->log_data(to, "psi", TYPE_DOUBLE, true);
         this->log_data(to, "objective", TYPE_OBJECT, true);
         this->log_data(to, "constraints", TYPE_ARRAY, true);
 
@@ -579,47 +580,52 @@ std::unique_ptr<Optimizer> ProjectData::load_optimizer(const rapidjson::GenericV
         double result_threshold = to["result_threshold"].GetDouble();
         bool save_result = to["save_result"].GetBool();
         int pc = to["pc"].GetInt();
+        double psi = to["psi"].GetDouble();
 
-        std::unique_ptr<DensityBasedFunction> objective = this->get_function(to["objective"], pc);
+        std::unique_ptr<DensityBasedFunction> objective = this->get_function(to["objective"], pc, psi);
         std::vector<std::unique_ptr<DensityBasedFunction>> constraints;
         std::vector<double> constraint_bounds;
 
-        this->get_constraints(to["constraints"], pc, constraints, constraint_bounds);
+        this->get_constraints(to["constraints"], pc, psi, constraints, constraint_bounds);
 
-        return std::make_unique<optimizer::MMA>(this->density_filter.get(), this->projection.get(), this, std::move(objective), std::move(constraints), std::move(constraint_bounds), pc, rho_init, xtol_abs, ftol_rel, result_threshold, save_result);
+        return std::make_unique<optimizer::MMA>(this->density_filter.get(), this->projection.get(), this, std::move(objective), std::move(constraints), std::move(constraint_bounds), pc, psi, rho_init, xtol_abs, ftol_rel, result_threshold, save_result);
     }
 
     return nullptr;
 }
 
-std::unique_ptr<DensityBasedFunction> ProjectData::get_function(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc, double pc){
+std::unique_ptr<DensityBasedFunction> ProjectData::get_function(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc, double pc, double psiK){
     this->log_data(doc, "type", TYPE_STRING, true);
     std::string type = doc["type"].GetString();
     if(type == "compliance"){
-        return std::make_unique<function::Compliance>(this->topopt_mesher.get(), pc);
+        return std::make_unique<function::Compliance>(this->topopt_mesher.get(), pc, psiK);
     } else if(type == "volume"){
         return std::make_unique<function::Volume>(this->topopt_mesher.get());
     } else if(type == "global_stress_pnorm_normalized"){
         this->log_data(doc, "P", TYPE_DOUBLE, true);
         this->log_data(doc, "pt", TYPE_DOUBLE, true);
+        this->log_data(doc, "psi", TYPE_DOUBLE, true);
         double P = doc["P"].GetDouble();
         double pt = doc["pt"].GetDouble();
-        return std::make_unique<function::GlobalStressPnormNormalized>(this->topopt_mesher.get(), this->topopt_fea.get(), pc, P, pt);
+        double psiS = doc["psi"].GetDouble();
+        return std::make_unique<function::GlobalStressPnormNormalized>(this->topopt_mesher.get(), this->topopt_fea.get(), pc, P, pt, psiK, -psiS);
     } else if(type == "global_stress_pnorm"){
         this->log_data(doc, "P", TYPE_DOUBLE, true);
         this->log_data(doc, "pt", TYPE_DOUBLE, true);
+        this->log_data(doc, "psi", TYPE_DOUBLE, true);
         double P = doc["P"].GetDouble();
         double pt = doc["pt"].GetDouble();
-        return std::make_unique<function::GlobalStressPnorm>(this->topopt_mesher.get(), this->topopt_fea.get(), pc, P, pt);
+        double psiS = doc["psi"].GetDouble();
+        return std::make_unique<function::GlobalStressPnorm>(this->topopt_mesher.get(), this->topopt_fea.get(), pc, P, pt, psiK, -psiS);
     }
 
     return nullptr;
 }
 
-void ProjectData::get_constraints(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc, double pc, std::vector<std::unique_ptr<DensityBasedFunction>>& functions, std::vector<double>& bounds){
+void ProjectData::get_constraints(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc, double pc, double psi, std::vector<std::unique_ptr<DensityBasedFunction>>& functions, std::vector<double>& bounds){
     auto array = doc.GetArray();
     for(auto& f:array){
-        functions.push_back(this->get_function(f, pc));
+        functions.push_back(this->get_function(f, pc, psi));
         bounds.push_back(f["less_than"].GetDouble());
     }
 }

@@ -163,6 +163,25 @@ class MeshElementCommon : public MeshElement{
             MeshElement(nodes)
             {}
 
+    virtual double _von_Mises_derivative(const std::vector<double>& D, const std::vector<double>& dD, double mult, const gp_Pnt& point, const std::vector<double>& u, const std::vector<double>& V, const size_t S_SIZE) const{
+        auto s = this->_get_stress_vector(D, point, u, S_SIZE);
+        auto ds = this->_get_stress_vector(dD, point, u, S_SIZE);
+        std::vector<double> vec1(s.size(), 0);
+        for(size_t i = 0; i < S_SIZE; ++i){
+            for(size_t j = 0; j < S_SIZE; ++j){
+                vec1[i] += V[i*S_SIZE + j]*ds[j];
+            }
+        }
+
+        double result = 0;
+        for(size_t i = 0; i < S_SIZE; ++i){
+            result += s[i]*ds[i];
+        }
+        result *= mult;
+
+        return result;
+    }
+
     virtual void _get_virtual_load(const std::vector<double>& D, double mult, const gp_Pnt& point, const std::vector<double>& u, std::vector<double>& l, const std::vector<double>& V, const size_t S_SIZE) const{
         const size_t N = T::NODES_PER_ELEM;
         const size_t K_DIM = T::K_DIM;
@@ -275,6 +294,14 @@ class MeshElementCommon2D : public MeshElementCommon<T>{
                                    0,   0, 3};
 
         this->_get_virtual_load(D, mult, point, u, l, V, S_SIZE);
+    }
+
+    virtual double von_Mises_derivative(const std::vector<double>& D, const std::vector<double>& dD, double mult, const gp_Pnt& point, const std::vector<double>& u) const override{
+        const std::vector<double> V{1, -0.5, 0,
+                                   -0.5, 1, 0,
+                                   0,   0, 3};
+
+        return this->_von_Mises_derivative(D, dD, mult, point, u, V, S_SIZE);
     }
 
     virtual std::vector<gp_Pnt> get_intersection_points(const TopoDS_Shape& crosssection) const override{
@@ -484,6 +511,17 @@ class MeshElementCommon3D : public MeshElementCommon<T>{
                                        0,    0,    0, 0, 0, 3};
 
         this->_get_virtual_load(D, mult, point, u, l, V, S_SIZE);
+    }
+
+    virtual double von_Mises_derivative(const std::vector<double>& D, const std::vector<double>& dD, double mult, const gp_Pnt& point, const std::vector<double>& u) const override{
+        const std::vector<double> V{   1, -0.5, -0.5, 0, 0, 0,
+                                    -0.5,    1, -0.5, 0, 0, 0,
+                                    -0.5, -0.5,    1, 0, 0, 0,
+                                       0,    0,    0, 3, 0, 0,
+                                       0,    0,    0, 0, 3, 0,
+                                       0,    0,    0, 0, 0, 3};
+
+        return this->_von_Mises_derivative(D, dD, mult, point, u, V, S_SIZE);
     }
 
     virtual std::vector<double> get_f(const double t, const gp_Dir& dir, double norm, const std::vector<gp_Pnt>& points) const override{

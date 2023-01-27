@@ -31,7 +31,7 @@ namespace optimizer{
 
 class MMA : public Optimizer{
     public:
-    MMA(DensityFilter* filter, Projection* projection, ProjectData* data, std::unique_ptr<DensityBasedFunction> objective, std::vector<std::unique_ptr<DensityBasedFunction>> constraints, std::vector<double> constraint_bounds, double pc, double rho_init, double xtol_abs, double ftol_rel, double result_threshold, bool save);
+    MMA(DensityFilter* filter, Projection* projection, ProjectData* data, std::unique_ptr<DensityBasedFunction> objective, std::vector<std::unique_ptr<DensityBasedFunction>> constraints, std::vector<double> constraint_bounds, double pc, double psi, double rho_init, double xtol_abs, double ftol_rel, double result_threshold, bool save);
 
     virtual void initialize_views(Visualization* viz) override;
     virtual TopoDS_Shape optimize(FiniteElement* fem, Meshing* mesh) override;
@@ -42,6 +42,7 @@ class MMA : public Optimizer{
     const double xtol_abs;
     const double ftol_rel;
     const double pc;
+    const double psi;
     const double result_threshold;
     const bool save_result;
     std::unique_ptr<DensityBasedFunction> objective;

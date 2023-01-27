@@ -32,7 +32,7 @@ class MUMPSSparseSymmetric{
 
     virtual ~MUMPSSparseSymmetric() = default;
 
-    virtual void generate(const Meshing * const mesh, const std::vector<double>& density, const double pc);
+    virtual void generate(const Meshing * const mesh, const std::vector<double>& density, const double pc, const double psi);
 
     inline std::vector<int>& get_rows(){
         return rows;
@@ -52,7 +52,7 @@ class MUMPSSparseSymmetric{
 
     virtual void add_geometry(const Meshing * const mesh, const Geometry * const g);
 
-    virtual void add_geometry(const Meshing * const mesh, const Geometry * const g, std::vector<double>::const_iterator& rho, const double pc);
+    virtual void add_geometry(const Meshing * const mesh, const Geometry * const g, std::vector<double>::const_iterator& rho, const double pc, const double psi);
 };
 
 }

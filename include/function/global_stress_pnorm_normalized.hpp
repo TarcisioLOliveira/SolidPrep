@@ -29,7 +29,9 @@ namespace function{
 
 class GlobalStressPnormNormalized : public DensityBasedFunction{
     public:
-    GlobalStressPnormNormalized(const Meshing* const mesh, FiniteElement* fem, double pc, double P, double pt);
+    const double K_MIN = 1e-6;
+
+    GlobalStressPnormNormalized(const Meshing* const mesh, FiniteElement* fem, double pc, double P, double pt, double psiK, double psiS);
 
     virtual ~GlobalStressPnormNormalized() = default;
 
@@ -43,9 +45,11 @@ class GlobalStressPnormNormalized : public DensityBasedFunction{
     private:
     const Meshing* const mesh;
     FiniteElement* fem;
-    double pc;
-    double P;
-    double pt;
+    const double pc;
+    const double P;
+    const double pt;
+    const double psiK;
+    const double psiS;
     size_t elem_number = 0;
     double c = 1;
     double alpha = 1;

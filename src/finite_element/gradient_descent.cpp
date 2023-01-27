@@ -30,7 +30,7 @@ namespace finite_element{
 GradientDescent::GradientDescent(const double eps, Solver solver):
     eps(eps), displacement(1), solver(solver){}
 
-std::vector<double> GradientDescent::calculate_displacements(const Meshing* const mesh, std::vector<double> load, const std::vector<double>& density, double pc){
+std::vector<double> GradientDescent::calculate_displacements(const Meshing* const mesh, std::vector<double> load, const std::vector<double>& density, double pc, double psi){
     int mpi_id = 0;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi_id);
 
@@ -50,7 +50,7 @@ std::vector<double> GradientDescent::calculate_displacements(const Meshing* cons
     }
 
     if(this->current_step == 0){
-        this->gsm.generate(mesh, density, pc);
+        this->gsm.generate(mesh, density, pc, psi);
     }
     logger::quick_log("Done.");
     logger::quick_log("Calculating displacements...");

@@ -31,7 +31,7 @@ class EigenPCG : public FiniteElement{
     public:
     EigenPCG();
 
-    virtual std::vector<double> calculate_displacements(const Meshing* const mesh, std::vector<double> load, const std::vector<double>& density = std::vector<double>(), double pc = 3) override;
+    virtual std::vector<double> calculate_displacements(const Meshing* const mesh, std::vector<double> load, const std::vector<double>& density = std::vector<double>(), double pc = 3, double psi = 0.1) override;
 
     inline virtual void set_steps(size_t s) override{
         this->steps = s;

@@ -28,6 +28,8 @@
 
 class Optimizer{
     public:
+    const double K_MIN = 1e-6;
+
     virtual ~Optimizer() = default;
 
     virtual void initialize_views(Visualization* viz) = 0;
@@ -51,7 +53,7 @@ class Optimizer{
     void initialize_optimizer(const Meshing* const mesh);
 
     TopoDS_Shape make_shape(const std::vector<double>& x, const std::vector<Geometry*>& geometries, const double result_threshold) const;
-    void get_stresses(const std::vector<Geometry*> geometries, const std::vector<double>& u, const std::vector<double>& x, std::vector<double>& stresses) const;
+    void get_stresses(const std::vector<Geometry*> geometries, const std::vector<double>& u, const std::vector<double>& x, std::vector<double>& stresses, double pc, double psi) const;
     void get_volumes(const std::vector<Geometry*> geometries, const double thickness, std::vector<double>& volumes) const;
     size_t get_number_of_elements(const std::vector<Geometry*> geometries) const;
 

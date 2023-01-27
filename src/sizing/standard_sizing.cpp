@@ -84,7 +84,7 @@ TopoDS_Shape StandardSizing::boundary_expansion_approach(){
     std::unique_ptr<Geometry> geom(new Geometry(beams, utils::PROBLEM_TYPE_2D, gt9_maker.get(), 
                                                 this->data->geometries[0]->do_topopt, 
                                                 this->data->geometries[0]->with_void,
-                                                this->data->materials[0].get()));
+                                                {this->data->materials[0].get()}));
     std::vector<std::unique_ptr<Geometry>> ggeom;
     ggeom.push_back(std::move(geom));
     meshing::StandardBeamMesher mesh(ggeom, gt9_maker.get(), this->element_size, this->data->thickness);
@@ -322,7 +322,7 @@ TopoDS_Shape StandardSizing::expansion_2D(const meshing::StandardBeamMesher& mes
         const size_t dof = mesh.elem_info->get_dof_per_node();
         const size_t num_nodes = mesh.elem_info->get_nodes_per_element();
         for(auto& g:mesh.geometries){
-            const auto D = g->get_D(0);
+            const auto D = g->materials.get_D();
             for(auto& e:g->mesh){
 
                 // Heuristic filter

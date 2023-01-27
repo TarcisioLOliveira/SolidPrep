@@ -33,7 +33,7 @@ class LAPACKDenseSymmetricBanded{
 
     virtual void calculate_dimensions(const Meshing * const mesh, const std::vector<double>& load);
 
-    virtual void generate(const Meshing * const mesh, const std::vector<double>& density, const double pc);
+    virtual void generate(const Meshing * const mesh, const std::vector<double>& density, const double pc, const double psi);
 
     inline std::vector<double>& get_K(){
         return K;
@@ -60,7 +60,7 @@ class LAPACKDenseSymmetricBanded{
 
     virtual void add_geometry(const Meshing * const mesh, const Geometry * const g);
 
-    virtual void add_geometry(const Meshing * const mesh, const Geometry * const g, std::vector<double>::const_iterator& rho, const double pc);
+    virtual void add_geometry(const Meshing * const mesh, const Geometry * const g, std::vector<double>::const_iterator& rho, const double pc, const double psi);
 
     inline void insert_element_matrix(const std::vector<double>& k, const std::vector<long>& pos, const size_t n){
         const size_t w = pos.size();

@@ -29,9 +29,6 @@ class LinearElasticIsotropic : public Material{
     public:
     LinearElasticIsotropic(const std::string& name, double E, double nu, double Smax, double Tmax, bool plane_stress);
 
-    virtual std::vector<double> stiffness_2D() const override;
-    virtual std::vector<double> stiffness_3D() const override;
-
     virtual double beam_E_2D(gp_Dir d) const override;
     virtual double beam_E_3D(gp_Dir d) const override;
 
@@ -42,9 +39,6 @@ class LinearElasticIsotropic : public Material{
     private:
     const double E;
     const double nu;
-
-    std::vector<double> D_2D;
-    std::vector<double> D_3D;
 };
 
 }

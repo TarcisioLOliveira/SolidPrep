@@ -29,9 +29,6 @@ class LinearElasticOrthotropic : public Material{
     public:
     LinearElasticOrthotropic(const std::string& name, std::vector<double> E, std::vector<double> nu, std::vector<double> G, std::vector<double> Smax, std::vector<double> Tmax);
 
-    virtual std::vector<double> stiffness_2D() const override;
-    virtual std::vector<double> stiffness_3D() const override;
-
     virtual double beam_E_2D(gp_Dir d) const override;
     virtual double beam_E_3D(gp_Dir d) const override;
 
@@ -40,8 +37,6 @@ class LinearElasticOrthotropic : public Material{
     virtual std::vector<double> get_max_stresses(gp_Dir d) const override;
 
     private:
-    std::vector<double> D_2D;
-    std::vector<double> D_3D;
 };
 
 }

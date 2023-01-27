@@ -57,13 +57,6 @@ LinearElasticIsotropic::LinearElasticIsotropic(const std::string& name, double E
     this->D_3D[35] = E/(2*(1+nu));
 }
 
-std::vector<double> LinearElasticIsotropic::stiffness_2D() const{
-    return this->D_2D;
-}
-std::vector<double> LinearElasticIsotropic::stiffness_3D() const{
-    return this->D_3D;
-}
-
 double LinearElasticIsotropic::beam_E_2D(gp_Dir d) const{
     (void)d;
     return this->E;

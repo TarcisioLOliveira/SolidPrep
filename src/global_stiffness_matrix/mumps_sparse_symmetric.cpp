@@ -23,7 +23,7 @@
 
 namespace global_stiffness_matrix{
 
-void MUMPSSparseSymmetric::generate(const Meshing* const mesh, const std::vector<double>& density, const double pc){
+void MUMPSSparseSymmetric::generate(const Meshing* const mesh, const std::vector<double>& density, const double pc, const double psi){
     logger::quick_log("Generating stiffness matrix...");
     if(density.size() == 0){
         for(auto& g : mesh->geometries){
@@ -33,7 +33,7 @@ void MUMPSSparseSymmetric::generate(const Meshing* const mesh, const std::vector
         auto rho = density.begin();
         for(auto& g : mesh->geometries){
             if(g->do_topopt){
-                this->add_geometry(mesh, g, rho, pc);
+                this->add_geometry(mesh, g, rho, pc, psi);
             } else {
                 this->add_geometry(mesh, g);
             }
@@ -45,7 +45,7 @@ void MUMPSSparseSymmetric::generate(const Meshing* const mesh, const std::vector
 }
 
 void MUMPSSparseSymmetric::add_geometry(const Meshing* const mesh, const Geometry* const g){
-    const auto D = g->get_D(0);
+    const auto D = g->materials.get_D();
     const double t = mesh->thickness;
     const size_t dof      = mesh->elem_info->get_dof_per_node();
     const size_t node_num = mesh->elem_info->get_nodes_per_element();
@@ -73,14 +73,16 @@ void MUMPSSparseSymmetric::add_geometry(const Meshing* const mesh, const Geometr
     }
 }
 
-void MUMPSSparseSymmetric::add_geometry(const Meshing* const mesh, const Geometry* const g, std::vector<double>::const_iterator& rho, const double pc){
+void MUMPSSparseSymmetric::add_geometry(const Meshing* const mesh, const Geometry* const g, std::vector<double>::const_iterator& rho, const double pc, const double psi){
     const double t = mesh->thickness;
     const size_t dof      = mesh->elem_info->get_dof_per_node();
     const size_t node_num = mesh->elem_info->get_nodes_per_element();
 
-    const size_t num_den = g->number_of_densities_needed();
-    // const size_t num_mat = g->number_of_materials();
-    if(num_den == 1){
+    //const size_t num_den = g->number_of_densities_needed();
+    const size_t num_mat = g->number_of_materials();
+    if(num_mat == 1){
+        const auto D = g->materials.get_D();
+        auto rhoD = D;
         for(const auto& e:g->mesh){
             std::vector<long> u_pos;
             u_pos.reserve(dof*node_num);
@@ -90,13 +92,29 @@ void MUMPSSparseSymmetric::add_geometry(const Meshing* const mesh, const Geometr
                     u_pos.push_back(n->u_pos[j]);
                 }
             }
-            const auto D = g->get_D_topopt(*rho, pc, this->K_MIN);
-            const std::vector<double> k = e->get_k(D, t);
+            const double rhop = K_MIN + (1-K_MIN)*std::pow(*rho, pc);
+            for(size_t i = 0; i < D.size(); ++i){
+                rhoD[i] = rhop*D[i];
+            }
+            const std::vector<double> k = e->get_k(rhoD, t);
             this->sK.insert_matrix_symmetric_mumps(k, u_pos);
             ++rho;
         }
     } else {
-        logger::log_assert(num_den == 1, logger::ERROR, "FEA problems that require more than 1 design variables are currently not supported.");
+        auto D = g->materials.get_D();
+        for(const auto& e:g->mesh){
+            std::vector<long> u_pos;
+            u_pos.reserve(dof*node_num);
+            for(size_t i = 0; i < node_num; ++i){
+                const auto& n = e->nodes[i];
+                for(size_t j = 0; j < dof; ++j){
+                    u_pos.push_back(n->u_pos[j]);
+                }
+            }
+            g->materials.get_D(rho, g->with_void, pc, this->K_MIN, psi, D);
+            const std::vector<double> k = e->get_k(D, t);
+            this->sK.insert_matrix_symmetric_mumps(k, u_pos);
+        }
     }
 }
 

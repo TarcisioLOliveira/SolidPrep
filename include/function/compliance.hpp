@@ -28,7 +28,9 @@ namespace function{
 
 class Compliance : public DensityBasedFunction{
     public:
-    Compliance(const Meshing* const mesh, double pc);
+    const double K_MIN = 1e-6;
+
+    Compliance(const Meshing* const mesh, double pc, double psi);
 
     virtual ~Compliance() = default;
 
@@ -39,7 +41,8 @@ class Compliance : public DensityBasedFunction{
     }
 
     private:
-    double pc;
+    const double pc;
+    const double psi;
     const Meshing* const mesh;
 };
 

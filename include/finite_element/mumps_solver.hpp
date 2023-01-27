@@ -34,7 +34,7 @@ class MUMPSSolver : public FiniteElement{
     public:
     MUMPSSolver();
     virtual ~MUMPSSolver();
-    virtual std::vector<double> calculate_displacements(const Meshing* const mesh, std::vector<double> load, const std::vector<double>& density = std::vector<double>(), double pc = 3) override;
+    virtual std::vector<double> calculate_displacements(const Meshing* const mesh, std::vector<double> load, const std::vector<double>& density = std::vector<double>(), double pc = 3, double psi = 0.1) override;
 
     private:
     DMUMPS_STRUC_C config;

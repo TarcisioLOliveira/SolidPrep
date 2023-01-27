@@ -139,20 +139,26 @@ void Meshing::populate_boundary_elements(const std::vector<ElementShape>& bounda
 void Meshing::apply_supports(const std::vector<Support>& supports){
     size_t dof = this->elem_info->get_dof_per_node();
 
-    #pragma omp parallel for
-    for(size_t i = 0; i < this->boundary_node_list.size(); ++i){
-        auto& n = this->boundary_node_list[i];
-
-        for(size_t j = 0; j < dof; ++j){
-            n->u_pos[j] = 0;
+    #pragma omp parallel
+    {
+        #pragma omp for
+        for(size_t i = 0; i < this->node_list.size(); ++i){
+            auto& n = this->node_list[i];
+            for(size_t j = 0; j < dof; ++j){
+                n->u_pos[j] = 0;
+            }
         }
+        #pragma omp for
+        for(size_t i = 0; i < this->boundary_node_list.size(); ++i){
+            auto& n = this->boundary_node_list[i];
 
-        for(auto& s : supports){
-            if(s.S.is_inside(n->point)){
-                std::vector<bool> sup_pos = this->get_support_dof(s, this->elem_info);
-                for(size_t j = 0; j < dof; ++j){
-                    if(sup_pos[j]){
-                        n->u_pos[j] = -1;
+            for(auto& s : supports){
+                if(s.S.is_inside(n->point)){
+                    std::vector<bool> sup_pos = this->get_support_dof(s, this->elem_info);
+                    for(size_t j = 0; j < dof; ++j){
+                        if(sup_pos[j]){
+                            n->u_pos[j] = -1;
+                        }
                     }
                 }
             }

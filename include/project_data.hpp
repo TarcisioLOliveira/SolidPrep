@@ -122,9 +122,9 @@ class ProjectData {
 
     std::unique_ptr<Optimizer> load_optimizer(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc);
 
-    std::unique_ptr<DensityBasedFunction> get_function(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc, double pc);
+    std::unique_ptr<DensityBasedFunction> get_function(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc, double pc, double psiK);
 
-    void get_constraints(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc, double pc, std::vector<std::unique_ptr<DensityBasedFunction>>& functions, std::vector<double>& bounds);
+    void get_constraints(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc, double pc, double psi, std::vector<std::unique_ptr<DensityBasedFunction>>& functions, std::vector<double>& bounds);
 
     std::unique_ptr<MeshElementFactory> get_element_type(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc);
 

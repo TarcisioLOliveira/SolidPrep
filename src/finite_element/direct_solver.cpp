@@ -30,7 +30,7 @@
 
 namespace finite_element{
 
-std::vector<double> DirectSolver::calculate_displacements(const Meshing* const mesh, std::vector<double> load, const std::vector<double>& density, double pc){
+std::vector<double> DirectSolver::calculate_displacements(const Meshing* const mesh, std::vector<double> load, const std::vector<double>& density, double pc, double psi){
     int mpi_id = 0;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi_id);
 
@@ -48,7 +48,7 @@ std::vector<double> DirectSolver::calculate_displacements(const Meshing* const m
 
     if(this->current_step == 0){
 
-        this->gsm.generate(mesh, density, pc);
+        this->gsm.generate(mesh, density, pc, psi);
 
         logger::quick_log("Decomposing...");
         int info = LAPACKE_dpbtrf_work(LAPACK_COL_MAJOR, 'L', W, N-1, K.data(), N);

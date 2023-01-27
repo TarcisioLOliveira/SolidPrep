@@ -47,11 +47,12 @@ TopoDS_Shape Optimizer::make_shape(const std::vector<double>& x, const std::vect
     return result;
 }
 
-void Optimizer::get_stresses(const std::vector<Geometry*> geometries, const std::vector<double>& u, const std::vector<double>& x, std::vector<double>& stresses) const{
+void Optimizer::get_stresses(const std::vector<Geometry*> geometries, const std::vector<double>& u, const std::vector<double>& x, std::vector<double>& stresses, double pc, double psi) const{
     (void)x;
     auto stress_it = stresses.begin();
+    auto rho_it = x.begin();
     for(const auto& g:geometries){
-        g->get_stresses(u, stress_it);
+        g->get_stresses(u, pc, K_MIN, psi, rho_it, stress_it);
     }
 }
 

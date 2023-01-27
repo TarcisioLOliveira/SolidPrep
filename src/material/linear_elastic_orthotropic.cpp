@@ -59,13 +59,6 @@ LinearElasticOrthotropic::LinearElasticOrthotropic(const std::string& name, std:
     this->D_3D = std::move(S_3D);
 }
 
-std::vector<double> LinearElasticOrthotropic::stiffness_2D() const{
-    return this->D_2D;
-}
-std::vector<double> LinearElasticOrthotropic::stiffness_3D() const{
-    return this->D_3D;
-}
-
 double LinearElasticOrthotropic::beam_E_2D(gp_Dir d) const{
     // (Hyer, 2009), Stress analysis of fiber-reinforced composites
     return std::pow(d.X(),4)*D_2D[0] + (D_2D[1] + 2*D_2D[8])*std::pow(d.X(),2)*std::pow(d.Y(),2) + std::pow(d.Y(), 4)*D_2D[4];

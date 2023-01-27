@@ -45,8 +45,12 @@ class Material{
      */
     Material(const std::string& name, std::vector<double> Smax, std::vector<double> Tmax);
 
-    virtual std::vector<double> stiffness_2D() const = 0;
-    virtual std::vector<double> stiffness_3D() const = 0;
+    inline const std::vector<double>& stiffness_2D() const{
+        return this->D_2D;
+    }
+    inline const std::vector<double>& stiffness_3D() const{
+        return this->D_3D;
+    }
 
     virtual double beam_E_2D(gp_Dir d = gp_Dir(1,0,0)) const = 0;
     virtual double beam_E_3D(gp_Dir d = gp_Dir(1,0,0)) const = 0;
@@ -71,6 +75,8 @@ class Material{
     protected:
     std::vector<double> Smax;
     std::vector<double> Tmax;
+    std::vector<double> D_2D;
+    std::vector<double> D_3D;
 };
 
 #endif

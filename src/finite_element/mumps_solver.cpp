@@ -77,7 +77,7 @@ MUMPSSolver::~MUMPSSolver(){
     dmumps_c(&this->config);
 }
 
-std::vector<double> MUMPSSolver::calculate_displacements(const Meshing* const mesh, std::vector<double> load, const std::vector<double>& density, double pc){
+std::vector<double> MUMPSSolver::calculate_displacements(const Meshing* const mesh, std::vector<double> load, const std::vector<double>& density, double pc, double psi){
     int mpi_id = 0;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi_id);
 
@@ -89,7 +89,7 @@ std::vector<double> MUMPSSolver::calculate_displacements(const Meshing* const me
             std::vector<int>& cols = this->gsm.get_cols();
             std::vector<double>& vals = this->gsm.get_vals();
 
-            this->gsm.generate(mesh, density, pc);
+            this->gsm.generate(mesh, density, pc, psi);
             // Insert matrix data
             // Do this after every regeneration as the vectors may expand, which
             // will change their address.

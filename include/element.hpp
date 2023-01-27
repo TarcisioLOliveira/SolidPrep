@@ -279,6 +279,16 @@ class MeshElement : public Element{
      */
     virtual double get_stress_at(const std::vector<double>& D, const gp_Pnt& p, const std::vector<double>& u) const = 0;
     /**
+     * Calculates the derivative of von Mises stress with D(rho).
+     *
+     * @param D Constitutive matrix.
+     * @param dD Derivative of the constitutive matrix.
+     * @param mult Value to be multiplied to the result.
+     * @param point Point to measure stress.
+     * @param u Displacement vector.
+     */
+    virtual double von_Mises_derivative(const std::vector<double>& D, const std::vector<double>& dD, double mult, const gp_Pnt& point, const std::vector<double>& u) const = 0;
+    /**
      * Calculates the Cauchy stress tensor at a point within the element.
      *
      * @param D Constitutive matrix.

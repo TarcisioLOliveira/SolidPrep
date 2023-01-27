@@ -40,7 +40,7 @@ class PCG : public FiniteElement{
         this->displacement.resize(s);
     }
 
-    virtual std::vector<double> calculate_displacements(const Meshing* const mesh, std::vector<double> load, const std::vector<double>& density = std::vector<double>(), double pc = 3) override;
+    virtual std::vector<double> calculate_displacements(const Meshing* const mesh, std::vector<double> load, const std::vector<double>& density = std::vector<double>(), double pc = 3, double psi = 0.1) override;
 
     private:
     const double eps;

@@ -29,17 +29,22 @@ std::vector<double> FiniteElement::calculate_forces(const Meshing* const mesh, c
     const size_t node_num = mesh->elem_info->get_nodes_per_element();
     std::vector<double> results(mesh->node_list.size()*dof, 0);
   
-   for(auto& g:mesh->geometries){ 
-        const auto D = g->get_D(0); 
-        for(auto& e:g->mesh){
-            auto f = e->get_internal_loads(D, mesh->thickness, displacements);
-            for(size_t n = 0; n < node_num; ++n){
-                auto& node = e->nodes[n];
-                for(size_t i = 0; i < dof; ++i){
-                    results[node->id*dof + i] += f[n*dof+i];
+   for(auto& g:mesh->geometries){
+       const size_t num_mat = g->number_of_materials();
+       if(num_mat == 1){
+            const auto D = g->materials.get_D();
+            for(auto& e:g->mesh){
+                auto f = e->get_internal_loads(D, mesh->thickness, displacements);
+                for(size_t n = 0; n < node_num; ++n){
+                    auto& node = e->nodes[n];
+                    for(size_t i = 0; i < dof; ++i){
+                        results[node->id*dof + i] += f[n*dof+i];
+                    }
                 }
             }
-        }
+       } else {
+           logger::quick_log(num_mat == 1, logger::ERROR, "calculate_forces() not implemented for geometries with more than one material");
+       }
     }
     logger::quick_log("Done.");
 

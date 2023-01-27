@@ -37,7 +37,7 @@ double Volume::calculate(const Optimizer* const op, const std::vector<double>& u
     int mpi_id = 0;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi_id);
 
-    if(mpi_id == 0){
+    if(mpi_id != 0){
         return 0;
     }
     double V = 0;
@@ -73,7 +73,7 @@ double Volume::calculate_with_gradient(const Optimizer* const op, const std::vec
         if(g->do_topopt){
             for(auto xi = x_it; xi < x_it+g->mesh.size(); ++xi, ++v_it, ++grad_it){
                 V += *xi*(*v_it);
-                *grad_it = *v_it;
+                *grad_it = *v_it/this->max_V;
             }
             x_it += g->mesh.size();
         } else {

@@ -26,8 +26,8 @@
 
 namespace optimizer{
 
-MMA::MMA(DensityFilter* filter, Projection* projection, ProjectData* data, std::unique_ptr<DensityBasedFunction> objective, std::vector<std::unique_ptr<DensityBasedFunction>> constraints, std::vector<double> constraint_bounds, double pc, double rho_init, double xtol_abs, double ftol_rel, double result_threshold, bool save):
-    data(data), rho_init(rho_init), xtol_abs(xtol_abs), ftol_rel(ftol_rel), pc(pc), result_threshold(result_threshold), save_result(save), objective(std::move(objective)), constraints(std::move(constraints)), constraint_bounds(std::move(constraint_bounds)), filter(filter), projection(projection), viz(nullptr)
+MMA::MMA(DensityFilter* filter, Projection* projection, ProjectData* data, std::unique_ptr<DensityBasedFunction> objective, std::vector<std::unique_ptr<DensityBasedFunction>> constraints, std::vector<double> constraint_bounds, double pc, double psi, double rho_init, double xtol_abs, double ftol_rel, double result_threshold, bool save):
+    data(data), rho_init(rho_init), xtol_abs(xtol_abs), ftol_rel(ftol_rel), pc(pc), psi(psi), result_threshold(result_threshold), save_result(save), objective(std::move(objective)), constraints(std::move(constraints)), constraint_bounds(std::move(constraint_bounds)), filter(filter), projection(projection), viz(nullptr)
     {}
 
 void MMA::initialize_views(Visualization* viz){
@@ -59,6 +59,7 @@ TopoDS_Shape MMA::optimize(FiniteElement* fem, Meshing* mesh){
     auto stress_render = this->stresses;
 
     size_t x_size = 0;
+    size_t x_size_view = 0;
     if(mpi_id == 0){
         this->objective->initialize(this);
         for(auto& f:this->constraints){
@@ -67,7 +68,9 @@ TopoDS_Shape MMA::optimize(FiniteElement* fem, Meshing* mesh){
 
         for(const auto& g:mesh->geometries){
             if(g->do_topopt){
-                x_size += g->mesh.size();
+                const size_t num_den = g->number_of_densities_needed();
+                x_size += g->mesh.size()*num_den;
+                x_size_view += g->mesh.size();
             }
         }
     }
@@ -76,6 +79,7 @@ TopoDS_Shape MMA::optimize(FiniteElement* fem, Meshing* mesh){
 
     std::vector<double> x(x_size, this->rho_init);
     std::vector<double> new_x(x_size, this->rho_init);
+    std::vector<double> x_view(x_size_view, this->rho_init);
 
     if(mpi_id == 0){
         this->filter->initialize(mesh, x_size);
@@ -114,11 +118,24 @@ TopoDS_Shape MMA::optimize(FiniteElement* fem, Meshing* mesh){
     }
     auto u = fem->calculate_displacements(mesh, mesh->load_vector, new_x, this->pc);
     if(mpi_id == 0){
-        this->get_stresses(mesh->geometries, u, new_x, this->stresses);
+        this->get_stresses(mesh->geometries, u, new_x, this->stresses, this->pc, this->psi);
         std::copy(stresses.begin(), stresses.end(), stress_render.begin());
-        this->apply_densities(mesh->geometries, new_x, stress_render);
+        auto xit = new_x.cbegin();
+        auto xvit = x_view.begin();
+        for(const auto& g:mesh->geometries){
+            if(g->do_topopt){
+                auto xvit2 = xvit;
+                xvit += g->mesh.size();
+                const size_t num_den = g->number_of_densities_needed();
+                while(xvit2 < xvit){
+                    *xvit2 = *xit;
+                    xit += num_den;
+                    ++xvit2;
+                }
+            }
+        }
 
-        this->density_view->update_view(new_x);
+        this->density_view->update_view(x_view);
         this->stress_view->update_view(stress_render);
         this->viz->redraw();
     }
@@ -180,11 +197,24 @@ TopoDS_Shape MMA::optimize(FiniteElement* fem, Meshing* mesh){
 
         u = fem->calculate_displacements(mesh, mesh->load_vector, new_x, this->pc);
         if(mpi_id == 0){
-            this->get_stresses(mesh->geometries, u, new_x, this->stresses);
+            this->get_stresses(mesh->geometries, u, new_x, this->stresses, this->pc, this->psi);
             std::copy(stresses.begin(), stresses.end(), stress_render.begin());
-            this->apply_densities(mesh->geometries, new_x, stress_render);
+            auto xit = new_x.cbegin();
+            auto xvit = x_view.begin();
+            for(const auto& g:mesh->geometries){
+                if(g->do_topopt){
+                    auto xvit2 = xvit;
+                    xvit += g->mesh.size();
+                    const size_t num_den = g->number_of_densities_needed();
+                    while(xvit2 < xvit){
+                        *xvit2 = *xit;
+                        xit += num_den;
+                        ++xvit2;
+                    }
+                }
+            }
 
-            this->density_view->update_view(new_x);
+            this->density_view->update_view(x_view);
             this->stress_view->update_view(stress_render);
             this->viz->redraw();
         }

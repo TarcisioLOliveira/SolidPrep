@@ -19,6 +19,7 @@
  */
 
 #include "density_filter/averaging.hpp"
+#include "logger.hpp"
 
 namespace density_filter{
 
@@ -28,36 +29,45 @@ void Averaging::initialize(const Meshing* const mesh, const size_t x_size){
     this->mesh = mesh;
     const double t = this->mesh->thickness;
 
+    size_t geom_id = 0;
     for(const auto& g:mesh->geometries){
         if(g->do_topopt){
-            this->id_mapping.reserve(this->id_mapping.size()+g->mesh.size());
+            const size_t num_den = g->number_of_densities_needed();
+            // this->id_mapping.reserve(this->id_mapping.size()+g->mesh.size());
             for(const auto& e:g->mesh){
                 for(size_t i = 0; i < num_nodes; ++i){
                     const auto& n = e->nodes[i];
-                    this->id_mapping[n->id] = 0;
+                    this->id_mapping[std::make_pair(geom_id, n->id)] = num_den;
                 }
             }
         }
+        ++geom_id;
     }
-    size_t len = this->id_mapping.size();
     size_t id = 0;
     for(auto it = this->id_mapping.begin(); it != this->id_mapping.end(); ++it){
+        const size_t num_den = it->second;
         it->second = id;
-        ++id;
+        id += num_den;
     }
+    size_t len = id;
+    geom_id = 0;
     this->nodal_densities.resize(len,0);
     this->nodal_gradient.resize(len,0);
     this->D.resize(len,0);
     for(const auto& g:mesh->geometries){
         if(g->do_topopt){
+            const size_t num_den = g->number_of_densities_needed();
             for(const auto& e:g->mesh){
                 const double V = e->get_volume(t)/num_nodes;
                 for(size_t i = 0; i < num_nodes; ++i){
                     const auto& n = e->nodes[i];
-                    this->D[this->id_mapping[n->id]] += V;
+                    for(size_t j = 0; j < num_den; ++j){
+                        this->D[this->id_mapping[std::make_pair(geom_id, n->id)]+j] += V;
+                    }
                 }
             }
         }
+        ++geom_id;
     }
 }
 
@@ -69,34 +79,46 @@ void Averaging::filter_densities(const std::vector<double>& x, std::vector<doubl
     }
     std::fill(this->nodal_densities.begin(), this->nodal_densities.end(), 0);
     auto x_it = x.cbegin();
+    size_t geom_id = 0;
     for(const auto& g:mesh->geometries){
         if(g->do_topopt){
+            const size_t num_den = g->number_of_densities_needed();
             for(const auto& e:g->mesh){
                 const double V = e->get_volume(t)/num_nodes;
                 for(size_t i = 0; i < num_nodes; ++i){
                     const auto& n = e->nodes[i];
-                    this->nodal_densities[this->id_mapping[n->id]] += V*(*x_it);
+                    for(size_t j = 0; j < num_den; ++j){
+                        this->nodal_densities[this->id_mapping[std::make_pair(geom_id, n->id)]+j] += V*(*(x_it+j));
+                    }
                 }
-                ++x_it;
+                x_it += num_den;
             }
         }
+        ++geom_id;
     }
     for(size_t i = 0; i < this->nodal_densities.size(); ++i){
         this->nodal_densities[i] /= this->D[i];
     }
+    geom_id = 0;
     auto newx_it = new_x.begin();
     for(const auto& g:mesh->geometries){
         if(g->do_topopt){
+            const size_t num_den = g->number_of_densities_needed();
             for(const auto& e:g->mesh){
                 *newx_it = 0;
                 for(size_t i = 0; i < num_nodes; ++i){
                     const auto& n = e->nodes[i];
-                    *newx_it += this->nodal_densities[this->id_mapping[n->id]];
+                    for(size_t j = 0; j < num_den; ++j){
+                        *(newx_it + j) += this->nodal_densities[this->id_mapping[std::make_pair(geom_id, n->id)]+j];
+                    }
                 }
-                *newx_it /= num_nodes;
-                ++newx_it;
+                for(size_t j = 0; j < num_den; ++j){
+                    *newx_it /= num_nodes;
+                    ++newx_it;
+                }
             }
         }
+        ++geom_id;
     }
 }
 
@@ -109,34 +131,46 @@ void Averaging::filter_gradient(const std::vector<double>& df, std::vector<doubl
     }
     std::fill(this->nodal_gradient.begin(), this->nodal_gradient.end(), 0);
     auto x_it = df.cbegin();
+    size_t geom_id = 0;
     for(const auto& g:mesh->geometries){
         if(g->do_topopt){
+            const size_t num_den = g->number_of_densities_needed();
             for(const auto& e:g->mesh){
                 const double V = e->get_volume(t)/num_nodes;
                 for(size_t i = 0; i < num_nodes; ++i){
                     const auto& n = e->nodes[i];
-                    this->nodal_gradient[this->id_mapping[n->id]] += V*(*x_it);
+                    for(size_t j = 0; j < num_den; ++j){
+                        this->nodal_gradient[this->id_mapping[std::make_pair(geom_id, n->id)]+j] += V*(*(x_it+j));
+                    }
                 }
-                ++x_it;
+                x_it += num_den;
             }
         }
+        ++geom_id;
     }
     for(size_t i = 0; i < this->nodal_gradient.size(); ++i){
         this->nodal_gradient[i] /= this->D[i];
     }
+    geom_id = 0;
     auto newx_it = new_df.begin();
     for(const auto& g:mesh->geometries){
         if(g->do_topopt){
+            const size_t num_den = g->number_of_densities_needed();
             for(const auto& e:g->mesh){
                 *newx_it = 0;
                 for(size_t i = 0; i < num_nodes; ++i){
                     const auto& n = e->nodes[i];
-                    *newx_it += this->nodal_gradient[this->id_mapping[n->id]];
+                    for(size_t j = 0; j < num_den; ++j){
+                        *(newx_it+j) += this->nodal_gradient[this->id_mapping[std::make_pair(geom_id, n->id)]+j];
+                    }
                 }
-                *newx_it /= num_nodes;
-                ++newx_it;
+                for(size_t j = 0; j < num_den; ++j){
+                    *newx_it /= num_nodes;
+                    ++newx_it;
+                }
             }
         }
+        ++geom_id;
     }
 }
 
