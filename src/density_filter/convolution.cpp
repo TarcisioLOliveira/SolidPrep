@@ -27,12 +27,14 @@ Convolution::Convolution(const double radius):
 
 void Convolution::initialize(const Meshing* const mesh, const size_t x_size){
     // Caching positions, because this calculation is expensive.
-    this->neighbors.resize(x_size);
     this->p.resize(x_size*3,0);
     this->w.resize(x_size,0);
     auto p_it = this->p.begin();
+    size_t neighbors_size = 0;
     for(const auto& g:mesh->geometries){
         if(g->do_topopt){
+            const size_t num_den = g->number_of_densities_needed();
+            neighbors_size += g->mesh.size()*num_den;
             for(const auto& e:g->mesh){
                 gp_Pnt c = e->get_centroid();
                 *p_it = c.X();
@@ -44,16 +46,28 @@ void Convolution::initialize(const Meshing* const mesh, const size_t x_size){
             }
         }
     }
-    for(size_t i = 0; i < x_size; ++i){
-        for(size_t j = i; j < x_size; ++j){
-            double dist = this->get_distance(i, j);
-            if(dist <= this->radius){
-                this->neighbors[i].push_back(j);
-                this->neighbors[j].push_back(i);
-                double w = 1 - dist/this->radius;
-                this->w[i] += w;
-                this->w[j] += w;
+    this->neighbors.resize(neighbors_size);
+    size_t offset = 0;
+    for(const auto& g:mesh->geometries){
+        if(g->do_topopt){
+            const size_t elem_num = g->mesh.size();
+            const size_t num_den = g->number_of_densities_needed();
+            const size_t end = elem_num*num_den + offset;
+            for(size_t i = offset; i < end; i += num_den){
+                for(size_t j = i; j < end; j += num_den){
+                    double dist = this->get_distance(i, j);
+                    if(dist <= this->radius){
+                        double w = 1 - dist/this->radius;
+                        for(size_t k = 0; k < num_den; ++k){
+                            this->neighbors[i+k].push_back(j+k);
+                            this->neighbors[j+k].push_back(i+k);
+                            this->w[i+k] += w;
+                            this->w[j+k] += w;
+                        }
+                    }
+                }
             }
+            offset += elem_num*num_den;
         }
     }
 }
