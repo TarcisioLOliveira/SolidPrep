@@ -571,43 +571,45 @@ std::vector<double> TET4::helmholtz_tensor(const double t, const double r) const
     const double* const a = this->coeffs.data();
     const double* const b = a + N;
     const double* const c = b + N;
+    const double* const d = c + N;
 
-std::vector<double> h{
-(6*V*V + b[0]*b[0]*r*r + c[0]*c[0]*r*r)/(36*V)
-,
-(4*V*V + b[0]*b[1]*r*r + c[0]*c[1]*r*r)/(36*V)
-,
-(4*V*V + b[0]*b[2]*r*r + c[0]*c[2]*r*r)/(36*V)
-,
-(4*V*V + b[0]*b[3]*r*r + c[0]*c[3]*r*r)/(36*V)
-,
-(4*V*V + b[0]*b[1]*r*r + c[0]*c[1]*r*r)/(36*V)
-,
-(6*V*V + b[1]*b[1]*r*r + c[1]*c[1]*r*r)/(36*V)
-,
-(4*V*V + b[1]*b[2]*r*r + c[1]*c[2]*r*r)/(36*V)
-,
-(4*V*V + b[1]*b[3]*r*r + c[1]*c[3]*r*r)/(36*V)
-,
-(4*V*V + b[0]*b[2]*r*r + c[0]*c[2]*r*r)/(36*V)
-,
-(4*V*V + b[1]*b[2]*r*r + c[1]*c[2]*r*r)/(36*V)
-,
-(6*V*V + b[2]*b[2]*r*r + c[2]*c[2]*r*r)/(36*V)
-,
-(4*V*V + b[2]*b[3]*r*r + c[2]*c[3]*r*r)/(36*V)
-,
-(4*V*V + b[0]*b[3]*r*r + c[0]*c[3]*r*r)/(36*V)
-,
-(4*V*V + b[1]*b[3]*r*r + c[1]*c[3]*r*r)/(36*V)
-,
-(4*V*V + b[2]*b[3]*r*r + c[2]*c[3]*r*r)/(36*V)
-,
-(6*V*V + b[3]*b[3]*r*r + c[3]*c[3]*r*r)/(36*V)
-};
+    std::vector<double> h{
+    (6*V*V + b[0]*b[0]*r*r + c[0]*c[0]*r*r + d[0]*d[0]*r*r)/(36*V)
+    ,
+    (4*V*V + b[0]*b[1]*r*r + c[0]*c[1]*r*r + d[0]*d[1]*r*r)/(36*V)
+    ,
+    (4*V*V + b[0]*b[2]*r*r + c[0]*c[2]*r*r + d[0]*d[2]*r*r)/(36*V)
+    ,
+    (4*V*V + b[0]*b[3]*r*r + c[0]*c[3]*r*r + d[0]*d[3]*r*r)/(36*V)
+    ,
+    (4*V*V + b[0]*b[1]*r*r + c[0]*c[1]*r*r + d[0]*d[1]*r*r)/(36*V)
+    ,
+    (6*V*V + b[1]*b[1]*r*r + c[1]*c[1]*r*r + d[1]*d[1]*r*r)/(36*V)
+    ,
+    (4*V*V + b[1]*b[2]*r*r + c[1]*c[2]*r*r + d[1]*d[2]*r*r)/(36*V)
+    ,
+    (4*V*V + b[1]*b[3]*r*r + c[1]*c[3]*r*r + d[1]*d[3]*r*r)/(36*V)
+    ,
+    (4*V*V + b[0]*b[2]*r*r + c[0]*c[2]*r*r + d[0]*d[2]*r*r)/(36*V)
+    ,
+    (4*V*V + b[1]*b[2]*r*r + c[1]*c[2]*r*r + d[1]*d[2]*r*r)/(36*V)
+    ,
+    (6*V*V + b[2]*b[2]*r*r + c[2]*c[2]*r*r + d[2]*d[2]*r*r)/(36*V)
+    ,
+    (4*V*V + b[2]*b[3]*r*r + c[2]*c[3]*r*r + d[2]*d[3]*r*r)/(36*V)
+    ,
+    (4*V*V + b[0]*b[3]*r*r + c[0]*c[3]*r*r + d[0]*d[3]*r*r)/(36*V)
+    ,
+    (4*V*V + b[1]*b[3]*r*r + c[1]*c[3]*r*r + d[1]*d[3]*r*r)/(36*V)
+    ,
+    (4*V*V + b[2]*b[3]*r*r + c[2]*c[3]*r*r + d[2]*d[3]*r*r)/(36*V)
+    ,
+    (6*V*V + b[3]*b[3]*r*r + c[3]*c[3]*r*r + d[3]*d[3]*r*r)/(36*V)
+    };
 
     return h;
 }
+
 std::vector<double> TET4::helmholtz_vector(const double t) const{
     const double V = this->get_volume(t);
 

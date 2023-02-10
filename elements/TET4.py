@@ -242,7 +242,7 @@ def make_h():
     """
     init_L_symbolic()
     NN = sympy.Matrix([L[0], L[1], L[2], L[3]]).T
-    dNN = sympy.Matrix([NN.diff(x), NN.diff(y)])
+    dNN = sympy.Matrix([NN.diff(x), NN.diff(y), NN.diff(z)])
     k = r**2*dNN.T*dNN*V
     k2 = V*NN.T*NN
 
@@ -276,8 +276,8 @@ def make_h():
 
         # Format output for use with C++
         formatted = str(k[i])
-        formatted = re.sub(r"([abcrV]\d?)\*\*2", r"\1*\1", formatted)
-        formatted = re.sub(r"([abc])(\d)", r"\1[\2]", formatted)
+        formatted = re.sub(r"([abcdrV]\d?)\*\*2", r"\1*\1", formatted)
+        formatted = re.sub(r"([abcd])(\d)", r"\1[\2]", formatted)
 
         if i > 0:
             print(",")
