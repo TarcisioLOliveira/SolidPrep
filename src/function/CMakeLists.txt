@@ -5,6 +5,7 @@ set(SOURCES_FUNCTION
     volume.cpp
     global_stress_pnorm_normalized.cpp
     global_stress_pnorm.cpp
+    radial_machining.cpp
 )
 
 add_library(function ${SOURCES_FUNCTION})

@@ -67,6 +67,7 @@
 #include "function/volume.hpp"
 #include "function/global_stress_pnorm_normalized.hpp"
 #include "function/global_stress_pnorm.hpp"
+#include "function/radial_machining.hpp"
 
 ProjectData::ProjectData(std::string project_file){
 #ifdef _WIN32
@@ -617,6 +618,22 @@ std::unique_ptr<DensityBasedFunction> ProjectData::get_function(const rapidjson:
         double pt = doc["pt"].GetDouble();
         double psiS = doc["psi"].GetDouble();
         return std::make_unique<function::GlobalStressPnorm>(this->topopt_mesher.get(), this->topopt_fea.get(), pc, P, pt, psiK, -psiS);
+    } else if(type == "radial_machining"){
+        this->log_data(doc, "beta", TYPE_DOUBLE, true);
+        this->log_data(doc, "L", TYPE_DOUBLE, true);
+        this->log_data(doc, "v", TYPE_DOUBLE, true);
+        this->log_data(doc, "center", TYPE_ARRAY, true);
+        this->log_data(doc, "axis", TYPE_ARRAY, true);
+        double beta = doc["beta"].GetDouble();
+        double L = doc["L"].GetDouble();
+        double v = doc["v"].GetDouble();
+
+        auto ca = doc["center"].GetArray();
+        gp_Pnt c(ca[0].GetDouble(), ca[1].GetDouble(), ca[2].GetDouble());
+        auto aa = doc["axis"].GetArray();
+        gp_Dir a(aa[0].GetDouble(), aa[1].GetDouble(), aa[2].GetDouble());
+
+        return std::make_unique<function::RadialMachining>(this->topopt_mesher.get(), this->density_filter.get(), c, a, v, L, beta);
     }
 
     return nullptr;
