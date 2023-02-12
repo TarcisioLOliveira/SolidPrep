@@ -9,10 +9,12 @@ The scripts are used mainly to calculate the element-dependent matrices:
   constitutive matrix (D) and the linear elasticity matrix (B);
 - the `Nf` matrix, that is, the boundary integral of the interpolation matrix,
   used for calculating the `f` vector (global and local nodal force vectors);
-- the `h` matrix, that is, the elemental tensor used for Helmholtz filtering.
+- the `h` matrix, that is, the elemental tensor used for Helmholtz filtering;
+- the elemental matrix for radial machining constraint (`phir`);
+- the elemental matrix for the gradient of the machining constraint (`phig`).
 
 The respective matrices can be calculated by running the script with the
-arguments `-k`, `-DB`, and `-Nf`. The result is printed and can be copy-pasted
+arguments `-k`, `-DB`, `-Nf`, etc.. The result is printed and can be copy-pasted
 into the C++ source file, only requiring the necessary variables to be properly
 defined in the same scope.
 
