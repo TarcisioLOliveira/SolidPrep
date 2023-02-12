@@ -564,6 +564,92 @@ std::vector<double> TET4::get_Nf(const double t, const std::vector<gp_Pnt>& poin
     return Nf;
 }
 
+std::vector<double> TET4::get_phi_radial(const double t, const double beta, const double l, const std::vector<double> v, const double dv, const double rho) const{
+    const size_t N = this->NODES_PER_ELEM;
+    const double V = this->get_volume(t);
+
+    const double* const a = this->coeffs.data();
+    const double* const b = a + N;
+    const double* const c = b + N;
+    const double* const d = c + N;
+
+    std::vector<double> phi{
+    (2*V*(-2*V*beta*rho + 2*V*dv + b[0]*l*v[0] + c[0]*l*v[1] + d[0]*l*v[2]) - b[0]*b[0]*l*l - c[0]*c[0]*l*l - d[0]*d[0]*l*l)/(36*V)
+    ,
+    (2*V*(-2*V*beta*rho + 2*V*dv + b[1]*l*v[0] + c[1]*l*v[1] + d[1]*l*v[2]) - b[0]*b[1]*l*l - c[0]*c[1]*l*l - d[0]*d[1]*l*l)/(36*V)
+    ,
+    (2*V*(-2*V*beta*rho + 2*V*dv + b[2]*l*v[0] + c[2]*l*v[1] + d[2]*l*v[2]) - b[0]*b[2]*l*l - c[0]*c[2]*l*l - d[0]*d[2]*l*l)/(36*V)
+    ,
+    (2*V*(-2*V*beta*rho + 2*V*dv + b[3]*l*v[0] + c[3]*l*v[1] + d[3]*l*v[2]) - b[0]*b[3]*l*l - c[0]*c[3]*l*l - d[0]*d[3]*l*l)/(36*V)
+    ,
+    (2*V*(-2*V*beta*rho + 2*V*dv + b[0]*l*v[0] + c[0]*l*v[1] + d[0]*l*v[2]) - b[0]*b[1]*l*l - c[0]*c[1]*l*l - d[0]*d[1]*l*l)/(36*V)
+    ,
+    (2*V*(-2*V*beta*rho + 2*V*dv + b[1]*l*v[0] + c[1]*l*v[1] + d[1]*l*v[2]) - b[1]*b[1]*l*l - c[1]*c[1]*l*l - d[1]*d[1]*l*l)/(36*V)
+    ,
+    (2*V*(-2*V*beta*rho + 2*V*dv + b[2]*l*v[0] + c[2]*l*v[1] + d[2]*l*v[2]) - b[1]*b[2]*l*l - c[1]*c[2]*l*l - d[1]*d[2]*l*l)/(36*V)
+    ,
+    (2*V*(-2*V*beta*rho + 2*V*dv + b[3]*l*v[0] + c[3]*l*v[1] + d[3]*l*v[2]) - b[1]*b[3]*l*l - c[1]*c[3]*l*l - d[1]*d[3]*l*l)/(36*V)
+    ,
+    (2*V*(-2*V*beta*rho + 2*V*dv + b[0]*l*v[0] + c[0]*l*v[1] + d[0]*l*v[2]) - b[0]*b[2]*l*l - c[0]*c[2]*l*l - d[0]*d[2]*l*l)/(36*V)
+    ,
+    (2*V*(-2*V*beta*rho + 2*V*dv + b[1]*l*v[0] + c[1]*l*v[1] + d[1]*l*v[2]) - b[1]*b[2]*l*l - c[1]*c[2]*l*l - d[1]*d[2]*l*l)/(36*V)
+    ,
+    (2*V*(-2*V*beta*rho + 2*V*dv + b[2]*l*v[0] + c[2]*l*v[1] + d[2]*l*v[2]) - b[2]*b[2]*l*l - c[2]*c[2]*l*l - d[2]*d[2]*l*l)/(36*V)
+    ,
+    (2*V*(-2*V*beta*rho + 2*V*dv + b[3]*l*v[0] + c[3]*l*v[1] + d[3]*l*v[2]) - b[2]*b[3]*l*l - c[2]*c[3]*l*l - d[2]*d[3]*l*l)/(36*V)
+    ,
+    (2*V*(-2*V*beta*rho + 2*V*dv + b[0]*l*v[0] + c[0]*l*v[1] + d[0]*l*v[2]) - b[0]*b[3]*l*l - c[0]*c[3]*l*l - d[0]*d[3]*l*l)/(36*V)
+    ,
+    (2*V*(-2*V*beta*rho + 2*V*dv + b[1]*l*v[0] + c[1]*l*v[1] + d[1]*l*v[2]) - b[1]*b[3]*l*l - c[1]*c[3]*l*l - d[1]*d[3]*l*l)/(36*V)
+    ,
+    (2*V*(-2*V*beta*rho + 2*V*dv + b[2]*l*v[0] + c[2]*l*v[1] + d[2]*l*v[2]) - b[2]*b[3]*l*l - c[2]*c[3]*l*l - d[2]*d[3]*l*l)/(36*V)
+    ,
+    (2*V*(-2*V*beta*rho + 2*V*dv + b[3]*l*v[0] + c[3]*l*v[1] + d[3]*l*v[2]) - b[3]*b[3]*l*l - c[3]*c[3]*l*l - d[3]*d[3]*l*l)/(36*V)
+    };
+
+    return phi;
+}
+
+std::vector<double> TET4::get_phi_grad(const double t, const double beta) const{
+    const double V = this->get_volume(t);
+
+    std::vector<double> phi{
+    V*beta/6
+    ,
+    V*beta/9
+    ,
+    V*beta/9
+    ,
+    V*beta/9
+    ,
+    V*beta/9
+    ,
+    V*beta/6
+    ,
+    V*beta/9
+    ,
+    V*beta/9
+    ,
+    V*beta/9
+    ,
+    V*beta/9
+    ,
+    V*beta/6
+    ,
+    V*beta/9
+    ,
+    V*beta/9
+    ,
+    V*beta/9
+    ,
+    V*beta/9
+    ,
+    V*beta/6
+    };
+
+    return phi;
+}
+
 std::vector<double> TET4::helmholtz_tensor(const double t, const double r) const{
     const size_t N = this->NODES_PER_ELEM;
     const double V = this->get_volume(t);
@@ -618,6 +704,23 @@ std::vector<double> TET4::helmholtz_vector(const double t) const{
     std::vector<double> NT{Ni, Ni, Ni, Ni};
 
     return NT;
+}
+
+std::vector<double> TET4::get_nodal_density_gradient(gp_Pnt p) const{
+    (void)p;
+    const size_t N = this->NODES_PER_ELEM;
+
+    const double* const a = this->coeffs.data();
+    const double* const b = a + N;
+    const double* const c = b + N;
+    const double* const d = c + N;
+
+    const double V = this->get_volume(1.0);
+
+    
+    return std::vector<double>{b[0]/(6*V), b[1]/(6*V), b[2]/(6*V), b[3]/(6*V),
+                               c[0]/(6*V), c[1]/(6*V), c[2]/(6*V), c[3]/(6*V),
+                               d[0]/(6*V), d[1]/(6*V), d[2]/(6*V), d[3]/(6*V)};
 }
 
 }

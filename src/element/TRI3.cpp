@@ -218,6 +218,88 @@ std::vector<double> TRI3::helmholtz_tensor(const double t, const double r) const
     return h;
 }
 
+std::vector<double> TRI3::get_phi_radial(const double t, const double beta, const double l, const std::vector<double> v, const double dv, const double rho) const{
+    const size_t N = this->NODES_PER_ELEM;
+    const double delta = this->get_volume(1);
+
+    std::vector<gp_Pnt> p;
+    for(size_t i = 0; i < N; ++i){
+        const auto& n = this->nodes[i];
+        p.push_back(n->point);
+    }
+    std::vector<double> b, c;
+    for(size_t i = 0; i < N; ++i){
+        size_t j = (i + 1) % 3;
+        size_t k = (i + 2) % 3;
+
+        b.push_back(p[j].Y() - p[k].Y());
+        c.push_back(p[k].X() - p[j].X());
+    }
+
+    std::vector<double> phi{
+    t*(-9*b[0]*b[0]*l*l - 9*c[0]*c[0]*l*l + 2*delta*(3*b[0]*l*v[0] - 2*beta*delta*rho + 3*c[0]*l*v[1] + 2*delta*dv))/(36*delta)
+    ,
+    t*(-9*b[0]*b[1]*l*l - 9*c[0]*c[1]*l*l + 2*delta*(3*b[1]*l*v[0] - 2*beta*delta*rho + 3*c[1]*l*v[1] + 2*delta*dv))/(36*delta)
+    ,
+    t*(-9*b[0]*b[2]*l*l - 9*c[0]*c[2]*l*l + 2*delta*(3*b[2]*l*v[0] - 2*beta*delta*rho + 3*c[2]*l*v[1] + 2*delta*dv))/(36*delta)
+    ,
+    t*(-9*b[0]*b[1]*l*l - 9*c[0]*c[1]*l*l + 2*delta*(3*b[0]*l*v[0] - 2*beta*delta*rho + 3*c[0]*l*v[1] + 2*delta*dv))/(36*delta)
+    ,
+    t*(-9*b[1]*b[1]*l*l - 9*c[1]*c[1]*l*l + 2*delta*(3*b[1]*l*v[0] - 2*beta*delta*rho + 3*c[1]*l*v[1] + 2*delta*dv))/(36*delta)
+    ,
+    t*(-9*b[1]*b[2]*l*l - 9*c[1]*c[2]*l*l + 2*delta*(3*b[2]*l*v[0] - 2*beta*delta*rho + 3*c[2]*l*v[1] + 2*delta*dv))/(36*delta)
+    ,
+    t*(-9*b[0]*b[2]*l*l - 9*c[0]*c[2]*l*l + 2*delta*(3*b[0]*l*v[0] - 2*beta*delta*rho + 3*c[0]*l*v[1] + 2*delta*dv))/(36*delta)
+    ,
+    t*(-9*b[1]*b[2]*l*l - 9*c[1]*c[2]*l*l + 2*delta*(3*b[1]*l*v[0] - 2*beta*delta*rho + 3*c[1]*l*v[1] + 2*delta*dv))/(36*delta)
+    ,
+    t*(-9*b[2]*b[2]*l*l - 9*c[2]*c[2]*l*l + 2*delta*(3*b[2]*l*v[0] - 2*beta*delta*rho + 3*c[2]*l*v[1] + 2*delta*dv))/(36*delta)
+    };
+
+    return phi;
+}
+
+std::vector<double> TRI3::get_phi_grad(const double t, const double beta) const{
+    const size_t N = this->NODES_PER_ELEM;
+    const double delta = this->get_volume(1);
+
+    std::vector<gp_Pnt> p;
+    for(size_t i = 0; i < N; ++i){
+        const auto& n = this->nodes[i];
+        p.push_back(n->point);
+    }
+    std::vector<double> b, c;
+    for(size_t i = 0; i < N; ++i){
+        size_t j = (i + 1) % 3;
+        size_t k = (i + 2) % 3;
+
+        b.push_back(p[j].Y() - p[k].Y());
+        c.push_back(p[k].X() - p[j].X());
+    }
+
+    std::vector<double> phi{
+    beta*delta*t/6
+    ,
+    beta*delta*t/9
+    ,
+    beta*delta*t/9
+    ,
+    beta*delta*t/9
+    ,
+    beta*delta*t/6
+    ,
+    beta*delta*t/9
+    ,
+    beta*delta*t/9
+    ,
+    beta*delta*t/9
+    ,
+    beta*delta*t/6
+    };
+
+    return phi;
+}
+
 std::vector<double> TRI3::helmholtz_vector(const double t) const{
     const double txdelta = this->get_volume(t);
 
@@ -226,6 +308,29 @@ std::vector<double> TRI3::helmholtz_vector(const double t) const{
     std::vector<double> NT{Ni, Ni, Ni};
 
     return NT;
+}
+
+std::vector<double> TRI3::get_nodal_density_gradient(gp_Pnt p) const{
+    (void)p;
+    const size_t N = this->NODES_PER_ELEM;
+    const double delta = this->get_volume(1);
+
+    std::vector<gp_Pnt> points;
+    for(size_t i = 0; i < N; ++i){
+        const auto& n = this->nodes[i];
+        points.push_back(n->point);
+    }
+    std::vector<double> b, c;
+    for(size_t i = 0; i < N; ++i){
+        size_t j = (i + 1) % 3;
+        size_t k = (i + 2) % 3;
+
+        b.push_back(points[j].Y() - points[k].Y());
+        c.push_back(points[k].X() - points[j].X());
+    }
+    
+    return std::vector<double>{b[0]/(2*delta), b[1]/(2*delta), b[2]/(2*delta),
+                               c[0]/(2*delta), c[1]/(2*delta), c[2]/(2*delta)};
 }
 
 }

@@ -322,6 +322,82 @@ std::vector<double> Q4S::get_Nf(const double t, const std::vector<gp_Pnt>& point
     return Nf;
 }
 
+std::vector<double> Q4S::get_phi_radial(const double t, const double beta, const double l, const std::vector<double> v, const double dv, const double rho) const{
+    std::vector<double> phi{
+    t*(-3*a*a*l*l + a*b*(-4*a*b*beta*rho + 4*a*b*dv - 3*a*l*v[1] - 3*b*l*v[0]) - 3*b*b*l*l)/(9*a*b)
+    ,
+    t*(-3*a*a*l*l + a*b*(-4*a*b*beta*rho + 4*a*b*dv - 3*a*l*v[1] + 6*b*l*v[0]) + 6*b*b*l*l)/(18*a*b)
+    ,
+    t*(3*a*a*l*l + a*b*(-2*a*b*beta*rho + 2*a*b*dv + 3*a*l*v[1] + 3*b*l*v[0]) + 3*b*b*l*l)/(18*a*b)
+    ,
+    t*(6*a*a*l*l + a*b*(-4*a*b*beta*rho + 4*a*b*dv + 6*a*l*v[1] - 3*b*l*v[0]) - 3*b*b*l*l)/(18*a*b)
+    ,
+    t*(-3*a*a*l*l + a*b*(-4*a*b*beta*rho + 4*a*b*dv - 3*a*l*v[1] - 6*b*l*v[0]) + 6*b*b*l*l)/(18*a*b)
+    ,
+    t*(-3*a*a*l*l + a*b*(-4*a*b*beta*rho + 4*a*b*dv - 3*a*l*v[1] + 3*b*l*v[0]) - 3*b*b*l*l)/(9*a*b)
+    ,
+    t*(6*a*a*l*l + a*b*(-4*a*b*beta*rho + 4*a*b*dv + 6*a*l*v[1] + 3*b*l*v[0]) - 3*b*b*l*l)/(18*a*b)
+    ,
+    t*(3*a*a*l*l + a*b*(-2*a*b*beta*rho + 2*a*b*dv + 3*a*l*v[1] - 3*b*l*v[0]) + 3*b*b*l*l)/(18*a*b)
+    ,
+    t*(3*a*a*l*l + a*b*(-2*a*b*beta*rho + 2*a*b*dv - 3*a*l*v[1] - 3*b*l*v[0]) + 3*b*b*l*l)/(18*a*b)
+    ,
+    t*(6*a*a*l*l + a*b*(-4*a*b*beta*rho + 4*a*b*dv - 6*a*l*v[1] + 3*b*l*v[0]) - 3*b*b*l*l)/(18*a*b)
+    ,
+    t*(-3*a*a*l*l + a*b*(-4*a*b*beta*rho + 4*a*b*dv + 3*a*l*v[1] + 3*b*l*v[0]) - 3*b*b*l*l)/(9*a*b)
+    ,
+    t*(-3*a*a*l*l + a*b*(-4*a*b*beta*rho + 4*a*b*dv + 3*a*l*v[1] - 6*b*l*v[0]) + 6*b*b*l*l)/(18*a*b)
+    ,
+    t*(6*a*a*l*l + a*b*(-4*a*b*beta*rho + 4*a*b*dv - 6*a*l*v[1] - 3*b*l*v[0]) - 3*b*b*l*l)/(18*a*b)
+    ,
+    t*(3*a*a*l*l + a*b*(-2*a*b*beta*rho + 2*a*b*dv - 3*a*l*v[1] + 3*b*l*v[0]) + 3*b*b*l*l)/(18*a*b)
+    ,
+    t*(-3*a*a*l*l + a*b*(-4*a*b*beta*rho + 4*a*b*dv + 3*a*l*v[1] + 6*b*l*v[0]) + 6*b*b*l*l)/(18*a*b)
+    ,
+    t*(-3*a*a*l*l + a*b*(-4*a*b*beta*rho + 4*a*b*dv + 3*a*l*v[1] - 3*b*l*v[0]) - 3*b*b*l*l)/(9*a*b)
+    };
+
+    return phi;
+}
+
+std::vector<double> Q4S::get_phi_grad(const double t, const double beta) const{
+    std::vector<double> phi{
+    4*a*b*beta*t/9
+    ,
+    2*a*b*beta*t/9
+    ,
+    a*b*beta*t/9
+    ,
+    2*a*b*beta*t/9
+    ,
+    2*a*b*beta*t/9
+    ,
+    4*a*b*beta*t/9
+    ,
+    2*a*b*beta*t/9
+    ,
+    a*b*beta*t/9
+    ,
+    a*b*beta*t/9
+    ,
+    2*a*b*beta*t/9
+    ,
+    4*a*b*beta*t/9
+    ,
+    2*a*b*beta*t/9
+    ,
+    2*a*b*beta*t/9
+    ,
+    a*b*beta*t/9
+    ,
+    2*a*b*beta*t/9
+    ,
+    4*a*b*beta*t/9
+    };
+
+    return phi;
+}
+
 std::vector<double> Q4S::helmholtz_tensor(const double t, const double r) const{
     std::vector<double> h{
     4*a*b*t/9 + a*r*r*t/(3*b) + b*r*r*t/(3*a)
@@ -365,6 +441,16 @@ std::vector<double> Q4S::helmholtz_vector(const double t) const{
     const double N = V/4;
 
     return std::vector<double>(NODES_PER_ELEM, N);
+}
+
+std::vector<double> Q4S::get_nodal_density_gradient(gp_Pnt p) const{
+    const gp_Pnt pnorm = this->normalize(p);
+
+    const double xi = pnorm.X();
+    const double eta = pnorm.Y();
+
+    return std::vector<double>{-(b-eta)/(4*a*b), (b-eta)/(4*a*b), (b+eta)/(4*a*b), -(b+eta)/(4*a*b),
+                               -(a-xi)/(4*a*b), -(a-xi)/(4*a*b), (a+xi)/(4*a*b), -(b+eta)/(4*a*b)};
 }
 
 }

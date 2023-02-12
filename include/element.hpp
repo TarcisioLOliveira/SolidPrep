@@ -395,6 +395,40 @@ class MeshElement : public Element{
     virtual inline std::unique_ptr<MeshElementFactory> get_element_info() const = 0;
 
     /**
+     * Returns the gradient of the shape nodal density shape functions at a 
+     * point (commonly the centroid).
+     *
+     * @param p Point where the gradient is measured.
+     *
+     * @return Gradient matrix (2xN for 2D, 3xN for 3D)
+     */
+    virtual std::vector<double> get_nodal_density_gradient(gp_Pnt p) const = 0;
+
+    /**
+     * Gets the elemental matrix for radial machining constraint.
+     *
+     * @param t Geometry thickness.
+     * @param beta Beta constant
+     * @param l L constant
+     * @param v Direction vector
+     * @param dv Divergent of direction vector.
+     * @param rho Elemental density
+     *
+     * @return Elemental matrix
+     */
+    virtual std::vector<double> get_phi_radial(const double t, const double beta, const double l, const std::vector<double> v, const double dv, const double rho) const = 0;
+
+    /**
+     * Gets the elemental matrix for radial machining constraint.
+     *
+     * @param t Geometry thickness.
+     * @param beta Beta constant
+     *
+     * @return Elemental matrix
+     */
+    virtual std::vector<double> get_phi_grad(const double t, const double beta) const = 0;
+
+    /**
      * Returns the elemental tensor used for the Helmoltz filter.
      *
      * @param t Geometry thickness.

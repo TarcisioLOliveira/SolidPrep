@@ -47,6 +47,9 @@ class Q4 : public MeshElementCommon2DQuad<Q4>{
     virtual std::vector<double> get_k(const std::vector<double>& D, const double t) const override;
     virtual std::vector<double> helmholtz_tensor(const double t, const double r) const override;
     virtual std::vector<double> helmholtz_vector(const double t) const override;
+    virtual std::vector<double> get_nodal_density_gradient(gp_Pnt p) const override;
+    virtual std::vector<double> get_phi_radial(const double t, const double beta, const double l, const std::vector<double> v, const double dv, const double rho) const override;
+    virtual std::vector<double> get_phi_grad(const double t, const double beta) const override;
 
     virtual inline std::unique_ptr<MeshElementFactory> get_element_info() const override{
         return std::unique_ptr<MeshElementFactory>(new MeshElementFactoryImpl<Q4>());

@@ -335,6 +335,12 @@ t*(-D[4]*x[0]*x[0] + 2*D[4]*x[0]*x[2] - D[4]*x[2]*x[2] + D[5]*x[0]*y[0] - D[5]*x
 
     return k;
 }
+std::vector<double> Q4::get_phi_radial(const double t, const double beta, const double l, const std::vector<double> v, const double dv, const double rho) const{
+    logger::log_assert(false, logger::ERROR, "phi not implemented for Q4");
+}
+std::vector<double> Q4::get_phi_grad(const double t, const double beta) const{
+    logger::log_assert(false, logger::ERROR, "phi not implemented for Q4");
+}
 
 std::vector<double> Q4::helmholtz_vector(const double t) const{
     const double V = this->get_volume(t);
@@ -372,6 +378,22 @@ std::vector<double> Q4::helmholtz_tensor(const double r, const double t) const{
     }
 
     return h;
+}
+
+std::vector<double> Q4::get_nodal_density_gradient(gp_Pnt p) const{
+    (void)p;
+    const size_t N = this->NODES_PER_ELEM;
+
+    const double* const a = this->coeffs.data();
+    const double* const b = a + N;
+    const double* const c = b + N;
+    const double* const d = c + N;
+
+    const double x = p.X();
+    const double y = p.Y();
+
+    return std::vector<double>{b[0] + d[0]*y, b[1] + d[1]*y, b[2] + d[2]*y, b[3] + d[3]*y,
+                               c[0] + d[0]*x, c[1] + d[1]*x, c[2] + d[2]*x, c[3] + d[3]*x};
 }
 
 std::vector<double> Q4::get_h_base(const double r, const double t, const double xi, const double eta, 
