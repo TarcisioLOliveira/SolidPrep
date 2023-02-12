@@ -20,6 +20,7 @@
 
 #include "density_filter/averaging.hpp"
 #include "logger.hpp"
+#include "utils.hpp"
 
 namespace density_filter{
 
@@ -174,5 +175,73 @@ void Averaging::filter_gradient(const std::vector<double>& df, std::vector<doubl
     }
 }
 
+void Averaging::filter_gradient_nodal(const std::vector<double>& df, std::vector<double>& new_df){
+    const size_t num_nodes = mesh->elem_info->get_nodes_per_element();
+    const double t = this->mesh->thickness;
+    if(new_df.size() < df.size()){
+        new_df.resize(df.size());
+    }
+    std::copy(df.begin(), df.end(), this->nodal_gradient.begin());
+    for(size_t i = 0; i < this->nodal_gradient.size(); ++i){
+        this->nodal_gradient[i] /= this->D[i];
+    }
+    size_t geom_id = 0;
+    auto newx_it = new_df.begin();
+    for(const auto& g:mesh->geometries){
+        if(g->do_topopt){
+            const size_t num_den = g->number_of_densities_needed();
+            for(const auto& e:g->mesh){
+                *newx_it = 0;
+                for(size_t i = 0; i < num_nodes; ++i){
+                    const auto& n = e->nodes[i];
+                    for(size_t j = 0; j < num_den; ++j){
+                        *(newx_it+j) += this->nodal_gradient[this->id_mapping[std::make_pair(geom_id, n->id)]+j];
+                    }
+                }
+                for(size_t j = 0; j < num_den; ++j){
+                    *newx_it /= num_nodes;
+                    ++newx_it;
+                }
+            }
+        }
+        ++geom_id;
+    }
+}
+
+void Averaging::get_gradient(std::vector<double>& gradx) const{
+    const size_t num_nodes = mesh->elem_info->get_nodes_per_element();
+    const double t = this->mesh->thickness;
+    size_t N = 0;
+    if(this->mesh->elem_info->get_problem_type() == utils::PROBLEM_TYPE_2D){
+        N = 2;
+    } else if(this->mesh->elem_info->get_problem_type() == utils::PROBLEM_TYPE_3D){
+        N = 3;
+    }
+    size_t geom_id = 0;
+    std::fill(gradx.begin(), gradx.end(), 0);
+    std::vector<double> nx(num_nodes,0);
+    for(const auto& g:mesh->geometries){
+        if(g->do_topopt){
+            const size_t num_den = g->number_of_densities_needed();
+            for(const auto& e:g->mesh){
+                auto grad = e->get_nodal_density_gradient(e->get_centroid());
+                const double V = e->get_volume(t)/num_nodes;
+                for(size_t j = 0; j < num_den; ++j){
+                    for(size_t i = 0; i < num_nodes; ++i){
+                        const auto& n = e->nodes[i];
+                        nx[i] = V*this->nodal_densities[this->id_mapping.at(std::make_pair(geom_id, n->id))+j];
+                    }
+                    for(size_t k = 0; k < num_nodes; ++k){
+                        const auto& n = e->nodes[k];
+                        for(size_t i = 0; i < N; ++i){
+                            gradx[this->id_mapping.at(std::make_pair(geom_id, n->id))+j] += grad[i*num_nodes + k]*nx[k];
+                        }
+                    }
+                }
+            }
+        }
+        ++geom_id;
+    }
+}
 
 }

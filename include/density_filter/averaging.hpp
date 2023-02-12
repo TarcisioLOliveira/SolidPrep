@@ -36,11 +36,18 @@ class Averaging : public DensityFilter{
 
     virtual void filter_gradient(const std::vector<double>& df, std::vector<double>& new_df) override;
 
+    virtual void filter_gradient_nodal(const std::vector<double>& df, std::vector<double>& new_df) override;
+
+    virtual void get_gradient(std::vector<double>& gradx) const override;
+
+    virtual size_t get_nodal_density_size() const override{
+        return this->nodal_densities.size();
+    }
+
     private:
     std::vector<double> D;
     std::vector<double> nodal_densities;
     std::vector<double> nodal_gradient;
-    std::map<std::pair<size_t, size_t>, size_t> id_mapping;
     const Meshing* mesh;
 };
 
