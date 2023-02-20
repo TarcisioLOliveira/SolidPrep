@@ -42,8 +42,9 @@ void Geometry::get_stresses(const std::vector<double>& u, const double pc, const
             const auto D = this->materials.get_D();
             for(const auto& e:this->mesh){
                 const double S = e->get_stress_at(D, e->get_centroid(), u);
-                *stress_it = S;
+                *stress_it = std::pow(*rho_it, pc)*S;
 
+                ++rho_it;
                 ++stress_it;
             }
         } else {
