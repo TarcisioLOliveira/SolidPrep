@@ -78,7 +78,7 @@ include_directories(
     ${GMSH_INC}
     ${VTK_INCLUDE_DIR}
     ${MPI_INCLUDE_PATH}
-    ${MUMPS_INCLUDE_DIR}
+    ${MUMPS_INCLUDE_DIRS}
     ${Eigen3_INCLUDE_DIR}
 )
    
