@@ -144,6 +144,7 @@ class MeshNode : public Node{
  */
 struct ElementShape{
     std::vector<MeshNode*> nodes;
+    gp_Dir normal = gp_Dir(0,0,1);
 };
 
 /**

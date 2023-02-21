@@ -66,7 +66,7 @@ void Meshing::generate_elements(const TopoDS_Shape& shape,
     }
 
     {
-        auto bound_list = this->generate_element_shapes(bound_elem_node_tags, bound_nodes_per_elem, id_map);
+        auto bound_list = this->generate_element_shapes(bound_elem_node_tags, bound_nodes_per_elem, id_map, true);
         this->populate_boundary_elements(bound_list, boundary_condition_inside);
     }
 
@@ -128,9 +128,9 @@ void Meshing::populate_boundary_elements(const std::vector<ElementShape>& bounda
         }
         if(common_nodes.size() > 0){
             if(boundary_condition_inside){
-                this->boundary_elements.emplace_back(b.nodes, *common_nodes.begin());
+                this->boundary_elements.emplace_back(b.nodes, *common_nodes.begin(), b.normal);
             } else if(common_nodes.size() == 1){
-                this->boundary_elements.emplace_back(b.nodes, *common_nodes.begin());
+                this->boundary_elements.emplace_back(b.nodes, *common_nodes.begin(), b.normal);
             }
         }
     }
@@ -824,7 +824,8 @@ void Meshing::optimize(std::vector<ElementShape>& list, std::unordered_map<size_
 std::vector<ElementShape> Meshing::generate_element_shapes(
             const std::vector<size_t>& elem_node_tags, 
             size_t nodes_per_elem,
-            const std::unordered_map<size_t, MeshNode*>& id_map){
+            const std::unordered_map<size_t, MeshNode*>& id_map,
+            bool calc_normals){
     std::vector<size_t> filtered_tags;
     filtered_tags.reserve(elem_node_tags.size());
     std::vector<size_t> elem_tmp(nodes_per_elem);
@@ -845,9 +846,29 @@ std::vector<ElementShape> Meshing::generate_element_shapes(
             filtered_tags.insert(filtered_tags.end(), elem_tmp.begin(), elem_tmp.end());
         }
     }
-
     const size_t N = filtered_tags.size()/nodes_per_elem;
     std::vector<ElementShape> list(N);
+    std::vector<gp_Dir> normals(N);
+    if(calc_normals){
+        if(nodes_per_elem == 2){
+            for(size_t i = 0; i < N; ++i){
+                gp_Pnt p0 = id_map.at(filtered_tags[i*nodes_per_elem + 0])->point;
+                gp_Pnt p1 = id_map.at(filtered_tags[i*nodes_per_elem + 1])->point;
+                gp_Dir n(gp_Vec(p0, p1));
+                n.Cross(gp_Dir(0,0,1));
+                normals[i] = std::move(n);
+            }
+        } else {
+            for(size_t i = 0; i < N; ++i){
+                gp_Pnt p0 = id_map.at(filtered_tags[i*nodes_per_elem + 0])->point;
+                gp_Pnt p1 = id_map.at(filtered_tags[i*nodes_per_elem + 1])->point;
+                gp_Pnt p2 = id_map.at(filtered_tags[i*nodes_per_elem + 2])->point;
+                gp_Dir n0(gp_Vec(p1, p0));
+                gp_Dir n1(gp_Vec(p1, p2));
+                normals[i] = n0.Crossed(n1);
+            }
+        }
+    }
     #pragma omp parallel for
     for(size_t j = 0; j < N; ++j){
         list[j].nodes.resize(nodes_per_elem);
@@ -857,6 +878,7 @@ std::vector<ElementShape> Meshing::generate_element_shapes(
             MeshNode* node = id_map.at(n);
             list[j].nodes[i] = node;
         }
+        list[j].normal = normals[j];
     }
 
     return list;

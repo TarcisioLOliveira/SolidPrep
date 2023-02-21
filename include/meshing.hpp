@@ -36,12 +36,13 @@ class BoundaryElement{
     public:
     const Node** const nodes;
     const MeshElement* const parent;
+    const gp_Dir normal;
     
     ~BoundaryElement(){
         delete[] nodes;
     }
-    BoundaryElement(const std::vector<MeshNode*>& n, const MeshElement* const parent):
-        nodes(allocate_nodes(n)), parent(parent){}
+    BoundaryElement(const std::vector<MeshNode*>& n, const MeshElement* const parent, gp_Dir normal):
+        nodes(allocate_nodes(n)), parent(parent), normal(std::move(normal)){}
 
     inline gp_Pnt get_centroid(const size_t N) const{
         double x = 0, y = 0, z = 0;
@@ -238,13 +239,15 @@ class Meshing{
      * @param elem_node_tags Node tags per element
      * @param nodes_per_elem Number of nodes in each element
      * @param id_map Map of original ids to nodes
+     * @param calc_normals Whether to calculate element normals (for boundary elements)
      *
      * @return Vector of element shapes
      */
     virtual std::vector<ElementShape> generate_element_shapes(
             const std::vector<size_t>& elem_node_tags, 
             size_t bound_nodes_per_elem,
-            const std::unordered_map<size_t, MeshNode*>& id_map);
+            const std::unordered_map<size_t, MeshNode*>& id_map,
+            bool calc_normals = false);
 
     /**
      * Search for duplicate nodes (different tag but same position)
