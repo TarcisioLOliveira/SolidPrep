@@ -322,7 +322,7 @@ std::vector<double> Q4S::get_Nf(const double t, const std::vector<gp_Pnt>& point
     return Nf;
 }
 
-std::vector<double> Q4S::get_phi_radial(const double t, const double beta, const double l, const std::vector<double> v, const double dv, const double rho) const{
+std::vector<double> Q4S::get_phi_radial(const double t, const double beta, const double l, const std::vector<double>& v, const double dv, const double rho) const{
     std::vector<double> phi{
     t*(-3*a*a*l*l + a*b*(-4*a*b*beta*rho + 4*a*b*dv - 3*a*l*v[1] - 3*b*l*v[0]) - 3*b*b*l*l)/(9*a*b)
     ,

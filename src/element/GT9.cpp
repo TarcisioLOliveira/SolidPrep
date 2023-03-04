@@ -383,7 +383,7 @@ t*std::sqrt(x[0]*x[0] - 2*x[0]*x[1] + x[1]*x[1] + y[0]*y[0] - 2*y[0]*y[1] + y[1]
     return Nf;
 }
 
-std::vector<double> GT9::get_phi_radial(const double t, const double beta, const double l, const std::vector<double> v, const double dv, const double rho) const{
+std::vector<double> GT9::get_phi_radial(const double t, const double beta, const double l, const std::vector<double>& v, const double dv, const double rho) const{
     const size_t N = this->NODES_PER_ELEM;
     const double delta = this->get_volume(1);
 

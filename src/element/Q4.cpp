@@ -335,11 +335,13 @@ t*(-D[4]*x[0]*x[0] + 2*D[4]*x[0]*x[2] - D[4]*x[2]*x[2] + D[5]*x[0]*y[0] - D[5]*x
 
     return k;
 }
-std::vector<double> Q4::get_phi_radial(const double t, const double beta, const double l, const std::vector<double> v, const double dv, const double rho) const{
+std::vector<double> Q4::get_phi_radial(const double t, const double beta, const double l, const std::vector<double>& v, const double dv, const double rho) const{
     logger::log_assert(false, logger::ERROR, "phi not implemented for Q4");
+    return std::vector<double>();
 }
 std::vector<double> Q4::get_phi_grad(const double t, const double beta) const{
     logger::log_assert(false, logger::ERROR, "phi not implemented for Q4");
+    return std::vector<double>();
 }
 
 std::vector<double> Q4::helmholtz_vector(const double t) const{

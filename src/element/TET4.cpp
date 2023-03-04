@@ -564,7 +564,7 @@ std::vector<double> TET4::get_Nf(const double t, const std::vector<gp_Pnt>& poin
     return Nf;
 }
 
-std::vector<double> TET4::get_phi_radial(const double t, const double beta, const double l, const std::vector<double> v, const double dv, const double rho) const{
+std::vector<double> TET4::get_phi_radial(const double t, const double beta, const double l, const std::vector<double>& v, const double dv, const double rho) const{
     const size_t N = this->NODES_PER_ELEM;
     const double V = this->get_volume(t);
 

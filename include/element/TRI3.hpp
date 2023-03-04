@@ -49,7 +49,7 @@ class TRI3 : public MeshElementCommon2DTri<TRI3>{
     virtual std::vector<double> helmholtz_tensor(const double t, const double r) const override;
     virtual std::vector<double> helmholtz_vector(const double t) const override;
     virtual std::vector<double> get_nodal_density_gradient(gp_Pnt p) const override;
-    virtual std::vector<double> get_phi_radial(const double t, const double beta, const double l, const std::vector<double> v, const double dv, const double rho) const override;
+    virtual std::vector<double> get_phi_radial(const double t, const double beta, const double l, const std::vector<double>& v, const double dv, const double rho) const override;
     virtual std::vector<double> get_phi_grad(const double t, const double beta) const override;
 
     virtual inline std::unique_ptr<MeshElementFactory> get_element_info() const override{

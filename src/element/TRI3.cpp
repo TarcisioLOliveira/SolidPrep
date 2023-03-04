@@ -218,7 +218,7 @@ std::vector<double> TRI3::helmholtz_tensor(const double t, const double r) const
     return h;
 }
 
-std::vector<double> TRI3::get_phi_radial(const double t, const double beta, const double l, const std::vector<double> v, const double dv, const double rho) const{
+std::vector<double> TRI3::get_phi_radial(const double t, const double beta, const double l, const std::vector<double>& v, const double dv, const double rho) const{
     const size_t N = this->NODES_PER_ELEM;
     const double delta = this->get_volume(1);
 
