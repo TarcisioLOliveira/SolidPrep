@@ -59,6 +59,10 @@ class DensityFilter{
         logger::log_assert(false, logger::ERROR, "chosen density filter does not support nodal densities");
     }
 
+    virtual const std::vector<double>& get_nodal_densities() const{
+        logger::log_assert(false, logger::ERROR, "chosen density filter does not support nodal densities");
+    }
+
     virtual void get_gradient(std::vector<double>& gradx) const{
         (void)gradx;
         logger::log_assert(false, logger::ERROR, "chosen density filter does not support nodal densities");

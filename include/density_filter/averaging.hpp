@@ -40,6 +40,10 @@ class Averaging : public DensityFilter{
 
     virtual void get_gradient(std::vector<double>& gradx) const override;
 
+    virtual const std::vector<double>& get_nodal_densities() const override{
+        return this->nodal_densities;
+    }
+
     virtual size_t get_nodal_density_size() const override{
         return this->nodal_densities.size();
     }
