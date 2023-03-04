@@ -68,6 +68,7 @@
 #include "function/global_stress_pnorm_normalized.hpp"
 #include "function/global_stress_pnorm.hpp"
 #include "function/radial_machining.hpp"
+#include "function/am_support.hpp"
 
 ProjectData::ProjectData(std::string project_file){
 #ifdef _WIN32
@@ -634,6 +635,21 @@ std::unique_ptr<DensityBasedFunction> ProjectData::get_function(const rapidjson:
         gp_Dir a(aa[0].GetDouble(), aa[1].GetDouble(), aa[2].GetDouble());
 
         return std::make_unique<function::RadialMachining>(this->topopt_mesher.get(), this->density_filter.get(), c, a, v, L, beta);
+    } else if(type == "am_support"){
+        this->log_data(doc, "beta", TYPE_DOUBLE, true);
+        this->log_data(doc, "L", TYPE_DOUBLE, true);
+        this->log_data(doc, "v", TYPE_DOUBLE, true);
+        this->log_data(doc, "support_angle", TYPE_DOUBLE, true);
+        this->log_data(doc, "axis", TYPE_ARRAY, true);
+        double beta = doc["beta"].GetDouble();
+        double L = doc["L"].GetDouble();
+        double v = doc["v"].GetDouble();
+        double angle = doc["support_angle"].GetDouble();
+
+        auto aa = doc["axis"].GetArray();
+        gp_Dir a(aa[0].GetDouble(), aa[1].GetDouble(), aa[2].GetDouble());
+
+        return std::make_unique<function::AMSupport>(this->topopt_mesher.get(), this->density_filter.get(), a, v, L, beta, (90 - angle)*M_PI/180);
     }
 
     return nullptr;
