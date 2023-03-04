@@ -398,6 +398,44 @@ std::vector<double> Q4S::get_phi_grad(const double t, const double beta) const{
     return phi;
 }
 
+std::vector<double> Q4S::get_phi_unidirectional(const double t, const double beta, const double l, const std::vector<double>& v, const double vn) const{
+    std::vector<double> phi{
+    t*(-3*a*a*l*l + a*b*(-4*a*b*beta - 3*a*l*v[1]*vn - 3*b*l*v[0]*vn) - 3*b*b*l*l)/(9*a*b)
+    ,
+    t*(-3*a*a*l*l + a*b*(-4*a*b*beta - 3*a*l*v[1]*vn + 6*b*l*v[0]*vn) + 6*b*b*l*l)/(18*a*b)
+    ,
+    -a*b*beta*t/9 + a*l*t*v[1]*vn/6 + a*l*l*t/(6*b) + b*l*t*v[0]*vn/6 + b*l*l*t/(6*a)
+    ,
+    t*(6*a*a*l*l + a*b*(-4*a*b*beta + 6*a*l*v[1]*vn - 3*b*l*v[0]*vn) - 3*b*b*l*l)/(18*a*b)
+    ,
+    t*(-3*a*a*l*l - a*b*(4*a*b*beta + 3*a*l*v[1]*vn + 6*b*l*v[0]*vn) + 6*b*b*l*l)/(18*a*b)
+    ,
+    t*(-3*a*a*l*l + a*b*(-4*a*b*beta - 3*a*l*v[1]*vn + 3*b*l*v[0]*vn) - 3*b*b*l*l)/(9*a*b)
+    ,
+    t*(6*a*a*l*l + a*b*(-4*a*b*beta + 6*a*l*v[1]*vn + 3*b*l*v[0]*vn) - 3*b*b*l*l)/(18*a*b)
+    ,
+    -a*b*beta*t/9 + a*l*t*v[1]*vn/6 + a*l*l*t/(6*b) - b*l*t*v[0]*vn/6 + b*l*l*t/(6*a)
+    ,
+    -a*b*beta*t/9 - a*l*t*v[1]*vn/6 + a*l*l*t/(6*b) - b*l*t*v[0]*vn/6 + b*l*l*t/(6*a)
+    ,
+    t*(6*a*a*l*l + a*b*(-4*a*b*beta - 6*a*l*v[1]*vn + 3*b*l*v[0]*vn) - 3*b*b*l*l)/(18*a*b)
+    ,
+    t*(-3*a*a*l*l + a*b*(-4*a*b*beta + 3*a*l*v[1]*vn + 3*b*l*v[0]*vn) - 3*b*b*l*l)/(9*a*b)
+    ,
+    t*(-3*a*a*l*l + a*b*(-4*a*b*beta + 3*a*l*v[1]*vn - 6*b*l*v[0]*vn) + 6*b*b*l*l)/(18*a*b)
+    ,
+    t*(6*a*a*l*l - a*b*(4*a*b*beta + 6*a*l*v[1]*vn + 3*b*l*v[0]*vn) - 3*b*b*l*l)/(18*a*b)
+    ,
+    -a*b*beta*t/9 - a*l*t*v[1]*vn/6 + a*l*l*t/(6*b) + b*l*t*v[0]*vn/6 + b*l*l*t/(6*a)
+    ,
+    t*(-3*a*a*l*l + a*b*(-4*a*b*beta + 3*a*l*v[1]*vn + 6*b*l*v[0]*vn) + 6*b*b*l*l)/(18*a*b)
+    ,
+    t*(-3*a*a*l*l + a*b*(-4*a*b*beta + 3*a*l*v[1]*vn - 3*b*l*v[0]*vn) - 3*b*b*l*l)/(9*a*b)
+    };
+
+    return phi;
+}
+
 std::vector<double> Q4S::helmholtz_tensor(const double t, const double r) const{
     std::vector<double> h{
     4*a*b*t/9 + a*r*r*t/(3*b) + b*r*r*t/(3*a)

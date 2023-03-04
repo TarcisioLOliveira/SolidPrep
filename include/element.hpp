@@ -430,6 +430,19 @@ class MeshElement : public Element{
     virtual std::vector<double> get_phi_grad(const double t, const double beta) const = 0;
 
     /**
+     * Gets the elemental matrix for radial machining constraint.
+     *
+     * @param t Geometry thickness.
+     * @param l L constant
+     * @param beta Beta constant/function
+     * @param v Direction vector (unit)
+     * @param vn Velocity norm
+     *
+     * @return Elemental matrix
+     */
+    virtual std::vector<double> get_phi_unidirectional(const double t, const double beta, const double l, const std::vector<double>& v, const double vn) const = 0;
+
+    /**
      * Returns the elemental tensor used for the Helmoltz filter.
      *
      * @param t Geometry thickness.

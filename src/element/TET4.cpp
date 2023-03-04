@@ -650,6 +650,52 @@ std::vector<double> TET4::get_phi_grad(const double t, const double beta) const{
     return phi;
 }
 
+std::vector<double> TET4::get_phi_unidirectional(const double t, const double beta, const double l, const std::vector<double>& v, const double vn) const{
+    const size_t N = this->NODES_PER_ELEM;
+    const double V = this->get_volume(t);
+
+    const double* const a = this->coeffs.data();
+    const double* const b = a + N;
+    const double* const c = b + N;
+    const double* const d = c + N;
+
+    std::vector<double> phi{
+    (2*V*(-2*V*beta + b[0]*l*v[0]*vn + c[0]*l*v[1]*vn + d[0]*l*v[2]*vn) - b[0]*b[0]*l*l - c[0]*c[0]*l*l - d[0]*d[0]*l*l)/(36*V)
+    ,
+    (2*V*(-2*V*beta + b[1]*l*v[0]*vn + c[1]*l*v[1]*vn + d[1]*l*v[2]*vn) - b[0]*b[1]*l*l - c[0]*c[1]*l*l - d[0]*d[1]*l*l)/(36*V)
+    ,
+    (2*V*(-2*V*beta + b[2]*l*v[0]*vn + c[2]*l*v[1]*vn + d[2]*l*v[2]*vn) - b[0]*b[2]*l*l - c[0]*c[2]*l*l - d[0]*d[2]*l*l)/(36*V)
+    ,
+    (2*V*(-2*V*beta + b[3]*l*v[0]*vn + c[3]*l*v[1]*vn + d[3]*l*v[2]*vn) - b[0]*b[3]*l*l - c[0]*c[3]*l*l - d[0]*d[3]*l*l)/(36*V)
+    ,
+    (2*V*(-2*V*beta + b[0]*l*v[0]*vn + c[0]*l*v[1]*vn + d[0]*l*v[2]*vn) - b[0]*b[1]*l*l - c[0]*c[1]*l*l - d[0]*d[1]*l*l)/(36*V)
+    ,
+    (2*V*(-2*V*beta + b[1]*l*v[0]*vn + c[1]*l*v[1]*vn + d[1]*l*v[2]*vn) - b[1]*b[1]*l*l - c[1]*c[1]*l*l - d[1]*d[1]*l*l)/(36*V)
+    ,
+    (2*V*(-2*V*beta + b[2]*l*v[0]*vn + c[2]*l*v[1]*vn + d[2]*l*v[2]*vn) - b[1]*b[2]*l*l - c[1]*c[2]*l*l - d[1]*d[2]*l*l)/(36*V)
+    ,
+    (2*V*(-2*V*beta + b[3]*l*v[0]*vn + c[3]*l*v[1]*vn + d[3]*l*v[2]*vn) - b[1]*b[3]*l*l - c[1]*c[3]*l*l - d[1]*d[3]*l*l)/(36*V)
+    ,
+    (2*V*(-2*V*beta + b[0]*l*v[0]*vn + c[0]*l*v[1]*vn + d[0]*l*v[2]*vn) - b[0]*b[2]*l*l - c[0]*c[2]*l*l - d[0]*d[2]*l*l)/(36*V)
+    ,
+    (2*V*(-2*V*beta + b[1]*l*v[0]*vn + c[1]*l*v[1]*vn + d[1]*l*v[2]*vn) - b[1]*b[2]*l*l - c[1]*c[2]*l*l - d[1]*d[2]*l*l)/(36*V)
+    ,
+    (2*V*(-2*V*beta + b[2]*l*v[0]*vn + c[2]*l*v[1]*vn + d[2]*l*v[2]*vn) - b[2]*b[2]*l*l - c[2]*c[2]*l*l - d[2]*d[2]*l*l)/(36*V)
+    ,
+    (2*V*(-2*V*beta + b[3]*l*v[0]*vn + c[3]*l*v[1]*vn + d[3]*l*v[2]*vn) - b[2]*b[3]*l*l - c[2]*c[3]*l*l - d[2]*d[3]*l*l)/(36*V)
+    ,
+    (2*V*(-2*V*beta + b[0]*l*v[0]*vn + c[0]*l*v[1]*vn + d[0]*l*v[2]*vn) - b[0]*b[3]*l*l - c[0]*c[3]*l*l - d[0]*d[3]*l*l)/(36*V)
+    ,
+    (2*V*(-2*V*beta + b[1]*l*v[0]*vn + c[1]*l*v[1]*vn + d[1]*l*v[2]*vn) - b[1]*b[3]*l*l - c[1]*c[3]*l*l - d[1]*d[3]*l*l)/(36*V)
+    ,
+    (2*V*(-2*V*beta + b[2]*l*v[0]*vn + c[2]*l*v[1]*vn + d[2]*l*v[2]*vn) - b[2]*b[3]*l*l - c[2]*c[3]*l*l - d[2]*d[3]*l*l)/(36*V)
+    ,
+    (2*V*(-2*V*beta + b[3]*l*v[0]*vn + c[3]*l*v[1]*vn + d[3]*l*v[2]*vn) - b[3]*b[3]*l*l - c[3]*c[3]*l*l - d[3]*d[3]*l*l)/(36*V)
+    };
+
+    return phi;
+}
+
 std::vector<double> TET4::helmholtz_tensor(const double t, const double r) const{
     const size_t N = this->NODES_PER_ELEM;
     const double V = this->get_volume(t);

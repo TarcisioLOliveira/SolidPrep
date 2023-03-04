@@ -465,6 +465,47 @@ std::vector<double> GT9::get_phi_grad(const double t, const double beta) const{
     return phi;
 }
 
+std::vector<double> GT9::get_phi_unidirectional(const double t, const double beta, const double l, const std::vector<double>& v, const double vn) const{
+    const size_t N = this->NODES_PER_ELEM;
+    const double delta = this->get_volume(1);
+
+    std::vector<gp_Pnt> p;
+    for(size_t i = 0; i < N; ++i){
+        const auto& n = this->nodes[i];
+        p.push_back(n->point);
+    }
+    std::vector<double> b, c;
+    for(size_t i = 0; i < N; ++i){
+        size_t j = (i + 1) % 3;
+        size_t k = (i + 2) % 3;
+
+        b.push_back(p[j].Y() - p[k].Y());
+        c.push_back(p[k].X() - p[j].X());
+    }
+
+    std::vector<double> phi{
+    t*(-9*b[0]*b[0]*l*l - 9*c[0]*c[0]*l*l + 2*delta*(3*b[0]*l*v[0]*vn - 2*beta*delta + 3*c[0]*l*v[1]*vn))/(36*delta)
+    ,
+    t*(-9*b[0]*b[1]*l*l - 9*c[0]*c[1]*l*l + 2*delta*(3*b[1]*l*v[0]*vn - 2*beta*delta + 3*c[1]*l*v[1]*vn))/(36*delta)
+    ,
+    t*(-9*b[0]*b[2]*l*l - 9*c[0]*c[2]*l*l + 2*delta*(3*b[2]*l*v[0]*vn - 2*beta*delta + 3*c[2]*l*v[1]*vn))/(36*delta)
+    ,
+    t*(-9*b[0]*b[1]*l*l - 9*c[0]*c[1]*l*l + 2*delta*(3*b[0]*l*v[0]*vn - 2*beta*delta + 3*c[0]*l*v[1]*vn))/(36*delta)
+    ,
+    t*(-9*b[1]*b[1]*l*l - 9*c[1]*c[1]*l*l + 2*delta*(3*b[1]*l*v[0]*vn - 2*beta*delta + 3*c[1]*l*v[1]*vn))/(36*delta)
+    ,
+    t*(-9*b[1]*b[2]*l*l - 9*c[1]*c[2]*l*l + 2*delta*(3*b[2]*l*v[0]*vn - 2*beta*delta + 3*c[2]*l*v[1]*vn))/(36*delta)
+    ,
+    t*(-9*b[0]*b[2]*l*l - 9*c[0]*c[2]*l*l + 2*delta*(3*b[0]*l*v[0]*vn - 2*beta*delta + 3*c[0]*l*v[1]*vn))/(36*delta)
+    ,
+    t*(-9*b[1]*b[2]*l*l - 9*c[1]*c[2]*l*l + 2*delta*(3*b[1]*l*v[0]*vn - 2*beta*delta + 3*c[1]*l*v[1]*vn))/(36*delta)
+    ,
+    t*(-9*b[2]*b[2]*l*l - 9*c[2]*c[2]*l*l + 2*delta*(3*b[2]*l*v[0]*vn - 2*beta*delta + 3*c[2]*l*v[1]*vn))/(36*delta)
+    };
+
+    return phi;
+}
+
 std::vector<double> GT9::helmholtz_tensor(const double t, const double r) const{
     const size_t N = this->NODES_PER_ELEM;
     const double delta = this->get_volume(1);
