@@ -220,22 +220,24 @@ void Averaging::get_gradient(std::vector<double>& gradx) const{
     size_t geom_id = 0;
     std::fill(gradx.begin(), gradx.end(), 0);
     std::vector<double> nx(num_nodes,0);
+    auto g_it = gradx.begin();
     for(const auto& g:mesh->geometries){
         if(g->do_topopt){
             const size_t num_den = g->number_of_densities_needed();
             for(const auto& e:g->mesh){
                 auto grad = e->get_nodal_density_gradient(e->get_centroid());
-                const double V = e->get_volume(t)/num_nodes;
+                //const double V = e->get_volume(t)/num_nodes;
                 for(size_t j = 0; j < num_den; ++j){
                     for(size_t i = 0; i < num_nodes; ++i){
                         const auto& n = e->nodes[i];
-                        nx[i] = V*this->nodal_densities[this->id_mapping.at(std::make_pair(geom_id, n->id))+j];
+                        //nx[i] = V*this->nodal_densities[this->id_mapping.at(std::make_pair(geom_id, n->id))+j];
+                        nx[i] = this->nodal_densities[this->id_mapping.at(std::make_pair(geom_id, n->id))+j];
                     }
-                    for(size_t k = 0; k < num_nodes; ++k){
-                        const auto& n = e->nodes[k];
-                        for(size_t i = 0; i < N; ++i){
-                            gradx[this->id_mapping.at(std::make_pair(geom_id, n->id))+j] += grad[i*num_nodes + k]*nx[k];
+                    for(size_t i = 0; i < N; ++i){
+                        for(size_t k = 0; k < num_nodes; ++k){
+                            *g_it += grad[i*num_nodes + k]*nx[k];
                         }
+                        ++g_it;
                     }
                 }
             }
