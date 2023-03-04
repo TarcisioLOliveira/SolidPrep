@@ -130,7 +130,23 @@ void Meshing::populate_boundary_elements(const std::vector<ElementShape>& bounda
             if(boundary_condition_inside){
                 this->boundary_elements.emplace_back(b.nodes, *common_nodes.begin(), b.normal);
             } else if(common_nodes.size() == 1){
-                this->boundary_elements.emplace_back(b.nodes, *common_nodes.begin(), b.normal);
+                double x = 0, y = 0, z = 0;
+                for(auto& n:b.nodes){
+                    x += n->point.X();
+                    y += n->point.Y();
+                    z += n->point.Z();
+                }
+                x /= b.nodes.size();
+                y /= b.nodes.size();
+                z /= b.nodes.size();
+                gp_Pnt bc(x, y, z);
+                gp_Pnt ec((*common_nodes.begin())->get_centroid());
+                gp_Dir d(gp_Vec(bc, ec));
+                gp_Dir n(b.normal);
+                if(d.Dot(n) > 0){
+                    n = -n;
+                }
+                this->boundary_elements.emplace_back(b.nodes, *common_nodes.begin(), n);
             }
         }
     }
