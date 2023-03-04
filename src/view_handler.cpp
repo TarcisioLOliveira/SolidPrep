@@ -70,7 +70,7 @@ void ViewHandler::update_view(const std::vector<double>& data, const std::vector
     } else if(this->view_type == TENSOR && (this->data_type == STRESS || this->data_type == OTHER)){
         this->update_tensor(data, tags);
     } else if(this->data_type == DENSITY){
-        if(geometries.size() == 1){
+        if(this->mesh->geometries.size() == 1){
             if(view_type == ELEMENTAL){
                 this->update_elemental(data, tags);
             } else if(view_type == NODAL){
