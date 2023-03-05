@@ -26,8 +26,8 @@
 
 namespace optimizer{
 
-MMA::MMA(DensityFilter* filter, Projection* projection, ProjectData* data, std::unique_ptr<DensityBasedFunction> objective, std::vector<std::unique_ptr<DensityBasedFunction>> constraints, std::vector<double> constraint_bounds, double pc, double psi, double rho_init, double xtol_abs, double ftol_rel, double result_threshold, bool save):
-    data(data), rho_init(rho_init), xtol_abs(xtol_abs), ftol_rel(ftol_rel), pc(pc), psi(psi), result_threshold(result_threshold), save_result(save), objective(std::move(objective)), constraints(std::move(constraints)), constraint_bounds(std::move(constraint_bounds)), filter(filter), projection(projection), viz(nullptr)
+MMA::MMA(DensityFilter* filter, Projection* projection, ProjectData* data, std::vector<std::unique_ptr<DensityBasedFunction>> objective, std::vector<double> weights, std::vector<std::unique_ptr<DensityBasedFunction>> constraints, std::vector<double> constraint_bounds, double pc, double psi, double rho_init, double xtol_abs, double ftol_rel, double result_threshold, bool save):
+    data(data), rho_init(rho_init), xtol_abs(xtol_abs), ftol_rel(ftol_rel), pc(pc), psi(psi), result_threshold(result_threshold), save_result(save), objective(std::move(objective)), objective_weights(std::move(weights)), constraints(std::move(constraints)), constraint_bounds(std::move(constraint_bounds)), filter(filter), projection(projection), viz(nullptr)
     {}
 
 void MMA::initialize_views(Visualization* viz){
@@ -36,7 +36,9 @@ void MMA::initialize_views(Visualization* viz){
     this->stress_view = viz->add_view("Von Mises Stress", ViewHandler::ViewType::ELEMENTAL, ViewHandler::DataType::STRESS);
     this->density_view = viz->add_view("Elemental Density", ViewHandler::ViewType::ELEMENTAL, ViewHandler::DataType::DENSITY);
 
-    this->objective->initialize_views(viz);
+    for(auto& f:this->objective){
+        f->initialize_views(viz);
+    }
     for(auto& f:this->constraints){
         f->initialize_views(viz);
     }
@@ -51,7 +53,9 @@ TopoDS_Shape MMA::optimize(FiniteElement* fem, Meshing* mesh){
     }
 
     size_t fem_steps = 1;
-    fem_steps += this->objective->additional_steps();
+    for(auto& f:this->objective){
+        fem_steps += f->additional_steps();
+    }
     for(auto& f:this->constraints){
         fem_steps += f->additional_steps();
     }
@@ -66,7 +70,9 @@ TopoDS_Shape MMA::optimize(FiniteElement* fem, Meshing* mesh){
     size_t x_size = 0;
     size_t x_size_view = 0;
     if(mpi_id == 0){
-        this->objective->initialize(this);
+        for(auto& f:this->objective){
+            f->initialize(this);
+        }
         for(auto& f:this->constraints){
             f->initialize(this);
         }
@@ -98,6 +104,7 @@ TopoDS_Shape MMA::optimize(FiniteElement* fem, Meshing* mesh){
 
     double ff = 0;
     std::vector<double> dftmp(x.size());
+    std::vector<double> dftmp_nodal(this->filter->get_nodal_density_size());
     std::vector<double> dgtmp1(x.size());
     std::vector<double> dgtmp2(x.size());
     std::vector<double> dgtmp1_nodal(this->filter->get_nodal_density_size());
@@ -146,7 +153,53 @@ TopoDS_Shape MMA::optimize(FiniteElement* fem, Meshing* mesh){
         this->stress_view->update_view(stress_render);
         this->viz->redraw();
     }
-    ff = this->objective->calculate_with_gradient(this, u, new_x, dftmp);
+    if(this->objective.size() == 1){
+        if(this->objective[0]->filter_gradient_type() == DensityFilter::FilterGradient::ELEMENTAL){
+            ff = this->objective_weights.front()*this->objective.front()->calculate_with_gradient(this, u, new_x, dftmp);
+            if(mpi_id == 0){
+                this->projection->project_gradient(dftmp, new_x);
+                this->filter->filter_gradient(dftmp, df);
+                if(this->objective_weights.front() != 1.0){
+                    for(auto& v:df){
+                        v *= this->objective_weights.front();
+                    }
+                }
+            }
+        } else {
+            ff = this->objective_weights.front()*this->objective.front()->calculate_with_gradient_nodal(this, u, new_x, dftmp_nodal);
+            if(mpi_id == 0){
+                this->filter->filter_gradient_nodal(dftmp_nodal, df);
+                if(this->objective_weights.front() != 1.0){
+                    for(auto& v:df){
+                        v *= this->objective_weights.front();
+                    }
+                }
+            }
+        }
+    } else {
+        ff = 0;
+        std::fill(df.begin(), df.end(), 0);
+        for(size_t i = 0; i < this->objective.size(); ++i){
+            if(this->objective[i]->filter_gradient_type() == DensityFilter::FilterGradient::ELEMENTAL){
+                ff += this->objective_weights[i]*this->objective[i]->calculate_with_gradient(this, u, new_x, dftmp);
+                if(mpi_id == 0){
+                    this->projection->project_gradient(dftmp, new_x);
+                    this->filter->filter_gradient(dftmp, df);
+                    for(size_t j = 0; j < dftmp.size(); ++j){
+                        df[j] += this->objective_weights[i]*dftmp[j];
+                    }
+                }
+            } else {
+                ff += this->objective_weights[i]*this->objective[i]->calculate_with_gradient_nodal(this, u, new_x, dftmp_nodal);
+                if(mpi_id == 0){
+                    this->filter->filter_gradient_nodal(dftmp_nodal, dftmp);
+                    for(size_t j = 0; j < dftmp.size(); ++j){
+                        df[j] += this->objective_weights[i]*dftmp[j];
+                    }
+                }
+            }
+        }
+    }
     MPI_Bcast(&ff, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
     if(mpi_id == 0){
         this->projection->project_gradient(dftmp, x_fil);
@@ -200,7 +253,9 @@ TopoDS_Shape MMA::optimize(FiniteElement* fem, Meshing* mesh){
 	for (iter = 0; (ch > this->xtol_abs && std::abs(ff-fnew)/ff > this->ftol_rel); ++iter){
 
         if(mpi_id == 0){
-            this->objective->update();
+            for(auto& f:this->objective){
+                f->update();
+            }
             for(auto& f:this->constraints){
                 f->update();
             }
@@ -247,12 +302,54 @@ TopoDS_Shape MMA::optimize(FiniteElement* fem, Meshing* mesh){
             this->stress_view->update_view(stress_render);
             this->viz->redraw();
         }
-        ff = this->objective->calculate_with_gradient(this, u, new_x, dftmp);
-        MPI_Bcast(&ff, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-        if(mpi_id == 0){
-            this->projection->project_gradient(dftmp, new_x);
-            this->filter->filter_gradient(dftmp, df);
+        if(this->objective.size() == 1){
+            if(this->objective[0]->filter_gradient_type() == DensityFilter::FilterGradient::ELEMENTAL){
+                ff = this->objective_weights.front()*this->objective.front()->calculate_with_gradient(this, u, new_x, dftmp);
+                if(mpi_id == 0){
+                    this->projection->project_gradient(dftmp, new_x);
+                    this->filter->filter_gradient(dftmp, df);
+                    if(this->objective_weights.front() != 1.0){
+                        for(auto& v:df){
+                            v *= this->objective_weights.front();
+                        }
+                    }
+                }
+            } else {
+                ff = this->objective_weights.front()*this->objective.front()->calculate_with_gradient_nodal(this, u, new_x, dftmp_nodal);
+                if(mpi_id == 0){
+                    this->filter->filter_gradient_nodal(dftmp_nodal, df);
+                    if(this->objective_weights.front() != 1.0){
+                        for(auto& v:df){
+                            v *= this->objective_weights.front();
+                        }
+                    }
+                }
+            }
+        } else {
+            ff = 0;
+            std::fill(df.begin(), df.end(), 0);
+            for(size_t i = 0; i < this->objective.size(); ++i){
+                if(this->objective[i]->filter_gradient_type() == DensityFilter::FilterGradient::ELEMENTAL){
+                    ff += this->objective_weights[i]*this->objective[i]->calculate_with_gradient(this, u, new_x, dftmp);
+                    if(mpi_id == 0){
+                        this->projection->project_gradient(dftmp, new_x);
+                        this->filter->filter_gradient(dftmp, df);
+                        for(size_t j = 0; j < dftmp.size(); ++j){
+                            df[j] += this->objective_weights[i]*dftmp[j];
+                        }
+                    }
+                } else {
+                    ff += this->objective_weights[i]*this->objective[i]->calculate_with_gradient_nodal(this, u, new_x, dftmp_nodal);
+                    if(mpi_id == 0){
+                        this->filter->filter_gradient_nodal(dftmp_nodal, dftmp);
+                        for(size_t j = 0; j < dftmp.size(); ++j){
+                            df[j] += this->objective_weights[i]*dftmp[j];
+                        }
+                    }
+                }
+            }
         }
+        MPI_Bcast(&ff, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
         if(M == 1){
             if(this->constraints[0]->filter_gradient_type() == DensityFilter::FilterGradient::ELEMENTAL){
                 g[0] = this->constraints[0]->calculate_with_gradient(this, u, new_x, dgtmp1)

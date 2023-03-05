@@ -570,7 +570,7 @@ std::unique_ptr<Optimizer> ProjectData::load_optimizer(const rapidjson::GenericV
         this->log_data(to, "save_result", TYPE_BOOL, true);
         this->log_data(to, "pc", TYPE_INT, true);
         this->log_data(to, "psi", TYPE_DOUBLE, true);
-        this->log_data(to, "objective", TYPE_OBJECT, true);
+        this->log_data(to, "objective", TYPE_ARRAY, true);
         this->log_data(to, "constraints", TYPE_ARRAY, true);
 
         this->density_filter = this->load_density_filter(to);
@@ -584,13 +584,15 @@ std::unique_ptr<Optimizer> ProjectData::load_optimizer(const rapidjson::GenericV
         int pc = to["pc"].GetInt();
         double psi = to["psi"].GetDouble();
 
-        std::unique_ptr<DensityBasedFunction> objective = this->get_function(to["objective"], pc, psi);
+        std::vector<std::unique_ptr<DensityBasedFunction>> objective;
+        std::vector<double> weights;
+        this->get_objective_functions(to["objective"], pc, psi, objective, weights);
         std::vector<std::unique_ptr<DensityBasedFunction>> constraints;
         std::vector<double> constraint_bounds;
 
         this->get_constraints(to["constraints"], pc, psi, constraints, constraint_bounds);
 
-        return std::make_unique<optimizer::MMA>(this->density_filter.get(), this->projection.get(), this, std::move(objective), std::move(constraints), std::move(constraint_bounds), pc, psi, rho_init, xtol_abs, ftol_rel, result_threshold, save_result);
+        return std::make_unique<optimizer::MMA>(this->density_filter.get(), this->projection.get(), this, std::move(objective), std::move(weights), std::move(constraints), std::move(constraint_bounds), pc, psi, rho_init, xtol_abs, ftol_rel, result_threshold, save_result);
     }
 
     return nullptr;
@@ -660,6 +662,14 @@ void ProjectData::get_constraints(const rapidjson::GenericValue<rapidjson::UTF8<
     for(auto& f:array){
         functions.push_back(this->get_function(f, pc, psi));
         bounds.push_back(f["less_than"].GetDouble());
+    }
+}
+
+void ProjectData::get_objective_functions(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc, double pc, double psi, std::vector<std::unique_ptr<DensityBasedFunction>>& functions, std::vector<double>& weights){
+    auto array = doc.GetArray();
+    for(auto& f:array){
+        functions.push_back(this->get_function(f, pc, psi));
+        weights.push_back(f["weight"].GetDouble());
     }
 }
 
