@@ -24,6 +24,7 @@
 #include <Eigen/src/Core/util/Constants.h>
 #include <numeric>
 #include <set>
+#include <mpich-x86_64/mpi.h>
 
 namespace function{
 
@@ -80,6 +81,13 @@ void AMSupport::initialize(const Optimizer* const op){
 }
 
 double AMSupport::calculate(const Optimizer* const op, const std::vector<double>& u, const std::vector<double>& x){
+    int mpi_id = 0;
+    MPI_Comm_rank(MPI_COMM_WORLD, &mpi_id);
+
+    if(mpi_id != 0){
+        return 0;
+    }
+
     const size_t num_nodes = mesh->elem_info->get_nodes_per_element();
     size_t N = 0;
     if(this->mesh->elem_info->get_problem_type() == utils::PROBLEM_TYPE_2D){
@@ -200,6 +208,13 @@ double AMSupport::calculate(const Optimizer* const op, const std::vector<double>
 }
 
 double AMSupport::calculate_with_gradient_nodal(const Optimizer* const op, const std::vector<double>& u, const std::vector<double>& x, std::vector<double>& grad){
+    int mpi_id = 0;
+    MPI_Comm_rank(MPI_COMM_WORLD, &mpi_id);
+
+    if(mpi_id != 0){
+        return 0;
+    }
+
     const size_t num_nodes = mesh->elem_info->get_nodes_per_element();
     size_t N = 0;
     if(this->mesh->elem_info->get_problem_type() == utils::PROBLEM_TYPE_2D){
