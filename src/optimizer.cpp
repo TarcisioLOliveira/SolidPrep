@@ -19,6 +19,10 @@
  */
 
 #include "optimizer.hpp"
+#include "function.hpp"
+
+Constraint::Constraint(std::unique_ptr<DensityBasedFunction> fun, std::vector<Type> types, std::vector<double> bounds):
+    fun(std::move(fun)), types(std::move(types)), bounds(std::move(bounds)){}
 
 void Optimizer::initialize_optimizer(const Meshing* const mesh){
     this->number_of_elements = this->get_number_of_elements(mesh->geometries);

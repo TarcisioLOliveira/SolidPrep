@@ -124,7 +124,7 @@ class ProjectData {
 
     std::unique_ptr<DensityBasedFunction> get_function(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc, double pc, double psiK);
 
-    void get_constraints(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc, double pc, double psi, std::vector<std::unique_ptr<DensityBasedFunction>>& functions, std::vector<double>& bounds);
+    void get_constraints(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc, double pc, double psi, std::vector<Constraint>& functions);
 
     void get_objective_functions(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc, double pc, double psi, std::vector<std::unique_ptr<DensityBasedFunction>>& functions, std::vector<double>& weights);
 

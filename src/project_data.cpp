@@ -587,12 +587,11 @@ std::unique_ptr<Optimizer> ProjectData::load_optimizer(const rapidjson::GenericV
         std::vector<std::unique_ptr<DensityBasedFunction>> objective;
         std::vector<double> weights;
         this->get_objective_functions(to["objective"], pc, psi, objective, weights);
-        std::vector<std::unique_ptr<DensityBasedFunction>> constraints;
-        std::vector<double> constraint_bounds;
 
-        this->get_constraints(to["constraints"], pc, psi, constraints, constraint_bounds);
+        std::vector<Constraint> constraints;
+        this->get_constraints(to["constraints"], pc, psi, constraints);
 
-        return std::make_unique<optimizer::MMA>(this->density_filter.get(), this->projection.get(), this, std::move(objective), std::move(weights), std::move(constraints), std::move(constraint_bounds), pc, psi, rho_init, xtol_abs, ftol_rel, result_threshold, save_result);
+        return std::make_unique<optimizer::MMA>(this->density_filter.get(), this->projection.get(), this, std::move(objective), std::move(weights), std::move(constraints), pc, psi, rho_init, xtol_abs, ftol_rel, result_threshold, save_result);
     }
 
     return nullptr;
@@ -657,11 +656,25 @@ std::unique_ptr<DensityBasedFunction> ProjectData::get_function(const rapidjson:
     return nullptr;
 }
 
-void ProjectData::get_constraints(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc, double pc, double psi, std::vector<std::unique_ptr<DensityBasedFunction>>& functions, std::vector<double>& bounds){
+void ProjectData::get_constraints(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc, double pc, double psi, std::vector<Constraint>& functions){
     auto array = doc.GetArray();
     for(auto& f:array){
-        functions.push_back(this->get_function(f, pc, psi));
-        bounds.push_back(f["less_than"].GetDouble());
+        std::vector<Constraint::Type> types;
+        std::vector<double> bounds;
+        if(f.HasMember("less_than")){
+            types.push_back(Constraint::Type::LESS_THAN);
+            bounds.push_back(f["less_than"].GetDouble());
+        }
+        if(f.HasMember("greater_than")){
+            types.push_back(Constraint::Type::GREATER_THAN);
+            bounds.push_back(f["greater_than"].GetDouble());
+        }
+        if(f.HasMember("equals")){
+            types.push_back(Constraint::Type::EQUAL);
+            bounds.push_back(f["equals"].GetDouble());
+        }
+
+        functions.emplace_back(this->get_function(f, pc, psi), types, bounds);
     }
 }
 

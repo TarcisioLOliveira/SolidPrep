@@ -26,6 +26,23 @@
 #include "finite_element.hpp"
 #include "visualization.hpp"
 
+class DensityBasedFunction;
+
+class Constraint{
+    public:
+    enum class Type{
+        LESS_THAN,
+        GREATER_THAN,
+        EQUAL
+    };
+
+    Constraint(std::unique_ptr<DensityBasedFunction> fun, std::vector<Type> types, std::vector<double> bounds);
+
+    std::unique_ptr<DensityBasedFunction> fun;
+    std::vector<Type> types;
+    std::vector<double> bounds;
+};
+
 class Optimizer{
     public:
     const double K_MIN = 1e-6;
