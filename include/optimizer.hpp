@@ -61,11 +61,15 @@ class Optimizer{
     inline const std::vector<double>& get_stresses() const{
         return this->stresses;
     }
+    inline const std::vector<double>& get_filtered_densities() const{
+        return this->filtered_densities;
+    }
 
     protected:
     size_t number_of_elements;
     std::vector<double> volumes;
     std::vector<double> stresses;
+    std::vector<double> filtered_densities;
 
     void initialize_optimizer(const Meshing* const mesh);
 

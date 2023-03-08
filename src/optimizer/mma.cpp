@@ -89,7 +89,9 @@ TopoDS_Shape MMA::optimize(FiniteElement* fem, Meshing* mesh){
     auto start_to = std::chrono::high_resolution_clock::now();
 
     std::vector<double> x(x_size, this->rho_init);
-    std::vector<double> x_fil(x_size, this->rho_init);
+    this->filtered_densities.resize(x_size);
+    std::fill(this->filtered_densities.begin(), this->filtered_densities.end(), this->rho_init);
+    std::vector<double>& x_fil = this->filtered_densities;
     std::vector<double> new_x(x_size, this->rho_init);
     std::vector<double> x_view(x_size_view, this->rho_init);
 
