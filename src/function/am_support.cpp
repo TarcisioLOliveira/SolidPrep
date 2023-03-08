@@ -28,8 +28,8 @@
 
 namespace function{
 
-AMSupport::AMSupport(const Meshing* const mesh, const DensityFilter* const filter, gp_Dir axis, double v_norm, double L, double beta, double angle)
-    : mesh(mesh), filter(filter), axis(axis), v_norm(v_norm), L(L), beta(beta), support_angle(angle), proj(projection::Threshold::Parameter{100, 50, 0, 0}, 0.75){}
+AMSupport::AMSupport(const Meshing* const mesh, const DensityFilter* const filter, const Projection* const global_proj, gp_Dir axis, double v_norm, double L, double beta, double angle)
+    : mesh(mesh), filter(filter), global_proj(global_proj), axis(axis), v_norm(v_norm), L(L), beta(beta), support_angle(angle), proj(projection::Threshold::Parameter{100, 50, 0, 0}, 0.75){}
 
 void AMSupport::initialize_views(Visualization* viz){
     this->shadow_view = viz->add_view("AM Supports", ViewHandler::ViewType::ELEMENTAL, ViewHandler::DataType::DENSITY);
@@ -77,6 +77,7 @@ void AMSupport::initialize(const Optimizer* const op){
     this->diff.resize(elem_num,0);
     this->Hgrad.resize(elem_num,0);
     this->gradx.resize(elem_num*N,0);
+    this->proj_grad.resize(elem_num,1);
     this->Phi = Eigen::SparseMatrix<double>(phi_size, phi_size);
 }
 
@@ -101,6 +102,13 @@ double AMSupport::calculate(const Optimizer* const op, const std::vector<double>
     std::fill(this->b.begin(), this->b.end(), 0);
     std::fill(this->b_grad.begin(), this->b_grad.end(), 0);
     this->filter->get_gradient(this->gradx);
+    std::fill(this->proj_grad.begin(), this->proj_grad.end(), 1);
+    this->global_proj->project_gradient(this->proj_grad, op->get_filtered_densities());
+    for(size_t i = 0; i < this->proj_grad.size(); ++i){
+        for(size_t j = 0; j < N; ++j){
+            this->gradx[i*N + j] *= this->proj_grad[i];
+        }
+    }
     std::vector<double> v(3,0);
     v[0] = this->axis.X();
     v[1] = this->axis.Y();
@@ -228,6 +236,13 @@ double AMSupport::calculate_with_gradient_nodal(const Optimizer* const op, const
     std::fill(this->b.begin(), this->b.end(), 0);
     std::fill(this->b_grad.begin(), this->b_grad.end(), 0);
     this->filter->get_gradient(this->gradx);
+    std::fill(this->proj_grad.begin(), this->proj_grad.end(), 1);
+    this->global_proj->project_gradient(this->proj_grad, op->get_filtered_densities());
+    for(size_t i = 0; i < this->proj_grad.size(); ++i){
+        for(size_t j = 0; j < N; ++j){
+            this->gradx[i*N + j] *= this->proj_grad[i];
+        }
+    }
     std::vector<double> v(3,0);
     v[0] = this->axis.X();
     v[1] = this->axis.Y();

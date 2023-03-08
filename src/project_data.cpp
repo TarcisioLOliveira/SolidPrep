@@ -650,7 +650,7 @@ std::unique_ptr<DensityBasedFunction> ProjectData::get_function(const rapidjson:
         auto aa = doc["axis"].GetArray();
         gp_Dir a(aa[0].GetDouble(), aa[1].GetDouble(), aa[2].GetDouble());
 
-        return std::make_unique<function::AMSupport>(this->topopt_mesher.get(), this->density_filter.get(), a, v, L, beta, (90 - angle)*M_PI/180);
+        return std::make_unique<function::AMSupport>(this->topopt_mesher.get(), this->density_filter.get(), this->projection.get(), a, v, L, beta, (90 - angle)*M_PI/180);
     }
 
     return nullptr;

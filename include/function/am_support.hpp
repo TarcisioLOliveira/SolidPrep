@@ -33,7 +33,7 @@ namespace function{
 
 class AMSupport : public DensityBasedFunction{
     public:
-    AMSupport(const Meshing* const mesh, const DensityFilter* const filter, gp_Dir axis, double v_norm, double L, double beta, double angle);
+    AMSupport(const Meshing* const mesh, const DensityFilter* const filter, const Projection* const global_proj, gp_Dir axis, double v_norm, double L, double beta, double angle);
 
     virtual ~AMSupport() = default;
 
@@ -51,6 +51,7 @@ class AMSupport : public DensityBasedFunction{
     private:
     const Meshing* const mesh;
     const DensityFilter* const filter;
+    const Projection* const global_proj;
     const gp_Dir axis;
     const double v_norm;
     const double L;
@@ -61,6 +62,7 @@ class AMSupport : public DensityBasedFunction{
     std::vector<double> diff;
     std::vector<double> Hgrad;
     std::vector<double> gradx;
+    std::vector<double> proj_grad;
     std::map<size_t, long> id_mapping;
     Eigen::SparseMatrix<double> Phi;
     Eigen::SparseLU<Eigen::SparseMatrix<double>, Eigen::COLAMDOrdering<int>> solver;
