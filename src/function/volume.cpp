@@ -66,6 +66,13 @@ double Volume::calculate(const Optimizer* const op, const std::vector<double>& u
     return V;
 }
 double Volume::calculate_with_gradient(const Optimizer* const op, const std::vector<double>& u, const std::vector<double>& x, std::vector<double>& grad){
+    (void)u;
+    int mpi_id = 0;
+    MPI_Comm_rank(MPI_COMM_WORLD, &mpi_id);
+
+    if(mpi_id != 0){
+        return 0;
+    }
     double V = 0;
     auto v = op->get_volumes();
 
