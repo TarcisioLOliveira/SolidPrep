@@ -70,6 +70,7 @@
 #include "function/radial_machining.hpp"
 #include "function/am_support.hpp"
 #include "function/mass.hpp"
+#include "function/mass_first_material.hpp"
 
 ProjectData::ProjectData(std::string project_file){
 #ifdef _WIN32
@@ -609,6 +610,8 @@ std::unique_ptr<DensityBasedFunction> ProjectData::get_function(const rapidjson:
         return std::make_unique<function::Volume>(this->topopt_mesher.get());
     } else if(type == "mass"){
         return std::make_unique<function::Mass>(this->topopt_mesher.get());
+    } else if(type == "mass_first_material"){
+        return std::make_unique<function::MassFirstMaterial>(this->topopt_mesher.get());
     } else if(type == "global_stress_pnorm_normalized"){
         this->log_data(doc, "P", TYPE_DOUBLE, true);
         this->log_data(doc, "pt", TYPE_DOUBLE, true);

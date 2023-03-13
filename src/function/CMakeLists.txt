@@ -8,6 +8,7 @@ set(SOURCES_FUNCTION
     radial_machining.cpp
     am_support.cpp
     mass.cpp
+    mass_first_material.cpp
 )
 
 add_library(function ${SOURCES_FUNCTION})
