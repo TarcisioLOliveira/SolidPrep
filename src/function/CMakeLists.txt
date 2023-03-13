@@ -7,6 +7,7 @@ set(SOURCES_FUNCTION
     global_stress_pnorm.cpp
     radial_machining.cpp
     am_support.cpp
+    mass.cpp
 )
 
 add_library(function ${SOURCES_FUNCTION})
