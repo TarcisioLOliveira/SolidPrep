@@ -49,6 +49,9 @@ class MultiMaterial{
         return this->materials.size();
     }
 
+    inline const std::vector<Material*>& get_materials() const{
+        return this->materials;
+    }
 
     private:
     const std::vector<Material*> materials;
