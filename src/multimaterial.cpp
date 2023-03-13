@@ -237,3 +237,64 @@ void MultiMaterial::get_gradD_internal(std::vector<double>::const_iterator& rho,
         }
     }
 }
+
+double MultiMaterial::get_density(std::vector<double>::const_iterator& rho, const bool has_void) const{
+    double void_rho = 1.0;
+    if(has_void){
+        void_rho = *rho;
+        ++rho;
+    }
+
+    std::vector<double> v(this->materials.size(), 0);
+    double total = 0;
+    for(size_t i = 0; i < v.size()-1; ++i){
+        total += *(rho+i);
+        v[i] = *(rho+i);
+    }
+    v[v.size()-1] = 1 - total;
+
+    rho += v.size();
+
+    double d = 0;
+    for(size_t i = 0; i < v.size(); ++i){
+        d += v[i]*this->materials[i]->density;
+    }
+
+    d *= void_rho;
+
+    return d;
+}
+
+double MultiMaterial::get_density_deriv(std::vector<double>::const_iterator& rho, const bool has_void, std::vector<double>::iterator& grad) const{
+    double void_rho = 1.0;
+    if(has_void){
+        void_rho = *rho;
+        ++rho;
+    }
+
+    std::vector<double> v(this->materials.size(), 0);
+    double total = 0;
+    for(size_t i = 0; i < v.size()-1; ++i){
+        total += *(rho+i);
+        v[i] = *(rho+i);
+    }
+    v[v.size()-1] = 1 - total;
+
+    rho += v.size();
+
+    double d = 0;
+    for(size_t i = 0; i < v.size(); ++i){
+        d += v[i]*this->materials[i]->density;
+    }
+
+    if(has_void){
+        *grad = d;
+        ++grad;
+    }
+    for(size_t i = 0; i < v.size()-1; ++i){
+        *grad = void_rho*(this->materials[i]->density - this->materials.back()->density);
+        ++grad;
+    }
+
+    return void_rho*d;
+}

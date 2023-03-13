@@ -41,6 +41,10 @@ class MultiMaterial{
 
     void get_gradD(std::vector<double>::const_iterator& rho, const bool has_void, const double p, const double p_min, const double mix, std::vector<std::vector<double>>& gradD) const;
 
+    double get_density(std::vector<double>::const_iterator& rho, const bool has_void) const;
+
+    double get_density_deriv(std::vector<double>::const_iterator& rho, const bool has_void, std::vector<double>::iterator& grad) const;
+
     inline size_t number_of_materials() const{
         return this->materials.size();
     }
