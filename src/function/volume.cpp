@@ -29,7 +29,13 @@ Volume::Volume(const Meshing* const mesh):
 
 void Volume::initialize(const Optimizer* const op){
     auto v = op->get_volumes();
-    this->max_V = std::accumulate(v.begin(), v.end(), 0);
+    auto v_it = v.cbegin();
+    for(auto& g:this->mesh->geometries){
+        if(g->do_topopt){
+            this->max_V += std::accumulate(v_it, v_it + g->mesh.size(), 0);
+        }
+        v_it += g->mesh.size();
+    }
 }
 
 double Volume::calculate(const Optimizer* const op, const std::vector<double>& u, const std::vector<double>& x){
@@ -52,9 +58,6 @@ double Volume::calculate(const Optimizer* const op, const std::vector<double>& u
             }
             x_it += g->mesh.size();
         } else {
-            for(auto vi = v_it; vi < v_it+g->mesh.size(); ++vi){
-                V += *vi;
-            }
             v_it += g->mesh.size();
         }
     }
@@ -77,9 +80,6 @@ double Volume::calculate_with_gradient(const Optimizer* const op, const std::vec
             }
             x_it += g->mesh.size();
         } else {
-            for(auto vi = v_it; vi < v_it+g->mesh.size(); ++vi){
-                V += *vi;
-            }
             v_it += g->mesh.size();
         }
     }
