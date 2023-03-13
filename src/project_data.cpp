@@ -69,6 +69,7 @@
 #include "function/global_stress_pnorm.hpp"
 #include "function/radial_machining.hpp"
 #include "function/am_support.hpp"
+#include "function/mass.hpp"
 
 ProjectData::ProjectData(std::string project_file){
 #ifdef _WIN32
@@ -606,6 +607,8 @@ std::unique_ptr<DensityBasedFunction> ProjectData::get_function(const rapidjson:
         return std::make_unique<function::Compliance>(this->topopt_mesher.get(), pc, psiK);
     } else if(type == "volume"){
         return std::make_unique<function::Volume>(this->topopt_mesher.get());
+    } else if(type == "mass"){
+        return std::make_unique<function::Mass>(this->topopt_mesher.get());
     } else if(type == "global_stress_pnorm_normalized"){
         this->log_data(doc, "P", TYPE_DOUBLE, true);
         this->log_data(doc, "pt", TYPE_DOUBLE, true);
