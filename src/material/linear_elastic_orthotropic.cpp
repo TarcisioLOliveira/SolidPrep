@@ -26,8 +26,8 @@
 
 namespace material{
 
-LinearElasticOrthotropic::LinearElasticOrthotropic(const std::string& name, std::vector<double> E, std::vector<double> nu, std::vector<double> G, std::vector<double> Smax, std::vector<double> Tmax):
-    Material(name, std::move(Smax), std::move(Tmax)){
+LinearElasticOrthotropic::LinearElasticOrthotropic(const std::string& name, const double density, std::vector<double> E, std::vector<double> nu, std::vector<double> G, std::vector<double> Smax, std::vector<double> Tmax):
+    Material(name, density, std::move(Smax), std::move(Tmax)){
    
     std::vector<double> S_2D(9); 
     S_2D[0] = 1/E[0];

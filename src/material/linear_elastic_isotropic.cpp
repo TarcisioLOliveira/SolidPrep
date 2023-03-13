@@ -24,8 +24,8 @@
 
 namespace material{
 
-LinearElasticIsotropic::LinearElasticIsotropic(const std::string& name, double E, double nu, double Smax, double Tmax, bool plane_stress):
-    Material(name, {Smax}, {Tmax}), E(E), nu(nu){
+LinearElasticIsotropic::LinearElasticIsotropic(const std::string& name, const double density, double E, double nu, double Smax, double Tmax, bool plane_stress):
+    Material(name, density, {Smax}, {Tmax}), E(E), nu(nu){
 
     this->D_2D.resize(9);
     if(plane_stress){

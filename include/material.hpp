@@ -43,7 +43,7 @@ class Material{
      * @param Smax Maximum normal stresses. Input either 1, 3 or 6 values.
      * @param Tmax Maximum shear stresses. Input either 1 or 3 values.
      */
-    Material(const std::string& name, std::vector<double> Smax, std::vector<double> Tmax);
+    Material(const std::string& name, const double density, std::vector<double> Smax, std::vector<double> Tmax);
 
     inline const std::vector<double>& stiffness_2D() const{
         return this->D_2D;
@@ -72,6 +72,7 @@ class Material{
     virtual double get_max_Von_Mises_3D() const;
 
     const std::string name;
+    const double density;
     protected:
     std::vector<double> Smax;
     std::vector<double> Tmax;

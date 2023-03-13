@@ -214,7 +214,7 @@ std::vector<std::unique_ptr<Material>> ProjectData::load_materials(const rapidjs
     for(const auto& mat:materials){
         this->log_data(mat, "type", TYPE_STRING, true);
         if(mat["type"] == "linear_elastic_orthotropic"){
-            std::vector<std::string> properties{"E", "nu", "G", "Smax", "Tmax"};
+            std::vector<std::string> properties{"density", "E", "nu", "G", "Smax", "Tmax"};
             for(auto& s:properties){
                 logger::log_assert(mat.HasMember(s.c_str()), logger::ERROR, "missing material property: {}", s);
                 logger::log_assert(mat[s.c_str()].IsArray() || mat[s.c_str()].IsDouble(), logger::ERROR, "material property {} must be either a number or an array of numbers", s);
@@ -238,6 +238,7 @@ std::vector<std::unique_ptr<Material>> ProjectData::load_materials(const rapidjs
             logger::log_assert(mat.HasMember("name"), logger::ERROR, "missing material property: name");
             logger::log_assert(mat["name"].IsString(), logger::ERROR, "material property 'name' must be a string");
             std::string name(mat["name"].GetString());
+            double density = mat["density"].GetDouble();
 
             for(auto& i:values[0]) i *= 1e3; // E
             for(auto& i:values[2]) i *= 1e3; // G
@@ -245,9 +246,9 @@ std::vector<std::unique_ptr<Material>> ProjectData::load_materials(const rapidjs
             // for(auto& i:values[2]) i *= 1e9; // G
             // for(auto& i:values[3]) i *= 1e6; // Smax
             // for(auto& i:values[4]) i *= 1e6; // Tmax
-            material.emplace_back(new material::LinearElasticOrthotropic(name, values[0], values[1], values[2], values[3], values[4]));
+            material.emplace_back(new material::LinearElasticOrthotropic(name, density, values[0], values[1], values[2], values[3], values[4]));
         } else if(mat["type"] == "linear_elastic_isotropic"){
-            std::vector<std::string> properties{"E", "nu", "Smax", "Tmax"};
+            std::vector<std::string> properties{"density", "E", "nu", "Smax", "Tmax"};
             for(auto& s:properties){
                 this->log_data(mat, s, TYPE_DOUBLE, true);
             }
@@ -256,13 +257,14 @@ std::vector<std::unique_ptr<Material>> ProjectData::load_materials(const rapidjs
             double nu = mat["nu"].GetDouble();
             double Smax = mat["Smax"].GetDouble();
             double Tmax = mat["Tmax"].GetDouble();
+            double density = mat["density"].GetDouble();
             bool plane_stress = mat["plane_stress"].GetBool();
 
             logger::log_assert(mat.HasMember("name"), logger::ERROR, "missing material property: name");
             logger::log_assert(mat["name"].IsString(), logger::ERROR, "material property 'name' must be a string");
             std::string name(mat["name"].GetString());
             //this->material.reset(new material::LinearElasticIsotropic(E*1e9, nu, Smax*1e6, Tmax*1e6, plane_stress));
-            material.emplace_back(new material::LinearElasticIsotropic(name, E*1e3, nu, Smax, Tmax, plane_stress));
+            material.emplace_back(new material::LinearElasticIsotropic(name, density, E*1e3, nu, Smax, Tmax, plane_stress));
         }
     }
 

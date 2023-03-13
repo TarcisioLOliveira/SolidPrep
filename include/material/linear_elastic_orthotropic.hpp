@@ -27,7 +27,7 @@ namespace material{
 
 class LinearElasticOrthotropic : public Material{
     public:
-    LinearElasticOrthotropic(const std::string& name, std::vector<double> E, std::vector<double> nu, std::vector<double> G, std::vector<double> Smax, std::vector<double> Tmax);
+    LinearElasticOrthotropic(const std::string& name, const double density, std::vector<double> E, std::vector<double> nu, std::vector<double> G, std::vector<double> Smax, std::vector<double> Tmax);
 
     virtual double beam_E_2D(gp_Dir d) const override;
     virtual double beam_E_3D(gp_Dir d) const override;
