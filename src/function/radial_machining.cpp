@@ -36,6 +36,7 @@ void RadialMachining::initialize_views(Visualization* viz){
 
 void RadialMachining::initialize(const Optimizer* const op){
     const size_t num_nodes = mesh->elem_info->get_nodes_per_element();
+    const size_t num_nodes_bound = mesh->elem_info->get_boundary_nodes_per_element();
     size_t N = 0;
     if(this->mesh->elem_info->get_problem_type() == utils::PROBLEM_TYPE_2D){
         N = 2;
@@ -55,13 +56,22 @@ void RadialMachining::initialize(const Optimizer* const op){
             elem_num += g->mesh.size();
         }
     }
+    for(auto& e:mesh->boundary_elements){
+        const gp_Pnt p = e.get_centroid(num_nodes_bound);
+        const gp_Vec pc(this->center, p);
+        const gp_Vec vv = pc - pc.Dot(this->axis)*this->axis;
+        const gp_Dir vn(vv);
+        if(vn.Dot(e.normal) <= 0){
+            for(size_t i = 0; i < num_nodes_bound; ++i){
+                this->id_mapping[e.nodes[i]->id] = -1;
+            }
+        }
+    }
     size_t id = 0;
-    for(auto it = this->id_mapping.begin(); it != this->id_mapping.end(); ++it){
-        if(std::find(mesh->boundary_node_list.begin(), mesh->boundary_node_list.end(), mesh->node_list[it->first].get()) == mesh->boundary_node_list.end()){
-            it->second = id;
+    for(auto& n:this->mesh->node_list){
+        if(this->id_mapping.count(n->id) && this->id_mapping.at(n->id) > -1){
+            this->id_mapping[n->id] = id;
             ++id;
-        } else {
-            it->second = -1;
         }
     }
     phi_size = id;
