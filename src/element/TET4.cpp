@@ -63,6 +63,11 @@ std::array<double, TET4::NODES_PER_ELEM*TET4::NODES_PER_ELEM> TET4::get_coeffs()
     info = LAPACKE_dgetri(LAPACK_COL_MAJOR, N, M.data(), N, ipiv.data());
     logger::log_assert(info == 0, logger::ERROR, "LAPACKE returned {} while calculating computing inverse from LU in Q4.", info);
 
+    const double V = this->get_volume(1.0);
+    for(auto& m:M){
+        m *= 6*V;
+    }
+
     return M;
 }
 
