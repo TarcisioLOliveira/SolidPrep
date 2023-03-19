@@ -22,6 +22,7 @@
 #include "logger.hpp"
 #include "utils.hpp"
 #include "project_data.hpp"
+#include <BRepBuilderAPI_Transform.hxx>
 #include <algorithm>
 #include <BRepBuilderAPI_MakeEdge.hxx>
 #include <BRepBuilderAPI_MakeVertex.hxx>
@@ -940,13 +941,22 @@ std::vector<size_t> Meshing::find_duplicates(std::unordered_map<size_t, MeshNode
     return duplicates;
 }
 
-TopoDS_Shape Meshing::make_compound(const std::vector<Geometry*>& geometries) const{
+TopoDS_Shape Meshing::make_compound(const std::vector<Geometry*>& geometries, const double scale) const{
     // Assuming linear with a single element type
     BRep_Builder builder;
     TopoDS_Compound comp;
     builder.MakeCompound(comp);
-    for(const auto& geom:geometries){
-        builder.Add(comp,geom->shape);
+    if(scale == 1.0){
+        for(const auto& geom:geometries){
+            builder.Add(comp, geom->shape);
+        }
+    } else {
+        for(const auto& geom:geometries){
+            gp_Trsf t;
+            t.SetScale(gp_Pnt(0, 0, 0), scale);
+            BRepBuilderAPI_Transform transf(geom->shape, t, true);
+            builder.Add(comp, transf.Shape());
+        }
     }
     return comp;
 }

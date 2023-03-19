@@ -439,14 +439,18 @@ std::unique_ptr<Meshing> ProjectData::load_mesher(const rapidjson::GenericValue<
         this->log_data(mesh, "element_size", TYPE_DOUBLE, true);
         size_t algorithm2D = 6;
         size_t algorithm3D = 4;
+        double tmp_scale = 1;
         if(this->log_data(mesh, "algorithm2D", TYPE_INT, false)){
             algorithm2D = mesh["algorithm2D"].GetInt();
         }
         if(this->log_data(mesh, "algorithm3D", TYPE_INT, false)){
             algorithm3D = mesh["algorithm3D"].GetInt();
         }
+        if(this->log_data(mesh, "tmp_scale", TYPE_DOUBLE, false)){
+            tmp_scale = mesh["tmp_scale"].GetDouble();
+        }
         double size = mesh["element_size"].GetDouble();
-        mesher.reset(new meshing::Gmsh(this->geometries, this->topopt_element.get(), size, this->thickness, algorithm2D, algorithm3D));
+        mesher.reset(new meshing::Gmsh(this->geometries, this->topopt_element.get(), size, this->thickness, tmp_scale, algorithm2D, algorithm3D));
     }
     return mesher;
 }

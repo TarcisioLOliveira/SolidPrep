@@ -21,6 +21,7 @@
 #include "meshing/gmsh.hpp"
 #include "logger.hpp"
 #include "utils.hpp"
+#include <BRepBuilderAPI_Transform.hxx>
 #include <cmath>
 #include <gmsh.h>
 #include <algorithm>
@@ -36,9 +37,9 @@ namespace meshing{
 
 Gmsh::Gmsh(const std::vector<std::unique_ptr<Geometry>>& geometries,
            const MeshElementFactory* const elem_type,
-           double size, double thickness, int algorithm2D, int algorithm3D):
+           double size, double thickness, double tmp_scale, int algorithm2D, int algorithm3D):
     Meshing(geometries, elem_type, thickness),
-    size(size), algorithm2D(algorithm2D), algorithm3D(algorithm3D){
+    size(tmp_scale*size), algorithm2D(algorithm2D), algorithm3D(algorithm3D), tmp_scale(tmp_scale){
 }
 
 void Gmsh::mesh(const std::vector<Force>& forces, 
@@ -47,7 +48,12 @@ void Gmsh::mesh(const std::vector<Force>& forces,
 
     bool has_condition_inside = false;
     auto problem_type = this->elem_info->get_problem_type();
-    TopoDS_Shape sh = BRepBuilderAPI_Copy(shape);
+    TopoDS_Shape sh;
+    if(this->tmp_scale == 1.0){
+        sh = BRepBuilderAPI_Copy(shape);
+    } else {
+        sh = this->make_compound(this->geometries, this->tmp_scale);
+    }
     if(problem_type == utils::PROBLEM_TYPE_2D){
         has_condition_inside = this->adapt_for_boundary_condition_inside(shape, forces, supports);
     } else {
@@ -229,12 +235,7 @@ std::unordered_map<size_t, MeshNode*> Gmsh::gmsh_meshing(bool has_condition_insi
     };
     std::set<MeshNode, decltype(node_comp)> node_set(node_comp);
     for(size_t i = 0; i < node_tags.size(); ++i){
-        gp_Pnt p(node_coords[i*3], node_coords[i*3+1], node_coords[i*3+2]);
-
-        node_set.emplace(p, node_tags[i], dof);
-    }
-    for(size_t i = 0; i < node_tags.size(); ++i){
-        gp_Pnt p(node_coords[i*3], node_coords[i*3+1], node_coords[i*3+2]);
+        gp_Pnt p(node_coords[i*3]/this->tmp_scale, node_coords[i*3+1]/this->tmp_scale, node_coords[i*3+2]/this->tmp_scale);
 
         node_set.emplace(p, node_tags[i], dof);
     }
