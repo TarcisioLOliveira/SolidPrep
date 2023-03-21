@@ -22,7 +22,7 @@
 #define EIGEN_PCG_HPP
 
 #include "finite_element.hpp"
-#include "global_stiffness_matrix/eigen_sparse_symmetric.hpp"
+#include "global_stiffness_matrix/eigen_sparse_asymmetric.hpp"
 #include <Eigen/src/Core/Matrix.h>
 
 namespace finite_element{
@@ -39,7 +39,7 @@ class EigenPCG : public FiniteElement{
     }
 
     private:
-    global_stiffness_matrix::EigenSparseSymmetric gsm;
+    global_stiffness_matrix::EigenSparseAsymmetric gsm;
     std::vector<Eigen::VectorXd> u;
 };
 

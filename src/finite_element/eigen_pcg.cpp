@@ -42,7 +42,7 @@ std::vector<double> EigenPCG::calculate_displacements(const Meshing* const mesh,
     Eigen::SparseMatrix<double>& K = this->gsm.get_K();
 
     Eigen::VectorXd f = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(load.data(), load.size());
-    Eigen::ConjugateGradient<Eigen::SparseMatrix<double>, Eigen::Upper> cg;
+    Eigen::ConjugateGradient<Eigen::SparseMatrix<double>, Eigen::Lower|Eigen::Upper> cg;
     cg.compute(K);
     if(u[current_step].size() == 0){
         u[current_step] = f;
