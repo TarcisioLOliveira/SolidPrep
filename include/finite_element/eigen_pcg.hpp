@@ -22,6 +22,7 @@
 #define EIGEN_PCG_HPP
 
 #include "finite_element.hpp"
+#include "global_stiffness_matrix/eigen_sparse_symmetric.hpp"
 #include "global_stiffness_matrix/eigen_sparse_asymmetric.hpp"
 #include <Eigen/src/Core/Matrix.h>
 

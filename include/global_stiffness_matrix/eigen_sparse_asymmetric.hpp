@@ -30,18 +30,19 @@ namespace global_stiffness_matrix{
 class EigenSparseAsymmetric{
     public:
     const double K_MIN = 1e-6;
+    typedef Eigen::SparseMatrix<double, Eigen::ColMajor, std::ptrdiff_t> Mat;
 
     virtual ~EigenSparseAsymmetric() = default;
 
     virtual void generate(const Meshing * const mesh, const std::vector<double>& density, const double pc, const double psi);
 
-    Eigen::SparseMatrix<double>& get_K() {
+    Mat& get_K() {
         return K;
     }
 
     protected:
     bool first_time = true;
-    Eigen::SparseMatrix<double> K;
+    Mat K;
     size_t W, N;
 
 

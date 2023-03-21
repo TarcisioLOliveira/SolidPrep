@@ -32,7 +32,7 @@ void EigenSparseSymmetric::generate(const Meshing* const mesh, const std::vector
     std::fill(this->K.valuePtr(), this->K.valuePtr() + this->K.nonZeros(), 0);
     if(this->first_time){
         this->calculate_dimensions(mesh, mesh->load_vector);
-        this->K = Eigen::SparseMatrix<double>(mesh->load_vector.size(), mesh->load_vector.size());
+        this->K = Mat(mesh->load_vector.size(), mesh->load_vector.size());
         this->K.reserve(Eigen::VectorXi::Constant(W, N));
     }
     if(density.size() == 0){

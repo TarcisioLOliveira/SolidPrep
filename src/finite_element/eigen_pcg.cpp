@@ -39,10 +39,10 @@ std::vector<double> EigenPCG::calculate_displacements(const Meshing* const mesh,
     if(this->current_step == 0){
         this->gsm.generate(mesh, density, pc, psi);
     }
-    Eigen::SparseMatrix<double>& K = this->gsm.get_K();
+    auto& K = this->gsm.get_K();
 
     Eigen::VectorXd f = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(load.data(), load.size());
-    Eigen::ConjugateGradient<Eigen::SparseMatrix<double>, Eigen::Lower|Eigen::Upper> cg;
+    Eigen::ConjugateGradient<global_stiffness_matrix::EigenSparseAsymmetric::Mat, Eigen::Lower|Eigen::Upper> cg;
     cg.compute(K);
     if(u[current_step].size() == 0){
         u[current_step] = f;
