@@ -36,6 +36,28 @@ find_package(MPI REQUIRED)
 find_package(MUMPS REQUIRED)
 find_package(Eigen3 REQUIRED NO_MODULE)
 
+# PkgConfig
+find_package(PkgConfig REQUIRED)
+
+# PETSc
+if (PKG_CONFIG_FOUND)
+    pkg_check_modules(PETSC PETSc REQUIRED)
+endif()
+
+# if (PETSC_FOUND)
+#     list(APPEND COMPILE_OPTIONS ${PETSC_CFLAGS})
+# 
+#     include_directories(${PETSC_INCLUDE_DIRS})
+# 
+#     set(LINK_FLAGS "${LINK_FLAGS} ${PETSC_LDFLAGS}")
+# 
+#     list(APPEND LIBRARIES ${PETSC_LINK_LIBRARIES})
+# 
+#     set(CMAKE_REQUIRED_FLAGS ${PETSC_CFLAGS})
+# 
+#     set(CMAKE_REQUIRED_INCLUDES "${PETSC_INCLUDE_DIRS}")
+# endif()
+
 if(NOT NO_OPENMP)
     find_package(OpenMP)
     if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
@@ -80,6 +102,7 @@ include_directories(
     ${MPI_INCLUDE_PATH}
     ${MUMPS_INCLUDE_DIRS}
     ${Eigen3_INCLUDE_DIR}
+    ${PETSC_INCLUDE_DIRS}
 )
    
 add_subdirectory(src)
