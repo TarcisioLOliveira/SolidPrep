@@ -6,6 +6,7 @@ set(SOURCES_FINITE_ELEMENT
     PCG.cpp
     mumps_solver.cpp
     eigen_pcg.cpp
+    petsc_pcg.cpp
 )
 
 add_library(finite_element ${SOURCES_FINITE_ELEMENT})

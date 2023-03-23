@@ -26,6 +26,7 @@
 #include "sizing/beam_sizing.hpp"
 #include "utils.hpp"
 #include <gmsh.h>
+#include <petsc.h>
 #include <ratio>
 #include <set>
 #include "meshing/gmsh.hpp"
@@ -47,6 +48,8 @@ int main(int argc, char* argv[]){
     
     int mpi_id = 0;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi_id);
+
+    PetscInitialize(&argc, &argv, NULL, NULL);
 
     if(mpi_id == 0){
         Eigen::initParallel();
