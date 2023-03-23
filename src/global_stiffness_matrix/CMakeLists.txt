@@ -5,6 +5,7 @@ set(SOURCES_GLOBAL_STIFFNESS_MATRIX
     mumps_sparse_symmetric.cpp
     eigen_sparse_symmetric.cpp
     eigen_sparse_asymmetric.cpp
+    petsc_sparse_symmetric.cpp
 )
 
 add_library(global_stiffness_matrix ${SOURCES_GLOBAL_STIFFNESS_MATRIX})
