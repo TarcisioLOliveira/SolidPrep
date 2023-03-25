@@ -199,6 +199,8 @@ int main(int argc, char* argv[]){
     // Finalize MPI objects before MPI
     proj.reset(nullptr);
 
+    PetscFinalize();
+
     MPI_Finalize();
 
     return 0;

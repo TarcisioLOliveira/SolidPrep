@@ -18,6 +18,7 @@
  *
  */
 
+#include <mpich-x86_64/mpi.h>
 #include "global_stiffness_matrix/petsc_sparse_symmetric.hpp"
 #include "logger.hpp"
 
@@ -33,23 +34,35 @@ PETScSparseSymmetric::~PETScSparseSymmetric(){
 }
 
 void PETScSparseSymmetric::generate(const Meshing* const mesh, const std::vector<double>& density, const double pc, const double psi){
-    logger::quick_log("Generating stiffness matrix...");
+    int mpi_id = 0;
+    MPI_Comm_rank(MPI_COMM_WORLD, &mpi_id);
+
+    if(mpi_id == 0){
+        logger::quick_log("Generating stiffness matrix...");
+    }
+
     if(first_time){
         MatCreate(PETSC_COMM_WORLD, &this->K);
         MatSetType(this->K, MATMPIAIJ);
-        MatSetSizes(this->K, PETSC_DECIDE, PETSC_DECIDE, mesh->load_vector.size(), mesh->load_vector.size());
+
+        long M = mesh->load_vector.size();
+        MPI_Bcast(&M, 1, MPI_LONG, 0, MPI_COMM_WORLD);
+
+        MatSetSizes(this->K, PETSC_DECIDE, PETSC_DECIDE, M, M);
         MatSetOption(this->K, MAT_SPD, PETSC_TRUE);
 
         Mat tmp;
         MatCreate(PETSC_COMM_WORLD, &tmp);
         MatSetType(tmp, MATPREALLOCATOR);
-        MatSetSizes(tmp, PETSC_DECIDE, PETSC_DECIDE, mesh->load_vector.size(), mesh->load_vector.size());
+        MatSetSizes(tmp, PETSC_DECIDE, PETSC_DECIDE, M, M);
         MatSetOption(tmp, MAT_SPD, PETSC_TRUE);
         MatSetUp(tmp);
 
-        std::swap(tmp, K);
-        this->fill_matrix(mesh, density, pc, psi);
-        std::swap(tmp, K);
+        if(mpi_id == 0){
+            std::swap(tmp, K);
+            this->fill_matrix(mesh, density, pc, psi);
+            std::swap(tmp, K);
+        }
 
         MatAssemblyBegin(tmp, MAT_FINAL_ASSEMBLY);
         MatAssemblyEnd(tmp, MAT_FINAL_ASSEMBLY);
@@ -66,11 +79,15 @@ void PETScSparseSymmetric::generate(const Meshing* const mesh, const std::vector
         MatZeroEntries(this->K);
     }
 
-    this->fill_matrix(mesh, density, pc, psi);
+    if(mpi_id == 0){
+        this->fill_matrix(mesh, density, pc, psi);
+    }
 
     MatAssemblyBegin(this->K, MAT_FINAL_ASSEMBLY);
     MatAssemblyEnd(this->K, MAT_FINAL_ASSEMBLY);
-    logger::quick_log("Done.");
+    if(mpi_id == 0){
+        logger::quick_log("Done.");
+    }
 }
 
 void PETScSparseSymmetric::add_geometry(const Meshing* const mesh, const Geometry* const g){

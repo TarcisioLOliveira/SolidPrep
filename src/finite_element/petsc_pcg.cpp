@@ -38,30 +38,37 @@ PETScPCG::~PETScPCG(){
 
 std::vector<double> PETScPCG::calculate_displacements(const Meshing* const mesh, std::vector<double> load, const std::vector<double>& density, double pc, double psi){
     int mpi_id = 0;
+    int mpi_size = 0;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi_id);
+    MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
 
-    if(mpi_id != 0){
-        return std::vector<double>();
+    if(mpi_id == 0){
+        if(this->indices.size() == 0){
+            indices.resize(load.size());
+            std::iota(indices.begin(), indices.end(), 0);
+        }
     }
-
-    if(this->indices.size() == 0){
-        indices.resize(load.size());
-        std::iota(indices.begin(), indices.end(), 0);
-    }
-
     if(this->current_step == 0){
         this->gsm.generate(mesh, density, pc, psi);
     }
 
+    long M = load.size();
+    MPI_Bcast(&M, 1, MPI_LONG, 0, MPI_COMM_WORLD);
     if(this->first_time){
-        VecCreate(PETSC_COMM_WORLD, &this->u[0]);
+        // DMDACreate1d(PETSC_COMM_WORLD, DM_BOUNDARY_NONE, M, 1, 1, NULL, &this->dm);
+        // DMSetVecType(this->dm, VECSTANDARD);
+        // DMSetUp(this->dm);
+
+        VecCreateMPI(PETSC_COMM_WORLD, PETSC_DECIDE, M, &this->u[0]);
         VecSetType(this->u[0], VECSTANDARD);
-        VecSetSizes(this->u[0], PETSC_DECIDE, load.size());
+        //VecSetSizes(this->u[0], PETSC_DECIDE, M);
+        //DMCreateGlobalVector(this->dm, &this->u[0]);
         VecSetUp(this->u[0]);
 
-        VecCreate(PETSC_COMM_WORLD, &this->f);
+        VecCreateMPI(PETSC_COMM_WORLD, PETSC_DECIDE, M, &this->f);
         VecSetType(this->f, VECSTANDARD);
-        VecSetSizes(this->f, PETSC_DECIDE, load.size());
+        //VecSetSizes(this->f, PETSC_DECIDE, M);
+        //DMCreateGlobalVector(this->dm, &this->f);
         VecSetUp(this->f);
 
         KSPCreate(PETSC_COMM_WORLD, &this->ksp);
@@ -76,14 +83,17 @@ std::vector<double> PETScPCG::calculate_displacements(const Meshing* const mesh,
     }
 
     if(this->u[current_step] == 0){
-        VecCreate(PETSC_COMM_WORLD, &this->u[current_step]);
+        VecCreateMPI(PETSC_COMM_WORLD, PETSC_DECIDE, M, &this->u[current_step]);
         VecSetType(this->u[current_step], VECSTANDARD);
-        VecSetSizes(this->u[current_step], PETSC_DECIDE, load.size());
+        //VecSetSizes(this->u[current_step], PETSC_DECIDE, load.size());
+        //DMCreateGlobalVector(this->dm, &this->u[current_step]);
         VecSetUp(this->u[current_step]);
     }
 
     auto K = this->gsm.get_K();
-    VecSetValues(this->f, load.size(), indices.data(), load.data(), INSERT_VALUES);
+    if(mpi_id == 0){
+        VecSetValues(this->f, load.size(), indices.data(), load.data(), INSERT_VALUES);
+    }
 
     VecAssemblyBegin(this->u[current_step]);
     VecAssemblyEnd(this->u[current_step]);
@@ -102,7 +112,23 @@ std::vector<double> PETScPCG::calculate_displacements(const Meshing* const mesh,
 
     VecGetArrayRead(u[current_step], &load_data);
 
-    std::copy(load_data, load_data+load.size(), load.begin());
+    if(mpi_size > 1){
+        if(mpi_id == 0){
+            std::copy(load_data, load_data + M, load.begin());
+            double* load_data2;
+            for(int i = 1; i < mpi_size; ++i){
+                MPI_Status mpi_status;
+                MPI_Recv(load_data2, M, MPI_DOUBLE, i, 111, MPI_COMM_WORLD, &mpi_status);
+                for(long j = 0; j < M; ++j){
+                    load[j] += load_data2[j];
+                }
+            }
+        } else {
+            MPI_Send(load_data, M, MPI_DOUBLE, 0, 111, MPI_COMM_WORLD);
+        }
+    } else {
+        std::copy(load_data, load_data + M, load.begin());
+    }
 
     VecRestoreArrayRead(u[current_step], &load_data);
 
