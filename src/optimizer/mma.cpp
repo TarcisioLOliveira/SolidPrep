@@ -21,6 +21,7 @@
 #include "optimizer/mma.hpp"
 #include "logger.hpp"
 #include "optimization/MMASolver.hpp"
+#include "project_data.hpp"
 #include <chrono>
 #include <mpich-x86_64/mpi.h>
 
@@ -577,11 +578,12 @@ TopoDS_Shape MMA::optimize(FiniteElement* fem, Meshing* mesh){
         auto to_duration = std::chrono::duration_cast<std::chrono::seconds>(stop_to-start_to);
         double to_time = to_duration.count();
         double it_time = to_time/iter;
+        logger::quick_log("Time (topology optimization): ", to_time, " seconds");
         logger::quick_log("Time per iteration (topology optimization): ", it_time, " seconds");
         logger::quick_log("Number of iterations (topology optimization): ", iter);
 
         if(this->save_result){
-            return this->make_shape(new_x, mesh->geometries, this->result_threshold);
+            return this->make_shape(new_x, mesh->geometries, this->result_threshold, this->data->type);
         }
     }
 

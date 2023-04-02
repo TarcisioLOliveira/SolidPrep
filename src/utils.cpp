@@ -46,6 +46,7 @@
 #include <lapacke.h>
 #include <STEPCAFControl_Reader.hxx>
 #include <BRepBuilderAPI_Transform.hxx>
+#include <BOPAlgo_BOP.hxx>
 
 namespace utils{
 
@@ -149,8 +150,9 @@ TopoDS_Shape cut_shape(const TopoDS_Shape& base, const TopoDS_Shape& cutter){
     cut.SetArguments(shapes1);
     cut.SetNonDestructive(false);
     cut.SimplifyResult();
-    cut.SetRunParallel(false);
+    cut.SetRunParallel(true);
     cut.Build();
+    //BRepAlgoAPI_Cut cut(base, cutter);
     return cut.Shape();
 }
 

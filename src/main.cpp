@@ -39,6 +39,8 @@
 #include <mpich-x86_64/mpi.h>
 #include <cblas.h>
 #include <Eigen/Core>
+#include <Message.hxx>
+#include <Message_PrinterOStream.hxx>
 
 int main(int argc, char* argv[]){
     MPI_Init(NULL, NULL);
@@ -57,6 +59,8 @@ int main(int argc, char* argv[]){
         logger::log_assert(argc > 1, logger::ERROR, "missing path to configuration file.");
     }
     double size_time = 0;
+
+    Message::DefaultMessenger()->RemovePrinters(STANDARD_TYPE(Message_PrinterOStream));
 
     // Load project file
     std::unique_ptr<ProjectData> proj(std::make_unique<ProjectData>(argv[1]));
@@ -179,6 +183,8 @@ int main(int argc, char* argv[]){
             double total_time = total_duration.count()/60.0;
             auto mesh_duration = std::chrono::duration_cast<std::chrono::seconds>(stop_mesh-start_mesh);
             double mesh_time = mesh_duration.count()/60.0;
+
+            utils::shape_to_file("result.step", result);
 
             logger::quick_log("Sizing time: ", size_time, " minutes");
             logger::quick_log("Topology optimization time (including preparations for TO): ", to_time+mesh_time, " minutes");

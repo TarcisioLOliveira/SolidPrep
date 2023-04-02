@@ -24,6 +24,7 @@
 #include <BRepBuilderAPI_Copy.hxx>
 #include <TopoDS_Shape.hxx>
 #include "finite_element.hpp"
+#include "utils.hpp"
 #include "visualization.hpp"
 
 class DensityBasedFunction;
@@ -73,10 +74,15 @@ class Optimizer{
 
     void initialize_optimizer(const Meshing* const mesh);
 
-    TopoDS_Shape make_shape(const std::vector<double>& x, const std::vector<Geometry*>& geometries, const double result_threshold) const;
+    TopoDS_Shape make_shape(const std::vector<double>& x, const std::vector<Geometry*>& geometries, const double result_threshold, const utils::ProblemType type) const;
     void get_stresses(const std::vector<Geometry*> geometries, const std::vector<double>& u, const std::vector<double>& x, std::vector<double>& stresses, double pc, double psi) const;
     void get_volumes(const std::vector<Geometry*> geometries, const double thickness, std::vector<double>& volumes) const;
     size_t get_number_of_elements(const std::vector<Geometry*> geometries) const;
+
+    // Workaround for make_shape with 3D shapes because for some reason cutting
+    // does not work when using 3D shapes except if I turn it into STEP and
+    // back into TopoDS_Shape.
+    TopoDS_Shape STEP_workaround(const TopoDS_Shape& s) const;
 
     void apply_densities(const std::vector<Geometry*> geometries, const std::vector<double>& x, std::vector<double>& vals, const double pc = 1.0) const;
 };

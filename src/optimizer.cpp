@@ -20,6 +20,15 @@
 
 #include "optimizer.hpp"
 #include "function.hpp"
+#include "logger.hpp"
+#include "utils.hpp"
+#include <BRepBuilderAPI_Transform.hxx>
+#include <GProp_GProps.hxx>
+#include <Interface_Static.hxx>
+#include <STEPControl_Reader.hxx>
+#include <TopExp_Explorer.hxx>
+#include <BRepGProp.hxx>
+#include <GProp_GProps.hxx>
 
 Constraint::Constraint(std::unique_ptr<DensityBasedFunction> fun, std::vector<Type> types, std::vector<double> bounds):
     fun(std::move(fun)), types(std::move(types)), bounds(std::move(bounds)){}
@@ -32,20 +41,101 @@ void Optimizer::initialize_optimizer(const Meshing* const mesh){
     this->get_volumes(mesh->geometries, mesh->thickness, this->volumes);
 }
 
-TopoDS_Shape Optimizer::make_shape(const std::vector<double>& x, const std::vector<Geometry*>& geometries, const double result_threshold) const{
+TopoDS_Shape Optimizer::STEP_workaround(const TopoDS_Shape& s) const{
+    STEPControl_Writer writer;
+    STEPControl_StepModelType mode = STEPControl_AsIs;
+    Interface_Static::SetIVal("write.surfacecurve.mode",0);
+    writer.PrintStatsTransfer(0, 0);
+    writer.PrintStatsTransfer(1, 0);
+    writer.PrintStatsTransfer(2, 0);
+    writer.PrintStatsTransfer(3, 0);
+    writer.PrintStatsTransfer(4, 0);
+    writer.PrintStatsTransfer(5, 0);
+    IFSelect_ReturnStatus stat = writer.Transfer(s,mode);
+    (void) stat;
+    auto ws = writer.WS();
+    STEPControl_Reader reader(ws, false);
+
+    Standard_Integer NbRoots = reader.NbRootsForTransfer();
+    Standard_Integer num = reader.TransferRoots();
+    (void) NbRoots;
+    (void) num;
+    return reader.OneShape();
+}
+
+TopoDS_Shape Optimizer::make_shape(const std::vector<double>& x, const std::vector<Geometry*>& geometries, const double result_threshold, const utils::ProblemType type) const{
     logger::quick_log(" "); 
     logger::quick_log("Saving resulting geometries...");
     // TODO: make it work with multiple geometries
     std::cout << "\r" << 0 << "%         ";
     TopoDS_Shape result = BRepBuilderAPI_Copy(geometries[0]->shape);
-    for(size_t i = 0; i < x.size(); ++i){
-        if(x[i] >= result_threshold){
-            result = utils::cut_shape(result, geometries[0]->mesh[i]->get_shape());
+
+    if(type == utils::PROBLEM_TYPE_2D){
+        for(size_t i = 0; i < x.size(); ++i){
+            if(x[i] < result_threshold){
+                TopoDS_Shape s(geometries[0]->mesh[i]->get_shape());
+                result = utils::cut_shape(result, s);
+            }
+            const double pc = i/(double)(x.size()-1);
+            std::cout << "\r" << pc*100 << "%         ";
         }
-        double pc = i/(double)(x.size()-1);
-        std::cout << "\r" << pc*100 << "%         ";
+    } else if(type == utils::PROBLEM_TYPE_3D){
+        for(size_t i = 0; i < x.size(); ++i){
+            if(x[i] < result_threshold){
+                TopoDS_Shape s(geometries[0]->mesh[i]->get_shape());
+                auto ss = STEP_workaround(s);
+
+                // result = utils::cut_shape(result, ss);
+                TopoDS_Shape cur_shape;
+                double cur_mass = 0;
+
+                TopExp_Explorer exp(result, TopAbs_SHAPE);
+                if(exp.More()){
+                    for(; exp.More(); exp.Next()){
+                        auto cur = exp.Current();
+                        GProp_GProps props;
+                        BRepGProp::SurfaceProperties(cur, props);
+                        if(props.Mass() > cur_mass){
+                            cur_mass = props.Mass();
+                          cur_shape = cur;
+                        }
+                        break;
+                    }
+                    auto test = utils::cut_shape(cur_shape, ss);
+                    if(test.IsNull()){
+                        result = utils::cut_shape(result, ss);
+                    } else {
+                        result = test;
+                    }
+                } else {
+                    result = utils::cut_shape(result, ss);
+                }
+            }
+            const double pc = i/(double)(x.size()-1);
+            std::cout << "\r" << pc*100 << "%         ";
+        }
+
+        // Another workaround.
+        // When using solids, BRepAlgoAPI_Cut sometimes only cuts the faces,
+        // leaving the solid part in place, but separate from the remaining
+        // solid. Therefore, at the end of the process, extract the result
+        // geometry by finding the solid with the greatest mass (assuming
+        // it remains completely united, of course).
+        TopoDS_Shape cur_shape;
+        double cur_mass = 0;
+
+        for(TopExp_Explorer exp(result, TopAbs_SOLID); exp.More(); exp.Next()){
+            auto cur = exp.Current();
+            GProp_GProps props;
+            BRepGProp::VolumeProperties(cur, props);
+            if(props.Mass() > cur_mass){
+                cur_mass = props.Mass();
+                cur_shape = cur;
+            }
+        }
+        result = cur_shape;
     }
-    result = utils::cut_shape(geometries[0]->shape, result);
+
     std::cout << "\r" << 100 << "%         ";
     logger::quick_log(" "); 
     return result;

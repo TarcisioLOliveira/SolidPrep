@@ -640,17 +640,22 @@ class MeshElementCommon3DTet : public MeshElementCommon3D<T>{
         const TopoDS_Edge e1 = BRepBuilderAPI_MakeEdge(v1, v2);
         const TopoDS_Edge e2 = BRepBuilderAPI_MakeEdge(v1, v3);
         const TopoDS_Edge e3 = BRepBuilderAPI_MakeEdge(v1, v4);
+
+        const TopoDS_Edge e12 = BRepBuilderAPI_MakeEdge(v2, v1);
+        const TopoDS_Edge e22 = BRepBuilderAPI_MakeEdge(v3, v1);
+        const TopoDS_Edge e32 = BRepBuilderAPI_MakeEdge(v4, v1);
+
         const TopoDS_Edge e4 = BRepBuilderAPI_MakeEdge(v2, v3);
         const TopoDS_Edge e5 = BRepBuilderAPI_MakeEdge(v3, v4);
         const TopoDS_Edge e6 = BRepBuilderAPI_MakeEdge(v4, v2);
 
-        const TopoDS_Wire w1 = BRepBuilderAPI_MakeWire(e1, e4, e2);
+        const TopoDS_Wire w1 = BRepBuilderAPI_MakeWire(e1, e4, e22);
         const TopoDS_Face f1 = BRepBuilderAPI_MakeFace(w1);
 
-        const TopoDS_Wire w2 = BRepBuilderAPI_MakeWire(e2, e5, e3);
+        const TopoDS_Wire w2 = BRepBuilderAPI_MakeWire(e2, e5, e32);
         const TopoDS_Face f2 = BRepBuilderAPI_MakeFace(w2);
 
-        const TopoDS_Wire w3 = BRepBuilderAPI_MakeWire(e3, e6, e1);
+        const TopoDS_Wire w3 = BRepBuilderAPI_MakeWire(e3, e6, e12);
         const TopoDS_Face f3 = BRepBuilderAPI_MakeFace(w3);
 
         const TopoDS_Wire w4 = BRepBuilderAPI_MakeWire(e4, e5, e6);
@@ -665,7 +670,9 @@ class MeshElementCommon3DTet : public MeshElementCommon3D<T>{
         sew.Perform();
         const TopoDS_Shell s = TopoDS::Shell(sew.SewedShape());
 
-        return BRepBuilderAPI_MakeSolid(s);
+        TopoDS_Solid so = BRepBuilderAPI_MakeSolid(s);
+
+        return so;
     }
 };
 
