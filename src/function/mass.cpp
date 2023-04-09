@@ -51,6 +51,7 @@ double Mass::calculate(const Optimizer* const op, const std::vector<double>& u, 
             }
         }
     }
+    V *= 1e3;
     V /= 1e9;
 
     return V;
@@ -77,6 +78,7 @@ double Mass::calculate_with_gradient(const Optimizer* const op, const std::vecto
             }
         }
     }
+    V *= 1e3;
     V /= 1e9;
 
     return V;

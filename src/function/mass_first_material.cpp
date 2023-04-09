@@ -64,6 +64,7 @@ double MassFirstMaterial::calculate(const Optimizer* const op, const std::vector
             v_it += g->mesh.size();
         }
     }
+    V *= 1e3;
     V /= 1e9;
 
     return V;
@@ -95,6 +96,7 @@ double MassFirstMaterial::calculate_with_gradient(const Optimizer* const op, con
             v_it += g->mesh.size();
         }
     }
+    V *= 1e3;
     V /= 1e9;
 
     return V;
