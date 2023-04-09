@@ -29,6 +29,7 @@
 #include <TopExp_Explorer.hxx>
 #include <BRepGProp.hxx>
 #include <GProp_GProps.hxx>
+#include <TopoDS_Builder.hxx>
 
 Constraint::Constraint(std::unique_ptr<DensityBasedFunction> fun, std::vector<Type> types, std::vector<double> bounds):
     fun(std::move(fun)), types(std::move(types)), bounds(std::move(bounds)){}
@@ -68,9 +69,9 @@ TopoDS_Shape Optimizer::make_shape(const std::vector<double>& x, const std::vect
     logger::quick_log("Saving resulting geometries...");
     // TODO: make it work with multiple geometries
     std::cout << "\r" << 0 << "%         ";
-    TopoDS_Shape result = BRepBuilderAPI_Copy(geometries[0]->shape);
 
     if(type == utils::PROBLEM_TYPE_2D){
+        TopoDS_Shape result = BRepBuilderAPI_Copy(geometries[0]->shape);
         for(size_t i = 0; i < x.size(); ++i){
             if(x[i] < result_threshold){
                 TopoDS_Shape s(geometries[0]->mesh[i]->get_shape());
@@ -79,66 +80,73 @@ TopoDS_Shape Optimizer::make_shape(const std::vector<double>& x, const std::vect
             const double pc = i/(double)(x.size()-1);
             std::cout << "\r" << pc*100 << "%         ";
         }
+        std::cout << "\r" << 100 << "%         ";
+        logger::quick_log(" "); 
+        return result;
     } else if(type == utils::PROBLEM_TYPE_3D){
+        TopoDS_Compound result;
+        TopoDS_Builder builder;
+        builder.MakeCompound(result);
         for(size_t i = 0; i < x.size(); ++i){
-            if(x[i] < result_threshold){
+            if(x[i] >= result_threshold){
                 TopoDS_Shape s(geometries[0]->mesh[i]->get_shape());
-                auto ss = STEP_workaround(s);
+                builder.Add(result, s);
+                // auto ss = STEP_workaround(s);
 
-                // result = utils::cut_shape(result, ss);
-                TopoDS_Shape cur_shape;
-                double cur_mass = 0;
+                // // result = utils::cut_shape(result, ss);
+                // TopoDS_Shape cur_shape;
+                // double cur_mass = 0;
 
-                TopExp_Explorer exp(result, TopAbs_SHAPE);
-                if(exp.More()){
-                    for(; exp.More(); exp.Next()){
-                        auto cur = exp.Current();
-                        GProp_GProps props;
-                        BRepGProp::SurfaceProperties(cur, props);
-                        if(props.Mass() > cur_mass){
-                            cur_mass = props.Mass();
-                          cur_shape = cur;
-                        }
-                        break;
-                    }
-                    auto test = utils::cut_shape(cur_shape, ss);
-                    if(test.IsNull()){
-                        result = utils::cut_shape(result, ss);
-                    } else {
-                        result = test;
-                    }
-                } else {
-                    result = utils::cut_shape(result, ss);
-                }
+                // TopExp_Explorer exp(result, TopAbs_SHAPE);
+                // if(exp.More()){
+                //     for(; exp.More(); exp.Next()){
+                //         auto cur = exp.Current();
+                //         GProp_GProps props;
+                //         BRepGProp::SurfaceProperties(cur, props);
+                //         if(props.Mass() > cur_mass){
+                //             cur_mass = props.Mass();
+                //           cur_shape = cur;
+                //         }
+                //         break;
+                //     }
+                //     auto test = utils::cut_shape(cur_shape, ss);
+                //     if(test.IsNull()){
+                //         result = utils::cut_shape(result, ss);
+                //     } else {
+                //         result = test;
+                //     }
+                // } else {
+                //     result = utils::cut_shape(result, ss);
+                // }
             }
             const double pc = i/(double)(x.size()-1);
             std::cout << "\r" << pc*100 << "%         ";
         }
 
-        // Another workaround.
-        // When using solids, BRepAlgoAPI_Cut sometimes only cuts the faces,
-        // leaving the solid part in place, but separate from the remaining
-        // solid. Therefore, at the end of the process, extract the result
-        // geometry by finding the solid with the greatest mass (assuming
-        // it remains completely united, of course).
-        TopoDS_Shape cur_shape;
-        double cur_mass = 0;
+        // // Another workaround.
+        // // When using solids, BRepAlgoAPI_Cut sometimes only cuts the faces,
+        // // leaving the solid part in place, but separate from the remaining
+        // // solid. Therefore, at the end of the process, extract the result
+        // // geometry by finding the solid with the greatest mass (assuming
+        // // it remains completely united, of course).
+        // TopoDS_Shape cur_shape;
+        // double cur_mass = 0;
 
-        for(TopExp_Explorer exp(result, TopAbs_SOLID); exp.More(); exp.Next()){
-            auto cur = exp.Current();
-            GProp_GProps props;
-            BRepGProp::VolumeProperties(cur, props);
-            if(props.Mass() > cur_mass){
-                cur_mass = props.Mass();
-                cur_shape = cur;
-            }
-        }
-        result = cur_shape;
+        // for(TopExp_Explorer exp(result, TopAbs_SOLID); exp.More(); exp.Next()){
+        //     auto cur = exp.Current();
+        //     GProp_GProps props;
+        //     BRepGProp::VolumeProperties(cur, props);
+        //     if(props.Mass() > cur_mass){
+        //         cur_mass = props.Mass();
+        //         cur_shape = cur;
+        //     }
+        // }
+        // result = cur_shape;
+        std::cout << "\r" << 100 << "%         ";
+        logger::quick_log(" "); 
+        return result;
     }
-
-    std::cout << "\r" << 100 << "%         ";
-    logger::quick_log(" "); 
-    return result;
+    return TopoDS_Shape();
 }
 
 void Optimizer::get_stresses(const std::vector<Geometry*> geometries, const std::vector<double>& u, const std::vector<double>& x, std::vector<double>& stresses, double pc, double psi) const{
