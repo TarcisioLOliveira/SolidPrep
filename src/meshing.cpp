@@ -603,15 +603,25 @@ void Meshing::prune(const std::vector<Force>& forces,
         size_t N = this->elem_info->get_nodes_per_element();
         auto r = rho.begin();
         for(const auto& g:this->geometries){
-            for(const auto& e:g->mesh){
-                if(*r >= threshold){
+            if(g->do_topopt){
+                for(const auto& e:g->mesh){
+                    if(*r >= threshold){
+                        list.emplace_back();
+                        for(size_t i = 0; i < N; ++i){
+                            auto& n = e->nodes[i];
+                            list.back().nodes.push_back(static_cast<MeshNode*>(n));
+                        }
+                    }
+                    ++r;
+                }
+            } else {
+                for(const auto& e:g->mesh){
                     list.emplace_back();
                     for(size_t i = 0; i < N; ++i){
                         auto& n = e->nodes[i];
                         list.back().nodes.push_back(static_cast<MeshNode*>(n));
                     }
                 }
-                ++r;
             }
             geom_elem_mapping.push_back(list.size());
         }
