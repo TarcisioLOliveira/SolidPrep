@@ -43,8 +43,6 @@ class PETScPCG : public FiniteElement{
     global_stiffness_matrix::PETScSparseSymmetric gsm;
     std::vector<Vec> u;
     Vec f = 0;
-    DM dm = 0;
-    std::vector<long> indices;
     PC pc = 0;
     KSP ksp = 0;
     bool first_time = true;

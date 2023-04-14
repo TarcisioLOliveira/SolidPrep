@@ -42,30 +42,28 @@ std::vector<double> PETScPCG::calculate_displacements(const Meshing* const mesh,
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi_id);
     MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
 
-    if(mpi_id == 0){
-        if(this->indices.size() == 0){
-            indices.resize(load.size());
-            std::iota(indices.begin(), indices.end(), 0);
-        }
-    }
     if(this->current_step == 0){
         this->gsm.generate(mesh, density, pc, psi);
     }
 
+    auto K = this->gsm.get_K();
+
     long M = load.size();
+    long n = 0, m = 0;
+    MatGetLocalSize(K, &n, &m);
     MPI_Bcast(&M, 1, MPI_LONG, 0, MPI_COMM_WORLD);
     if(this->first_time){
         // DMDACreate1d(PETSC_COMM_WORLD, DM_BOUNDARY_NONE, M, 1, 1, NULL, &this->dm);
         // DMSetVecType(this->dm, VECSTANDARD);
         // DMSetUp(this->dm);
 
-        VecCreateMPI(PETSC_COMM_WORLD, PETSC_DECIDE, M, &this->u[0]);
+        VecCreateMPI(PETSC_COMM_WORLD, m, M, &this->u[0]);
         VecSetType(this->u[0], VECSTANDARD);
         //VecSetSizes(this->u[0], PETSC_DECIDE, M);
         //DMCreateGlobalVector(this->dm, &this->u[0]);
         VecSetUp(this->u[0]);
 
-        VecCreateMPI(PETSC_COMM_WORLD, PETSC_DECIDE, M, &this->f);
+        VecCreateMPI(PETSC_COMM_WORLD, m, M, &this->f);
         VecSetType(this->f, VECSTANDARD);
         //VecSetSizes(this->f, PETSC_DECIDE, M);
         //DMCreateGlobalVector(this->dm, &this->f);
@@ -83,17 +81,31 @@ std::vector<double> PETScPCG::calculate_displacements(const Meshing* const mesh,
     }
 
     if(this->u[current_step] == 0){
-        VecCreateMPI(PETSC_COMM_WORLD, PETSC_DECIDE, M, &this->u[current_step]);
+        VecCreateMPI(PETSC_COMM_WORLD, m, M, &this->u[current_step]);
         VecSetType(this->u[current_step], VECSTANDARD);
         //VecSetSizes(this->u[current_step], PETSC_DECIDE, load.size());
         //DMCreateGlobalVector(this->dm, &this->u[current_step]);
         VecSetUp(this->u[current_step]);
     }
 
-    auto K = this->gsm.get_K();
-    if(mpi_id == 0){
-        VecSetValues(this->f, load.size(), indices.data(), load.data(), INSERT_VALUES);
+    if(mpi_id != 0){
+        load.resize(M);
     }
+    MPI_Bcast(load.data(), load.size(), MPI_DOUBLE, 0, MPI_COMM_WORLD);
+
+    long begin = 0, end = 0;
+    VecGetOwnershipRange(this->f, &begin, &end);
+
+    double* f_data = nullptr;
+    VecGetArray(this->f, &f_data);
+    for(auto d = 0; d < end - begin; ++d){
+        *(f_data+d) = load[begin+d];
+    }
+    VecRestoreArray(this->f, &f_data);
+
+    // if(mpi_id == 0){
+    //     VecSetValues(this->f, load.size(), indices.data(), load.data(), INSERT_VALUES);
+    // }
 
     VecAssemblyBegin(this->u[current_step]);
     VecAssemblyEnd(this->u[current_step]);
@@ -101,10 +113,12 @@ std::vector<double> PETScPCG::calculate_displacements(const Meshing* const mesh,
     VecAssemblyBegin(this->f);
     VecAssemblyEnd(this->f);
 
-    KSPSetOperators(this->ksp, K, K);
+    if(current_step == 0){
+        KSPSetOperators(this->ksp, K, K);
 
-    KSPSetUp(this->ksp);
-    PCSetUp(this->pc);
+        KSPSetUp(this->ksp);
+        PCSetUp(this->pc);
+    }
 
     KSPSolve(this->ksp, this->f, this->u[current_step]);
 
@@ -114,23 +128,31 @@ std::vector<double> PETScPCG::calculate_displacements(const Meshing* const mesh,
 
     if(mpi_size > 1){
         if(mpi_id == 0){
-            std::copy(load_data, load_data + M, load.begin());
-            double* load_data2;
+            std::fill(load.begin(), load.end(), 0);
+            std::copy(load_data, load_data + m, load.begin());
+            std::vector<double> load_data2(2*m,0);
+            long l = 0;
+            long step = m;
             for(int i = 1; i < mpi_size; ++i){
                 MPI_Status mpi_status;
-                MPI_Recv(load_data2, M, MPI_DOUBLE, i, 111, MPI_COMM_WORLD, &mpi_status);
-                for(long j = 0; j < M; ++j){
-                    load[j] += load_data2[j];
+                MPI_Recv(&l, 1, MPI_DOUBLE, i, 111, MPI_COMM_WORLD, &mpi_status);
+                MPI_Recv(load_data2.data(), l, MPI_DOUBLE, i, 111, MPI_COMM_WORLD, &mpi_status);
+                for(long j = 0; j < m; ++j){
+                    load[j+step] += load_data2[j];
                 }
+                step += l;
             }
         } else {
-            MPI_Send(load_data, M, MPI_DOUBLE, 0, 111, MPI_COMM_WORLD);
+            long l = end - begin;
+            MPI_Send(&l, 1, MPI_DOUBLE, 0, 111, MPI_COMM_WORLD);
+            MPI_Send(load_data, m, MPI_DOUBLE, 0, 111, MPI_COMM_WORLD);
         }
     } else {
         std::copy(load_data, load_data + M, load.begin());
     }
+    MPI_Barrier(MPI_COMM_WORLD);
 
-    VecRestoreArrayRead(u[current_step], &load_data);
+    VecRestoreArrayRead(this->u[current_step], &load_data);
 
     this->current_step = (this->current_step + 1) % this->steps;
    
