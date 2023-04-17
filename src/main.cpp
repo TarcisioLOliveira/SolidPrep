@@ -184,7 +184,9 @@ int main(int argc, char* argv[]){
             auto mesh_duration = std::chrono::duration_cast<std::chrono::seconds>(stop_mesh-start_mesh);
             double mesh_time = mesh_duration.count()/60.0;
 
-            utils::shape_to_file("result.step", result);
+            if(result != TopoDS_Shape()){
+                utils::shape_to_file("result.step", result);
+            }
 
             logger::quick_log("Sizing time: ", size_time, " minutes");
             logger::quick_log("Topology optimization time (including preparations for TO): ", to_time+mesh_time, " minutes");
