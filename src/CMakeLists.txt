@@ -34,12 +34,14 @@ add_subdirectory(projection)
 add_subdirectory(global_stiffness_matrix)
 add_subdirectory(function)
 add_subdirectory(optimizer)
+add_subdirectory(general_global_matrix)
+add_subdirectory(general_solver)
 
 add_executable(${PROJECT_NAME} ${SOURCES})
 
 target_link_libraries(${PROJECT_NAME} PUBLIC sizing pathfinding 
 #    topology_optimization 
-    finite_element meshing element material optimization density_filter projection global_stiffness_matrix function optimizer utils ${GMSH_LIB} ${OpenCASCADE_LIBRARIES} ${LAPACKE_LIBRARIES} cblas ${BLAS_LIBRARIES} ${LAPACKE_LIBRARIES} ${PETSC_LINK_LIBRARIES} ${MPI_LIBRARIES} MUMPS::MUMPS Eigen3::Eigen Threads::Threads)
+    finite_element meshing element material optimization density_filter projection global_stiffness_matrix function optimizer general_solver general_global_matrix utils ${GMSH_LIB} ${OpenCASCADE_LIBRARIES} ${LAPACKE_LIBRARIES} cblas ${BLAS_LIBRARIES} ${LAPACKE_LIBRARIES} ${PETSC_LINK_LIBRARIES} ${MPI_LIBRARIES} MUMPS::MUMPS Eigen3::Eigen Threads::Threads)
 
 if(OpenMP_CXX_FOUND)
     target_link_libraries(${PROJECT_NAME} PUBLIC OpenMP::OpenMP_CXX OpenMP::OpenMP_C OpenMP::OpenMP_Fortran)
