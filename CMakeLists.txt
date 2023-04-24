@@ -92,7 +92,7 @@ endif()
 include_directories(
     ${PROJECT_SOURCE_DIR}/include
     SYSTEM
-    ${PROJECT_SOURCE_DIR}/rapidjson/include
+    ${PROJECT_SOURCE_DIR}/modules/rapidjson/include
     ${OpenCASCADE_INCLUDE_DIR}
     ${LAPACK_INCLUDE_DIR}
     ${BLAS_INCLUDE_DIR}
@@ -104,5 +104,5 @@ include_directories(
     ${Eigen3_INCLUDE_DIR}
     ${PETSC_INCLUDE_DIRS}
 )
-   
+
 add_subdirectory(src)
