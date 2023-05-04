@@ -42,6 +42,8 @@ class Q4 : public MeshElementCommon2DQuad<Q4>{
     static const size_t BOUNDARY_NODES_PER_ELEM = 2;
     static const size_t BOUNDARY_GMSH_TYPE = 1;
 
+    static const spview::defs::ElementType SPVIEW_CODE = spview::defs::Q4;
+
     Q4(ElementShape s);
 
     virtual std::vector<double> get_k(const std::vector<double>& D, const double t) const override;

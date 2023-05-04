@@ -24,6 +24,7 @@
 #include "element.hpp"
 #include "element/beam_linear_2D.hpp"
 #include "utils.hpp"
+#include "spview.hpp"
 #include <vector>
 
 class ProjectData;
@@ -77,6 +78,7 @@ class MeshElementFactory{
     inline virtual size_t get_element_order() const = 0;
     inline virtual utils::ProblemType get_problem_type() const = 0;
     inline virtual Element::Shape get_shape_type() const = 0;
+    inline virtual spview::defs::ElementType get_spview_code() const = 0;
 
     // Boundary information
     inline virtual size_t get_boundary_nodes_per_element() const = 0;
@@ -121,6 +123,9 @@ class MeshElementFactoryImpl : public MeshElementFactory{
     }
     inline size_t get_boundary_gmsh_element_type() const override{
         return T::BOUNDARY_GMSH_TYPE;
+    }
+    inline spview::defs::ElementType get_spview_code() const override{
+        return T::SPVIEW_CODE;
     }
 };
 

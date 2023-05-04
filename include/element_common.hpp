@@ -39,6 +39,7 @@
 #include "element.hpp"
 #include "logger.hpp"
 #include "utils.hpp"
+#include "spview.hpp"
 
 template<class T>
 class MeshElementCommon : public MeshElement{

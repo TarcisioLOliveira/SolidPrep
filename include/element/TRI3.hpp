@@ -41,7 +41,7 @@ class TRI3 : public MeshElementCommon2DTri<TRI3>{
     static const size_t BOUNDARY_NODES_PER_ELEM = 2;
     static const size_t BOUNDARY_GMSH_TYPE = 1;
 
-    static const utils::ProblemType PROBLEM_TYPE = utils::PROBLEM_TYPE_2D;
+    static const spview::defs::ElementType SPVIEW_CODE = spview::defs::TRI3;
 
     TRI3(ElementShape s);
 

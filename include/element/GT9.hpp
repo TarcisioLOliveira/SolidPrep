@@ -41,6 +41,8 @@ class GT9 : public MeshElementCommon2DTri<GT9>{
     static const size_t BOUNDARY_NODES_PER_ELEM = 2;
     static const size_t BOUNDARY_GMSH_TYPE = 1;
 
+    static const spview::defs::ElementType SPVIEW_CODE = spview::defs::TRI3;
+
     GT9(ElementShape s);
 
     virtual std::vector<double> get_k(const std::vector<double>& D, const double t) const override;

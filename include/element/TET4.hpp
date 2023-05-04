@@ -42,6 +42,8 @@ class TET4 : public MeshElementCommon3DTet<TET4>{
     static const size_t BOUNDARY_NODES_PER_ELEM = 3;
     static const size_t BOUNDARY_GMSH_TYPE = 2;
 
+    static const spview::defs::ElementType SPVIEW_CODE = spview::defs::TET4;
+
     TET4(ElementShape s);
 
     virtual std::vector<double> get_k(const std::vector<double>& D, const double t) const override;
