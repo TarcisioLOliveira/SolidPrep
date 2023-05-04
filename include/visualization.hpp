@@ -24,33 +24,28 @@
 #include <vector>
 #include "element.hpp"
 #include "meshing.hpp"
-#include <gmsh.h>
 #include "utils.hpp"
 #include "view_handler.hpp"
+#include "spview.hpp"
 
 class Visualization{
     public:
-
-    inline void start() const {gmsh::initialize();}
+    Visualization();
 
     void load_mesh(Meshing* mesh, utils::ProblemType type);
-    ViewHandler* add_view(const std::string& view_name, ViewHandler::ViewType view_type, ViewHandler::DataType data_type);
+    ViewHandler* add_view(const std::string& view_name, spview::defs::ViewType view_type, spview::defs::DataType data_type);
 
-    void show();
-    inline void hide(){
-        this->shown = false;
-    }
-    inline void redraw() const{
-        if(this->shown){
-            gmsh::graphics::draw();
-        }
+    inline void start(){
+        this->server.start();
     }
 
-    void wait();
+    inline void wait(){
+        this->server.wait();
+    }
+
     inline void end(){
         this->handler_list.clear();
-        this->hide();
-        gmsh::finalize();
+        this->server.close_client();
     }
 
     private:
@@ -60,7 +55,15 @@ class Visualization{
     int mesh_tag = 0;
     int last_view_tag = 0;
     utils::ProblemType type = utils::PROBLEM_TYPE_2D;
+    spview::Server server;
     std::vector<std::unique_ptr<ViewHandler>> handler_list;
+
+    inline std::string server_name() const{
+        srand(std::time(nullptr));
+        return "SolidPrep" + std::to_string(rand());
+    }
+
+    size_t get_number_of_material_colors() const;
 };
 
 #endif

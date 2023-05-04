@@ -20,18 +20,15 @@
 
 #include "view_handler.hpp"
 
-ViewHandler::ViewHandler(const Meshing* const mesh, const std::string& model_name, const std::string& view_name, const ViewType view_type, const DataType data_type, utils::ProblemType problem_type, const size_t view_id)
-    : model_name(model_name), view_type(view_type), data_type(data_type), view_id(view_id), mesh(mesh),
+ViewHandler::ViewHandler(const Meshing* const mesh, spview::Server* server, const std::string& view_name, const spview::defs::ViewType view_type, const spview::defs::DataType data_type, utils::ProblemType problem_type, const size_t view_id)
+    : view_type(view_type), data_type(data_type), view_id(view_id), mesh(mesh),
       elem_num(this->get_number_of_elements()),
       node_num(this->get_number_of_nodes()),
       mat_color_num(this->get_number_of_material_colors()),
-      problem_type(problem_type){
+      problem_type(problem_type),
+      server(server){
 
-    gmsh::view::add(view_name, view_id);
-    if((this->mat_color_num == 2 && data_type == MATERIAL) || data_type == DENSITY){
-        gmsh::view::option::setNumber(view_id, "ColormapNumber", 9); //grayscale
-        gmsh::view::option::setNumber(view_id, "ColormapInvert", 1.0); //inverted
-    }
+    this->server->add_view(view_type, data_type, view_name);
 }
 
 
@@ -41,12 +38,12 @@ void ViewHandler::update_view(const std::vector<double>& data, const std::vector
     }
     std::vector<size_t> tags;
     // All geometries
-    if(geometries.size() == 0 && this->view_type == ELEMENTAL){ // Default
+    if(geometries.size() == 0 && this->view_type == spview::defs::ELEMENTAL){ // Default
         tags.resize(this->elem_num);
-        std::iota(tags.begin(), tags.end(), 1);
-    } else if(this->view_type == ELEMENTAL){ // Elemental with select geometries
+        std::iota(tags.begin(), tags.end(), 0);
+    } else if(this->view_type == spview::defs::ELEMENTAL){ // Elemental with select geometries
         size_t size_offset = 0;
-        size_t tag_offset = 1;
+        size_t tag_offset = 0;
         for(size_t i = 0; i < this->mesh->geometries.size(); ++i){
             const auto pos = std::find(geometries.begin(), geometries.end(), i);
             const auto size = this->mesh->geometries.size();
@@ -59,22 +56,22 @@ void ViewHandler::update_view(const std::vector<double>& data, const std::vector
         }
     } else { // Not elemental
         tags.resize(this->node_num);
-        std::iota(tags.begin(), tags.end(), 1);
+        std::iota(tags.begin(), tags.end(), 0);
     }
 
     // Elemental view shouldn't really be used for displacement
-    if(this->view_type == ELEMENTAL && (this->data_type == STRESS || this->data_type == OTHER)){
-        this->update_elemental(data, tags);
-    } else if(this->view_type == NODAL && (this->data_type == STRESS || this->data_type == OTHER)){
-        this->update_nodal(data, tags);
-    } else if(this->view_type == TENSOR && (this->data_type == STRESS || this->data_type == OTHER)){
-        this->update_tensor(data, tags);
-    } else if(this->data_type == DENSITY){
+    if(this->view_type == spview::defs::ELEMENTAL && (this->data_type == spview::defs::STRESS || this->data_type == spview::defs::OTHER)){
+        this->server->update_data(this->view_id, tags, data);
+    } else if(this->view_type == spview::defs::NODAL && (this->data_type == spview::defs::STRESS || this->data_type == spview::defs::OTHER)){
+        this->server->update_data(this->view_id, tags, data);
+    } else if(this->view_type == spview::defs::TENSOR && (this->data_type == spview::defs::STRESS || this->data_type == spview::defs::OTHER)){
+        this->server->update_data(this->view_id, tags, data);
+    } else if(this->data_type == spview::defs::DENSITY){
         if(this->mesh->geometries.size() == 1){
-            if(view_type == ELEMENTAL){
-                this->update_elemental(data, tags);
-            } else if(view_type == NODAL){
-                this->update_nodal(data, tags);
+            if(view_type == spview::defs::ELEMENTAL){
+                this->server->update_data(this->view_id, tags, data);
+            } else if(view_type == spview::defs::NODAL){
+                this->server->update_data(this->view_id, tags, data);
             }
         } else {
             std::vector<double> mat(tags.size(), 1.0);
@@ -89,15 +86,15 @@ void ViewHandler::update_view(const std::vector<double>& data, const std::vector
                     }
                 }
             }
-            if(view_type == ELEMENTAL){
-                this->update_elemental(mat, tags);
-            } else if(view_type == NODAL){
-                this->update_nodal(mat, tags);
+            if(view_type == spview::defs::ELEMENTAL){
+                this->server->update_data(this->view_id, tags, mat);
+            } else if(view_type == spview::defs::NODAL){
+                this->server->update_data(this->view_id, tags, mat);
             }
         }
-    } else if(this->view_type == ELEMENTAL && this->data_type == MATERIAL){
+    } else if(this->view_type == spview::defs::ELEMENTAL && this->data_type == spview::defs::MATERIAL){
         if(this->mat_color_num == 2){
-            this->update_elemental(data, tags);
+            this->server->update_data(this->view_id, tags, data);
         } else {
             std::vector<double> mat(tags.size());
             double cur_mat = 0.0;
@@ -119,11 +116,11 @@ void ViewHandler::update_view(const std::vector<double>& data, const std::vector
             } else {
                 // TODO
             }
-            this->update_elemental(mat, tags);
+            this->server->update_data(this->view_id, tags, mat);
         }
-    } else if(this->view_type == NODAL && this->data_type == MATERIAL){
+    } else if(this->view_type == spview::defs::NODAL && this->data_type == spview::defs::MATERIAL){
         if(this->mat_color_num == 2){
-            this->update_nodal(data, tags);
+            this->server->update_data(this->view_id, tags, data);
         } else {
             std::vector<double> mat(tags.size());
             double cur_mat = 0.0;
@@ -145,9 +142,9 @@ void ViewHandler::update_view(const std::vector<double>& data, const std::vector
             } else {
                 // TODO
             }
-            this->update_nodal(mat, tags);
+            this->server->update_data(this->view_id, tags, mat);
         }
-    } else if(this->data_type == DISPLACEMENT){ // Can only be VECTOR
+    } else if(this->data_type == spview::defs::DISPLACEMENT){ // Can only be VECTOR
         std::vector<double> vecs;
         vecs.reserve(tags.size()*3);
         if(this->problem_type == utils::PROBLEM_TYPE_2D){
@@ -174,15 +171,15 @@ void ViewHandler::update_view(const std::vector<double>& data, const std::vector
                 }
             }
         }
-        this->update_vector(vecs, tags);
-    } else if(this->view_type == VECTOR && this->data_type == OTHER){
-        this->update_vector(data, tags);
+        this->server->update_data(this->view_id, tags, vecs);
+    } else if(this->view_type == spview::defs::VECTOR && this->data_type == spview::defs::OTHER){
+        this->server->update_data(this->view_id, tags, data);
     }
 }
 
 size_t ViewHandler::get_number_of_elements() const{
     size_t elem_num = 0;
-    if(this->view_type == ELEMENTAL){
+    if(this->view_type == spview::defs::ELEMENTAL){
         for(const auto& g:this->mesh->geometries){
             elem_num += g->mesh.size();
         }
@@ -191,7 +188,7 @@ size_t ViewHandler::get_number_of_elements() const{
 }
 size_t ViewHandler::get_number_of_nodes() const{
     size_t node_num = 0;
-    if(this->view_type != ELEMENTAL){
+    if(this->view_type != spview::defs::ELEMENTAL){
         if(this->mesh->node_list.size() > 0){
             node_num = this->mesh->node_list.size();
         } else {

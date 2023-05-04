@@ -18,6 +18,7 @@
  *
  */
 
+#include <bits/chrono.h>
 #include <iostream>
 #include <STEPCAFControl_Writer.hxx>
 #include <STEPControl_StepModelType.hxx>
@@ -33,14 +34,17 @@
 #include "finite_element/direct_solver.hpp"
 #include "visualization.hpp"
 #include "topology_optimization/minimal_volume.hpp"
+#include <string>
 #include <thread>
 #include "sizing/standard_sizing.hpp"
 #include <chrono>
 #include <mpich-x86_64/mpi.h>
 #include <cblas.h>
+#include <time.h>
 #include <Eigen/Core>
 #include <Message.hxx>
 #include <Message_PrinterOStream.hxx>
+#include "spview.hpp"
 
 int main(int argc, char* argv[]){
     MPI_Init(NULL, NULL);
@@ -57,7 +61,10 @@ int main(int argc, char* argv[]){
         Eigen::initParallel();
 
         logger::log_assert(argc > 1, logger::ERROR, "missing path to configuration file.");
+
     }
+    Visualization v;
+
     double size_time = 0;
 
     Message::DefaultMessenger()->RemovePrinters(STANDARD_TYPE(Message_PrinterOStream));
@@ -68,6 +75,7 @@ int main(int argc, char* argv[]){
 
     auto start_sizing = std::chrono::high_resolution_clock::now();
     if(mpi_id == 0){
+        v.start();
         if(proj->analysis == ProjectData::COMPLETE || proj->analysis == ProjectData::BEAMS_ONLY){
             shape = proj->sizer->run();
             auto stop_sizing = std::chrono::high_resolution_clock::now();
@@ -132,40 +140,28 @@ int main(int argc, char* argv[]){
             logger::quick_log("");
 
             // Display results
-            Visualization v;
-            v.start();
             v.load_mesh(proj->topopt_mesher.get(), proj->type);
 
-            auto stressview_VM = v.add_view("Von Mises Stress",       ViewHandler::ViewType::ELEMENTAL, ViewHandler::DataType::STRESS);
-            auto stressview_X  = v.add_view("Normal Stress (X axis)", ViewHandler::ViewType::ELEMENTAL, ViewHandler::DataType::STRESS);
-            auto stressview_Y  = v.add_view("Normal Stress (Y axis)", ViewHandler::ViewType::ELEMENTAL, ViewHandler::DataType::STRESS);
-            auto stressview_XY = v.add_view("Shear Stress",           ViewHandler::ViewType::ELEMENTAL, ViewHandler::DataType::STRESS);
+            auto stressview_VM = v.add_view("Von Mises Stress",       spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::STRESS);
+            auto stressview_X  = v.add_view("Normal Stress (X axis)", spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::STRESS);
+            auto stressview_Y  = v.add_view("Normal Stress (Y axis)", spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::STRESS);
+            auto stressview_XY = v.add_view("Shear Stress",           spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::STRESS);
 
             stressview_VM->update_view(stresses);
             stressview_X ->update_view(stressesX);
             stressview_Y ->update_view(stressesY);
             stressview_XY->update_view(stressesXY);
-            v.show();
             v.wait();
             v.end();
         }
     } else if(proj->analysis == ProjectData::OPTIMIZE_ONLY || proj->analysis == ProjectData::COMPLETE){
 
-        Visualization v;
-        std::thread t;
         if(mpi_id == 0){
             // Display progress
-            v.start();
             v.load_mesh(proj->topopt_mesher.get(), proj->type);
 
             //proj->topopt->initialize_views(&v);
             proj->optimizer->initialize_views(&v);
-
-            v.show();
-            auto f = [&](){
-              v.wait();
-            };
-            t = std::thread(f);
         }
 
         auto start_to = std::chrono::high_resolution_clock::now();
@@ -196,8 +192,6 @@ int main(int argc, char* argv[]){
             logger::quick_log("Finished.");
 
             //t.join();
-            v.hide();
-            v.show();
             v.wait();
 
             v.end();

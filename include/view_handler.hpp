@@ -22,28 +22,14 @@
 #define VIEW_HANDLER_HPP
 
 #include "meshing.hpp"
-#include <gmsh.h>
+#include "spview.hpp"
 #include <string>
 #include <vector>
 
 class ViewHandler{
     public:
-    enum ViewType{
-        ELEMENTAL,
-        NODAL,
-        VECTOR,
-        TENSOR
-    };
 
-    enum DataType{
-        STRESS,
-        MATERIAL,
-        DISPLACEMENT,
-        DENSITY,
-        OTHER
-    };
-
-    ViewHandler(const Meshing* const mesh, const std::string& model_name, const std::string& view_name, const ViewType view_type, const DataType data_type, utils::ProblemType problem_type, const size_t view_id);
+    ViewHandler(const Meshing* const mesh, spview::Server* server, const std::string& view_name, const spview::defs::ViewType view_type, const spview::defs::DataType data_type, utils::ProblemType problem_type, const size_t view_id);
     ~ViewHandler(){
         this->remove_view();
     }
@@ -58,13 +44,12 @@ class ViewHandler{
     }
     inline void remove_view() const{
         if(!this->removed){
-            gmsh::view::remove(view_id);
+            this->server->remove_view(this->view_id);
         }
     }
 
-    const std::string model_name;
-    const ViewType view_type;
-    const DataType data_type;
+    const spview::defs::ViewType view_type;
+    const spview::defs::DataType data_type;
 
     private:
     const size_t view_id;
@@ -73,27 +58,14 @@ class ViewHandler{
     const size_t node_num;
     const size_t mat_color_num;
     utils::ProblemType problem_type;
+    spview::Server* const server;
+
     bool removed = false;
 
     size_t get_number_of_elements() const;
     size_t get_number_of_nodes() const;
     size_t get_number_of_material_colors() const;
 
-    inline void update_elemental(const std::vector<double>& data, const std::vector<size_t>& tags) const{
-        this->gmsh_update_view(data, tags, 1, "ElementData");
-    }
-    inline void update_vector(const std::vector<double>& data, const std::vector<size_t>& tags) const{
-        this->update_nodal(data, tags, 3);
-    }
-    inline void update_tensor(const std::vector<double>& data, const std::vector<size_t>& tags) const{
-        this->update_nodal(data, tags, 9);
-    }
-    inline void update_nodal(const std::vector<double>& data, const std::vector<size_t>& tags, const int num_components = 1) const{
-        this->gmsh_update_view(data, tags, num_components, "NodeData");
-    }
-    inline void gmsh_update_view(const std::vector<double>& data, const std::vector<size_t>& tags, const int num_components, const std::string& data_type) const{
-        gmsh::view::addHomogeneousModelData(this->view_id, 0, this->model_name, data_type, tags, data, 0, num_components);
-    }
 };
 
 
