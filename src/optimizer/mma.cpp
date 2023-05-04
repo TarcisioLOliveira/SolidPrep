@@ -163,7 +163,6 @@ TopoDS_Shape MMA::optimize(FiniteElement* fem, Meshing* mesh){
 
         this->density_view->update_view(x_view);
         this->stress_view->update_view(stress_render);
-        this->viz->redraw();
     }
     if(this->objective.size() == 1){
         if(this->objective[0]->filter_gradient_type() == DensityFilter::FilterGradient::ELEMENTAL){
@@ -389,7 +388,6 @@ TopoDS_Shape MMA::optimize(FiniteElement* fem, Meshing* mesh){
 
             this->density_view->update_view(x_view);
             this->stress_view->update_view(stress_render);
-            this->viz->redraw();
         }
         if(this->objective.size() == 1){
             if(this->objective[0]->filter_gradient_type() == DensityFilter::FilterGradient::ELEMENTAL){
