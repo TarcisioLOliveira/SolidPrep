@@ -61,7 +61,7 @@ void RadialMachining::initialize(const Optimizer* const op){
         const gp_Vec pc(this->center, p);
         const gp_Vec vv = pc - pc.Dot(this->axis)*this->axis;
         const gp_Dir vn(vv);
-        if(vn.Dot(e.normal) <= 0){
+        if(vn.Dot(e.normal) > 0){
             for(size_t i = 0; i < num_nodes_bound; ++i){
                 this->id_mapping[e.nodes[i]->id] = -1;
             }
