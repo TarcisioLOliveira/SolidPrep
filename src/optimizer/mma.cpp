@@ -34,8 +34,8 @@ MMA::MMA(DensityFilter* filter, Projection* projection, ProjectData* data, std::
 void MMA::initialize_views(Visualization* viz){
     this->viz = viz;
 
-    this->stress_view = viz->add_view("Von Mises Stress", ViewHandler::ViewType::ELEMENTAL, ViewHandler::DataType::STRESS);
-    this->density_view = viz->add_view("Elemental Density", ViewHandler::ViewType::ELEMENTAL, ViewHandler::DataType::DENSITY);
+    this->stress_view = viz->add_view("Von Mises Stress", spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::STRESS);
+    this->density_view = viz->add_view("Elemental Density", spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::DENSITY);
 
     for(auto& f:this->objective){
         f->initialize_views(viz);

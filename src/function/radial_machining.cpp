@@ -31,7 +31,7 @@ RadialMachining::RadialMachining(const Meshing* const mesh, const DensityFilter*
     : mesh(mesh), filter(filter), center(center), axis(axis), v_norm(v_norm), L(L), beta(beta), proj(projection::Threshold::Parameter{50, 50, 0, 0}, 0.65){}
 
 void RadialMachining::initialize_views(Visualization* viz){
-    this->shadow_view = viz->add_view("Shadows", ViewHandler::ViewType::ELEMENTAL, ViewHandler::DataType::DENSITY);
+    this->shadow_view = viz->add_view("Shadows", spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::DENSITY);
 }
 
 void RadialMachining::initialize(const Optimizer* const op){

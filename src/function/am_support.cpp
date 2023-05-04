@@ -32,7 +32,7 @@ AMSupport::AMSupport(const Meshing* const mesh, const DensityFilter* const filte
     : mesh(mesh), filter(filter), global_proj(global_proj), axis(axis), v_norm(v_norm), L(L), beta(beta), support_angle(angle), proj(projection::Threshold::Parameter{100, 50, 0, 0}, 0.75){}
 
 void AMSupport::initialize_views(Visualization* viz){
-    this->shadow_view = viz->add_view("AM Supports", ViewHandler::ViewType::ELEMENTAL, ViewHandler::DataType::DENSITY);
+    this->shadow_view = viz->add_view("AM Supports", spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::DENSITY);
 }
 
 void AMSupport::initialize(const Optimizer* const op){
