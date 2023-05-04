@@ -89,10 +89,13 @@ else()
     message(WARNING "IPO/LTO is not supported: ${output}")
 endif()
 
+add_subdirectory(modules/SPView)
+
 include_directories(
     ${PROJECT_SOURCE_DIR}/include
     SYSTEM
     ${PROJECT_SOURCE_DIR}/modules/rapidjson/include
+    ${PROJECT_SOURCE_DIR}/modules/SPView/include
     ${OpenCASCADE_INCLUDE_DIR}
     ${LAPACK_INCLUDE_DIR}
     ${BLAS_INCLUDE_DIR}
