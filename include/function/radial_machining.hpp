@@ -27,13 +27,14 @@
 #include "function.hpp"
 #include "meshing.hpp"
 #include "density_filter.hpp"
+#include "projection/heaviside.hpp"
 #include "projection/threshold.hpp"
 
 namespace function{
 
 class RadialMachining : public DensityBasedFunction{
     public:
-    RadialMachining(const Meshing* const mesh, const DensityFilter* const filter, gp_Pnt center, gp_Dir axis, double v_norm, double L, double beta);
+    RadialMachining(const Meshing* const mesh, const DensityFilter* const filter, gp_Pnt center, gp_Dir axis, double v_norm, double beta);
 
     virtual ~RadialMachining() = default;
 
@@ -54,7 +55,6 @@ class RadialMachining : public DensityBasedFunction{
     const gp_Pnt center;
     const gp_Dir axis;
     const double v_norm;
-    const double L;
     const double beta;
     Eigen::VectorXd b;
     Eigen::VectorXd b_grad;
@@ -63,9 +63,20 @@ class RadialMachining : public DensityBasedFunction{
     std::map<size_t, long> id_mapping;
     Eigen::SparseMatrix<double> Phi;
     Eigen::SparseLU<Eigen::SparseMatrix<double>, Eigen::COLAMDOrdering<int>> solver;
-    projection::Threshold proj;
+    projection::Heaviside proj;
     bool first_time = true;
     ViewHandler* shadow_view = nullptr;
+    ViewHandler* shadow_view_continuous = nullptr;
+    ViewHandler* grad_view = nullptr;
+
+    inline double heaviside(const double x, const double b, const double eta){
+        return 1.0/(1.0+std::exp(-2*b*(x - eta)));
+    }
+    inline double heaviside_grad(const double x, const double b, const double eta){
+        const double s = 1.0/(1.0+std::exp(-2*b*(x - eta)));
+        const double ds = s*(1.0-s)*(2*b);
+        return ds;
+    }
 };
 
 }

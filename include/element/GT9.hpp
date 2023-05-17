@@ -49,7 +49,7 @@ class GT9 : public MeshElementCommon2DTri<GT9>{
     virtual std::vector<double> helmholtz_tensor(const double t, const double r) const override;
     virtual std::vector<double> helmholtz_vector(const double t) const override;
     virtual std::vector<double> get_nodal_density_gradient(gp_Pnt p) const override;
-    virtual std::vector<double> get_phi_radial(const double t, const double beta, const double l, const std::vector<double>& v, const double dv, const double rho) const override;
+    virtual std::vector<double> get_phi_radial(const double t, const double beta, const double vp, const std::vector<double>& v, const double dv, const double rho) const override;
     virtual std::vector<double> get_phi_grad(const double t, const double beta) const override;
     virtual std::vector<double> get_phi_unidirectional(const double t, const double beta, const double l, const std::vector<double>& v, const double vn) const override;
 

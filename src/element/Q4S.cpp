@@ -322,39 +322,42 @@ std::vector<double> Q4S::get_Nf(const double t, const std::vector<gp_Pnt>& point
     return Nf;
 }
 
-std::vector<double> Q4S::get_phi_radial(const double t, const double beta, const double l, const std::vector<double>& v, const double dv, const double rho) const{
+std::vector<double> Q4S::get_phi_radial(const double t, const double beta, const double vp, const std::vector<double>& v, const double dv, const double rho) const{
+    const double vn = std::sqrt(v[0]*v[0] + v[1]*v[1] + 1e-6);
+    const double ax = std::sqrt(1e-6 + v[0]*v[0]);
+    const double ay = std::sqrt(1e-6 + v[1]*v[1]);
     std::vector<double> phi{
-    t*(-3*a*a*l*l + a*b*(-4*a*b*beta*rho + 4*a*b*dv - 3*a*l*v[1] - 3*b*l*v[0]) - 3*b*b*l*l)/(9*a*b)
+    t*(3*a*a*ay*vn + a*b*(4*a*b*beta*rho + 4*a*b*dv*vp - 3*a*v[1]*vp - 3*b*v[0]*vp) + 3*ax*b*b*vn)/(9*a*b)
     ,
-    t*(-3*a*a*l*l + a*b*(-4*a*b*beta*rho + 4*a*b*dv - 3*a*l*v[1] + 6*b*l*v[0]) + 6*b*b*l*l)/(18*a*b)
+    t*(3*a*a*ay*vn + a*b*(4*a*b*beta*rho + 4*a*b*dv*vp - 3*a*v[1]*vp + 6*b*v[0]*vp) - 6*ax*b*b*vn)/(18*a*b)
     ,
-    t*(3*a*a*l*l + a*b*(-2*a*b*beta*rho + 2*a*b*dv + 3*a*l*v[1] + 3*b*l*v[0]) + 3*b*b*l*l)/(18*a*b)
+    t*(-3*a*a*ay*vn + a*b*(2*a*b*beta*rho + 2*a*b*dv*vp + 3*a*v[1]*vp + 3*b*v[0]*vp) - 3*ax*b*b*vn)/(18*a*b)
     ,
-    t*(6*a*a*l*l + a*b*(-4*a*b*beta*rho + 4*a*b*dv + 6*a*l*v[1] - 3*b*l*v[0]) - 3*b*b*l*l)/(18*a*b)
+    t*(-6*a*a*ay*vn + a*b*(4*a*b*beta*rho + 4*a*b*dv*vp + 6*a*v[1]*vp - 3*b*v[0]*vp) + 3*ax*b*b*vn)/(18*a*b)
     ,
-    t*(-3*a*a*l*l + a*b*(-4*a*b*beta*rho + 4*a*b*dv - 3*a*l*v[1] - 6*b*l*v[0]) + 6*b*b*l*l)/(18*a*b)
+    t*(3*a*a*ay*vn + a*b*(4*a*b*beta*rho + 4*a*b*dv*vp - 3*a*v[1]*vp - 6*b*v[0]*vp) - 6*ax*b*b*vn)/(18*a*b)
     ,
-    t*(-3*a*a*l*l + a*b*(-4*a*b*beta*rho + 4*a*b*dv - 3*a*l*v[1] + 3*b*l*v[0]) - 3*b*b*l*l)/(9*a*b)
+    t*(3*a*a*ay*vn + a*b*(4*a*b*beta*rho + 4*a*b*dv*vp - 3*a*v[1]*vp + 3*b*v[0]*vp) + 3*ax*b*b*vn)/(9*a*b)
     ,
-    t*(6*a*a*l*l + a*b*(-4*a*b*beta*rho + 4*a*b*dv + 6*a*l*v[1] + 3*b*l*v[0]) - 3*b*b*l*l)/(18*a*b)
+    t*(-6*a*a*ay*vn + a*b*(4*a*b*beta*rho + 4*a*b*dv*vp + 6*a*v[1]*vp + 3*b*v[0]*vp) + 3*ax*b*b*vn)/(18*a*b)
     ,
-    t*(3*a*a*l*l + a*b*(-2*a*b*beta*rho + 2*a*b*dv + 3*a*l*v[1] - 3*b*l*v[0]) + 3*b*b*l*l)/(18*a*b)
+    t*(-3*a*a*ay*vn + a*b*(2*a*b*beta*rho + 2*a*b*dv*vp + 3*a*v[1]*vp - 3*b*v[0]*vp) - 3*ax*b*b*vn)/(18*a*b)
     ,
-    t*(3*a*a*l*l + a*b*(-2*a*b*beta*rho + 2*a*b*dv - 3*a*l*v[1] - 3*b*l*v[0]) + 3*b*b*l*l)/(18*a*b)
+    t*(-3*a*a*ay*vn + a*b*(2*a*b*beta*rho + 2*a*b*dv*vp - 3*a*v[1]*vp - 3*b*v[0]*vp) - 3*ax*b*b*vn)/(18*a*b)
     ,
-    t*(6*a*a*l*l + a*b*(-4*a*b*beta*rho + 4*a*b*dv - 6*a*l*v[1] + 3*b*l*v[0]) - 3*b*b*l*l)/(18*a*b)
+    t*(-6*a*a*ay*vn + a*b*(4*a*b*beta*rho + 4*a*b*dv*vp - 6*a*v[1]*vp + 3*b*v[0]*vp) + 3*ax*b*b*vn)/(18*a*b)
     ,
-    t*(-3*a*a*l*l + a*b*(-4*a*b*beta*rho + 4*a*b*dv + 3*a*l*v[1] + 3*b*l*v[0]) - 3*b*b*l*l)/(9*a*b)
+    t*(3*a*a*ay*vn + a*b*(4*a*b*beta*rho + 4*a*b*dv*vp + 3*a*v[1]*vp + 3*b*v[0]*vp) + 3*ax*b*b*vn)/(9*a*b)
     ,
-    t*(-3*a*a*l*l + a*b*(-4*a*b*beta*rho + 4*a*b*dv + 3*a*l*v[1] - 6*b*l*v[0]) + 6*b*b*l*l)/(18*a*b)
+    t*(3*a*a*ay*vn + a*b*(4*a*b*beta*rho + 4*a*b*dv*vp + 3*a*v[1]*vp - 6*b*v[0]*vp) - 6*ax*b*b*vn)/(18*a*b)
     ,
-    t*(6*a*a*l*l + a*b*(-4*a*b*beta*rho + 4*a*b*dv - 6*a*l*v[1] - 3*b*l*v[0]) - 3*b*b*l*l)/(18*a*b)
+    t*(-6*a*a*ay*vn + a*b*(4*a*b*beta*rho + 4*a*b*dv*vp - 6*a*v[1]*vp - 3*b*v[0]*vp) + 3*ax*b*b*vn)/(18*a*b)
     ,
-    t*(3*a*a*l*l + a*b*(-2*a*b*beta*rho + 2*a*b*dv - 3*a*l*v[1] + 3*b*l*v[0]) + 3*b*b*l*l)/(18*a*b)
+    t*(-3*a*a*ay*vn + a*b*(2*a*b*beta*rho + 2*a*b*dv*vp - 3*a*v[1]*vp + 3*b*v[0]*vp) - 3*ax*b*b*vn)/(18*a*b)
     ,
-    t*(-3*a*a*l*l + a*b*(-4*a*b*beta*rho + 4*a*b*dv + 3*a*l*v[1] + 6*b*l*v[0]) + 6*b*b*l*l)/(18*a*b)
+    t*(3*a*a*ay*vn + a*b*(4*a*b*beta*rho + 4*a*b*dv*vp + 3*a*v[1]*vp + 6*b*v[0]*vp) - 6*ax*b*b*vn)/(18*a*b)
     ,
-    t*(-3*a*a*l*l + a*b*(-4*a*b*beta*rho + 4*a*b*dv + 3*a*l*v[1] - 3*b*l*v[0]) - 3*b*b*l*l)/(9*a*b)
+    t*(3*a*a*ay*vn + a*b*(4*a*b*beta*rho + 4*a*b*dv*vp + 3*a*v[1]*vp - 3*b*v[0]*vp) + 3*ax*b*b*vn)/(9*a*b)
     };
 
     return phi;

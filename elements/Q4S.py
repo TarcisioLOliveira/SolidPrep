@@ -180,15 +180,21 @@ def make_phi_radial():
         Creates the elemental Helmholtz tensor.
     """
     init_N()
-    l = sympy.symbols("l")
+    # l = sympy.symbols("l")
     beta = sympy.symbols("beta")
     rho = sympy.symbols("rho")
     vv = sympy.symbols("v:2")
     v = sympy.Matrix([vv[0], vv[1]])
     dv = sympy.symbols("dv")
+    vn = sympy.symbols("vn")
+    vp = sympy.symbols("vp")
+    ax, ay = sympy.symbols("ax ay")
+    A = sympy.Matrix([[ax, 0],
+                      [0, ay]])
     NN = sympy.Matrix([N[0], N[1], N[2], N[3]]).T
     dNN = sympy.Matrix([NN.diff(xi), NN.diff(eta)])
-    k = t*(-beta*rho*NN.T*NN - l*l*dNN.T*dNN + l*NN.T*(v.T*dNN) + dv*NN.T*NN)
+    # k = t*(beta*rho*NN.T*NN + l*l*dNN.T*dNN + l*NN.T*(v.T*dNN) + dv*NN.T*NN)
+    k = t*(beta*rho*NN.T*NN + vn*dNN.T*A*dNN + vp*NN.T*(v.T*dNN) + vp*dv*NN.T*NN)
 
     print("std::vector<double> phi{")
     for i in range(len(k)):

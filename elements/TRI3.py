@@ -263,15 +263,21 @@ def make_phi_radial():
         Creates the elemental Helmholtz tensor.
     """
     init_L_symbolic()
-    l = sympy.symbols("l")
+    # l = sympy.symbols("l")
     beta = sympy.symbols("beta")
     rho = sympy.symbols("rho")
     vv = sympy.symbols("v:2")
     v = sympy.Matrix([vv[0], vv[1]])
     dv = sympy.symbols("dv")
+    vn = sympy.symbols("vn")
+    vp = sympy.symbols("vp")
+    ax, ay = sympy.symbols("ax ay")
+    A = sympy.Matrix([[ax, 0],
+                      [0, ay]])
     NN = sympy.Matrix([L[0], L[1], L[2]]).T
     dNN = sympy.Matrix([NN.diff(x), NN.diff(y)])
-    k = t*delta*(-beta*rho*NN.T*NN - l*l*dNN.T*dNN + l*NN.T*(v.T*dNN) + dv*NN.T*NN)
+    # k = t*delta*(beta*rho*NN.T*NN + l*l*dNN.T*A*dNN/vn + l*NN.T*(v.T*dNN) + l*dv*NN.T*NN)
+    k = t*delta*(beta*rho*NN.T*NN + vn*dNN.T*A*dNN + vp*NN.T*(v.T*dNN) + vp*dv*NN.T*NN)
 
     # Prepare for "integration" by defining the variables that should be
     # collected
