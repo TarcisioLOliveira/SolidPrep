@@ -17,7 +17,6 @@
  *   along with SolidPrep.  If not, see <https://www.gnu.org/licenses/>.
  *
  */
-#include "projection/threshold.hpp"
 #include <cstring>
 #include <memory>
 #define _USE_MATH_DEFINES
@@ -63,6 +62,8 @@
 #include "density_filter/helmholtz.hpp"
 #include "density_filter/averaging.hpp"
 #include "projection/none.hpp"
+#include "projection/threshold.hpp"
+#include "projection/heaviside.hpp"
 #include "optimizer/mma.hpp"
 #include "function/compliance.hpp"
 #include "function/volume.hpp"
@@ -566,6 +567,14 @@ std::unique_ptr<Projection> ProjectData::load_projection(const rapidjson::Generi
         double eta = f["eta"].GetDouble();
 
         filter = std::make_unique<projection::Threshold>(beta, eta);
+    } else if(f["type"] == "heaviside"){
+        this->log_data(f, "beta", TYPE_OBJECT, false);
+        this->log_data(f, "eta", TYPE_DOUBLE, false);
+
+        auto beta = this->get_projection_parameter(f["beta"]);
+        double eta = f["eta"].GetDouble();
+
+        filter = std::make_unique<projection::Heaviside>(beta, eta);
     }
 
     return filter;
