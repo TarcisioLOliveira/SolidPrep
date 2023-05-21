@@ -104,8 +104,8 @@ double RadialMachining::calculate(const Optimizer* const op, const std::vector<d
     for(const auto& g:mesh->geometries){
         if(g->do_topopt){
             const size_t num_den = g->number_of_densities_needed();
-            auto N = g->mesh.front()->helmholtz_vector(this->mesh->thickness);
             for(const auto& e:g->mesh){
+                auto N = e->helmholtz_vector(this->mesh->thickness);
                 const gp_Pnt p = e->get_centroid();
                 const gp_Vec pc(p, this->center);
                 const gp_Vec vv = pc - pc.Dot(this->axis)*this->axis;
