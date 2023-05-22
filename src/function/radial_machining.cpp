@@ -23,13 +23,14 @@
 #include "projection/heaviside.hpp"
 #include "projection/threshold.hpp"
 #include <Eigen/src/Core/util/Constants.h>
+#include <limits>
 #include <numeric>
 #include <set>
 
 namespace function{
 
 RadialMachining::RadialMachining(const Meshing* const mesh, const DensityFilter* const filter, gp_Pnt center, gp_Dir axis, double v_norm, double beta)
-    : mesh(mesh), filter(filter), center(center), axis(axis), v_norm(v_norm), beta(beta), proj(projection::Heaviside::Parameter{1, 1, 0, 0}, 0.5){}
+    : mesh(mesh), filter(filter), center(center), axis(axis), v_norm(v_norm), beta(beta), proj(projection::Heaviside::Parameter{25, 25, 0, 0}, 0.5){}
 
 void RadialMachining::initialize_views(Visualization* viz){
     this->shadow_view = viz->add_view("Shadows", spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::DENSITY);
@@ -272,9 +273,9 @@ double RadialMachining::calculate_with_gradient(const Optimizer* const op, const
     }
 
     this->shadow_view_continuous->update_view(this->diff);
-    //std::fill(this->Hgrad.begin(), this->Hgrad.end(), 1);
-    //this->proj.project_gradient(this->Hgrad, this->diff);
-    //this->proj.project_densities(this->diff);
+    std::fill(this->Hgrad.begin(), this->Hgrad.end(), 1);
+    this->proj.project_gradient(this->Hgrad, this->diff);
+    this->proj.project_densities(this->diff);
 
     this->shadow_view->update_view(this->diff);
 
