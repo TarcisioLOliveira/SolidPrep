@@ -168,7 +168,7 @@ TopoDS_Shape MMA::optimize(FiniteElement* fem, Meshing* mesh){
         if(this->objective[0]->filter_gradient_type() == DensityFilter::FilterGradient::ELEMENTAL){
             ff = this->objective_weights.front()*this->objective.front()->calculate_with_gradient(this, u, new_x, dftmp);
             if(mpi_id == 0){
-                this->projection->project_gradient(dftmp, new_x);
+                this->projection->project_gradient(dftmp, x_fil);
                 this->filter->filter_gradient(dftmp, df);
                 if(this->objective_weights.front() != 1.0){
                     for(auto& v:df){
@@ -194,7 +194,7 @@ TopoDS_Shape MMA::optimize(FiniteElement* fem, Meshing* mesh){
             if(this->objective[i]->filter_gradient_type() == DensityFilter::FilterGradient::ELEMENTAL){
                 ff += this->objective_weights[i]*this->objective[i]->calculate_with_gradient(this, u, new_x, dftmp);
                 if(mpi_id == 0){
-                    this->projection->project_gradient(dftmp, new_x);
+                    this->projection->project_gradient(dftmp, x_fil);
                     this->filter->filter_gradient(dftmp, df);
                     for(size_t j = 0; j < dftmp.size(); ++j){
                         df[j] += this->objective_weights[i]*dftmp[j];
@@ -393,7 +393,7 @@ TopoDS_Shape MMA::optimize(FiniteElement* fem, Meshing* mesh){
             if(this->objective[0]->filter_gradient_type() == DensityFilter::FilterGradient::ELEMENTAL){
                 ff = this->objective_weights.front()*this->objective.front()->calculate_with_gradient(this, u, new_x, dftmp);
                 if(mpi_id == 0){
-                    this->projection->project_gradient(dftmp, new_x);
+                    this->projection->project_gradient(dftmp, x_fil);
                     this->filter->filter_gradient(dftmp, df);
                     if(this->objective_weights.front() != 1.0){
                         for(auto& v:df){
@@ -419,7 +419,7 @@ TopoDS_Shape MMA::optimize(FiniteElement* fem, Meshing* mesh){
                 if(this->objective[i]->filter_gradient_type() == DensityFilter::FilterGradient::ELEMENTAL){
                     ff += this->objective_weights[i]*this->objective[i]->calculate_with_gradient(this, u, new_x, dftmp);
                     if(mpi_id == 0){
-                        this->projection->project_gradient(dftmp, new_x);
+                        this->projection->project_gradient(dftmp, x_fil);
                         this->filter->filter_gradient(dftmp, df);
                         for(size_t j = 0; j < dftmp.size(); ++j){
                             df[j] += this->objective_weights[i]*dftmp[j];
