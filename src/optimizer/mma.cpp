@@ -27,8 +27,8 @@
 
 namespace optimizer{
 
-MMA::MMA(DensityFilter* filter, Projection* projection, ProjectData* data, std::vector<std::unique_ptr<DensityBasedFunction>> objective, std::vector<double> weights, std::vector<Constraint> constraints, double pc, double psi, double rho_init, double xtol_abs, double ftol_rel, double result_threshold, bool save):
-    data(data), rho_init(rho_init), xtol_abs(xtol_abs), ftol_rel(ftol_rel), pc(pc), psi(psi), result_threshold(result_threshold), save_result(save), objective(std::move(objective)), objective_weights(std::move(weights)), constraints(std::move(constraints)), filter(filter), projection(projection), viz(nullptr)
+MMA::MMA(DensityFilter* filter, Projection* projection, ProjectData* data, std::vector<std::unique_ptr<DensityBasedFunction>> objective, std::vector<double> weights, std::vector<Constraint> constraints, double asyminit, double asymdec, double asyminc, double minfac, double maxfac, double pc, double psi, double rho_init, double xtol_abs, double ftol_rel, double result_threshold, bool save):
+    data(data), rho_init(rho_init), xtol_abs(xtol_abs), ftol_rel(ftol_rel), pc(pc), psi(psi), result_threshold(result_threshold), asyminit(asyminit), asymdec(asymdec), asyminc(asyminc), minfac(minfac), maxfac(maxfac), save_result(save), objective(std::move(objective)), objective_weights(std::move(weights)), constraints(std::move(constraints)), filter(filter), projection(projection), viz(nullptr)
     {}
 
 void MMA::initialize_views(Visualization* viz){
@@ -112,7 +112,8 @@ TopoDS_Shape MMA::optimize(FiniteElement* fem, Meshing* mesh){
     }
 
     optimization::MMASolver mma(x_size, M, 0, 1e5, 1); //1e5
-    mma.SetAsymptotes(0.005, 0.7, 1.2);
+    mma.SetAsymptotes(this->asyminit, this->asymdec, this->asyminc);
+    mma.SetBoundFactors(this->minfac, this->maxfac);
 
     double ff = 0;
     std::vector<double> dftmp(x.size());

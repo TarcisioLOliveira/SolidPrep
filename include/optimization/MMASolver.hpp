@@ -66,6 +66,8 @@ class MMASolver {
 
 	void SetAsymptotes(double init, double decrease, double increase);
 
+    void SetBoundFactors(double min, double max);
+
 	// void ConstraintModification(bool conMod) {}
 
 	void Update(double *xval, const double *dfdx, const double *gx, const double *dgdx, const double *xmin,
@@ -82,6 +84,7 @@ class MMASolver {
 	const double raa0;
 	const double move, albefa;
 	double asyminit, asymdec, asyminc;
+    double maxfac, minfac;
 
 	std::vector<double> a, c, d;
 	std::vector<double> y;

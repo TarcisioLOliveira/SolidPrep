@@ -77,6 +77,13 @@ void MMASolver::SetAsymptotes(double init, double decrease, double increase) {
 	asyminc = increase;
 }
 
+void MMASolver::SetBoundFactors(double min, double max){
+    
+    // Factors that determine bound updating in GenSun()
+    minfac = min;
+    maxfac = max;
+}
+
 void MMASolver::Update(double *xval, const double *dfdx, const double *gx, const double *dgdx,
 	const double *xmin, const double *xmax)
 {
@@ -380,10 +387,10 @@ void MMASolver::GenSub(const double *xval, const double *dfdx, const double *gx,
 
 			double xmami = std::max(xmamieps, xmax[i] - xmin[i]);
 
-			low[i] = std::max(low[i], xval[i] - 1e4 * xmami);
-			low[i] = std::min(low[i], xval[i] - 1e-5 * xmami);
-			upp[i] = std::max(upp[i], xval[i] + 1e-5 * xmami);
-			upp[i] = std::min(upp[i], xval[i] + 1e4 * xmami);
+			low[i] = std::max(low[i], xval[i] - maxfac * xmami);
+			low[i] = std::min(low[i], xval[i] - minfac * xmami);
+			upp[i] = std::max(upp[i], xval[i] + minfac * xmami);
+			upp[i] = std::min(upp[i], xval[i] + maxfac * xmami);
 			// low[i] = std::max(low[i], xval[i] - 100.0 * xmami);
 			// low[i] = std::min(low[i], xval[i] - 1e-3 * xmami);
 			// upp[i] = std::max(upp[i], xval[i] + 1e-3 * xmami);

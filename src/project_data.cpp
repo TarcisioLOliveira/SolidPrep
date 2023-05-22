@@ -593,6 +593,11 @@ std::unique_ptr<Optimizer> ProjectData::load_optimizer(const rapidjson::GenericV
         this->log_data(to, "psi", TYPE_DOUBLE, true);
         this->log_data(to, "objective", TYPE_ARRAY, true);
         this->log_data(to, "constraints", TYPE_ARRAY, true);
+        this->log_data(to, "asyminit", TYPE_DOUBLE, true);
+        this->log_data(to, "asymdec", TYPE_DOUBLE, true);
+        this->log_data(to, "asyminc", TYPE_DOUBLE, true);
+        this->log_data(to, "minfac", TYPE_DOUBLE, true);
+        this->log_data(to, "maxfac", TYPE_DOUBLE, true);
 
         this->density_filter = this->load_density_filter(to);
         this->projection = this->load_projection(to);
@@ -605,6 +610,12 @@ std::unique_ptr<Optimizer> ProjectData::load_optimizer(const rapidjson::GenericV
         int pc = to["pc"].GetInt();
         double psi = to["psi"].GetDouble();
 
+        double asyminit = to["asyminit"].GetDouble();
+        double asymdec = to["asymdec"].GetDouble();
+        double asyminc = to["asyminc"].GetDouble();
+        double minfac = to["minfac"].GetDouble();
+        double maxfac = to["maxfac"].GetDouble();
+
         std::vector<std::unique_ptr<DensityBasedFunction>> objective;
         std::vector<double> weights;
         this->get_objective_functions(to["objective"], pc, psi, objective, weights);
@@ -612,7 +623,7 @@ std::unique_ptr<Optimizer> ProjectData::load_optimizer(const rapidjson::GenericV
         std::vector<Constraint> constraints;
         this->get_constraints(to["constraints"], pc, psi, constraints);
 
-        return std::make_unique<optimizer::MMA>(this->density_filter.get(), this->projection.get(), this, std::move(objective), std::move(weights), std::move(constraints), pc, psi, rho_init, xtol_abs, ftol_rel, result_threshold, save_result);
+        return std::make_unique<optimizer::MMA>(this->density_filter.get(), this->projection.get(), this, std::move(objective), std::move(weights), std::move(constraints), asyminit, asymdec, asyminc, minfac, maxfac, pc, psi, rho_init, xtol_abs, ftol_rel, result_threshold, save_result);
     }
 
     return nullptr;
