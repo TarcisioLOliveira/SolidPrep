@@ -63,7 +63,7 @@ class RadialMachining : public DensityBasedFunction{
     std::map<size_t, long> id_mapping;
     Eigen::SparseMatrix<double> Phi;
     Eigen::SparseLU<Eigen::SparseMatrix<double>, Eigen::COLAMDOrdering<int>> solver;
-    projection::Heaviside proj;
+    projection::Threshold proj;
     bool first_time = true;
     ViewHandler* shadow_view = nullptr;
     ViewHandler* shadow_view_continuous = nullptr;
