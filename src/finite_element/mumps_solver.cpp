@@ -83,7 +83,6 @@ std::vector<double> MUMPSSolver::calculate_displacements(const Meshing* const me
 
     if(this->current_step == 0){
 
-        this->config.job = 4; // Prepare matrix and decompose
         if(mpi_id == 0){
             std::vector<int>& rows = this->gsm.get_rows();
             std::vector<int>& cols = this->gsm.get_cols();
@@ -99,8 +98,33 @@ std::vector<double> MUMPSSolver::calculate_displacements(const Meshing* const me
             this->config.irn = rows.data();
             this->config.jcn = cols.data();
 
+        }
+        if(this->first_time){
+            this->config.job = 1; // Perform analysis
+            dmumps_c(&this->config);
+            int size = this->config.INFO(8);
+            if(size > 0){
+                this->buffer.resize(size*1.35);
+                if(this->buffer.size() < 1e6){
+                    this->config.lwk_user = buffer.size();
+                } else {
+                    this->config.lwk_user = -double(buffer.size())/1e6;
+                }
+            } else {
+                this->buffer.resize(-double(size)*1e6*1.35);
+                this->config.lwk_user = -double(this->buffer.size())/1e6;
+            }
+            this->config.ICNTL(14) = 35;
+            this->config.ICNTL(23) = this->config.INFO(15)*1.2 - double(this->buffer.size())/1e6;;
+            this->config.wk_user = this->buffer.data();
+            this->first_time = false;
+        }
+
+        if(mpi_id == 0){
             logger::quick_log("Decomposing...");
         }
+
+        this->config.job = 2; // Decompose
         dmumps_c(&this->config);
 
         if(mpi_id == 0){

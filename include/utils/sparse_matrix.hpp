@@ -87,6 +87,7 @@ class SparseMatrix{
             }
         }
     }
+    void zero();
     inline void clear(){this->data.clear();}
 
     private:

@@ -40,7 +40,8 @@ void MUMPSSparseSymmetric::generate(const Meshing* const mesh, const std::vector
         }
     }
     this->sK.to_mumps_format(this->rows, this->cols, this->vals);
-    this->sK.clear(); // Spare some RAM
+    // this->sK.clear(); // Spare some RAM
+    this->sK.zero();
     logger::quick_log("Done.");
 }
 

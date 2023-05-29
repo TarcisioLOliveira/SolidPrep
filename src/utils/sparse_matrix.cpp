@@ -100,6 +100,13 @@ std::vector<double> SparseMatrix::to_general_band(size_t diag_size, size_t& ku, 
 
     return band;
 }
+
+void SparseMatrix::zero(){
+    for(auto& v:this->data){
+        v.second = 0;    
+    }
+}
+
 void SparseMatrix::merge(SparseMatrix& M){
     this->data.reserve(this->data.size() + M.data.size());
     this->data.merge(M.data);

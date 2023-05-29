@@ -27,6 +27,7 @@
 
 // Recommended by the documentation
 #define ICNTL( i ) icntl[ (i) - 1 ]
+#define INFO( i ) info[ (i) - 1 ]
 
 namespace finite_element{
 
@@ -39,6 +40,8 @@ class MUMPSSolver : public FiniteElement{
     private:
     DMUMPS_STRUC_C config;
     global_stiffness_matrix::MUMPSSparseSymmetric gsm;
+    std::vector<double> buffer;
+    bool first_time = true;
 };
 
 }
