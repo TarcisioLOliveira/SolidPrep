@@ -24,6 +24,7 @@
 #include "projection/threshold.hpp"
 #include <Eigen/src/Core/util/Constants.h>
 #include <limits>
+#include <mpi.h>
 #include <numeric>
 #include <set>
 
@@ -87,6 +88,13 @@ void RadialMachining::initialize(const Optimizer* const op){
 }
 
 double RadialMachining::calculate(const Optimizer* const op, const std::vector<double>& u, const std::vector<double>& x){
+    int mpi_id = 0;
+    MPI_Comm_rank(MPI_COMM_WORLD, &mpi_id);
+
+    if(mpi_id != 0){
+        return 0;
+    }
+
     const size_t num_nodes = mesh->elem_info->get_nodes_per_element();
     if(!this->first_time){
         std::fill(this->Phi.valuePtr(), this->Phi.valuePtr() + this->Phi.nonZeros(), 0);
@@ -185,6 +193,13 @@ double RadialMachining::calculate(const Optimizer* const op, const std::vector<d
 }
 
 double RadialMachining::calculate_with_gradient(const Optimizer* const op, const std::vector<double>& u, const std::vector<double>& x, std::vector<double>& grad){
+    int mpi_id = 0;
+    MPI_Comm_rank(MPI_COMM_WORLD, &mpi_id);
+
+    if(mpi_id != 0){
+        return 0;
+    }
+
     const size_t num_nodes = mesh->elem_info->get_nodes_per_element();
     if(!this->first_time){
         std::fill(this->Phi.valuePtr(), this->Phi.valuePtr() + this->Phi.nonZeros(), 0);
