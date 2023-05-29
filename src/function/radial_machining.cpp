@@ -68,7 +68,9 @@ void RadialMachining::initialize(const Optimizer* const op){
         const gp_Dir vn(vv);
         if(std::abs(vn.Dot(e.normal)) < 1.0-Precision::Confusion()){
             for(size_t i = 0; i < num_nodes_bound; ++i){
-                this->id_mapping[e.nodes[i]->id] = -1;
+                if(this->id_mapping.count(e.nodes[i]->id)){
+                    this->id_mapping[e.nodes[i]->id] = -1;
+                }
             }
         }
     }
