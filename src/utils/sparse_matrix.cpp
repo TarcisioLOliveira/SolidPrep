@@ -91,7 +91,7 @@ std::vector<double> SparseMatrix::multiply(std::vector<double> vec) const{
 std::vector<double> SparseMatrix::to_general_band(size_t diag_size, size_t& ku, size_t& kl) const{
     ku = this->ku;
     kl = this->kl;
-    size_t H = 2*kl + ku + 1;
+    size_t H = kl + ku + 1;
     std::vector<double> band(H*diag_size, 0);
     for(auto& v:this->data){
         Point place = this->point_to_general_band(v.first);
