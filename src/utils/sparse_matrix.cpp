@@ -114,19 +114,28 @@ void SparseMatrix::merge(SparseMatrix& M){
         this->data[v.first] += v.second;
     }
 }
-void SparseMatrix::to_mumps_format(std::vector<int>& rows, std::vector<int>& cols, std::vector<double>& vals) const{
+void SparseMatrix::to_mumps_format(std::vector<int>& rows, std::vector<int>& cols, std::vector<double>& vals){
     size_t N = this->data.size();
-    if(N > rows.size()){
-        rows.resize(N, 0);
-        cols.resize(N, 0);
-        vals.resize(N, 0);
-    }
-    auto v = this->data.cbegin();
-    for(size_t i = 0; i < N; ++i){
-        rows[i] = v->first.i+1;
-        cols[i] = v->first.j+1;
-        vals[i] = v->second;
-        ++v;
+    if(this->mumps_first_time){
+        this->mumps_first_time = false;
+        if(N > rows.size()){
+            rows.resize(N, 0);
+            cols.resize(N, 0);
+            vals.resize(N, 0);
+        }
+        auto v = this->data.cbegin();
+        for(size_t i = 0; i < N; ++i){
+            rows[i] = v->first.i+1;
+            cols[i] = v->first.j+1;
+            vals[i] = v->second;
+            ++v;
+        }
+    } else {
+        auto v = this->data.cbegin();
+        for(size_t i = 0; i < N; ++i){
+            vals[i] = v->second;
+            ++v;
+        }
     }
 }
 
