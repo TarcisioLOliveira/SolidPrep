@@ -1,6 +1,7 @@
 set(PROJECT_NAME SolidPrep)
 
 set(SOURCES_UTILS
+    csr.cpp
     sparse_matrix.cpp
 )
 
