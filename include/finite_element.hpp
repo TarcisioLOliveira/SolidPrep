@@ -25,7 +25,6 @@
 #include <vector>
 #include "element.hpp"
 #include "meshing.hpp"
-#include "element_factory.hpp"
 #include "geometry.hpp"
 
 class ProjectData;
