@@ -45,28 +45,33 @@ class CSR{
         }
     };
 
-    void set(size_t i, size_t j, double val);
-    void add(size_t i, size_t j, double val);
-    double get(size_t i, size_t j) const;
-    void insert_matrix(std::vector<double> M, std::vector<long> pos);
-    void merge(CSR& M);
-    std::vector<double> multiply(std::vector<double> vec) const;
-    std::vector<double> to_general_band(size_t diag_size, size_t& ku, size_t& kl) const;
-    std::vector<size_t> affected_ids(const std::vector<size_t>& ids) const;
-    // One-indexed
-    void to_mumps_format(std::vector<int>& rows, std::vector<int>& cols, std::vector<double>& vals) const;
     inline void insert_matrix_symmetric(const std::vector<double>& M, const std::vector<long>& pos){
         size_t W = pos.size();
-        for(size_t i = 0; i < W; ++i){
-            for(size_t j = 0; j <= i; ++j){
-                if(pos[i] > -1 && pos[j] > -1){
-                    if(pos[i] >= pos[j]){
-                        this->data[Point(pos[i], pos[j])] += M[i*W + j];
-                    } else {
-                        this->data[Point(pos[j], pos[i])] += M[i*W + j];
+        if(this->csr_first_time){
+            for(size_t i = 0; i < W; ++i){
+                for(size_t j = 0; j <= i; ++j){
+                    if(pos[i] > -1 && pos[j] > -1){
+                        if(pos[i] >= pos[j]){
+                            this->data[Point(pos[i], pos[j])] += M[i*W + j];
+                        } else {
+                            this->data[Point(pos[j], pos[i])] += M[i*W + j];
+                        }
                     }
                 }
             }
+        } else {
+            for(size_t i = 0; i < W; ++i){
+                for(size_t j = 0; j <= i; ++j){
+                    if(pos[i] > -1 && pos[j] > -1){
+                        if(pos[i] >= pos[j]){
+                            this->add_csr(pos[i], pos[j], M[i*W+j]);
+                        } else {
+                            this->add_csr(pos[j], pos[i], M[i*W+j]);
+                        }
+                    }
+                }
+            }
+
         }
         //for(size_t i = 0; i < W; ++i){
         //    for(size_t j = 0; j < W; ++j){
@@ -89,8 +94,6 @@ class CSR{
 
     private:
     std::map<Point, double> data;
-    size_t ku = 0;
-    size_t kl = 0;
     int n = 0;
     int nnz = 0;
     bool csr_first_time = true;
@@ -98,8 +101,13 @@ class CSR{
     std::vector<int> csrColInd;
     std::vector<double> csrVal;
     
-
-    Point point_to_general_band(Point p) const;
+    inline void add_csr(const int i, const int j, const double v){
+        for(int c = csrRowPtr[i]; c < csrRowPtr[i+1]; ++c){
+            if(csrColInd[c] == j){
+                csrVal[c] += v;
+            }
+        }
+    }
 };
 
 }
