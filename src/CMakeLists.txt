@@ -47,6 +47,10 @@ if(OpenMP_CXX_FOUND)
     target_link_libraries(${PROJECT_NAME} PUBLIC OpenMP::OpenMP_CXX OpenMP::OpenMP_C OpenMP::OpenMP_Fortran)
 endif()
 
+#if(USE_CUDA)
+#    target_link_libraries(${PROJECT_NAME} PUBLIC NVHPC::MATH NVHPC::HOSTUTILS NVHPC::CUDA)
+#endif()
+
 install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION .
                                 LIBRARY DESTINATION .
                                 ARCHIVE DESTINATION .)

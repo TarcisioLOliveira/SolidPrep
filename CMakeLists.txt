@@ -15,6 +15,11 @@ set(CMAKE_CXX_STANDARD 17)
 
 set(NO_OPENMP OFF CACHE BOOL "Compile without OpenMP support")
 set(THREADS_PREFER_PTHREAD_FLAG ON)
+set(USE_CUDA OFF CACHE BOOL "Compile with CUDA support")
+
+if(USE_CUDA)
+    enable_language(CUDA)
+endif()
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
@@ -35,6 +40,9 @@ find_package(VTK)
 find_package(MPI REQUIRED)
 find_package(MUMPS REQUIRED)
 find_package(Eigen3 REQUIRED NO_MODULE)
+if(USE_CUDA)
+    find_package(NVHPC COMPONENTS CUDA MATH HOSTUTILS REQUIRED)
+endif()
 
 # PkgConfig
 find_package(PkgConfig REQUIRED)
@@ -107,5 +115,9 @@ include_directories(
     ${Eigen3_INCLUDE_DIR}
     ${PETSC_INCLUDE_DIRS}
 )
+
+if(USE_CUDA)
+    add_compile_definitions(USE_CUDA)
+endif()
 
 add_subdirectory(src)
