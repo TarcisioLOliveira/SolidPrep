@@ -37,13 +37,7 @@ void CSR::generate_csr(int n){
         this->csr_first_time = false;
         this->n = n;
         logger::log_assert(this->data.size() < std::numeric_limits<int>::max(), logger::ERROR, "number of non-zero elements is greater than INT_MAX: {}", this->data.size());
-        this->nnz = 0;
-
-        for(const auto& p:this->data){
-            if(p.second != 0.0){
-                ++this->nnz;
-            }
-        }
+        this->nnz = this->data.size();
 
         this->csrRowPtr.resize(n+1);
         this->csrColInd.resize(nnz);
@@ -57,18 +51,16 @@ void CSR::generate_csr(int n){
         *r = 0;
         ++r;
         for(const auto& p:this->data){
-            if(p.second != 0.0){
-                if(p.first.i != cur_row){
-                    *r = count;
-                    ++cur_row;
-                    ++r;
-                }
-                *c = p.first.j;
-                *v = p.second;
-                ++c;
-                ++v;
-                ++count;
+            if(p.first.i != cur_row){
+                *r = count;
+                ++cur_row;
+                ++r;
             }
+            *c = p.first.j;
+            *v = p.second;
+            ++c;
+            ++v;
+            ++count;
         }
         *r = nnz;
     }

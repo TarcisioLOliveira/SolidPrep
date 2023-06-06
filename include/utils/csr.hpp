@@ -50,11 +50,13 @@ class CSR{
         if(this->csr_first_time){
             for(size_t i = 0; i < W; ++i){
                 for(size_t j = 0; j <= i; ++j){
-                    if(pos[i] > -1 && pos[j] > -1){
-                        if(pos[i] >= pos[j]){
-                            this->data[Point(pos[i], pos[j])] += M[i*W + j];
-                        } else {
-                            this->data[Point(pos[j], pos[i])] += M[i*W + j];
+                    if(M[i*W + j] != 0){
+                        if(pos[i] > -1 && pos[j] > -1){
+                            if(pos[i] >= pos[j]){
+                                this->data[Point(pos[i], pos[j])] += M[i*W + j];
+                            } else {
+                                this->data[Point(pos[j], pos[i])] += M[i*W + j];
+                            }
                         }
                     }
                 }
