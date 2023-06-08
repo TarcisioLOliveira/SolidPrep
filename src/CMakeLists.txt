@@ -18,6 +18,7 @@ set(SOURCES
     projection.cpp
     optimizer.cpp
     multimaterial.cpp
+    global_stiffness_matrix.cpp
 )
 
 add_subdirectory(pathfinding)
