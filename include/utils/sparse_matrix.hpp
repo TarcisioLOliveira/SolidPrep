@@ -25,6 +25,7 @@
 #include <unordered_map>
 #include <vector>
 #include <cstddef>
+#include <Eigen/Sparse>
 
 namespace utils{
 
@@ -88,6 +89,27 @@ class SparseMatrix{
                 }
             }
         }
+    }
+    inline void insert_matrix_general_mumps(const std::vector<double>& M, const std::vector<long>& pos){
+        size_t W = pos.size();
+        for(size_t i = 0; i < W; ++i){
+            for(size_t j = 0; j < W; ++j){
+                if(M[i*W + j] != 0){
+                    if(pos[i] > -1 && pos[j] > -1){
+                        this->data[Point(pos[i], pos[j])] += M[i*W + j];
+                    }
+                }
+            }
+        }
+    }
+    inline auto get_eigen_triplets() const{
+        typedef Eigen::Triplet<double, std::ptrdiff_t> T;
+        std::vector<T> t;
+        t.reserve(this->data.size());
+        for(const auto& v:this->data){
+            t.emplace_back(v.first.i, v.first.j, v.second);
+        }
+        return t;
     }
     void zero();
     inline void clear(){this->data.clear();}

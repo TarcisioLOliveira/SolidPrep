@@ -18,149 +18,54 @@
  *
  */
 
-#include "logger.hpp"
 #include "global_stiffness_matrix/eigen_sparse_asymmetric.hpp"
-#include <Eigen/src/SparseCore/SparseMatrix.h>
+#include "logger.hpp"
+#include "utils/sparse_matrix.hpp"
 
 namespace global_stiffness_matrix{
 
+namespace internal{
+
+class EigenSparseAsymmetricTriplets : public GlobalStiffnessMatrix{
+    public:
+    typedef Eigen::Triplet<double, std::ptrdiff_t> T;
+
+    virtual ~EigenSparseAsymmetricTriplets() = default;
+
+    virtual void generate(const Meshing * const mesh, const std::vector<double>& density, const double pc, const double psi) override;
+
+    std::vector<T> triplets;
+
+    protected:
+    bool first_time = true;
+    utils::SparseMatrix K;
+
+    virtual inline void insert_element_matrix(const std::vector<double>& k, const std::vector<long>& pos) override{
+        this->K.insert_matrix_general_mumps(k, pos);
+    }
+};
+
+void EigenSparseAsymmetricTriplets::generate(const Meshing * const mesh, const std::vector<double>& density, const double pc, const double psi){
+    this->generate_base(mesh, density, pc, psi);
+    this->triplets = K.get_eigen_triplets();
+    this->K.clear();
+}
+
+}
+
 void EigenSparseAsymmetric::generate(const Meshing* const mesh, const std::vector<double>& density, const double pc, const double psi){
     logger::quick_log("Generating stiffness matrix...");
-    // I'm using about using nonZeros() as size in this case, but it seems
-    // to be working.
-    // Using setZeros() just causes this function to hang.
-    std::fill(this->K.valuePtr(), this->K.valuePtr() + this->K.nonZeros(), 0);
     if(this->first_time){
-        this->calculate_dimensions(mesh, mesh->load_vector);
         this->K = Mat(mesh->load_vector.size(), mesh->load_vector.size());
-        this->K.reserve(Eigen::VectorXi::Constant(W, 2*N-1));
-    }
-    if(density.size() == 0){
-        for(auto& g : mesh->geometries){
-            this->add_geometry(mesh, g);
-        }
+        internal::EigenSparseAsymmetricTriplets trigen;
+        trigen.generate(mesh, density, pc, psi);
+        this->K.setFromTriplets(trigen.triplets.begin(), trigen.triplets.end());
+        this->first_time = false;
     } else {
-        auto rho = density.begin();
-        for(auto& g : mesh->geometries){
-            if(g->do_topopt){
-                this->add_geometry(mesh, g, rho, pc, psi);
-            } else {
-                this->add_geometry(mesh, g);
-            }
-        }
-    }
-    if(first_time){
-        first_time = false;
-        this->K.makeCompressed();
+        std::fill(this->K.valuePtr(), this->K.valuePtr() + this->K.nonZeros(), 0);
+        this->generate_base(mesh, density, pc, psi);
     }
     logger::quick_log("Done.");
-}
-
-void EigenSparseAsymmetric::add_geometry(const Meshing* const mesh, const Geometry* const g){
-    const auto D = g->materials.get_D();
-    const double t = mesh->thickness;
-    const size_t dof      = mesh->elem_info->get_dof_per_node();
-    const size_t node_num = mesh->elem_info->get_nodes_per_element();
-
-    for(auto& e : g->mesh){
-        std::vector<long> u_pos;
-        u_pos.reserve(dof*node_num);
-        for(size_t i = 0; i < node_num; ++i){
-            const auto& n = e->nodes[i];
-            for(size_t j = 0; j < dof; ++j){
-                u_pos.push_back(n->u_pos[j]);
-            }
-        }
-        std::vector<double> k = e->get_k(D, t);
-        this->insert_element_matrix(k, u_pos);
-    }
-}
-
-void EigenSparseAsymmetric::add_geometry(const Meshing* const mesh, const Geometry* const g, std::vector<double>::const_iterator& rho, const double pc, const double psi){
-    const double t = mesh->thickness;
-    const size_t dof      = mesh->elem_info->get_dof_per_node();
-    const size_t node_num = mesh->elem_info->get_nodes_per_element();
-
-    //const size_t num_den = g->number_of_densities_needed();
-    const size_t num_mat = g->number_of_materials();
-    if(num_mat == 1){
-        const auto D = g->materials.get_D();
-        auto rhoD = D;
-        for(const auto& e:g->mesh){
-            std::vector<long> u_pos;
-            u_pos.reserve(dof*node_num);
-            for(size_t i = 0; i < node_num; ++i){
-                const auto& n = e->nodes[i];
-                for(size_t j = 0; j < dof; ++j){
-                    u_pos.push_back(n->u_pos[j]);
-                }
-            }
-            const double rhop = std::pow(*rho, pc);
-            for(size_t i = 0; i < D.size(); ++i){
-                rhoD[i] = rhop*D[i];
-            }
-            const std::vector<double> k = e->get_k(rhoD, t);
-            this->insert_element_matrix(k, u_pos);
-            ++rho;
-        }
-    } else {
-        auto D = g->materials.get_D();
-        for(const auto& e:g->mesh){
-            std::vector<long> u_pos;
-            u_pos.reserve(dof*node_num);
-            for(size_t i = 0; i < node_num; ++i){
-                const auto& n = e->nodes[i];
-                for(size_t j = 0; j < dof; ++j){
-                    u_pos.push_back(n->u_pos[j]);
-                }
-            }
-            g->materials.get_D(rho, g->with_void, pc, this->K_MIN, psi, D);
-            const std::vector<double> k = e->get_k(D, t);
-            this->insert_element_matrix(k, u_pos);
-        }
-    }
-}
-
-void EigenSparseAsymmetric::calculate_dimensions(const Meshing* const mesh, const std::vector<double>& load){
-    const size_t k_dim    = mesh->elem_info->get_k_dimension();
-    const size_t dof      = mesh->elem_info->get_dof_per_node();
-    const size_t node_num = mesh->elem_info->get_nodes_per_element();
-
-    W = load.size();
-    N = k_dim;
-
-    for(auto& g:mesh->geometries){
-        for(auto& e:g->mesh){
-            size_t min_i = 0;
-            size_t max_i = 0;
-            long min = std::numeric_limits<long>::max();
-            long max = -1;
-            std::vector<long> pos;
-            pos.reserve(k_dim);
-            for(size_t i = 0; i < node_num; ++i){
-                const auto& n = e->nodes[i];
-                for(size_t j = 0; j < dof; ++j){
-                    pos.push_back(n->u_pos[j]);
-                }
-            }
-            for(size_t i = 0; i < pos.size(); ++i){
-                if(pos[i] > -1){
-                    if(pos[i] < min){
-                        min = pos[i];
-                        min_i = i;
-                    }
-                }
-                if(pos[i] > max){
-                    max = pos[i];
-                    max_i = i;
-                }
-            }
-            size_t N_candidate = pos[max_i] - pos[min_i] + 1;
-            if(N_candidate > N){
-                N = N_candidate;
-            }
-        }
-    }
 }
 
 }

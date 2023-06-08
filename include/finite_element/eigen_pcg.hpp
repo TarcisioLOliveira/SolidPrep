@@ -25,6 +25,10 @@
 #include "global_stiffness_matrix/eigen_sparse_symmetric.hpp"
 #include "global_stiffness_matrix/eigen_sparse_asymmetric.hpp"
 #include <Eigen/src/Core/Matrix.h>
+#include <Eigen/src/IterativeLinearSolvers/BasicPreconditioners.h>
+#include <Eigen/src/IterativeLinearSolvers/BiCGSTAB.h>
+#include <Eigen/src/IterativeLinearSolvers/ConjugateGradient.h>
+#include <Eigen/src/IterativeLinearSolvers/IncompleteLUT.h>
 
 namespace finite_element{
 
@@ -41,6 +45,8 @@ class EigenPCG : public FiniteElement{
 
     private:
     global_stiffness_matrix::EigenSparseAsymmetric gsm;
+    Eigen::ConjugateGradient<global_stiffness_matrix::EigenSparseAsymmetric::Mat, Eigen::Lower|Eigen::Upper, Eigen::DiagonalPreconditioner<double>> cg;
+    //Eigen::BiCGSTAB<global_stiffness_matrix::EigenSparseAsymmetric::Mat, Eigen::DiagonalPreconditioner<double>> cg;
     std::vector<Eigen::VectorXd> u;
 };
 
