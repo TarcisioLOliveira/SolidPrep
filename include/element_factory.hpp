@@ -24,7 +24,7 @@
 #include "element.hpp"
 #include "element/beam_linear_2D.hpp"
 #include "utils.hpp"
-#include "spview.hpp"
+#include "defs.hpp"
 #include <vector>
 
 class ProjectData;
