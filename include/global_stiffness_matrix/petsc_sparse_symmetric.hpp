@@ -24,10 +24,11 @@
 #include <vector>
 #include <petsc.h>
 #include "meshing.hpp"
+#include "global_stiffness_matrix.hpp"
 
 namespace global_stiffness_matrix{
 
-class PETScSparseSymmetric{
+class PETScSparseSymmetric : public GlobalStiffnessMatrix{
     public:
     const double K_MIN = 1e-6;
     enum class Backend{
@@ -40,7 +41,7 @@ class PETScSparseSymmetric{
 
     virtual ~PETScSparseSymmetric();
 
-    virtual void generate(const Meshing * const mesh, const std::vector<double>& density, const double pc, const double psi);
+    virtual void generate(const Meshing * const mesh, const std::vector<double>& density, const double pc, const double psi) override;
 
     Mat get_K() const{
         return this->K;
@@ -51,28 +52,7 @@ class PETScSparseSymmetric{
     bool first_time = true;
     std::string mat_type = MATMPIAIJ;
 
-    virtual void add_geometry(const Meshing * const mesh, const Geometry * const g);
-
-    virtual void add_geometry(const Meshing * const mesh, const Geometry * const g, std::vector<double>::const_iterator& rho, const double pc, const double psi);
-
-    inline void fill_matrix(const Meshing * const mesh, const std::vector<double>& density, const double pc, const double psi){
-        if(density.size() == 0){
-            for(auto& g : mesh->geometries){
-                this->add_geometry(mesh, g);
-            }
-        } else {
-            auto rho = density.begin();
-            for(auto& g : mesh->geometries){
-                if(g->do_topopt){
-                    this->add_geometry(mesh, g, rho, pc, psi);
-                } else {
-                    this->add_geometry(mesh, g);
-                }
-            }
-        }
-    }
-
-    inline void insert_element_matrix(const std::vector<double>& k, const std::vector<long>& pos){
+    inline virtual void insert_element_matrix(const std::vector<double>& k, const std::vector<long>& pos) override{
         // Requires 64-bit indices
         MatSetValues(this->K, pos.size(), pos.data(), pos.size(), pos.data(), k.data(), ADD_VALUES);
     }

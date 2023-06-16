@@ -68,7 +68,7 @@ void PETScSparseSymmetric::generate(const Meshing* const mesh, const std::vector
 
         if(mpi_id == 0){
             std::swap(tmp, K);
-            this->fill_matrix(mesh, density, pc, psi);
+            this->generate_base(mesh, density, pc, psi);
             std::swap(tmp, K);
         }
 
@@ -88,78 +88,13 @@ void PETScSparseSymmetric::generate(const Meshing* const mesh, const std::vector
     }
 
     if(mpi_id == 0){
-        this->fill_matrix(mesh, density, pc, psi);
+        this->generate_base(mesh, density, pc, psi);
     }
 
     MatAssemblyBegin(this->K, MAT_FINAL_ASSEMBLY);
     MatAssemblyEnd(this->K, MAT_FINAL_ASSEMBLY);
     if(mpi_id == 0){
         logger::quick_log("Done.");
-    }
-}
-
-void PETScSparseSymmetric::add_geometry(const Meshing* const mesh, const Geometry* const g){
-    const auto D = g->materials.get_D();
-    const double t = mesh->thickness;
-    const size_t dof      = mesh->elem_info->get_dof_per_node();
-    const size_t node_num = mesh->elem_info->get_nodes_per_element();
-
-    for(auto& e : g->mesh){
-        std::vector<long> u_pos;
-        u_pos.reserve(dof*node_num);
-        for(size_t i = 0; i < node_num; ++i){
-            const auto& n = e->nodes[i];
-            for(size_t j = 0; j < dof; ++j){
-                u_pos.push_back(n->u_pos[j]);
-            }
-        }
-        std::vector<double> k = e->get_k(D, t);
-        this->insert_element_matrix(k, u_pos);
-    }
-}
-
-void PETScSparseSymmetric::add_geometry(const Meshing* const mesh, const Geometry* const g, std::vector<double>::const_iterator& rho, const double pc, const double psi){
-    const double t = mesh->thickness;
-    const size_t dof      = mesh->elem_info->get_dof_per_node();
-    const size_t node_num = mesh->elem_info->get_nodes_per_element();
-
-    //const size_t num_den = g->number_of_densities_needed();
-    const size_t num_mat = g->number_of_materials();
-    if(num_mat == 1){
-        const auto D = g->materials.get_D();
-        auto rhoD = D;
-        for(const auto& e:g->mesh){
-            std::vector<long> u_pos;
-            u_pos.reserve(dof*node_num);
-            for(size_t i = 0; i < node_num; ++i){
-                const auto& n = e->nodes[i];
-                for(size_t j = 0; j < dof; ++j){
-                    u_pos.push_back(n->u_pos[j]);
-                }
-            }
-            const double rhop = std::pow(*rho, pc);
-            for(size_t i = 0; i < D.size(); ++i){
-                rhoD[i] = rhop*D[i];
-            }
-            const std::vector<double> k = e->get_k(rhoD, t);
-            this->insert_element_matrix(k, u_pos);
-            ++rho;
-        }
-    } else {
-        auto D = g->materials.get_D();
-        for(const auto& e:g->mesh){
-            std::vector<long> u_pos;
-            u_pos.reserve(dof*node_num);
-            for(size_t i = 0; i < node_num; ++i){
-                const auto& n = e->nodes[i];
-                for(size_t j = 0; j < dof; ++j){
-                    u_pos.push_back(n->u_pos[j]);
-                }
-            }
-            g->materials.get_D(rho, g->with_void, pc, this->K_MIN, psi, D);
-            const std::vector<double> k = e->get_k(D, t);
-            this->insert_element_matrix(k, u_pos);
-        }
     }
 }
 
