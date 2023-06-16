@@ -28,7 +28,9 @@ namespace finite_element{
 
 class PETScPCG : public FiniteElement{
     public:
-    PETScPCG();
+    typedef global_stiffness_matrix::PETScSparseSymmetric::Backend PETScBackend;
+
+    PETScPCG(PETScBackend backend);
 
     virtual ~PETScPCG();
 
@@ -46,6 +48,7 @@ class PETScPCG : public FiniteElement{
     PC pc = 0;
     KSP ksp = 0;
     bool first_time = true;
+    std::string vec_type = VECSTANDARD;
 };
 
 }

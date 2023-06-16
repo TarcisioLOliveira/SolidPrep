@@ -22,10 +22,18 @@
 #include "global_stiffness_matrix/petsc_sparse_symmetric.hpp"
 #include "logger.hpp"
 
+
 namespace global_stiffness_matrix{
 
-PETScSparseSymmetric::PETScSparseSymmetric(){
-    //DMCreate(PETSC_COMM_WORLD, &this->dm);
+PETScSparseSymmetric::PETScSparseSymmetric(Backend backend){
+    switch(backend){
+        case Backend::CPU:
+            this->mat_type = MATMPIAIJ;
+            break;
+        case Backend::CUDA:
+            this->mat_type = MATAIJCUSPARSE;
+            break;
+    }
 }
 
 
@@ -43,7 +51,7 @@ void PETScSparseSymmetric::generate(const Meshing* const mesh, const std::vector
 
     if(first_time){
         MatCreate(PETSC_COMM_WORLD, &this->K);
-        MatSetType(this->K, MATMPIAIJ);
+        MatSetType(this->K, this->mat_type.c_str());
 
         long M = mesh->load_vector.size();
         MPI_Bcast(&M, 1, MPI_LONG, 0, MPI_COMM_WORLD);

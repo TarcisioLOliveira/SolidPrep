@@ -30,8 +30,13 @@ namespace global_stiffness_matrix{
 class PETScSparseSymmetric{
     public:
     const double K_MIN = 1e-6;
+    enum class Backend{
+        CPU,
+        CUDA
+    };
 
-    PETScSparseSymmetric();
+    PETScSparseSymmetric() = default;
+    PETScSparseSymmetric(Backend backend);
 
     virtual ~PETScSparseSymmetric();
 
@@ -44,6 +49,7 @@ class PETScSparseSymmetric{
     protected:
     Mat K = 0;
     bool first_time = true;
+    std::string mat_type = MATMPIAIJ;
 
     virtual void add_geometry(const Meshing * const mesh, const Geometry * const g);
 
@@ -69,18 +75,6 @@ class PETScSparseSymmetric{
     inline void insert_element_matrix(const std::vector<double>& k, const std::vector<long>& pos){
         // Requires 64-bit indices
         MatSetValues(this->K, pos.size(), pos.data(), pos.size(), pos.data(), k.data(), ADD_VALUES);
-        //const size_t w = pos.size();
-        //for(size_t i = 0; i < w; ++i){
-        //    for(size_t j = i; j < w; ++j){
-        //        if(pos[i] > -1 && pos[j] > -1){
-        //           // if(pos[j] > pos[i]){
-        //           //     K.coeffRef(pos[i], pos[j]) += k[w*i + j];
-        //           // } else {
-        //           //     K.coeffRef(pos[j], pos[i]) += k[w*i + j];
-        //           // }
-        //        }
-        //    }
-        //}
     }
 };
 

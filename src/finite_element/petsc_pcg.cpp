@@ -25,7 +25,16 @@
 
 namespace finite_element{
 
-PETScPCG::PETScPCG():gsm(), u(1){
+PETScPCG::PETScPCG(PETScBackend backend):
+    gsm(backend), u(1){
+    switch(backend){
+        case PETScBackend::CPU:
+            this->vec_type = VECSTANDARD;
+            break;
+        case PETScBackend::CUDA:
+            this->vec_type = VECCUDA;
+            break;
+    }
 }
 
 PETScPCG::~PETScPCG(){
@@ -58,13 +67,13 @@ std::vector<double> PETScPCG::calculate_displacements(const Meshing* const mesh,
         // DMSetUp(this->dm);
 
         VecCreateMPI(PETSC_COMM_WORLD, m, M, &this->u[0]);
-        VecSetType(this->u[0], VECSTANDARD);
+        VecSetType(this->u[0], this->vec_type.c_str());
         //VecSetSizes(this->u[0], PETSC_DECIDE, M);
         //DMCreateGlobalVector(this->dm, &this->u[0]);
         VecSetUp(this->u[0]);
 
         VecCreateMPI(PETSC_COMM_WORLD, m, M, &this->f);
-        VecSetType(this->f, VECSTANDARD);
+        VecSetType(this->f, this->vec_type.c_str());
         //VecSetSizes(this->f, PETSC_DECIDE, M);
         //DMCreateGlobalVector(this->dm, &this->f);
         VecSetUp(this->f);
@@ -75,14 +84,14 @@ std::vector<double> PETScPCG::calculate_displacements(const Meshing* const mesh,
         KSPSetInitialGuessNonzero(this->ksp, PETSC_TRUE);
 
         KSPGetPC(this->ksp, &this->pc);
-        PCSetType(this->pc, PCJACOBI);
+        PCSetType(this->pc, PCGAMG);
 
         this->first_time = false;
     }
 
     if(this->u[current_step] == 0){
         VecCreateMPI(PETSC_COMM_WORLD, m, M, &this->u[current_step]);
-        VecSetType(this->u[current_step], VECSTANDARD);
+        VecSetType(this->u[current_step], this->vec_type.c_str());
         //VecSetSizes(this->u[current_step], PETSC_DECIDE, load.size());
         //DMCreateGlobalVector(this->dm, &this->u[current_step]);
         VecSetUp(this->u[current_step]);

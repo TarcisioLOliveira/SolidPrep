@@ -433,7 +433,16 @@ std::unique_ptr<FiniteElement> ProjectData::load_fea(const rapidjson::GenericVal
     } else if(fea["type"] == "eigen_pcg"){
         finite_element.reset(new finite_element::EigenPCG());
     } else if(fea["type"] == "petsc_pcg"){
-        finite_element.reset(new finite_element::PETScPCG());
+        this->log_data(fea, "backend", TYPE_STRING, true);
+        std::string backend = fea["backend"].GetString();
+        finite_element::PETScPCG::PETScBackend b;
+        if(backend == "cpu"){
+            b = finite_element::PETScPCG::PETScBackend::CPU;
+        } else if(backend == "cuda"){
+            b = finite_element::PETScPCG::PETScBackend::CUDA;
+        }
+
+        finite_element.reset(new finite_element::PETScPCG(b));
 #ifdef USE_CUDA
     } else if(fea["type"] == "cusolver"){
         finite_element.reset(new finite_element::cuSolver());
