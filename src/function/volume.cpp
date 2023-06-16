@@ -32,7 +32,7 @@ void Volume::initialize(const Optimizer* const op){
     auto v_it = v.cbegin();
     for(auto& g:this->mesh->geometries){
         if(g->do_topopt){
-            this->max_V += std::accumulate(v_it, v_it + g->mesh.size(), 0);
+            this->max_V += std::accumulate(v_it, v_it + g->mesh.size(), 0.0);
         }
         v_it += g->mesh.size();
     }
