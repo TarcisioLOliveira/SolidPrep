@@ -76,7 +76,7 @@ void GlobalStiffnessMatrix::add_geometry(const Meshing* const mesh, const Geomet
                     u_pos.push_back(n->u_pos[j]);
                 }
             }
-            const double rhop = std::pow(*rho, pc);
+            const double rhop = K_MIN + (1-K_MIN)*std::pow(*rho, pc);
             for(size_t i = 0; i < D.size(); ++i){
                 rhoD[i] = rhop*D[i];
             }
