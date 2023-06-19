@@ -637,116 +637,112 @@ Eigen::Matrix<double, 4, 4> TET4::get_phi_radial_base(const double x, const doub
 
 std::vector<double> TET4::get_phi_grad(const double t, const double beta) const{
     std::vector<double> phi{
-    V*beta/6
+    V*beta/10
     ,
-    V*beta/9
+    V*beta/20
     ,
-    V*beta/9
+    V*beta/20
     ,
-    V*beta/9
+    V*beta/20
     ,
-    V*beta/9
+    V*beta/20
     ,
-    V*beta/6
+    V*beta/10
     ,
-    V*beta/9
+    V*beta/20
     ,
-    V*beta/9
+    V*beta/20
     ,
-    V*beta/9
+    V*beta/20
     ,
-    V*beta/9
+    V*beta/20
     ,
-    V*beta/6
+    V*beta/10
     ,
-    V*beta/9
+    V*beta/20
     ,
-    V*beta/9
+    V*beta/20
     ,
-    V*beta/9
+    V*beta/20
     ,
-    V*beta/9
+    V*beta/20
     ,
-    V*beta/6
+    V*beta/10
     };
-
     return phi;
 }
 
 std::vector<double> TET4::get_phi_unidirectional(const double t, const double beta, const double l, const std::vector<double>& v, const double vn) const{
-
     std::vector<double> phi{
-    (2*V*(-2*V*beta + b[0]*l*v[0]*vn + c[0]*l*v[1]*vn + d[0]*l*v[2]*vn) - b[0]*b[0]*l*l - c[0]*c[0]*l*l - d[0]*d[0]*l*l)/(36*V)
+    (V*(-3*V*beta + 2*b[0]*l*v[0]*vn + 2*c[0]*l*v[1]*vn + 2*d[0]*l*v[2]*vn)/48 - b[0]*b[0]*l*l/36 - c[0]*c[0]*l*l/36 - d[0]*d[0]*l*l/36)/V
     ,
-    (2*V*(-2*V*beta + b[1]*l*v[0]*vn + c[1]*l*v[1]*vn + d[1]*l*v[2]*vn) - b[0]*b[1]*l*l - c[0]*c[1]*l*l - d[0]*d[1]*l*l)/(36*V)
+    (V*(-3*V*beta + 2*b[1]*l*v[0]*vn + 2*c[1]*l*v[1]*vn + 2*d[1]*l*v[2]*vn)/48 - b[0]*b[1]*l*l/36 - c[0]*c[1]*l*l/36 - d[0]*d[1]*l*l/36)/V
     ,
-    (2*V*(-2*V*beta + b[2]*l*v[0]*vn + c[2]*l*v[1]*vn + d[2]*l*v[2]*vn) - b[0]*b[2]*l*l - c[0]*c[2]*l*l - d[0]*d[2]*l*l)/(36*V)
+    (V*(-3*V*beta + 2*b[2]*l*v[0]*vn + 2*c[2]*l*v[1]*vn + 2*d[2]*l*v[2]*vn)/48 - b[0]*b[2]*l*l/36 - c[0]*c[2]*l*l/36 - d[0]*d[2]*l*l/36)/V
     ,
-    (2*V*(-2*V*beta + b[3]*l*v[0]*vn + c[3]*l*v[1]*vn + d[3]*l*v[2]*vn) - b[0]*b[3]*l*l - c[0]*c[3]*l*l - d[0]*d[3]*l*l)/(36*V)
+    (V*(-3*V*beta + 2*b[3]*l*v[0]*vn + 2*c[3]*l*v[1]*vn + 2*d[3]*l*v[2]*vn)/48 - b[0]*b[3]*l*l/36 - c[0]*c[3]*l*l/36 - d[0]*d[3]*l*l/36)/V
     ,
-    (2*V*(-2*V*beta + b[0]*l*v[0]*vn + c[0]*l*v[1]*vn + d[0]*l*v[2]*vn) - b[0]*b[1]*l*l - c[0]*c[1]*l*l - d[0]*d[1]*l*l)/(36*V)
+    (V*(-3*V*beta + 2*b[0]*l*v[0]*vn + 2*c[0]*l*v[1]*vn + 2*d[0]*l*v[2]*vn)/48 - b[0]*b[1]*l*l/36 - c[0]*c[1]*l*l/36 - d[0]*d[1]*l*l/36)/V
     ,
-    (2*V*(-2*V*beta + b[1]*l*v[0]*vn + c[1]*l*v[1]*vn + d[1]*l*v[2]*vn) - b[1]*b[1]*l*l - c[1]*c[1]*l*l - d[1]*d[1]*l*l)/(36*V)
+    (V*(-3*V*beta + 2*b[1]*l*v[0]*vn + 2*c[1]*l*v[1]*vn + 2*d[1]*l*v[2]*vn)/48 - b[1]*b[1]*l*l/36 - c[1]*c[1]*l*l/36 - d[1]*d[1]*l*l/36)/V
     ,
-    (2*V*(-2*V*beta + b[2]*l*v[0]*vn + c[2]*l*v[1]*vn + d[2]*l*v[2]*vn) - b[1]*b[2]*l*l - c[1]*c[2]*l*l - d[1]*d[2]*l*l)/(36*V)
+    (V*(-3*V*beta + 2*b[2]*l*v[0]*vn + 2*c[2]*l*v[1]*vn + 2*d[2]*l*v[2]*vn)/48 - b[1]*b[2]*l*l/36 - c[1]*c[2]*l*l/36 - d[1]*d[2]*l*l/36)/V
     ,
-    (2*V*(-2*V*beta + b[3]*l*v[0]*vn + c[3]*l*v[1]*vn + d[3]*l*v[2]*vn) - b[1]*b[3]*l*l - c[1]*c[3]*l*l - d[1]*d[3]*l*l)/(36*V)
+    (V*(-3*V*beta + 2*b[3]*l*v[0]*vn + 2*c[3]*l*v[1]*vn + 2*d[3]*l*v[2]*vn)/48 - b[1]*b[3]*l*l/36 - c[1]*c[3]*l*l/36 - d[1]*d[3]*l*l/36)/V
     ,
-    (2*V*(-2*V*beta + b[0]*l*v[0]*vn + c[0]*l*v[1]*vn + d[0]*l*v[2]*vn) - b[0]*b[2]*l*l - c[0]*c[2]*l*l - d[0]*d[2]*l*l)/(36*V)
+    (V*(-3*V*beta + 2*b[0]*l*v[0]*vn + 2*c[0]*l*v[1]*vn + 2*d[0]*l*v[2]*vn)/48 - b[0]*b[2]*l*l/36 - c[0]*c[2]*l*l/36 - d[0]*d[2]*l*l/36)/V
     ,
-    (2*V*(-2*V*beta + b[1]*l*v[0]*vn + c[1]*l*v[1]*vn + d[1]*l*v[2]*vn) - b[1]*b[2]*l*l - c[1]*c[2]*l*l - d[1]*d[2]*l*l)/(36*V)
+    (V*(-3*V*beta + 2*b[1]*l*v[0]*vn + 2*c[1]*l*v[1]*vn + 2*d[1]*l*v[2]*vn)/48 - b[1]*b[2]*l*l/36 - c[1]*c[2]*l*l/36 - d[1]*d[2]*l*l/36)/V
     ,
-    (2*V*(-2*V*beta + b[2]*l*v[0]*vn + c[2]*l*v[1]*vn + d[2]*l*v[2]*vn) - b[2]*b[2]*l*l - c[2]*c[2]*l*l - d[2]*d[2]*l*l)/(36*V)
+    (V*(-3*V*beta + 2*b[2]*l*v[0]*vn + 2*c[2]*l*v[1]*vn + 2*d[2]*l*v[2]*vn)/48 - b[2]*b[2]*l*l/36 - c[2]*c[2]*l*l/36 - d[2]*d[2]*l*l/36)/V
     ,
-    (2*V*(-2*V*beta + b[3]*l*v[0]*vn + c[3]*l*v[1]*vn + d[3]*l*v[2]*vn) - b[2]*b[3]*l*l - c[2]*c[3]*l*l - d[2]*d[3]*l*l)/(36*V)
+    (V*(-3*V*beta + 2*b[3]*l*v[0]*vn + 2*c[3]*l*v[1]*vn + 2*d[3]*l*v[2]*vn)/48 - b[2]*b[3]*l*l/36 - c[2]*c[3]*l*l/36 - d[2]*d[3]*l*l/36)/V
     ,
-    (2*V*(-2*V*beta + b[0]*l*v[0]*vn + c[0]*l*v[1]*vn + d[0]*l*v[2]*vn) - b[0]*b[3]*l*l - c[0]*c[3]*l*l - d[0]*d[3]*l*l)/(36*V)
+    (V*(-3*V*beta + 2*b[0]*l*v[0]*vn + 2*c[0]*l*v[1]*vn + 2*d[0]*l*v[2]*vn)/48 - b[0]*b[3]*l*l/36 - c[0]*c[3]*l*l/36 - d[0]*d[3]*l*l/36)/V
     ,
-    (2*V*(-2*V*beta + b[1]*l*v[0]*vn + c[1]*l*v[1]*vn + d[1]*l*v[2]*vn) - b[1]*b[3]*l*l - c[1]*c[3]*l*l - d[1]*d[3]*l*l)/(36*V)
+    (V*(-3*V*beta + 2*b[1]*l*v[0]*vn + 2*c[1]*l*v[1]*vn + 2*d[1]*l*v[2]*vn)/48 - b[1]*b[3]*l*l/36 - c[1]*c[3]*l*l/36 - d[1]*d[3]*l*l/36)/V
     ,
-    (2*V*(-2*V*beta + b[2]*l*v[0]*vn + c[2]*l*v[1]*vn + d[2]*l*v[2]*vn) - b[2]*b[3]*l*l - c[2]*c[3]*l*l - d[2]*d[3]*l*l)/(36*V)
+    (V*(-3*V*beta + 2*b[2]*l*v[0]*vn + 2*c[2]*l*v[1]*vn + 2*d[2]*l*v[2]*vn)/48 - b[2]*b[3]*l*l/36 - c[2]*c[3]*l*l/36 - d[2]*d[3]*l*l/36)/V
     ,
-    (2*V*(-2*V*beta + b[3]*l*v[0]*vn + c[3]*l*v[1]*vn + d[3]*l*v[2]*vn) - b[3]*b[3]*l*l - c[3]*c[3]*l*l - d[3]*d[3]*l*l)/(36*V)
+    (V*(-3*V*beta + 2*b[3]*l*v[0]*vn + 2*c[3]*l*v[1]*vn + 2*d[3]*l*v[2]*vn)/48 - b[3]*b[3]*l*l/36 - c[3]*c[3]*l*l/36 - d[3]*d[3]*l*l/36)/V
     };
-
     return phi;
 }
 
 std::vector<double> TET4::helmholtz_tensor(const double t, const double r) const{
     std::vector<double> h{
-    (6*V*V + b[0]*b[0]*r*r + c[0]*c[0]*r*r + d[0]*d[0]*r*r)/(36*V)
+    (V*V/10 + b[0]*b[0]*r*r/36 + c[0]*c[0]*r*r/36 + d[0]*d[0]*r*r/36)/V
     ,
-    (4*V*V + b[0]*b[1]*r*r + c[0]*c[1]*r*r + d[0]*d[1]*r*r)/(36*V)
+    (V*V/20 + b[0]*b[1]*r*r/36 + c[0]*c[1]*r*r/36 + d[0]*d[1]*r*r/36)/V
     ,
-    (4*V*V + b[0]*b[2]*r*r + c[0]*c[2]*r*r + d[0]*d[2]*r*r)/(36*V)
+    (V*V/20 + b[0]*b[2]*r*r/36 + c[0]*c[2]*r*r/36 + d[0]*d[2]*r*r/36)/V
     ,
-    (4*V*V + b[0]*b[3]*r*r + c[0]*c[3]*r*r + d[0]*d[3]*r*r)/(36*V)
+    (V*V/20 + b[0]*b[3]*r*r/36 + c[0]*c[3]*r*r/36 + d[0]*d[3]*r*r/36)/V
     ,
-    (4*V*V + b[0]*b[1]*r*r + c[0]*c[1]*r*r + d[0]*d[1]*r*r)/(36*V)
+    (V*V/20 + b[0]*b[1]*r*r/36 + c[0]*c[1]*r*r/36 + d[0]*d[1]*r*r/36)/V
     ,
-    (6*V*V + b[1]*b[1]*r*r + c[1]*c[1]*r*r + d[1]*d[1]*r*r)/(36*V)
+    (V*V/10 + b[1]*b[1]*r*r/36 + c[1]*c[1]*r*r/36 + d[1]*d[1]*r*r/36)/V
     ,
-    (4*V*V + b[1]*b[2]*r*r + c[1]*c[2]*r*r + d[1]*d[2]*r*r)/(36*V)
+    (V*V/20 + b[1]*b[2]*r*r/36 + c[1]*c[2]*r*r/36 + d[1]*d[2]*r*r/36)/V
     ,
-    (4*V*V + b[1]*b[3]*r*r + c[1]*c[3]*r*r + d[1]*d[3]*r*r)/(36*V)
+    (V*V/20 + b[1]*b[3]*r*r/36 + c[1]*c[3]*r*r/36 + d[1]*d[3]*r*r/36)/V
     ,
-    (4*V*V + b[0]*b[2]*r*r + c[0]*c[2]*r*r + d[0]*d[2]*r*r)/(36*V)
+    (V*V/20 + b[0]*b[2]*r*r/36 + c[0]*c[2]*r*r/36 + d[0]*d[2]*r*r/36)/V
     ,
-    (4*V*V + b[1]*b[2]*r*r + c[1]*c[2]*r*r + d[1]*d[2]*r*r)/(36*V)
+    (V*V/20 + b[1]*b[2]*r*r/36 + c[1]*c[2]*r*r/36 + d[1]*d[2]*r*r/36)/V
     ,
-    (6*V*V + b[2]*b[2]*r*r + c[2]*c[2]*r*r + d[2]*d[2]*r*r)/(36*V)
+    (V*V/10 + b[2]*b[2]*r*r/36 + c[2]*c[2]*r*r/36 + d[2]*d[2]*r*r/36)/V
     ,
-    (4*V*V + b[2]*b[3]*r*r + c[2]*c[3]*r*r + d[2]*d[3]*r*r)/(36*V)
+    (V*V/20 + b[2]*b[3]*r*r/36 + c[2]*c[3]*r*r/36 + d[2]*d[3]*r*r/36)/V
     ,
-    (4*V*V + b[0]*b[3]*r*r + c[0]*c[3]*r*r + d[0]*d[3]*r*r)/(36*V)
+    (V*V/20 + b[0]*b[3]*r*r/36 + c[0]*c[3]*r*r/36 + d[0]*d[3]*r*r/36)/V
     ,
-    (4*V*V + b[1]*b[3]*r*r + c[1]*c[3]*r*r + d[1]*d[3]*r*r)/(36*V)
+    (V*V/20 + b[1]*b[3]*r*r/36 + c[1]*c[3]*r*r/36 + d[1]*d[3]*r*r/36)/V
     ,
-    (4*V*V + b[2]*b[3]*r*r + c[2]*c[3]*r*r + d[2]*d[3]*r*r)/(36*V)
+    (V*V/20 + b[2]*b[3]*r*r/36 + c[2]*c[3]*r*r/36 + d[2]*d[3]*r*r/36)/V
     ,
-    (6*V*V + b[3]*b[3]*r*r + c[3]*c[3]*r*r + d[3]*d[3]*r*r)/(36*V)
+    (V*V/10 + b[3]*b[3]*r*r/36 + c[3]*c[3]*r*r/36 + d[3]*d[3]*r*r/36)/V
     };
-
     return h;
 }
 

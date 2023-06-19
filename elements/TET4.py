@@ -258,7 +258,7 @@ def make_h():
     print("std::vector<double> h{")
     for i in range(len(k)):
         # Prepare for integration
-        k2[i] = sympy.simplify(sympy.collect(sympy.expand(k2[i]), LL))
+        k2[i] = sympy.simplify(sympy.collect(sympy.expand(k2[i]), LL, exact=True))
 
         # The "integration" step
         # Replace the combinations of Li*Lj with the respective constants
@@ -267,15 +267,14 @@ def make_h():
         #                 = (a!b!c!d!/(a+b+c+d+3)!)*6V
         # (HUEBNER, 2001, p. 156)
         for l in L:
-            k[i] = k[i].subs(l*l, 2*6/(5*4*3*2))
+            k2[i] = k2[i].subs(l*l, 2*6/(5*4*3*2))
 
         for l1 in L:
             for l2 in L:
-                if l1 != l2:
-                    k[i] = k[i].subs(l1*l2, 1*6/(5*4*3*2))
+                k2[i] = k2[i].subs(l1*l2, 1*6/(5*4*3*2))
 
         for l in L:
-            k[i] = k[i].subs(l, 6/(4*3*2))
+            k2[i] = k2[i].subs(l, 6/(4*3*2))
 
         k[i] = sympy.simplify(sympy.nsimplify(sympy.expand(k[i]+k2[i]), rational=True))
 
@@ -324,8 +323,7 @@ def make_phi_grad():
 
         for l1 in L:
             for l2 in L:
-                if l1 != l2:
-                    k[i] = k[i].subs(l1*l2, 1*6/(5*4*3*2))
+                k[i] = k[i].subs(l1*l2, 1*6/(5*4*3*2))
 
         for l in L:
             k[i] = k[i].subs(l, 6/(4*3*2))
@@ -377,8 +375,7 @@ def make_phi_unid():
 
         for l1 in L:
             for l2 in L:
-                if l1 != l2:
-                    k[i] = k[i].subs(l1*l2, 1*6/(5*4*3*2))
+                k[i] = k[i].subs(l1*l2, 1*6/(5*4*3*2))
 
         for l in L:
             k[i] = k[i].subs(l, 6/(4*3*2))
