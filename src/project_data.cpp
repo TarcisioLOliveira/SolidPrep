@@ -435,7 +435,7 @@ std::unique_ptr<FiniteElement> ProjectData::load_fea(const rapidjson::GenericVal
     } else if(fea["type"] == "petsc_pcg"){
         this->log_data(fea, "backend", TYPE_STRING, true);
         std::string backend = fea["backend"].GetString();
-        finite_element::PETScPCG::PETScBackend b;
+        finite_element::PETScPCG::PETScBackend b = finite_element::PETScPCG::PETScBackend::CPU;
         if(backend == "cpu"){
             b = finite_element::PETScPCG::PETScBackend::CPU;
         } else if(backend == "cuda"){
