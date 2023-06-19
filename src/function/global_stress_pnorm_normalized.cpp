@@ -177,7 +177,7 @@ double GlobalStressPnormNormalized::calculate_with_gradient(const Optimizer* con
                 if(num_mat == 1){
                     const auto D = g->materials.get_D();
                     for(const auto& e:g->mesh){
-                        double lKu = pc*std::pow(*x_it, pc-1)*e->get_compliance(D, this->mesh->thickness, u, l);
+                        double lKu = (1.0 - K_MIN)*pc*std::pow(*x_it, pc-1)*e->get_compliance(D, this->mesh->thickness, u, l);
                         double v = *v_it;
                         double S = *stress_it;
                         double Se = pt*v*std::pow(*x_it, pt*P-1)*std::pow(S, P);
