@@ -113,8 +113,8 @@ double RadialMachining::calculate(const Optimizer* const op, const std::vector<d
     for(const auto& g:mesh->geometries){
         if(g->do_topopt){
             const size_t num_den = g->number_of_densities_needed();
-            auto N = g->mesh.front()->helmholtz_vector(this->mesh->thickness);
             for(const auto& e:g->mesh){
+                auto N = e->helmholtz_vector(this->mesh->thickness);
                 const gp_Pnt p = e->get_centroid();
                 const gp_Vec pc(p, this->center);
                 const gp_Vec vv = pc - pc.Dot(this->axis)*this->axis;
@@ -122,7 +122,7 @@ double RadialMachining::calculate(const Optimizer* const op, const std::vector<d
                 v[1] = vv.Y();
                 v[2] = vv.Z();
 
-                const double Hx = this->heaviside(*x_it, BETA_RHO, 0.9);
+                const double Hx = this->heaviside(*x_it, BETA_RHO, 0.95);
                 const auto phi_e = e->get_phi_radial(this->mesh->thickness, this->beta, this->v_norm, v, dv, Hx);
                 for(size_t i = 0; i < num_nodes; ++i){
                     const auto& ni = e->nodes[i];
@@ -152,6 +152,9 @@ double RadialMachining::calculate(const Optimizer* const op, const std::vector<d
                 x_it += num_den;
             }
         }
+    }
+    for(long i = 0; i < this->b.size(); ++i){
+        this->Phi.coeffRef(i, i) += 1e-14;
     }
 
     if(this->first_time){
@@ -219,8 +222,8 @@ double RadialMachining::calculate_with_gradient(const Optimizer* const op, const
     for(const auto& g:mesh->geometries){
         if(g->do_topopt){
             const size_t num_den = g->number_of_densities_needed();
-            auto N = g->mesh.front()->helmholtz_vector(this->mesh->thickness);
             for(const auto& e:g->mesh){
+                auto N = e->helmholtz_vector(this->mesh->thickness);
                 const gp_Pnt p = e->get_centroid();
                 const gp_Vec pc(p, this->center);
                 const gp_Vec vv = pc - pc.Dot(this->axis)*this->axis;
@@ -228,7 +231,7 @@ double RadialMachining::calculate_with_gradient(const Optimizer* const op, const
                 v[1] = vv.Y();
                 v[2] = vv.Z();
 
-                const double Hx = this->heaviside(*x_it, BETA_RHO, 0.9);
+                const double Hx = this->heaviside(*x_it, BETA_RHO, 0.95);
                 const auto phi_e = e->get_phi_radial(this->mesh->thickness, this->beta, this->v_norm, v, dv, Hx);
                 for(size_t i = 0; i < num_nodes; ++i){
                     const auto& ni = e->nodes[i];
@@ -258,6 +261,9 @@ double RadialMachining::calculate_with_gradient(const Optimizer* const op, const
                 x_it += num_den;
             }
         }
+    }
+    for(long i = 0; i < this->b.size(); ++i){
+        this->Phi.coeffRef(i, i) += 1e-14;
     }
 
     if(this->first_time){
