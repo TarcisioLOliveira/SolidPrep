@@ -263,14 +263,19 @@ def make_h():
         # The "integration" step
         # Replace the combinations of Li*Lj with the respective constants
         # obtained by integration.
-        # The formula is: area integral of (L1^a)*(L2^b)*(L3^c)
-        #                 = (a!b!c!/(a+b+c+2)!)*2delta
+        # The formula is: area integral of (L1^a)*(L2^b)*(L3^c)*(L4^d)
+        #                 = (a!b!c!d!/(a+b+c+d+3)!)*6V
         # (HUEBNER, 2001, p. 156)
         for l in L:
-            k2[i] = k2[i].subs(l*l, 2*2/(4*3*2))
+            k[i] = k[i].subs(l*l, 2*6/(5*4*3*2))
+
+        for l1 in L:
+            for l2 in L:
+                if l1 != l2:
+                    k[i] = k[i].subs(l1*l2, 1*6/(5*4*3*2))
 
         for l in L:
-            k2[i] = k2[i].subs(l, 2/(3*2))
+            k[i] = k[i].subs(l, 6/(4*3*2))
 
         k[i] = sympy.simplify(sympy.nsimplify(sympy.expand(k[i]+k2[i]), rational=True))
 
@@ -288,55 +293,7 @@ def make_phi_radial():
     """
         Creates the elemental Helmholtz tensor.
     """
-    init_L_symbolic()
-    # l = sympy.symbols("l")
-    beta = sympy.symbols("beta")
-    rho = sympy.symbols("rho")
-    vv = sympy.symbols("v:3")
-    v = sympy.Matrix([vv[0], vv[1], vv[2]])
-    dv = sympy.symbols("dv")
-    vn = sympy.symbols("vn")
-    vp = sympy.symbols("vp")
-    ax, ay, az = sympy.symbols("ax ay az")
-    A = sympy.Matrix([[ax, 0, 0],
-                      [0, ay, 0],
-                      [0, 0, az]])
-    NN = sympy.Matrix([L[0], L[1], L[2], L[3]]).T
-    dNN = sympy.Matrix([NN.diff(x), NN.diff(y), NN.diff(z)])
-    # k = V*(beta*rho*NN.T*NN + l*l*dNN.T*dNN + l*NN.T*(v.T*dNN) + dv*NN.T*NN)
-    k = V*(beta*rho*NN.T*NN + vn*dNN.T*A*dNN + vp*NN.T*(v.T*dNN) + vp*dv*NN.T*NN)
-
-    # Prepare for "integration" by defining the variables that should be
-    # collected
-    LL = []
-    for l1 in L:
-        for l2 in L:
-            LL.append(l1*l2)
-
-    LL.extend(L)
-
-    print("std::vector<double> phi{")
-    for i in range(len(k)):
-        # Prepare for integration
-        k[i] = sympy.simplify(sympy.collect(sympy.expand(k[i]), LL))
-
-        for l in L:
-            k[i] = k[i].subs(l*l, 2*2/(4*3*2))
-
-        for l in L:
-            k[i] = k[i].subs(l, 2/(3*2))
-
-        k[i] = sympy.simplify(sympy.nsimplify(sympy.expand(k[i]), rational=True))
-
-        # Format output for use with C++
-        formatted = str(k[i])
-        formatted = re.sub(r"([abcdlV]\d?)\*\*2", r"\1*\1", formatted)
-        formatted = re.sub(r"([abcdv])(\d)", r"\1[\2]", formatted)
-
-        if i > 0:
-            print(",")
-        print(formatted)
-    print("};")
+    print("unused")
 
 def make_phi_grad():
     """
@@ -363,10 +320,15 @@ def make_phi_grad():
         k[i] = sympy.simplify(sympy.collect(sympy.expand(k[i]), LL))
 
         for l in L:
-            k[i] = k[i].subs(l*l, 2*2/(4*3*2))
+            k[i] = k[i].subs(l*l, 2*6/(5*4*3*2))
+
+        for l1 in L:
+            for l2 in L:
+                if l1 != l2:
+                    k[i] = k[i].subs(l1*l2, 1*6/(5*4*3*2))
 
         for l in L:
-            k[i] = k[i].subs(l, 2/(3*2))
+            k[i] = k[i].subs(l, 6/(4*3*2))
 
         k[i] = sympy.simplify(sympy.nsimplify(sympy.expand(k[i]), rational=True))
 
@@ -411,10 +373,15 @@ def make_phi_unid():
         k[i] = sympy.simplify(sympy.collect(sympy.expand(k[i]), LL))
 
         for l in L:
-            k[i] = k[i].subs(l*l, 2*2/(4*3*2))
+            k[i] = k[i].subs(l*l, 2*6/(5*4*3*2))
+
+        for l1 in L:
+            for l2 in L:
+                if l1 != l2:
+                    k[i] = k[i].subs(l1*l2, 1*6/(5*4*3*2))
 
         for l in L:
-            k[i] = k[i].subs(l, 2/(3*2))
+            k[i] = k[i].subs(l, 6/(4*3*2))
 
         k[i] = sympy.simplify(sympy.nsimplify(sympy.expand(k[i]), rational=True))
 

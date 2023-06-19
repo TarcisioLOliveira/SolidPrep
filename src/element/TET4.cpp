@@ -34,9 +34,12 @@
 namespace element{
 
 TET4::TET4(ElementShape s):
-    MeshElementCommon3DTet<TET4>(s.nodes), coeffs(this->get_coeffs()){}
+    MeshElementCommon3DTet<TET4>(s.nodes){
 
-std::array<double, TET4::NODES_PER_ELEM*TET4::NODES_PER_ELEM> TET4::get_coeffs() const{
+    this->get_coeffs();    
+}
+
+void TET4::get_coeffs(){
     constexpr size_t N = TET4::NODES_PER_ELEM;
     std::array<double, N> x, y, z;
     for(size_t i = 0; i < N; ++i){
@@ -63,23 +66,18 @@ std::array<double, TET4::NODES_PER_ELEM*TET4::NODES_PER_ELEM> TET4::get_coeffs()
     info = LAPACKE_dgetri(LAPACK_COL_MAJOR, N, M.data(), N, ipiv.data());
     logger::log_assert(info == 0, logger::ERROR, "LAPACKE returned {} while calculating computing inverse from LU in Q4.", info);
 
-    const double V = this->get_volume(1.0);
+    this->V = this->get_volume(1.0);
     for(auto& m:M){
         m *= 6*V;
     }
 
-    return M;
+    std::copy(M.begin(), M.begin()+4, a);
+    std::copy(M.begin()+4, M.begin()+8, b);
+    std::copy(M.begin()+8, M.begin()+12, c);
+    std::copy(M.begin()+12, M.begin()+16, d);
 }
 
 std::vector<double> TET4::get_k(const std::vector<double>& D, const double t) const{
-    const size_t N = this->NODES_PER_ELEM;
-
-    const double* const a = this->coeffs.data();
-    const double* const b = a + N;
-    const double* const c = b + N;
-    const double* const d = c + N;
-
-    const double V = this->get_volume(t);
 
 std::vector<double> k{
 (D[0]*b[0]*b[0] + D[18]*b[0]*c[0] + D[21]*c[0]*c[0] + D[23]*c[0]*d[0] + D[3]*b[0]*c[0] + D[30]*b[0]*d[0] + D[33]*c[0]*d[0] + D[35]*d[0]*d[0] + D[5]*b[0]*d[0])/(36*V)
@@ -376,14 +374,6 @@ std::vector<double> k{
 
 std::vector<double> TET4::get_DB(const std::vector<double>& D, const gp_Pnt& point) const{
     (void)point;
-    const size_t N = this->NODES_PER_ELEM;
-
-    const double* const a = this->coeffs.data();
-    const double* const b = a + N;
-    const double* const c = b + N;
-    const double* const d = c + N;
-
-    const double V = this->get_volume(1);
 
 std::vector<double> DB{
 (D[0]*b[0] + D[3]*c[0] + D[5]*d[0])/(6*V)
@@ -569,59 +559,83 @@ std::vector<double> TET4::get_Nf(const double t, const std::vector<gp_Pnt>& poin
     return Nf;
 }
 
-std::vector<double> TET4::get_phi_radial(const double t, const double beta, const double vp, const std::vector<double>& v, const double dv, const double rho) const{
+std::vector<double> TET4::get_phi_radial(const double t, const double beta, const double vp, const std::vector<double>& axis, const std::vector<double>& center, const double rho) const{
     const size_t N = this->NODES_PER_ELEM;
-    const double V = this->get_volume(t);
 
-    const double* const a = this->coeffs.data();
-    const double* const b = a + N;
-    const double* const c = b + N;
-    const double* const d = c + N;
+    std::vector<double> x(4);
+    std::vector<double> y(4);
+    std::vector<double> z(4);
+    for(size_t i = 0; i < N; ++i){
+        const auto& n = this->nodes[i];
+        x[i] = n->point.X();
+        y[i] = n->point.Y();
+        z[i] = n->point.Z();
+    }
 
-    const double vn = std::sqrt(v[0]*v[0] + v[1]*v[1] + v[2]*v[2] + 1e-6);
-    const double ax = std::sqrt(1e-6 + v[0]*v[0]);
-    const double ay = std::sqrt(1e-6 + v[1]*v[1]);
-    const double az = std::sqrt(1e-6 + v[2]*v[2]);
-    std::vector<double> phi{
-    (2*V*(2*V*beta*rho + 2*V*dv*vp + b[0]*v[0]*vp + c[0]*v[1]*vp + d[0]*v[2]*vp) + ax*b[0]*b[0]*vn + ay*c[0]*c[0]*vn + az*d[0]*d[0]*vn)/(36*V)
-    ,
-    (2*V*(2*V*beta*rho + 2*V*dv*vp + b[1]*v[0]*vp + c[1]*v[1]*vp + d[1]*v[2]*vp) + ax*b[0]*b[1]*vn + ay*c[0]*c[1]*vn + az*d[0]*d[1]*vn)/(36*V)
-    ,
-    (2*V*(2*V*beta*rho + 2*V*dv*vp + b[2]*v[0]*vp + c[2]*v[1]*vp + d[2]*v[2]*vp) + ax*b[0]*b[2]*vn + ay*c[0]*c[2]*vn + az*d[0]*d[2]*vn)/(36*V)
-    ,
-    (2*V*(2*V*beta*rho + 2*V*dv*vp + b[3]*v[0]*vp + c[3]*v[1]*vp + d[3]*v[2]*vp) + ax*b[0]*b[3]*vn + ay*c[0]*c[3]*vn + az*d[0]*d[3]*vn)/(36*V)
-    ,
-    (2*V*(2*V*beta*rho + 2*V*dv*vp + b[0]*v[0]*vp + c[0]*v[1]*vp + d[0]*v[2]*vp) + ax*b[0]*b[1]*vn + ay*c[0]*c[1]*vn + az*d[0]*d[1]*vn)/(36*V)
-    ,
-    (2*V*(2*V*beta*rho + 2*V*dv*vp + b[1]*v[0]*vp + c[1]*v[1]*vp + d[1]*v[2]*vp) + ax*b[1]*b[1]*vn + ay*c[1]*c[1]*vn + az*d[1]*d[1]*vn)/(36*V)
-    ,
-    (2*V*(2*V*beta*rho + 2*V*dv*vp + b[2]*v[0]*vp + c[2]*v[1]*vp + d[2]*v[2]*vp) + ax*b[1]*b[2]*vn + ay*c[1]*c[2]*vn + az*d[1]*d[2]*vn)/(36*V)
-    ,
-    (2*V*(2*V*beta*rho + 2*V*dv*vp + b[3]*v[0]*vp + c[3]*v[1]*vp + d[3]*v[2]*vp) + ax*b[1]*b[3]*vn + ay*c[1]*c[3]*vn + az*d[1]*d[3]*vn)/(36*V)
-    ,
-    (2*V*(2*V*beta*rho + 2*V*dv*vp + b[0]*v[0]*vp + c[0]*v[1]*vp + d[0]*v[2]*vp) + ax*b[0]*b[2]*vn + ay*c[0]*c[2]*vn + az*d[0]*d[2]*vn)/(36*V)
-    ,
-    (2*V*(2*V*beta*rho + 2*V*dv*vp + b[1]*v[0]*vp + c[1]*v[1]*vp + d[1]*v[2]*vp) + ax*b[1]*b[2]*vn + ay*c[1]*c[2]*vn + az*d[1]*d[2]*vn)/(36*V)
-    ,
-    (2*V*(2*V*beta*rho + 2*V*dv*vp + b[2]*v[0]*vp + c[2]*v[1]*vp + d[2]*v[2]*vp) + ax*b[2]*b[2]*vn + ay*c[2]*c[2]*vn + az*d[2]*d[2]*vn)/(36*V)
-    ,
-    (2*V*(2*V*beta*rho + 2*V*dv*vp + b[3]*v[0]*vp + c[3]*v[1]*vp + d[3]*v[2]*vp) + ax*b[2]*b[3]*vn + ay*c[2]*c[3]*vn + az*d[2]*d[3]*vn)/(36*V)
-    ,
-    (2*V*(2*V*beta*rho + 2*V*dv*vp + b[0]*v[0]*vp + c[0]*v[1]*vp + d[0]*v[2]*vp) + ax*b[0]*b[3]*vn + ay*c[0]*c[3]*vn + az*d[0]*d[3]*vn)/(36*V)
-    ,
-    (2*V*(2*V*beta*rho + 2*V*dv*vp + b[1]*v[0]*vp + c[1]*v[1]*vp + d[1]*v[2]*vp) + ax*b[1]*b[3]*vn + ay*c[1]*c[3]*vn + az*d[1]*d[3]*vn)/(36*V)
-    ,
-    (2*V*(2*V*beta*rho + 2*V*dv*vp + b[2]*v[0]*vp + c[2]*v[1]*vp + d[2]*v[2]*vp) + ax*b[2]*b[3]*vn + ay*c[2]*c[3]*vn + az*d[2]*d[3]*vn)/(36*V)
-    ,
-    (2*V*(2*V*beta*rho + 2*V*dv*vp + b[3]*v[0]*vp + c[3]*v[1]*vp + d[3]*v[2]*vp) + ax*b[3]*b[3]*vn + ay*c[3]*c[3]*vn + az*d[3]*d[3]*vn)/(36*V)
+    const Eigen::Vector<double, 3> A(axis[0], axis[1], axis[2]);
+    const Eigen::Vector<double, 3> C(center[0], center[1], center[2]);
+
+    // (Shunn and Ham, 2012) https://doi.org/10.1016/j.cam.2012.03.032
+    const double coeffs_gl[]{
+        0.7784952948213300, 0.0738349017262234, 0.0738349017262234, 0.0738349017262234, 0.0476331348432089,
+        0.0738349017262234, 0.7784952948213300, 0.0738349017262234, 0.0738349017262234, 0.0476331348432089,
+        0.0738349017262234, 0.0738349017262234, 0.7784952948213300, 0.0738349017262234, 0.0476331348432089,
+        0.0738349017262234, 0.0738349017262234, 0.0738349017262234, 0.7784952948213300, 0.0476331348432089,
+        0.4062443438840510, 0.4062443438840510, 0.0937556561159491, 0.0937556561159491, 0.1349112434378610,
+        0.4062443438840510, 0.0937556561159491, 0.4062443438840510, 0.0937556561159491, 0.1349112434378610,
+        0.4062443438840510, 0.0937556561159491, 0.0937556561159491, 0.4062443438840510, 0.1349112434378610,
+        0.0937556561159491, 0.4062443438840510, 0.4062443438840510, 0.0937556561159491, 0.1349112434378610,
+        0.0937556561159491, 0.4062443438840510, 0.0937556561159491, 0.4062443438840510, 0.1349112434378610,
+        0.0937556561159491, 0.0937556561159491, 0.4062443438840510, 0.4062443438840510, 0.1349112434378610
     };
+
+    const double* ai = coeffs_gl;
+    const double* bi = coeffs_gl+1;
+    const double* ci = coeffs_gl+2;
+    const double* di = coeffs_gl+3;
+    const double* wi = coeffs_gl+4;
+
+    Eigen::Matrix<double, 4, 4> phi;
+    phi.fill(0);
+    for(long i = 0; i < 10; ++i){
+
+        const double aj = *(ai + 5*i);
+        const double bj = *(bi + 5*i);
+        const double cj = *(ci + 5*i);
+        const double dj = *(di + 5*i);
+        const double wj = *(wi + 5*i);
+
+        auto phi_tmp = get_phi_radial_base(aj*x[0] + bj*x[1] + cj*x[2] + dj*x[3],
+                                           aj*y[0] + bj*y[1] + cj*y[2] + dj*y[3],
+                                           aj*z[0] + bj*z[1] + cj*z[2] + dj*z[3],
+                                           A, C,
+                                           beta, vp, rho);
+
+        phi += wj*phi_tmp;
+    }
+    std::vector<double> phi_vec(16,0);
+    phi.transposeInPlace();
+
+    std::copy(phi.data(), phi.data()+16, phi_vec.begin());
+
+    return phi_vec;
+}
+
+Eigen::Matrix<double, 4, 4> TET4::get_phi_radial_base(const double x, const double y, const double z, const Eigen::Vector<double, 3>& A, const Eigen::Vector<double, 3>& C, const double beta, const double vp, const double rho) const{
+    const Eigen::Vector<double, 3> P(x, y, z);
+    const Eigen::Vector<double, 3> v = (C - P) + (C - P).dot(A)*A;
+    const double vv = v.dot(v);
+    const double dv = -3 + A.dot(A);
+
+    const auto NN = this->N_mat_1dof(x, y, z);
+    const auto dNN = this->dN_mat_1dof();
+
+    const auto phi = (beta*rho + vp*dv)*NN*NN.transpose() + vv*dNN.transpose()*dNN + vp*NN*v.transpose()*dNN;
 
     return phi;
 }
 
 std::vector<double> TET4::get_phi_grad(const double t, const double beta) const{
-    const double V = this->get_volume(t);
-
     std::vector<double> phi{
     V*beta/6
     ,
@@ -660,13 +674,6 @@ std::vector<double> TET4::get_phi_grad(const double t, const double beta) const{
 }
 
 std::vector<double> TET4::get_phi_unidirectional(const double t, const double beta, const double l, const std::vector<double>& v, const double vn) const{
-    const size_t N = this->NODES_PER_ELEM;
-    const double V = this->get_volume(t);
-
-    const double* const a = this->coeffs.data();
-    const double* const b = a + N;
-    const double* const c = b + N;
-    const double* const d = c + N;
 
     std::vector<double> phi{
     (2*V*(-2*V*beta + b[0]*l*v[0]*vn + c[0]*l*v[1]*vn + d[0]*l*v[2]*vn) - b[0]*b[0]*l*l - c[0]*c[0]*l*l - d[0]*d[0]*l*l)/(36*V)
@@ -706,14 +713,6 @@ std::vector<double> TET4::get_phi_unidirectional(const double t, const double be
 }
 
 std::vector<double> TET4::helmholtz_tensor(const double t, const double r) const{
-    const size_t N = this->NODES_PER_ELEM;
-    const double V = this->get_volume(t);
-
-    const double* const a = this->coeffs.data();
-    const double* const b = a + N;
-    const double* const c = b + N;
-    const double* const d = c + N;
-
     std::vector<double> h{
     (6*V*V + b[0]*b[0]*r*r + c[0]*c[0]*r*r + d[0]*d[0]*r*r)/(36*V)
     ,
@@ -763,15 +762,6 @@ std::vector<double> TET4::helmholtz_vector(const double t) const{
 
 std::vector<double> TET4::get_nodal_density_gradient(gp_Pnt p) const{
     (void)p;
-    const size_t N = this->NODES_PER_ELEM;
-
-    const double* const a = this->coeffs.data();
-    const double* const b = a + N;
-    const double* const c = b + N;
-    const double* const d = c + N;
-
-    const double V = this->get_volume(1.0);
-
     
     return std::vector<double>{b[0]/(6*V), b[1]/(6*V), b[2]/(6*V), b[3]/(6*V),
                                c[0]/(6*V), c[1]/(6*V), c[2]/(6*V), c[3]/(6*V),

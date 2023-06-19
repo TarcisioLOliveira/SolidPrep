@@ -21,6 +21,7 @@
 #ifndef TET4_HPP
 #define TET4_HPP
 
+#include <Eigen/Core>
 #include "element.hpp"
 #include "material.hpp"
 #include <vector>
@@ -50,7 +51,7 @@ class TET4 : public MeshElementCommon3DTet<TET4>{
     virtual std::vector<double> helmholtz_tensor(const double t, const double r) const override;
     virtual std::vector<double> helmholtz_vector(const double t) const override;
     virtual std::vector<double> get_nodal_density_gradient(gp_Pnt p) const override;
-    virtual std::vector<double> get_phi_radial(const double t, const double beta, const double vp, const std::vector<double>& v, const double dv, const double rho) const override;
+    virtual std::vector<double> get_phi_radial(const double t, const double beta, const double vp, const std::vector<double>& axis, const std::vector<double>& center, const double rho) const override;
     virtual std::vector<double> get_phi_grad(const double t, const double beta) const override;
     virtual std::vector<double> get_phi_unidirectional(const double t, const double beta, const double l, const std::vector<double>& v, const double vn) const override;
 
@@ -61,10 +62,24 @@ class TET4 : public MeshElementCommon3DTet<TET4>{
     private:
     virtual std::vector<double> get_DB(const std::vector<double>& D, const gp_Pnt& point) const override;
     virtual std::vector<double> get_Nf(const double t, const std::vector<gp_Pnt>& points) const override;
+    Eigen::Matrix<double, 4, 4> get_phi_radial_base(const double x, const double y, const double z, const Eigen::Vector<double, 3>& A, const Eigen::Vector<double, 3>& C, const double beta, const double vp, const double rho) const;
 
-    std::array<double, NODES_PER_ELEM*NODES_PER_ELEM> get_coeffs() const;
+    void get_coeffs();
 
-    const std::array<double, NODES_PER_ELEM*NODES_PER_ELEM> coeffs;
+    double a[4], b[4], c[4], d[4], V;
+
+    inline double N(double x, double y, double z, size_t i) const{
+        return (a[i] + b[i]*x + c[i]*y + d[i]*z)/(6*V);
+    }
+
+    inline Eigen::Vector<double, 4> N_mat_1dof(double x, double y, double z) const{
+        return Eigen::Vector<double, 4>(N(x, y, z, 0), N(x, y, z, 1), N(x, y, z, 2), N(x, y, z, 3));
+    }
+    inline Eigen::Matrix<double, 3, 4> dN_mat_1dof() const{
+        return Eigen::Matrix<double, 3, 4>{{b[0], b[1], b[2], b[3]},
+                                           {c[0], c[1], c[2], c[3]},
+                                           {d[0], d[1], d[2], d[3]}}/(6*V);
+    }
 };
 
 }

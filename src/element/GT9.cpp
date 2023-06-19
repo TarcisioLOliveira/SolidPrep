@@ -26,36 +26,29 @@
 namespace element{
 
 GT9::GT9(ElementShape s):
-    MeshElementCommon2DTri<GT9>(s.nodes)
-    {}
-
-std::vector<double> GT9::get_k(const std::vector<double>& D, const double t) const{
-
+    MeshElementCommon2DTri<GT9>(s.nodes){
     const size_t N = this->NODES_PER_ELEM;
-
-    std::vector<gp_Pnt> p;
+    
+    gp_Pnt p[3];
     for(size_t i = 0; i < N; ++i){
         const auto& n = this->nodes[i];
-        p.push_back(n->point);
+        p[i] = n->point;
+    }
+    for(size_t i = 0; i < N; ++i){
+        size_t j = (i + 1) % 3;
+        size_t k = (i + 2) % 3;
+
+        a[i] = p[j].X()*p[k].Y() - p[k].X()*p[j].Y();
+        b[i] = p[j].Y() - p[k].Y();
+        c[i] = p[k].X() - p[j].X();
     }
 
     gp_Mat deltaM(1, p[0].X(), p[0].Y(), 1, p[1].X(), p[1].Y(), 1, p[2].X(), p[2].Y());
 
-    const double delta = 0.5*std::abs(deltaM.Determinant());
+    this->delta = 0.5*std::abs(deltaM.Determinant());
+}
 
-    std::vector<double> a, b, c;
-    a.reserve(N);
-    b.reserve(N);
-    c.reserve(N);
-    for(size_t i = 0; i < N; ++i){
-        const size_t j = (i + 1) % N;
-        size_t k = (i + 2) % N;
-
-        a.push_back(p[j].X()*p[k].Y() - p[k].X()*p[j].Y());
-        b.push_back(p[j].Y() - p[k].Y());
-        c.push_back(p[k].X() - p[j].X());
-    }
-
+std::vector<double> GT9::get_k(const std::vector<double>& D, const double t) const{
     std::vector<double> K{
 t*(D[0]*b[0]*b[0] + D[2]*b[0]*c[0] + D[6]*b[0]*c[0] + D[8]*c[0]*c[0])/(4*delta)
 ,
@@ -224,31 +217,6 @@ t*(2*D[0]*b[0]*b[0]*b[2]*b[2] - 2*D[0]*b[0]*b[1]*b[2]*b[2] + 2*D[0]*b[1]*b[1]*b[
 
 
 std::vector<double> GT9::get_DB(const std::vector<double>& D, const gp_Pnt& point) const{
-    const size_t N = this->NODES_PER_ELEM;
-
-    std::vector<gp_Pnt> p;
-    for(size_t i = 0; i < N; ++i){
-        const auto& n = this->nodes[i];
-        p.push_back(n->point);
-    }
-
-    gp_Mat deltaM(1, p[0].X(), p[0].Y(), 1, p[1].X(), p[1].Y(), 1, p[2].X(), p[2].Y());
-
-    const double delta = 0.5*deltaM.Determinant();
-
-    std::vector<double> a, b, c;
-    a.reserve(N);
-    b.reserve(N);
-    c.reserve(N);
-    for(size_t i = 0; i < N; ++i){
-        const size_t j = (i + 1) % 3;
-        const size_t k = (i + 2) % 3;
-
-        a.push_back(p[j].X()*p[k].Y() - p[k].X()*p[j].Y());
-        b.push_back(p[j].Y() - p[k].Y());
-        c.push_back(p[k].X() - p[j].X());
-    }
-
     const double L0 = (a[0] + b[0]*point.X() + c[0]*point.Y())/(2*delta);
     const double L1 = (a[1] + b[1]*point.X() + c[1]*point.Y())/(2*delta);
     const double L2 = (a[2] + b[2]*point.X() + c[2]*point.Y())/(2*delta);
@@ -313,32 +281,6 @@ std::vector<double> GT9::get_DB(const std::vector<double>& D, const gp_Pnt& poin
 }
 
 std::vector<double> GT9::get_Nf(const double t, const std::vector<gp_Pnt>& points) const{
-    const size_t N = this->NODES_PER_ELEM;
-
-    std::vector<gp_Pnt> p;
-    p.reserve(N);
-    for(size_t i = 0; i < N; ++i){
-        const auto& n = this->nodes[i];
-        p.push_back(n->point);
-    }
-
-    const gp_Mat deltaM(1, p[0].X(), p[0].Y(), 1, p[1].X(), p[1].Y(), 1, p[2].X(), p[2].Y());
-
-    const double delta = 0.5*deltaM.Determinant();
-
-    std::vector<double> a, b, c;
-    a.reserve(N);
-    b.reserve(N);
-    c.reserve(N);
-    for(size_t i = 0; i < N; ++i){
-        const size_t j = (i + 1) % 3;
-        size_t k = (i + 2) % 3;
-
-        a.push_back(p[j].X()*p[k].Y() - p[k].X()*p[j].Y());
-        b.push_back(p[j].Y() - p[k].Y());
-        c.push_back(p[k].X() - p[j].X());
-    }
-
     const double x[]{points[0].X(), points[1].X()};
     const double y[]{points[0].Y(), points[1].Y()};
 
@@ -383,67 +325,61 @@ t*std::sqrt(x[0]*x[0] - 2*x[0]*x[1] + x[1]*x[1] + y[0]*y[0] - 2*y[0]*y[1] + y[1]
     return Nf;
 }
 
-std::vector<double> GT9::get_phi_radial(const double t, const double beta, const double vp, const std::vector<double>& v, const double dv, const double rho) const{
+std::vector<double> GT9::get_phi_radial(const double t, const double beta, const double vp, const std::vector<double>& axis, const std::vector<double>& center, const double rho) const{
     const size_t N = this->NODES_PER_ELEM;
-    const double delta = this->get_volume(1);
 
-    std::vector<gp_Pnt> p;
+    std::vector<double> x(3);
+    std::vector<double> y(3);
     for(size_t i = 0; i < N; ++i){
         const auto& n = this->nodes[i];
-        p.push_back(n->point);
-    }
-    std::vector<double> b, c;
-    for(size_t i = 0; i < N; ++i){
-        size_t j = (i + 1) % 3;
-        size_t k = (i + 2) % 3;
-
-        b.push_back(p[j].Y() - p[k].Y());
-        c.push_back(p[k].X() - p[j].X());
+        x[i] = n->point.X();
+        y[i] = n->point.Y();
     }
 
-    const double vn = std::sqrt(v[0]*v[0] + v[1]*v[1] + 1e-6);
-    const double ax = std::sqrt(1e-6 + v[0]*v[0]);
-    const double ay = std::sqrt(1e-6 + v[1]*v[1]);
-    std::vector<double> phi{
-    t*(9*ax*b[0]*b[0]*vn + 9*ay*c[0]*c[0]*vn + 2*delta*(3*b[0]*v[0]*vp + 2*beta*delta*rho + 3*c[0]*v[1]*vp + 2*delta*dv*vp))/(36*delta)
-    ,
-    t*(9*ax*b[0]*b[1]*vn + 9*ay*c[0]*c[1]*vn + 2*delta*(3*b[1]*v[0]*vp + 2*beta*delta*rho + 3*c[1]*v[1]*vp + 2*delta*dv*vp))/(36*delta)
-    ,
-    t*(9*ax*b[0]*b[2]*vn + 9*ay*c[0]*c[2]*vn + 2*delta*(3*b[2]*v[0]*vp + 2*beta*delta*rho + 3*c[2]*v[1]*vp + 2*delta*dv*vp))/(36*delta)
-    ,
-    t*(9*ax*b[0]*b[1]*vn + 9*ay*c[0]*c[1]*vn + 2*delta*(3*b[0]*v[0]*vp + 2*beta*delta*rho + 3*c[0]*v[1]*vp + 2*delta*dv*vp))/(36*delta)
-    ,
-    t*(9*ax*b[1]*b[1]*vn + 9*ay*c[1]*c[1]*vn + 2*delta*(3*b[1]*v[0]*vp + 2*beta*delta*rho + 3*c[1]*v[1]*vp + 2*delta*dv*vp))/(36*delta)
-    ,
-    t*(9*ax*b[1]*b[2]*vn + 9*ay*c[1]*c[2]*vn + 2*delta*(3*b[2]*v[0]*vp + 2*beta*delta*rho + 3*c[2]*v[1]*vp + 2*delta*dv*vp))/(36*delta)
-    ,
-    t*(9*ax*b[0]*b[2]*vn + 9*ay*c[0]*c[2]*vn + 2*delta*(3*b[0]*v[0]*vp + 2*beta*delta*rho + 3*c[0]*v[1]*vp + 2*delta*dv*vp))/(36*delta)
-    ,
-    t*(9*ax*b[1]*b[2]*vn + 9*ay*c[1]*c[2]*vn + 2*delta*(3*b[1]*v[0]*vp + 2*beta*delta*rho + 3*c[1]*v[1]*vp + 2*delta*dv*vp))/(36*delta)
-    ,
-    t*(9*ax*b[2]*b[2]*vn + 9*ay*c[2]*c[2]*vn + 2*delta*(3*b[2]*v[0]*vp + 2*beta*delta*rho + 3*c[2]*v[1]*vp + 2*delta*dv*vp))/(36*delta)
-    };
+    const Eigen::Vector<double, 2> A(axis[0], axis[1]);
+    const Eigen::Vector<double, 2> C(center[0], center[1]);
+    
+    Eigen::Matrix<double, 3, 3> phi = get_phi_radial_base(x[0]/3 + x[1]/3 + x[2]/3,
+                                                  y[0]/3 + y[1]/3 + y[2]/3,
+                                                  A, C,
+                                                  t, beta, vp, rho);
+    phi *= -27/48;
+    double z[3]{0.6, 0.2, 0.2};
+    for(long i = 0; i < 3; ++i){
+        long j = (i + 1) % 3;
+        long k = (i + 2) % 3;
+
+        auto phi_tmp = get_phi_radial_base(z[i]*x[0] + z[j]*x[1] + z[k]*x[2],
+                                           z[i]*y[0] + z[j]*y[1] + z[k]*y[2],
+                                           A, C,
+                                           t, beta, vp, rho);
+
+        phi += 25*phi_tmp/48;
+    }
+    std::vector<double> phi_vec(9,0);
+    phi.transposeInPlace();
+
+    std::copy(phi.data(), phi.data()+9, phi_vec.begin());
+
+    return phi_vec;
+}
+
+Eigen::Matrix<double, 3, 3> GT9::get_phi_radial_base(const double x, const double y, const Eigen::Vector<double, 2>& A, const Eigen::Vector<double, 2>& C, const double t, const double beta, const double vp, const double rho) const{
+
+    const Eigen::Vector<double, 2> P(x, y);
+    const Eigen::Vector<double, 2> v = (C - P) + (C - P).dot(A)*A;
+    const double vv = v.dot(v);
+    const double dv = -2 + A.dot(A);
+
+    const auto NN = this->N_mat_1dof(x, y);
+    const auto dNN = this->dN_mat_1dof();
+
+    const auto phi = t*((beta*rho + vp*dv)*NN*NN.transpose() + vv*dNN.transpose()*dNN + vp*NN*v.transpose()*dNN);
+
     return phi;
 }
 
 std::vector<double> GT9::get_phi_grad(const double t, const double beta) const{
-    const size_t N = this->NODES_PER_ELEM;
-    const double delta = this->get_volume(1);
-
-    std::vector<gp_Pnt> p;
-    for(size_t i = 0; i < N; ++i){
-        const auto& n = this->nodes[i];
-        p.push_back(n->point);
-    }
-    std::vector<double> b, c;
-    for(size_t i = 0; i < N; ++i){
-        size_t j = (i + 1) % 3;
-        size_t k = (i + 2) % 3;
-
-        b.push_back(p[j].Y() - p[k].Y());
-        c.push_back(p[k].X() - p[j].X());
-    }
-
     std::vector<double> phi{
     beta*delta*t/6
     ,
@@ -468,22 +404,6 @@ std::vector<double> GT9::get_phi_grad(const double t, const double beta) const{
 }
 
 std::vector<double> GT9::get_phi_unidirectional(const double t, const double beta, const double l, const std::vector<double>& v, const double vn) const{
-    const size_t N = this->NODES_PER_ELEM;
-    const double delta = this->get_volume(1);
-
-    std::vector<gp_Pnt> p;
-    for(size_t i = 0; i < N; ++i){
-        const auto& n = this->nodes[i];
-        p.push_back(n->point);
-    }
-    std::vector<double> b, c;
-    for(size_t i = 0; i < N; ++i){
-        size_t j = (i + 1) % 3;
-        size_t k = (i + 2) % 3;
-
-        b.push_back(p[j].Y() - p[k].Y());
-        c.push_back(p[k].X() - p[j].X());
-    }
 
     std::vector<double> phi{
     t*(-9*b[0]*b[0]*l*l - 9*c[0]*c[0]*l*l + 2*delta*(3*b[0]*l*v[0]*vn - 2*beta*delta + 3*c[0]*l*v[1]*vn))/(36*delta)
@@ -509,22 +429,6 @@ std::vector<double> GT9::get_phi_unidirectional(const double t, const double bet
 }
 
 std::vector<double> GT9::helmholtz_tensor(const double t, const double r) const{
-    const size_t N = this->NODES_PER_ELEM;
-    const double delta = this->get_volume(1);
-
-    std::vector<gp_Pnt> p;
-    for(size_t i = 0; i < N; ++i){
-        const auto& n = this->nodes[i];
-        p.push_back(n->point);
-    }
-    std::vector<double> b, c;
-    for(size_t i = 0; i < N; ++i){
-        size_t j = (i + 1) % 3;
-        size_t k = (i + 2) % 3;
-
-        b.push_back(p[j].Y() - p[k].Y());
-        c.push_back(p[k].X() - p[j].X());
-    }
     std::vector<double> h{
     t*(3*b[0]*b[0]*r*r + 3*c[0]*c[0]*r*r + 2*delta*delta)/(12*delta)
     ,
@@ -561,22 +465,6 @@ std::vector<double> GT9::helmholtz_vector(const double t) const{
 
 std::vector<double> GT9::get_nodal_density_gradient(gp_Pnt p) const{
     (void)p;
-    const size_t N = this->NODES_PER_ELEM;
-    const double delta = this->get_volume(1);
-
-    std::vector<gp_Pnt> points;
-    for(size_t i = 0; i < N; ++i){
-        const auto& n = this->nodes[i];
-        points.push_back(n->point);
-    }
-    std::vector<double> b, c;
-    for(size_t i = 0; i < N; ++i){
-        size_t j = (i + 1) % 3;
-        size_t k = (i + 2) % 3;
-
-        b.push_back(points[j].Y() - points[k].Y());
-        c.push_back(points[k].X() - points[j].X());
-    }
     
     return std::vector<double>{b[0]/(2*delta), b[1]/(2*delta), b[2]/(2*delta),
                                c[0]/(2*delta), c[1]/(2*delta), c[2]/(2*delta)};

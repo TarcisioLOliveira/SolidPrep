@@ -21,6 +21,7 @@
 #ifndef TRI3_HPP
 #define TRI3_HPP
 
+#include <Eigen/Core>
 #include "element.hpp"
 #include "material.hpp"
 #include <vector>
@@ -49,7 +50,7 @@ class TRI3 : public MeshElementCommon2DTri<TRI3>{
     virtual std::vector<double> helmholtz_tensor(const double t, const double r) const override;
     virtual std::vector<double> helmholtz_vector(const double t) const override;
     virtual std::vector<double> get_nodal_density_gradient(gp_Pnt p) const override;
-    virtual std::vector<double> get_phi_radial(const double t, const double beta, const double vp, const std::vector<double>& v, const double dv, const double rho) const override;
+    virtual std::vector<double> get_phi_radial(const double t, const double beta, const double vp, const std::vector<double>& axis, const std::vector<double>& center, const double rho) const override;
     virtual std::vector<double> get_phi_grad(const double t, const double beta) const override;
     virtual std::vector<double> get_phi_unidirectional(const double t, const double beta, const double l, const std::vector<double>& v, const double vn) const override;
 
@@ -60,6 +61,22 @@ class TRI3 : public MeshElementCommon2DTri<TRI3>{
     private:
     virtual std::vector<double> get_DB(const std::vector<double>& D, const gp_Pnt& point) const override;
     virtual std::vector<double> get_Nf(const double t, const std::vector<gp_Pnt>& points) const override;
+
+    Eigen::Matrix<double, 3, 3> get_phi_radial_base(const double x, const double y, const Eigen::Vector<double, 2>& A, const Eigen::Vector<double, 2>& C, const double t, const double beta, const double vp, const double rho) const;
+
+    double a[3], b[3], c[3], delta;
+
+    inline double N(double x, double y, size_t i) const{
+        return (a[i] + b[i]*x + c[i]*y)/(2*delta);
+    }
+
+    inline Eigen::Vector<double, 3> N_mat_1dof(double x, double y) const{
+        return Eigen::Vector<double, 3>(N(x, y, 0), N(x, y, 1), N(x, y, 2));
+    }
+    inline Eigen::Matrix<double, 2, 3> dN_mat_1dof() const{
+        return Eigen::Matrix<double, 2, 3>{{b[0], b[1], b[2]},
+                                           {c[0], c[1], c[2]}}/(2*delta);
+    }
 };
 
 }

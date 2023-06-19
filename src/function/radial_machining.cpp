@@ -100,12 +100,8 @@ double RadialMachining::calculate(const Optimizer* const op, const std::vector<d
     std::fill(this->b.begin(), this->b.end(), 0);
     std::fill(this->diff.begin(), this->diff.end(), 0);
 
-    std::vector<double> v(3,0);
-    double dv = -3;
-    for(size_t i = 0; i < 3; ++i){
-        const double ai = this->axis.Coord(1+i);
-        dv += ai*ai;
-    }
+    std::vector<double> A{axis.X(), axis.Y(), axis.Z()};
+    std::vector<double> C{center.X(), center.Y(), center.Z()};
 
     const double BETA_RHO = 100;
 
@@ -115,15 +111,9 @@ double RadialMachining::calculate(const Optimizer* const op, const std::vector<d
             const size_t num_den = g->number_of_densities_needed();
             for(const auto& e:g->mesh){
                 auto N = e->helmholtz_vector(this->mesh->thickness);
-                const gp_Pnt p = e->get_centroid();
-                const gp_Vec pc(p, this->center);
-                const gp_Vec vv = pc - pc.Dot(this->axis)*this->axis;
-                v[0] = vv.X();
-                v[1] = vv.Y();
-                v[2] = vv.Z();
 
                 const double Hx = this->heaviside(*x_it, BETA_RHO, 0.95);
-                const auto phi_e = e->get_phi_radial(this->mesh->thickness, this->beta, this->v_norm, v, dv, Hx);
+                const auto phi_e = e->get_phi_radial(this->mesh->thickness, this->beta, this->v_norm, A, C, Hx);
                 for(size_t i = 0; i < num_nodes; ++i){
                     const auto& ni = e->nodes[i];
                     const long id1 = this->id_mapping[ni->id];
@@ -209,14 +199,10 @@ double RadialMachining::calculate_with_gradient(const Optimizer* const op, const
     std::fill(this->b_grad.begin(), this->b_grad.end(), 0);
     std::fill(this->diff.begin(), this->diff.end(), 0);
 
-    std::vector<double> v(3,0);
-    double dv = -3;
-    for(size_t i = 0; i < 3; ++i){
-        const double ai = this->axis.Coord(1+i);
-        dv += ai*ai;
-    }
-
     const double BETA_RHO = 100;
+
+    std::vector<double> A{axis.X(), axis.Y(), axis.Z()};
+    std::vector<double> C{center.X(), center.Y(), center.Z()};
 
     auto x_it = x.cbegin();
     for(const auto& g:mesh->geometries){
@@ -224,15 +210,9 @@ double RadialMachining::calculate_with_gradient(const Optimizer* const op, const
             const size_t num_den = g->number_of_densities_needed();
             for(const auto& e:g->mesh){
                 auto N = e->helmholtz_vector(this->mesh->thickness);
-                const gp_Pnt p = e->get_centroid();
-                const gp_Vec pc(p, this->center);
-                const gp_Vec vv = pc - pc.Dot(this->axis)*this->axis;
-                v[0] = vv.X();
-                v[1] = vv.Y();
-                v[2] = vv.Z();
 
                 const double Hx = this->heaviside(*x_it, BETA_RHO, 0.95);
-                const auto phi_e = e->get_phi_radial(this->mesh->thickness, this->beta, this->v_norm, v, dv, Hx);
+                const auto phi_e = e->get_phi_radial(this->mesh->thickness, this->beta, this->v_norm, A, C, Hx);
                 for(size_t i = 0; i < num_nodes; ++i){
                     const auto& ni = e->nodes[i];
                     const long id1 = this->id_mapping[ni->id];

@@ -183,18 +183,24 @@ def make_phi_radial():
     # l = sympy.symbols("l")
     beta = sympy.symbols("beta")
     rho = sympy.symbols("rho")
-    vv = sympy.symbols("v:2")
-    v = sympy.Matrix([vv[0], vv[1]])
     dv = sympy.symbols("dv")
     vn = sympy.symbols("vn")
     vp = sympy.symbols("vp")
     ax, ay = sympy.symbols("ax ay")
-    A = sympy.Matrix([[ax, 0],
-                      [0, ay]])
     NN = sympy.Matrix([N[0], N[1], N[2], N[3]]).T
+    A = sympy.Matrix([ax, ay]).T
+    x0, y0 = sympy.symbols("x0 y0")
+    cx, cy = sympy.symbols("cx cy")
+    P = sympy.Matrix([x0 + a + xi,
+                      y0 + b + eta]).T
+    C = sympy.Matrix([cx, cy]).T
+    PC = C - P
+    v = (PC - PC.dot(A)*A).T
+    dv = v[0].diff(xi) + v[1].diff(eta)
     dNN = sympy.Matrix([NN.diff(xi), NN.diff(eta)])
     # k = t*(beta*rho*NN.T*NN + l*l*dNN.T*dNN + l*NN.T*(v.T*dNN) + dv*NN.T*NN)
-    k = t*(beta*rho*NN.T*NN + vn*dNN.T*A*dNN + vp*NN.T*(v.T*dNN) + vp*dv*NN.T*NN)
+    # k = t*(beta*rho*NN.T*NN + vn*dNN.T*A*dNN + vp*NN.T*(v.T*dNN) + vp*dv*NN.T*NN)
+    k = t*(beta*rho*NN.T*NN + v.dot(v)*dNN.T*dNN + vp*NN.T*(v.T*dNN) + vp*dv*NN.T*NN)
 
     print("std::vector<double> phi{")
     for i in range(len(k)):
@@ -206,7 +212,9 @@ def make_phi_radial():
         # Format output for use with C++
         formatted = str(k[i])
         formatted = re.sub(r"(delta)\*\*2", r"\1*\1", formatted)
-        formatted = re.sub(r"([abcdl]\d?)\*\*2", r"\1*\1", formatted)
+        formatted = re.sub(r"([abcdlxy]+\d?)\*\*2", r"\1*\1", formatted)
+        formatted = re.sub(r"([abcdlxy]+\d?)\*\*3", r"\1*\1*\1", formatted)
+        formatted = re.sub(r"([abcdlxy]+\d?)\*\*4", r"\1*\1*\1*\1", formatted)
         formatted = re.sub(r"([abcdv])(\d)", r"\1[\2]", formatted)
 
         if i > 0:
