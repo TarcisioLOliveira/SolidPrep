@@ -62,11 +62,7 @@ void RadialMachining::initialize(const Optimizer* const op){
         }
     }
     for(auto& e:mesh->boundary_elements){
-        const gp_Pnt p = e.get_centroid(num_nodes_bound);
-        const gp_Vec pc(this->center, p);
-        const gp_Vec vv = pc - pc.Dot(this->axis)*this->axis;
-        const gp_Dir vn(vv);
-        if(std::abs(vn.Dot(e.normal)) < 1.0-Precision::Confusion()){
+        if(std::abs(this->axis.Dot(e.normal)) < 1.0-Precision::Confusion()){
             for(size_t i = 0; i < num_nodes_bound; ++i){
                 if(this->id_mapping.count(e.nodes[i]->id)){
                     this->id_mapping[e.nodes[i]->id] = -1;
