@@ -20,6 +20,9 @@
 
 #include <array>
 #include <cmath>
+#include <Eigen/Core>
+#include <Eigen/Dense>
+#include <Eigen/SVD>
 #include "multimaterial.hpp"
 #include "utils.hpp"
 
@@ -110,51 +113,70 @@ void MultiMaterial::get_D_internal(std::vector<double>::const_iterator& rho, con
     const double psi_v = std::abs(mix);
     const double psi_r = 1 - psi_v;
 
+    size_t D_size = 0;
+    std::vector<double> vD;
+    std::vector<double> rD;
+    if(this->problem_type == utils::PROBLEM_TYPE_2D){
+        D_size = 9;
+        vD.resize(D_size,0);
+        rD.resize(D_size,0);
+    } else if(this->problem_type == utils::PROBLEM_TYPE_3D){
+        D_size = 36;
+        vD.resize(D_size,0);
+        rD.resize(D_size,0);
+    }
+
     if(mix >= 0){
-        if(this->problem_type == utils::PROBLEM_TYPE_2D){
-            for(size_t i = 0; i < posN; ++i){
-                double voigt = 0;
-                double reuss = 0;
-                for(size_t j = 0; j < v.size(); ++j){
-                    voigt += v[j]*this->materials[j]->stiffness_2D()[pos[i]];
-                    reuss += v[j]/this->materials[j]->stiffness_2D()[pos[i]];
+        for(size_t j = 0; j < v.size(); ++j){
+            if(this->problem_type == utils::PROBLEM_TYPE_2D){
+                auto& MD = this->materials[j]->stiffness_2D();
+                auto& MS = this->materials[j]->stiffness_inverse_2D();
+                for(size_t i = 0; i < posN; ++i){
+                    vD[pos[i]] += v[j]*MD[pos[i]];
+                    rD[pos[i]] += v[j]*MS[pos[i]];
                 }
-                D[pos[i]] = psi_v*voigt + psi_r/reuss;
-            }
-        } else if(this->problem_type == utils::PROBLEM_TYPE_3D){
-            for(size_t i = 0; i < posN; ++i){
-                double voigt = 0;
-                double reuss = 0;
-                for(size_t j = 0; j < v.size(); ++j){
-                    voigt += v[j]*this->materials[j]->stiffness_3D()[pos[i]];
-                    reuss += v[j]/this->materials[j]->stiffness_3D()[pos[i]];
+            } else if(this->problem_type == utils::PROBLEM_TYPE_3D){
+                auto& MD = this->materials[j]->stiffness_3D();
+                auto& MS = this->materials[j]->stiffness_inverse_3D();
+                for(size_t i = 0; i < posN; ++i){
+                    vD[pos[i]] += v[j]*MD[pos[i]];
+                    rD[pos[i]] += v[j]*MS[pos[i]];
                 }
-                D[pos[i]] = psi_v*voigt + psi_r/reuss;
             }
         }
-    } else {
         if(this->problem_type == utils::PROBLEM_TYPE_2D){
-            for(size_t i = 0; i < posN; ++i){
-                double voigt = 0;
-                double reuss = 0;
-                for(size_t j = 0; j < v.size(); ++j){
-                    const double Ci = this->materials[j]->stiffness_2D()[pos[i]];
-                    voigt += v[j]*Ci;
-                    reuss += v[j]*Ci*Ci;
-                }
-                D[pos[i]] = psi_v*voigt + psi_r*std::sqrt(reuss);
-            }
+            rD = this->invert_2D(rD);
         } else if(this->problem_type == utils::PROBLEM_TYPE_3D){
-            for(size_t i = 0; i < posN; ++i){
-                double voigt = 0;
-                double reuss = 0;
-                for(size_t j = 0; j < v.size(); ++j){
-                    const double Ci = this->materials[j]->stiffness_3D()[pos[i]];
-                    voigt += v[j]*Ci;
-                    reuss += v[j]*Ci*Ci;
+            rD = this->invert_3D(rD);
+        }
+        for(size_t i = 0; i < posN; ++i){
+            D[pos[i]] = psi_v*vD[pos[i]] + psi_r*rD[pos[i]];
+        }
+    } else {
+        for(size_t j = 0; j < v.size(); ++j){
+            if(this->problem_type == utils::PROBLEM_TYPE_2D){
+                auto& MD = this->materials[j]->stiffness_2D();
+                auto MS = this->square_2D(this->materials[j]->stiffness_2D());
+                for(size_t i = 0; i < posN; ++i){
+                    vD[pos[i]] += v[j]*MD[pos[i]];
+                    rD[pos[i]] += v[j]*MS[pos[i]];
                 }
-                D[pos[i]] = psi_v*voigt + psi_r*std::sqrt(reuss);
+            } else if(this->problem_type == utils::PROBLEM_TYPE_3D){
+                auto& MD = this->materials[j]->stiffness_3D();
+                auto MS = this->square_3D(this->materials[j]->stiffness_3D());
+                for(size_t i = 0; i < posN; ++i){
+                    vD[pos[i]] += v[j]*MD[pos[i]];
+                    rD[pos[i]] += v[j]*MS[pos[i]];
+                }
             }
+        }
+        if(this->problem_type == utils::PROBLEM_TYPE_2D){
+            rD = this->square_root_2D(rD);
+        } else if(this->problem_type == utils::PROBLEM_TYPE_3D){
+            rD = this->square_root_3D(rD);
+        }
+        for(size_t i = 0; i < posN; ++i){
+            D[pos[i]] = psi_v*vD[pos[i]] + psi_r*rD[pos[i]];
         }
     }
 }
@@ -172,66 +194,140 @@ void MultiMaterial::get_gradD_internal(std::vector<double>::const_iterator& rho,
     const double psi_r = 1 - psi_v;
     const size_t offset = (has_void) ? 1 : 0;
 
-    if(mix >= 0){
-        if(this->problem_type == utils::PROBLEM_TYPE_2D){
-            for(size_t i = 0; i < posN; ++i){
-                double reuss_tmp = 0;
-                for(size_t j = 0; j < v.size(); ++j){
-                    reuss_tmp += v[j]/this->materials[j]->stiffness_2D()[pos[i]];
-                }
-                for(size_t k = 0; k < v.size()-1; ++k){
-                    double voigt = this->materials[k]->stiffness_2D()[pos[i]] - this->materials.back()->stiffness_2D()[pos[i]];
-                    double reuss = -(1.0/this->materials[k]->stiffness_2D()[pos[i]] - 1.0/this->materials.back()->stiffness_2D()[pos[i]])/(reuss_tmp*reuss_tmp);
+    size_t D_size = 0;
+    std::vector<double> vD;
+    std::vector<double> rD;
+    if(this->problem_type == utils::PROBLEM_TYPE_2D){
+        D_size = 9;
+        vD.resize(D_size,0);
+        rD.resize(D_size,0);
+    } else if(this->problem_type == utils::PROBLEM_TYPE_3D){
+        D_size = 36;
+        vD.resize(D_size,0);
+        rD.resize(D_size,0);
+    }
 
-                    gradD[k+offset][pos[i]] = psi_v*voigt + psi_r*reuss;
+    if(mix >= 0){
+        std::vector<double> rD_last;
+        std::vector<double> rD_mult;
+        // Reuss matrix for last material
+        {
+            const size_t j = v.size() - 1;
+            if(this->problem_type == utils::PROBLEM_TYPE_2D){
+                rD_last = this->materials[j]->stiffness_inverse_2D();
+            } else if(this->problem_type == utils::PROBLEM_TYPE_3D){
+                rD_last = this->materials[j]->stiffness_inverse_3D();
+            }
+        }
+        // Full Reuss matrix, necessary due to derivative chain rule
+        {
+            std::fill(rD.begin(), rD.end(), 0);
+            for(size_t j = 0; j < v.size(); ++j){
+                if(this->problem_type == utils::PROBLEM_TYPE_2D){
+                    auto& MS = this->materials[j]->stiffness_inverse_2D();
+                    for(size_t i = 0; i < posN; ++i){
+                        rD[pos[i]] += v[j]*MS[pos[i]];
+                    }
+                } else if(this->problem_type == utils::PROBLEM_TYPE_3D){
+                    auto& MS = this->materials[j]->stiffness_inverse_3D();
+                    for(size_t i = 0; i < posN; ++i){
+                        rD[pos[i]] += v[j]*MS[pos[i]];
+                    }
                 }
             }
-        } else if(this->problem_type == utils::PROBLEM_TYPE_3D){
-            for(size_t i = 0; i < posN; ++i){
-                double reuss_tmp = 0;
-                for(size_t j = 0; j < v.size(); ++j){
-                    reuss_tmp += v[j]/this->materials[j]->stiffness_3D()[pos[i]];
+            if(this->problem_type == utils::PROBLEM_TYPE_2D){
+                rD_mult = this->square_2D(this->invert_2D(rD));
+                for(size_t i = 0; i < posN; ++i){
+                    rD_mult[pos[i]] *= -1.0;
                 }
-                for(size_t k = 0; k < v.size()-1; ++k){
-                    const double voigt = this->materials[k]->stiffness_3D()[pos[i]] - this->materials.back()->stiffness_3D()[pos[i]];
-                    const double reuss = -(1.0/this->materials[k]->stiffness_3D()[pos[i]] - 1.0/this->materials.back()->stiffness_3D()[pos[i]])/(reuss_tmp*reuss_tmp);
-
-                    gradD[k+offset][pos[i]] = psi_v*voigt + psi_r*reuss;
+                rD_last = this->mult_2D(rD_mult, rD_last);
+            } else if(this->problem_type == utils::PROBLEM_TYPE_3D){
+                rD_mult = this->square_3D(this->invert_3D(rD));
+                for(size_t i = 0; i < posN; ++i){
+                    rD_mult[pos[i]] *= -1.0;
+                }
+                rD_last = this->mult_3D(rD_mult, rD_last);
+            }
+        }
+        // Generate gradients
+        for(size_t j = 0; j < v.size()-1; ++j){
+            if(this->problem_type == utils::PROBLEM_TYPE_2D){
+                auto& MD = this->materials[j]->stiffness_2D();
+                auto& MDl = this->materials.back()->stiffness_2D();
+                auto& MS = this->materials[j]->stiffness_inverse_2D();
+                rD = this->mult_2D(rD_mult, MS);
+                for(size_t i = 0; i < posN; ++i){
+                    gradD[j+offset][pos[i]] = psi_v*(MD[pos[i]] - MDl[pos[i]]) + psi_r*(rD[pos[i]] - rD_last[pos[i]]);
+                }
+            } else if(this->problem_type == utils::PROBLEM_TYPE_3D){
+                auto& MD = this->materials[j]->stiffness_3D();
+                auto& MDl = this->materials.back()->stiffness_3D();
+                auto& MS = this->materials[j]->stiffness_inverse_3D();
+                rD = this->mult_3D(rD_mult, MS);
+                for(size_t i = 0; i < posN; ++i){
+                    gradD[j+offset][pos[i]] = psi_v*(MD[pos[i]] - MDl[pos[i]]) + psi_r*(rD[pos[i]] - rD_last[pos[i]]);
                 }
             }
         }
     } else {
-        // TODO
-        if(this->problem_type == utils::PROBLEM_TYPE_2D){
-            for(size_t i = 0; i < posN; ++i){
-                double reuss_tmp = 0;
-                for(size_t j = 0; j < v.size(); ++j){
-                    const double Ci = this->materials[j]->stiffness_2D()[pos[i]];
-                    reuss_tmp += v[j]*Ci*Ci;
-                }
-                for(size_t k = 0; k < v.size()-1; ++k){
-                    const double Ci = this->materials[k]->stiffness_2D()[pos[i]];
-                    const double Cb = this->materials.back()->stiffness_2D()[pos[i]];
-                    const double voigt = Ci - Cb;
-                    const double reuss = (Ci*Ci - Cb*Cb)/(2*std::sqrt(reuss_tmp*reuss_tmp));;
-
-                    gradD[k+offset][pos[i]] = psi_v*voigt + psi_r*reuss;
+        std::vector<double> rD_last;
+        std::vector<double> rD_mult;
+        // Reuss matrix for last material
+        {
+            const size_t j = v.size() - 1;
+            if(this->problem_type == utils::PROBLEM_TYPE_2D){
+                rD_last = this->square_2D(this->materials[j]->stiffness_2D());
+            } else if(this->problem_type == utils::PROBLEM_TYPE_3D){
+                rD_last = this->square_3D(this->materials[j]->stiffness_3D());
+            }
+        }
+        // Full Reuss matrix, necessary due to derivative chain rule
+        {
+            std::fill(rD.begin(), rD.end(), 0);
+            for(size_t j = 0; j < v.size(); ++j){
+                if(this->problem_type == utils::PROBLEM_TYPE_2D){
+                    auto MS = this->square_2D(this->materials[j]->stiffness_2D());
+                    for(size_t i = 0; i < posN; ++i){
+                        rD[pos[i]] += v[j]*MS[pos[i]];
+                    }
+                } else if(this->problem_type == utils::PROBLEM_TYPE_3D){
+                    auto MS = this->square_3D(this->materials[j]->stiffness_3D());
+                    for(size_t i = 0; i < posN; ++i){
+                        rD[pos[i]] += v[j]*MS[pos[i]];
+                    }
                 }
             }
-        } else if(this->problem_type == utils::PROBLEM_TYPE_3D){
-            for(size_t i = 0; i < posN; ++i){
-                double reuss_tmp = 0;
-                for(size_t j = 0; j < v.size(); ++j){
-                    const double Ci = this->materials[j]->stiffness_3D()[pos[i]];
-                    reuss_tmp += v[j]*Ci*Ci;
+            if(this->problem_type == utils::PROBLEM_TYPE_2D){
+                rD_mult = this->invert_2D(this->square_root_2D(rD));
+                for(size_t i = 0; i < posN; ++i){
+                    rD_mult[pos[i]] *= 0.5;
                 }
-                for(size_t k = 0; k < v.size()-1; ++k){
-                    const double Ci = this->materials[k]->stiffness_3D()[pos[i]];
-                    const double Cb = this->materials.back()->stiffness_3D()[pos[i]];
-                    const double voigt = Ci - Cb;
-                    const double reuss = (Ci*Ci - Cb*Cb)/(2*std::sqrt(reuss_tmp*reuss_tmp));;
-
-                    gradD[k+offset][pos[i]] = psi_v*voigt + psi_r*reuss;
+                rD_last = this->mult_2D(rD_mult, rD_last);
+            } else if(this->problem_type == utils::PROBLEM_TYPE_3D){
+                rD_mult = this->invert_3D(this->square_root_3D(rD));
+                for(size_t i = 0; i < posN; ++i){
+                    rD_mult[pos[i]] *= 0.5;
+                }
+                rD_last = this->mult_3D(rD_mult, rD_last);
+            }
+        }
+        // Generate gradients
+        for(size_t j = 0; j < v.size()-1; ++j){
+            if(this->problem_type == utils::PROBLEM_TYPE_2D){
+                auto& MD = this->materials[j]->stiffness_2D();
+                auto& MDl = this->materials.back()->stiffness_2D();
+                auto MS = this->square_2D(this->materials[j]->stiffness_2D());
+                rD = this->mult_2D(rD_mult, MS);
+                for(size_t i = 0; i < posN; ++i){
+                    gradD[j+offset][pos[i]] = psi_v*(MD[pos[i]] - MDl[pos[i]]) + psi_r*(rD[pos[i]] - rD_last[pos[i]]);
+                }
+            } else if(this->problem_type == utils::PROBLEM_TYPE_3D){
+                auto& MD = this->materials[j]->stiffness_3D();
+                auto& MDl = this->materials.back()->stiffness_3D();
+                auto MS = this->square_3D(this->materials[j]->stiffness_3D());
+                rD = this->mult_3D(rD_mult, MS);
+                for(size_t i = 0; i < posN; ++i){
+                    gradD[j+offset][pos[i]] = psi_v*(MD[pos[i]] - MDl[pos[i]]) + psi_r*(rD[pos[i]] - rD_last[pos[i]]);
                 }
             }
         }
@@ -297,4 +393,345 @@ double MultiMaterial::get_density_deriv(std::vector<double>::const_iterator& rho
     }
 
     return void_rho*d;
+}
+
+std::vector<double> MultiMaterial::invert_2D(const std::vector<double>& d) const{
+    std::vector<double> D = {
+    d[4]/(d[0]*d[4] - d[1]*d[3])
+    ,
+    -d[1]/(d[0]*d[4] - d[1]*d[3])
+    ,
+    0
+    ,
+    -d[3]/(d[0]*d[4] - d[1]*d[3])
+    ,
+    d[0]/(d[0]*d[4] - d[1]*d[3])
+    ,
+    0
+    ,
+    0
+    ,
+    0
+    ,
+    1/d[8]
+    };
+    return D;
+}
+std::vector<double> MultiMaterial::invert_3D(const std::vector<double>& d) const{
+    std::vector<double> D = {
+    (d[13]*d[8] - d[14]*d[7])/(d[0]*d[13]*d[8] - d[0]*d[14]*d[7] - d[1]*d[12]*d[8] + d[1]*d[14]*d[6] + d[12]*d[2]*d[7] - d[13]*d[2]*d[6])
+    ,
+    (d[1]*d[14] - d[13]*d[2])/(d[0]*d[13]*d[8] - d[0]*d[14]*d[7] - d[1]*d[12]*d[8] + d[1]*d[14]*d[6] + d[12]*d[2]*d[7] - d[13]*d[2]*d[6])
+    ,
+    (-d[1]*d[8] + d[2]*d[7])/(d[0]*d[13]*d[8] - d[0]*d[14]*d[7] - d[1]*d[12]*d[8] + d[1]*d[14]*d[6] + d[12]*d[2]*d[7] - d[13]*d[2]*d[6])
+    ,
+    0
+    ,
+    0
+    ,
+    0
+    ,
+    (-d[12]*d[8] + d[14]*d[6])/(d[0]*d[13]*d[8] - d[0]*d[14]*d[7] - d[1]*d[12]*d[8] + d[1]*d[14]*d[6] + d[12]*d[2]*d[7] - d[13]*d[2]*d[6])
+    ,
+    (-d[0]*d[14] + d[12]*d[2])/(d[0]*d[13]*d[8] - d[0]*d[14]*d[7] - d[1]*d[12]*d[8] + d[1]*d[14]*d[6] + d[12]*d[2]*d[7] - d[13]*d[2]*d[6])
+    ,
+    (d[0]*d[8] - d[2]*d[6])/(d[0]*d[13]*d[8] - d[0]*d[14]*d[7] - d[1]*d[12]*d[8] + d[1]*d[14]*d[6] + d[12]*d[2]*d[7] - d[13]*d[2]*d[6])
+    ,
+    0
+    ,
+    0
+    ,
+    0
+    ,
+    (d[12]*d[7] - d[13]*d[6])/(d[0]*d[13]*d[8] - d[0]*d[14]*d[7] - d[1]*d[12]*d[8] + d[1]*d[14]*d[6] + d[12]*d[2]*d[7] - d[13]*d[2]*d[6])
+    ,
+    (d[0]*d[13] - d[1]*d[12])/(d[0]*d[13]*d[8] - d[0]*d[14]*d[7] - d[1]*d[12]*d[8] + d[1]*d[14]*d[6] + d[12]*d[2]*d[7] - d[13]*d[2]*d[6])
+    ,
+    (-d[0]*d[7] + d[1]*d[6])/(d[0]*d[13]*d[8] - d[0]*d[14]*d[7] - d[1]*d[12]*d[8] + d[1]*d[14]*d[6] + d[12]*d[2]*d[7] - d[13]*d[2]*d[6])
+    ,
+    0
+    ,
+    0
+    ,
+    0
+    ,
+    0
+    ,
+    0
+    ,
+    0
+    ,
+    1/d[21]
+    ,
+    0
+    ,
+    0
+    ,
+    0
+    ,
+    0
+    ,
+    0
+    ,
+    0
+    ,
+    1/d[28]
+    ,
+    0
+    ,
+    0
+    ,
+    0
+    ,
+    0
+    ,
+    0
+    ,
+    0
+    ,
+    1/d[35]
+    };
+
+    return D;
+}
+std::vector<double> MultiMaterial::square_2D(const std::vector<double>& d) const{
+    std::vector<double> D = {
+    d[0]*d[0] + d[1]*d[3]
+    ,
+    d[1]*(d[0] + d[4])
+    ,
+    0
+    ,
+    d[3]*(d[0] + d[4])
+    ,
+    d[1]*d[3] + d[4]*d[4]
+    ,
+    0
+    ,
+    0
+    ,
+    0
+    ,
+    d[8]*d[8]
+    };
+    return D;
+}
+std::vector<double> MultiMaterial::square_3D(const std::vector<double>& d) const{
+    std::vector<double> D = {
+    d[0]*d[0] + d[1]*d[6] + d[12]*d[2]
+    ,
+    d[0]*d[1] + d[1]*d[7] + d[13]*d[2]
+    ,
+    d[0]*d[2] + d[1]*d[8] + d[14]*d[2]
+    ,
+    0
+    ,
+    0
+    ,
+    0
+    ,
+    d[0]*d[6] + d[12]*d[8] + d[6]*d[7]
+    ,
+    d[1]*d[6] + d[13]*d[8] + d[7]*d[7]
+    ,
+    d[14]*d[8] + d[2]*d[6] + d[7]*d[8]
+    ,
+    0
+    ,
+    0
+    ,
+    0
+    ,
+    d[0]*d[12] + d[12]*d[14] + d[13]*d[6]
+    ,
+    d[1]*d[12] + d[13]*d[14] + d[13]*d[7]
+    ,
+    d[12]*d[2] + d[13]*d[8] + d[14]*d[14]
+    ,
+    0
+    ,
+    0
+    ,
+    0
+    ,
+    0
+    ,
+    0
+    ,
+    0
+    ,
+    d[21]*d[21]
+    ,
+    0
+    ,
+    0
+    ,
+    0
+    ,
+    0
+    ,
+    0
+    ,
+    0
+    ,
+    d[28]*d[28]
+    ,
+    0
+    ,
+    0
+    ,
+    0
+    ,
+    0
+    ,
+    0
+    ,
+    0
+    ,
+    d[35]*d[35]
+    };
+
+    return D;
+}
+std::vector<double> MultiMaterial::mult_2D(const std::vector<double>& d, const std::vector<double>& e) const{
+    std::vector<double> D = {
+    d[0]*e[0] + d[1]*e[3]
+    ,
+    d[0]*e[1] + d[1]*e[4]
+    ,
+    0
+    ,
+    d[3]*e[0] + d[4]*e[3]
+    ,
+    d[3]*e[1] + d[4]*e[4]
+    ,
+    0
+    ,
+    0
+    ,
+    0
+    ,
+    d[8]*e[8]
+    };
+
+    return D;
+}
+std::vector<double> MultiMaterial::mult_3D(const std::vector<double>& d, const std::vector<double>& e) const{
+    std::vector<double> D = {
+    d[0]*e[0] + d[1]*e[6] + d[2]*e[12]
+    ,
+    d[0]*e[1] + d[1]*e[7] + d[2]*e[13]
+    ,
+    d[0]*e[2] + d[1]*e[8] + d[2]*e[14]
+    ,
+    0
+    ,
+    0
+    ,
+    0
+    ,
+    d[6]*e[0] + d[7]*e[6] + d[8]*e[12]
+    ,
+    d[6]*e[1] + d[7]*e[7] + d[8]*e[13]
+    ,
+    d[6]*e[2] + d[7]*e[8] + d[8]*e[14]
+    ,
+    0
+    ,
+    0
+    ,
+    0
+    ,
+    d[12]*e[0] + d[13]*e[6] + d[14]*e[12]
+    ,
+    d[12]*e[1] + d[13]*e[7] + d[14]*e[13]
+    ,
+    d[12]*e[2] + d[13]*e[8] + d[14]*e[14]
+    ,
+    0
+    ,
+    0
+    ,
+    0
+    ,
+    0
+    ,
+    0
+    ,
+    0
+    ,
+    d[21]*e[21]
+    ,
+    0
+    ,
+    0
+    ,
+    0
+    ,
+    0
+    ,
+    0
+    ,
+    0
+    ,
+    d[28]*e[28]
+    ,
+    0
+    ,
+    0
+    ,
+    0
+    ,
+    0
+    ,
+    0
+    ,
+    0
+    ,
+    d[35]*e[35]
+    };
+
+    return D;
+}
+std::vector<double> MultiMaterial::square_root_2D(const std::vector<double>& d) const{
+    std::vector<double> D = {
+    std::sqrt(2)*d[1]*d[3]*((-d[0] + d[4] + std::sqrt(d[0]*d[0] - 2*d[0]*d[4] + 4*d[1]*d[3] + d[4]*d[4]))*std::sqrt(d[0] + d[4] - std::sqrt(d[0]*d[0] - 2*d[0]*d[4] + 4*d[1]*d[3] + d[4]*d[4])) + (d[0] - d[4] + std::sqrt(d[0]*d[0] - 2*d[0]*d[4] + 4*d[1]*d[3] + d[4]*d[4]))*std::sqrt(d[0] + d[4] + std::sqrt(d[0]*d[0] - 2*d[0]*d[4] + 4*d[1]*d[3] + d[4]*d[4])))/((-d[0] + d[4] + std::sqrt(d[0]*d[0] - 2*d[0]*d[4] + 4*d[1]*d[3] + d[4]*d[4]))*(d[0] - d[4] + std::sqrt(d[0]*d[0] - 2*d[0]*d[4] + 4*d[1]*d[3] + d[4]*d[4]))*std::sqrt(d[0]*d[0] - 2*d[0]*d[4] + 4*d[1]*d[3] + d[4]*d[4]))
+    ,
+    std::sqrt(2)*d[1]*(2*d[1]*d[3]*(d[0] - d[4] + std::sqrt(d[0]*d[0] - 2*d[0]*d[4] + 4*d[1]*d[3] + d[4]*d[4]))*std::sqrt(d[0] + d[4] + std::sqrt(d[0]*d[0] - 2*d[0]*d[4] + 4*d[1]*d[3] + d[4]*d[4])) - (-d[0] + d[4] + std::sqrt(d[0]*d[0] - 2*d[0]*d[4] + 4*d[1]*d[3] + d[4]*d[4]))*std::sqrt(d[0] + d[4] - std::sqrt(d[0]*d[0] - 2*d[0]*d[4] + 4*d[1]*d[3] + d[4]*d[4]))*(d[0]*d[0] - 2*d[0]*d[4] + d[0]*std::sqrt(d[0]*d[0] - 2*d[0]*d[4] + 4*d[1]*d[3] + d[4]*d[4]) + 2*d[1]*d[3] + d[4]*d[4] - d[4]*std::sqrt(d[0]*d[0] - 2*d[0]*d[4] + 4*d[1]*d[3] + d[4]*d[4])))/((-d[0] + d[4] + std::sqrt(d[0]*d[0] - 2*d[0]*d[4] + 4*d[1]*d[3] + d[4]*d[4]))*(d[0] - d[4] + std::sqrt(d[0]*d[0] - 2*d[0]*d[4] + 4*d[1]*d[3] + d[4]*d[4]))*(d[0]*d[0] - 2*d[0]*d[4] + d[0]*std::sqrt(d[0]*d[0] - 2*d[0]*d[4] + 4*d[1]*d[3] + d[4]*d[4]) + 4*d[1]*d[3] + d[4]*d[4] - d[4]*std::sqrt(d[0]*d[0] - 2*d[0]*d[4] + 4*d[1]*d[3] + d[4]*d[4])))
+    ,
+    0
+    ,
+    std::sqrt(2)*d[3]*(-std::sqrt(d[0] + d[4] - std::sqrt(d[0]*d[0] - 2*d[0]*d[4] + 4*d[1]*d[3] + d[4]*d[4])) + std::sqrt(d[0] + d[4] + std::sqrt(d[0]*d[0] - 2*d[0]*d[4] + 4*d[1]*d[3] + d[4]*d[4])))/(2*std::sqrt(d[0]*d[0] - 2*d[0]*d[4] + 4*d[1]*d[3] + d[4]*d[4]))
+    ,
+    std::sqrt(2)*(d[1]*d[3]*std::sqrt(d[0] + d[4] + std::sqrt(d[0]*d[0] - 2*d[0]*d[4] + 4*d[1]*d[3] + d[4]*d[4])) + std::sqrt(d[0] + d[4] - std::sqrt(d[0]*d[0] - 2*d[0]*d[4] + 4*d[1]*d[3] + d[4]*d[4]))*(d[0]*d[0] - 2*d[0]*d[4] + d[0]*std::sqrt(d[0]*d[0] - 2*d[0]*d[4] + 4*d[1]*d[3] + d[4]*d[4]) + 2*d[1]*d[3] + d[4]*d[4] - d[4]*std::sqrt(d[0]*d[0] - 2*d[0]*d[4] + 4*d[1]*d[3] + d[4]*d[4]))/2)/(d[0]*d[0] - 2*d[0]*d[4] + d[0]*std::sqrt(d[0]*d[0] - 2*d[0]*d[4] + 4*d[1]*d[3] + d[4]*d[4]) + 4*d[1]*d[3] + d[4]*d[4] - d[4]*std::sqrt(d[0]*d[0] - 2*d[0]*d[4] + 4*d[1]*d[3] +d[4]*d[4]))
+    ,
+    0
+    ,
+    0
+    ,
+    0
+    ,
+    std::sqrt(d[8])
+    };
+
+    return D;
+}
+std::vector<double> MultiMaterial::square_root_3D(const std::vector<double>& d) const{
+    typedef Eigen::Matrix<double, 6, 6> MatType;
+    MatType M;
+    std::copy(d.begin(), d.end(), M.data());
+
+    Eigen::JacobiSVD<MatType, Eigen::ComputeFullU | Eigen::ComputeFullV> svd(M);
+
+    auto S = svd.singularValues();
+    for(size_t i = 0; i < 6; ++i){
+        S[i] = std::sqrt(S[i]);
+    }
+    Eigen::DiagonalMatrix<double, 6> D(S);
+    MatType new_d = svd.matrixU()*D*svd.matrixV().transpose();
+
+    std::vector<double> result(36);
+    std::copy(new_d.data(), new_d.data()+36, result.begin());
+
+    return result;
 }

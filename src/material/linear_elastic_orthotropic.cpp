@@ -29,18 +29,19 @@ namespace material{
 LinearElasticOrthotropic::LinearElasticOrthotropic(const std::string& name, const double density, std::vector<double> E, std::vector<double> nu, std::vector<double> G, std::vector<double> Smax, std::vector<double> Tmax):
     Material(name, density, std::move(Smax), std::move(Tmax)){
    
-    std::vector<double> S_2D(9); 
+    this->S_2D.resize(9);
     S_2D[0] = 1/E[0];
     S_2D[1] = -nu[0]/E[1];
     S_2D[3] = -nu[0]/E[1];
     S_2D[4] = 1/E[1];
     S_2D[8] = 1/G[0];
     std::vector<int> ipiv(9);
-    LAPACKE_dgetrf(LAPACK_ROW_MAJOR, 3, 3, S_2D.data(), 3, ipiv.data());
-    LAPACKE_dgetri(LAPACK_ROW_MAJOR, 3, S_2D.data(), 3, ipiv.data());
-    this->D_2D = std::move(S_2D);
+    std::vector<double> S_2D_tmp = S_2D;
+    LAPACKE_dgetrf(LAPACK_ROW_MAJOR, 3, 3, S_2D_tmp.data(), 3, ipiv.data());
+    LAPACKE_dgetri(LAPACK_ROW_MAJOR, 3, S_2D_tmp.data(), 3, ipiv.data());
+    this->D_2D = std::move(S_2D_tmp);
 
-    std::vector<double> S_3D(36); 
+    this->S_3D.resize(36);
     S_3D[ 0] = 1/E[0];
     S_3D[ 1] = -nu[0]/E[1];
     S_3D[ 2] = -nu[1]/E[2];
@@ -54,9 +55,10 @@ LinearElasticOrthotropic::LinearElasticOrthotropic(const std::string& name, cons
     S_3D[28] = 1/G[1];
     S_3D[35] = 1/G[2];
     ipiv.resize(36);
-    LAPACKE_dgetrf(LAPACK_ROW_MAJOR, 6, 6, S_3D.data(), 6, ipiv.data());
-    LAPACKE_dgetri(LAPACK_ROW_MAJOR, 6, S_3D.data(), 6, ipiv.data());
-    this->D_3D = std::move(S_3D);
+    std::vector<double> S_3D_tmp = S_3D;
+    LAPACKE_dgetrf(LAPACK_ROW_MAJOR, 6, 6, S_3D_tmp.data(), 6, ipiv.data());
+    LAPACKE_dgetri(LAPACK_ROW_MAJOR, 6, S_3D_tmp.data(), 6, ipiv.data());
+    this->D_3D = std::move(S_3D_tmp);
 }
 
 double LinearElasticOrthotropic::beam_E_2D(gp_Dir d) const{

@@ -65,6 +65,15 @@ class MultiMaterial{
             D[pos[i]] *= rho;
         }
     }
+
+    std::vector<double> invert_2D(const std::vector<double>& d) const;
+    std::vector<double> invert_3D(const std::vector<double>& d) const;
+    std::vector<double> square_2D(const std::vector<double>& d) const;
+    std::vector<double> square_3D(const std::vector<double>& d) const;
+    std::vector<double> mult_2D(const std::vector<double>& d, const std::vector<double>& e) const;
+    std::vector<double> mult_3D(const std::vector<double>& d, const std::vector<double>& e) const;
+    std::vector<double> square_root_2D(const std::vector<double>& d) const;
+    std::vector<double> square_root_3D(const std::vector<double>& d) const;
 };
 
 #endif

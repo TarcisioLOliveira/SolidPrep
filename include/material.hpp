@@ -51,6 +51,12 @@ class Material{
     inline const std::vector<double>& stiffness_3D() const{
         return this->D_3D;
     }
+    inline const std::vector<double>& stiffness_inverse_2D() const{
+        return this->S_2D;
+    }
+    inline const std::vector<double>& stiffness_inverse_3D() const{
+        return this->S_3D;
+    }
 
     virtual double beam_E_2D(gp_Dir d = gp_Dir(1,0,0)) const = 0;
     virtual double beam_E_3D(gp_Dir d = gp_Dir(1,0,0)) const = 0;
@@ -78,6 +84,8 @@ class Material{
     std::vector<double> Tmax;
     std::vector<double> D_2D;
     std::vector<double> D_3D;
+    std::vector<double> S_2D;
+    std::vector<double> S_3D;
 };
 
 #endif

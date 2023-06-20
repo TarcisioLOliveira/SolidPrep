@@ -21,6 +21,8 @@
 #include "material/linear_elastic_isotropic.hpp"
 #include "logger.hpp"
 #include <cmath>
+#include <lapacke.h>
+#include <cblas.h>
 
 namespace material{
 
@@ -41,6 +43,11 @@ LinearElasticIsotropic::LinearElasticIsotropic(const std::string& name, const do
         this->D_2D[4] = (E/((1+nu)*(1-2*nu)))*(1-nu);
         this->D_2D[8] = E/(2*(1+nu));
     }
+    std::vector<int> ipiv(9);
+    std::vector<double> D_2D_tmp = D_2D;
+    LAPACKE_dgetrf(LAPACK_ROW_MAJOR, 3, 3, D_2D_tmp.data(), 3, ipiv.data());
+    LAPACKE_dgetri(LAPACK_ROW_MAJOR, 3, D_2D_tmp.data(), 3, ipiv.data());
+    this->S_2D = std::move(D_2D_tmp);
 
     this->D_3D.resize(36);
     this->D_3D[ 0] = (E/((1+nu)*(1-2*nu)))*(1-nu);
@@ -55,6 +62,12 @@ LinearElasticIsotropic::LinearElasticIsotropic(const std::string& name, const do
     this->D_3D[21] = E/(2*(1+nu));
     this->D_3D[28] = E/(2*(1+nu));
     this->D_3D[35] = E/(2*(1+nu));
+
+    ipiv.resize(36);
+    std::vector<double> D_3D_tmp = D_3D;
+    LAPACKE_dgetrf(LAPACK_ROW_MAJOR, 6, 6, D_3D_tmp.data(), 6, ipiv.data());
+    LAPACKE_dgetri(LAPACK_ROW_MAJOR, 6, D_3D_tmp.data(), 6, ipiv.data());
+    this->S_3D = std::move(D_3D_tmp);
 }
 
 double LinearElasticIsotropic::beam_E_2D(gp_Dir d) const{
