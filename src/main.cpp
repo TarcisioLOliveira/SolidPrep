@@ -185,7 +185,9 @@ int main(int argc, char* argv[]){
                 utils::shape_to_file("result.step", result);
             }
 
-            logger::quick_log("Sizing time: ", size_time, " minutes");
+            if(proj->analysis == ProjectData::COMPLETE){
+                logger::quick_log("Sizing time: ", size_time, " minutes");
+            }
             logger::quick_log("Topology optimization time (including preparations for TO): ", to_time+mesh_time, " minutes");
             logger::quick_log("Total optimization time: ", to_time+size_time+mesh_time, " minutes");
             logger::quick_log("Total runtime (including GUI loading, excluding saving result as STEP): ", total_time, " minutes");
