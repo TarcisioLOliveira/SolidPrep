@@ -18,11 +18,13 @@
  *
  */
 
+#include <string>
 #include <array>
 #include <cmath>
 #include <Eigen/Core>
 #include <Eigen/Dense>
-#include <Eigen/SVD>
+#include <Eigen/Eigenvalues>
+#include "logger.hpp"
 #include "multimaterial.hpp"
 #include "utils.hpp"
 
@@ -721,17 +723,12 @@ std::vector<double> MultiMaterial::square_root_3D(const std::vector<double>& d) 
     MatType M;
     std::copy(d.begin(), d.end(), M.data());
 
-    Eigen::JacobiSVD<MatType, Eigen::ComputeFullU | Eigen::ComputeFullV> svd(M);
+    Eigen::SelfAdjointEigenSolver<MatType> eigen(M);
 
-    auto S = svd.singularValues();
-    for(size_t i = 0; i < 6; ++i){
-        S[i] = std::sqrt(S[i]);
-    }
-    Eigen::DiagonalMatrix<double, 6> D(S);
-    MatType new_d = svd.matrixU()*D*svd.matrixV().transpose();
+    M = eigen.operatorSqrt();
 
     std::vector<double> result(36);
-    std::copy(new_d.data(), new_d.data()+36, result.begin());
+    std::copy(M.data(), M.data()+36, result.begin());
 
     return result;
 }
