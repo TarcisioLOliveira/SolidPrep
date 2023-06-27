@@ -130,7 +130,7 @@ void Meshing::populate_boundary_elements(const std::vector<ElementShape>& bounda
         if(common_nodes.size() > 0){
             if(boundary_condition_inside){
                 this->boundary_elements.emplace_back(b.nodes, *common_nodes.begin(), b.normal);
-            } else if(common_nodes.size() == 1){
+            } else if(common_nodes.size() >= 1){
                 double x = 0, y = 0, z = 0;
                 for(auto& n:b.nodes){
                     x += n->point.X();
