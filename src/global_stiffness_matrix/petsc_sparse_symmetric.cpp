@@ -28,7 +28,7 @@ namespace global_stiffness_matrix{
 PETScSparseSymmetric::PETScSparseSymmetric(Backend backend){
     switch(backend){
         case Backend::CPU:
-            this->mat_type = MATMPIAIJ;
+            this->mat_type = MATAIJ;
             break;
         case Backend::CUDA:
             this->mat_type = MATAIJCUSPARSE;
@@ -58,12 +58,18 @@ void PETScSparseSymmetric::generate(const Meshing* const mesh, const std::vector
 
         MatSetSizes(this->K, PETSC_DECIDE, PETSC_DECIDE, M, M);
         MatSetOption(this->K, MAT_SPD, PETSC_TRUE);
+        MatSetOption(this->K, MAT_SPD_ETERNAL, PETSC_TRUE);
+        MatSetOption(this->K, MAT_KEEP_NONZERO_PATTERN, PETSC_TRUE);
+        //MatSetOption(this->K, MAT_IGNORE_ZERO_ENTRIES, PETSC_TRUE);
 
         Mat tmp;
         MatCreate(PETSC_COMM_WORLD, &tmp);
         MatSetType(tmp, MATPREALLOCATOR);
         MatSetSizes(tmp, PETSC_DECIDE, PETSC_DECIDE, M, M);
         MatSetOption(tmp, MAT_SPD, PETSC_TRUE);
+        MatSetOption(tmp, MAT_SPD_ETERNAL, PETSC_TRUE);
+        MatSetOption(tmp, MAT_KEEP_NONZERO_PATTERN, PETSC_TRUE);
+        //MatSetOption(tmp, MAT_IGNORE_ZERO_ENTRIES, PETSC_TRUE);
         MatSetUp(tmp);
 
         if(mpi_id == 0){
