@@ -34,7 +34,7 @@ MultiMaterial::MultiMaterial(std::vector<Material*> materials, utils::ProblemTyp
 void MultiMaterial::get_D(std::vector<double>::const_iterator& rho, const bool has_void, const double p, const double p_min, const double mix, std::vector<double>& D) const{
     double void_rho = 0;
     if(has_void){
-        void_rho = p_min + (1-p_min)*std::pow(*rho, p);
+        void_rho = std::pow(*rho, p);
         ++rho;
     }
 
@@ -66,8 +66,8 @@ void MultiMaterial::get_gradD(std::vector<double>::const_iterator& rho, const bo
     double void_rho = 0;
     double void_drho = 0;
     if(has_void){
-        void_rho = p_min + (1-p_min)*std::pow(*rho, p);
-        void_drho = (1-p_min)*p*std::pow(*rho, p-1);
+        void_rho = std::pow(*rho, p);
+        void_drho = p*std::pow(*rho, p-1);
         ++rho;
     }
 

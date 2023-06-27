@@ -56,6 +56,11 @@ class PETScSparseSymmetric : public GlobalStiffnessMatrix{
         // Requires 64-bit indices
         MatSetValues(this->K, pos.size(), pos.data(), pos.size(), pos.data(), k.data(), ADD_VALUES);
     }
+
+    inline virtual void add_to_matrix(size_t i, size_t j, double val) override{
+        // Requires 64-bit indices
+        MatSetValue(this->K, i, j, val, ADD_VALUES);
+    }
 };
 
 }

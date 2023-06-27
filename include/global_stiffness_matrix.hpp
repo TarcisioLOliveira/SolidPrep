@@ -26,7 +26,7 @@
 class GlobalStiffnessMatrix{
     public:
     virtual ~GlobalStiffnessMatrix() = default;
-    const double K_MIN = 1e-9;
+    const double K_MIN = 1e-14;
     virtual void generate(const Meshing * const mesh, const std::vector<double>& density, const double pc, const double psi) = 0;
 
     protected:
@@ -41,6 +41,8 @@ class GlobalStiffnessMatrix{
     virtual void add_geometry(const Meshing * const mesh, const Geometry * const g, std::vector<double>::const_iterator& rho, const double pc, const double psi);
 
     virtual void insert_element_matrix(const std::vector<double>& k, const std::vector<long>& pos) = 0;
+
+    virtual void add_to_matrix(size_t i, size_t j, double val) = 0;
 };
 
 #endif

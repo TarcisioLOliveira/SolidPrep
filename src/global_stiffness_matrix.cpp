@@ -35,6 +35,9 @@ void GlobalStiffnessMatrix::generate_base(const Meshing * const mesh, const std:
             }
         }
     }
+    for(size_t i = 0; i < mesh->load_vector.size(); ++i){
+        this->add_to_matrix(i, i, this->K_MIN);
+    }
 }
 
 void GlobalStiffnessMatrix::add_geometry(const Meshing* const mesh, const Geometry* const g){
@@ -76,7 +79,7 @@ void GlobalStiffnessMatrix::add_geometry(const Meshing* const mesh, const Geomet
                     u_pos.push_back(n->u_pos[j]);
                 }
             }
-            const double rhop = K_MIN + (1-K_MIN)*std::pow(*rho, pc);
+            const double rhop = std::pow(*rho, pc);
             for(size_t i = 0; i < D.size(); ++i){
                 rhoD[i] = rhop*D[i];
             }

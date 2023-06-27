@@ -43,6 +43,9 @@ class EigenSparseAsymmetricTriplets : public GlobalStiffnessMatrix{
     virtual inline void insert_element_matrix(const std::vector<double>& k, const std::vector<long>& pos) override{
         this->K.insert_matrix_general_mumps(k, pos);
     }
+    inline virtual void add_to_matrix(size_t i, size_t j, double val) override{
+        this->K.add(i, j, val);
+    }
 };
 
 void EigenSparseAsymmetricTriplets::generate(const Meshing * const mesh, const std::vector<double>& density, const double pc, const double psi){

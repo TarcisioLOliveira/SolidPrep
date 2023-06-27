@@ -54,6 +54,9 @@ class EigenSparseAsymmetric : public GlobalStiffnessMatrix{
             }
         }
     }
+    inline virtual void add_to_matrix(size_t i, size_t j, double val) override{
+        K.coeffRef(i, j) += val;
+    }
 };
 
 }
