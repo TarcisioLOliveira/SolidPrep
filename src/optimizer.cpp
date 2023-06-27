@@ -87,40 +87,56 @@ TopoDS_Shape Optimizer::make_shape(const std::vector<double>& x, const std::vect
         TopoDS_Compound result;
         TopoDS_Builder builder;
         builder.MakeCompound(result);
-        for(size_t i = 0; i < x.size(); ++i){
-            if(x[i] >= result_threshold){
-                TopoDS_Shape s(geometries[0]->mesh[i]->get_shape());
-                builder.Add(result, s);
-                // auto ss = STEP_workaround(s);
+        size_t g_num = 0;
+        size_t count = 0;
+        auto x_it = x.cbegin();
+        for(auto& g:geometries){
+            if(g->do_topopt){
+                TopoDS_Compound result_geom;
+                TopoDS_Builder builder_geom;
+                builder_geom.MakeCompound(result_geom);
+                for(size_t i = 0; i < g->mesh.size(); ++i){
+                    if(*x_it >= result_threshold){
+                        TopoDS_Shape s(g->mesh[i]->get_shape());
+                        builder_geom.Add(result_geom, std::move(s));
+                        // auto ss = STEP_workaround(s);
 
-                // // result = utils::cut_shape(result, ss);
-                // TopoDS_Shape cur_shape;
-                // double cur_mass = 0;
+                        // // result = utils::cut_shape(result, ss);
+                        // TopoDS_Shape cur_shape;
+                        // double cur_mass = 0;
 
-                // TopExp_Explorer exp(result, TopAbs_SHAPE);
-                // if(exp.More()){
-                //     for(; exp.More(); exp.Next()){
-                //         auto cur = exp.Current();
-                //         GProp_GProps props;
-                //         BRepGProp::SurfaceProperties(cur, props);
-                //         if(props.Mass() > cur_mass){
-                //             cur_mass = props.Mass();
-                //           cur_shape = cur;
-                //         }
-                //         break;
-                //     }
-                //     auto test = utils::cut_shape(cur_shape, ss);
-                //     if(test.IsNull()){
-                //         result = utils::cut_shape(result, ss);
-                //     } else {
-                //         result = test;
-                //     }
-                // } else {
-                //     result = utils::cut_shape(result, ss);
-                // }
+                        // TopExp_Explorer exp(result, TopAbs_SHAPE);
+                        // if(exp.More()){
+                        //     for(; exp.More(); exp.Next()){
+                        //         auto cur = exp.Current();
+                        //         GProp_GProps props;
+                        //         BRepGProp::SurfaceProperties(cur, props);
+                        //         if(props.Mass() > cur_mass){
+                        //             cur_mass = props.Mass();
+                        //           cur_shape = cur;
+                        //         }
+                        //         break;
+                        //     }
+                        //     auto test = utils::cut_shape(cur_shape, ss);
+                        //     if(test.IsNull()){
+                        //         result = utils::cut_shape(result, ss);
+                        //     } else {
+                        //         result = test;
+                        //     }
+                        // } else {
+                        //     result = utils::cut_shape(result, ss);
+                        // }
+                    }
+                    ++x_it;
+                    const double pc = count/(double)(x.size()-1);
+                    std::cout << "\r" << pc*100 << "%         ";
+                    ++count;
+                }
+                std::cout << std::endl;
+                utils::shape_to_file("result_"+std::to_string(g_num)+".step", result_geom);
+                ++g_num;
+                //builder.Add(result, result_geom);
             }
-            const double pc = i/(double)(x.size()-1);
-            std::cout << "\r" << pc*100 << "%         ";
         }
 
         // // Another workaround.
