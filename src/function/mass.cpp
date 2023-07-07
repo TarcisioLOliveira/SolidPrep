@@ -19,6 +19,7 @@
  */
 
 #include "function/mass.hpp"
+#include "logger.hpp"
 #include <mpich-x86_64/mpi.h>
 #include <numeric>
 
@@ -45,10 +46,22 @@ double Mass::calculate(const Optimizer* const op, const std::vector<double>& u, 
     auto v_it = v.cbegin();
     for(auto& g:this->mesh->geometries){
         if(g->do_topopt){
-            for(size_t i = 0; i < g->mesh.size(); ++i){
-                auto d = g->materials.get_density(x_it, g->with_void);
-                V += d*(*v_it);
+            if(g->materials.number_of_materials() == 1){
+                const double d = g->materials.get_materials()[0]->density;
+                for(size_t i = 0; i < g->mesh.size(); ++i){
+                    V += *x_it*d*(*v_it);
+                    ++v_it;
+                    ++x_it;
+                }
+            } else {
+                for(size_t i = 0; i < g->mesh.size(); ++i){
+                    auto d = g->materials.get_density(x_it, g->with_void);
+                    V += d*(*v_it);
+                    ++v_it;
+                }
             }
+        } else {
+            v_it += g->mesh.size();
         }
     }
     V *= 1e3;
@@ -72,10 +85,29 @@ double Mass::calculate_with_gradient(const Optimizer* const op, const std::vecto
     auto grad_it = grad.begin();
     for(auto& g:this->mesh->geometries){
         if(g->do_topopt){
-            for(size_t i = 0; i < g->mesh.size(); ++i){
-                auto d = g->materials.get_density_deriv(x_it, g->with_void, grad_it);
-                V += d*(*v_it);
+            if(g->materials.number_of_materials() == 1){
+                const double d = g->materials.get_materials()[0]->density;
+                for(size_t i = 0; i < g->mesh.size(); ++i){
+                    V += *x_it*d*(*v_it);
+                    *grad_it = d*(*v_it)*1e3/1e9;
+                    ++grad_it;
+                    ++v_it;
+                    ++x_it;
+                }
+            } else {
+                for(size_t i = 0; i < g->mesh.size(); ++i){
+                    auto grad_it2 = grad_it;
+                    auto d = g->materials.get_density_deriv(x_it, g->with_void, grad_it2);
+                    V += d*(*v_it);
+                    while(grad_it < grad_it2){
+                        *grad_it *= *v_it*1e3/1e9;
+                        ++grad_it;
+                    }
+                    ++v_it;
+                }
             }
+        } else {
+            v_it += g->mesh.size();
         }
     }
     V *= 1e3;

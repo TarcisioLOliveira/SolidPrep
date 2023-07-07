@@ -89,7 +89,7 @@ double MassFirstMaterial::calculate_with_gradient(const Optimizer* const op, con
             const double d = g->materials.get_materials()[0]->density;
             for(auto xi = x_it; xi < x_it+g->mesh.size(); xi += num_den, ++v_it, grad_it += num_den){
                 V += (*xi)*d*(*v_it);
-                *grad_it = d*(*v_it);
+                *grad_it = d*(*v_it)*1e3/1e9;
             }
             x_it += g->mesh.size()*num_den;
         } else {
