@@ -26,7 +26,7 @@
 class GlobalStiffnessMatrix{
     public:
     virtual ~GlobalStiffnessMatrix() = default;
-    const double K_MIN = 1e-14;
+    const double K_MIN = 1e-9;
     virtual void generate(const Meshing * const mesh, const std::vector<double>& density, const double pc, const double psi) = 0;
 
     protected:
