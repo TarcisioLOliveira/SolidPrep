@@ -351,7 +351,7 @@ double MultiMaterial::get_density(std::vector<double>::const_iterator& rho, cons
     }
     v[v.size()-1] = 1 - total;
 
-    rho += v.size();
+    rho += v.size()-1;
 
     double d = 0;
     for(size_t i = 0; i < v.size(); ++i){
@@ -378,7 +378,7 @@ double MultiMaterial::get_density_deriv(std::vector<double>::const_iterator& rho
     }
     v[v.size()-1] = 1 - total;
 
-    rho += v.size();
+    rho += v.size()-1;
 
     double d = 0;
     for(size_t i = 0; i < v.size(); ++i){
