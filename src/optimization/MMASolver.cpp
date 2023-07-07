@@ -49,6 +49,8 @@ MMASolver::MMASolver(int nn, int mm, double ai, double ci, double di)
 	, asyminit(0.5) // 0.2;
 	, asymdec(0.7) // 0.65;
 	, asyminc(1.2) // 1.08;
+    , maxfac(100)
+    , minfac(1e-5)
 	, a(m, ai)
 	, c(m, ci)
 	, d(m, di)
@@ -67,6 +69,9 @@ MMASolver::MMASolver(int nn, int mm, double ai, double ci, double di)
 	, hess(m * m)
 	, xold1(n)
 	, xold2(n)
+    , df2(n)
+    , PQ(n * m)
+    , tmp(n * m)
 { }
 
 void MMASolver::SetAsymptotes(double init, double decrease, double increase) {
@@ -91,7 +96,7 @@ void MMASolver::Update(double *xval, const double *dfdx, const double *gx, const
 	GenSub(xval, dfdx, gx, dgdx, xmin, xmax);
 
 	// Update xolds
-	xold2 = xold1;
+    std::copy(xold1.begin(), xold1.end(), xold2.begin());
 	std::copy_n(xval, n, xold1.data());
 
 	// Solve the dual with an interior point method
@@ -122,7 +127,7 @@ void MMASolver::SolveDIP(double *x) {
 
 		loop = 0;
 		while (err > 0.9 * epsi && loop < 100) {
-			loop++;
+			++loop;
 
 			// Set up Newton system
 			DualGrad(x);
@@ -228,49 +233,61 @@ void MMASolver::DualLineSearch() {
 
 void MMASolver::DualHess(double *x) {
 
-	double *df2 = new double[n];
-	double *PQ = new double[n * m];
+    std::fill(hess.begin(), hess.end(), 0.0);
 	#ifdef MMA_WITH_OPENMP
-	#pragma omp parallel for
+    #pragma omp declare reduction(vec_plus : std::vector<double> : \
+                              std::transform(omp_out.begin(), omp_out.end(), omp_in.begin(), omp_out.begin(), std::plus<double>())) \
+                    initializer(omp_priv = decltype(omp_orig)(omp_orig.size()))
+
+	#pragma omp parallel
+    {
+        #pragma omp for
 	#endif
-	for (int i = 0; i < n; i++) {
-		double pjlam = p0[i];
-		double qjlam = q0[i];
-		for (int j = 0; j < m; j++) {
-			pjlam += pij[i * m + j] * lam[j];
-			qjlam += qij[i * m + j] * lam[j];
-			PQ[i * m + j] = pij[i * m + j] / pow(upp[i] - x[i], 2.0) - qij[i * m + j] / pow(x[i] - low[i], 2.0);
-		}
-		df2[i] = -1.0 / (2.0 * pjlam / pow(upp[i] - x[i], 3.0) + 2.0 * qjlam / pow(x[i] - low[i], 3.0));
-		double xp = (sqrt(pjlam) * low[i] + sqrt(qjlam) * upp[i]) / (sqrt(pjlam) + sqrt(qjlam));
-		if (xp < alpha[i]) {
-			df2[i] = 0.0;
-		}
-		if (xp > beta[i]) {
-			df2[i] = 0.0;
-		}
-	}
+        for (int i = 0; i < n; i++) {
+            double pjlam = p0[i];
+            double qjlam = q0[i];
+            const double dupp = upp[i] - x[i];
+            const double dlow = x[i] - low[i];
+            const double dupp2 = dupp * dupp;
+            const double dlow2 = dlow * dlow;
+            for (int j = 0; j < m; j++) {
+                pjlam += pij[i * m + j] * lam[j];
+                qjlam += qij[i * m + j] * lam[j];
+                PQ[i * m + j] = pij[i * m + j] / dupp2 - qij[i * m + j] / dlow2;
+            }
+            const double sqrt_pjlam = sqrt(pjlam);
+            const double sqrt_qjlam = sqrt(qjlam);
+            const double xp = (sqrt_pjlam * low[i] + sqrt_qjlam * upp[i]) / (sqrt_pjlam + sqrt_qjlam);
+            if (xp < alpha[i] || xp > beta[i]) {
+                df2[i] = 0.0;
+            } else {
+                df2[i] = -1.0 / (2.0 * pjlam / (dupp * dupp * dupp) + 2.0 * qjlam / (dlow * dlow * dlow));
+            }
+        }
 
-	// Create the matrix/matrix/matrix product: PQ^T * diag(df2) * PQ
-	double *tmp = new double[n * m];
-	for (int j = 0; j < m; j++) {
-		#ifdef MMA_WITH_OPENMP
-		#pragma omp parallel for
-		#endif
-		for (int i = 0; i < n; i++) {
-			tmp[j * n + i] = 0.0;
-			tmp[j * n + i] += PQ[i * m + j] * df2[i];
-		}
-	}
+	    // Create the matrix/matrix/matrix product: PQ^T * diag(df2) * PQ
+        #ifdef MMA_WITH_OPENMP
+        #pragma omp for collapse(2)
+        #endif
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < m; j++) {
+                tmp[j * n + i] = PQ[i * m + j] * df2[i];
+            }
+        }
 
-	for (int i = 0; i < m; i++) {
-		for (int j = 0; j < m; j++) {
-			hess[i * m + j] = 0.0;
-			for (int k = 0; k < n; k++) {
-				hess[i * m + j] += tmp[i * n + k] * PQ[k * m + j];
-			}
-		}
-	}
+        #ifdef MMA_WITH_OPENMP
+        #pragma omp for collapse(3) reduction(vec_plus : hess)
+        #endif
+        for (int i = 0; i < m; i++) {
+            for (int j = 0; j < m; j++) {
+                for (int k = 0; k < n; k++) {
+                    hess[i * m + j] += tmp[i * n + k] * PQ[k * m + j];
+                }
+            }
+        }
+    #ifdef MMA_WITH_OPENMP
+    }
+    #endif
 
 	double lamai = 0.0;
 	for (int j = 0; j < m; j++) {
@@ -306,16 +323,21 @@ void MMASolver::DualHess(double *x) {
 	for (int i = 0; i < m; i++) {
 		hess[i * m + i] += HessCorr;
 	}
-
-	delete[] df2;
-	delete[] PQ;
-	delete[] tmp;
 }
 
 void MMASolver::DualGrad(double *x) {
 	for (int j = 0; j < m; j++) {
 		grad[j] = -b[j] - a[j] * z - y[j];
-		for (int i = 0; i < n; i++) {
+    }
+	#ifdef MMA_WITH_OPENMP
+    #pragma omp declare reduction(vec_plus : std::vector<double> : \
+                              std::transform(omp_out.begin(), omp_out.end(), omp_in.begin(), omp_out.begin(), std::plus<double>())) \
+                    initializer(omp_priv = decltype(omp_orig)(omp_orig.size()))
+
+	#pragma omp parallel for collapse(2) reduction(vec_plus : grad)
+	#endif
+    for (int i = 0; i < n; i++) {
+        for (int j = 0; j < m; j++) {
 			grad[j] += pij[i * m + j] / (upp[i] - x[i]) + qij[i * m + j] / (x[i] - low[i]);
 		}
 	}
@@ -343,11 +365,12 @@ void MMASolver::XYZofLAMBDA(double *x) {
 			pjlam += pij[i * m + j] * lam[j];
 			qjlam += qij[i * m + j] * lam[j];
 		}
-		x[i] = (sqrt(pjlam) * low[i] + sqrt(qjlam) * upp[i]) / (sqrt(pjlam) + sqrt(qjlam));
+        const double sqrt_pjlam = sqrt(pjlam);
+        const double sqrt_qjlam = sqrt(qjlam);
+		x[i] = (sqrt_pjlam * low[i] + sqrt_qjlam * upp[i]) / (sqrt_pjlam + sqrt_qjlam);
 		if (x[i] < alpha[i]) {
 			x[i] = alpha[i];
-		}
-		if (x[i] > beta[i]) {
+		} else if (x[i] > beta[i]) {
 			x[i] = beta[i];
 		}
 	}
@@ -359,104 +382,114 @@ void MMASolver::GenSub(const double *xval, const double *dfdx, const double *gx,
 	// Forward the iterator
 	iter++;
 
-	// Set asymptotes
-	if (iter < 3) {
-		#ifdef MMA_WITH_OPENMP
-		#pragma omp parallel for
-		#endif
-		for (int i = 0; i < n; i++) {
-			low[i] = xval[i] - asyminit * (xmax[i] - xmin[i]);
-			upp[i] = xval[i] + asyminit * (xmax[i] - xmin[i]);
-		}
-	} else {
-		#ifdef MMA_WITH_OPENMP
-		#pragma omp parallel for
-		#endif
-		for (int i = 0; i < n; i++) {
-			double zzz = (xval[i] - xold1[i]) * (xold1[i] - xold2[i]);
-			double gamma;
-			if (zzz < 0.0) {
-				gamma = asymdec;
-			} else if (zzz > 0.0) {
-				gamma = asyminc;
-			} else {
-				gamma = 1.0;
-			}
-			low[i] = xval[i] - gamma * (xold1[i] - low[i]);
-			upp[i] = xval[i] + gamma * (upp[i] - xold1[i]);
+    #ifdef MMA_WITH_OPENMP
+    #pragma omp parallel
+    {
+    #endif
+        // Set asymptotes
+        if (iter < 3) {
+            #ifdef MMA_WITH_OPENMP
+            #pragma omp for
+            #endif
+            for (int i = 0; i < n; i++) {
+                low[i] = xval[i] - asyminit * (xmax[i] - xmin[i]);
+                upp[i] = xval[i] + asyminit * (xmax[i] - xmin[i]);
+            }
+        } else {
+            #ifdef MMA_WITH_OPENMP
+            #pragma omp for
+            #endif
+            for (int i = 0; i < n; i++) {
+                double zzz = (xval[i] - xold1[i]) * (xold1[i] - xold2[i]);
+                double gamma;
+                if (zzz < 0.0) {
+                    gamma = asymdec;
+                } else if (zzz > 0.0) {
+                    gamma = asyminc;
+                } else {
+                    gamma = 1.0;
+                }
+                low[i] = xval[i] - gamma * (xold1[i] - low[i]);
+                upp[i] = xval[i] + gamma * (upp[i] - xold1[i]);
 
-			double xmami = std::max(xmamieps, xmax[i] - xmin[i]);
+                double xmami = std::max(xmamieps, xmax[i] - xmin[i]);
 
-			low[i] = std::max(low[i], xval[i] - maxfac * xmami);
-			low[i] = std::min(low[i], xval[i] - minfac * xmami);
-			upp[i] = std::max(upp[i], xval[i] + minfac * xmami);
-			upp[i] = std::min(upp[i], xval[i] + maxfac * xmami);
-			// low[i] = std::max(low[i], xval[i] - 100.0 * xmami);
-			// low[i] = std::min(low[i], xval[i] - 1e-3 * xmami);
-			// upp[i] = std::max(upp[i], xval[i] + 1e-3 * xmami);
-			// upp[i] = std::min(upp[i], xval[i] + 100.0 * xmami);
+                low[i] = std::max(low[i], xval[i] - maxfac * xmami);
+                low[i] = std::min(low[i], xval[i] - minfac * xmami);
+                upp[i] = std::max(upp[i], xval[i] + minfac * xmami);
+                upp[i] = std::min(upp[i], xval[i] + maxfac * xmami);
+                // low[i] = std::max(low[i], xval[i] - 100.0 * xmami);
+                // low[i] = std::min(low[i], xval[i] - 1e-3 * xmami);
+                // upp[i] = std::max(upp[i], xval[i] + 1e-3 * xmami);
+                // upp[i] = std::min(upp[i], xval[i] + 100.0 * xmami);
 
-			// double xmami = xmax[i] - xmin[i];
-			//low[i] = std::max(low[i], xval[i] - 100.0 * xmami);
-			//low[i] = std::min(low[i], xval[i] - 1.0e-5 * xmami);
-			//upp[i] = std::max(upp[i], xval[i] + 1.0e-5 * xmami);
-			//upp[i] = std::min(upp[i], xval[i] + 100.0 * xmami);
+                // double xmami = xmax[i] - xmin[i];
+                //low[i] = std::max(low[i], xval[i] - 100.0 * xmami);
+                //low[i] = std::min(low[i], xval[i] - 1.0e-5 * xmami);
+                //upp[i] = std::max(upp[i], xval[i] + 1.0e-5 * xmami);
+                //upp[i] = std::min(upp[i], xval[i] + 100.0 * xmami);
 
-			//double xmi = xmin[i] - 1.0e-6;
-			//double xma = xmax[i] + 1.0e-6;
-			//if (xval[i] < xmi) {
-			//	low[i] = xval[i] - (xma - xval[i]) / 0.9;
-			//	upp[i] = xval[i] + (xma - xval[i]) / 0.9;
-			//}
-			//if (xval[i] > xma) {
-			//	low[i] = xval[i] - (xval[i] - xmi) / 0.9;
-			//	upp[i] = xval[i] + (xval[i] - xmi) / 0.9;
-			//}
-		}
-	}
+                //double xmi = xmin[i] - 1.0e-6;
+                //double xma = xmax[i] + 1.0e-6;
+                //if (xval[i] < xmi) {
+                //	low[i] = xval[i] - (xma - xval[i]) / 0.9;
+                //	upp[i] = xval[i] + (xma - xval[i]) / 0.9;
+                //}
+                //if (xval[i] > xma) {
+                //	low[i] = xval[i] - (xval[i] - xmi) / 0.9;
+                //	upp[i] = xval[i] + (xval[i] - xmi) / 0.9;
+                //}
+            }
+        }
 
-	// Set bounds and the coefficients for the approximation
-	// double raa0 = 0.5*1e-6;
-	#ifdef MMA_WITH_OPENMP
-	#pragma omp parallel for
-	#endif
-	for (int i = 0; i < n; ++i) {
-		// Compute bounds alpha and beta
-		alpha[i] = std::max(xmin[i], low[i] + albefa * (xval[i] - low[i]));
-		alpha[i] = std::max(alpha[i], xval[i] - move * (xmax[i] - xmin[i]));
-		alpha[i] = std::min(alpha[i], xmax[i]);
-		beta[i] = std::min(xmax[i], upp[i] - albefa * (upp[i] - xval[i]));
-		beta[i] = std::min(beta[i], xval[i] + move * (xmax[i] - xmin[i]));
-		beta[i] = std::max(beta[i], xmin[i]);
+        // Set bounds and the coefficients for the approximation
+        // double raa0 = 0.5*1e-6;
+        #ifdef MMA_WITH_OPENMP
+        #pragma omp for
+        #endif
+        for (int i = 0; i < n; ++i) {
+            // Compute bounds alpha and beta
+            alpha[i] = std::max(xmin[i], low[i] + albefa * (xval[i] - low[i]));
+            alpha[i] = std::max(alpha[i], xval[i] - move * (xmax[i] - xmin[i]));
+            alpha[i] = std::min(alpha[i], xmax[i]);
+            beta[i] = std::min(xmax[i], upp[i] - albefa * (upp[i] - xval[i]));
+            beta[i] = std::min(beta[i], xval[i] + move * (xmax[i] - xmin[i]));
+            beta[i] = std::max(beta[i], xmin[i]);
 
-		// Objective function
-		{
-			double dfdxp = std::max(0.0, dfdx[i]);
-			double dfdxm = std::max(0.0, -1.0 * dfdx[i]);
-			double xmamiinv = 1.0 / std::max(xmamieps, xmax[i] - xmin[i]);
-			double pq = 0.001 * std::abs(dfdx[i]) + raa0 * xmamiinv;
-			p0[i] = std::pow(upp[i] - xval[i], 2.0) * (dfdxp + pq);
-			q0[i] = std::pow(xval[i] - low[i], 2.0) * (dfdxm + pq);
-		}
+            // Objective function
+            {
+                double dfdxp = std::max(0.0, dfdx[i]);
+                double dfdxm = std::max(0.0, -1.0 * dfdx[i]);
+                double xmamiinv = 1.0 / std::max(xmamieps, xmax[i] - xmin[i]);
+                double pq = 0.001 * std::abs(dfdx[i]) + raa0 * xmamiinv;
+                p0[i] = std::pow(upp[i] - xval[i], 2.0) * (dfdxp + pq);
+                q0[i] = std::pow(xval[i] - low[i], 2.0) * (dfdxm + pq);
+            }
 
-		// Constraints
-		for (int j = 0; j < m; j++) {
-			double dgdxp = std::max(0.0, dgdx[i * m + j]);
-			double dgdxm = std::max(0.0, -1.0 * dgdx[i * m + j]);
-			double xmamiinv = 1.0 / std::max(xmamieps, xmax[i] - xmin[i]);
-			double pq = 0.001 * std::abs(dgdx[i * m + j]) + raa0 * xmamiinv;
-			pij[i * m + j] = std::pow(upp[i] - xval[i], 2.0) * (dgdxp + pq);
-			qij[i * m + j] = std::pow(xval[i] - low[i], 2.0) * (dgdxm + pq);
-		}
-	}
+            // Constraints
+            for (int j = 0; j < m; j++) {
+                double dgdxp = std::max(0.0, dgdx[i * m + j]);
+                double dgdxm = std::max(0.0, -1.0 * dgdx[i * m + j]);
+                double xmamiinv = 1.0 / std::max(xmamieps, xmax[i] - xmin[i]);
+                double pq = 0.001 * std::abs(dgdx[i * m + j]) + raa0 * xmamiinv;
+                pij[i * m + j] = std::pow(upp[i] - xval[i], 2.0) * (dgdxp + pq);
+                qij[i * m + j] = std::pow(xval[i] - low[i], 2.0) * (dgdxm + pq);
+            }
+        }
 
-	// The constant for the constraints
-	for (int j = 0; j < m; j++) {
-		b[j] = -gx[j];
-		for (int i = 0; i < n; i++) {
-			b[j] += pij[i * m + j] / (upp[i] - xval[i]) + qij[i * m + j] / (xval[i] - low[i]);
-		}
-	}
+        // The constant for the constraints
+        #ifdef MMA_WITH_OPENMP
+        #pragma omp for
+        #endif
+        for (int j = 0; j < m; j++) {
+            b[j] = -gx[j];
+            for (int i = 0; i < n; i++) {
+                b[j] += pij[i * m + j] / (upp[i] - xval[i]) + qij[i * m + j] / (xval[i] - low[i]);
+            }
+        }
+    #ifdef MMA_WITH_OPENMP
+    }
+    #endif
 }
 
 void MMASolver::Factorize(double *K, int n) {

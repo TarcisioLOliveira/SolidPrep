@@ -27,7 +27,7 @@
 // Original code by Niels Aage, February 2013
 // Modified to use OpenMP by Jun Wu, April 2017
 // Various modifications by Jérémie Dumas, June 2017
-// Small modifications by Tarcísio Ladeia de Oliveira, 2022
+// Small modifications by Tarcísio Ladeia de Oliveira, 2022-2023
 //
 // The class solves a general non-linear programming problem
 // on standard from, i.e. non-linear objective f, m non-linear
@@ -94,6 +94,9 @@ class MMASolver {
 	std::vector<double> low, upp, alpha, beta, p0, q0, pij, qij, b, grad, hess;
 
 	std::vector<double> xold1, xold2;
+
+    // DualHess() temporaries
+	std::vector<double> df2, PQ, tmp;
 
 	void GenSub(const double *xval, const double *dfdx, const double *gx, const double *dgdx, const double *xmin,
 	            const double *xmax);
