@@ -42,6 +42,7 @@ void RadialMachining::initialize_views(Visualization* viz){
 void RadialMachining::initialize(const Optimizer* const op){
     const size_t num_nodes = mesh->elem_info->get_nodes_per_element();
     const size_t num_nodes_bound = mesh->elem_info->get_boundary_nodes_per_element();
+    std::map<size_t, long> id_mapping;
     size_t N = 0;
     if(this->mesh->elem_info->get_problem_type() == utils::PROBLEM_TYPE_2D){
         N = 2;
@@ -55,7 +56,7 @@ void RadialMachining::initialize(const Optimizer* const op){
             for(const auto& e:g->mesh){
                 for(size_t i = 0; i < num_nodes; ++i){
                     const auto& n = e->nodes[i];
-                    this->id_mapping[n->id] = 0;
+                    id_mapping[n->id] = 0;
                 }
             }
             elem_num += g->mesh.size();
@@ -64,17 +65,31 @@ void RadialMachining::initialize(const Optimizer* const op){
     for(auto& e:mesh->boundary_elements){
         if(std::abs(this->axis.Dot(e.normal)) < 1.0-Precision::Confusion()){
             for(size_t i = 0; i < num_nodes_bound; ++i){
-                if(this->id_mapping.count(e.nodes[i]->id)){
-                    this->id_mapping[e.nodes[i]->id] = -1;
+                if(id_mapping.count(e.nodes[i]->id)){
+                    id_mapping[e.nodes[i]->id] = -1;
                 }
             }
         }
     }
     size_t id = 0;
     for(auto& n:this->mesh->node_list){
-        if(this->id_mapping.count(n->id) && this->id_mapping.at(n->id) > -1){
-            this->id_mapping[n->id] = id;
+        if(id_mapping.count(n->id) && id_mapping.at(n->id) > -1){
+            id_mapping[n->id] = id;
             ++id;
+        }
+    }
+    this->id_mapping_linear.resize(elem_num*num_nodes,0);
+    auto id_it = this->id_mapping_linear.begin();
+    for(const auto& g:mesh->geometries){
+        if(g->do_topopt){
+            for(const auto& e:g->mesh){
+                for(size_t i = 0; i < num_nodes; ++i){
+                    const auto& ni = e->nodes[i];
+                    const long id1 = id_mapping[ni->id];
+                    *id_it = id1;
+                    ++id_it;
+                }
+            }
         }
     }
     phi_size = id;
@@ -106,6 +121,7 @@ double RadialMachining::calculate(const Optimizer* const op, const std::vector<d
     const double BETA_RHO = 100;
 
     auto x_it = x.cbegin();
+    auto id_it = this->id_mapping_linear.cbegin();
     for(const auto& g:mesh->geometries){
         if(g->do_topopt){
             const size_t num_den = g->number_of_densities_needed();
@@ -115,14 +131,12 @@ double RadialMachining::calculate(const Optimizer* const op, const std::vector<d
                 const double Hx = this->heaviside(*x_it, BETA_RHO, 0.95);
                 const auto phi_e = e->get_phi_radial(this->mesh->thickness, this->beta, this->v_norm, A, C, Hx);
                 for(size_t i = 0; i < num_nodes; ++i){
-                    const auto& ni = e->nodes[i];
-                    const long id1 = this->id_mapping[ni->id];
+                    const long id1 = *(id_it + i);
                     if(id1 < 0){
                         continue;
                     }
                     for(size_t j = 0; j < num_nodes; ++j){
-                        const auto& nj = e->nodes[j];
-                        const long id2 = this->id_mapping[nj->id];
+                        const long id2 = *(id_it + j);
                         if(id2 < 0){
                             continue;
                         }
@@ -159,13 +173,13 @@ double RadialMachining::calculate(const Optimizer* const op, const std::vector<d
 
     x_it = x.cbegin();
     auto d_it = this->diff.begin();
+    id_it = this->id_mapping_linear.cbegin();
     for(const auto& g:mesh->geometries){
         if(g->do_topopt){
             const size_t num_den = g->number_of_densities_needed();
             for(const auto& e:g->mesh){
                 for(size_t i = 0; i < num_nodes; ++i){
-                    const auto& ni = e->nodes[i];
-                    const long id1 = this->id_mapping[ni->id];
+                    const long id1 = *(id_it + i);
                     if(id1 < 0){
                         continue;
                     }
@@ -174,6 +188,7 @@ double RadialMachining::calculate(const Optimizer* const op, const std::vector<d
                 *d_it *= 1.0 - *x_it;
                 ++d_it;
                 x_it += num_den;
+                id_it += num_nodes;
             }
         }
     }
@@ -205,6 +220,7 @@ double RadialMachining::calculate_with_gradient(const Optimizer* const op, const
     std::vector<double> C{center.X(), center.Y(), center.Z()};
 
     auto x_it = x.cbegin();
+    auto id_it = this->id_mapping_linear.cbegin();
     for(const auto& g:mesh->geometries){
         if(g->do_topopt){
             const size_t num_den = g->number_of_densities_needed();
@@ -214,14 +230,12 @@ double RadialMachining::calculate_with_gradient(const Optimizer* const op, const
                 const double Hx = this->heaviside(*x_it, BETA_RHO, 0.95);
                 const auto phi_e = e->get_phi_radial(this->mesh->thickness, this->beta, this->v_norm, A, C, Hx);
                 for(size_t i = 0; i < num_nodes; ++i){
-                    const auto& ni = e->nodes[i];
-                    const long id1 = this->id_mapping[ni->id];
+                    const long id1 = *(id_it + i);
                     if(id1 < 0){
                         continue;
                     }
                     for(size_t j = 0; j < num_nodes; ++j){
-                        const auto& nj = e->nodes[j];
-                        const long id2 = this->id_mapping[nj->id];
+                        const long id2 = *(id_it + j);
                         if(id2 < 0){
                             continue;
                         }
@@ -258,13 +272,13 @@ double RadialMachining::calculate_with_gradient(const Optimizer* const op, const
 
     x_it = x.cbegin();
     auto d_it = this->diff.begin();
+    id_it = this->id_mapping_linear.cbegin();
     for(const auto& g:mesh->geometries){
         if(g->do_topopt){
             const size_t num_den = g->number_of_densities_needed();
             for(const auto& e:g->mesh){
                 for(size_t i = 0; i < num_nodes; ++i){
-                    const auto& ni = e->nodes[i];
-                    const long id1 = this->id_mapping[ni->id];
+                    const long id1 = *(id_it + i);
                     if(id1 < 0){
                         continue;
                     }
@@ -273,6 +287,7 @@ double RadialMachining::calculate_with_gradient(const Optimizer* const op, const
                 *d_it *= 1.0 - *x_it;
                 ++d_it;
                 x_it += num_den;
+                id_it += num_nodes;
             }
         }
     }
@@ -288,13 +303,13 @@ double RadialMachining::calculate_with_gradient(const Optimizer* const op, const
 
     auto dg_it = this->Hgrad.cbegin();
     x_it = x.cbegin();
+    id_it = this->id_mapping_linear.cbegin();
     for(const auto& g:mesh->geometries){
         if(g->do_topopt){
             const size_t num_den = g->number_of_densities_needed();
             for(const auto& e:g->mesh){
                 for(size_t i = 0; i < num_nodes; ++i){
-                    const auto& ni = e->nodes[i];
-                    const long id1 = this->id_mapping[ni->id];
+                    const long id1 = *(id_it + i);
                     if(id1 < 0){
                         continue;
                     }
@@ -302,6 +317,7 @@ double RadialMachining::calculate_with_gradient(const Optimizer* const op, const
                 }
                 ++dg_it;
                 x_it += num_den;
+                id_it += num_nodes;
             }
         }
     }
@@ -311,6 +327,7 @@ double RadialMachining::calculate_with_gradient(const Optimizer* const op, const
     x_it = x.cbegin();
     auto g_it = grad.begin();
     auto hg_it = this->Hgrad.cbegin();
+    id_it = this->id_mapping_linear.cbegin();
     for(const auto& g:mesh->geometries){
         if(g->do_topopt){
             const size_t num_den = g->number_of_densities_needed();
@@ -327,8 +344,7 @@ double RadialMachining::calculate_with_gradient(const Optimizer* const op, const
                 *g_it = 0;
                 double psi_tmp = 0;
                 for(size_t i = 0; i < num_nodes; ++i){
-                    const auto& ni = e->nodes[i];
-                    const long id1 = this->id_mapping[ni->id];
+                    const long id1 = *(id_it + i);
                     if(id1 < 0){
                         continue;
                     }
@@ -337,15 +353,13 @@ double RadialMachining::calculate_with_gradient(const Optimizer* const op, const
                 *g_it *= -(*hg_it);
 
                 for(size_t i = 0; i < num_nodes; ++i){
-                    const auto& ni = e->nodes[i];
-                    const long id1 = this->id_mapping[ni->id];
+                    const long id1 = *(id_it + i);
                     if(id1 < 0){
                         continue;
                     }
                     psi_tmp = 0;
                     for(size_t j = 0; j < num_nodes; ++j){
-                        const auto& nj = e->nodes[j];
-                        const long id2 = this->id_mapping[nj->id];
+                        const long id2 = *(id_it + j);
                         if(id2 < 0){
                             continue;
                         }
@@ -358,6 +372,7 @@ double RadialMachining::calculate_with_gradient(const Optimizer* const op, const
                 ++hg_it;
                 g_it += num_den;
                 x_it += num_den;
+                id_it += num_nodes;
             }
         }
     }

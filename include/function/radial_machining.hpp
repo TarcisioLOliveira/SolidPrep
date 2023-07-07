@@ -60,7 +60,7 @@ class RadialMachining : public DensityBasedFunction{
     Eigen::VectorXd b_grad;
     std::vector<double> diff;
     std::vector<double> Hgrad;
-    std::map<size_t, long> id_mapping;
+    std::vector<long> id_mapping_linear;
     Eigen::SparseMatrix<double> Phi;
     Eigen::SparseLU<Eigen::SparseMatrix<double>, Eigen::COLAMDOrdering<int>> solver;
     projection::Threshold proj;
