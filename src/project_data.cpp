@@ -713,6 +713,9 @@ void ProjectData::get_constraints(const rapidjson::GenericValue<rapidjson::UTF8<
     for(auto& f:array){
         std::vector<Constraint::Type> types;
         std::vector<double> bounds;
+
+        this->log_data(f, "type", TYPE_STRING, true);
+        std::string type = f["type"].GetString();
         if(f.HasMember("less_than")){
             types.push_back(Constraint::Type::LESS_THAN);
             bounds.push_back(f["less_than"].GetDouble());
@@ -725,6 +728,7 @@ void ProjectData::get_constraints(const rapidjson::GenericValue<rapidjson::UTF8<
             types.push_back(Constraint::Type::EQUAL);
             bounds.push_back(f["equals"].GetDouble());
         }
+        logger::log_assert(types.size() > 0, logger::ERROR, "constraint {} is missing at least one of the following: \"equals\", \"greater_than\", \"less_than\"", f["type"].GetString());
 
         functions.emplace_back(this->get_function(f, pc, psi), types, bounds);
     }
