@@ -299,6 +299,16 @@ class MeshElement : public Element{
      * @return Stress tensor at point p.
      */
     virtual std::vector<double> get_stress_tensor(const std::vector<double>& D, const gp_Pnt& p, const std::vector<double>& u) const = 0;
+
+    /**
+     * Calculates the Cauchy strain tensor at a point within the element.
+     *
+     * @param p The point.
+     * @param u Displacement vector.
+     *
+     * @return Strain tensor at point p.
+     */
+    virtual std::vector<double> get_strain_tensor(const gp_Pnt& p, const std::vector<double>& u) const = 0;
     /** 
      * Calculates the intersection points between a shape (edge for 2D, face
      * for 3D) and the boundaries of the element.

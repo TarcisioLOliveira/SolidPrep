@@ -265,6 +265,44 @@ class MeshElementCommon : public MeshElement{
 
         return S;
     }
+
+    virtual std::vector<double> _get_strain_vector(const gp_Pnt& p, const std::vector<double>& u, const size_t S_SIZE) const{
+        const size_t N = T::NODES_PER_ELEM;
+        const size_t K_DIM = T::K_DIM;
+        const size_t NODE_DOF = T::NODE_DOF;
+
+        const std::vector<double> B = this->get_B(p);
+
+        std::vector<double> results(S_SIZE, 0);
+        std::vector<double> U(K_DIM, 0);
+        for(size_t l = 0; l < N; ++l){
+            for(size_t j = 0; j < NODE_DOF; ++j){
+                if(this->nodes[l]->u_pos[j] > -1){
+                    U[l*NODE_DOF + j] = u[this->nodes[l]->u_pos[j]];
+                }
+            }
+        }
+        for(size_t i = 0; i < S_SIZE; ++i){
+            for(size_t j = 0; j < K_DIM; ++j){
+                results[i] += B[i*K_DIM + j]*U[j];
+            }
+        }
+
+        return results;
+    }
+
+
+    virtual std::vector<double> _get_strain_tensor(const gp_Pnt& p, const std::vector<double>& u, const std::vector<size_t> indices, const size_t S_SIZE) const{
+
+        auto results = this->_get_strain_vector(p, u, S_SIZE);
+
+        std::vector<double> S(indices.size());
+        for(size_t i = 0; i < indices.size(); ++i){
+            S[i] = results[indices[i]];
+        }
+
+        return S;
+    }
 };
 
 
@@ -287,6 +325,11 @@ class MeshElementCommon2D : public MeshElementCommon<T>{
     virtual std::vector<double> get_stress_tensor(const std::vector<double>& D, const gp_Pnt& p, const std::vector<double>& u) const override{
         const std::vector<size_t> indices{0, 2, 2, 1};
         return this->_get_stress_tensor(D, p, u, indices, S_SIZE);
+    }
+
+    virtual std::vector<double> get_strain_tensor(const gp_Pnt& p, const std::vector<double>& u) const override{
+        const std::vector<size_t> indices{0, 2, 2, 1};
+        return this->_get_strain_tensor(p, u, indices, S_SIZE);
     }
 
     virtual void get_virtual_load(const std::vector<double>& D, double mult, const gp_Pnt& point, const std::vector<double>& u, std::vector<double>& l) const override{
@@ -499,8 +542,13 @@ class MeshElementCommon3D : public MeshElementCommon<T>{
     }
 
     virtual std::vector<double> get_stress_tensor(const std::vector<double>& D, const gp_Pnt& p, const std::vector<double>& u) const override{
-        const std::vector<size_t> indices{0, 3, 4, 3, 1, 5, 4, 5, 3};
+        const std::vector<size_t> indices{0, 3, 4, 3, 1, 5, 4, 5, 2};
         return this->_get_stress_tensor(D, p, u, indices, S_SIZE);
+    }
+
+    virtual std::vector<double> get_strain_tensor(const gp_Pnt& p, const std::vector<double>& u) const override{
+        const std::vector<size_t> indices{0, 3, 4, 3, 1, 5, 4, 5, 2};
+        return this->_get_strain_tensor(p, u, indices, S_SIZE);
     }
 
     virtual void get_virtual_load(const std::vector<double>& D, double mult, const gp_Pnt& point, const std::vector<double>& u, std::vector<double>& l) const override{
