@@ -72,6 +72,7 @@
 #include "function/volume.hpp"
 #include "function/global_stress_pnorm_normalized.hpp"
 #include "function/global_stress_pnorm.hpp"
+#include "function/global_stress_heaviside.hpp"
 #include "function/radial_machining.hpp"
 #include "function/am_support.hpp"
 #include "function/mass.hpp"
@@ -674,6 +675,16 @@ std::unique_ptr<DensityBasedFunction> ProjectData::get_function(const rapidjson:
         double pt = doc["pt"].GetDouble();
         double psiS = doc["psi"].GetDouble();
         return std::make_unique<function::GlobalStressPnorm>(this->topopt_mesher.get(), this->topopt_fea.get(), pc, P, pt, psiK, -psiS);
+    } else if(type == "global_stress_heaviside"){
+        this->log_data(doc, "max_stress", TYPE_DOUBLE, true);
+        this->log_data(doc, "C", TYPE_DOUBLE, true);
+        this->log_data(doc, "pt", TYPE_DOUBLE, true);
+        this->log_data(doc, "psi", TYPE_DOUBLE, true);
+        double C = doc["C"].GetDouble();
+        double max_stress = doc["max_stress"].GetDouble();
+        double pt = doc["pt"].GetDouble();
+        double psiS = doc["psi"].GetDouble();
+        return std::make_unique<function::GlobalStressHeaviside>(this->topopt_mesher.get(), this->topopt_fea.get(), max_stress, C, pc, pt, psiK, -psiS);
     } else if(type == "radial_machining"){
         this->log_data(doc, "beta", TYPE_DOUBLE, true);
         this->log_data(doc, "v", TYPE_DOUBLE, true);
