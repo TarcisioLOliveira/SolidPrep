@@ -35,6 +35,7 @@ void Threshold::update(const size_t iteration){
 
 void Threshold::project_densities(std::vector<double>& new_x) const{
     const double b = this->beta.value;
+    #pragma omp parallel for
     for(auto& x:new_x){
         x = (std::tanh(b*eta) + std::tanh(b*(x-eta)))/(std::tanh(b*eta) + std::tanh(b*(1.0-eta)));
     }
@@ -42,6 +43,7 @@ void Threshold::project_densities(std::vector<double>& new_x) const{
 
 void Threshold::project_gradient(std::vector<double>& new_df, const std::vector<double>& new_x) const{
     const double b = this->beta.value;
+    #pragma omp parallel for
     for(size_t i = 0; i < new_df.size(); ++i){
         auto& df = new_df[i];
         const auto x = new_x[i];

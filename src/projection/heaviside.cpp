@@ -35,6 +35,7 @@ void Heaviside::update(const size_t iteration){
 
 void Heaviside::project_densities(std::vector<double>& new_x) const{
     const double b = this->beta.value;
+    #pragma omp parallel for
     for(auto& x:new_x){
         x = 1.0/(1.0+std::exp(-2*b*(x - eta)));
     }
@@ -42,6 +43,7 @@ void Heaviside::project_densities(std::vector<double>& new_x) const{
 
 void Heaviside::project_gradient(std::vector<double>& new_df, const std::vector<double>& new_x) const{
     const double b = this->beta.value;
+    #pragma omp parallel for
     for(size_t i = 0; i < new_df.size(); ++i){
         auto& df = new_df[i];
         const auto x = new_x[i];
