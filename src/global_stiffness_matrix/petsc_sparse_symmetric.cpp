@@ -25,18 +25,6 @@
 
 namespace global_stiffness_matrix{
 
-PETScSparseSymmetric::PETScSparseSymmetric(Backend backend){
-    switch(backend){
-        case Backend::CPU:
-            this->mat_type = MATAIJ;
-            break;
-        case Backend::CUDA:
-            this->mat_type = MATAIJCUSPARSE;
-            break;
-    }
-}
-
-
 PETScSparseSymmetric::~PETScSparseSymmetric(){
     MatDestroy(&this->K);
 }
@@ -50,57 +38,97 @@ void PETScSparseSymmetric::generate(const Meshing* const mesh, const std::vector
     }
 
     if(first_time){
-        MatCreate(PETSC_COMM_WORLD, &this->K);
-        MatSetType(this->K, this->mat_type.c_str());
-
-        long M = mesh->load_vector.size();
-        MPI_Bcast(&M, 1, MPI_LONG, 0, MPI_COMM_WORLD);
-
-        MatSetSizes(this->K, PETSC_DECIDE, PETSC_DECIDE, M, M);
-        MatSetOption(this->K, MAT_SPD, PETSC_TRUE);
-        MatSetOption(this->K, MAT_SPD_ETERNAL, PETSC_TRUE);
-        MatSetOption(this->K, MAT_KEEP_NONZERO_PATTERN, PETSC_TRUE);
-        //MatSetOption(this->K, MAT_IGNORE_ZERO_ENTRIES, PETSC_TRUE);
-
-        Mat tmp;
-        MatCreate(PETSC_COMM_WORLD, &tmp);
-        MatSetType(tmp, MATPREALLOCATOR);
-        MatSetSizes(tmp, PETSC_DECIDE, PETSC_DECIDE, M, M);
-        MatSetOption(tmp, MAT_SPD, PETSC_TRUE);
-        MatSetOption(tmp, MAT_SPD_ETERNAL, PETSC_TRUE);
-        MatSetOption(tmp, MAT_KEEP_NONZERO_PATTERN, PETSC_TRUE);
-        //MatSetOption(tmp, MAT_IGNORE_ZERO_ENTRIES, PETSC_TRUE);
-        MatSetUp(tmp);
-
-        if(mpi_id == 0){
-            std::swap(tmp, K);
-            this->generate_base(mesh, density, pc, psi);
-            std::swap(tmp, K);
-        }
-
-        MatAssemblyBegin(tmp, MAT_FINAL_ASSEMBLY);
-        MatAssemblyEnd(tmp, MAT_FINAL_ASSEMBLY);
-
-        MatPreallocatorPreallocate(tmp, PETSC_TRUE, this->K);
-
-        MatSetUp(this->K);
-
-        MatDestroy(&tmp);
-        //MatSetSizes(this->K, mesh->load_vector.size(), mesh->load_vector.size(), mesh->load_vector.size(), mesh->load_vector.size());
-        //MatSetUp(this->K);
-        this->first_time = false;
+        this->preallocate(mesh, density, pc, psi, mpi_id);
     } else {
-        MatZeroEntries(this->K);
+        this->zero();
     }
 
+    this->assemble_matrix(mesh, density, pc, psi, mpi_id);
+
+    this->first_time = false;
+    if(mpi_id == 0){
+        logger::quick_log("Done.");
+    }
+}
+
+void PETScSparseSymmetricCPU::preallocate(const Meshing * const mesh, const std::vector<double>& density, const double pc, const double psi, const size_t mpi_id){
+    MatCreate(PETSC_COMM_WORLD, &this->K);
+    MatSetType(this->K, MATAIJ);
+
+    long M = mesh->load_vector.size();
+    MPI_Bcast(&M, 1, MPI_LONG, 0, MPI_COMM_WORLD);
+
+    MatSetSizes(this->K, PETSC_DECIDE, PETSC_DECIDE, M, M);
+    MatSetOption(this->K, MAT_SPD, PETSC_TRUE);
+    MatSetOption(this->K, MAT_SPD_ETERNAL, PETSC_TRUE);
+    MatSetOption(this->K, MAT_KEEP_NONZERO_PATTERN, PETSC_TRUE);
+    //MatSetOption(this->K, MAT_IGNORE_ZERO_ENTRIES, PETSC_TRUE);
+
+    Mat tmp;
+    MatCreate(PETSC_COMM_WORLD, &tmp);
+    MatSetType(tmp, MATPREALLOCATOR);
+    MatSetSizes(tmp, PETSC_DECIDE, PETSC_DECIDE, M, M);
+    MatSetOption(tmp, MAT_SPD, PETSC_TRUE);
+    MatSetOption(tmp, MAT_SPD_ETERNAL, PETSC_TRUE);
+    MatSetOption(tmp, MAT_KEEP_NONZERO_PATTERN, PETSC_TRUE);
+    //MatSetOption(tmp, MAT_IGNORE_ZERO_ENTRIES, PETSC_TRUE);
+    MatSetUp(tmp);
+
+    if(mpi_id == 0){
+        std::swap(tmp, K);
+        this->generate_base(mesh, density, pc, psi);
+        std::swap(tmp, K);
+    }
+
+    MatAssemblyBegin(tmp, MAT_FINAL_ASSEMBLY);
+    MatAssemblyEnd(tmp, MAT_FINAL_ASSEMBLY);
+
+    MatPreallocatorPreallocate(tmp, PETSC_TRUE, this->K);
+
+    MatSetUp(this->K);
+
+    MatDestroy(&tmp);
+    //MatSetSizes(this->K, mesh->load_vector.size(), mesh->load_vector.size(), mesh->load_vector.size(), mesh->load_vector.size());
+    //MatSetUp(this->K);
+}
+
+void PETScSparseSymmetricCPU::assemble_matrix(const Meshing * const mesh, const std::vector<double>& density, const double pc, const double psi, const size_t mpi_id){
     if(mpi_id == 0){
         this->generate_base(mesh, density, pc, psi);
     }
 
     MatAssemblyBegin(this->K, MAT_FINAL_ASSEMBLY);
     MatAssemblyEnd(this->K, MAT_FINAL_ASSEMBLY);
+}
+void PETScSparseSymmetricCUDA::preallocate(const Meshing * const mesh, const std::vector<double>& density, const double pc, const double psi, const size_t mpi_id){
+    MatCreate(PETSC_COMM_WORLD, &this->K);
+    MatSetType(this->K, MATAIJCUSPARSE);
+
+    long M = mesh->load_vector.size();
+    MPI_Bcast(&M, 1, MPI_LONG, 0, MPI_COMM_WORLD);
+
+    MatSetSizes(this->K, PETSC_DECIDE, PETSC_DECIDE, M, M);
+    MatSetOption(this->K, MAT_SPD, PETSC_TRUE);
+    MatSetOption(this->K, MAT_SPD_ETERNAL, PETSC_TRUE);
+    MatSetOption(this->K, MAT_KEEP_NONZERO_PATTERN, PETSC_TRUE);
+
     if(mpi_id == 0){
-        logger::quick_log("Done.");
+        this->generate_base(mesh, density, pc, psi);
+    }
+
+    this->K_coo.generate_coo(M);
+
+    MatSetPreallocationCOO(this->K, this->K_coo.nvals, this->K_coo.rows.data(), this->K_coo.cols.data());
+
+    MatSetUp(this->K);
+}
+void PETScSparseSymmetricCUDA::assemble_matrix(const Meshing * const mesh, const std::vector<double>& density, const double pc, const double psi, const size_t mpi_id){
+
+    if(mpi_id == 0){
+        if(!this->first_time){
+            this->generate_base(mesh, density, pc, psi);
+        }
+        MatSetValuesCOO(this->K, this->K_coo.vals.data(), INSERT_VALUES);
     }
 }
 

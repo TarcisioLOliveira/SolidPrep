@@ -42,7 +42,7 @@ class PETScPCG : public FiniteElement{
     }
 
     private:
-    global_stiffness_matrix::PETScSparseSymmetric gsm;
+    std::unique_ptr<global_stiffness_matrix::PETScSparseSymmetric> gsm;
     std::vector<Vec> u;
     Vec f = 0;
     PC pc = 0;

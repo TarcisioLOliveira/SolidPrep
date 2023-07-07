@@ -26,13 +26,15 @@
 namespace finite_element{
 
 PETScPCG::PETScPCG(PETScBackend backend):
-    gsm(backend), u(1){
+    gsm(nullptr), u(1){
     switch(backend){
         case PETScBackend::CPU:
             this->vec_type = VECSTANDARD;
+            this->gsm = std::make_unique<global_stiffness_matrix::PETScSparseSymmetricCPU>();
             break;
         case PETScBackend::CUDA:
             this->vec_type = VECCUDA;
+            this->gsm = std::make_unique<global_stiffness_matrix::PETScSparseSymmetricCUDA>();
             break;
     }
 }
@@ -52,10 +54,10 @@ std::vector<double> PETScPCG::calculate_displacements(const Meshing* const mesh,
     MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
 
     if(this->current_step == 0){
-        this->gsm.generate(mesh, density, pc, psi);
+        this->gsm->generate(mesh, density, pc, psi);
     }
 
-    auto K = this->gsm.get_K();
+    auto K = this->gsm->get_K();
 
     long M = load.size();
     long n = 0, m = 0;

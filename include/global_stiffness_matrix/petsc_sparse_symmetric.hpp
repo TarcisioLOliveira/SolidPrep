@@ -23,6 +23,7 @@
 
 #include <vector>
 #include <petsc.h>
+#include "utils/coo.hpp"
 #include "meshing.hpp"
 #include "global_stiffness_matrix.hpp"
 
@@ -30,15 +31,10 @@ namespace global_stiffness_matrix{
 
 class PETScSparseSymmetric : public GlobalStiffnessMatrix{
     public:
-    const double K_MIN = 1e-6;
     enum class Backend{
         CPU,
         CUDA
     };
-
-    PETScSparseSymmetric() = default;
-    PETScSparseSymmetric(Backend backend);
-
     virtual ~PETScSparseSymmetric();
 
     virtual void generate(const Meshing * const mesh, const std::vector<double>& density, const double pc, const double psi) override;
@@ -50,7 +46,23 @@ class PETScSparseSymmetric : public GlobalStiffnessMatrix{
     protected:
     Mat K = 0;
     bool first_time = true;
-    std::string mat_type = MATMPIAIJ;
+
+    virtual void preallocate(const Meshing * const mesh, const std::vector<double>& density, const double pc, const double psi, const size_t mpi_id) = 0;
+    virtual void assemble_matrix(const Meshing * const mesh, const std::vector<double>& density, const double pc, const double psi, const size_t mpi_id) = 0;
+    virtual void zero() = 0;
+};
+
+class PETScSparseSymmetricCPU : public PETScSparseSymmetric {
+    public:
+    PETScSparseSymmetricCPU() = default;
+    virtual ~PETScSparseSymmetricCPU() = default;
+
+    protected:
+    virtual void preallocate(const Meshing * const mesh, const std::vector<double>& density, const double pc, const double psi, const size_t mpi_id) override;
+    virtual void assemble_matrix(const Meshing * const mesh, const std::vector<double>& density, const double pc, const double psi, const size_t mpi_id) override;
+    inline virtual void zero() override{
+        MatZeroEntries(this->K);
+    }
 
     inline virtual void insert_element_matrix(const std::vector<double>& k, const std::vector<long>& pos) override{
         // Requires 64-bit indices
@@ -60,6 +72,31 @@ class PETScSparseSymmetric : public GlobalStiffnessMatrix{
     inline virtual void add_to_matrix(size_t i, size_t j, double val) override{
         // Requires 64-bit indices
         MatSetValue(this->K, i, j, val, ADD_VALUES);
+    }
+};
+
+class PETScSparseSymmetricCUDA : public PETScSparseSymmetric {
+    public:
+    PETScSparseSymmetricCUDA() = default;
+    virtual ~PETScSparseSymmetricCUDA() = default;
+
+    protected:
+    utils::COO<PetscInt> K_coo;
+
+    virtual void preallocate(const Meshing * const mesh, const std::vector<double>& density, const double pc, const double psi, const size_t mpi_id) override;
+    virtual void assemble_matrix(const Meshing * const mesh, const std::vector<double>& density, const double pc, const double psi, const size_t mpi_id) override;
+    inline virtual void zero() override{
+        this->K_coo.zero();
+    }
+
+    inline virtual void insert_element_matrix(const std::vector<double>& k, const std::vector<long>& pos) override{
+        // Requires 64-bit indices
+        this->K_coo.insert_matrix_general(k, pos);
+    }
+
+    inline virtual void add_to_matrix(size_t i, size_t j, double val) override{
+        // Requires 64-bit indices
+        this->K_coo.add(i, j, val);
     }
 };
 
