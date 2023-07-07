@@ -215,6 +215,68 @@ t*(2*D[0]*b[0]*b[0]*b[2]*b[2] - 2*D[0]*b[0]*b[1]*b[2]*b[2] + 2*D[0]*b[1]*b[1]*b[
     return K;
 }
 
+std::vector<double> GT9::get_B(const gp_Pnt& point) const{
+    const double L0 = (a[0] + b[0]*point.X() + c[0]*point.Y())/(2*delta);
+    const double L1 = (a[1] + b[1]*point.X() + c[1]*point.Y())/(2*delta);
+    const double L2 = (a[2] + b[2]*point.X() + c[2]*point.Y())/(2*delta);
+
+    std::vector<double> B{
+    b[0]/(2*delta)
+    ,
+    0
+    ,
+    b[0]*(-b[1]*L2 + b[2]*L1)/(4*delta)
+    ,
+    b[1]/(2*delta)
+    ,
+    0
+    ,
+    b[1]*(b[0]*L2 - b[2]*L0)/(4*delta)
+    ,
+    b[2]/(2*delta)
+    ,
+    0
+    ,
+    b[2]*(-b[0]*L1 + b[1]*L0)/(4*delta)
+    ,
+    0
+    ,
+    c[0]/(2*delta)
+    ,
+    c[0]*(-c[1]*L2 + c[2]*L1)/(4*delta)
+    ,
+    0
+    ,
+    c[1]/(2*delta)
+    ,
+    c[1]*(c[0]*L2 - c[2]*L0)/(4*delta)
+    ,
+    0
+    ,
+    c[2]/(2*delta)
+    ,
+    c[2]*(-c[0]*L1 + c[1]*L0)/(4*delta)
+    ,
+    c[0]/(2*delta)
+    ,
+    b[0]/(2*delta)
+    ,
+    (-(b[0]*c[1] + b[1]*c[0])*L2 + (b[0]*c[2] + b[2]*c[0])*L1)/(4*delta)
+    ,
+    c[1]/(2*delta)
+    ,
+    b[1]/(2*delta)
+    ,
+    ((b[0]*c[1] + b[1]*c[0])*L2 - (b[1]*c[2] + b[2]*c[1])*L0)/(4*delta)
+    ,
+    c[2]/(2*delta)
+    ,
+    b[2]/(2*delta)
+    ,
+    (-(b[0]*c[2] + b[2]*c[0])*L1 + (b[1]*c[2] + b[2]*c[1])*L0)/(4*delta)
+    };
+    return B;
+}
 
 std::vector<double> GT9::get_DB(const std::vector<double>& D, const gp_Pnt& point) const{
     const double L0 = (a[0] + b[0]*point.X() + c[0]*point.Y())/(2*delta);

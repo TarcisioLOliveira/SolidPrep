@@ -61,6 +61,8 @@ class GT9 : public MeshElementCommon2DTri<GT9>{
     private:
     virtual std::vector<double> get_DB(const std::vector<double>& D, const gp_Pnt& point) const override;
     virtual std::vector<double> get_Nf(const double t, const std::vector<gp_Pnt>& points) const override;
+    virtual std::vector<double> get_B(const gp_Pnt& point) const override;
+
     Eigen::Matrix<double, 3, 3> get_phi_radial_base(const double x, const double y, const Eigen::Vector<double, 2>& A, const Eigen::Vector<double, 2>& C, const double t, const double beta, const double vp, const double rho) const;
 
     double a[3], b[3], c[3], delta;

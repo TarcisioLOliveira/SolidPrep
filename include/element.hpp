@@ -500,6 +500,8 @@ class MeshElement : public Element{
      * @return The interpolation matrix for nodal forces, Nf.
      */
     virtual std::vector<double> get_Nf(const double t, const std::vector<gp_Pnt>& points) const = 0;
+
+    virtual std::vector<double> get_B(const gp_Pnt& point) const = 0;
 };
 
 #endif

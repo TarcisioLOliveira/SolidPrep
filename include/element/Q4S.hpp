@@ -63,6 +63,7 @@ class Q4S : public MeshElementCommon2DQuad<Q4S>{
 
     virtual std::vector<double> get_DB(const std::vector<double>& D, const gp_Pnt& point) const override;
     virtual std::vector<double> get_Nf(const double t, const std::vector<gp_Pnt>& points) const override;
+    virtual std::vector<double> get_B(const gp_Pnt& point) const override;
 
     inline gp_Pnt normalize(const gp_Pnt& point) const{
         return gp_Pnt(

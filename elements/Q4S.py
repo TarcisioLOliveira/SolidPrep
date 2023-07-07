@@ -100,6 +100,25 @@ def make_Nf():
         print(formatted)
     print("};")
 
+def make_B():
+    """
+        Creates the B matrix.
+    """
+    init_DB()
+
+    print("std::vector<double> B{")
+    for i in range(len(B)):
+        # Prepare for printing
+        B[i] = sympy.simplify(sympy.expand(B[i]), rational=True)
+        # Format output for use with C++
+        formatted = str(B[i])
+        formatted = re.sub(r"([abcdD])(\d)", r"\1[\2]", formatted)
+
+        if i > 0:
+            print(",")
+        print(formatted)
+    print("};")
+
 def make_DB():
     """
         Creates the DB matrix.
@@ -287,6 +306,7 @@ def main():
     args = {
         "-k":  make_k,
         "-DB": make_DB,
+        "-B": make_B,
         "-Nf": make_Nf,
         "-h": make_h,
         "-phir": make_phi_radial,

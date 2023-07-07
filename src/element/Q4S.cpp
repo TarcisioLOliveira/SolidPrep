@@ -217,6 +217,65 @@ std::vector<double> Q4S::get_k(const std::vector<double>& D, const double t) con
     return k;
 }
 
+std::vector<double> Q4S::get_B(const gp_Pnt& point) const{
+
+    const gp_Pnt p = this->normalize(point);
+
+    const double xi = p.X();
+    const double eta = p.Y();
+
+    std::vector<double> B{
+    (-b + eta)/(4*a*b)
+    ,
+    0
+    ,
+    (b - eta)/(4*a*b)
+    ,
+    0
+    ,
+    (b + eta)/(4*a*b)
+    ,
+    0
+    ,
+    (-b - eta)/(4*a*b)
+    ,
+    0
+    ,
+    0
+    ,
+    (-a + xi)/(4*a*b)
+    ,
+    0
+    ,
+    (-a - xi)/(4*a*b)
+    ,
+    0
+    ,
+    (a + xi)/(4*a*b)
+    ,
+    0
+    ,
+    (a - xi)/(4*a*b)
+    ,
+    (-a + xi)/(4*a*b)
+    ,
+    (-b + eta)/(4*a*b)
+    ,
+    (-a - xi)/(4*a*b)
+    ,
+    (b - eta)/(4*a*b)
+    ,
+    (a + xi)/(4*a*b)
+    ,
+    (b + eta)/(4*a*b)
+    ,
+    (a - xi)/(4*a*b)
+    ,
+    (-b - eta)/(4*a*b)
+    };
+    return B;
+}
+
 std::vector<double> Q4S::get_DB(const std::vector<double>& D, const gp_Pnt& point) const{
 
     const gp_Pnt p = this->normalize(point);

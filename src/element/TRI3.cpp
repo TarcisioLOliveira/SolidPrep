@@ -133,6 +133,48 @@ std::vector<double> TRI3::get_DB(const std::vector<double>& D, const gp_Pnt& poi
     return DB;
 }
 
+std::vector<double> TRI3::get_B(const gp_Pnt& point) const{
+    (void)point;
+    std::vector<double> B{
+    b[0]/(2*delta)
+    ,
+    0
+    ,
+    b[1]/(2*delta)
+    ,
+    0
+    ,
+    b[2]/(2*delta)
+    ,
+    0
+    ,
+    0
+    ,
+    c[0]/(2*delta)
+    ,
+    0
+    ,
+    c[1]/(2*delta)
+    ,
+    0
+    ,
+    c[2]/(2*delta)
+    ,
+    c[0]/(2*delta)
+    ,
+    b[0]/(2*delta)
+    ,
+    c[1]/(2*delta)
+    ,
+    b[1]/(2*delta)
+    ,
+    c[2]/(2*delta)
+    ,
+    b[2]/(2*delta)
+    };
+    return B;
+}
+
 std::vector<double> TRI3::get_Nf(const double t, const std::vector<gp_Pnt>& points) const{
     const double x[]{points[0].X(), points[1].X()};
     const double y[]{points[0].Y(), points[1].Y()};

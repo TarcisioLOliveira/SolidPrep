@@ -90,6 +90,68 @@ std::vector<double> Q4::get_k(const std::vector<double>& D, const double t) cons
     return k;
 }
 
+std::vector<double> Q4::get_B(const gp_Pnt& point) const{
+    // Getting coefficients
+    const double * const a = this->coeffs.data();
+    const double * const b = a + 4;
+    const double * const c = b + 4;
+    const double * const d = c + 4;
+
+    const double x = point.X();
+    const double y = point.Y();
+
+    std::vector<double> B{
+    b[0] + d[0]*y
+    ,
+    0
+    ,
+    b[1] + d[1]*y
+    ,
+    0
+    ,
+    b[2] + d[2]*y
+    ,
+    0
+    ,
+    b[3] + d[3]*y
+    ,
+    0
+    ,
+    0
+    ,
+    c[0] + d[0]*x
+    ,
+    0
+    ,
+    c[1] + d[1]*x
+    ,
+    0
+    ,
+    c[2] + d[2]*x
+    ,
+    0
+    ,
+    c[3] + d[3]*x
+    ,
+    c[0] + d[0]*x
+    ,
+    b[0] + d[0]*y
+    ,
+    c[1] + d[1]*x
+    ,
+    b[1] + d[1]*y
+    ,
+    c[2] + d[2]*x
+    ,
+    b[2] + d[2]*y
+    ,
+    c[3] + d[3]*x
+    ,
+    b[3] + d[3]*y
+    };
+    return B;
+}
+
 std::vector<double> Q4::get_DB(const std::vector<double>& D, const gp_Pnt& point) const{
     // Getting coefficients
     const double * const a = this->coeffs.data();
