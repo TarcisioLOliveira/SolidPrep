@@ -107,6 +107,7 @@ class CSR{
         for(int c = csrRowPtr[i]; c < csrRowPtr[i+1]; ++c){
             if(csrColInd[c] == j){
                 csrVal[c] += v;
+                break;
             }
         }
     }
