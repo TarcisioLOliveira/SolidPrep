@@ -278,10 +278,10 @@ class MeshElementCommon2D : public MeshElementCommon<T>{
 
     virtual ~MeshElementCommon2D() = default;
 
-    virtual double get_stress_at(const std::vector<double>& D, const gp_Pnt& point, const std::vector<double>& u) const override{
+    virtual double get_stress_at(const std::vector<double>& D, const gp_Pnt& point, const std::vector<double>& u, const double eps = 0) const override{
         auto results = this->_get_stress_vector(D, point, u, S_SIZE);
 
-        return std::sqrt(results[0]*results[0] - results[0]*results[1] + results[1]*results[1] + 3*results[2]*results[2]);
+        return std::sqrt(results[0]*results[0] - results[0]*results[1] + results[1]*results[1] + 3*results[2]*results[2] + eps);
     }
 
     virtual std::vector<double> get_stress_tensor(const std::vector<double>& D, const gp_Pnt& p, const std::vector<double>& u) const override{
@@ -488,14 +488,14 @@ class MeshElementCommon3D : public MeshElementCommon<T>{
 
     virtual ~MeshElementCommon3D() = default;
 
-    virtual double get_stress_at(const std::vector<double>& D, const gp_Pnt& point, const std::vector<double>& u) const override{
+    virtual double get_stress_at(const std::vector<double>& D, const gp_Pnt& point, const std::vector<double>& u, const double eps = 0) const override{
         auto s = this->_get_stress_vector(D, point, u, S_SIZE);
 
         const double ds1 = s[0] - s[1];
         const double ds2 = s[1] - s[2];
         const double ds3 = s[2] - s[0];
 
-        return std::sqrt(0.5*(ds1*ds1 + ds2*ds2 + ds3*ds3 + 6*(s[3]*s[3] + s[4]*s[4] + s[5]*s[5])));
+        return std::sqrt(0.5*(ds1*ds1 + ds2*ds2 + ds3*ds3 + 6*(s[3]*s[3] + s[4]*s[4] + s[5]*s[5])) + eps);
     }
 
     virtual std::vector<double> get_stress_tensor(const std::vector<double>& D, const gp_Pnt& p, const std::vector<double>& u) const override{
