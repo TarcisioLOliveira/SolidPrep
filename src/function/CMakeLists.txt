@@ -9,6 +9,7 @@ set(SOURCES_FUNCTION
     am_support.cpp
     mass.cpp
     mass_first_material.cpp
+    global_stress_heaviside.cpp
 )
 
 add_library(function ${SOURCES_FUNCTION})
