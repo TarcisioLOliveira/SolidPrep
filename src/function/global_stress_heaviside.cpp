@@ -28,9 +28,55 @@ GlobalStressHeaviside::GlobalStressHeaviside(const Meshing* const mesh, FiniteEl
     mesh(mesh), fem(fem), max_stress(max_stress), C(C), pc(pc), pt(pt), psiK(psiK), psiS(psiS){}
 
 double GlobalStressHeaviside::calculate(const Optimizer* const op, const std::vector<double>& u, const std::vector<double>& x){
-    (void)x;
+    (void)op;
+    int mpi_id = 0;
+    MPI_Comm_rank(MPI_COMM_WORLD, &mpi_id);
 
-    return 0;
+    double result = 0;
+
+    auto x_it = x.cbegin();
+    if(mpi_id == 0){
+        for(const auto& g:this->mesh->geometries){
+            const size_t num_mat = g->number_of_materials();
+            if(g->do_topopt){
+                if(num_mat == 1){
+                    const auto D = g->materials.get_D();
+                    for(const auto& e:g->mesh){
+                        const auto c = e->get_centroid();
+                        const double S = e->get_stress_at(D, c, u, this->vm_eps);
+                        const double rho = this->relaxed_rho(*x_it);
+                        const double Se = rho*S;
+                        const double H = this->heaviside(Se);
+
+                        result += H*Se;
+
+                        ++x_it;
+                    }
+                } else {
+                    auto D = g->materials.get_D();
+                    for(const auto& e:g->mesh){
+                        g->materials.get_D(x_it, g->with_void, pt, this->K_MIN, this->psiS, D);
+                        const auto c = e->get_centroid();
+                        const double Se = e->get_stress_at(D, c, u, this->vm_eps);
+                        const double H = this->heaviside(Se);
+
+                        result += H*Se;
+                    }
+                }
+            } else {
+                const auto D = g->materials.get_D();
+                for(const auto& e:g->mesh){
+                    const auto c = e->get_centroid();
+                    const double Se = e->get_stress_at(D, c, u, this->vm_eps);
+                    const double H = this->heaviside(Se);
+
+                    result += H*Se;
+                }
+            }
+        }
+    }
+
+    return result;
 }
 
 double GlobalStressHeaviside::calculate_with_gradient(const Optimizer* const op, const std::vector<double>& u, const std::vector<double>& x, std::vector<double>& grad){
@@ -81,7 +127,7 @@ double GlobalStressHeaviside::calculate_with_gradient(const Optimizer* const op,
                     const double H = this->heaviside(Se);
                     const double dH = this->heaviside_grad(Se);
                     e->get_virtual_load(D, (dH*Se + H)/Se, e->get_centroid(), u, fl);
-                    result += this->heaviside(Se)*Se;
+                    result += H*Se;
                 }
             }
         }
