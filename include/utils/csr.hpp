@@ -63,25 +63,36 @@ class CSR{
             }
         } else {
             for(size_t i = 0; i < W; ++i){
-                for(size_t j = 0; j <= i; ++j){
-                    if(pos[i] > -1 && pos[j] > -1){
-                        if(pos[i] >= pos[j]){
-                            this->add_csr(pos[i], pos[j], M[i*W+j]);
-                        } else {
-                            this->add_csr(pos[j], pos[i], M[i*W+j]);
+                if(pos[i] < 0){
+                    continue;
+                }
+                size_t j = 0;
+                while(j <= i && (pos[j] < 0 || M[i*W+j] == 0)){
+                    ++j;
+                }
+                // pos is not ordered!
+                while(j <= i){
+                    bool found_one = false;
+                    for(int c = csrRowPtr[pos[i]]; c < csrRowPtr[pos[i]+1]; ++c){
+                        if(csrColInd[c] == pos[j]){
+                            found_one = true;
+                            csrVal[c] += M[i*W+j];
+                            do{
+                                ++j;
+                            } while(j <= i && (pos[j] < 0 || M[i*W+j] == 0));
+                            if(j > i){
+                                break;
+                            }
                         }
+                    }
+                    if(!found_one){
+                        do{
+                            ++j;
+                        } while(j <= i && (pos[j] < 0 || M[i*W+j] == 0));
                     }
                 }
             }
-
         }
-        //for(size_t i = 0; i < W; ++i){
-        //    for(size_t j = 0; j < W; ++j){
-        //        if(pos[i] > -1 && pos[j] > -1){
-        //            this->data[Point(pos[i], pos[j])] += M[i*W + j];
-        //        }
-        //    }
-        //}
     }
     void zero();
 
