@@ -51,8 +51,6 @@ class TET4 : public MeshElementCommon3DTet<TET4>{
     virtual std::vector<double> helmholtz_tensor(const double t, const double r) const override;
     virtual std::vector<double> helmholtz_vector(const double t) const override;
     virtual std::vector<double> get_nodal_density_gradient(gp_Pnt p) const override;
-    virtual std::vector<double> get_phi_radial(const double t, const double beta, const double vp, const std::vector<double>& axis, const std::vector<double>& center, const double rho) const override;
-    virtual std::vector<double> get_phi_grad(const double t, const double beta) const override;
 
     virtual Eigen::MatrixXd diffusion_1dof(const double t, const std::vector<double>& A) const override;
     virtual Eigen::MatrixXd advection_1dof(const double t, const std::vector<double>& v) const override;
@@ -69,7 +67,6 @@ class TET4 : public MeshElementCommon3DTet<TET4>{
     virtual std::vector<double> get_DB(const std::vector<double>& D, const gp_Pnt& point) const override;
     virtual std::vector<double> get_Nf(const double t, const std::vector<gp_Pnt>& points) const override;
     virtual std::vector<double> get_B(const gp_Pnt& point) const override;
-    Eigen::Matrix<double, 4, 4> get_phi_radial_base(const double x, const double y, const double z, const Eigen::Vector<double, 3>& A, const Eigen::Vector<double, 3>& C, const double beta, const double vp, const double rho) const;
 
     void get_coeffs();
 

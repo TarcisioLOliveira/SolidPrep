@@ -458,30 +458,6 @@ class MeshElement : public Element{
      * Gets the elemental matrix for radial machining constraint.
      *
      * @param t Geometry thickness.
-     * @param beta Beta constant
-     * @param vp Velocity multiplier
-     * @param axis Center axis
-     * @param center Center point
-     * @param rho Elemental density
-     *
-     * @return Elemental matrix
-     */
-    virtual std::vector<double> get_phi_radial(const double t, const double beta, const double vp, const std::vector<double>& axis, const std::vector<double>& center, const double rho) const = 0;
-
-    /**
-     * Gets the elemental matrix for radial machining constraint.
-     *
-     * @param t Geometry thickness.
-     * @param beta Beta constant
-     *
-     * @return Elemental matrix
-     */
-    virtual std::vector<double> get_phi_grad(const double t, const double beta) const = 0;
-
-    /**
-     * Gets the elemental matrix for radial machining constraint.
-     *
-     * @param t Geometry thickness.
      * @param l L constant
      * @param beta Beta constant/function
      * @param v Direction vector (unit)
