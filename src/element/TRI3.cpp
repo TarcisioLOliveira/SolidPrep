@@ -25,6 +25,7 @@
 #include <BRepBuilderAPI_MakeEdge.hxx>
 #include <BRepBuilderAPI_MakeWire.hxx>
 #include <BRepBuilderAPI_MakeFace.hxx>
+#include <Eigen/src/Core/Matrix.h>
 #include <TopoDS_Wire.hxx>
 #include <TopoDS_Face.hxx>
 #include <TopoDS.hxx>
@@ -348,6 +349,90 @@ std::vector<double> TRI3::get_nodal_density_gradient(gp_Pnt p) const{
     
     return std::vector<double>{b[0]/(2*delta), b[1]/(2*delta), b[2]/(2*delta),
                                c[0]/(2*delta), c[1]/(2*delta), c[2]/(2*delta)};
+}
+
+Eigen::MatrixXd TRI3::diffusion_1dof(const double t, const std::vector<double>& A) const{
+    Eigen::MatrixXd M{{
+        b[0]*(A[0]*b[0]*t/2 + A[3]*c[0]*t/2)/(2*delta) + c[0]*(A[1]*b[0]*t/2 + A[4]*c[0]*t/2)/(2*delta)
+        ,
+        b[1]*(A[0]*b[0]*t/2 + A[3]*c[0]*t/2)/(2*delta) + c[1]*(A[1]*b[0]*t/2 + A[4]*c[0]*t/2)/(2*delta)
+        ,
+        b[2]*(A[0]*b[0]*t/2 + A[3]*c[0]*t/2)/(2*delta) + c[2]*(A[1]*b[0]*t/2 + A[4]*c[0]*t/2)/(2*delta)
+        },{
+        b[0]*(A[0]*b[1]*t/2 + A[3]*c[1]*t/2)/(2*delta) + c[0]*(A[1]*b[1]*t/2 + A[4]*c[1]*t/2)/(2*delta)
+        ,
+        b[1]*(A[0]*b[1]*t/2 + A[3]*c[1]*t/2)/(2*delta) + c[1]*(A[1]*b[1]*t/2 + A[4]*c[1]*t/2)/(2*delta)
+        ,
+        b[2]*(A[0]*b[1]*t/2 + A[3]*c[1]*t/2)/(2*delta) + c[2]*(A[1]*b[1]*t/2 + A[4]*c[1]*t/2)/(2*delta)
+        },{
+        b[0]*(A[0]*b[2]*t/2 + A[3]*c[2]*t/2)/(2*delta) + c[0]*(A[1]*b[2]*t/2 + A[4]*c[2]*t/2)/(2*delta)
+        ,
+        b[1]*(A[0]*b[2]*t/2 + A[3]*c[2]*t/2)/(2*delta) + c[1]*(A[1]*b[2]*t/2 + A[4]*c[2]*t/2)/(2*delta)
+        ,
+        b[2]*(A[0]*b[2]*t/2 + A[3]*c[2]*t/2)/(2*delta) + c[2]*(A[1]*b[2]*t/2 + A[4]*c[2]*t/2)/(2*delta)
+        }
+    };
+
+    return M;
+}
+Eigen::MatrixXd TRI3::advection_1dof(const double t, const std::vector<double>& v) const{
+    Eigen::MatrixXd M{{
+        t*(b[0]*v[0] + c[0]*v[1])/6
+        ,
+        t*(b[0]*v[0] + c[0]*v[1])/6
+        ,
+        t*(b[0]*v[0] + c[0]*v[1])/6
+        },{
+        t*(b[1]*v[0] + c[1]*v[1])/6
+        ,
+        t*(b[1]*v[0] + c[1]*v[1])/6
+        ,
+        t*(b[1]*v[0] + c[1]*v[1])/6
+        },{
+        t*(b[2]*v[0] + c[2]*v[1])/6
+        ,
+        t*(b[2]*v[0] + c[2]*v[1])/6
+        ,
+        t*(b[2]*v[0] + c[2]*v[1])/6
+        }
+    };
+
+    return M;
+}
+Eigen::MatrixXd TRI3::absorption_1dof(const double t) const{
+    Eigen::MatrixXd M{{
+        delta*t/6
+        ,
+        delta*t/12
+        ,
+        delta*t/12
+        },{
+        delta*t/12
+        ,
+        delta*t/6
+        ,
+        delta*t/12
+        },{
+        delta*t/12
+        ,
+        delta*t/12
+        ,
+        delta*t/6
+        }
+    };
+
+    return M;
+}
+Eigen::VectorXd TRI3::source_1dof(const double t) const{
+    Eigen::Vector<double, 3> M{
+        delta*t/3
+        ,
+        delta*t/3
+        ,
+        delta*t/3
+    };
+
+    return M;
 }
 
 }

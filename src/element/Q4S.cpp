@@ -554,6 +554,136 @@ std::vector<double> Q4S::get_nodal_density_gradient(gp_Pnt p) const{
                                -(a-xi)/(4*a*b), -(a-xi)/(4*a*b), (a+xi)/(4*a*b), -(b+eta)/(4*a*b)};
 }
 
+Eigen::MatrixXd Q4S::diffusion_1dof(const double t, const std::vector<double>& A) const{
+    Eigen::MatrixXd M{{
+        A[0]*b*t/(3*a) + A[1]*t/4 + A[3]*t/4 + A[4]*a*t/(3*b)
+        ,
+        -A[0]*b*t/(3*a) + A[1]*t/4 - A[3]*t/4 + A[4]*a*t/(6*b)
+        ,
+        -A[0]*b*t/(6*a) - A[1]*t/4 - A[3]*t/4 - A[4]*a*t/(6*b)
+        ,
+        A[0]*b*t/(6*a) - A[1]*t/4 + A[3]*t/4 - A[4]*a*t/(3*b)
+        },{
+        -A[0]*b*t/(3*a) - A[1]*t/4 + A[3]*t/4 + A[4]*a*t/(6*b)
+        ,
+        A[0]*b*t/(3*a) - A[1]*t/4 - A[3]*t/4 + A[4]*a*t/(3*b)
+        ,
+        A[0]*b*t/(6*a) + A[1]*t/4 - A[3]*t/4 - A[4]*a*t/(3*b)
+        ,
+        -A[0]*b*t/(6*a) + A[1]*t/4 + A[3]*t/4 - A[4]*a*t/(6*b)
+        },{
+        -A[0]*b*t/(6*a) - A[1]*t/4 - A[3]*t/4 - A[4]*a*t/(6*b)
+        ,
+        A[0]*b*t/(6*a) - A[1]*t/4 + A[3]*t/4 - A[4]*a*t/(3*b)
+        ,
+        A[0]*b*t/(3*a) + A[1]*t/4 + A[3]*t/4 + A[4]*a*t/(3*b)
+        ,
+        -A[0]*b*t/(3*a) + A[1]*t/4 - A[3]*t/4 + A[4]*a*t/(6*b)
+        },{
+        A[0]*b*t/(6*a) + A[1]*t/4 - A[3]*t/4 - A[4]*a*t/(3*b)
+        ,
+        -A[0]*b*t/(6*a) + A[1]*t/4 + A[3]*t/4 - A[4]*a*t/(6*b)
+        ,
+        -A[0]*b*t/(3*a) - A[1]*t/4 + A[3]*t/4 + A[4]*a*t/(6*b)
+        ,
+        A[0]*b*t/(3*a) - A[1]*t/4 - A[3]*t/4 + A[4]*a*t/(3*b)
+        }
+    };
+
+    return M;
+}
+
+Eigen::MatrixXd Q4S::advection_1dof(const double t, const std::vector<double>& v) const{
+    Eigen::MatrixXd M{{
+        t*(-a*v[1] - b*v[0])/3
+        ,
+        t*(-a*v[1] - 2*b*v[0])/6
+        ,
+        t*(-a*v[1] - b*v[0])/6
+        ,
+        t*(-2*a*v[1] - b*v[0])/6
+        },{
+        t*(-a*v[1] + 2*b*v[0])/6
+        ,
+        t*(-a*v[1] + b*v[0])/3
+        ,
+        t*(-2*a*v[1] + b*v[0])/6
+        ,
+        t*(-a*v[1] + b*v[0])/6
+        },{
+        t*(a*v[1] + b*v[0])/6
+        ,
+        t*(2*a*v[1] + b*v[0])/6
+        ,
+        t*(a*v[1] + b*v[0])/3
+        ,
+        t*(a*v[1] + 2*b*v[0])/6
+        },{
+        t*(2*a*v[1] - b*v[0])/6
+        ,
+        t*(a*v[1] - b*v[0])/6
+        ,
+        t*(a*v[1] - 2*b*v[0])/6
+        ,
+        t*(a*v[1] - b*v[0])/3
+        }
+    };
+    
+    return M;
+}
+Eigen::MatrixXd Q4S::absorption_1dof(const double t) const{
+    Eigen::MatrixXd M{{
+        4*a*b*t/9
+        ,
+        2*a*b*t/9
+        ,
+        a*b*t/9
+        ,
+        2*a*b*t/9
+        },{
+        2*a*b*t/9
+        ,
+        4*a*b*t/9
+        ,
+        2*a*b*t/9
+        ,
+        a*b*t/9
+        },{
+        a*b*t/9
+        ,
+        2*a*b*t/9
+        ,
+        4*a*b*t/9
+        ,
+        2*a*b*t/9
+        },{
+        2*a*b*t/9
+        ,
+        a*b*t/9
+        ,
+        2*a*b*t/9
+        ,
+        4*a*b*t/9
+        }
+    };
+
+    return M;
+}
+
+Eigen::VectorXd Q4S::source_1dof(const double t) const{
+    Eigen::Vector<double, 4> M{
+    a*b*t
+    ,
+    a*b*t
+    ,
+    a*b*t
+    ,
+    a*b*t
+    };
+
+    return M;
+}
+
 }
 
 

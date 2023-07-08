@@ -21,6 +21,7 @@
 #ifndef ELEMENT_HPP
 #define ELEMENT_HPP
 
+#include <Eigen/Core>
 #include "material.hpp"
 #include "utils.hpp"
 #include <cmath>
@@ -414,6 +415,44 @@ class MeshElement : public Element{
      * @return Gradient matrix (2xN for 2D, 3xN for 3D)
      */
     virtual std::vector<double> get_nodal_density_gradient(gp_Pnt p) const = 0;
+
+    /**
+     * Returns a 1 degree of freedom diffusion matrix.
+     * 
+     * @param t Geometry thickness.
+     * @param A Diffusivity matrix.
+     *
+     * @return Diffusion matrix.
+     */
+    virtual Eigen::MatrixXd diffusion_1dof(const double t, const std::vector<double>& A) const = 0;
+
+    /**
+     * Returns a 1 degree of freedom advection matrix.
+     *
+     * @param t Geometry thickness.
+     * @param v Direction of advection.
+     *
+     * @return Advection matrix.
+     */
+    virtual Eigen::MatrixXd advection_1dof(const double t, const std::vector<double>& v) const = 0;
+
+    /**
+     * Returns a 1 degree of freedom absorption matrix.
+     *
+     * @param t Geometry thickness.
+     *
+     * @return Absorption matrix.
+     */
+    virtual Eigen::MatrixXd absorption_1dof(const double t) const = 0;
+
+    /**
+     * Returns a 1 degree of freedom source vector.
+     *
+     * @param t Geometry thickness.
+     *
+     * @return source matrix.
+     */
+    virtual Eigen::VectorXd source_1dof(const double t) const = 0;
 
     /**
      * Gets the elemental matrix for radial machining constraint.

@@ -257,6 +257,218 @@ def make_k():
         print(formatted)
     print("};")
 
+def make_diff():
+    """
+        Creates the 1 degree-of-freedom diffusion matrix.
+    """
+
+    init_L_symbolic()
+    NN = sympy.Matrix([L[0], L[1], L[2], L[3]]).T
+    dNN = sympy.Matrix([NN.diff(x), NN.diff(y), NN.diff(z)])
+    A = sympy.symbols("A:9")
+    Am = sympy.Matrix([[A[0], A[1], A[2]],
+                       [A[3], A[4], A[5]],
+                       [A[6], A[7], A[8]]])
+
+    LEN = 4
+
+    D = V*dNN.T*Am*dNN
+
+    print("Eigen::MatrixXd M{{")
+    for i in range(LEN):
+        for j in range(LEN):
+
+            D.row(i)[j] = sympy.simplify(sympy.expand(D.row(i)[j]), rational=True)
+
+            # Format output for use with C++
+            formatted = str(D.row(i)[j])
+            formatted = re.sub(r"([abcdA]\d)\*\*2", r"\1*\1", formatted)
+            formatted = re.sub(r"([abcdA])(\d)", r"\1[\2]", formatted)
+
+            if j > 0:
+                print(",")
+            print(formatted)
+        if i < LEN - 1:
+            print("},{")
+        else:
+            print("}")
+    print("};")
+
+def make_adv():
+    """
+        Creates the 1 degree-of-freedom advection matrix.
+    """
+
+    init_L_symbolic()
+    NN = sympy.Matrix([L[0], L[1], L[2], L[3]]).T
+    dNN = sympy.Matrix([NN.diff(x), NN.diff(y), NN.diff(z)])
+    v = sympy.symbols("v:3")
+    vv = sympy.Matrix([v[0], v[1], v[2]])
+
+    LEN = 4
+
+    D = V*dNN.T*(vv*NN)
+
+    # Prepare for "integration" by defining the variables that should be
+    # collected
+    LL = []
+    for l1 in L:
+        for l2 in L:
+            LL.append(l1*l2)
+
+    LL.extend(L)
+
+    print("Eigen::MatrixXd M{{")
+    for i in range(LEN):
+        for j in range(LEN):
+            H = sympy.collect(sympy.expand(D.row(i)[j]), LL, exact=True)
+
+            # The "integration" step
+            # Replace the combinations of Li*Lj with the respective constants
+            # obtained by integration.
+            # The formula is: area integral of (L1^a)*(L2^b)*(L3^c)*(L4^d)
+            #                 = (a!b!c!d!/(a+b+c+d+3)!)*6V
+            # (HUEBNER, 2001, p. 156)
+            for l in L:
+                H = H.subs(l*l, 2*6/(5*4*3*2))
+
+            for l1 in L:
+                for l2 in L:
+                    H = H.subs(l1*l2, 1*6/(5*4*3*2))
+
+            for l in L:
+                H = H.subs(l, 6/(4*3*2))
+
+            H = sympy.simplify(sympy.expand(H), rational=True)
+
+            # Format output for use with C++
+            formatted = str(H)
+            formatted = re.sub(r"([abcdv]\d)\*\*2", r"\1*\1", formatted)
+            formatted = re.sub(r"([abcdv])(\d)", r"\1[\2]", formatted)
+
+            if j > 0:
+                print(",")
+            print(formatted)
+        if i < LEN - 1:
+            print("},{")
+        else:
+            print("}")
+    print("};")
+
+def make_abs():
+    """
+        Creates the 1 degree-of-freedom absorption matrix.
+    """
+
+    init_L_symbolic()
+    NN = sympy.Matrix([L[0], L[1], L[2], L[3]]).T
+    dNN = sympy.Matrix([NN.diff(x), NN.diff(y), NN.diff(z)])
+
+    LEN = 4
+
+    D = V*NN.T*NN
+
+    # Prepare for "integration" by defining the variables that should be
+    # collected
+    LL = []
+    for l1 in L:
+        for l2 in L:
+            LL.append(l1*l2)
+
+    LL.extend(L)
+
+    print("Eigen::MatrixXd M{{")
+    for i in range(LEN):
+        for j in range(LEN):
+            H = sympy.collect(sympy.expand(D.row(i)[j]), LL, exact=True)
+
+            # The "integration" step
+            # Replace the combinations of Li*Lj with the respective constants
+            # obtained by integration.
+            # The formula is: area integral of (L1^a)*(L2^b)*(L3^c)*(L4^d)
+            #                 = (a!b!c!d!/(a+b+c+d+3)!)*6V
+            # (HUEBNER, 2001, p. 156)
+            for l in L:
+                H = H.subs(l*l, 2*6/(5*4*3*2))
+
+            for l1 in L:
+                for l2 in L:
+                    H = H.subs(l1*l2, 1*6/(5*4*3*2))
+
+            for l in L:
+                H = H.subs(l, 6/(4*3*2))
+
+            H = sympy.simplify(sympy.expand(H), rational=True)
+
+            # Format output for use with C++
+            formatted = str(H)
+            formatted = re.sub(r"([abcdv]\d)\*\*2", r"\1*\1", formatted)
+            formatted = re.sub(r"([abcdv])(\d)", r"\1[\2]", formatted)
+
+            if j > 0:
+                print(",")
+            print(formatted)
+        if i < LEN - 1:
+            print("},{")
+        else:
+            print("}")
+    print("};")
+
+
+def make_src():
+    """
+        Creates the 1 degree-of-freedom source vector.
+    """
+
+    init_L_symbolic()
+    NN = sympy.Matrix([L[0], L[1], L[2], L[3]]).T
+    dNN = sympy.Matrix([NN.diff(x), NN.diff(y), NN.diff(z)])
+
+    LEN = 4
+
+    D = V*NN
+
+    # Prepare for "integration" by defining the variables that should be
+    # collected
+    LL = []
+    for l1 in L:
+        for l2 in L:
+            LL.append(l1*l2)
+
+    LL.extend(L)
+
+    print("Eigen::VectorXd M{")
+    for i in range(LEN):
+        H = sympy.collect(sympy.expand(D[i]), LL, exact=True)
+
+        # The "integration" step
+        # Replace the combinations of Li*Lj with the respective constants
+        # obtained by integration.
+        # The formula is: area integral of (L1^a)*(L2^b)*(L3^c)*(L4^d)
+        #                 = (a!b!c!d!/(a+b+c+d+3)!)*6V
+        # (HUEBNER, 2001, p. 156)
+        for l in L:
+            H = H.subs(l*l, 2*6/(5*4*3*2))
+
+        for l1 in L:
+            for l2 in L:
+                H = H.subs(l1*l2, 1*6/(5*4*3*2))
+
+        for l in L:
+            H = H.subs(l, 6/(4*3*2))
+
+        H = sympy.simplify(sympy.expand(H), rational=True)
+
+        # Format output for use with C++
+        formatted = str(H)
+        formatted = re.sub(r"([abcv]\d)\*\*2", r"\1*\1", formatted)
+        formatted = re.sub(r"([abcv])(\d)", r"\1[\2]", formatted)
+
+        if i > 0:
+            print(",")
+        print(formatted)
+    print("};")
+
 def make_h():
     """
         Creates the elemental Helmholtz tensor.
@@ -420,6 +632,10 @@ def main():
         "-DB": make_DB,
         "-B": make_B,
         "-Nf": make_Nf,
+        "-diff": make_diff,
+        "-adv": make_adv,
+        "-abs": make_abs,
+        "-src": make_src,
         "-h": make_h,
         "-phir": make_phi_radial,
         "-phig": make_phi_grad,

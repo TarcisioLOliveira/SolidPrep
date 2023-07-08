@@ -166,6 +166,144 @@ def make_k():
         print(formatted)
     print("};")
 
+def make_diff():
+    """
+        Creates the 1 degree-of-freedom diffusion matrix.
+    """
+
+    init_N()
+    NN = sympy.Matrix([N[0], N[1], N[2], N[3]]).T
+    dNN = sympy.Matrix([NN.diff(xi), NN.diff(eta)])
+    A = sympy.symbols("A:9")
+    Am = sympy.Matrix([[A[0], A[1]],
+                       [A[3], A[4]]])
+
+    LEN = 4
+
+    D = t*dNN.T*Am*dNN
+
+    print("Eigen::MatrixXd M{{")
+    for i in range(LEN):
+        for j in range(LEN):
+
+            H = sympy.integrate(D.row(i)[j], (xi, -a, a), (eta, -b, b))
+
+            H = sympy.simplify(sympy.expand(H), rational=True)
+
+            # Format output for use with C++
+            formatted = str(H)
+            formatted = re.sub(r"([abcA]\d)\*\*2", r"\1*\1", formatted)
+            formatted = re.sub(r"([abcA])(\d)", r"\1[\2]", formatted)
+
+            if j > 0:
+                print(",")
+            print(formatted)
+        if i < LEN - 1:
+            print("},{")
+        else:
+            print("}")
+    print("};")
+
+def make_adv():
+    """
+        Creates the 1 degree-of-freedom advection matrix.
+    """
+
+    init_N()
+    NN = sympy.Matrix([N[0], N[1], N[2], N[3]]).T
+    dNN = sympy.Matrix([NN.diff(xi), NN.diff(eta)])
+    v = sympy.symbols("v:3")
+    vv = sympy.Matrix([v[0], v[1]])
+
+    LEN = 4
+
+    D = t*dNN.T*(vv*NN)
+
+    print("Eigen::MatrixXd M{{")
+    for i in range(LEN):
+        for j in range(LEN):
+            H = sympy.integrate(D.row(i)[j], (xi, -a, a), (eta, -b, b))
+
+            H = sympy.simplify(sympy.expand(H), rational=True)
+
+            # Format output for use with C++
+            formatted = str(H)
+            formatted = re.sub(r"([abcv]\d)\*\*2", r"\1*\1", formatted)
+            formatted = re.sub(r"([abcv])(\d)", r"\1[\2]", formatted)
+
+            if j > 0:
+                print(",")
+            print(formatted)
+        if i < LEN - 1:
+            print("},{")
+        else:
+            print("}")
+    print("};")
+
+def make_abs():
+    """
+        Creates the 1 degree-of-freedom absorption matrix.
+    """
+
+    init_N()
+    NN = sympy.Matrix([N[0], N[1], N[2], N[3]]).T
+    dNN = sympy.Matrix([NN.diff(xi), NN.diff(eta)])
+
+    LEN = 4
+
+    D = t*NN.T*NN
+
+    print("Eigen::MatrixXd M{{")
+    for i in range(LEN):
+        for j in range(LEN):
+            H = sympy.integrate(D.row(i)[j], (xi, -a, a), (eta, -b, b))
+
+            H = sympy.simplify(sympy.expand(H), rational=True)
+
+            # Format output for use with C++
+            formatted = str(H)
+            formatted = re.sub(r"([abcv]\d)\*\*2", r"\1*\1", formatted)
+            formatted = re.sub(r"([abcv])(\d)", r"\1[\2]", formatted)
+
+            if j > 0:
+                print(",")
+            print(formatted)
+        if i < LEN - 1:
+            print("},{")
+        else:
+            print("}")
+    print("};")
+
+
+def make_src():
+    """
+        Creates the 1 degree-of-freedom source vector.
+    """
+
+    init_N()
+    NN = sympy.Matrix([N[0], N[1], N[2], N[3]]).T
+    dNN = sympy.Matrix([NN.diff(xi), NN.diff(eta)])
+
+    LEN = 4
+
+    D = t*NN
+
+    print("Eigen::VectorXd M{")
+    for i in range(LEN):
+        H = sympy.integrate(D[i], (xi, -a, a), (eta, -b, b))
+
+        H = sympy.simplify(sympy.expand(H), rational=True)
+
+        # Format output for use with C++
+        formatted = str(H)
+        formatted = re.sub(r"([abcv]\d)\*\*2", r"\1*\1", formatted)
+        formatted = re.sub(r"([abcv])(\d)", r"\1[\2]", formatted)
+
+        if i > 0:
+            print(",")
+        print(formatted)
+    print("};")
+
 def make_h():
     """
         Creates the elemental Helmholtz tensor.
@@ -308,6 +446,10 @@ def main():
         "-DB": make_DB,
         "-B": make_B,
         "-Nf": make_Nf,
+        "-diff": make_diff,
+        "-adv": make_adv,
+        "-abs": make_abs,
+        "-src": make_src,
         "-h": make_h,
         "-phir": make_phi_radial,
         "-phig": make_phi_grad,
