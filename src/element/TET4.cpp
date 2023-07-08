@@ -62,9 +62,9 @@ void TET4::get_coeffs(){
     //      c[0], c[1], c[2], c[3],
     //      d[0], d[1], d[2], d[3]}
     int info = LAPACKE_dgetrf(LAPACK_COL_MAJOR, N, N, M.data(), N, ipiv.data());
-    logger::log_assert(info == 0, logger::ERROR, "LAPACKE returned {} while calculating LU in Q4.", info);
+    logger::log_assert(info == 0, logger::ERROR, "LAPACKE returned {} while calculating LU in TET4.", info);
     info = LAPACKE_dgetri(LAPACK_COL_MAJOR, N, M.data(), N, ipiv.data());
-    logger::log_assert(info == 0, logger::ERROR, "LAPACKE returned {} while calculating computing inverse from LU in Q4.", info);
+    logger::log_assert(info == 0, logger::ERROR, "LAPACKE returned {} while calculating computing inverse from LU in TET4.", info);
 
     this->V = this->get_volume(1.0);
     for(auto& m:M){
