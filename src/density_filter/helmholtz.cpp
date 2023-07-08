@@ -62,15 +62,19 @@ void Helmholtz::initialize(const Meshing* const mesh, const size_t x_size){
     this->nodal_densities.resize(this->NN_n,0);
     this->nodal_gradient.resize(this->NN_n,0);
     this->NN = std::vector<double>(NN_n*NN_kd,0);
+    const std::vector<double> I{1, 0, 0,
+                                0, 1, 0,
+                                0, 0, 1};
     for(const auto& g:mesh->geometries){
         if(g->do_topopt){
             for(const auto& e:g->mesh){
-                auto M = e->helmholtz_tensor(t, this->radius);///(2*std::sqrt(3)));
+                const auto M = radius*radius*e->diffusion_1dof(t, I) +
+                               e->absorption_1dof(t);
                 for(size_t i = 0; i < num_nodes; ++i){
                     size_t n1 = e->nodes[i]->id;
                     for(size_t j = i; j < num_nodes; ++j){
                         size_t n2 = e->nodes[j]->id;
-                        this->NN[utils::to_band(n1, n2, NN_kd)] += M[i*num_nodes + j];
+                        this->NN[utils::to_band(n1, n2, NN_kd)] += M(i, j);
                     }
                 }
             }
@@ -92,7 +96,7 @@ void Helmholtz::filter_densities(const std::vector<double>& x, std::vector<doubl
     for(const auto& g:mesh->geometries){
         if(g->do_topopt){
             for(const auto& e:g->mesh){
-                auto N = e->helmholtz_vector(t);
+                auto N = e->source_1dof(t);
                 for(size_t j = 0; j < num_nodes; ++j){
                     size_t id = e->nodes[j]->id;
                     this->nodal_densities[id] += *x_it*N[j];
@@ -135,7 +139,7 @@ void Helmholtz::filter_gradient(const std::vector<double>& df, std::vector<doubl
     for(const auto& g:mesh->geometries){
         if(g->do_topopt){
             for(const auto& e:g->mesh){
-                auto N = e->helmholtz_vector(t);
+                auto N = e->source_1dof(t);
                 for(size_t j = 0; j < num_nodes; ++j){
                     size_t id = e->nodes[j]->id;
                     this->nodal_gradient[id] += *df_it*N[j];

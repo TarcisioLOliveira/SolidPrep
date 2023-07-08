@@ -124,7 +124,7 @@ double AMSupport::calculate(const Optimizer* const op, const std::vector<double>
         if(g->do_topopt){
             const size_t num_den = g->number_of_densities_needed();
             for(const auto& e:g->mesh){
-                auto Ne = e->helmholtz_vector(this->mesh->thickness);
+                auto Ne = e->source_1dof(this->mesh->thickness);
                 double beta_switch = 0;
                 double norm = 0;
 
@@ -258,7 +258,7 @@ double AMSupport::calculate_with_gradient_nodal(const Optimizer* const op, const
         if(g->do_topopt){
             const size_t num_den = g->number_of_densities_needed();
             for(const auto& e:g->mesh){
-                auto Ne = e->helmholtz_vector(this->mesh->thickness);
+                auto Ne = e->source_1dof(this->mesh->thickness);
                 double beta_switch = 0;
                 double norm = 0;
 
@@ -380,7 +380,8 @@ double AMSupport::calculate_with_gradient_nodal(const Optimizer* const op, const
                 double psi_tilde_sum = 0;
                 auto Ne = e->get_nodal_density_gradient(e->get_centroid());
                 double Ne_sum = e->get_volume(this->mesh->thickness);
-                auto Me = e->get_phi_grad(this->mesh->thickness, 1.0);
+                std::vector<double> Me(9,0); // TODO
+                //auto Me = e->get_phi_grad(this->mesh->thickness, 1.0);
                 auto Me_dot = 0;
                 for(size_t i = 0; i < num_nodes; ++i){
                     const auto& ni = e->nodes[i];
