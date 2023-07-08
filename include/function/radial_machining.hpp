@@ -34,7 +34,7 @@ namespace function{
 
 class RadialMachining : public DensityBasedFunction{
     public:
-    RadialMachining(const Meshing* const mesh, const DensityFilter* const filter, gp_Pnt center, gp_Dir axis, double v_norm, double beta);
+    RadialMachining(const Meshing* const mesh, const DensityFilter* const filter, gp_Pnt center, gp_Dir axis, double v_norm, double beta1, double beta2, double L);
 
     virtual ~RadialMachining() = default;
 
@@ -55,7 +55,9 @@ class RadialMachining : public DensityBasedFunction{
     const gp_Pnt center;
     const gp_Dir axis;
     const double v_norm;
-    const double beta;
+    const double beta1;
+    const double beta2;
+    const double L;
     Eigen::VectorXd b;
     Eigen::VectorXd b_grad;
     std::vector<double> diff;

@@ -679,11 +679,15 @@ std::unique_ptr<DensityBasedFunction> ProjectData::get_function(const rapidjson:
         double psiS = doc["psi"].GetDouble();
         return std::make_unique<function::GlobalStressHeaviside>(this->topopt_mesher.get(), this->topopt_fea.get(), max_stress, C, pc, pt, psiK, -psiS);
     } else if(type == "radial_machining"){
-        this->log_data(doc, "beta", TYPE_DOUBLE, true);
+        this->log_data(doc, "beta1", TYPE_DOUBLE, true);
+        this->log_data(doc, "beta2", TYPE_DOUBLE, true);
         this->log_data(doc, "v", TYPE_DOUBLE, true);
         this->log_data(doc, "center", TYPE_ARRAY, true);
         this->log_data(doc, "axis", TYPE_ARRAY, true);
-        double beta = doc["beta"].GetDouble();
+        this->log_data(doc, "L", TYPE_DOUBLE, true);
+        double L = doc["L"].GetDouble();
+        double beta1 = doc["beta1"].GetDouble();
+        double beta2 = doc["beta2"].GetDouble();
         double v = doc["v"].GetDouble();
 
         auto ca = doc["center"].GetArray();
@@ -691,7 +695,7 @@ std::unique_ptr<DensityBasedFunction> ProjectData::get_function(const rapidjson:
         auto aa = doc["axis"].GetArray();
         gp_Dir a(aa[0].GetDouble(), aa[1].GetDouble(), aa[2].GetDouble());
 
-        return std::make_unique<function::RadialMachining>(this->topopt_mesher.get(), this->density_filter.get(), c, a, v, beta);
+        return std::make_unique<function::RadialMachining>(this->topopt_mesher.get(), this->density_filter.get(), c, a, v, beta1, beta2, L);
     } else if(type == "am_support"){
         this->log_data(doc, "beta", TYPE_DOUBLE, true);
         this->log_data(doc, "L", TYPE_DOUBLE, true);

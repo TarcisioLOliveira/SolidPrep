@@ -30,8 +30,8 @@
 
 namespace function{
 
-RadialMachining::RadialMachining(const Meshing* const mesh, const DensityFilter* const filter, gp_Pnt center, gp_Dir axis, double v_norm, double beta)
-        : mesh(mesh), filter(filter), center(center), axis(axis), v_norm(v_norm), beta(beta), proj(Projection::Parameter{25, 25, 0, 0}, 0.5){}
+RadialMachining::RadialMachining(const Meshing* const mesh, const DensityFilter* const filter, gp_Pnt center, gp_Dir axis, double v_norm, double beta1, double beta2, double L)
+        : mesh(mesh), filter(filter), center(center), axis(axis), v_norm(v_norm), beta1(beta1), beta2(beta2), L(L), proj(Projection::Parameter{20, 20, 0, 0}, 0.5){}
 
 void RadialMachining::initialize_views(Visualization* viz){
     this->shadow_view = viz->add_view("Shadows", spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::DENSITY);
@@ -40,15 +40,10 @@ void RadialMachining::initialize_views(Visualization* viz){
 }
 
 void RadialMachining::initialize(const Optimizer* const op){
+    (void)op;
     const size_t num_nodes = mesh->elem_info->get_nodes_per_element();
     const size_t num_nodes_bound = mesh->elem_info->get_boundary_nodes_per_element();
     std::map<size_t, long> id_mapping;
-    size_t N = 0;
-    if(this->mesh->elem_info->get_problem_type() == utils::PROBLEM_TYPE_2D){
-        N = 2;
-    } else if(this->mesh->elem_info->get_problem_type() == utils::PROBLEM_TYPE_3D){
-        N = 3;
-    }
     size_t elem_num = 0;
     size_t phi_size = 0;
     for(const auto& g:mesh->geometries){
@@ -101,6 +96,8 @@ void RadialMachining::initialize(const Optimizer* const op){
 }
 
 double RadialMachining::calculate(const Optimizer* const op, const std::vector<double>& u, const std::vector<double>& x){
+    (void)op;
+    (void)u;
     int mpi_id = 0;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi_id);
 
@@ -118,7 +115,8 @@ double RadialMachining::calculate(const Optimizer* const op, const std::vector<d
     std::vector<double> A{axis.X(), axis.Y(), axis.Z()};
     std::vector<double> C{center.X(), center.Y(), center.Z()};
 
-    const double BETA_RHO = 100;
+    const double BETA_RHO = 75;
+    const double HX_ETA = 0.9;
 
     auto x_it = x.cbegin();
     auto id_it = this->id_mapping_linear.cbegin();
@@ -126,10 +124,21 @@ double RadialMachining::calculate(const Optimizer* const op, const std::vector<d
         if(g->do_topopt){
             const size_t num_den = g->number_of_densities_needed();
             for(const auto& e:g->mesh){
-                auto N = e->helmholtz_vector(this->mesh->thickness);
+                const double Hx = this->heaviside(*x_it, BETA_RHO, HX_ETA);
+                const auto p = e->get_centroid();
+                std::vector<double> v{C[0] - p.X(), C[1] - p.Y(), C[2] - p.Z()};
+                const double vnorm = std::sqrt(v[0]*v[0] + v[1]*v[1] + v[2]*v[2] + 1e-14);
+                v[0] = v[0]/vnorm;
+                v[1] = v[1]/vnorm;
+                v[2] = v[2]/vnorm;
+                const std::vector<double> a{std::sqrt(v[0]*v[0] + 1e-14), 0.0, 0.0,
+                                            0.0, std::sqrt(v[1]*v[1] + 1e-14), 0.0,
+                                            0.0, 0.0, std::sqrt(v[2]*v[2] + 1e-14)};
 
-                const double Hx = this->heaviside(*x_it, BETA_RHO, 0.95);
-                const auto phi_e = e->get_phi_radial(this->mesh->thickness, this->beta, this->v_norm, A, C, Hx);
+                const auto N = Hx*beta2*e->source_1dof(this->mesh->thickness);
+                const auto phi_e = (beta1*(1.0-Hx) + beta2*Hx)*e->absorption_1dof(this->mesh->thickness) +
+                                   L*L*e->diffusion_1dof(this->mesh->thickness, a) -
+                                   v_norm*L*e->advection_1dof(this->mesh->thickness, v);
                 for(size_t i = 0; i < num_nodes; ++i){
                     const long id1 = *(id_it + i);
                     if(id1 < 0){
@@ -140,25 +149,22 @@ double RadialMachining::calculate(const Optimizer* const op, const std::vector<d
                         if(id2 < 0){
                             continue;
                         }
-                        this->Phi.coeffRef(id1, id2) += phi_e[i*num_nodes + j];
+                        this->Phi.coeffRef(id1, id2) += phi_e(i, j);
                     }
                 }
 
                 for(size_t i = 0; i < num_nodes; ++i){
-                    const auto& ni = e->nodes[i];
-                    const long id1 = this->id_mapping[ni->id];
+                    const long id1 = *(id_it + i);
                     if(id1 < 0){
                         continue;
                     }
-                    this->b[id1] += this->beta*Hx*N[i];
+                    this->b[id1] += N[i];
                 }
 
                 x_it += num_den;
+                id_it += num_nodes;
             }
         }
-    }
-    for(long i = 0; i < this->b.size(); ++i){
-        this->Phi.coeffRef(i, i) += 1e-14;
     }
 
     if(this->first_time){
@@ -177,7 +183,7 @@ double RadialMachining::calculate(const Optimizer* const op, const std::vector<d
     for(const auto& g:mesh->geometries){
         if(g->do_topopt){
             const size_t num_den = g->number_of_densities_needed();
-            for(const auto& e:g->mesh){
+            for(size_t it = 0; it < g->mesh.size(); ++it){
                 for(size_t i = 0; i < num_nodes; ++i){
                     const long id1 = *(id_it + i);
                     if(id1 < 0){
@@ -195,10 +201,12 @@ double RadialMachining::calculate(const Optimizer* const op, const std::vector<d
 
     this->proj.project_densities(this->diff);
 
-    return std::accumulate(this->diff.begin(), this->diff.end(), 0.0);// /this->diff.size();
+    return std::accumulate(this->diff.begin(), this->diff.end(), 0.0);
 }
 
 double RadialMachining::calculate_with_gradient(const Optimizer* const op, const std::vector<double>& u, const std::vector<double>& x, std::vector<double>& grad){
+    (void)op;
+    (void)u;
     int mpi_id = 0;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi_id);
 
@@ -214,7 +222,8 @@ double RadialMachining::calculate_with_gradient(const Optimizer* const op, const
     std::fill(this->b_grad.begin(), this->b_grad.end(), 0);
     std::fill(this->diff.begin(), this->diff.end(), 0);
 
-    const double BETA_RHO = 100;
+    const double BETA_RHO = 50;
+    const double HX_ETA = 0.9;
 
     std::vector<double> A{axis.X(), axis.Y(), axis.Z()};
     std::vector<double> C{center.X(), center.Y(), center.Z()};
@@ -225,10 +234,21 @@ double RadialMachining::calculate_with_gradient(const Optimizer* const op, const
         if(g->do_topopt){
             const size_t num_den = g->number_of_densities_needed();
             for(const auto& e:g->mesh){
-                auto N = e->helmholtz_vector(this->mesh->thickness);
+                const double Hx = this->heaviside(*x_it, BETA_RHO, HX_ETA);
+                const auto p = e->get_centroid();
+                std::vector<double> v{C[0] - p.X(), C[1] - p.Y(), C[2] - p.Z()};
+                const double vnorm = std::sqrt(v[0]*v[0] + v[1]*v[1] + v[2]*v[2] + 1e-14);
+                v[0] = v[0]/vnorm;
+                v[1] = v[1]/vnorm;
+                v[2] = v[2]/vnorm;
+                const std::vector<double> a{std::sqrt(v[0]*v[0] + 1e-14), 0.0, 0.0,
+                                            0.0, std::sqrt(v[1]*v[1] + 1e-14), 0.0,
+                                            0.0, 0.0, std::sqrt(v[2]*v[2] + 1e-14)};
 
-                const double Hx = this->heaviside(*x_it, BETA_RHO, 0.95);
-                const auto phi_e = e->get_phi_radial(this->mesh->thickness, this->beta, this->v_norm, A, C, Hx);
+                const auto N = Hx*beta2*e->source_1dof(this->mesh->thickness);
+                const auto phi_e = (beta1*(1.0-Hx) + beta2*Hx)*e->absorption_1dof(this->mesh->thickness) +
+                                   L*L*e->diffusion_1dof(this->mesh->thickness, a) -
+                                   v_norm*L*e->advection_1dof(this->mesh->thickness, v);
                 for(size_t i = 0; i < num_nodes; ++i){
                     const long id1 = *(id_it + i);
                     if(id1 < 0){
@@ -239,25 +259,22 @@ double RadialMachining::calculate_with_gradient(const Optimizer* const op, const
                         if(id2 < 0){
                             continue;
                         }
-                        this->Phi.coeffRef(id1, id2) += phi_e[i*num_nodes + j];
+                        this->Phi.coeffRef(id1, id2) += phi_e(i, j);
                     }
                 }
 
                 for(size_t i = 0; i < num_nodes; ++i){
-                    const auto& ni = e->nodes[i];
-                    const long id1 = this->id_mapping[ni->id];
+                    const long id1 = *(id_it + i);
                     if(id1 < 0){
                         continue;
                     }
-                    this->b[id1] += this->beta*Hx*N[i];
+                    this->b[id1] += N[i];
                 }
 
                 x_it += num_den;
+                id_it += num_nodes;
             }
         }
-    }
-    for(long i = 0; i < this->b.size(); ++i){
-        this->Phi.coeffRef(i, i) += 1e-14;
     }
 
     if(this->first_time){
@@ -276,7 +293,7 @@ double RadialMachining::calculate_with_gradient(const Optimizer* const op, const
     for(const auto& g:mesh->geometries){
         if(g->do_topopt){
             const size_t num_den = g->number_of_densities_needed();
-            for(const auto& e:g->mesh){
+            for(size_t it = 0; it < g->mesh.size(); ++it){
                 for(size_t i = 0; i < num_nodes; ++i){
                     const long id1 = *(id_it + i);
                     if(id1 < 0){
@@ -307,7 +324,7 @@ double RadialMachining::calculate_with_gradient(const Optimizer* const op, const
     for(const auto& g:mesh->geometries){
         if(g->do_topopt){
             const size_t num_den = g->number_of_densities_needed();
-            for(const auto& e:g->mesh){
+            for(size_t it = 0; it < g->mesh.size(); ++it){
                 for(size_t i = 0; i < num_nodes; ++i){
                     const long id1 = *(id_it + i);
                     if(id1 < 0){
@@ -331,16 +348,10 @@ double RadialMachining::calculate_with_gradient(const Optimizer* const op, const
     for(const auto& g:mesh->geometries){
         if(g->do_topopt){
             const size_t num_den = g->number_of_densities_needed();
-            auto phi_e = g->mesh.front()->get_phi_grad(this->mesh->thickness, this->beta);
-            auto b_e = g->mesh.front()->helmholtz_vector(this->mesh->thickness);
-            const double dHx = this->heaviside_grad(*x_it, BETA_RHO, 0.9);
-            for(auto& i:b_e){
-                i *= dHx*this->beta;
-            }
-            for(auto& p:phi_e){
-                p *= dHx;
-            }
             for(const auto& e:g->mesh){
+                const double dHx = this->heaviside_grad(*x_it, BETA_RHO, HX_ETA);
+                const auto b_e = dHx*beta2*e->source_1dof(this->mesh->thickness);
+                const auto phi_e = ((beta1*(1.0-dHx)/10 + beta2*dHx)*e->absorption_1dof(this->mesh->thickness));
                 *g_it = 0;
                 double psi_tmp = 0;
                 for(size_t i = 0; i < num_nodes; ++i){
@@ -363,7 +374,7 @@ double RadialMachining::calculate_with_gradient(const Optimizer* const op, const
                         if(id2 < 0){
                             continue;
                         }
-                        psi_tmp += phi_e[i*num_nodes + j]*psi[id2];
+                        psi_tmp += phi_e(i,j)*psi[id2];
                     }
                     *g_it -= psi_tilde[id1]*psi_tmp;
                     *g_it += psi_tilde[id1]*b_e[i];
