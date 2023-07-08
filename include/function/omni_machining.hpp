@@ -32,11 +32,11 @@
 
 namespace function{
 
-class RadialMachining : public DensityBasedFunction{
+class OmniMachining : public DensityBasedFunction{
     public:
-    RadialMachining(const Meshing* const mesh, const DensityFilter* const filter, gp_Pnt center, gp_Dir axis, double v_norm, double beta1, double beta2, double L);
+    OmniMachining(const Meshing* const mesh, const DensityFilter* const filter, gp_Pnt center, gp_Dir axis, double v_norm, double beta1, double beta2, double L);
 
-    virtual ~RadialMachining() = default;
+    virtual ~OmniMachining() = default;
 
     virtual void initialize_views(Visualization* viz) override;
     virtual void initialize(const Optimizer* const op) override;

@@ -5,7 +5,7 @@ set(SOURCES_FUNCTION
     volume.cpp
     global_stress_pnorm_normalized.cpp
     global_stress_pnorm.cpp
-    radial_machining.cpp
+    omni_machining.cpp
     am_support.cpp
     mass.cpp
     mass_first_material.cpp

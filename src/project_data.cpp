@@ -70,7 +70,7 @@
 #include "function/global_stress_pnorm_normalized.hpp"
 #include "function/global_stress_pnorm.hpp"
 #include "function/global_stress_heaviside.hpp"
-#include "function/radial_machining.hpp"
+#include "function/omni_machining.hpp"
 #include "function/am_support.hpp"
 #include "function/mass.hpp"
 #include "function/mass_first_material.hpp"
@@ -678,7 +678,7 @@ std::unique_ptr<DensityBasedFunction> ProjectData::get_function(const rapidjson:
         double pt = doc["pt"].GetDouble();
         double psiS = doc["psi"].GetDouble();
         return std::make_unique<function::GlobalStressHeaviside>(this->topopt_mesher.get(), this->topopt_fea.get(), max_stress, C, pc, pt, psiK, -psiS);
-    } else if(type == "radial_machining"){
+    } else if(type == "omni_machining"){
         this->log_data(doc, "beta1", TYPE_DOUBLE, true);
         this->log_data(doc, "beta2", TYPE_DOUBLE, true);
         this->log_data(doc, "v", TYPE_DOUBLE, true);
@@ -695,7 +695,7 @@ std::unique_ptr<DensityBasedFunction> ProjectData::get_function(const rapidjson:
         auto aa = doc["axis"].GetArray();
         gp_Dir a(aa[0].GetDouble(), aa[1].GetDouble(), aa[2].GetDouble());
 
-        return std::make_unique<function::RadialMachining>(this->topopt_mesher.get(), this->density_filter.get(), c, a, v, beta1, beta2, L);
+        return std::make_unique<function::OmniMachining>(this->topopt_mesher.get(), this->density_filter.get(), c, a, v, beta1, beta2, L);
     } else if(type == "am_support"){
         this->log_data(doc, "beta", TYPE_DOUBLE, true);
         this->log_data(doc, "L", TYPE_DOUBLE, true);
@@ -712,6 +712,7 @@ std::unique_ptr<DensityBasedFunction> ProjectData::get_function(const rapidjson:
 
         return std::make_unique<function::AMSupport>(this->topopt_mesher.get(), this->density_filter.get(), this->projection.get(), a, v, L, beta, (90 - angle)*M_PI/180);
     }
+    logger::log_assert(false, logger::ERROR, "function \"{}\" not found.", type);
 
     return nullptr;
 }
