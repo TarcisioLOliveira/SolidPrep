@@ -493,55 +493,6 @@ def make_h():
         print(formatted)
     print("};")
 
-def make_phi_radial():
-    """
-        Creates the elemental matrix for the radial machining function.
-    """
-    print("unused")
-
-def make_phi_grad():
-    """
-        Creates the gradient for the elemental matrix of the radial machining
-        function.
-    """
-    init_L_symbolic()
-    beta = sympy.symbols("beta")
-    NN = sympy.Matrix([L[0], L[1], L[2]]).T
-    dNN = sympy.Matrix([NN.diff(x), NN.diff(y)])
-    k = t*delta*(beta*NN.T*NN)
-
-    # Prepare for "integration" by defining the variables that should be
-    # collected
-    LL = []
-    for l1 in L:
-        for l2 in L:
-            LL.append(l1*l2)
-
-    LL.extend(L)
-
-    print("std::vector<double> phi{")
-    for i in range(len(k)):
-        # Prepare for integration
-        k[i] = sympy.simplify(sympy.collect(sympy.expand(k[i]), LL))
-
-        for l in L:
-            k[i] = k[i].subs(l*l, 2*2/(4*3*2))
-
-        for l in L:
-            k[i] = k[i].subs(l, 2/(3*2))
-
-        k[i] = sympy.simplify(sympy.nsimplify(sympy.expand(k[i]), rational=True))
-
-        # Format output for use with C++
-        formatted = str(k[i])
-        formatted = re.sub(r"(delta)\*\*2", r"\1*\1", formatted)
-        formatted = re.sub(r"([abcl]\d?)\*\*2", r"\1*\1", formatted)
-        formatted = re.sub(r"([abcv])(\d)", r"\1[\2]", formatted)
-
-        if i > 0:
-            print(",")
-        print(formatted)
-    print("};")
 
 def make_phi_unid():
     """
@@ -603,8 +554,6 @@ def main():
         "-abs": make_abs,
         "-src": make_src,
         "-h": make_h,
-        "-phir": make_phi_radial,
-        "-phig": make_phi_grad,
         "-phiu": make_phi_unid
     }
     for i in range(1, len(sys.argv)):

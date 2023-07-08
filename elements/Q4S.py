@@ -332,81 +332,6 @@ def make_h():
         print(formatted)
     print("};")
 
-def make_phi_radial():
-    """
-        Creates the elemental Helmholtz tensor.
-    """
-    init_N()
-    # l = sympy.symbols("l")
-    beta = sympy.symbols("beta")
-    rho = sympy.symbols("rho")
-    dv = sympy.symbols("dv")
-    vn = sympy.symbols("vn")
-    vp = sympy.symbols("vp")
-    ax, ay = sympy.symbols("ax ay")
-    NN = sympy.Matrix([N[0], N[1], N[2], N[3]]).T
-    A = sympy.Matrix([ax, ay]).T
-    x0, y0 = sympy.symbols("x0 y0")
-    cx, cy = sympy.symbols("cx cy")
-    P = sympy.Matrix([x0 + a + xi,
-                      y0 + b + eta]).T
-    C = sympy.Matrix([cx, cy]).T
-    PC = C - P
-    v = (PC - PC.dot(A)*A).T
-    dv = v[0].diff(xi) + v[1].diff(eta)
-    dNN = sympy.Matrix([NN.diff(xi), NN.diff(eta)])
-    # k = t*(beta*rho*NN.T*NN + l*l*dNN.T*dNN + l*NN.T*(v.T*dNN) + dv*NN.T*NN)
-    # k = t*(beta*rho*NN.T*NN + vn*dNN.T*A*dNN + vp*NN.T*(v.T*dNN) + vp*dv*NN.T*NN)
-    k = t*(beta*rho*NN.T*NN + v.dot(v)*dNN.T*dNN + vp*NN.T*(v.T*dNN) + vp*dv*NN.T*NN)
-
-    print("std::vector<double> phi{")
-    for i in range(len(k)):
-        # Prepare for integration
-        k[i] = sympy.simplify(sympy.nsimplify(sympy.collect(sympy.expand(k[i]), (xi, eta, xi**2, eta**2)), rational=True))
-        k[i] = sympy.integrate(k[i], (xi, -a, a), (eta, -b, b))
-        k[i] = sympy.simplify(sympy.nsimplify(sympy.expand(k[i]), rational=True))
-
-        # Format output for use with C++
-        formatted = str(k[i])
-        formatted = re.sub(r"(delta)\*\*2", r"\1*\1", formatted)
-        formatted = re.sub(r"([abcdlxy]+\d?)\*\*2", r"\1*\1", formatted)
-        formatted = re.sub(r"([abcdlxy]+\d?)\*\*3", r"\1*\1*\1", formatted)
-        formatted = re.sub(r"([abcdlxy]+\d?)\*\*4", r"\1*\1*\1*\1", formatted)
-        formatted = re.sub(r"([abcdv])(\d)", r"\1[\2]", formatted)
-
-        if i > 0:
-            print(",")
-        print(formatted)
-    print("};")
-
-def make_phi_grad():
-    """
-        Creates the elemental Helmholtz tensor.
-    """
-    init_N()
-    beta = sympy.symbols("beta")
-    NN = sympy.Matrix([N[0], N[1], N[2], N[3]]).T
-    dNN = sympy.Matrix([NN.diff(xi), NN.diff(eta)])
-    k = t*(beta*NN.T*NN)
-
-    print("std::vector<double> phi{")
-    for i in range(len(k)):
-        # Prepare for integration
-        k[i] = sympy.simplify(sympy.nsimplify(sympy.collect(sympy.expand(k[i]), (xi, eta, xi**2, eta**2)), rational=True))
-        k[i] = sympy.integrate(k[i], (xi, -a, a), (eta, -b, b))
-        k[i] = sympy.simplify(sympy.nsimplify(sympy.expand(k[i]), rational=True))
-
-        # Format output for use with C++
-        formatted = str(k[i])
-        formatted = re.sub(r"(delta)\*\*2", r"\1*\1", formatted)
-        formatted = re.sub(r"([abcdl]\d?)\*\*2", r"\1*\1", formatted)
-        formatted = re.sub(r"([abcdv])(\d)", r"\1[\2]", formatted)
-
-        if i > 0:
-            print(",")
-        print(formatted)
-    print("};")
-
 def make_phi_unid():
     """
         Creates the elemental Helmholtz tensor.
@@ -451,8 +376,6 @@ def main():
         "-abs": make_abs,
         "-src": make_src,
         "-h": make_h,
-        "-phir": make_phi_radial,
-        "-phig": make_phi_grad,
         "-phiu": make_phi_unid
     }
     for i in range(1, len(sys.argv)):

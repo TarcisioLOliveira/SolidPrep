@@ -521,59 +521,6 @@ def make_h():
         print(formatted)
     print("};")
 
-def make_phi_radial():
-    """
-        Creates the elemental Helmholtz tensor.
-    """
-    print("unused")
-
-def make_phi_grad():
-    """
-        Creates the elemental Helmholtz tensor.
-    """
-    init_L_symbolic()
-    beta = sympy.symbols("beta")
-    NN = sympy.Matrix([L[0], L[1], L[2], L[3]]).T
-    dNN = sympy.Matrix([NN.diff(x), NN.diff(y), NN.diff(z)])
-    k = V*(beta*NN.T*NN)
-
-    # Prepare for "integration" by defining the variables that should be
-    # collected
-    LL = []
-    for l1 in L:
-        for l2 in L:
-            LL.append(l1*l2)
-
-    LL.extend(L)
-
-    print("std::vector<double> phi{")
-    for i in range(len(k)):
-        # Prepare for integration
-        k[i] = sympy.simplify(sympy.collect(sympy.expand(k[i]), LL))
-
-        for l in L:
-            k[i] = k[i].subs(l*l, 2*6/(5*4*3*2))
-
-        for l1 in L:
-            for l2 in L:
-                k[i] = k[i].subs(l1*l2, 1*6/(5*4*3*2))
-
-        for l in L:
-            k[i] = k[i].subs(l, 6/(4*3*2))
-
-        k[i] = sympy.simplify(sympy.nsimplify(sympy.expand(k[i]), rational=True))
-
-        # Format output for use with C++
-        formatted = str(k[i])
-        formatted = re.sub(r"(delta)\*\*2", r"\1*\1", formatted)
-        formatted = re.sub(r"([abcl]\d?)\*\*2", r"\1*\1", formatted)
-        formatted = re.sub(r"([abcv])(\d)", r"\1[\2]", formatted)
-
-        if i > 0:
-            print(",")
-        print(formatted)
-    print("};")
-
 def make_phi_unid():
     """
         Creates the elemental Helmholtz tensor.
@@ -637,8 +584,6 @@ def main():
         "-abs": make_abs,
         "-src": make_src,
         "-h": make_h,
-        "-phir": make_phi_radial,
-        "-phig": make_phi_grad,
         "-phiu": make_phi_unid
     }
     for i in range(1, len(sys.argv)):
