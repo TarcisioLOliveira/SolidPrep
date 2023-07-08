@@ -48,9 +48,6 @@
 #include "finite_element/mumps_solver.hpp"
 #include "finite_element/eigen_pcg.hpp"
 #include "finite_element/petsc_pcg.hpp"
-#ifdef USE_CUDA
-    #include "finite_element/cusolver.hpp"
-#endif
 #include "meshing/gmsh.hpp"
 #include "sizing/beam_sizing.hpp"
 #include "element/GT9.hpp"
@@ -444,10 +441,6 @@ std::unique_ptr<FiniteElement> ProjectData::load_fea(const rapidjson::GenericVal
         }
 
         finite_element.reset(new finite_element::PETScPCG(b));
-#ifdef USE_CUDA
-    } else if(fea["type"] == "cusolver"){
-        finite_element.reset(new finite_element::cuSolver());
-#endif
     }
 
     return finite_element;
