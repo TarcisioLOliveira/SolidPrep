@@ -469,58 +469,6 @@ def make_src():
         print(formatted)
     print("};")
 
-def make_h():
-    """
-        Creates the elemental Helmholtz tensor.
-    """
-    init_L_symbolic()
-    NN = sympy.Matrix([L[0], L[1], L[2], L[3]]).T
-    dNN = sympy.Matrix([NN.diff(x), NN.diff(y), NN.diff(z)])
-    k = r**2*dNN.T*dNN*V
-    k2 = V*NN.T*NN
-
-    # Prepare for "integration" by defining the variables that should be
-    # collected
-    LL = []
-    for l1 in L:
-        for l2 in L:
-            LL.append(l1*l2)
-
-    LL.extend(L)
-
-    print("std::vector<double> h{")
-    for i in range(len(k)):
-        # Prepare for integration
-        k2[i] = sympy.simplify(sympy.collect(sympy.expand(k2[i]), LL, exact=True))
-
-        # The "integration" step
-        # Replace the combinations of Li*Lj with the respective constants
-        # obtained by integration.
-        # The formula is: area integral of (L1^a)*(L2^b)*(L3^c)*(L4^d)
-        #                 = (a!b!c!d!/(a+b+c+d+3)!)*6V
-        # (HUEBNER, 2001, p. 156)
-        for l in L:
-            k2[i] = k2[i].subs(l*l, 2*6/(5*4*3*2))
-
-        for l1 in L:
-            for l2 in L:
-                k2[i] = k2[i].subs(l1*l2, 1*6/(5*4*3*2))
-
-        for l in L:
-            k2[i] = k2[i].subs(l, 6/(4*3*2))
-
-        k[i] = sympy.simplify(sympy.nsimplify(sympy.expand(k[i]+k2[i]), rational=True))
-
-        # Format output for use with C++
-        formatted = str(k[i])
-        formatted = re.sub(r"([abcdrV]\d?)\*\*2", r"\1*\1", formatted)
-        formatted = re.sub(r"([abcd])(\d)", r"\1[\2]", formatted)
-
-        if i > 0:
-            print(",")
-        print(formatted)
-    print("};")
-
 def make_phi_unid():
     """
         Creates the elemental Helmholtz tensor.
@@ -583,7 +531,6 @@ def main():
         "-adv": make_adv,
         "-abs": make_abs,
         "-src": make_src,
-        "-h": make_h,
         "-phiu": make_phi_unid
     }
     for i in range(1, len(sys.argv)):

@@ -304,34 +304,6 @@ def make_src():
         print(formatted)
     print("};")
 
-def make_h():
-    """
-        Creates the elemental Helmholtz tensor.
-    """
-    init_N()
-    NN = sympy.Matrix([N[0], N[1], N[2], N[3]]).T
-    dNN = sympy.Matrix([NN.diff(xi), NN.diff(eta)])
-    k = r**2*t*dNN.T*dNN
-    k2 = t*NN.T*NN
-
-    print("std::vector<double> h{")
-    for i in range(len(k)):
-        # Prepare for integration
-        k[i] = sympy.simplify(sympy.nsimplify(sympy.collect(sympy.expand(k[i]+k2[i]), (xi, eta, xi**2, eta**2)), rational=True))
-        k[i] = sympy.integrate(k[i], (xi, -a, a), (eta, -b, b))
-        k[i] = sympy.simplify(sympy.nsimplify(sympy.expand(k[i]), rational=True))
-
-        # Format output for use with C++
-        formatted = str(k[i])
-        formatted = re.sub(r"(delta)\*\*2", r"\1*\1", formatted)
-        formatted = re.sub(r"([abcr]\d?)\*\*2", r"\1*\1", formatted)
-        formatted = re.sub(r"([abc])(\d)", r"\1[\2]", formatted)
-
-        if i > 0:
-            print(",")
-        print(formatted)
-    print("};")
-
 def make_phi_unid():
     """
         Creates the elemental Helmholtz tensor.
@@ -375,7 +347,6 @@ def main():
         "-adv": make_adv,
         "-abs": make_abs,
         "-src": make_src,
-        "-h": make_h,
         "-phiu": make_phi_unid
     }
     for i in range(1, len(sys.argv)):

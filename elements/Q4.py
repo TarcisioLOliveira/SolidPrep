@@ -268,28 +268,6 @@ def print_matrix(M, name):
         print(formatted)
     print("};")
 
-def make_h():
-    """
-        Creates the elemental Helmholtz tensor.
-    """
-    init_N_norm()
-    init_J_matrix()
-    detJ = sympy.nsimplify(sympy.expand(J.det()), rational=True)
-    invJ = J.inv()
-
-    NN = sympy.Matrix([N[0], N[1], N[2], N[3]]).T
-    dNN = sympy.Matrix([NN.diff(xi), NN.diff(eta)])
-    for i in range(len(dNN)):
-        dNN[i] = sympy.expand(sympy.nsimplify(dNN[i], rational=True))
-
-    k = (r**2)*t*dNN.T*dNN
-    k2 = t*NN.T*NN*detJ
-
-    print_matrix(J, "J")
-    print_matrix(sympy.Matrix([detJ]), "detJ")
-    print_matrix(dNN, "dN")
-    print_matrix(k2, "h2")
-
 def main():
     # Backwards compatible switch statement
     args = {
@@ -297,7 +275,6 @@ def main():
         "-DB": make_DB,
         "-B": make_B,
         "-Nf": make_Nf,
-        "-h": make_h
     }
     for i in range(1, len(sys.argv)):
         args[sys.argv[i]]()

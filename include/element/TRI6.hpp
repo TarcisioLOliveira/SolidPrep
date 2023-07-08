@@ -1,5 +1,5 @@
 /*
- *   Copyright (C) 2021 Tarcísio Ladeia de Oliveira.
+ *   Copyright (C) 2023 Tarcísio Ladeia de Oliveira.
  *
  *   This file is part of SolidPrep
  *
@@ -18,8 +18,8 @@
  *
  */
 
-#ifndef TRI3_HPP
-#define TRI3_HPP
+#ifndef TRI6_HPP
+#define TRI6_HPP
 
 #include <Eigen/Core>
 #include "element.hpp"
@@ -31,44 +31,53 @@
 
 namespace element{
 
-class TRI3 : public MeshElementCommon2DTri<TRI3>{
+class TRI6 : public MeshElementCommon2DTri<TRI6>{
     public:
-    static const size_t ORDER          = 1;
-    static const size_t GMSH_TYPE      = 2;
+    static const size_t ORDER          = 2;
+    static const size_t GMSH_TYPE      = 9;
     static const size_t NODE_DOF       = 2;
-    static const size_t NODES_PER_ELEM = 3;
+    static const size_t NODES_PER_ELEM = 6;
     static const size_t K_DIM          = NODE_DOF*NODES_PER_ELEM;
 
-    static const size_t BOUNDARY_NODES_PER_ELEM = 2;
-    static const size_t BOUNDARY_GMSH_TYPE = 1;
+    static const size_t BOUNDARY_NODES_PER_ELEM = 3;
+    static const size_t BOUNDARY_GMSH_TYPE = 8;
 
-    static const spview::defs::ElementType SPVIEW_CODE = spview::defs::TRI3;
+    static const spview::defs::ElementType SPVIEW_CODE = spview::defs::TRI6;
 
-    TRI3(ElementShape s);
+    TRI6(ElementShape s);
 
     virtual std::vector<double> get_k(const std::vector<double>& D, const double t) const override;
-    virtual std::vector<double> get_nodal_density_gradient(gp_Pnt p) const override;
-
-    virtual Eigen::MatrixXd diffusion_1dof(const double t, const std::vector<double>& A) const override;
-    virtual Eigen::MatrixXd advection_1dof(const double t, const std::vector<double>& v) const override;
-    virtual Eigen::MatrixXd absorption_1dof(const double t) const override;
-    virtual Eigen::VectorXd source_1dof(const double t) const override;
-
-    virtual std::vector<double> get_phi_unidirectional(const double t, const double beta, const double l, const std::vector<double>& v, const double vn) const override;
+    virtual std::vector<double> helmholtz_tensor(const double t, const double r) const override{}
+    virtual std::vector<double> helmholtz_vector(const double t) const override{}
+    virtual std::vector<double> get_nodal_density_gradient(gp_Pnt p) const override{}
+    virtual std::vector<double> get_phi_radial(const double t, const double beta, const double vp, const std::vector<double>& axis, const std::vector<double>& center, const double rho) const override{}
+    virtual std::vector<double> get_phi_grad(const double t, const double beta) const override{}
+    virtual std::vector<double> get_phi_unidirectional(const double t, const double beta, const double l, const std::vector<double>& v, const double vn) const override{}
 
     virtual inline std::unique_ptr<MeshElementFactory> get_element_info() const override{
-        return std::unique_ptr<MeshElementFactory>(new MeshElementFactoryImpl<TRI3>());
+        return std::unique_ptr<MeshElementFactory>(new MeshElementFactoryImpl<TRI6>());
     }
 
     private:
     virtual std::vector<double> get_DB(const std::vector<double>& D, const gp_Pnt& point) const override;
     virtual std::vector<double> get_Nf(const double t, const std::vector<gp_Pnt>& points) const override;
-    virtual std::vector<double> get_B(const gp_Pnt& point) const override;
+
+    Eigen::Matrix<double, 3, 3> get_phi_radial_base(const double x, const double y, const Eigen::Vector<double, 2>& A, const Eigen::Vector<double, 2>& C, const double t, const double beta, const double vp, const double rho) const;
 
     double a[3], b[3], c[3], delta;
 
-    inline double N(double x, double y, size_t i) const{
+    inline double L(double x, double y, size_t i) const{
         return (a[i] + b[i]*x + c[i]*y)/(2*delta);
+    }
+
+    inline double N(double x, double y, size_t i) const{
+        if(i < 3){
+            const double l = L(x,y,i);
+            return l*(2*l - 1);
+        } else {
+            size_t j = (i+1) % 3;
+            return 4*L(x,y,i)*L(x,y,j);
+        }
     }
 
     inline Eigen::Vector<double, 3> N_mat_1dof(double x, double y) const{

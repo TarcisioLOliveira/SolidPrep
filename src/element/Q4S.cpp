@@ -419,51 +419,6 @@ std::vector<double> Q4S::get_phi_unidirectional(const double t, const double bet
     return phi;
 }
 
-std::vector<double> Q4S::helmholtz_tensor(const double t, const double r) const{
-    std::vector<double> h{
-    4*a*b*t/9 + a*r*r*t/(3*b) + b*r*r*t/(3*a)
-    ,
-    2*a*b*t/9 + a*r*r*t/(6*b) - b*r*r*t/(3*a)
-    ,
-    a*b*t/9 - a*r*r*t/(6*b) - b*r*r*t/(6*a)
-    ,
-    2*a*b*t/9 - a*r*r*t/(3*b) + b*r*r*t/(6*a)
-    ,
-    2*a*b*t/9 + a*r*r*t/(6*b) - b*r*r*t/(3*a)
-    ,
-    4*a*b*t/9 + a*r*r*t/(3*b) + b*r*r*t/(3*a)
-    ,
-    2*a*b*t/9 - a*r*r*t/(3*b) + b*r*r*t/(6*a)
-    ,
-    a*b*t/9 - a*r*r*t/(6*b) - b*r*r*t/(6*a)
-    ,
-    a*b*t/9 - a*r*r*t/(6*b) - b*r*r*t/(6*a)
-    ,
-    2*a*b*t/9 - a*r*r*t/(3*b) + b*r*r*t/(6*a)
-    ,
-    4*a*b*t/9 + a*r*r*t/(3*b) + b*r*r*t/(3*a)
-    ,
-    2*a*b*t/9 + a*r*r*t/(6*b) - b*r*r*t/(3*a)
-    ,
-    2*a*b*t/9 - a*r*r*t/(3*b) + b*r*r*t/(6*a)
-    ,
-    a*b*t/9 - a*r*r*t/(6*b) - b*r*r*t/(6*a)
-    ,
-    2*a*b*t/9 + a*r*r*t/(6*b) - b*r*r*t/(3*a)
-    ,
-    4*a*b*t/9 + a*r*r*t/(3*b) + b*r*r*t/(3*a)
-    };
-
-    return h;
-}
-
-std::vector<double> Q4S::helmholtz_vector(const double t) const{
-    const double V = 4*a*b*t;
-    const double N = V/4;
-
-    return std::vector<double>(NODES_PER_ELEM, N);
-}
-
 std::vector<double> Q4S::get_nodal_density_gradient(gp_Pnt p) const{
     const gp_Pnt pnorm = this->normalize(p);
 

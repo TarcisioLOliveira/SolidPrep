@@ -412,41 +412,6 @@ std::vector<double> GT9::get_phi_unidirectional(const double t, const double bet
     return phi;
 }
 
-std::vector<double> GT9::helmholtz_tensor(const double t, const double r) const{
-    std::vector<double> h{
-    t*(3*b[0]*b[0]*r*r + 3*c[0]*c[0]*r*r + 2*delta*delta)/(12*delta)
-    ,
-    t*(9*b[0]*b[1]*r*r + 9*c[0]*c[1]*r*r + 4*delta*delta)/(36*delta)
-    ,
-    t*(9*b[0]*b[2]*r*r + 9*c[0]*c[2]*r*r + 4*delta*delta)/(36*delta)
-    ,
-    t*(9*b[0]*b[1]*r*r + 9*c[0]*c[1]*r*r + 4*delta*delta)/(36*delta)
-    ,
-    t*(3*b[1]*b[1]*r*r + 3*c[1]*c[1]*r*r + 2*delta*delta)/(12*delta)
-    ,
-    t*(9*b[1]*b[2]*r*r + 9*c[1]*c[2]*r*r + 4*delta*delta)/(36*delta)
-    ,
-    t*(9*b[0]*b[2]*r*r + 9*c[0]*c[2]*r*r + 4*delta*delta)/(36*delta)
-    ,
-    t*(9*b[1]*b[2]*r*r + 9*c[1]*c[2]*r*r + 4*delta*delta)/(36*delta)
-    ,
-    t*(3*b[2]*b[2]*r*r + 3*c[2]*c[2]*r*r + 2*delta*delta)/(12*delta)
-    };
-
-    return h;
-}
-
-std::vector<double> GT9::helmholtz_vector(const double t) const{
-    const double txdelta = this->get_volume(t);
-
-    double Ni = txdelta/NODES_PER_ELEM;
-
-    std::vector<double> NT{Ni, Ni, Ni};
-
-    return NT;
-}
-
-
 std::vector<double> GT9::get_nodal_density_gradient(gp_Pnt p) const{
     (void)p;
     
