@@ -61,23 +61,13 @@ std::vector<double> TRI3::get_k(const std::vector<double>& D, const double t) co
 
     std::vector<double> B(3*2*N, 0);
 
-    std::vector<gp_Pnt> p;
     for(size_t i = 0; i < N; ++i){
-        const auto& n = this->nodes[i];
-        p.push_back(n->point);
-    }
-
-    gp_Mat deltaM(1, p[0].X(), p[0].Y(), 1, p[1].X(), p[1].Y(), 1, p[2].X(), p[2].Y());
-
-    double Delta = 0.5*std::abs(deltaM.Determinant());
-
-    for(size_t i = 0; i < N; ++i){
-        B[i*2 + 0*2*N] = b[i]/(2*Delta);
+        B[i*2 + 0*2*N] = b[i]/(2*delta);
         B[i*2 + 1*2*N] = 0;
-        B[i*2 + 2*2*N] = c[i]/(2*Delta);
+        B[i*2 + 2*2*N] = c[i]/(2*delta);
         B[i*2 + 0*2*N + 1] = 0;
-        B[i*2 + 1*2*N + 1] = c[i]/(2*Delta);
-        B[i*2 + 2*2*N + 1] = b[i]/(2*Delta);
+        B[i*2 + 1*2*N + 1] = c[i]/(2*delta);
+        B[i*2 + 2*2*N + 1] = b[i]/(2*delta);
     }
 
     std::vector<double> DB(3*2*N, 0);
@@ -87,7 +77,7 @@ std::vector<double> TRI3::get_k(const std::vector<double>& D, const double t) co
     std::vector<double> K(2*N*2*N, 0);
     cblas_dgemm(CblasRowMajor, CblasTrans, CblasNoTrans, 2*N, 2*N, 3, 1, B.data(), 2*N, DB.data(), 2*N, 0, K.data(), 2*N);
 
-    cblas_dscal(K.size(), t*Delta, K.data(), 1);
+    cblas_dscal(K.size(), t*delta, K.data(), 1);
 
     return K;
 }
@@ -98,33 +88,13 @@ std::vector<double> TRI3::get_DB(const std::vector<double>& D, const gp_Pnt& poi
 
     std::vector<double> B(3*2*N, 0);
 
-    std::vector<gp_Pnt> p;
     for(size_t i = 0; i < N; ++i){
-        const auto& n = this->nodes[i];
-        p.push_back(n->point);
-    }
-
-    gp_Mat deltaM(1, p[0].X(), p[0].Y(), 1, p[1].X(), p[1].Y(), 1, p[2].X(), p[2].Y());
-
-    double Delta = 0.5*deltaM.Determinant();
-
-    std::vector<double> a, b, c;
-    for(size_t i = 0; i < N; ++i){
-        size_t j = (i + 1) % 3;
-        size_t k = (i + 2) % 3;
-
-        a.push_back(p[j].X()*p[k].Y() - p[k].X()*p[j].Y());
-        b.push_back(p[j].Y() - p[k].Y());
-        c.push_back(p[k].X() - p[j].X());
-    }
-
-    for(size_t i = 0; i < N; ++i){
-        B[i*2 + 0*2*N] = b[i]/(2*Delta);
+        B[i*2 + 0*2*N] = b[i]/(2*delta);
         B[i*2 + 1*2*N] = 0;
-        B[i*2 + 2*2*N] = c[i]/(2*Delta);
+        B[i*2 + 2*2*N] = c[i]/(2*delta);
         B[i*2 + 0*2*N + 1] = 0;
-        B[i*2 + 1*2*N + 1] = c[i]/(2*Delta);
-        B[i*2 + 2*2*N + 1] = b[i]/(2*Delta);
+        B[i*2 + 1*2*N + 1] = c[i]/(2*delta);
+        B[i*2 + 2*2*N + 1] = b[i]/(2*delta);
     }
 
     std::vector<double> DB(3*2*N, 0);
