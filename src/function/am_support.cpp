@@ -58,7 +58,7 @@ void AMSupport::initialize(const Optimizer* const op){
         }
     }
     for(auto& e:mesh->boundary_elements){
-        if(this->axis.Dot(e.normal) > 1e-7){
+        if(this->axis.Dot(e.normal) < -1e-7){
             for(size_t i = 0; i < num_nodes_bound; ++i){
                 this->id_mapping[e.nodes[i]->id] = -1;
             }
@@ -113,6 +113,9 @@ double AMSupport::calculate(const Optimizer* const op, const std::vector<double>
     v[0] = this->axis.X();
     v[1] = this->axis.Y();
     v[2] = this->axis.Z();
+    const std::vector<double> A{std::sqrt(v[0]*v[0] + 1e-14), 0.0, 0.0,
+                                0.0, std::sqrt(v[1]*v[1] + 1e-14), 0.0,
+                                0.0, 0.0, std::sqrt(v[2]*v[2] + 1e-14)};
     auto x_it = x.cbegin();
     auto gx_it = this->gradx.cbegin();
     std::vector<double> p(num_nodes,0);
@@ -124,7 +127,6 @@ double AMSupport::calculate(const Optimizer* const op, const std::vector<double>
         if(g->do_topopt){
             const size_t num_den = g->number_of_densities_needed();
             for(const auto& e:g->mesh){
-                auto Ne = e->source_1dof(this->mesh->thickness);
                 double beta_switch = 0;
                 double norm = 0;
 
@@ -134,8 +136,13 @@ double AMSupport::calculate(const Optimizer* const op, const std::vector<double>
                     ++gx_it;
                 }
                 norm = std::sqrt(norm + 1e-14);
-                beta_switch = this->H3(norm, 1000, 0.1)*this->H3(cos_a - beta_switch/norm, 1000, 0.0)*this->H3(beta_switch, 1000, 0.02);
-                //beta_switch = (*x_it) - this->H2(norm, 1000, 0.0)*this->H2(beta_switch/norm - cos_a, 1000, 0.0);
+                beta_switch = this->H3(beta_switch/norm - cos_a, 1000, 0.0);
+
+                const double Hx = this->H3(*x_it, 1000, 0.9);
+                const auto Ne = (1.0 - Hx)*this->beta*beta_switch*e->source_1dof(this->mesh->thickness);
+                const auto psi_e = (1.0 - Hx)*(this->beta*beta_switch*e->absorption_1dof(this->mesh->thickness) +
+                                   this->L*this->L*e->diffusion_1dof(this->mesh->thickness, A) +
+                                   this->v_norm*this->L*e->advection_1dof(this->mesh->thickness, v).transpose());
 
                 for(size_t i = 0; i < num_nodes; ++i){
                     const auto& ni = e->nodes[i];
@@ -143,10 +150,9 @@ double AMSupport::calculate(const Optimizer* const op, const std::vector<double>
                     if(id1 < 0){
                         continue;
                     }
-                    this->b[id1] -= this->beta*Ne[i]*beta_switch;
+                    this->b[id1] += Ne[i];
                 }
 
-                auto psi_e = e->get_phi_unidirectional(this->mesh->thickness, this->beta*beta_switch, this->L, v, this->v_norm);
                 for(size_t i = 0; i < num_nodes; ++i){
                     const auto& ni = e->nodes[i];
                     const long id1 = this->id_mapping[ni->id];
@@ -159,7 +165,7 @@ double AMSupport::calculate(const Optimizer* const op, const std::vector<double>
                         if(id2 < 0){
                             continue;
                         }
-                        this->Phi.coeffRef(id1, id2) += psi_e[i*num_nodes + j];
+                        this->Phi.coeffRef(id1, id2) += psi_e(i, j);
                     }
                 }
 
@@ -247,6 +253,9 @@ double AMSupport::calculate_with_gradient_nodal(const Optimizer* const op, const
     v[0] = this->axis.X();
     v[1] = this->axis.Y();
     v[2] = this->axis.Z();
+    const std::vector<double> A{std::sqrt(v[0]*v[0] + 1e-14), 0.0, 0.0,
+                                0.0, std::sqrt(v[1]*v[1] + 1e-14), 0.0,
+                                0.0, 0.0, std::sqrt(v[2]*v[2] + 1e-14)};
     auto x_it = x.cbegin();
     auto gx_it = this->gradx.cbegin();
     std::vector<double> p(num_nodes,0);
@@ -258,29 +267,37 @@ double AMSupport::calculate_with_gradient_nodal(const Optimizer* const op, const
         if(g->do_topopt){
             const size_t num_den = g->number_of_densities_needed();
             for(const auto& e:g->mesh){
-                auto Ne = e->source_1dof(this->mesh->thickness);
                 double beta_switch = 0;
                 double norm = 0;
 
                 for(size_t i = 0; i < N; ++i){
-                    beta_switch += v[i]*(*gx_it);
+                    // Opposite of gradient is the boundary normal
+                    beta_switch -= v[i]*(*gx_it);
                     norm += (*gx_it)*(*gx_it);
                     ++gx_it;
                 }
+                // TODO: fix this
+                // It is not generating for the belowmost part of the geometry,
+                // for some reason.
+                // After fixing it, update gradient calculation and remove
+                // std::fill at the end of the function.
                 norm = std::sqrt(norm + 1e-14);
-                beta_switch = this->H3(norm, 1000, 0.1)*this->H3(cos_a - beta_switch/norm, 1000, 0.0)*this->H3(beta_switch, 1000, 0.02);
-                //beta_switch = (*x_it) - this->H2(norm, 1000, 0.0)*this->H2(beta_switch/norm - cos_a, 1000, 0.0);
+                beta_switch = this->H3(beta_switch/norm - cos_a, 1000, 0.0);
 
+                const double Hx = this->H3(*x_it, 1000, 0.9);
+                const auto Ne = (1.0 - Hx)*this->beta*beta_switch*e->source_1dof(this->mesh->thickness);
+                const auto psi_e = (1.0 - Hx)*(this->beta*beta_switch*e->absorption_1dof(this->mesh->thickness) +
+                                   this->L*this->L*e->diffusion_1dof(this->mesh->thickness, A) +
+                                   this->v_norm*this->L*e->advection_1dof(this->mesh->thickness, v).transpose());
                 for(size_t i = 0; i < num_nodes; ++i){
                     const auto& ni = e->nodes[i];
                     const long id1 = this->id_mapping[ni->id];
                     if(id1 < 0){
                         continue;
                     }
-                    this->b[id1] -= this->beta*Ne[i]*beta_switch;
+                    this->b[id1] += Ne[i];
                 }
 
-                auto psi_e = e->get_phi_unidirectional(this->mesh->thickness, this->beta*beta_switch, this->L, v, this->v_norm);
                 for(size_t i = 0; i < num_nodes; ++i){
                     const auto& ni = e->nodes[i];
                     const long id1 = this->id_mapping[ni->id];
@@ -293,7 +310,7 @@ double AMSupport::calculate_with_gradient_nodal(const Optimizer* const op, const
                         if(id2 < 0){
                             continue;
                         }
-                        this->Phi.coeffRef(id1, id2) += psi_e[i*num_nodes + j];
+                        this->Phi.coeffRef(id1, id2) += psi_e(i, j);
                     }
                 }
 
@@ -301,6 +318,9 @@ double AMSupport::calculate_with_gradient_nodal(const Optimizer* const op, const
             }
         }
         ++geom_id;
+    }
+    for(long i = 0; i < this->b.size(); ++i){
+        this->Phi.coeffRef(i, i) += 1e-6;
     }
 
     if(this->first_time){
@@ -380,8 +400,8 @@ double AMSupport::calculate_with_gradient_nodal(const Optimizer* const op, const
                 double psi_tilde_sum = 0;
                 auto Ne = e->get_nodal_density_gradient(e->get_centroid());
                 double Ne_sum = e->get_volume(this->mesh->thickness);
-                std::vector<double> Me(9,0); // TODO
                 //auto Me = e->get_phi_grad(this->mesh->thickness, 1.0);
+                const auto Me = e->absorption_1dof(this->mesh->thickness);
                 auto Me_dot = 0;
                 for(size_t i = 0; i < num_nodes; ++i){
                     const auto& ni = e->nodes[i];
@@ -396,7 +416,7 @@ double AMSupport::calculate_with_gradient_nodal(const Optimizer* const op, const
                         if(id2 < 0){
                             continue;
                         }
-                        Me_psi += Me[i*num_nodes + j]*psi[id2];
+                        Me_psi += Me(i, j)*psi[id2];
                     }
                     Me_dot += psi_tilde[id1]*Me_psi;
                 }
@@ -449,6 +469,8 @@ double AMSupport::calculate_with_gradient_nodal(const Optimizer* const op, const
         }
         ++geom_id;
     }
+
+    std::fill(grad.begin(), grad.end(), 0);
 
     return result;
 }
