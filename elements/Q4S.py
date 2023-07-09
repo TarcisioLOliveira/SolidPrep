@@ -304,38 +304,6 @@ def make_src():
         print(formatted)
     print("};")
 
-def make_phi_unid():
-    """
-        Creates the elemental Helmholtz tensor.
-    """
-    init_N()
-    l = sympy.symbols("l")
-    beta = sympy.symbols("beta")
-    vv = sympy.symbols("v:2")
-    v = sympy.Matrix([vv[0], vv[1]])
-    vn = sympy.symbols("vn")
-    NN = sympy.Matrix([N[0], N[1], N[2], N[3]]).T
-    dNN = sympy.Matrix([NN.diff(xi), NN.diff(eta)])
-    k = t*(-beta*NN.T*NN - l*l*dNN.T*dNN + l*vn*NN.T*(v.T*dNN))
-
-    print("std::vector<double> phi{")
-    for i in range(len(k)):
-        # Prepare for integration
-        k[i] = sympy.simplify(sympy.nsimplify(sympy.collect(sympy.expand(k[i]), (xi, eta, xi**2, eta**2)), rational=True))
-        k[i] = sympy.integrate(k[i], (xi, -a, a), (eta, -b, b))
-        k[i] = sympy.simplify(sympy.nsimplify(sympy.expand(k[i]), rational=True))
-
-        # Format output for use with C++
-        formatted = str(k[i])
-        formatted = re.sub(r"(delta)\*\*2", r"\1*\1", formatted)
-        formatted = re.sub(r"([abcdl]\d?)\*\*2", r"\1*\1", formatted)
-        formatted = re.sub(r"([abcdv])(\d)", r"\1[\2]", formatted)
-
-        if i > 0:
-            print(",")
-        print(formatted)
-    print("};")
-
 def main():
     # Backwards compatible switch statement
     args = {
@@ -347,7 +315,6 @@ def main():
         "-adv": make_adv,
         "-abs": make_abs,
         "-src": make_src,
-        "-phiu": make_phi_unid
     }
     for i in range(1, len(sys.argv)):
         args[sys.argv[i]]()

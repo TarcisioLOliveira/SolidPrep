@@ -455,19 +455,6 @@ class MeshElement : public Element{
     virtual Eigen::VectorXd source_1dof(const double t) const = 0;
 
     /**
-     * Gets the elemental matrix for radial machining constraint.
-     *
-     * @param t Geometry thickness.
-     * @param l L constant
-     * @param beta Beta constant/function
-     * @param v Direction vector (unit)
-     * @param vn Velocity norm
-     *
-     * @return Elemental matrix
-     */
-    virtual std::vector<double> get_phi_unidirectional(const double t, const double beta, const double l, const std::vector<double>& v, const double vn) const = 0;
-
-    /**
      * Returns an element node.
      *
      * @param node Number of the node within the element's list of nodes.

@@ -179,30 +179,6 @@ std::vector<double> TRI3::get_Nf(const double t, const std::vector<gp_Pnt>& poin
     return Nf;
 }
 
-std::vector<double> TRI3::get_phi_unidirectional(const double t, const double beta, const double l, const std::vector<double>& v, const double vn) const{
-    std::vector<double> phi{
-    t*(-9*b[0]*b[0]*l*l - 9*c[0]*c[0]*l*l + 2*delta*(3*b[0]*l*v[0]*vn - 2*beta*delta + 3*c[0]*l*v[1]*vn))/(36*delta)
-    ,
-    t*(-9*b[0]*b[1]*l*l - 9*c[0]*c[1]*l*l + 2*delta*(3*b[1]*l*v[0]*vn - 2*beta*delta + 3*c[1]*l*v[1]*vn))/(36*delta)
-    ,
-    t*(-9*b[0]*b[2]*l*l - 9*c[0]*c[2]*l*l + 2*delta*(3*b[2]*l*v[0]*vn - 2*beta*delta + 3*c[2]*l*v[1]*vn))/(36*delta)
-    ,
-    t*(-9*b[0]*b[1]*l*l - 9*c[0]*c[1]*l*l + 2*delta*(3*b[0]*l*v[0]*vn - 2*beta*delta + 3*c[0]*l*v[1]*vn))/(36*delta)
-    ,
-    t*(-9*b[1]*b[1]*l*l - 9*c[1]*c[1]*l*l + 2*delta*(3*b[1]*l*v[0]*vn - 2*beta*delta + 3*c[1]*l*v[1]*vn))/(36*delta)
-    ,
-    t*(-9*b[1]*b[2]*l*l - 9*c[1]*c[2]*l*l + 2*delta*(3*b[2]*l*v[0]*vn - 2*beta*delta + 3*c[2]*l*v[1]*vn))/(36*delta)
-    ,
-    t*(-9*b[0]*b[2]*l*l - 9*c[0]*c[2]*l*l + 2*delta*(3*b[0]*l*v[0]*vn - 2*beta*delta + 3*c[0]*l*v[1]*vn))/(36*delta)
-    ,
-    t*(-9*b[1]*b[2]*l*l - 9*c[1]*c[2]*l*l + 2*delta*(3*b[1]*l*v[0]*vn - 2*beta*delta + 3*c[1]*l*v[1]*vn))/(36*delta)
-    ,
-    t*(-9*b[2]*b[2]*l*l - 9*c[2]*c[2]*l*l + 2*delta*(3*b[2]*l*v[0]*vn - 2*beta*delta + 3*c[2]*l*v[1]*vn))/(36*delta)
-    };
-
-    return phi;
-}
-
 std::vector<double> TRI3::get_nodal_density_gradient(gp_Pnt p) const{
     (void)p;
     

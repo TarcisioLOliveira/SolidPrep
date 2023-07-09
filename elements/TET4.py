@@ -469,57 +469,6 @@ def make_src():
         print(formatted)
     print("};")
 
-def make_phi_unid():
-    """
-        Creates the elemental Helmholtz tensor.
-    """
-    init_L_symbolic()
-    l = sympy.symbols("l")
-    beta = sympy.symbols("beta")
-    rho = sympy.symbols("rho")
-    vv = sympy.symbols("v:3")
-    v = sympy.Matrix([vv[0], vv[1], vv[2]])
-    vn = sympy.symbols("vn")
-    NN = sympy.Matrix([L[0], L[1], L[2], L[3]]).T
-    dNN = sympy.Matrix([NN.diff(x), NN.diff(y), NN.diff(z)])
-    k = V*(-beta*NN.T*NN - l*l*dNN.T*dNN + l*vn*NN.T*(v.T*dNN))
-
-    # Prepare for "integration" by defining the variables that should be
-    # collected
-    LL = []
-    for l1 in L:
-        for l2 in L:
-            LL.append(l1*l2)
-
-    LL.extend(L)
-
-    print("std::vector<double> phi{")
-    for i in range(len(k)):
-        # Prepare for integration
-        k[i] = sympy.simplify(sympy.collect(sympy.expand(k[i]), LL))
-
-        for l in L:
-            k[i] = k[i].subs(l*l, 2*6/(5*4*3*2))
-
-        for l1 in L:
-            for l2 in L:
-                k[i] = k[i].subs(l1*l2, 1*6/(5*4*3*2))
-
-        for l in L:
-            k[i] = k[i].subs(l, 6/(4*3*2))
-
-        k[i] = sympy.simplify(sympy.nsimplify(sympy.expand(k[i]), rational=True))
-
-        # Format output for use with C++
-        formatted = str(k[i])
-        formatted = re.sub(r"([abcdlV]\d?)\*\*2", r"\1*\1", formatted)
-        formatted = re.sub(r"([abcdv])(\d)", r"\1[\2]", formatted)
-
-        if i > 0:
-            print(",")
-        print(formatted)
-    print("};")
-
 def main():
     # Backwards compatible switch statement
     args = {
@@ -531,7 +480,6 @@ def main():
         "-adv": make_adv,
         "-abs": make_abs,
         "-src": make_src,
-        "-phiu": make_phi_unid
     }
     for i in range(1, len(sys.argv)):
         args[sys.argv[i]]()

@@ -708,43 +708,6 @@ std::vector<double> TET4::get_Nf(const double t, const std::vector<gp_Pnt>& poin
     return Nf;
 }
 
-std::vector<double> TET4::get_phi_unidirectional(const double t, const double beta, const double l, const std::vector<double>& v, const double vn) const{
-    std::vector<double> phi{
-    (V*(-3*V*beta + 2*b[0]*l*v[0]*vn + 2*c[0]*l*v[1]*vn + 2*d[0]*l*v[2]*vn)/48 - b[0]*b[0]*l*l/36 - c[0]*c[0]*l*l/36 - d[0]*d[0]*l*l/36)/V
-    ,
-    (V*(-3*V*beta + 2*b[1]*l*v[0]*vn + 2*c[1]*l*v[1]*vn + 2*d[1]*l*v[2]*vn)/48 - b[0]*b[1]*l*l/36 - c[0]*c[1]*l*l/36 - d[0]*d[1]*l*l/36)/V
-    ,
-    (V*(-3*V*beta + 2*b[2]*l*v[0]*vn + 2*c[2]*l*v[1]*vn + 2*d[2]*l*v[2]*vn)/48 - b[0]*b[2]*l*l/36 - c[0]*c[2]*l*l/36 - d[0]*d[2]*l*l/36)/V
-    ,
-    (V*(-3*V*beta + 2*b[3]*l*v[0]*vn + 2*c[3]*l*v[1]*vn + 2*d[3]*l*v[2]*vn)/48 - b[0]*b[3]*l*l/36 - c[0]*c[3]*l*l/36 - d[0]*d[3]*l*l/36)/V
-    ,
-    (V*(-3*V*beta + 2*b[0]*l*v[0]*vn + 2*c[0]*l*v[1]*vn + 2*d[0]*l*v[2]*vn)/48 - b[0]*b[1]*l*l/36 - c[0]*c[1]*l*l/36 - d[0]*d[1]*l*l/36)/V
-    ,
-    (V*(-3*V*beta + 2*b[1]*l*v[0]*vn + 2*c[1]*l*v[1]*vn + 2*d[1]*l*v[2]*vn)/48 - b[1]*b[1]*l*l/36 - c[1]*c[1]*l*l/36 - d[1]*d[1]*l*l/36)/V
-    ,
-    (V*(-3*V*beta + 2*b[2]*l*v[0]*vn + 2*c[2]*l*v[1]*vn + 2*d[2]*l*v[2]*vn)/48 - b[1]*b[2]*l*l/36 - c[1]*c[2]*l*l/36 - d[1]*d[2]*l*l/36)/V
-    ,
-    (V*(-3*V*beta + 2*b[3]*l*v[0]*vn + 2*c[3]*l*v[1]*vn + 2*d[3]*l*v[2]*vn)/48 - b[1]*b[3]*l*l/36 - c[1]*c[3]*l*l/36 - d[1]*d[3]*l*l/36)/V
-    ,
-    (V*(-3*V*beta + 2*b[0]*l*v[0]*vn + 2*c[0]*l*v[1]*vn + 2*d[0]*l*v[2]*vn)/48 - b[0]*b[2]*l*l/36 - c[0]*c[2]*l*l/36 - d[0]*d[2]*l*l/36)/V
-    ,
-    (V*(-3*V*beta + 2*b[1]*l*v[0]*vn + 2*c[1]*l*v[1]*vn + 2*d[1]*l*v[2]*vn)/48 - b[1]*b[2]*l*l/36 - c[1]*c[2]*l*l/36 - d[1]*d[2]*l*l/36)/V
-    ,
-    (V*(-3*V*beta + 2*b[2]*l*v[0]*vn + 2*c[2]*l*v[1]*vn + 2*d[2]*l*v[2]*vn)/48 - b[2]*b[2]*l*l/36 - c[2]*c[2]*l*l/36 - d[2]*d[2]*l*l/36)/V
-    ,
-    (V*(-3*V*beta + 2*b[3]*l*v[0]*vn + 2*c[3]*l*v[1]*vn + 2*d[3]*l*v[2]*vn)/48 - b[2]*b[3]*l*l/36 - c[2]*c[3]*l*l/36 - d[2]*d[3]*l*l/36)/V
-    ,
-    (V*(-3*V*beta + 2*b[0]*l*v[0]*vn + 2*c[0]*l*v[1]*vn + 2*d[0]*l*v[2]*vn)/48 - b[0]*b[3]*l*l/36 - c[0]*c[3]*l*l/36 - d[0]*d[3]*l*l/36)/V
-    ,
-    (V*(-3*V*beta + 2*b[1]*l*v[0]*vn + 2*c[1]*l*v[1]*vn + 2*d[1]*l*v[2]*vn)/48 - b[1]*b[3]*l*l/36 - c[1]*c[3]*l*l/36 - d[1]*d[3]*l*l/36)/V
-    ,
-    (V*(-3*V*beta + 2*b[2]*l*v[0]*vn + 2*c[2]*l*v[1]*vn + 2*d[2]*l*v[2]*vn)/48 - b[2]*b[3]*l*l/36 - c[2]*c[3]*l*l/36 - d[2]*d[3]*l*l/36)/V
-    ,
-    (V*(-3*V*beta + 2*b[3]*l*v[0]*vn + 2*c[3]*l*v[1]*vn + 2*d[3]*l*v[2]*vn)/48 - b[3]*b[3]*l*l/36 - c[3]*c[3]*l*l/36 - d[3]*d[3]*l*l/36)/V
-    };
-    return phi;
-}
-
 std::vector<double> TET4::get_nodal_density_gradient(gp_Pnt p) const{
     (void)p;
     
