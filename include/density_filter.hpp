@@ -43,37 +43,25 @@ class DensityFilter{
      * Used when the function gradient can be calculated by differentiating
      * with regards to filtered density.
      */
-    virtual void filter_gradient(const std::vector<double>& df, std::vector<double>& new_df){
-        (void) df;
-        (void) new_df; 
-    }
+    virtual void filter_gradient(const std::vector<double>& df, std::vector<double>& new_df) = 0;
 
     /**
      * Used when the function gradient must be calculated by differentiating
      * with regards to nodal densities, e.g. when the function involves using
      * density gradient or the problem uses nodal densities.
      */
-    virtual void filter_gradient_nodal(const std::vector<double>& df, std::vector<double>& new_df){
-        (void) df;
-        (void) new_df; 
-        logger::log_assert(false, logger::ERROR, "chosen density filter does not support nodal densities");
-    }
+    virtual void filter_gradient_nodal(const std::vector<double>& df, std::vector<double>& new_df) = 0;
 
-    virtual const std::vector<double>& get_nodal_densities() const{
-        logger::log_assert(false, logger::ERROR, "chosen density filter does not support nodal densities");
-    }
+    virtual const std::vector<double>& get_nodal_densities() const = 0;
 
-    virtual void get_gradient(std::vector<double>& gradx) const{
-        (void)gradx;
-        logger::log_assert(false, logger::ERROR, "chosen density filter does not support nodal densities");
+    virtual void get_gradient(std::vector<double>& gradx) const = 0;
+
+    virtual size_t get_nodal_density_size() const{
+        return 0;
     }
 
     const inline std::map<std::pair<size_t, size_t>, size_t>& get_id_mapping() const{
         return this->id_mapping;
-    }
-
-    virtual size_t get_nodal_density_size() const{
-        return 0;
     }
 
     protected:

@@ -37,6 +37,21 @@ class Convolution : public DensityFilter{
 
     virtual void filter_gradient(const std::vector<double>& df, std::vector<double>& new_df) override;
 
+    virtual void filter_gradient_nodal(const std::vector<double>& df, std::vector<double>& new_df) override{
+        (void) df;
+        (void) new_df; 
+        logger::log_assert(false, logger::ERROR, "chosen density filter does not support nodal densities");
+    }
+
+    virtual const std::vector<double>& get_nodal_densities() const override{
+        logger::log_assert(false, logger::ERROR, "chosen density filter does not support nodal densities");
+        return this->p; // Stop warning (this is unreachable)
+    }
+
+    virtual void get_gradient(std::vector<double>& gradx) const override{
+        (void)gradx;
+        logger::log_assert(false, logger::ERROR, "chosen density filter does not support nodal densities");
+    }
     private:
     const double radius;
     std::vector<std::vector<size_t>> neighbors;
