@@ -34,7 +34,6 @@ void Averaging::initialize(const Meshing* const mesh, const size_t x_size){
     for(const auto& g:mesh->geometries){
         if(g->do_topopt){
             const size_t num_den = g->number_of_densities_needed();
-            // this->id_mapping.reserve(this->id_mapping.size()+g->mesh.size());
             for(const auto& e:g->mesh){
                 for(size_t i = 0; i < num_nodes; ++i){
                     const auto& n = e->nodes[i];
@@ -109,7 +108,7 @@ void Averaging::filter_densities(const std::vector<double>& x, std::vector<doubl
     for(const auto& g:mesh->geometries){
         if(g->do_topopt){
             const size_t num_den = g->number_of_densities_needed();
-            for(const auto& e:g->mesh){
+            for(size_t it = 0; it < g->mesh.size(); ++it){
                 *newx_it = 0;
                 for(size_t i = 0; i < num_nodes; ++i){
                     for(size_t j = 0; j < num_den; ++j){
@@ -159,7 +158,7 @@ void Averaging::filter_gradient(const std::vector<double>& df, std::vector<doubl
     for(const auto& g:mesh->geometries){
         if(g->do_topopt){
             const size_t num_den = g->number_of_densities_needed();
-            for(const auto& e:g->mesh){
+            for(size_t it = 0; it < g->mesh.size(); ++it){
                 *newx_it = 0;
                 for(size_t i = 0; i < num_nodes; ++i){
                     for(size_t j = 0; j < num_den; ++j){
@@ -191,7 +190,7 @@ void Averaging::filter_gradient_nodal(const std::vector<double>& df, std::vector
     for(const auto& g:mesh->geometries){
         if(g->do_topopt){
             const size_t num_den = g->number_of_densities_needed();
-            for(const auto& e:g->mesh){
+            for(size_t it = 0; it < g->mesh.size(); ++it){
                 *newx_it = 0;
                 for(size_t i = 0; i < num_nodes; ++i){
                     for(size_t j = 0; j < num_den; ++j){
@@ -210,7 +209,6 @@ void Averaging::filter_gradient_nodal(const std::vector<double>& df, std::vector
 
 void Averaging::get_gradient(std::vector<double>& gradx) const{
     const size_t num_nodes = mesh->elem_info->get_nodes_per_element();
-    const double t = this->mesh->thickness;
     size_t N = 0;
     if(this->mesh->elem_info->get_problem_type() == utils::PROBLEM_TYPE_2D){
         N = 2;
@@ -226,10 +224,8 @@ void Averaging::get_gradient(std::vector<double>& gradx) const{
             const size_t num_den = g->number_of_densities_needed();
             for(const auto& e:g->mesh){
                 auto grad = e->get_nodal_density_gradient(e->get_centroid());
-                //const double V = e->get_volume(t)/num_nodes;
                 for(size_t j = 0; j < num_den; ++j){
                     for(size_t i = 0; i < num_nodes; ++i){
-                        //nx[i] = V*this->nodal_densities[this->id_mapping.at(std::make_pair(geom_id, n->id))+j];
                         nx[i] = this->nodal_densities[*(id_it+i)+j];
                     }
                     for(size_t i = 0; i < N; ++i){
