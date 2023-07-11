@@ -55,6 +55,8 @@ void Averaging::initialize(const Meshing* const mesh, const size_t x_size){
     this->nodal_densities.resize(len,0);
     this->nodal_gradient.resize(len,0);
     this->D.resize(len,0);
+    this->id_mapping_linear.resize(x_size*num_nodes);
+    auto id_it = id_mapping_linear.begin();
     for(const auto& g:mesh->geometries){
         if(g->do_topopt){
             const size_t num_den = g->number_of_densities_needed();
@@ -62,14 +64,17 @@ void Averaging::initialize(const Meshing* const mesh, const size_t x_size){
                 const double V = e->get_volume(t)/num_nodes;
                 for(size_t i = 0; i < num_nodes; ++i){
                     const auto& n = e->nodes[i];
+                    *id_it = this->id_mapping[std::make_pair(geom_id, n->id)];
                     for(size_t j = 0; j < num_den; ++j){
-                        this->D[this->id_mapping[std::make_pair(geom_id, n->id)]+j] += V;
+                        this->D[*id_it+j] += V;
                     }
+                    ++id_it;
                 }
             }
         }
         ++geom_id;
     }
+    this->id_mapping.clear();
 }
 
 void Averaging::filter_densities(const std::vector<double>& x, std::vector<double>& new_x){
@@ -80,38 +85,37 @@ void Averaging::filter_densities(const std::vector<double>& x, std::vector<doubl
     }
     std::fill(this->nodal_densities.begin(), this->nodal_densities.end(), 0);
     auto x_it = x.cbegin();
-    size_t geom_id = 0;
+    auto id_it = id_mapping_linear.cbegin();
     for(const auto& g:mesh->geometries){
         if(g->do_topopt){
             const size_t num_den = g->number_of_densities_needed();
             for(const auto& e:g->mesh){
                 const double V = e->get_volume(t)/num_nodes;
                 for(size_t i = 0; i < num_nodes; ++i){
-                    const auto& n = e->nodes[i];
                     for(size_t j = 0; j < num_den; ++j){
-                        this->nodal_densities[this->id_mapping[std::make_pair(geom_id, n->id)]+j] += V*(*(x_it+j));
+                        this->nodal_densities[*id_it+j] += V*(*(x_it+j));
                     }
+                    ++id_it;
                 }
                 x_it += num_den;
             }
         }
-        ++geom_id;
     }
     for(size_t i = 0; i < this->nodal_densities.size(); ++i){
         this->nodal_densities[i] /= this->D[i];
     }
-    geom_id = 0;
     auto newx_it = new_x.begin();
+    id_it = id_mapping_linear.cbegin();
     for(const auto& g:mesh->geometries){
         if(g->do_topopt){
             const size_t num_den = g->number_of_densities_needed();
             for(const auto& e:g->mesh){
                 *newx_it = 0;
                 for(size_t i = 0; i < num_nodes; ++i){
-                    const auto& n = e->nodes[i];
                     for(size_t j = 0; j < num_den; ++j){
-                        *(newx_it + j) += this->nodal_densities[this->id_mapping[std::make_pair(geom_id, n->id)]+j];
+                        *(newx_it + j) += this->nodal_densities[*id_it+j];
                     }
+                    ++id_it;
                 }
                 for(size_t j = 0; j < num_den; ++j){
                     *newx_it /= num_nodes;
@@ -119,7 +123,6 @@ void Averaging::filter_densities(const std::vector<double>& x, std::vector<doubl
                 }
             }
         }
-        ++geom_id;
     }
 }
 
@@ -132,38 +135,37 @@ void Averaging::filter_gradient(const std::vector<double>& df, std::vector<doubl
     }
     std::fill(this->nodal_gradient.begin(), this->nodal_gradient.end(), 0);
     auto x_it = df.cbegin();
-    size_t geom_id = 0;
+    auto id_it = id_mapping_linear.cbegin();
     for(const auto& g:mesh->geometries){
         if(g->do_topopt){
             const size_t num_den = g->number_of_densities_needed();
             for(const auto& e:g->mesh){
                 const double V = e->get_volume(t)/num_nodes;
                 for(size_t i = 0; i < num_nodes; ++i){
-                    const auto& n = e->nodes[i];
                     for(size_t j = 0; j < num_den; ++j){
-                        this->nodal_gradient[this->id_mapping[std::make_pair(geom_id, n->id)]+j] += V*(*(x_it+j));
+                        this->nodal_gradient[*id_it+j] += V*(*(x_it+j));
                     }
+                    ++id_it;
                 }
                 x_it += num_den;
             }
         }
-        ++geom_id;
     }
     for(size_t i = 0; i < this->nodal_gradient.size(); ++i){
         this->nodal_gradient[i] /= this->D[i];
     }
-    geom_id = 0;
     auto newx_it = new_df.begin();
+    id_it = id_mapping_linear.cbegin();
     for(const auto& g:mesh->geometries){
         if(g->do_topopt){
             const size_t num_den = g->number_of_densities_needed();
             for(const auto& e:g->mesh){
                 *newx_it = 0;
                 for(size_t i = 0; i < num_nodes; ++i){
-                    const auto& n = e->nodes[i];
                     for(size_t j = 0; j < num_den; ++j){
-                        *(newx_it+j) += this->nodal_gradient[this->id_mapping[std::make_pair(geom_id, n->id)]+j];
+                        *(newx_it+j) += this->nodal_gradient[*id_it+j];
                     }
+                    ++id_it;
                 }
                 for(size_t j = 0; j < num_den; ++j){
                     *newx_it /= num_nodes;
@@ -171,7 +173,6 @@ void Averaging::filter_gradient(const std::vector<double>& df, std::vector<doubl
                 }
             }
         }
-        ++geom_id;
     }
 }
 
@@ -185,18 +186,18 @@ void Averaging::filter_gradient_nodal(const std::vector<double>& df, std::vector
     for(size_t i = 0; i < this->nodal_gradient.size(); ++i){
         this->nodal_gradient[i] /= this->D[i];
     }
-    size_t geom_id = 0;
     auto newx_it = new_df.begin();
+    auto id_it = id_mapping_linear.cbegin();
     for(const auto& g:mesh->geometries){
         if(g->do_topopt){
             const size_t num_den = g->number_of_densities_needed();
             for(const auto& e:g->mesh){
                 *newx_it = 0;
                 for(size_t i = 0; i < num_nodes; ++i){
-                    const auto& n = e->nodes[i];
                     for(size_t j = 0; j < num_den; ++j){
-                        *(newx_it+j) += this->nodal_gradient[this->id_mapping[std::make_pair(geom_id, n->id)]+j];
+                        *(newx_it+j) += this->nodal_gradient[*id_it+j];
                     }
+                    ++id_it;
                 }
                 for(size_t j = 0; j < num_den; ++j){
                     *newx_it /= num_nodes;
@@ -204,7 +205,6 @@ void Averaging::filter_gradient_nodal(const std::vector<double>& df, std::vector
                 }
             }
         }
-        ++geom_id;
     }
 }
 
@@ -217,10 +217,10 @@ void Averaging::get_gradient(std::vector<double>& gradx) const{
     } else if(this->mesh->elem_info->get_problem_type() == utils::PROBLEM_TYPE_3D){
         N = 3;
     }
-    size_t geom_id = 0;
     std::fill(gradx.begin(), gradx.end(), 0);
     std::vector<double> nx(num_nodes,0);
     auto g_it = gradx.begin();
+    auto id_it = id_mapping_linear.cbegin();
     for(const auto& g:mesh->geometries){
         if(g->do_topopt){
             const size_t num_den = g->number_of_densities_needed();
@@ -229,9 +229,8 @@ void Averaging::get_gradient(std::vector<double>& gradx) const{
                 //const double V = e->get_volume(t)/num_nodes;
                 for(size_t j = 0; j < num_den; ++j){
                     for(size_t i = 0; i < num_nodes; ++i){
-                        const auto& n = e->nodes[i];
                         //nx[i] = V*this->nodal_densities[this->id_mapping.at(std::make_pair(geom_id, n->id))+j];
-                        nx[i] = this->nodal_densities[this->id_mapping.at(std::make_pair(geom_id, n->id))+j];
+                        nx[i] = this->nodal_densities[*(id_it+i)+j];
                     }
                     for(size_t i = 0; i < N; ++i){
                         for(size_t k = 0; k < num_nodes; ++k){
@@ -240,9 +239,9 @@ void Averaging::get_gradient(std::vector<double>& gradx) const{
                         ++g_it;
                     }
                 }
+                id_it += num_nodes;
             }
         }
-        ++geom_id;
     }
 }
 
