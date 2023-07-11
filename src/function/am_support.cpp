@@ -384,7 +384,7 @@ double AMSupport::calculate_with_gradient_nodal(const Optimizer* const op, const
         }
     }
 
-    Eigen::VectorXd psi_tilde = this->solver.solve(this->b_grad);
+    Eigen::VectorXd psi_tilde = this->solver.adjoint().solve(this->b_grad);
 
     std::fill(grad.begin(), grad.end(), 0);
 
