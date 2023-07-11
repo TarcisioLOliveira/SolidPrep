@@ -339,7 +339,7 @@ double OmniMachining::calculate_with_gradient(const Optimizer* const op, const s
         }
     }
 
-    Eigen::VectorXd psi_tilde = this->solver.solve(this->b_grad);
+    Eigen::VectorXd psi_tilde = this->solver.adjoint().solve(this->b_grad);
 
     x_it = x.cbegin();
     auto g_it = grad.begin();
