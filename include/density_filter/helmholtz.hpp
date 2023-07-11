@@ -30,11 +30,23 @@ class Helmholtz : public DensityFilter{
     Helmholtz(const double radius);
     virtual ~Helmholtz() = default;
 
-    virtual void initialize(const Meshing* const mesh, const size_t x_size);
+    virtual void initialize(const Meshing* const mesh, const size_t x_size) override;
 
-    virtual void filter_densities(const std::vector<double>& x, std::vector<double>& new_x);
+    virtual void filter_densities(const std::vector<double>& x, std::vector<double>& new_x) override;
 
-    virtual void filter_gradient(const std::vector<double>& df, std::vector<double>& new_df);
+    virtual void filter_gradient(const std::vector<double>& df, std::vector<double>& new_df) override;
+
+    virtual void filter_gradient_nodal(const std::vector<double>& df, std::vector<double>& new_df) override;
+
+    virtual void get_gradient(std::vector<double>& gradx) const override;
+
+    virtual const std::vector<double>& get_nodal_densities() const override{
+        return this->nodal_densities;
+    }
+
+    virtual size_t get_nodal_density_size() const override{
+        return this->nodal_densities.size();
+    }
 
     private:
     const double radius;
@@ -43,6 +55,9 @@ class Helmholtz : public DensityFilter{
     std::vector<double> NN;
     std::vector<double> nodal_densities;
     std::vector<double> nodal_gradient;
+    std::vector<double> diff;
+    std::vector<double> Hgrad;
+    std::vector<long> id_mapping_linear;
     const Meshing* mesh;
 };
 
