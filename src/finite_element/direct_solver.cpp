@@ -42,12 +42,7 @@ std::vector<double> DirectSolver::calculate_displacements(const Meshing* const m
     const size_t& N = this->gsm.get_N();
     std::vector<double>& K = this->gsm.get_K();
 
-    if(W == 0 || N == 0){
-        this->gsm.calculate_dimensions(mesh, load);
-    }
-
     if(this->current_step == 0){
-
         this->gsm.generate(mesh, density, pc, psi);
 
         logger::quick_log("Decomposing...");

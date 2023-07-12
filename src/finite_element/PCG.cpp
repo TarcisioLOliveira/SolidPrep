@@ -42,16 +42,15 @@ std::vector<double> PCG::calculate_displacements(const Meshing* const mesh, std:
     const size_t& N = this->gsm.get_N();
     std::vector<double>& K = this->gsm.get_K();
 
-    if(W == 0 || N == 0){
-        this->gsm.calculate_dimensions(mesh, load);
-        for(auto& u:this->displacement){
-            u.resize(W,0);
-        }
-        this->P.resize(W, 0);
-    }
-
     if(this->current_step == 0){
         this->gsm.generate(mesh, density, pc, psi);
+        if(this->first_time){
+            for(auto& u:this->displacement){
+                u.resize(W,0);
+            }
+            this->P.resize(W, 0);
+            this->first_time = false;
+        }
         this->generate_P();
     }
     logger::quick_log("Done.");

@@ -22,18 +22,15 @@
 #define LAPACK_DENSE_SYMMETRIC_BANDED_HPP
 
 #include "meshing.hpp"
+#include "global_stiffness_matrix.hpp"
 
 namespace global_stiffness_matrix{
 
-class LAPACKDenseSymmetricBanded{
+class LAPACKDenseSymmetricBanded : public GlobalStiffnessMatrix{
     public:
-    const double K_MIN = 1e-6;
-
     virtual ~LAPACKDenseSymmetricBanded() = default;
 
-    virtual void calculate_dimensions(const Meshing * const mesh, const std::vector<double>& load);
-
-    virtual void generate(const Meshing * const mesh, const std::vector<double>& density, const double pc, const double psi);
+    virtual void generate(const Meshing * const mesh, const std::vector<double>& density, const double pc, const double psi) override;
 
     inline std::vector<double>& get_K(){
         return K;
@@ -48,28 +45,28 @@ class LAPACKDenseSymmetricBanded{
     inline const size_t& get_N() const{
         return N;
     }
-    inline bool calculated_dimensions() const{
-        return recalculated_dimensions;
-    }
 
     protected:
     std::vector<double> K = std::vector<double>();
     size_t W = 0;
     size_t N = 0;
-    bool recalculated_dimensions = false;
+    bool first_time = true;
 
-    virtual void add_geometry(const Meshing * const mesh, const Geometry * const g);
-
-    virtual void add_geometry(const Meshing * const mesh, const Geometry * const g, std::vector<double>::const_iterator& rho, const double pc, const double psi);
-
-    inline void insert_element_matrix(const std::vector<double>& k, const std::vector<long>& pos, const size_t n){
+    inline virtual void insert_element_matrix(const std::vector<double>& k, const std::vector<long>& pos) override{
         const size_t w = pos.size();
         for(size_t i = 0; i < w; ++i){
             for(size_t j = i; j < w; ++j){
                 if(pos[i] > -1 && pos[j] > -1){
-                    this->K[utils::to_band(pos[i], pos[j], n)] += k[w*i + j];
+                    this->K[utils::to_band(pos[i], pos[j], this->N)] += k[w*i + j];
                 }
             }
+        }
+    }
+    inline virtual void add_to_matrix(size_t i, size_t j, double val) override{
+        if(j <= i){
+            this->K[utils::to_band(i, j, this->N)] += val;
+        } else {
+            this->K[utils::to_band(j, i, this->N)] += val;
         }
     }
 };

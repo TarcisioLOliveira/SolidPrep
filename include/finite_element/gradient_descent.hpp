@@ -44,6 +44,7 @@ class GradientDescent : public FiniteElement{
     virtual std::vector<double> calculate_displacements(const Meshing* const mesh, std::vector<double> load, const std::vector<double>& density = std::vector<double>(), double pc = 3, double psi = 0.1) override;
 
     private:
+    bool first_time = true;
     const double eps;
     std::vector<std::vector<double>> displacement;
     Solver solver;
