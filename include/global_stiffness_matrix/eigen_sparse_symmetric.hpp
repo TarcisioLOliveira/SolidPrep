@@ -21,20 +21,20 @@
 #ifndef EIGEN_SPARSE_SYMMETRIC_HPP
 #define EIGEN_SPARSE_SYMMETRIC_HPP
 
-#include "meshing.hpp"
 #include <Eigen/SparseCore>
 #include <Eigen/src/SparseCore/SparseMatrix.h>
+#include "meshing.hpp"
+#include "global_stiffness_matrix.hpp"
 
 namespace global_stiffness_matrix{
 
-class EigenSparseSymmetric{
+class EigenSparseSymmetric : public GlobalStiffnessMatrix{
     public:
-    const double K_MIN = 1e-6;
     typedef Eigen::SparseMatrix<double, Eigen::ColMajor, std::ptrdiff_t> Mat;
 
     virtual ~EigenSparseSymmetric() = default;
 
-    virtual void generate(const Meshing * const mesh, const std::vector<double>& density, const double pc, const double psi);
+    virtual void generate(const Meshing * const mesh, const std::vector<double>& density, const double pc, const double psi) override;
 
     Mat& get_K() {
         return K;
@@ -43,16 +43,8 @@ class EigenSparseSymmetric{
     protected:
     bool first_time = true;
     Mat K;
-    size_t W, N;
 
-
-    virtual void calculate_dimensions(const Meshing * const mesh, const std::vector<double>& load);
-
-    virtual void add_geometry(const Meshing * const mesh, const Geometry * const g);
-
-    virtual void add_geometry(const Meshing * const mesh, const Geometry * const g, std::vector<double>::const_iterator& rho, const double pc, const double psi);
-
-    inline void insert_element_matrix(const std::vector<double>& k, const std::vector<long>& pos){
+    inline void insert_element_matrix(const std::vector<double>& k, const std::vector<long>& pos) override{
         const size_t w = pos.size();
         for(size_t i = 0; i < w; ++i){
             for(size_t j = i; j < w; ++j){
@@ -65,6 +57,9 @@ class EigenSparseSymmetric{
                 }
             }
         }
+    }
+    inline virtual void add_to_matrix(size_t i, size_t j, double val) override{
+        K.coeffRef(i, j) += val;
     }
 };
 
