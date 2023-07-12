@@ -33,13 +33,13 @@ void Helmholtz::initialize(const Meshing* const mesh, const size_t x_size){
     const size_t num_nodes = mesh->elem_info->get_nodes_per_element();
     this->mesh = mesh;
     const double t = this->mesh->thickness;
+    std::map<std::pair<size_t, size_t>, size_t> id_mapping;
 
     this->NN_kd = 0;
     size_t geom_id = 0;
     for(const auto& g:mesh->geometries){
         if(g->do_topopt){
             const size_t num_den = g->number_of_densities_needed();
-            // this->id_mapping.reserve(this->id_mapping.size()+g->mesh.size());
             for(const auto& e:g->mesh){
                 size_t top = 0;
                 size_t bot = std::numeric_limits<size_t>::max();
@@ -51,7 +51,7 @@ void Helmholtz::initialize(const Meshing* const mesh, const size_t x_size){
                     if(n->id < bot){
                         bot = n->id;
                     }
-                    this->id_mapping[std::make_pair(geom_id, n->id)] = num_den;
+                    id_mapping[std::make_pair(geom_id, n->id)] = num_den;
                 }
                 if((top - bot + 1) > NN_kd){
                     NN_kd = top - bot + 1;
@@ -61,7 +61,7 @@ void Helmholtz::initialize(const Meshing* const mesh, const size_t x_size){
         ++geom_id;
     }
     size_t id = 0;
-    for(auto it = this->id_mapping.begin(); it != this->id_mapping.end(); ++it){
+    for(auto it = id_mapping.begin(); it != id_mapping.end(); ++it){
         const size_t num_den = it->second;
         it->second = id;
         id += num_den;
@@ -87,11 +87,11 @@ void Helmholtz::initialize(const Meshing* const mesh, const size_t x_size){
                                e->absorption_1dof(t);
                 for(size_t i = 0; i < num_nodes; ++i){
                     const auto& n1 = e->nodes[i];
-                    *id_it = this->id_mapping[std::make_pair(geom_id, n1->id)];
+                    *id_it = id_mapping[std::make_pair(geom_id, n1->id)];
                     const size_t id1 = *id_it;
                     for(size_t k = 0; k <= i; ++k){
                         const auto& n2 = e->nodes[k];
-                        const size_t id2 = this->id_mapping[std::make_pair(geom_id, n2->id)];
+                        const size_t id2 = id_mapping[std::make_pair(geom_id, n2->id)];
                         for(size_t j = 0; j < num_den; ++j){
                             this->NN[utils::to_band(id1, id2, NN_kd)] += M(i, k);
                         }
@@ -104,7 +104,6 @@ void Helmholtz::initialize(const Meshing* const mesh, const size_t x_size){
     }
     int info = LAPACKE_dpbtrf_work(LAPACK_COL_MAJOR, 'L', NN_n, NN_kd-1, NN.data(), NN_kd);
     logger::log_assert(info == 0, logger::ERROR, "LAPACKE returned {} while factoring Helmholtz matrix.", info);
-    this->id_mapping.clear();
 }
 
 void Helmholtz::filter_densities(const std::vector<double>& x, std::vector<double>& new_x){

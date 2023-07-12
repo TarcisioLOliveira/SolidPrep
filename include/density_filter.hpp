@@ -60,12 +60,12 @@ class DensityFilter{
         return 0;
     }
 
-    const inline std::map<std::pair<size_t, size_t>, size_t>& get_id_mapping() const{
-        return this->id_mapping;
+    const inline std::vector<long>& get_id_mapping() const{
+        return this->id_mapping_linear;
     }
 
     protected:
-    std::map<std::pair<size_t, size_t>, size_t> id_mapping;
+    std::vector<long> id_mapping_linear;
 };
 
 #endif

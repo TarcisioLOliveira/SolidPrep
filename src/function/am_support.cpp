@@ -186,19 +186,21 @@ double AMSupport::calculate(const Optimizer* const op, const std::vector<double>
     Eigen::VectorXd psi = this->solver.solve(this->b);
 
     auto d_it = this->diff.begin();
+    auto fm_it = filter_mapping.cbegin();
     geom_id = 0;
     for(const auto& g:mesh->geometries){
         if(g->do_topopt){
-            const size_t num_den = g->number_of_densities_needed();
             for(const auto& e:g->mesh){
                 for(size_t i = 0; i < num_nodes; ++i){
                     const auto& ni = e->nodes[i];
                     const long id1 = this->id_mapping[ni->id];
                     if(id1 < 0){
+                        ++fm_it;
                         continue;
                     }
                     *d_it += psi[id1];
-                    *d_it -= xn[filter_mapping[std::make_pair(geom_id, ni->id)]];
+                    *d_it -= xn[*fm_it];
+                    ++fm_it;
                 }
                 *d_it /= num_nodes;
                 ++d_it;
@@ -334,19 +336,21 @@ double AMSupport::calculate_with_gradient_nodal(const Optimizer* const op, const
     Eigen::VectorXd psi = this->solver.solve(this->b);
 
     auto d_it = this->diff.begin();
+    auto fm_it = filter_mapping.cbegin();
     geom_id = 0;
     for(const auto& g:mesh->geometries){
         if(g->do_topopt){
-            const size_t num_den = g->number_of_densities_needed();
             for(const auto& e:g->mesh){
                 for(size_t i = 0; i < num_nodes; ++i){
                     const auto& ni = e->nodes[i];
                     const long id1 = this->id_mapping[ni->id];
                     if(id1 < 0){
+                        ++fm_it;
                         continue;
                     }
                     *d_it += psi[id1];
-                    *d_it -= xn[filter_mapping[std::make_pair(geom_id, ni->id)]];
+                    *d_it -= xn[*fm_it];
+                    ++fm_it;
                 }
                 *d_it /= num_nodes;
                 ++d_it;
@@ -390,6 +394,7 @@ double AMSupport::calculate_with_gradient_nodal(const Optimizer* const op, const
 
     auto g_it = grad.begin();
     auto hg_it = this->Hgrad.cbegin();
+    fm_it = filter_mapping.cbegin();
     x_it = x.cbegin();
     gx_it = this->gradx.cbegin();
     geom_id = 0;
@@ -423,9 +428,11 @@ double AMSupport::calculate_with_gradient_nodal(const Optimizer* const op, const
                 const auto gradN = e->get_nodal_density_gradient(e->get_centroid());
                 double h1 = 0, h2 = 0, h3 = 0, norm = 0, dh1 = 0, dh2 = 0, dh3 = 0;
                 for(size_t i = 0; i < num_nodes; ++i){
-                    grad[filter_mapping[std::make_pair(geom_id, e->nodes[i]->id)]] -= *hg_it/num_nodes;
-                    p[i] = xn[filter_mapping[std::make_pair(geom_id, e->nodes[i]->id)]];
-                    psi_tilde_sum += psi_tilde[this->id_mapping[e->nodes[i]->id]];
+                    grad[*(fm_it+i)] -= *hg_it/num_nodes;
+                    p[i] = xn[*(fm_it+i)];
+                    if(this->id_mapping[e->nodes[i]->id] > -1){
+                        psi_tilde_sum += psi_tilde[this->id_mapping[e->nodes[i]->id]];
+                    }
                 }
                 for(size_t i = 0; i < N; ++i){
                     h2 += v[i]*(*(gx_it+i));
@@ -457,8 +464,9 @@ double AMSupport::calculate_with_gradient_nodal(const Optimizer* const op, const
                     //const double mult = this->beta*((dh1*norm_deriv*(h2 -h3) + h1*(dh2*switch_deriv*h3 + h2*dh3*vDp_deriv)));
                     const double mult = this->beta*((dh1*norm_deriv*h2*h3 + h1*dh2*(-switch_deriv)*h3 + h1*h2*dh3*vDp_deriv));
                     for(size_t j = 0; j < num_nodes; ++j){
-                        grad[filter_mapping[std::make_pair(geom_id, e->nodes[j]->id)]] -= mult*Ne_sum*psi_tilde_sum;
-                        grad[filter_mapping[std::make_pair(geom_id, e->nodes[j]->id)]] += mult*Me_dot;
+                        grad[*fm_it] -= mult*Ne_sum*psi_tilde_sum;
+                        grad[*fm_it] += mult*Me_dot;
+                        ++fm_it;
                     }
                 }
                 gx_it += N;

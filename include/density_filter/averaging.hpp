@@ -52,7 +52,6 @@ class Averaging : public DensityFilter{
     std::vector<double> D;
     std::vector<double> nodal_densities;
     std::vector<double> nodal_gradient;
-    std::vector<long> id_mapping_linear;
     const Meshing* mesh;
 };
 

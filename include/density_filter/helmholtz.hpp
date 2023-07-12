@@ -57,7 +57,6 @@ class Helmholtz : public DensityFilter{
     std::vector<double> nodal_gradient;
     std::vector<double> diff;
     std::vector<double> Hgrad;
-    std::vector<long> id_mapping_linear;
     const Meshing* mesh;
 };
 

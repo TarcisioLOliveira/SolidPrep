@@ -29,6 +29,7 @@ void Averaging::initialize(const Meshing* const mesh, const size_t x_size){
     const size_t num_nodes = mesh->elem_info->get_nodes_per_element();
     this->mesh = mesh;
     const double t = this->mesh->thickness;
+    std::map<std::pair<size_t, size_t>, size_t> id_mapping;
 
     size_t geom_id = 0;
     for(const auto& g:mesh->geometries){
@@ -37,14 +38,14 @@ void Averaging::initialize(const Meshing* const mesh, const size_t x_size){
             for(const auto& e:g->mesh){
                 for(size_t i = 0; i < num_nodes; ++i){
                     const auto& n = e->nodes[i];
-                    this->id_mapping[std::make_pair(geom_id, n->id)] = num_den;
+                    id_mapping[std::make_pair(geom_id, n->id)] = num_den;
                 }
             }
         }
         ++geom_id;
     }
     size_t id = 0;
-    for(auto it = this->id_mapping.begin(); it != this->id_mapping.end(); ++it){
+    for(auto it = id_mapping.begin(); it != id_mapping.end(); ++it){
         const size_t num_den = it->second;
         it->second = id;
         id += num_den;
@@ -63,7 +64,7 @@ void Averaging::initialize(const Meshing* const mesh, const size_t x_size){
                 const double V = e->get_volume(t)/num_nodes;
                 for(size_t i = 0; i < num_nodes; ++i){
                     const auto& n = e->nodes[i];
-                    *id_it = this->id_mapping[std::make_pair(geom_id, n->id)];
+                    *id_it = id_mapping[std::make_pair(geom_id, n->id)];
                     for(size_t j = 0; j < num_den; ++j){
                         this->D[*id_it+j] += V;
                     }
@@ -73,7 +74,6 @@ void Averaging::initialize(const Meshing* const mesh, const size_t x_size){
         }
         ++geom_id;
     }
-    this->id_mapping.clear();
 }
 
 void Averaging::filter_densities(const std::vector<double>& x, std::vector<double>& new_x){
