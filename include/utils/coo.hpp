@@ -70,13 +70,11 @@ class COO{
         } else {
             for(size_t i = 0; i < W; ++i){
                 for(size_t j = 0; j <= i; ++j){
-                    if(std::abs(M[i*W + j]) > 1e-15){
-                        if(pos[i] > -1 && pos[j] > -1){
-                            if(pos[i] >= pos[j]){
-                                this->add_coo(pos[i], pos[j], M[i*W + j]);
-                            } else {
-                                this->add_coo(pos[j], pos[i], M[i*W + j]);
-                            }
+                    if(pos[i] > -1 && pos[j] > -1){
+                        if(pos[i] >= pos[j]){
+                            this->add_coo(pos[i], pos[j], M[i*W + j]);
+                        } else {
+                            this->add_coo(pos[j], pos[i], M[i*W + j]);
                         }
                     }
                 }
@@ -131,7 +129,7 @@ class COO{
                     continue;
                 }
                 size_t j = 0;
-                while(j < W && (pos[j] < 0 || std::abs(M[i*W + j]) > 1e-15)){
+                while(j < W && pos[j] < 0){
                     ++j;
                 }
                 // pos is not ordered!
@@ -143,7 +141,7 @@ class COO{
                             cooVal[c] += M[i*W+j];
                             do{
                                 ++j;
-                            } while(j < W && (pos[j] < 0 || std::abs(M[i*W + j]) > 1e-15));
+                            } while(j < W && pos[j] < 0);
                             if(j >= W){
                                 break;
                             }
@@ -152,7 +150,7 @@ class COO{
                     if(!found_one){
                         do{
                             ++j;
-                        } while(j < W && (pos[j] < 0 || std::abs(M[i*W + j]) > 1e-15));
+                        } while(j < W && pos[j] < 0);
                     }
                 }
             }
