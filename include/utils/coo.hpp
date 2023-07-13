@@ -161,7 +161,7 @@ class COO{
 
     void generate_coo(INT n);
 
-    const int& nvals = this->nnz;
+    const INT& nvals = this->nnz;
     std::vector<INT>& rows = this->cooRowInd;
     std::vector<INT>& cols = this->cooColInd;
     std::vector<double>& vals = this->cooVal;
@@ -170,8 +170,8 @@ class COO{
 
     private:
     std::map<Point, double> data;
-    int n = 0;
-    int nnz = 0;
+    INT n = 0;
+    INT nnz = 0;
     bool coo_first_time = true;
     std::vector<INT> cooRowPtr;
     std::vector<INT> cooRowInd;
