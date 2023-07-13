@@ -40,6 +40,7 @@ find_package(VTK)
 find_package(MPI REQUIRED)
 find_package(MUMPS REQUIRED)
 find_package(Eigen3 REQUIRED NO_MODULE)
+find_package(GSL REQUIRED)
 # if(USE_CUDA)
 #     find_package(NVHPC COMPONENTS CUDA MATH HOSTUTILS REQUIRED)
 # endif()
@@ -115,6 +116,7 @@ include_directories(
     ${MUMPS_INCLUDE_DIRS}
     ${Eigen3_INCLUDE_DIR}
     ${PETSC_INCLUDE_DIRS}
+    ${GSL_INCLUDE_DIR}
 )
 
 if(USE_CUDA)

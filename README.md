@@ -32,6 +32,7 @@ Dependencies:
 - [MUMPS](https://graal.ens-lyon.fr/MUMPS/index.php) ([CMake version](https://github.com/scivision/mumps))
 - [Eigen](https://eigen.tuxfamily.org/)
 - [PETSc](https://petsc.org/release/)
+- [GNU Scientific Library](https://www.gnu.org/software/gsl/doc/html/index.html)
 
 Also includes code from [jdumas/mma](https://github.com/jdumas/mma).
 
