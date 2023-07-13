@@ -48,8 +48,6 @@ class LAPACKDenseSymmetricBanded : public GlobalStiffnessMatrix{
 
     protected:
     std::vector<double> K = std::vector<double>();
-    size_t W = 0;
-    size_t N = 0;
     bool first_time = true;
 
     inline virtual void insert_element_matrix(const std::vector<double>& k, const std::vector<long>& pos) override{
