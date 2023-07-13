@@ -32,7 +32,6 @@ Dependencies:
 - [MUMPS](https://graal.ens-lyon.fr/MUMPS/index.php) ([CMake version](https://github.com/scivision/mumps))
 - [Eigen](https://eigen.tuxfamily.org/)
 - [PETSc](https://petsc.org/release/)
-- [NVIDIA HPC](https://developer.nvidia.com/hpc-sdk) (optional)
 
 Also includes code from [jdumas/mma](https://github.com/jdumas/mma).
 
