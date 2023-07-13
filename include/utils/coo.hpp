@@ -48,6 +48,9 @@ class COO{
         }
     };
 
+    COO(INT offset = 0):
+        offset(offset){}
+
     inline void insert_matrix_symmetric(const std::vector<double>& M, const std::vector<long>& pos){
         size_t W = pos.size();
         if(this->coo_first_time){
@@ -66,35 +69,48 @@ class COO{
             }
         } else {
             for(size_t i = 0; i < W; ++i){
-                if(pos[i] < 0){
-                    continue;
-                }
-                size_t j = 0;
-                while(j <= i && (pos[j] < 0 || M[i*W+j] == 0)){
-                    ++j;
-                }
-                // pos is not ordered!
-                while(j <= i){
-                    bool found_one = false;
-                    for(int c = cooRowPtr[pos[i]]; c < cooRowPtr[pos[i]+1]; ++c){
-                        if(cooColInd[c] == pos[j]){
-                            found_one = true;
-                            cooVal[c] += M[i*W+j];
-                            do{
-                                ++j;
-                            } while(j <= i && (pos[j] < 0 || M[i*W+j] == 0));
-                            if(j > i){
-                                break;
+                for(size_t j = 0; j <= i; ++j){
+                    if(std::abs(M[i*W + j]) > 1e-15){
+                        if(pos[i] > -1 && pos[j] > -1){
+                            if(pos[i] >= pos[j]){
+                                this->add_coo(pos[i], pos[j], M[i*W + j]);
+                            } else {
+                                this->add_coo(pos[j], pos[i], M[i*W + j]);
                             }
                         }
                     }
-                    if(!found_one){
-                        do{
-                            ++j;
-                        } while(j <= i && (pos[j] < 0 || M[i*W+j] == 0));
-                    }
                 }
             }
+            //for(size_t i = 0; i < W; ++i){
+            //    if(pos[i] < 0){
+            //        continue;
+            //    }
+            //    size_t j = 0;
+            //    while(j <= i && (pos[j] < 0 || M[i*W+j] == 0)){
+            //        ++j;
+            //    }
+            //    // pos is not ordered!
+            //    while(j <= i){
+            //        bool found_one = false;
+            //        for(int c = cooRowPtr[pos[i]]; c < cooRowPtr[pos[i]+1]; ++c){
+            //            if(cooColInd[c] == pos[j] + offset){
+            //                found_one = true;
+            //                cooVal[c] += M[i*W+j];
+            //                do{
+            //                    ++j;
+            //                } while(j <= i && (pos[j] < 0 || M[i*W+j] == 0));
+            //                if(j > i){
+            //                    break;
+            //                }
+            //            }
+            //        }
+            //        if(!found_one){
+            //            do{
+            //                ++j;
+            //            } while(j <= i && (pos[j] < 0 || M[i*W+j] == 0));
+            //        }
+            //    }
+            //}
         }
     }
     inline void insert_matrix_general(const std::vector<double>& M, const std::vector<long>& pos){
@@ -122,7 +138,7 @@ class COO{
                 while(j < W){
                     bool found_one = false;
                     for(int c = cooRowPtr[pos[i]]; c < cooRowPtr[pos[i]+1]; ++c){
-                        if(cooColInd[c] == pos[j]){
+                        if(cooColInd[c] == pos[j] + offset){
                             found_one = true;
                             cooVal[c] += M[i*W+j];
                             do{
@@ -179,6 +195,7 @@ class COO{
 
     private:
     std::map<Point, double> data;
+    INT offset = 0;
     INT n = 0;
     INT nnz = 0;
     bool coo_first_time = true;
@@ -189,7 +206,7 @@ class COO{
     
     inline void add_coo(const INT i, const INT j, const double v){
         for(int c = cooRowPtr[i]; c < cooRowPtr[i+1]; ++c){
-            if(cooColInd[c] == j){
+            if(cooColInd[c] == j + offset){
                 cooVal[c] += v;
                 break;
             }
@@ -224,8 +241,8 @@ void COO<INT>::generate_coo(INT n){
                 ++cur_row;
                 ++r;
             }
-            *ri = p.first.i;
-            *c = p.first.j;
+            *ri = p.first.i+offset;
+            *c = p.first.j+offset;
             *v = p.second;
             ++ri;
             ++c;
