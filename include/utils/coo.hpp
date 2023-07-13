@@ -139,10 +139,11 @@ class COO{
                         if(cooColInd[c] == pos[j] + offset){
                             found_one = true;
                             cooVal[c] += M[i*W+j];
+                            size_t j_prev = j;
                             do{
                                 ++j;
                             } while(j < W && pos[j] < 0);
-                            if(j >= W){
+                            if(j >= W || pos[j] < pos[j_prev]){
                                 break;
                             }
                         }
