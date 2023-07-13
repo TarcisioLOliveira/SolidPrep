@@ -25,9 +25,12 @@ namespace global_stiffness_matrix{
 
 void MUMPSSparseSymmetric::generate(const Meshing* const mesh, const std::vector<double>& density, const double pc, const double psi){
     logger::quick_log("Generating stiffness matrix...");
-    this->generate_base(mesh, density, pc, psi);
-    this->sK.to_mumps_format(this->rows, this->cols, this->vals);
     this->sK.zero();
+    this->generate_base(mesh, density, pc, psi);
+    if(this->first_time){
+        this->sK.generate_coo(mesh->load_vector.size());
+        this->first_time = false;
+    }
     logger::quick_log("Done.");
 }
 

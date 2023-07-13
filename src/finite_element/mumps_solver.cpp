@@ -84,20 +84,19 @@ std::vector<double> MUMPSSolver::calculate_displacements(const Meshing* const me
     if(this->current_step == 0){
 
         if(mpi_id == 0){
+            this->gsm.generate(mesh, density, pc, psi);
+
             std::vector<int>& rows = this->gsm.get_rows();
             std::vector<int>& cols = this->gsm.get_cols();
             std::vector<double>& vals = this->gsm.get_vals();
-
-            this->gsm.generate(mesh, density, pc, psi);
             // Insert matrix data
             // Do this after every regeneration as the vectors may expand, which
             // will change their address.
-            this->config.n = load.size();
+            this->config.n   = load.size();
             this->config.nnz = vals.size();
             this->config.a   = vals.data();
             this->config.irn = rows.data();
             this->config.jcn = cols.data();
-
         }
         if(this->first_time){
             this->config.job = 1; // Perform analysis

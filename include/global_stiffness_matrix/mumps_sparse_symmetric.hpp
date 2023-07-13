@@ -21,9 +21,9 @@
 #ifndef MUMPS_SPARSE_SYMMETRIC_HPP
 #define MUMPS_SPARSE_SYMMETRIC_HPP
 
+#include "utils/coo.hpp"
 #include "meshing.hpp"
 #include "global_stiffness_matrix.hpp"
-#include "utils/sparse_matrix.hpp"
 
 namespace global_stiffness_matrix{
 
@@ -34,23 +34,21 @@ class MUMPSSparseSymmetric : public GlobalStiffnessMatrix{
     virtual void generate(const Meshing * const mesh, const std::vector<double>& density, const double pc, const double psi) override;
 
     inline std::vector<int>& get_rows(){
-        return rows;
+        return this->sK.rows;
     }
     inline std::vector<int>& get_cols(){
-        return cols;
+        return this->sK.cols;
     }
     inline std::vector<double>& get_vals(){
-        return vals;
+        return this->sK.vals;
     }
 
     protected:
-    utils::SparseMatrix sK;
-    std::vector<int> rows;
-    std::vector<int> cols;
-    std::vector<double> vals;
+    bool first_time = true;
+    utils::COO<int> sK = utils::COO<int>(1);
 
     virtual inline void insert_element_matrix(const std::vector<double>& k, const std::vector<long>& pos) override{
-        this->sK.insert_matrix_symmetric_mumps(k, pos);
+        this->sK.insert_matrix_symmetric(k, pos);
     }
     inline virtual void add_to_matrix(size_t i, size_t j, double val) override{
         this->sK.add(i, j, val);
