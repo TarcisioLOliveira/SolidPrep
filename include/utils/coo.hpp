@@ -166,7 +166,16 @@ class COO{
     std::vector<INT>& cols = this->cooColInd;
     std::vector<double>& vals = this->cooVal;
 
-    inline void clear(){this->data.clear();}
+    inline void clear(){
+        this->data.clear();
+        this->cooRowPtr.clear();
+        this->cooRowInd.clear();
+        this->cooColInd.clear();
+        this->cooVal.clear();
+        this->n = 0;
+        this->nnz = 0;
+        this->coo_first_time = true;
+    }
 
     private:
     std::map<Point, double> data;
@@ -224,6 +233,7 @@ void COO<INT>::generate_coo(INT n){
             ++count;
         }
         *r = nnz;
+        this->data.clear();
     }
 }
 
