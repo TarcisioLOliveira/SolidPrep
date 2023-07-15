@@ -117,52 +117,6 @@ def init_DB_norm():
                       [d[3], d[4], d[5]],
                       [d[6], d[7], d[8]]])
 
-def make_Nf():
-    """
-        Creates the Nf matrix.
-    """
-    init_N_nat()
-
-    NN1 = [N[0],   0 , N[1],   0 , N[2],   0 , N[3],   0 ]
-    NN2 = [  0 , N[0],   0 , N[1],   0 , N[2],   0 , N[3]] 
-    NN = t*sympy.Matrix([NN1, NN2]).T
-
-    # Set up variables for line integral
-    x0, x1, y0, y1 = sympy.symbols("x0 x1 y0 y1")
-
-    M = spv.ReferenceFrame("M")
-
-    s = sympy.symbols("s")
-
-    rx = ((1-s)*x0+s*x1)
-    ry = ((1-s)*y0+s*y1)
-    dr = (x1-x0)*M.x + (y1-y0)*M.y
-
-    drnorm = sympy.sqrt((x1-x0)**2 + (y1-y0)**2)
-
-    print("std::vector<double> Nf{")
-    for i in range(len(NN)):
-        # Apply line integration
-        NN[i] = NN[i].subs({x:rx, y:ry})
-        NN[i] = NN[i]*drnorm
-        NN[i] = NN[i].integrate((s, 0, 1))
-
-
-        # Prepare for printing
-        NN[i] = sympy.simplify(sympy.nsimplify(NN[i], rational=True))
-
-        # Format output for use with C++
-        formatted = str(NN[i])
-        formatted = re.sub(r"([abcdxy]\d)\*\*2", r"\1*\1", formatted)
-        formatted = re.sub(r"([abcdxy])(\d)", r"\1[\2]", formatted)
-
-        formatted = formatted.replace("sqrt", "std::sqrt")
-
-        if i > 0:
-            print(",")
-        print(formatted)
-    print("};")
-
 def make_B():
     """
         Creates the B matrix.
@@ -203,47 +157,6 @@ def make_DB():
         print(formatted)
     print("};")
 
-def make_k():
-    """
-        Creates the k matrix (non-integrated, as numerical integration is
-        necessary).
-    """
-    init_DB_norm()
-
-    # Create the non-integrated matrix
-    k = sympy.Matrix(t*B.T*D*B/J)
-
-    print("std::vector<double> k{")
-    for i in range(len(k)):
-        # No integration step in this case, as the integral is too complex
-        k[i] = sympy.simplify(sympy.collect(sympy.expand(k[i]), [xi**2, eta**2, xi*eta, xi, eta]), rational=True)
-
-        # Format output for use with C++
-        formatted = str(k[i])
-        formatted = re.sub(r"([xyD]\d)\*\*2", r"\1*\1", formatted)
-        formatted = re.sub(r"(\w+)\*\*2", r"\1*\1", formatted)
-        formatted = re.sub(r"([xyD])(\d)", r"\1[\2]", formatted)
-
-        if i > 0:
-            print(",")
-        print(formatted)
-    print("};")
-
-def init_J_matrix():
-    """
-        Initializes the global variable J as a matrix instead of as the
-        determinant of J.
-    """
-    global J
-
-    x = sympy.symbols('x:4')
-    y = sympy.symbols('y:4')
-
-    xx = sympy.Rational(1,4)*((1-xi)*(1-eta)*x[0]+(1+xi)*(1-eta)*x[1]+(1+xi)*(1+eta)*x[2]+(1-xi)*(1+eta)*x[3])
-    yy = sympy.Rational(1,4)*((1-xi)*(1-eta)*y[0]+(1+xi)*(1-eta)*y[1]+(1+xi)*(1+eta)*y[2]+(1-xi)*(1+eta)*y[3])
-
-    J = sympy.Matrix([[xx.diff(xi), yy.diff(xi)],[xx.diff(eta), yy.diff(eta)]])
-
 def print_matrix(M, name):
     """
         Prints the matrix M, item by item, in C++ format, with the specified
@@ -271,10 +184,8 @@ def print_matrix(M, name):
 def main():
     # Backwards compatible switch statement
     args = {
-        "-k":  make_k,
         "-DB": make_DB,
         "-B": make_B,
-        "-Nf": make_Nf,
     }
     for i in range(1, len(sys.argv)):
         args[sys.argv[i]]()
