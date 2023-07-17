@@ -725,4 +725,171 @@ class MeshElementCommon3DTet : public MeshElementCommon3D<T>{
     }
 };
 
+template<class T>
+class MeshElementCommon3DHex : public MeshElementCommon3D<T>{
+    public:
+    virtual ~MeshElementCommon3DHex() = default;
+
+    static const Element::Shape SHAPE_TYPE = Element::Shape::QUAD;
+
+    virtual double get_volume(const double t) const override{
+        (void)t;
+        // 0 1 3 5
+        // 1 3 2 5
+        // 2 3 6 5
+        // 3 7 6 5
+        // 3 7 4 5
+        // 0 3 4 5
+
+        double V = 0;
+        V += this->get_volume_tet(
+            this->nodes[0]->point,
+            this->nodes[1]->point,
+            this->nodes[3]->point,
+            this->nodes[5]->point
+        );
+        V += this->get_volume_tet(
+            this->nodes[1]->point,
+            this->nodes[3]->point,
+            this->nodes[2]->point,
+            this->nodes[5]->point
+        );
+        V += this->get_volume_tet(
+            this->nodes[2]->point,
+            this->nodes[3]->point,
+            this->nodes[6]->point,
+            this->nodes[5]->point
+        );
+        V += this->get_volume_tet(
+            this->nodes[3]->point,
+            this->nodes[7]->point,
+            this->nodes[6]->point,
+            this->nodes[5]->point
+        );
+        V += this->get_volume_tet(
+            this->nodes[3]->point,
+            this->nodes[7]->point,
+            this->nodes[4]->point,
+            this->nodes[5]->point
+        );
+        V += this->get_volume_tet(
+            this->nodes[0]->point,
+            this->nodes[3]->point,
+            this->nodes[4]->point,
+            this->nodes[5]->point
+        );
+
+        return V;
+    }
+
+    virtual TopoDS_Shape get_shape() const override{
+        std::array<gp_Pnt, 8> p;
+        for(size_t i = 0; i < 8; ++i){
+            p[i] = this->nodes[i]->point;
+        }
+
+        return this->generate_geometry(p);
+    }
+
+    virtual TopoDS_Shape get_shape(const std::vector<gp_Vec>& disp) const override{
+        std::array<gp_Pnt, 8> p;
+        for(size_t i = 0; i < 8; ++i){
+            p[i] = this->nodes[i]->point.Translated(disp[i]);
+        }
+
+        return this->generate_geometry(p);
+    }
+
+    virtual std::vector<gp_Pnt> get_intersection_points(const TopoDS_Shape& crosssection) const override{
+        logger::log_assert(false, logger::ERROR, "get_intersection_points is not implemented for 3D elements.");
+
+        const size_t N = T::NODES_PER_ELEM;
+        std::vector<gp_Pnt> points;
+
+        const TopoDS_Edge line_edge = TopoDS::Edge(crosssection);
+
+        for(size_t i = 0; i < N; ++i){
+            size_t j = (i + 1) % N;
+
+            const TopoDS_Edge e = BRepBuilderAPI_MakeEdge(this->nodes[i]->point, this->nodes[j]->point);
+            const gp_Dir dir(gp_Vec(this->nodes[i]->point, this->nodes[j]->point));
+
+            IntTools_EdgeEdge tool(line_edge, e);
+            tool.Perform();
+            auto common = tool.CommonParts();
+            if(common.Size() > 0){
+                for(auto& c:common){
+                    double dist = std::abs(c.VertexParameter2()); // n.normal is a unit vector, and the line starts at 0
+                    gp_Pnt p = this->nodes[i]->point.Translated(dist*dir);
+                    bool contained = false;
+                    for(auto& pp:points){
+                        if(p.IsEqual(pp, Precision::Confusion())){
+                            contained = true;
+                            break;
+                        }
+                    }
+                    if(!contained){
+                        points.push_back(p);
+                    }
+                }
+            }
+        }
+
+        return points;
+    }
+
+    protected:
+    MeshElementCommon3DHex(const std::vector<MeshNode*>& nodes):
+            MeshElementCommon3D<T>(nodes)
+            {}
+
+    inline double get_volume_tet(const gp_Pnt& p0, const gp_Pnt& p1, const gp_Pnt& p2, const gp_Pnt& p3) const{
+        const gp_Vec v0(p0, p1);
+        const gp_Vec v1(p0, p2);
+        const gp_Vec v2(p0, p3);
+
+        return std::abs(v0.DotCross(v1, v2))/6;
+    }
+
+    inline TopoDS_Face get_quad(const TopoDS_Vertex& v1, const TopoDS_Vertex& v2, const TopoDS_Vertex& v3, const TopoDS_Vertex& v4) const{
+        const TopoDS_Edge e1 = BRepBuilderAPI_MakeEdge(v1, v2);
+        const TopoDS_Edge e2 = BRepBuilderAPI_MakeEdge(v2, v3);
+        const TopoDS_Edge e3 = BRepBuilderAPI_MakeEdge(v3, v4);
+        const TopoDS_Edge e4 = BRepBuilderAPI_MakeEdge(v4, v1);
+
+        const TopoDS_Wire w = BRepBuilderAPI_MakeWire(e1, e2, e3, e4);
+
+        const TopoDS_Face f = BRepBuilderAPI_MakeFace(w);
+
+        return f;
+    }
+
+    inline TopoDS_Solid generate_geometry(const std::array<gp_Pnt, 8>& p) const{
+        std::array<TopoDS_Vertex, 8> v;
+        for(size_t i = 0; i < 8; ++i){
+            v[i] = BRepBuilderAPI_MakeVertex(p[i]);
+        }
+
+        BRepOffsetAPI_Sewing sew;
+        TopoDS_Face f = this->get_quad(v[0], v[1], v[2], v[3]);
+        sew.Add(f);
+        f = this->get_quad(v[1], v[2], v[6], v[5]);
+        sew.Add(f);
+        f = this->get_quad(v[4], v[5], v[6], v[7]);
+        sew.Add(f);
+        f = this->get_quad(v[0], v[4], v[7], v[3]);
+        sew.Add(f);
+        f = this->get_quad(v[0], v[4], v[5], v[1]);
+        sew.Add(f);
+        f = this->get_quad(v[3], v[7], v[6], v[2]);
+        sew.Add(f);
+
+        sew.Perform();
+        const TopoDS_Shell s = TopoDS::Shell(sew.SewedShape());
+
+        TopoDS_Solid so = BRepBuilderAPI_MakeSolid(s);
+
+        return so;
+    }
+};
 #endif
