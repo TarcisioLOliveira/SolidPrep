@@ -138,6 +138,11 @@ std::unordered_map<size_t, MeshNode*> Gmsh::gmsh_meshing(bool has_condition_insi
         gmsh::option::setNumber("Mesh.RecombinationAlgorithm", 2);
         gmsh::option::setNumber("Mesh.RecombineAll", 1);
         gmsh::option::setNumber("Mesh.Recombine3DAll", 1);
+        if(problem_type == utils::PROBLEM_TYPE_2D){
+            gmsh::option::setNumber("Mesh.SubdivisionAlgorithm", 1);
+        } else if(problem_type == utils::PROBLEM_TYPE_3D){
+            gmsh::option::setNumber("Mesh.SubdivisionAlgorithm", 2);
+        }
     }
 
     size_t dim = 0;
