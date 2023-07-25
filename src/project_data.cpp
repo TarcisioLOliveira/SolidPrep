@@ -55,6 +55,7 @@
 #include "element/Q4.hpp"
 #include "element/Q4S.hpp"
 #include "element/TET4.hpp"
+#include "element/H8.hpp"
 #include "topology_optimization/minimal_volume.hpp"
 #include "topology_optimization/minimal_compliance.hpp"
 #include "topology_optimization/compliance_constraint_simple.hpp"
@@ -787,6 +788,10 @@ std::unique_ptr<MeshElementFactory> ProjectData::get_element_type(const rapidjso
     } else if(name == "TET4"){
         return std::unique_ptr<MeshElementFactory>(static_cast<MeshElementFactory*>(
                     new MeshElementFactoryImpl<element::TET4>()
+                ));
+    } else if(name == "H8"){
+        return std::unique_ptr<MeshElementFactory>(static_cast<MeshElementFactory*>(
+                    new MeshElementFactoryImpl<element::H8>()
                 ));
     }
     return nullptr;
