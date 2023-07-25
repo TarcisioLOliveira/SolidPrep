@@ -720,8 +720,7 @@ std::vector<double> MultiMaterial::square_root_2D(const std::vector<double>& d) 
 }
 std::vector<double> MultiMaterial::square_root_3D(const std::vector<double>& d) const{
     typedef Eigen::Matrix<double, 6, 6> MatType;
-    MatType M;
-    std::copy(d.begin(), d.end(), M.data());
+    MatType M = Eigen::Map<const MatType>(d.data(), 6, 6);
 
     Eigen::SelfAdjointEigenSolver<MatType> eigen(M);
 
