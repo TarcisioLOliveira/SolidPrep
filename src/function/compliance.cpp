@@ -47,28 +47,36 @@ double Compliance::calculate_with_gradient(const Optimizer* const op, const std:
     auto grad_it = grad.begin();
     for(const auto& g:this->mesh->geometries){
         const size_t num_den = g->number_of_densities_needed();
-        const size_t num_mat = g->number_of_materials();
         if(g->do_topopt){
-            if(num_mat == 1){
-                const auto D = g->materials.get_D();
+            std::vector<std::vector<double>> gradD(num_den, g->materials.get_D());
+            if(g->with_void){
                 for(const auto& e:g->mesh){
-                    const double uKu = e->get_compliance(D, this->mesh->thickness, u);
+                    g->materials.get_gradD(rho_it, psi, gradD);
+                    const double uKu = e->get_compliance(gradD[0], this->mesh->thickness, u);
                     *grad_it = -pc*std::pow(*rho_it, pc-1)*uKu;
 
                     ++grad_it;
                     ++rho_it;
+                    for(size_t i = 1; i < num_den; ++i){
+                        const double uKu = e->get_compliance(gradD[i], this->mesh->thickness, u);
+                        *grad_it = -std::pow(*rho_it, pc)*uKu;
+
+                        ++grad_it;
+                        ++rho_it;
+                    }
                 }
             } else {
-                std::vector<std::vector<double>> gradD(num_den, g->materials.get_D());
                 for(const auto& e:g->mesh){
-                    g->materials.get_gradD(rho_it, g->with_void, pc, K_MIN, psi, gradD);
+                    g->materials.get_gradD(rho_it, psi, gradD);
                     for(auto& D:gradD){
                         const double uKu = e->get_compliance(D, this->mesh->thickness, u);
                         *grad_it = -uKu;
 
                         ++grad_it;
                     }
+                    rho_it += num_den;
                 }
+
             }
         }
     }

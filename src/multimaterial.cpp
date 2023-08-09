@@ -28,79 +28,53 @@
 #include "multimaterial.hpp"
 #include "utils.hpp"
 
-MultiMaterial::MultiMaterial(std::vector<Material*> materials, utils::ProblemType type):
-    materials(std::move(materials)), problem_type(type){}
+MultiMaterial::MultiMaterial(std::vector<Material*> materials, utils::ProblemType type, bool has_void):
+    materials(std::move(materials)), problem_type(type), has_void(has_void){}
 
-void MultiMaterial::get_D(std::vector<double>::const_iterator& rho, const bool has_void, const double p, const double p_min, const double mix, std::vector<double>& D) const{
-    double void_rho = 0;
+void MultiMaterial::get_D(std::vector<double>::const_iterator rho, const double mix, std::vector<double>& D) const{
     if(has_void){
-        void_rho = std::pow(*rho, p);
         ++rho;
     }
 
     if(this->problem_type == utils::PROBLEM_TYPE_2D){
         std::array<double, 5> pos{0, 1, 3, 4, 8};
-        if(this->materials.size() > 0){
+        if(this->materials.size() > 1){
             this->get_D_internal(rho, pos.data(), pos.size(), mix, D);
         } else {
             std::copy(this->materials[0]->stiffness_2D().begin(), this->materials[0]->stiffness_2D().end(), D.begin());
         }
-        if(has_void){
-            this->apply_void(void_rho, pos.data(), pos.size(), D);
-        }
     } else if(this->problem_type == utils::PROBLEM_TYPE_3D){
         std::array<double, 12> pos{0, 1, 2, 6, 7, 8, 12, 13, 14, 21, 28, 35};
-        if(this->materials.size() > 0){
+        if(this->materials.size() > 1){
             this->get_D_internal(rho, pos.data(), pos.size(), mix, D);
         } else {
             std::copy(this->materials[0]->stiffness_3D().begin(), this->materials[0]->stiffness_3D().end(), D.begin());
         }
-        if(has_void){
-            this->apply_void(void_rho, pos.data(), pos.size(), D);
-        }
     }
-    rho += this->materials.size()-1;
 }
 
-void MultiMaterial::get_gradD(std::vector<double>::const_iterator& rho, const bool has_void, const double p, const double p_min, const double mix, std::vector<std::vector<double>>& gradD) const{
-    double void_rho = 0;
-    double void_drho = 0;
+void MultiMaterial::get_gradD(std::vector<double>::const_iterator rho, const double mix, std::vector<std::vector<double>>& gradD) const{
     if(has_void){
-        void_rho = std::pow(*rho, p);
-        void_drho = p*std::pow(*rho, p-1);
         ++rho;
     }
 
     if(this->problem_type == utils::PROBLEM_TYPE_2D){
         std::array<double, 5> pos{0, 1, 3, 4, 8};
-        if(this->materials.size() > 0){
-            this->get_gradD_internal(rho, has_void, pos.data(), pos.size(), mix, gradD);
-        } else {
-            std::copy(this->materials[0]->stiffness_2D().begin(), this->materials[0]->stiffness_2D().end(), gradD[0].begin());
+        if(this->materials.size() > 1){
+            this->get_gradD_internal(rho, pos.data(), pos.size(), mix, gradD);
         }
         if(has_void){
-            this->get_D(rho, false, p, p_min, mix, gradD[0]);
-            this->apply_void(void_drho, pos.data(), pos.size(), gradD[0]);
-            for(size_t i = 1; i < gradD.size(); ++i){
-                this->apply_void(void_rho, pos.data(), pos.size(), gradD[i]);
-            }
+            std::copy(this->materials[0]->stiffness_2D().begin(), this->materials[0]->stiffness_2D().end(), gradD[0].begin());
         }
     } else if(this->problem_type == utils::PROBLEM_TYPE_3D){
         std::array<double, 12> pos{0, 1, 2, 6, 7, 8, 12, 13, 14, 21, 28, 35};
-        if(this->materials.size() > 0){
-            this->get_gradD_internal(rho, has_void, pos.data(), pos.size(), mix, gradD);
-        } else {
-            std::copy(this->materials[0]->stiffness_3D().begin(), this->materials[0]->stiffness_3D().end(), gradD[0].begin());
+        if(this->materials.size() > 1){
+            this->get_gradD_internal(rho, pos.data(), pos.size(), mix, gradD);
         }
         if(has_void){
-            this->get_D(rho, false, p, p_min, mix, gradD[0]);
-            this->apply_void(void_drho, pos.data(), pos.size(), gradD[0]);
-            for(size_t i = 1; i < gradD.size(); ++i){
-                this->apply_void(void_rho, pos.data(), pos.size(), gradD[i]);
-            }
+            std::copy(this->materials[0]->stiffness_3D().begin(), this->materials[0]->stiffness_3D().end(), gradD[0].begin());
         }
     }
-    rho += this->materials.size()-1;
 }
 
 void MultiMaterial::get_D_internal(std::vector<double>::const_iterator& rho, const double* pos, const size_t posN, const double mix, std::vector<double>& D) const{
@@ -183,7 +157,7 @@ void MultiMaterial::get_D_internal(std::vector<double>::const_iterator& rho, con
     }
 }
 
-void MultiMaterial::get_gradD_internal(std::vector<double>::const_iterator& rho, const bool has_void, const double* pos, const size_t posN, const double mix, std::vector<std::vector<double>>& gradD) const{
+void MultiMaterial::get_gradD_internal(std::vector<double>::const_iterator& rho, const double* pos, const size_t posN, const double mix, std::vector<std::vector<double>>& gradD) const{
     std::vector<double> v(this->materials.size(), 0);
     double total = 0;
     for(size_t i = 0; i < v.size()-1; ++i){
@@ -336,7 +310,7 @@ void MultiMaterial::get_gradD_internal(std::vector<double>::const_iterator& rho,
     }
 }
 
-double MultiMaterial::get_density(std::vector<double>::const_iterator& rho, const bool has_void) const{
+double MultiMaterial::get_density(std::vector<double>::const_iterator& rho) const{
     double void_rho = 1.0;
     if(has_void){
         void_rho = *rho;
@@ -363,7 +337,7 @@ double MultiMaterial::get_density(std::vector<double>::const_iterator& rho, cons
     return d;
 }
 
-double MultiMaterial::get_density_deriv(std::vector<double>::const_iterator& rho, const bool has_void, std::vector<double>::iterator& grad) const{
+double MultiMaterial::get_density_deriv(std::vector<double>::const_iterator& rho, std::vector<double>::iterator& grad) const{
     double void_rho = 1.0;
     if(has_void){
         void_rho = *rho;

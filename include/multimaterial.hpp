@@ -26,7 +26,7 @@
 
 class MultiMaterial{
     public:
-    MultiMaterial(std::vector<Material*> materials, utils::ProblemType type);
+    MultiMaterial(std::vector<Material*> materials, utils::ProblemType type, bool has_void);
 
     inline std::vector<double> get_D() const{
         if(this->problem_type == utils::PROBLEM_TYPE_2D){
@@ -37,13 +37,13 @@ class MultiMaterial{
         return std::vector<double>();
     }
 
-    void get_D(std::vector<double>::const_iterator& rho, const bool has_void, const double p, const double p_min, const double mix, std::vector<double>& D) const;
+    void get_D(std::vector<double>::const_iterator rho, const double mix, std::vector<double>& D) const;
 
-    void get_gradD(std::vector<double>::const_iterator& rho, const bool has_void, const double p, const double p_min, const double mix, std::vector<std::vector<double>>& gradD) const;
+    void get_gradD(std::vector<double>::const_iterator rho, const double mix, std::vector<std::vector<double>>& gradD) const;
 
-    double get_density(std::vector<double>::const_iterator& rho, const bool has_void) const;
+    double get_density(std::vector<double>::const_iterator& rho) const;
 
-    double get_density_deriv(std::vector<double>::const_iterator& rho, const bool has_void, std::vector<double>::iterator& grad) const;
+    double get_density_deriv(std::vector<double>::const_iterator& rho, std::vector<double>::iterator& grad) const;
 
     inline size_t number_of_materials() const{
         return this->materials.size();
@@ -56,15 +56,10 @@ class MultiMaterial{
     private:
     const std::vector<Material*> materials;
     const utils::ProblemType problem_type;
+    const bool has_void;
 
     void get_D_internal(std::vector<double>::const_iterator& rho, const double* pos, const size_t posN, const double mix, std::vector<double>& D) const;
-    void get_gradD_internal(std::vector<double>::const_iterator& rho, const bool has_void, const double* pos, const size_t posN, const double mix, std::vector<std::vector<double>>& gradD) const;
-
-    inline void apply_void(const double rho, const double* pos, const size_t posN, std::vector<double>& D) const{
-        for(size_t i = 0; i < posN; ++i){
-            D[pos[i]] *= rho;
-        }
-    }
+    void get_gradD_internal(std::vector<double>::const_iterator& rho, const double* pos, const size_t posN, const double mix, std::vector<std::vector<double>>& gradD) const;
 
     std::vector<double> invert_2D(const std::vector<double>& d) const;
     std::vector<double> invert_3D(const std::vector<double>& d) const;

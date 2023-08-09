@@ -170,7 +170,7 @@ void Optimizer::get_stresses(const std::vector<Geometry*> geometries, const std:
     auto stress_it = stresses.begin();
     auto rho_it = x.begin();
     for(const auto& g:geometries){
-        g->get_stresses(u, pc, K_MIN, psi, rho_it, stress_it);
+        g->get_stresses(u, pc, psi, rho_it, stress_it);
     }
 }
 

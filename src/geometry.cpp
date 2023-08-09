@@ -24,36 +24,37 @@
 Geometry::Geometry(const std::string& path, double scale, utils::ProblemType type,
         MeshElementFactory* elem_type, bool do_topopt, bool with_void, std::vector<Material*> materials):
     shape(utils::load_shape(path, scale)),
-    materials(materials, type),
+    materials(materials, type, with_void),
     element_type(elem_type), do_topopt(do_topopt), with_void(with_void), mesh(), 
     type(type){}
 
 Geometry::Geometry(TopoDS_Shape shape, utils::ProblemType type,
         MeshElementFactory* elem_type, bool do_topopt, bool with_void, std::vector<Material*> materials):
     shape(std::move(shape)),
-    materials(materials, type),
+    materials(materials, type, with_void),
     element_type(elem_type), do_topopt(do_topopt), with_void(with_void), mesh(), 
     type(type){}
 
-void Geometry::get_stresses(const std::vector<double>& u, const double pc, const double p_min, const double psi, std::vector<double>::const_iterator& rho_it, std::vector<double>::iterator& stress_it) const{
-    const size_t num_mat = this->number_of_materials();
+void Geometry::get_stresses(const std::vector<double>& u, const double pc, const double psi, std::vector<double>::const_iterator& rho_it, std::vector<double>::iterator& stress_it) const{
     if(this->do_topopt){
-        if(num_mat == 1){
-            const auto D = this->materials.get_D();
+        std::vector<double> D = this->materials.get_D();
+        const size_t num_den = this->number_of_densities_needed();
+        if(this->with_void){
             for(const auto& e:this->mesh){
-                const double S = e->get_stress_at(D, e->get_centroid(), u);
-                *stress_it = std::pow(*rho_it, pc)*S;
+                this->materials.get_D(rho_it, psi, D);
+                const double S = std::pow(*rho_it, pc)*e->get_stress_at(D, e->get_centroid(), u);
+                *stress_it = S;
 
-                ++rho_it;
+                rho_it += num_den;
                 ++stress_it;
             }
         } else {
-            std::vector<double> D = this->materials.get_D();
             for(const auto& e:this->mesh){
-                this->materials.get_D(rho_it, this->with_void, pc, p_min, psi, D);
+                this->materials.get_D(rho_it, psi, D);
                 const double S = e->get_stress_at(D, e->get_centroid(), u);
                 *stress_it = S;
 
+                rho_it += num_den;
                 ++stress_it;
             }
         }

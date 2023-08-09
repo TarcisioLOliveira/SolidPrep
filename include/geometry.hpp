@@ -38,7 +38,7 @@ class Geometry{
 
     Geometry(TopoDS_Shape shape, utils::ProblemType type, MeshElementFactory* elem_type, bool do_topopt, bool with_void, std::vector<Material*> materials);
 
-    void get_stresses(const std::vector<double>& u, const double p, const double p_min, const double psi, std::vector<double>::const_iterator& rho_it, std::vector<double>::iterator& stress_it) const;
+    void get_stresses(const std::vector<double>& u, const double p, const double psi, std::vector<double>::const_iterator& rho_it, std::vector<double>::iterator& stress_it) const;
 
     /**
      * Check if point is inside the geometry.
