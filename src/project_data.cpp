@@ -320,8 +320,8 @@ std::vector<std::unique_ptr<Geometry>> ProjectData::load_geometries(const rapidj
             }
         }
 
-        bool with_void = (mats.size() == 1) ? true : false;
-        if(this->log_data(geom, "with_void", TYPE_BOOL, false) && mats.size() > 1){
+        bool with_void = ((mats.size() == 1) ? true : false) && do_topopt;
+        if(this->log_data(geom, "with_void", TYPE_BOOL, false) && mats.size() > 1 && do_topopt){
             with_void = geom["with_void"].GetBool();
         }
 
