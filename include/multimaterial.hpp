@@ -60,15 +60,6 @@ class MultiMaterial{
 
     void get_D_internal(std::vector<double>::const_iterator& rho, const double* pos, const size_t posN, const double mix, std::vector<double>& D) const;
     void get_gradD_internal(std::vector<double>::const_iterator& rho, const double* pos, const size_t posN, const double mix, std::vector<std::vector<double>>& gradD) const;
-
-    std::vector<double> invert_2D(const std::vector<double>& d) const;
-    std::vector<double> invert_3D(const std::vector<double>& d) const;
-    std::vector<double> square_2D(const std::vector<double>& d) const;
-    std::vector<double> square_3D(const std::vector<double>& d) const;
-    std::vector<double> mult_2D(const std::vector<double>& d, const std::vector<double>& e) const;
-    std::vector<double> mult_3D(const std::vector<double>& d, const std::vector<double>& e) const;
-    std::vector<double> square_root_2D(const std::vector<double>& d) const;
-    std::vector<double> square_root_3D(const std::vector<double>& d) const;
 };
 
 #endif
