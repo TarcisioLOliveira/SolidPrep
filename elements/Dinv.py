@@ -59,6 +59,12 @@ format_and_print(D3D*D3D)
 print("")
 format_and_print(D2D**(1/2))
 print("")
+
 exit(0)
-format_and_print(D3D**(1/2))
+E3D[:3,:3] = D3D[:3,:3]**(1/2)
+E3D[3,3] = sympy.sqrt(D3D[3,3])
+E3D[4,4] = sympy.sqrt(D3D[4,4])
+E3D[5,5] = sympy.sqrt(D3D[5,5])
+
+format_and_print(E3D)
 print("")
