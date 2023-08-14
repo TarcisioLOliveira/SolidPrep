@@ -55,11 +55,23 @@ double MassFirstMaterial::calculate(const Optimizer* const op, const std::vector
     for(auto& g:this->mesh->geometries){
         if(g->do_topopt){
             const size_t num_den = g->number_of_densities_needed();
-            const double d = g->materials.get_materials()[0]->density;
-            for(auto xi = x_it; xi < x_it+g->mesh.size(); xi += num_den, ++v_it){
-                V += (*xi)*d*(*v_it);
+            if(g->with_void){
+                for(const auto& e:g->mesh){
+                    const gp_Pnt p = e->get_centroid();
+                    const double d = g->materials.get_materials()[0]->get_density(p);
+                    V += (*x_it)*(*(x_it+1))*d*(*v_it);
+                    ++v_it;
+                    x_it += num_den;
+                }
+            } else {
+                for(const auto& e:g->mesh){
+                    const gp_Pnt p = e->get_centroid();
+                    const double d = g->materials.get_materials()[0]->get_density(p);
+                    V += (*x_it)*d*(*v_it);
+                    ++v_it;
+                    x_it += num_den;
+                }
             }
-            x_it += g->mesh.size()*num_den;
         } else {
             v_it += g->mesh.size();
         }
@@ -86,12 +98,28 @@ double MassFirstMaterial::calculate_with_gradient(const Optimizer* const op, con
     for(auto& g:this->mesh->geometries){
         if(g->do_topopt){
             const size_t num_den = g->number_of_densities_needed();
-            const double d = g->materials.get_materials()[0]->density;
-            for(auto xi = x_it; xi < x_it+g->mesh.size(); xi += num_den, ++v_it, grad_it += num_den){
-                V += (*xi)*d*(*v_it);
-                *grad_it = d*(*v_it)*1e3/1e9;
+            if(g->with_void){
+                for(const auto& e:g->mesh){
+                    const gp_Pnt p = e->get_centroid();
+                    const double d = g->materials.get_materials()[0]->get_density(p);
+                    V += (*x_it)*(*(x_it+1))*d*(*v_it);
+                    *grad_it = (*(x_it+1))*d*(*v_it)*1e3/1e9;
+                    *(grad_it+1) = (*x_it)*d*(*v_it)*1e3/1e9;
+                    ++v_it;
+                    x_it += num_den;
+                    grad_it += num_den;
+                }
+            } else {
+                for(const auto& e:g->mesh){
+                    const gp_Pnt p = e->get_centroid();
+                    const double d = g->materials.get_materials()[0]->get_density(p);
+                    V += (*x_it)*d*(*v_it);
+                    *grad_it = d*(*v_it)*1e3/1e9;
+                    ++v_it;
+                    x_it += num_den;
+                    grad_it += num_den;
+                }
             }
-            x_it += g->mesh.size()*num_den;
         } else {
             v_it += g->mesh.size();
         }

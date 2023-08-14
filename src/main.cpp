@@ -126,8 +126,9 @@ int main(int argc, char* argv[]){
                 strainY .reserve(s_size);
                 strainXY.reserve(s_size);
                 for(auto& g:proj->geometries){
-                    const auto D = g->materials.get_D();
                     for(auto& e:g->mesh){
+                        const gp_Pnt c = e->get_centroid();
+                        const auto D = g->materials.get_D(c);
                         stresses.push_back(e->get_stress_at(D, e->get_centroid(), u));
                         auto tensor = e->get_stress_tensor(D, e->get_centroid(), u);
                         stressesX.push_back(tensor[0]);
@@ -204,8 +205,9 @@ int main(int argc, char* argv[]){
                 strainXZ.reserve(s_size);
                 strainYZ.reserve(s_size);
                 for(auto& g:proj->geometries){
-                    const auto D = g->materials.get_D();
                     for(auto& e:g->mesh){
+                        const gp_Pnt c = e->get_centroid();
+                        const auto D = g->materials.get_D(c);
                         stresses.push_back(e->get_stress_at(D, e->get_centroid(), u));
                         auto tensor = e->get_stress_tensor(D, e->get_centroid(), u);
                         stressesX.push_back(tensor[0]);

@@ -42,13 +42,14 @@ void GlobalStiffnessMatrix::generate_base(const Meshing * const mesh, const std:
 }
 
 void GlobalStiffnessMatrix::add_geometry(const Meshing* const mesh, const Geometry* const g){
-    const auto D = g->materials.get_D();
     const double t = mesh->thickness;
     const size_t dof      = mesh->elem_info->get_dof_per_node();
     const size_t node_num = mesh->elem_info->get_nodes_per_element();
 
     std::vector<long> u_pos(dof*node_num);
     for(auto& e : g->mesh){
+        const gp_Pnt c = e->get_centroid();
+        const auto D = g->materials.get_D(c);
         for(size_t i = 0; i < node_num; ++i){
             const auto& n = e->nodes[i];
             for(size_t j = 0; j < dof; ++j){
@@ -66,9 +67,10 @@ void GlobalStiffnessMatrix::add_geometry(const Meshing* const mesh, const Geomet
     const size_t node_num = mesh->elem_info->get_nodes_per_element();
 
     std::vector<long> u_pos(dof*node_num);
-    auto D = g->materials.get_D();
     const size_t num_den = g->number_of_densities_needed();
     const size_t k_size = mesh->elem_info->get_k_dimension();
+    const size_t s_size = mesh->elem_info->get_D_dimension();
+    auto D = std::vector<double>(s_size*s_size, 0);
     if(g->with_void){
         for(const auto& e:g->mesh){
             if(*rho > 0){
@@ -78,7 +80,8 @@ void GlobalStiffnessMatrix::add_geometry(const Meshing* const mesh, const Geomet
                         u_pos[i*dof + j] = n->u_pos[j];
                     }
                 }
-                g->materials.get_D(rho, psi, D);
+                const gp_Pnt c = e->get_centroid();
+                g->materials.get_D(rho, psi, c, D);
                 std::vector<double> k = e->get_k(D, t);
                 cblas_dscal(k_size*k_size, std::pow(*rho, pc), k.data(), 1);
                 this->insert_element_matrix(k, u_pos);
@@ -94,7 +97,8 @@ void GlobalStiffnessMatrix::add_geometry(const Meshing* const mesh, const Geomet
                     u_pos[i*dof + j] = n->u_pos[j];
                 }
             }
-            g->materials.get_D(rho, psi, D);
+            const gp_Pnt c = e->get_centroid();
+            g->materials.get_D(rho, psi, c, D);
             const std::vector<double> k = e->get_k(D, t);
             this->insert_element_matrix(k, u_pos);
 

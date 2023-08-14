@@ -27,7 +27,7 @@
 namespace material{
 
 LinearElasticOrthotropic::LinearElasticOrthotropic(const std::string& name, const double density, std::vector<double> E, std::vector<double> nu, std::vector<double> G, std::vector<double> Smax, std::vector<double> Tmax):
-    Material(name, density, std::move(Smax), std::move(Tmax)){
+    Material(name, std::move(Smax), std::move(Tmax)), density(density){
    
     this->S_2D.resize(9);
     S_2D[0] = 1/E[0];

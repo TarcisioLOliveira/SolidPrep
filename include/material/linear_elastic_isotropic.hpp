@@ -29,6 +29,27 @@ class LinearElasticIsotropic : public Material{
     public:
     LinearElasticIsotropic(const std::string& name, const double density, double E, double nu, double Smax, double Tmax, bool plane_stress);
 
+    inline virtual std::vector<double> stiffness_2D(const gp_Pnt& p) const override{
+        (void)p;
+        return this->D_2D;
+    }
+    inline virtual std::vector<double> stiffness_3D(const gp_Pnt& p) const override{
+        (void)p;
+        return this->D_3D;
+    }
+    inline virtual std::vector<double> stiffness_inverse_2D(const gp_Pnt& p) const override{
+        (void)p;
+        return this->S_2D;
+    }
+    inline virtual std::vector<double> stiffness_inverse_3D(const gp_Pnt& p) const override{
+        (void)p;
+        return this->S_3D;
+    }
+    inline virtual double get_density(const gp_Pnt& p) const override{
+        (void)p;
+        return density;
+    }
+
     virtual double beam_E_2D(gp_Dir d) const override;
     virtual double beam_E_3D(gp_Dir d) const override;
 
@@ -39,6 +60,11 @@ class LinearElasticIsotropic : public Material{
     private:
     const double E;
     const double nu;
+    const double density;
+    std::vector<double> D_2D;
+    std::vector<double> D_3D;
+    std::vector<double> S_2D;
+    std::vector<double> S_3D;
 };
 
 }

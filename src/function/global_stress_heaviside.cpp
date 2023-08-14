@@ -34,16 +34,17 @@ double GlobalStressHeaviside::calculate(const Optimizer* const op, const std::ve
 
     double result = 0;
 
+    const size_t s_size = this->mesh->elem_info->get_D_dimension();
     auto x_it = x.cbegin();
     if(mpi_id == 0){
         for(const auto& g:this->mesh->geometries){
             if(g->do_topopt){
                 const size_t num_den = g->number_of_densities_needed();
-                auto D = g->materials.get_D();
+                auto D = std::vector<double>(s_size*s_size, 0);
                 if(g->with_void){
                     for(const auto& e:g->mesh){
-                        g->materials.get_D(x_it, this->psiS, D);
                         const auto c = e->get_centroid();
+                        g->materials.get_D(x_it, this->psiS, c, D);
                         const double S = e->get_stress_at(D, c, u, this->vm_eps);
                         const double rho = this->relaxed_rho(*x_it);
                         const double Se = rho*S;
@@ -55,8 +56,8 @@ double GlobalStressHeaviside::calculate(const Optimizer* const op, const std::ve
                     }
                 } else {
                     for(const auto& e:g->mesh){
-                        g->materials.get_D(x_it, this->psiS, D);
                         const auto c = e->get_centroid();
+                        g->materials.get_D(x_it, this->psiS, c, D);
                         const double Se = e->get_stress_at(D, c, u, this->vm_eps);
                         const double H = this->heaviside(Se);
 
@@ -65,9 +66,9 @@ double GlobalStressHeaviside::calculate(const Optimizer* const op, const std::ve
                     }
                 }
             } else {
-                const auto D = g->materials.get_D();
                 for(const auto& e:g->mesh){
                     const auto c = e->get_centroid();
+                    const auto D = g->materials.get_D(c);
                     const double Se = e->get_stress_at(D, c, u, this->vm_eps);
                     const double H = this->heaviside(Se);
                     result += H*Se;
@@ -87,16 +88,17 @@ double GlobalStressHeaviside::calculate_with_gradient(const Optimizer* const op,
 
     double result = 0;
 
+    const size_t s_size = this->mesh->elem_info->get_D_dimension();
     auto x_it = x.cbegin();
     if(mpi_id == 0){
         for(const auto& g:this->mesh->geometries){
             if(g->do_topopt){
                 const size_t num_den = g->number_of_densities_needed();
-                auto D = g->materials.get_D();
+                auto D = std::vector<double>(s_size*s_size, 0);
                 if(g->with_void){
                     for(const auto& e:g->mesh){
-                        g->materials.get_D(x_it, this->psiS, D);
                         const auto c = e->get_centroid();
+                        g->materials.get_D(x_it, this->psiS, c, D);
                         const double S = e->get_stress_at(D, c, u, this->vm_eps);
                         const double rho = this->relaxed_rho(*x_it);
                         const double Se = rho*S;
@@ -110,8 +112,8 @@ double GlobalStressHeaviside::calculate_with_gradient(const Optimizer* const op,
                     }
                 } else {
                     for(const auto& e:g->mesh){
-                        g->materials.get_D(x_it, this->psiS, D);
                         const auto c = e->get_centroid();
+                        g->materials.get_D(x_it, this->psiS, c, D);
                         const double Se = e->get_stress_at(D, c, u, this->vm_eps);
                         const double H = this->heaviside(Se);
                         const double dH = this->heaviside_grad(Se);
@@ -122,9 +124,9 @@ double GlobalStressHeaviside::calculate_with_gradient(const Optimizer* const op,
                     }
                 }
             } else {
-                const auto D = g->materials.get_D();
                 for(const auto& e:g->mesh){
                     const auto c = e->get_centroid();
+                    const auto D = g->materials.get_D(c);
                     const double Se = e->get_stress_at(D, c, u, this->vm_eps);
                     const double H = this->heaviside(Se);
                     const double dH = this->heaviside_grad(Se);
@@ -146,19 +148,18 @@ double GlobalStressHeaviside::calculate_with_gradient(const Optimizer* const op,
         for(const auto& g:this->mesh->geometries){
             if(g->do_topopt){
                 const size_t num_den = g->number_of_densities_needed();
-                std::vector<std::vector<double>> gradD_K(num_den, g->materials.get_D());
-                std::vector<std::vector<double>> gradD_S(num_den, g->materials.get_D());
-                std::vector<double> D_S(g->materials.get_D());
+                std::vector<std::vector<double>> gradD_K(num_den, std::vector<double>(s_size*s_size, 0));
+                std::vector<std::vector<double>> gradD_S(num_den, std::vector<double>(s_size*s_size, 0));
+                std::vector<double> D_S(std::vector<double>(s_size*s_size, 0));
                 if(g->with_void){
-                    const auto D = g->materials.get_D();
                     for(const auto& e:g->mesh){
-                        g->materials.get_gradD(x_it, psiK, gradD_K);
-                        g->materials.get_gradD(x_it, psiS, gradD_S);
-                        g->materials.get_D(x_it, psiS, D_S);
-
-                        double lKu = pc*std::pow(*x_it, pc-1)*e->get_compliance(D, this->mesh->thickness, u, l);
                         const auto c = e->get_centroid();
-                        const double S = e->get_stress_at(D, c, u, this->vm_eps);
+                        g->materials.get_gradD(x_it, psiK, c, gradD_K);
+                        g->materials.get_gradD(x_it, psiS, c, gradD_S);
+                        g->materials.get_D(x_it, psiS, c, D_S);
+
+                        double lKu = pc*std::pow(*x_it, pc-1)*e->get_compliance(D_S, this->mesh->thickness, u, l);
+                        const double S = e->get_stress_at(D_S, c, u, this->vm_eps);
                         const double rho = this->relaxed_rho(*x_it);
                         const double drho = this->relaxed_rho_grad(*x_it);
                         const double Se = rho*S;
@@ -186,13 +187,14 @@ double GlobalStressHeaviside::calculate_with_gradient(const Optimizer* const op,
                     }
                 } else {
                     for(const auto& e:g->mesh){
-                        g->materials.get_gradD(x_it, psiK, gradD_K);
-                        g->materials.get_gradD(x_it, psiS, gradD_S);
-                        g->materials.get_D(x_it, psiS, D_S);
+                        const auto c = e->get_centroid();
+                        g->materials.get_gradD(x_it, psiK, c, gradD_K);
+                        g->materials.get_gradD(x_it, psiS, c, gradD_S);
+                        g->materials.get_D(x_it, psiS, c, D_S);
+
+                        const double S = e->get_stress_at(D_S, c, u, this->vm_eps);
                         for(size_t i = 0; i < num_den; ++i){
                             double lKu = e->get_compliance(gradD_K[i], this->mesh->thickness, u, l);
-                            const auto c = e->get_centroid();
-                            const double S = e->get_stress_at(D_S, c, u, this->vm_eps);
                             const double Se = e->von_Mises_derivative(D_S, gradD_S[i], this->heaviside_grad(S)/S, c, u);
                             const double H = this->heaviside(Se);
                             const double dH = this->heaviside_grad(Se);

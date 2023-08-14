@@ -29,7 +29,7 @@
 MultiMaterial::MultiMaterial(std::vector<Material*> materials, utils::ProblemType type, bool has_void):
     materials(std::move(materials)), problem_type(type), has_void(has_void){}
 
-void MultiMaterial::get_D(std::vector<double>::const_iterator rho, const double mix, std::vector<double>& D) const{
+void MultiMaterial::get_D(std::vector<double>::const_iterator rho, const double mix, const gp_Pnt& p, std::vector<double>& D) const{
     if(has_void){
         ++rho;
     }
@@ -37,21 +37,23 @@ void MultiMaterial::get_D(std::vector<double>::const_iterator rho, const double 
     if(this->problem_type == utils::PROBLEM_TYPE_2D){
         std::array<double, 5> pos{0, 1, 3, 4, 8};
         if(this->materials.size() > 1){
-            this->get_D_internal(rho, pos.data(), pos.size(), mix, D);
+            this->get_D_internal(rho, pos.data(), pos.size(), mix, p, D);
         } else {
-            std::copy(this->materials[0]->stiffness_2D().begin(), this->materials[0]->stiffness_2D().end(), D.begin());
+            const auto Dtmp = this->materials[0]->stiffness_2D(p);
+            std::copy(Dtmp.begin(), Dtmp.end(), D.begin());
         }
     } else if(this->problem_type == utils::PROBLEM_TYPE_3D){
         std::array<double, 12> pos{0, 1, 2, 6, 7, 8, 12, 13, 14, 21, 28, 35};
         if(this->materials.size() > 1){
-            this->get_D_internal(rho, pos.data(), pos.size(), mix, D);
+            this->get_D_internal(rho, pos.data(), pos.size(), mix, p, D);
         } else {
-            std::copy(this->materials[0]->stiffness_3D().begin(), this->materials[0]->stiffness_3D().end(), D.begin());
+            const auto Dtmp = this->materials[0]->stiffness_3D(p);
+            std::copy(Dtmp.begin(), Dtmp.end(), D.begin());
         }
     }
 }
 
-void MultiMaterial::get_gradD(std::vector<double>::const_iterator rho, const double mix, std::vector<std::vector<double>>& gradD) const{
+void MultiMaterial::get_gradD(std::vector<double>::const_iterator rho, const double mix, const gp_Pnt& p, std::vector<std::vector<double>>& gradD) const{
     if(has_void){
         ++rho;
     }
@@ -59,23 +61,25 @@ void MultiMaterial::get_gradD(std::vector<double>::const_iterator rho, const dou
     if(this->problem_type == utils::PROBLEM_TYPE_2D){
         std::array<double, 5> pos{0, 1, 3, 4, 8};
         if(this->materials.size() > 1){
-            this->get_gradD_internal(rho, pos.data(), pos.size(), mix, gradD);
+            this->get_gradD_internal(rho, pos.data(), pos.size(), mix, p, gradD);
         }
         if(has_void){
-            std::copy(this->materials[0]->stiffness_2D().begin(), this->materials[0]->stiffness_2D().end(), gradD[0].begin());
+            const auto Dtmp = this->materials[0]->stiffness_2D(p);
+            std::copy(Dtmp.begin(), Dtmp.end(), gradD[0].begin());
         }
     } else if(this->problem_type == utils::PROBLEM_TYPE_3D){
         std::array<double, 12> pos{0, 1, 2, 6, 7, 8, 12, 13, 14, 21, 28, 35};
         if(this->materials.size() > 1){
-            this->get_gradD_internal(rho, pos.data(), pos.size(), mix, gradD);
+            this->get_gradD_internal(rho, pos.data(), pos.size(), mix, p, gradD);
         }
         if(has_void){
-            std::copy(this->materials[0]->stiffness_3D().begin(), this->materials[0]->stiffness_3D().end(), gradD[0].begin());
+            const auto Dtmp = this->materials[0]->stiffness_3D(p);
+            std::copy(Dtmp.begin(), Dtmp.end(), gradD[0].begin());
         }
     }
 }
 
-void MultiMaterial::get_D_internal(std::vector<double>::const_iterator& rho, const double* pos, const size_t posN, const double mix, std::vector<double>& D) const{
+void MultiMaterial::get_D_internal(std::vector<double>::const_iterator& rho, const double* pos, const size_t posN, const double mix, const gp_Pnt& p, std::vector<double>& D) const{
     std::vector<double> v(this->materials.size(), 0);
     double total = 0;
     for(size_t i = 0; i < v.size()-1; ++i){
@@ -103,15 +107,15 @@ void MultiMaterial::get_D_internal(std::vector<double>::const_iterator& rho, con
     if(mix >= 0){
         for(size_t j = 0; j < v.size(); ++j){
             if(this->problem_type == utils::PROBLEM_TYPE_2D){
-                auto& MD = this->materials[j]->stiffness_2D();
-                auto& MS = this->materials[j]->stiffness_inverse_2D();
+                const auto MD = this->materials[j]->stiffness_2D(p);
+                const auto MS = this->materials[j]->stiffness_inverse_2D(p);
                 for(size_t i = 0; i < posN; ++i){
                     vD[pos[i]] += v[j]*MD[pos[i]];
                     rD[pos[i]] += v[j]*MS[pos[i]];
                 }
             } else if(this->problem_type == utils::PROBLEM_TYPE_3D){
-                auto& MD = this->materials[j]->stiffness_3D();
-                auto& MS = this->materials[j]->stiffness_inverse_3D();
+                const auto MD = this->materials[j]->stiffness_3D(p);
+                const auto MS = this->materials[j]->stiffness_inverse_3D(p);
                 for(size_t i = 0; i < posN; ++i){
                     vD[pos[i]] += v[j]*MD[pos[i]];
                     rD[pos[i]] += v[j]*MS[pos[i]];
@@ -129,15 +133,15 @@ void MultiMaterial::get_D_internal(std::vector<double>::const_iterator& rho, con
     } else {
         for(size_t j = 0; j < v.size(); ++j){
             if(this->problem_type == utils::PROBLEM_TYPE_2D){
-                auto& MD = this->materials[j]->stiffness_2D();
-                auto MS = utils::D_op::square_2D(this->materials[j]->stiffness_2D());
+                const auto MD = this->materials[j]->stiffness_2D(p);
+                const auto MS = utils::D_op::square_2D(this->materials[j]->stiffness_2D(p));
                 for(size_t i = 0; i < posN; ++i){
                     vD[pos[i]] += v[j]*MD[pos[i]];
                     rD[pos[i]] += v[j]*MS[pos[i]];
                 }
             } else if(this->problem_type == utils::PROBLEM_TYPE_3D){
-                auto& MD = this->materials[j]->stiffness_3D();
-                auto MS = utils::D_op::square_3D(this->materials[j]->stiffness_3D());
+                const auto MD = this->materials[j]->stiffness_3D(p);
+                const auto MS = utils::D_op::square_3D(this->materials[j]->stiffness_3D(p));
                 for(size_t i = 0; i < posN; ++i){
                     vD[pos[i]] += v[j]*MD[pos[i]];
                     rD[pos[i]] += v[j]*MS[pos[i]];
@@ -155,7 +159,7 @@ void MultiMaterial::get_D_internal(std::vector<double>::const_iterator& rho, con
     }
 }
 
-void MultiMaterial::get_gradD_internal(std::vector<double>::const_iterator& rho, const double* pos, const size_t posN, const double mix, std::vector<std::vector<double>>& gradD) const{
+void MultiMaterial::get_gradD_internal(std::vector<double>::const_iterator& rho, const double* pos, const size_t posN, const double mix, const gp_Pnt& p, std::vector<std::vector<double>>& gradD) const{
     std::vector<double> v(this->materials.size(), 0);
     double total = 0;
     for(size_t i = 0; i < v.size()-1; ++i){
@@ -188,9 +192,9 @@ void MultiMaterial::get_gradD_internal(std::vector<double>::const_iterator& rho,
         {
             const size_t j = v.size() - 1;
             if(this->problem_type == utils::PROBLEM_TYPE_2D){
-                rD_last = this->materials[j]->stiffness_inverse_2D();
+                rD_last = this->materials[j]->stiffness_inverse_2D(p);
             } else if(this->problem_type == utils::PROBLEM_TYPE_3D){
-                rD_last = this->materials[j]->stiffness_inverse_3D();
+                rD_last = this->materials[j]->stiffness_inverse_3D(p);
             }
         }
         // Full Reuss matrix, necessary due to derivative chain rule
@@ -198,12 +202,12 @@ void MultiMaterial::get_gradD_internal(std::vector<double>::const_iterator& rho,
             std::fill(rD.begin(), rD.end(), 0);
             for(size_t j = 0; j < v.size(); ++j){
                 if(this->problem_type == utils::PROBLEM_TYPE_2D){
-                    auto& MS = this->materials[j]->stiffness_inverse_2D();
+                    const auto MS = this->materials[j]->stiffness_inverse_2D(p);
                     for(size_t i = 0; i < posN; ++i){
                         rD[pos[i]] += v[j]*MS[pos[i]];
                     }
                 } else if(this->problem_type == utils::PROBLEM_TYPE_3D){
-                    auto& MS = this->materials[j]->stiffness_inverse_3D();
+                    const auto MS = this->materials[j]->stiffness_inverse_3D(p);
                     for(size_t i = 0; i < posN; ++i){
                         rD[pos[i]] += v[j]*MS[pos[i]];
                     }
@@ -226,17 +230,17 @@ void MultiMaterial::get_gradD_internal(std::vector<double>::const_iterator& rho,
         // Generate gradients
         for(size_t j = 0; j < v.size()-1; ++j){
             if(this->problem_type == utils::PROBLEM_TYPE_2D){
-                auto& MD = this->materials[j]->stiffness_2D();
-                auto& MDl = this->materials.back()->stiffness_2D();
-                auto& MS = this->materials[j]->stiffness_inverse_2D();
+                const auto MD = this->materials[j]->stiffness_2D(p);
+                const auto MDl = this->materials.back()->stiffness_2D(p);
+                const auto MS = this->materials[j]->stiffness_inverse_2D(p);
                 rD = utils::D_op::mult_2D(rD_mult, MS);
                 for(size_t i = 0; i < posN; ++i){
                     gradD[j+offset][pos[i]] = psi_v*(MD[pos[i]] - MDl[pos[i]]) + psi_r*(rD[pos[i]] - rD_last[pos[i]]);
                 }
             } else if(this->problem_type == utils::PROBLEM_TYPE_3D){
-                auto& MD = this->materials[j]->stiffness_3D();
-                auto& MDl = this->materials.back()->stiffness_3D();
-                auto& MS = this->materials[j]->stiffness_inverse_3D();
+                const auto MD = this->materials[j]->stiffness_3D(p);
+                const auto MDl = this->materials.back()->stiffness_3D(p);
+                const auto MS = this->materials[j]->stiffness_inverse_3D(p);
                 rD = utils::D_op::mult_3D(rD_mult, MS);
                 for(size_t i = 0; i < posN; ++i){
                     gradD[j+offset][pos[i]] = psi_v*(MD[pos[i]] - MDl[pos[i]]) + psi_r*(rD[pos[i]] - rD_last[pos[i]]);
@@ -250,9 +254,9 @@ void MultiMaterial::get_gradD_internal(std::vector<double>::const_iterator& rho,
         {
             const size_t j = v.size() - 1;
             if(this->problem_type == utils::PROBLEM_TYPE_2D){
-                rD_last = utils::D_op::square_2D(this->materials[j]->stiffness_2D());
+                rD_last = utils::D_op::square_2D(this->materials[j]->stiffness_2D(p));
             } else if(this->problem_type == utils::PROBLEM_TYPE_3D){
-                rD_last = utils::D_op::square_3D(this->materials[j]->stiffness_3D());
+                rD_last = utils::D_op::square_3D(this->materials[j]->stiffness_3D(p));
             }
         }
         // Full Reuss matrix, necessary due to derivative chain rule
@@ -260,12 +264,12 @@ void MultiMaterial::get_gradD_internal(std::vector<double>::const_iterator& rho,
             std::fill(rD.begin(), rD.end(), 0);
             for(size_t j = 0; j < v.size(); ++j){
                 if(this->problem_type == utils::PROBLEM_TYPE_2D){
-                    auto MS = utils::D_op::square_2D(this->materials[j]->stiffness_2D());
+                    const auto MS = utils::D_op::square_2D(this->materials[j]->stiffness_2D(p));
                     for(size_t i = 0; i < posN; ++i){
                         rD[pos[i]] += v[j]*MS[pos[i]];
                     }
                 } else if(this->problem_type == utils::PROBLEM_TYPE_3D){
-                    auto MS = utils::D_op::square_3D(this->materials[j]->stiffness_3D());
+                    const auto MS = utils::D_op::square_3D(this->materials[j]->stiffness_3D(p));
                     for(size_t i = 0; i < posN; ++i){
                         rD[pos[i]] += v[j]*MS[pos[i]];
                     }
@@ -288,17 +292,17 @@ void MultiMaterial::get_gradD_internal(std::vector<double>::const_iterator& rho,
         // Generate gradients
         for(size_t j = 0; j < v.size()-1; ++j){
             if(this->problem_type == utils::PROBLEM_TYPE_2D){
-                auto& MD = this->materials[j]->stiffness_2D();
-                auto& MDl = this->materials.back()->stiffness_2D();
-                auto MS = utils::D_op::square_2D(this->materials[j]->stiffness_2D());
+                const auto MD = this->materials[j]->stiffness_2D(p);
+                const auto MDl = this->materials.back()->stiffness_2D(p);
+                const auto MS = utils::D_op::square_2D(this->materials[j]->stiffness_2D(p));
                 rD = utils::D_op::mult_2D(rD_mult, MS);
                 for(size_t i = 0; i < posN; ++i){
                     gradD[j+offset][pos[i]] = psi_v*(MD[pos[i]] - MDl[pos[i]]) + psi_r*(rD[pos[i]] - rD_last[pos[i]]);
                 }
             } else if(this->problem_type == utils::PROBLEM_TYPE_3D){
-                auto& MD = this->materials[j]->stiffness_3D();
-                auto& MDl = this->materials.back()->stiffness_3D();
-                auto MS = utils::D_op::square_3D(this->materials[j]->stiffness_3D());
+                auto MD = this->materials[j]->stiffness_3D(p);
+                auto MDl = this->materials.back()->stiffness_3D(p);
+                auto MS = utils::D_op::square_3D(this->materials[j]->stiffness_3D(p));
                 rD = utils::D_op::mult_3D(rD_mult, MS);
                 for(size_t i = 0; i < posN; ++i){
                     gradD[j+offset][pos[i]] = psi_v*(MD[pos[i]] - MDl[pos[i]]) + psi_r*(rD[pos[i]] - rD_last[pos[i]]);
@@ -308,7 +312,7 @@ void MultiMaterial::get_gradD_internal(std::vector<double>::const_iterator& rho,
     }
 }
 
-double MultiMaterial::get_density(std::vector<double>::const_iterator& rho) const{
+double MultiMaterial::get_density(std::vector<double>::const_iterator rho, const gp_Pnt& p) const{
     double void_rho = 1.0;
     if(has_void){
         void_rho = *rho;
@@ -327,7 +331,7 @@ double MultiMaterial::get_density(std::vector<double>::const_iterator& rho) cons
 
     double d = 0;
     for(size_t i = 0; i < v.size(); ++i){
-        d += v[i]*this->materials[i]->density;
+        d += v[i]*this->materials[i]->get_density(p);
     }
 
     d *= void_rho;
@@ -335,7 +339,7 @@ double MultiMaterial::get_density(std::vector<double>::const_iterator& rho) cons
     return d;
 }
 
-double MultiMaterial::get_density_deriv(std::vector<double>::const_iterator& rho, std::vector<double>::iterator& grad) const{
+double MultiMaterial::get_density_deriv(std::vector<double>::const_iterator rho, const gp_Pnt& p, std::vector<double>::iterator& grad) const{
     double void_rho = 1.0;
     if(has_void){
         void_rho = *rho;
@@ -354,7 +358,7 @@ double MultiMaterial::get_density_deriv(std::vector<double>::const_iterator& rho
 
     double d = 0;
     for(size_t i = 0; i < v.size(); ++i){
-        d += v[i]*this->materials[i]->density;
+        d += v[i]*this->materials[i]->get_density(p);
     }
 
     if(has_void){
@@ -362,7 +366,7 @@ double MultiMaterial::get_density_deriv(std::vector<double>::const_iterator& rho
         ++grad;
     }
     for(size_t i = 0; i < v.size()-1; ++i){
-        *grad = void_rho*(this->materials[i]->density - this->materials.back()->density);
+        *grad = void_rho*(this->materials[i]->get_density(p) - this->materials.back()->get_density(p));
         ++grad;
     }
 

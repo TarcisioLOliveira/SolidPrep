@@ -32,8 +32,9 @@ std::vector<double> FiniteElement::calculate_forces(const Meshing* const mesh, c
    for(auto& g:mesh->geometries){
        const size_t num_mat = g->number_of_materials();
        if(num_mat == 1){
-            const auto D = g->materials.get_D();
             for(auto& e:g->mesh){
+                const gp_Pnt c = e->get_centroid();
+                const auto D = g->materials.get_D(c);
                 auto f = e->get_internal_loads(D, mesh->thickness, displacements);
                 for(size_t n = 0; n < node_num; ++n){
                     auto& node = e->nodes[n];

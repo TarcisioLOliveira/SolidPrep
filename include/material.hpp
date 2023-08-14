@@ -43,20 +43,13 @@ class Material{
      * @param Smax Maximum normal stresses. Input either 1, 3 or 6 values.
      * @param Tmax Maximum shear stresses. Input either 1 or 3 values.
      */
-    Material(const std::string& name, const double density, std::vector<double> Smax, std::vector<double> Tmax);
+    Material(const std::string& name, std::vector<double> Smax, std::vector<double> Tmax);
 
-    inline const std::vector<double>& stiffness_2D() const{
-        return this->D_2D;
-    }
-    inline const std::vector<double>& stiffness_3D() const{
-        return this->D_3D;
-    }
-    inline const std::vector<double>& stiffness_inverse_2D() const{
-        return this->S_2D;
-    }
-    inline const std::vector<double>& stiffness_inverse_3D() const{
-        return this->S_3D;
-    }
+    virtual std::vector<double> stiffness_2D(const gp_Pnt& p) const = 0;
+    virtual std::vector<double> stiffness_3D(const gp_Pnt& p) const = 0;
+    virtual std::vector<double> stiffness_inverse_2D(const gp_Pnt& p) const = 0;
+    virtual std::vector<double> stiffness_inverse_3D(const gp_Pnt& p) const = 0;
+    virtual double get_density(const gp_Pnt& p) const = 0;
 
     virtual double beam_E_2D(gp_Dir d = gp_Dir(1,0,0)) const = 0;
     virtual double beam_E_3D(gp_Dir d = gp_Dir(1,0,0)) const = 0;
@@ -78,14 +71,9 @@ class Material{
     virtual double get_max_Von_Mises_3D() const;
 
     const std::string name;
-    const double density;
     protected:
     std::vector<double> Smax;
     std::vector<double> Tmax;
-    std::vector<double> D_2D;
-    std::vector<double> D_3D;
-    std::vector<double> S_2D;
-    std::vector<double> S_3D;
 };
 
 #endif
