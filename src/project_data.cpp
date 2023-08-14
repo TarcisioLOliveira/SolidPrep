@@ -144,6 +144,10 @@ ProjectData::ProjectData(std::string project_file){
     if(this->log_data(doc, "supports", TYPE_ARRAY, true)){
         this->supports = this->get_support(doc["supports"]);
     }
+    if(this->log_data(doc, "mesher", TYPE_OBJECT, true)){
+        this->log_data(doc["mesher"], "element_type", TYPE_STRING, true);
+        this->topopt_element = this->get_element_type(doc["mesher"]["element_type"]);
+    }
     if(this->log_data(doc, "geometry", TYPE_ARRAY, true)){
         this->geometries = this->load_geometries(doc);
     }
@@ -157,8 +161,6 @@ ProjectData::ProjectData(std::string project_file){
         this->sizer = this->load_sizer(doc);
     }
     if(this->log_data(doc, "mesher", TYPE_OBJECT, true)){
-        this->log_data(doc["mesher"], "element_type", TYPE_STRING, true);
-        this->topopt_element = this->get_element_type(doc["mesher"]["element_type"]);
         this->topopt_mesher = this->load_mesher(doc);
     }
     if(this->log_data(doc, "topopt", TYPE_OBJECT, needs_topopt)){
