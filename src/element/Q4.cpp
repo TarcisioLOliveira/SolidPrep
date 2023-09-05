@@ -119,6 +119,31 @@ std::vector<double> Q4::get_Nf(const double t, const std::vector<gp_Pnt>& points
     return Nf_vec;
 }
 
+std::vector<double> Q4::get_R(const std::vector<double>& K, const double t, const std::vector<gp_Pnt>& points) const{
+    const double x[]{points[0].X(), points[1].X()};
+    const double y[]{points[0].Y(), points[1].Y()};
+    const double rnorm = 0.5*points[0].Distance(points[1]);
+
+    Eigen::Matrix<double, K_DIM, K_DIM> R;
+    Eigen::Matrix<double, DIM, DIM> Km = Eigen::Map<const Eigen::Matrix<double, DIM, DIM>>(K.data(), DIM, DIM);
+    R.fill(0);
+    constexpr size_t GN = 3;
+    const auto& GL = utils::GaussLegendre<GN>::get();
+
+    for(auto xi = GL.begin(); xi < GL.end(); ++xi){
+        const double s = xi->x;
+        const double X = 0.5*(x[0]*(1-s) + x[1]*(1+s));
+        const double Y = 0.5*(y[0]*(1-s) + y[1]*(1+s));
+        const auto NN = N_mat(X, Y);
+        R += xi->w*NN.transpose()*Km*NN;
+    }
+    R *= t*rnorm;
+    std::vector<double> R_vec(K_DIM*NODE_DOF);
+    std::copy(R.data(), R.data()+K_DIM*NODE_DOF, R_vec.begin());
+
+    return R_vec;
+}
+
 Eigen::MatrixXd Q4::diffusion_1dof(const double t, const std::vector<double>& A) const{
     constexpr size_t N = Q4::NODES_PER_ELEM;
     std::array<double, N> x, y;

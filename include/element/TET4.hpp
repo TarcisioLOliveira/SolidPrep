@@ -49,6 +49,7 @@ class TET4 : public MeshElementCommon3DTet<TET4>{
 
     virtual std::vector<double> get_k(const std::vector<double>& D, const double t) const override;
     virtual std::vector<double> get_nodal_density_gradient(gp_Pnt p) const override;
+    virtual std::vector<double> get_R(const std::vector<double>& K, const double t, const std::vector<gp_Pnt>& points) const override;
 
     virtual Eigen::MatrixXd diffusion_1dof(const double t, const std::vector<double>& A) const override;
     virtual Eigen::MatrixXd advection_1dof(const double t, const std::vector<double>& v) const override;
@@ -72,6 +73,28 @@ class TET4 : public MeshElementCommon3DTet<TET4>{
         return (a[i] + b[i]*x + c[i]*y + d[i]*z)/(6*V);
     }
 
+    inline double N_norm(double x, double y, double z, size_t i) const{
+        switch(i){
+            case 0:
+                return x;
+            case 1:
+                return y;
+            case 2:
+                return z;
+            case 3:
+                return 1 - x - y - z;
+        }
+        return 0;
+    }
+
+    inline Eigen::Matrix<double, DIM, K_DIM> N_mat(double x, double y, double z) const{
+        const double Ni[NODES_PER_ELEM] = {N(x, y, z, 0), N(x, y, z, 1), N(x, y, z, 2), N(x, y, z, 3)};
+
+        return Eigen::Matrix<double, DIM, K_DIM>{{Ni[0], 0, 0, Ni[1], 0, 0, Ni[2], 0, 0, Ni[3], 0, 0},
+                                                 {0, Ni[0], 0, 0, Ni[1], 0, 0, Ni[2], 0, 0, Ni[3], 0},
+                                                 {0, 0, Ni[0], 0, 0, Ni[1], 0, 0, Ni[2], 0, 0, Ni[3]}};
+    }
+
     inline Eigen::Vector<double, 4> N_mat_1dof(double x, double y, double z) const{
         return Eigen::Vector<double, 4>(N(x, y, z, 0), N(x, y, z, 1), N(x, y, z, 2), N(x, y, z, 3));
     }
@@ -79,6 +102,69 @@ class TET4 : public MeshElementCommon3DTet<TET4>{
         return Eigen::Matrix<double, 3, 4>{{b[0], b[1], b[2], b[3]},
                                            {c[0], c[1], c[2], c[3]},
                                            {d[0], d[1], d[2], d[3]}}/(6*V);
+    }
+    inline double dNdx_norm_surface(double x, double y, size_t i) const{
+        (void)x;
+        (void)y;
+        // x, y, 1 - x - y
+        switch(i){
+            case 0:
+                return  1;
+            case 1:
+                return  0;
+            case 2:
+                return -1;
+        }
+        return 0;
+    }
+    inline double dNdy_norm_surface(double x, double y, size_t i) const{
+        (void)x;
+        (void)y;
+        // x, y, 1 - x - y
+        switch(i){
+            case 0:
+                return 0;
+            case 1:               
+                return 1;
+            case 2:               
+                return -1;
+        }
+        return 0;
+    }
+
+    inline Eigen::Vector<double, NODE_DOF> surface_to_nat(double xi, double eta, const double A[3], const double B[3], const double C[3], const std::array<double, BOUNDARY_NODES_PER_ELEM>& x, const std::array<double, BOUNDARY_NODES_PER_ELEM>& y, const std::array<double, BOUNDARY_NODES_PER_ELEM>& z) const{
+        double X = 0, Y = 0, Z = 0;
+        for(size_t i = 0; i < BOUNDARY_NODES_PER_ELEM; ++i){
+            const double Ni = A[i] + B[i]*xi + C[i]*eta;
+            X += Ni*x[i];
+            Y += Ni*y[i];
+            Z += Ni*z[i];
+        }
+
+        return Eigen::Vector<double, NODE_DOF>{X, Y, Z};
+    }
+
+    inline double surface_drnorm(const double B[3], const double C[3], const std::array<double, BOUNDARY_NODES_PER_ELEM>& x, const std::array<double, BOUNDARY_NODES_PER_ELEM>& y, const std::array<double, BOUNDARY_NODES_PER_ELEM>& z) const{
+        double dXdx = 0, dYdx = 0, dZdx = 0;
+        double dXdy = 0, dYdy = 0, dZdy = 0;
+        for(size_t i = 0; i < BOUNDARY_NODES_PER_ELEM; ++i){
+            //const double Nix = dNdx_norm_surface(xi, eta, i);
+            //const double Niy = dNdy_norm_surface(xi, eta, i);
+            const double Nix = B[i];
+            const double Niy = C[i];
+
+            dXdx += Nix*x[i];
+            dYdx += Nix*y[i];
+            dZdx += Nix*z[i];
+
+            dXdy += Niy*x[i];
+            dYdy += Niy*y[i];
+            dZdy += Niy*z[i];
+        }
+        Eigen::Vector<double, 3> rx{dXdx, dYdx, dZdx};
+        Eigen::Vector<double, 3> ry{dXdy, dYdy, dZdy};
+
+        return (rx.cross(ry)).norm();
     }
 };
 

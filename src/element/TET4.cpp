@@ -18,6 +18,8 @@
  *
  */
 
+#include <Eigen/Core>
+#include <Eigen/Dense>
 #include "element/TET4.hpp"
 #include "cblas.h"
 #include "logger.hpp"
@@ -714,6 +716,48 @@ std::vector<double> TET4::get_nodal_density_gradient(gp_Pnt p) const{
     return std::vector<double>{b[0]/(6*V), b[1]/(6*V), b[2]/(6*V), b[3]/(6*V),
                                c[0]/(6*V), c[1]/(6*V), c[2]/(6*V), c[3]/(6*V),
                                d[0]/(6*V), d[1]/(6*V), d[2]/(6*V), d[3]/(6*V)};
+}
+
+std::vector<double> TET4::get_R(const std::vector<double>& K, const double t, const std::vector<gp_Pnt>& points) const{
+    std::array<double, BOUNDARY_NODES_PER_ELEM> x, y, z;
+    for(size_t i = 0; i < BOUNDARY_NODES_PER_ELEM; ++i){
+        x[i] = points[i].X();
+        y[i] = points[i].Y();
+        z[i] = points[i].Z();
+    }
+
+    double B[3], C[3];
+    for(size_t i = 0; i < BOUNDARY_NODES_PER_ELEM; ++i){
+        size_t j = (i + 1) % BOUNDARY_NODES_PER_ELEM;
+        size_t k = (i + 2) % BOUNDARY_NODES_PER_ELEM;
+
+        B[i] = points[j].Y() - points[k].Y();
+        C[i] = points[k].X() - points[j].X();
+    }
+
+    Eigen::Matrix<double, K_DIM, K_DIM> R;
+    Eigen::Matrix<double, DIM, DIM> Km = Eigen::Map<const Eigen::Matrix<double, DIM, DIM>>(K.data(), DIM, DIM);
+    R.fill(0);
+
+    const double GL[3][3] = {{0.5, 0.5, 0},
+                             {0, 0.5, 0.5},
+                             {0.5, 0, 0.5}};
+
+    const auto drnorm = this->surface_drnorm(B, C, x, y, z);
+    const auto& p = points;
+    for(size_t i = 0; i < 3; ++i){
+        const double xi = GL[i][0]*p[0].X() + GL[i][1]*p[1].X() + GL[i][2]*p[2].X();
+        const double eta = GL[i][0]*p[0].Y() + GL[i][1]*p[1].Y() + GL[i][2]*p[2].Y();
+        const double zeta = GL[i][0]*p[0].Z() + GL[i][1]*p[1].Z() + GL[i][2]*p[2].Z();
+        //const auto r = this->surface_to_nat(xi->x, eta->x, A, B, C, x, y, z);
+        //const auto NN = N_mat(r[0], r[1], r[2]);
+        const auto NN = N_mat(xi, eta, zeta);
+        R += (drnorm*NN.transpose()*Km*NN)/3.0;
+    }
+    std::vector<double> R_vec(K_DIM*NODE_DOF);
+    std::copy(R.data(), R.data()+K_DIM*NODE_DOF, R_vec.begin());
+
+    return R_vec;
 }
 
 Eigen::MatrixXd TET4::diffusion_1dof(const double t, const std::vector<double>& A) const{

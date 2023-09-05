@@ -48,6 +48,7 @@ class GT9 : public MeshElementCommon2DTri<GT9>{
 
     virtual std::vector<double> get_k(const std::vector<double>& D, const double t) const override;
     virtual std::vector<double> get_nodal_density_gradient(gp_Pnt p) const override;
+    virtual std::vector<double> get_R(const std::vector<double>& K, const double t, const std::vector<gp_Pnt>& points) const override;
 
     virtual Eigen::MatrixXd diffusion_1dof(const double t, const std::vector<double>& A) const override;
     virtual Eigen::MatrixXd advection_1dof(const double t, const std::vector<double>& v) const override;
@@ -67,6 +68,25 @@ class GT9 : public MeshElementCommon2DTri<GT9>{
 
     inline double N(double x, double y, size_t i) const{
         return (a[i] + b[i]*x + c[i]*y)/(2*delta);
+    }
+
+    inline Eigen::Matrix<double, DIM, K_DIM> N_mat(double x, double y) const{
+        double Ni[NODE_DOF] = {N(x,y,0), N(x,y,1), N(x,y,2)};
+        Eigen::Matrix<double, DIM, K_DIM> NN;
+        NN.fill(0);
+        for(size_t i = 0; i < NODE_DOF; ++i){
+            const size_t j = (i+1) % NODE_DOF;
+            const size_t k = (i+2) % NODE_DOF;
+
+            const double Nut = 0.5*Ni[i]*(b[k]*Ni[j]-b[j]*Ni[k]);
+            const double Nvt = 0.5*Ni[i]*(c[k]*Ni[j]-c[j]*Ni[k]);
+            NN(0, i*NODE_DOF + 0) = Ni[i];
+            NN(0, i*NODE_DOF + 2) = Nut;
+            NN(1, i*NODE_DOF + 1) = Ni[i];
+            NN(1, i*NODE_DOF + 2) = Nvt;
+        }
+
+        return NN;
     }
 
     inline Eigen::Vector<double, 3> N_mat_1dof(double x, double y) const{
