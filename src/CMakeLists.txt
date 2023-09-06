@@ -19,6 +19,7 @@ set(SOURCES
     optimizer.cpp
     multimaterial.cpp
     global_stiffness_matrix.cpp
+    spring.cpp
 )
 
 add_subdirectory(pathfinding)
