@@ -39,6 +39,7 @@
 #include "density_filter.hpp"
 #include "function.hpp"
 #include "optimizer.hpp"
+#include "spring.hpp"
 
 /**
  * Reads and stores project data.
@@ -76,6 +77,7 @@ class ProjectData {
     std::vector<std::unique_ptr<Geometry>> geometries;
     std::vector<Force> forces;
     std::vector<Support> supports;
+    std::vector<Spring> springs;
     std::unique_ptr<FiniteElement> sizer_fea;
     std::unique_ptr<TopologyOptimization> topopt;
     std::unique_ptr<FiniteElement> topopt_fea;
@@ -133,6 +135,8 @@ class ProjectData {
     std::vector<Force> get_loads(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc);
 
     std::vector<Support> get_support(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc);
+
+    std::vector<Spring> get_springs(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc);
 
     Projection::Parameter get_projection_parameter(const rapidjson::GenericValue<rapidjson::UTF8<>>& p) const;
 

@@ -144,6 +144,11 @@ ProjectData::ProjectData(std::string project_file){
     if(this->log_data(doc, "supports", TYPE_ARRAY, true)){
         this->supports = this->get_support(doc["supports"]);
     }
+    if(this->log_data(doc, "springs", TYPE_ARRAY, true)){
+        this->springs = this->get_springs(doc["springs"]);
+    }
+    logger::log_assert(this->supports.size() > 0 || this->springs.size() > 0, logger::ERROR,
+                       "a support or spring must be specified to prevent matrix singularity.");
     if(this->log_data(doc, "mesher", TYPE_OBJECT, true)){
         this->log_data(doc["mesher"], "element_type", TYPE_STRING, true);
         this->topopt_element = this->get_element_type(doc["mesher"]["element_type"]);
@@ -867,6 +872,35 @@ std::vector<Support> ProjectData::get_support(const rapidjson::GenericValue<rapi
     return supports;
 }
 
+std::vector<Spring> ProjectData::get_springs(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc){
+    std::vector<Spring> forces;
+    if(this->type == utils::PROBLEM_TYPE_2D){
+        for(auto& f : doc.GetArray()){
+            logger::log_assert(f.IsObject(), logger::ERROR, "Each load must be stored as a JSON object");
+            this->log_data(f, "K", TYPE_ARRAY, true);
+            auto loads = f["K"].GetArray();
+            logger::log_assert(loads.Size() == 2, logger::ERROR, "Load vector must have exactly two dimensions in 2D problems");
+
+            std::array<double, 3> l{loads[0].GetDouble(), loads[1].GetDouble(), 0};
+
+            auto S = this->get_cross_section(f);
+            forces.emplace_back(S, l, this->type);
+        }
+    } else if(this->type == utils::PROBLEM_TYPE_3D) {
+        for(auto& f : doc.GetArray()){
+            logger::log_assert(f.IsObject(), logger::ERROR, "Each load must be stored as a JSON object");
+            this->log_data(f, "K", TYPE_ARRAY, true);
+            auto loads = f["K"].GetArray();
+            logger::log_assert(loads.Size() == 3, logger::ERROR, "Load vector must have exactly three dimensions in 3D problems");
+
+            std::array<double, 3> l{loads[0].GetDouble(), loads[1].GetDouble(), loads[2].GetDouble()};
+
+            auto S = this->get_cross_section(f);
+            forces.emplace_back(S, l, this->type);
+        }
+    }
+    return forces;
+}
 
 CrossSection ProjectData::get_cross_section(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc) const{
     if(this->type == utils::PROBLEM_TYPE_2D){
