@@ -44,6 +44,7 @@ void Meshing::generate_elements(const TopoDS_Shape& shape,
                                 std::unordered_map<size_t, MeshNode*>& id_map,
                                 const std::vector<Force>& forces, 
                                 const std::vector<Support>& supports,
+                                const std::vector<Spring>& springs,
                                 const bool deduplicate,
                                 const bool boundary_condition_inside){
 
@@ -55,6 +56,7 @@ void Meshing::generate_elements(const TopoDS_Shape& shape,
 
     const size_t nodes_per_elem = this->elem_info->get_nodes_per_element();
     const size_t bound_nodes_per_elem = this->elem_info->get_boundary_nodes_per_element();
+    const size_t dof = this->elem_info->get_dof_per_node();
 
     {
         auto list = this->generate_element_shapes(elem_node_tags, nodes_per_elem, id_map);
@@ -71,8 +73,39 @@ void Meshing::generate_elements(const TopoDS_Shape& shape,
         this->populate_boundary_elements(bound_list, boundary_condition_inside);
     }
 
+    // Zero positioning
+    #pragma omp parallel for
+    for(size_t i = 0; i < this->node_list.size(); ++i){
+        auto& n = this->node_list[i];
+        for(size_t j = 0; j < dof; ++j){
+            n->u_pos[j] = 0;
+        }
+    }
     logger::quick_log("supports");
-    this->apply_supports(supports);
+    if(supports.size() > 0){
+        this->apply_supports(supports);
+    }
+
+    // Number positioning
+    size_t current = 0;
+    for(size_t i = 0; i < this->node_list.size(); ++i){
+        auto& n = this->node_list[i];
+        for(size_t j = 0; j < dof; ++j){
+            if(n->u_pos[j] > -1){
+                n->u_pos[j] = current;
+                ++current;
+            }
+        }
+    }
+
+    this->load_vector.clear();
+    this->load_vector.resize(current);
+
+    logger::quick_log("springs");
+    if(springs.size() > 0){
+        this->apply_springs(springs);
+        this->springs_copy = std::vector<Spring>(springs);
+    }
 
     logger::quick_log("loads");
     this->generate_load_vector(shape, forces);
@@ -154,45 +187,40 @@ void Meshing::populate_boundary_elements(const std::vector<ElementShape>& bounda
 }
 
 void Meshing::apply_supports(const std::vector<Support>& supports){
-    size_t dof = this->elem_info->get_dof_per_node();
+    const size_t dof = this->elem_info->get_dof_per_node();
 
-    #pragma omp parallel
-    {
-        #pragma omp for
-        for(size_t i = 0; i < this->node_list.size(); ++i){
-            auto& n = this->node_list[i];
-            for(size_t j = 0; j < dof; ++j){
-                n->u_pos[j] = 0;
-            }
-        }
-        #pragma omp for
-        for(size_t i = 0; i < this->boundary_node_list.size(); ++i){
-            auto& n = this->boundary_node_list[i];
+    #pragma omp parallel for
+    for(size_t i = 0; i < this->boundary_node_list.size(); ++i){
+        auto& n = this->boundary_node_list[i];
 
-            for(auto& s : supports){
-                if(s.S.is_inside(n->point)){
-                    std::vector<bool> sup_pos = this->get_support_dof(s, this->elem_info);
-                    for(size_t j = 0; j < dof; ++j){
-                        if(sup_pos[j]){
-                            n->u_pos[j] = -1;
-                        }
+        for(auto& s : supports){
+            if(s.S.is_inside(n->point)){
+                std::vector<bool> sup_pos = this->get_support_dof(s, this->elem_info);
+                for(size_t j = 0; j < dof; ++j){
+                    if(sup_pos[j]){
+                        n->u_pos[j] = -1;
                     }
                 }
             }
         }
     }
-    size_t current = 0;
-    for(size_t i = 0; i < this->node_list.size(); ++i){
-        auto& n = this->node_list[i];
-        for(size_t j = 0; j < dof; ++j){
-            if(n->u_pos[j] > -1){
-                n->u_pos[j] = current;
-                ++current;
+}
+
+void Meshing::apply_springs(const std::vector<Spring>& springs){
+    const size_t bound_nodes_per_elem = this->elem_info->get_boundary_nodes_per_element();
+    this->robin_elements.resize(springs.size());
+
+    for(const auto& e:this->boundary_elements){
+        const gp_Pnt c = e.get_centroid(bound_nodes_per_elem);
+
+        for(size_t i = 0; i < springs.size(); ++i){
+            auto& s = springs[i];
+            if(s.S.is_inside(c)){
+                this->robin_elements[i].push_back(e);
             }
         }
     }
-    this->load_vector.clear();
-    this->load_vector.resize(current);
+    this->robin_elements.shrink_to_fit();
 }
 
 

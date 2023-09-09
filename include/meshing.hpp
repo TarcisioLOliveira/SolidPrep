@@ -27,6 +27,7 @@
 #include <vector>
 #include "support.hpp"
 #include "force.hpp"
+#include "spring.hpp"
 #include "element_factory.hpp"
 #include "geometry.hpp"
 
@@ -91,7 +92,8 @@ class Meshing{
      *         MeshNodes
      */
     virtual void mesh(const std::vector<Force>& forces, 
-                      const std::vector<Support>& supports) = 0;
+                      const std::vector<Support>& supports,
+                      const std::vector<Spring>& springs) = 0;
 
     /**
      * Removes elements below a certain density threshold. Useful for
@@ -113,6 +115,8 @@ class Meshing{
     std::unordered_multimap<size_t, MeshElement*> inverse_mesh;
     std::vector<BoundaryElement> boundary_elements;
     std::vector<MeshNode*> boundary_node_list;
+    std::vector<std::vector<BoundaryElement>> robin_elements;
+    std::vector<Spring> springs_copy;
 
     protected:
     std::vector<bool> get_support_dof(const Support& support, const MeshElementFactory* elem_maker) const;
@@ -134,6 +138,7 @@ class Meshing{
      * @param id_map Maps the original node tags (e.g. from Gmsh) to their MeshNode instance
      * @param forces Forces to be used
      * @param supports Supports to be used
+     * @param springs Springs to be used
      * @param deduplicate Whether to deduplicate nodes
      * @param boundary_condition_inside Whether there is one or more boundary conditions inside the geometry
      */
@@ -144,6 +149,7 @@ class Meshing{
                                    std::unordered_map<size_t, MeshNode*>& id_map,
                                    const std::vector<Force>& forces, 
                                    const std::vector<Support>& supports,
+                                   const std::vector<Spring>& springs,
                                    const bool deduplicate,
                                    const bool boundary_condition_inside);
 
@@ -182,6 +188,13 @@ class Meshing{
      * @param supports List of supports to be applied.
      */
     void apply_supports(const std::vector<Support>& supports);
+
+    /**
+     * Generate positioning information for spring boundary condition.
+     *
+     * @param springs List of springs to be applied.
+     */
+    void apply_springs(const std::vector<Spring>& springs);
 
     /**
      * Generates the load vector member variable based on the mesh, shape and

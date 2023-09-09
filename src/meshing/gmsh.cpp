@@ -43,7 +43,8 @@ Gmsh::Gmsh(const std::vector<std::unique_ptr<Geometry>>& geometries,
 }
 
 void Gmsh::mesh(const std::vector<Force>& forces, 
-                const std::vector<Support>& supports){
+                const std::vector<Support>& supports,
+                const std::vector<Spring>& springs){
     TopoDS_Shape shape = this->make_compound(this->geometries);
 
     bool has_condition_inside = false;
@@ -108,6 +109,7 @@ void Gmsh::mesh(const std::vector<Force>& forces,
                             id_map,
                             forces, 
                             supports,
+                            springs,
                             deduplicate,
                             has_condition_inside);
 }

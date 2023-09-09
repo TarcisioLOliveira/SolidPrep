@@ -91,7 +91,7 @@ int main(int argc, char* argv[]){
     auto start_mesh = std::chrono::high_resolution_clock::now();
     // May be removed to use Gmsh with MPI
     if(mpi_id == 0){
-        proj->topopt_mesher->mesh(proj->forces, proj->supports);
+        proj->topopt_mesher->mesh(proj->forces, proj->supports, proj->springs);
     }
     std::vector<MeshElement*> elems;
     std::vector<double> loads;

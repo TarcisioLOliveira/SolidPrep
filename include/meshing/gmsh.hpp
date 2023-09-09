@@ -35,7 +35,8 @@ class Gmsh : public Meshing{
          double size, double thickness, double tmp_scale = 1, int algorithm2D = 6, int algorithm3D = 4);
 
     virtual void mesh(const std::vector<Force>& forces, 
-                      const std::vector<Support>& supports) override;
+                      const std::vector<Support>& supports,
+                      const std::vector<Spring>& springs) override;
 
     private:
     double size;

@@ -35,7 +35,8 @@ class StandardBeamMesher : public BeamMeshing{
                        double size, double thickness, int algorithm = 6);
 
     virtual void mesh(const std::vector<Force>& forces, 
-                      const std::vector<Support>& supports) override;
+                      const std::vector<Support>& supports,
+                      const std::vector<Spring>& springs) override;
 
     private:
     double size;
