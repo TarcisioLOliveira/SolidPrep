@@ -36,6 +36,9 @@ void GlobalStiffnessMatrix::generate_base(const Meshing * const mesh, const std:
             }
         }
     }
+    if(mesh->springs_copy.size() > 0){
+        this->add_springs(mesh);
+    }
     for(size_t i = 0; i < mesh->load_vector.size(); ++i){
         this->add_to_matrix(i, i, this->K_MIN);
     }
@@ -58,6 +61,34 @@ void GlobalStiffnessMatrix::add_geometry(const Meshing* const mesh, const Geomet
         }
         const std::vector<double> k = e->get_k(D, t);
         this->insert_element_matrix(k, u_pos);
+    }
+}
+
+void GlobalStiffnessMatrix::add_springs(const Meshing * const mesh){
+    const double t = mesh->thickness;
+    const size_t dof      = mesh->elem_info->get_dof_per_node();
+    const size_t node_num = mesh->elem_info->get_nodes_per_element();
+    const size_t bnode_num = mesh->elem_info->get_boundary_nodes_per_element();
+
+    std::vector<gp_Pnt> points(bnode_num);
+
+    std::vector<long> u_pos(dof*node_num);
+    for(size_t it = 0; it < mesh->robin_elements.size(); ++it){
+        const auto& K = mesh->springs_copy[it].K;
+        for(const auto& b : mesh->robin_elements[it]){
+            const auto& e = b.parent;
+            for(size_t i = 0; i < bnode_num; ++i){
+                points[i] = b.nodes[i]->point;
+            }
+            for(size_t i = 0; i < node_num; ++i){
+                const auto& n = e->nodes[i];
+                for(size_t j = 0; j < dof; ++j){
+                    u_pos[i*dof + j] = n->u_pos[j];
+                }
+            }
+            const std::vector<double> R = e->get_R(K, t, points);
+            this->insert_element_matrix(R, u_pos);
+        }
     }
 }
 

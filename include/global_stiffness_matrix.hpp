@@ -40,6 +40,8 @@ class GlobalStiffnessMatrix{
 
     virtual void add_geometry(const Meshing * const mesh, const Geometry * const g, std::vector<double>::const_iterator& rho, const double pc, const double psi);
 
+    virtual void add_springs(const Meshing * const mesh);
+
     virtual void insert_element_matrix(const std::vector<double>& k, const std::vector<long>& pos) = 0;
 
     virtual void add_to_matrix(size_t i, size_t j, double val) = 0;
