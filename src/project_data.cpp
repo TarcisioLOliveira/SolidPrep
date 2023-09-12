@@ -141,10 +141,10 @@ ProjectData::ProjectData(std::string project_file){
     if(this->log_data(doc, "loads", TYPE_ARRAY, true)){
         this->forces = this->get_loads(doc["loads"]);
     }
-    if(this->log_data(doc, "supports", TYPE_ARRAY, true)){
+    if(this->log_data(doc, "supports", TYPE_ARRAY, false)){
         this->supports = this->get_support(doc["supports"]);
     }
-    if(this->log_data(doc, "springs", TYPE_ARRAY, true)){
+    if(this->log_data(doc, "springs", TYPE_ARRAY, false)){
         this->springs = this->get_springs(doc["springs"]);
     }
     logger::log_assert(this->supports.size() > 0 || this->springs.size() > 0, logger::ERROR,
