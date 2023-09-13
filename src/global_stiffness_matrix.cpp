@@ -76,9 +76,9 @@ void GlobalStiffnessMatrix::add_springs(const Meshing * const mesh){
     for(size_t it = 0; it < mesh->robin_elements.size(); ++it){
         const auto& K = mesh->springs_copy[it].K;
         for(const auto& b : mesh->robin_elements[it]){
-            const auto& e = b.parent;
+            const auto& e = b->parent;
             for(size_t i = 0; i < bnode_num; ++i){
-                points[i] = b.nodes[i]->point;
+                points[i] = b->nodes[i]->point;
             }
             for(size_t i = 0; i < node_num; ++i){
                 const auto& n = e->nodes[i];

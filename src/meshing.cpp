@@ -210,17 +210,19 @@ void Meshing::apply_springs(const std::vector<Spring>& springs){
     const size_t bound_nodes_per_elem = this->elem_info->get_boundary_nodes_per_element();
     this->robin_elements.resize(springs.size());
 
-    for(const auto& e:this->boundary_elements){
+    for(auto& e:this->boundary_elements){
         const gp_Pnt c = e.get_centroid(bound_nodes_per_elem);
 
         for(size_t i = 0; i < springs.size(); ++i){
             auto& s = springs[i];
             if(s.S.is_inside(c)){
-                this->robin_elements[i].push_back(e);
+                this->robin_elements[i].push_back(&e);
             }
         }
     }
-    this->robin_elements.shrink_to_fit();
+    for(size_t i = 0; i < springs.size(); ++i){
+        this->robin_elements[i].shrink_to_fit();
+    }
 }
 
 

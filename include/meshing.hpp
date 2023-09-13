@@ -115,7 +115,7 @@ class Meshing{
     std::unordered_multimap<size_t, MeshElement*> inverse_mesh;
     std::vector<BoundaryElement> boundary_elements;
     std::vector<MeshNode*> boundary_node_list;
-    std::vector<std::vector<BoundaryElement>> robin_elements;
+    std::vector<std::vector<BoundaryElement*>> robin_elements;
     std::vector<Spring> springs_copy;
 
     protected:
