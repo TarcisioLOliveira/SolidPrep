@@ -281,8 +281,8 @@ std::vector<double> H8::get_R(const std::vector<double>& K, const double t, cons
             }
         }
     }
-    std::vector<double> R_vec(K_DIM*NODE_DOF);
-    std::copy(R.data(), R.data()+K_DIM*NODE_DOF, R_vec.begin());
+    std::vector<double> R_vec(K_DIM*K_DIM);
+    std::copy(R.data(), R.data()+K_DIM*K_DIM, R_vec.begin());
 
     return R_vec;
 }

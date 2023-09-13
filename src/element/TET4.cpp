@@ -754,8 +754,8 @@ std::vector<double> TET4::get_R(const std::vector<double>& K, const double t, co
         const auto NN = N_mat(xi, eta, zeta);
         R += (drnorm*NN.transpose()*Km*NN)/3.0;
     }
-    std::vector<double> R_vec(K_DIM*NODE_DOF);
-    std::copy(R.data(), R.data()+K_DIM*NODE_DOF, R_vec.begin());
+    std::vector<double> R_vec(K_DIM*K_DIM);
+    std::copy(R.data(), R.data()+K_DIM*K_DIM, R_vec.begin());
 
     return R_vec;
 }
