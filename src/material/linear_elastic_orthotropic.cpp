@@ -61,31 +61,41 @@ LinearElasticOrthotropic::LinearElasticOrthotropic(const std::string& name, cons
     this->D_3D = std::move(S_3D_tmp);
 }
 
-double LinearElasticOrthotropic::beam_E_2D(gp_Dir d) const{
-    // (Hyer, 2009), Stress analysis of fiber-reinforced composites
-    return std::pow(d.X(),4)*D_2D[0] + (D_2D[1] + 2*D_2D[8])*std::pow(d.X(),2)*std::pow(d.Y(),2) + std::pow(d.Y(), 4)*D_2D[4];
+double LinearElasticOrthotropic::beam_E_2D(gp_Dir dir) const{
+    // (Hyer, 2009), Stress analysis of fiber-reinforced composite materials, p. 202
+    const double ca = dir.X(); 
+    const double sa = dir.Y(); 
+    const auto& d = this->D_2D;
+
+    const double E = ca*ca*ca*ca*d[0] + 2*ca*ca*d[1]*sa*sa + ca*ca*d[8]*sa*sa + d[4]*sa*sa*sa*sa;
+    return E;
 }
-double LinearElasticOrthotropic::beam_E_3D(gp_Dir d) const{
-    // (Zhao, Song, Liu, 2016)
+double LinearElasticOrthotropic::beam_E_3D(gp_Dir dir) const{
+    // (Zhao, Song, Liu, 2016) 
+    // Standardized Compliance Matrices for General
+    // Anisotropic Materials and a Simple Measure
+    // of Anisotropy Degree Based on Shear-Extension
+    // Coupling Coefficient
+    // p. 16
+
+    const auto& d = this->D_2D;
+
     gp_Dir z(0,0,1);
     gp_Dir x(1,0,0);
-    if(d.IsEqual(x, 0.001)){
+    if(dir.IsEqual(x, 0.001)){
         return this->D_3D[0];
     }
-    double a = d.AngleWithRef(x, z);
-    gp_Dir cross(d.Crossed(z));
-    double b = M_PI/2 + d.AngleWithRef(z, cross);
-    double cz = std::cos(b);
-    double sz = std::sin(b);
-    double cx = std::cos(a);
-    double sx = std::sin(a);
-    double r_x[6] = {cz*cz, cx*cx*sz*sz, sz*sz*sx*sx, -2*sx*cx*sz*sz, 2*sz*cz*sx, -2*sz*cz*cx};
-    std::vector<double> out(6);
+    double a = dir.AngleWithRef(x, z);
+    gp_Dir cross(dir.Crossed(z));
+    double b = M_PI/2 + dir.AngleWithRef(z, cross);
+    double cb = std::cos(b);
+    double sb = std::sin(b);
+    double ca = std::cos(a);
+    double sa = std::sin(a);
 
-    cblas_dgemv(CblasRowMajor, CblasNoTrans, 6, 6, 1, this->D_3D.data(), 6, r_x, 1, 0, out.data(), 1);
-    double Ex = cblas_ddot(6, r_x, 1, out.data(), 1);
+   const double E = ca*ca*ca*ca*d[7]*sb*sb*sb*sb + 2*ca*ca*cb*cb*d[1]*sb*sb - ca*ca*cb*cb*d[21]*sb*sb - ca*ca*d[35]*sa*sa*sb*sb*sb*sb + 2*ca*ca*d[8]*sa*sa*sb*sb*sb*sb + cb*cb*cb*cb*d[0] + 2*cb*cb*d[2]*sa*sa*sb*sb - cb*cb*d[28]*sa*sa*sb*sb + d[14]*sa*sa*sa*sa*sb*sb*sb*sb;
     
-    return Ex;
+    return E;
 }
 
 std::vector<double> LinearElasticOrthotropic::get_max_stresses(gp_Dir d) const{
