@@ -98,9 +98,9 @@ std::vector<double> BeamGraph::run(){
             }
             double E = 0;
             if(data->type == utils::PROBLEM_TYPE_2D){
-                E = this->data->materials[0]->beam_E_2D(v1);
+                E = this->data->materials[0]->beam_E_2D(gp_Pnt(), v1);
             } else {
-                E = this->data->materials[0]->beam_E_3D(v1);
+                E = this->data->materials[0]->beam_E_3D(gp_Pnt(), v1);
             }
             for(size_t i = 0; i < 3; ++i){
                 this->nodes[0]->u_pos[i] = pos[i];
@@ -129,9 +129,9 @@ std::vector<double> BeamGraph::run(){
             }
             double E = 0;
             if(data->type == utils::PROBLEM_TYPE_2D){
-                E = this->data->materials[0]->beam_E_2D(v);
+                E = this->data->materials[0]->beam_E_2D(gp_Pnt(), v);
             } else {
-                E = this->data->materials[0]->beam_E_3D(v);
+                E = this->data->materials[0]->beam_E_3D(gp_Pnt(), v);
             }
             for(size_t i = 0; i < 3; ++i){
                 this->nodes[true_pos+1]->u_pos[i] = pos[i+3];

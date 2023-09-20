@@ -61,8 +61,10 @@ LinearElasticOrthotropic::LinearElasticOrthotropic(const std::string& name, cons
     this->D_3D = std::move(S_3D_tmp);
 }
 
-double LinearElasticOrthotropic::beam_E_2D(gp_Dir dir) const{
+double LinearElasticOrthotropic::beam_E_2D(const gp_Pnt& p, gp_Dir dir) const{
     // (Hyer, 2009), Stress analysis of fiber-reinforced composite materials, p. 202
+    (void)p;
+
     const double ca = dir.X(); 
     const double sa = dir.Y(); 
     const auto& d = this->D_2D;
@@ -70,13 +72,14 @@ double LinearElasticOrthotropic::beam_E_2D(gp_Dir dir) const{
     const double E = ca*ca*ca*ca*d[0] + 2*ca*ca*d[1]*sa*sa + ca*ca*d[8]*sa*sa + d[4]*sa*sa*sa*sa;
     return E;
 }
-double LinearElasticOrthotropic::beam_E_3D(gp_Dir dir) const{
+double LinearElasticOrthotropic::beam_E_3D(const gp_Pnt& p, gp_Dir dir) const{
     // (Zhao, Song, Liu, 2016) 
     // Standardized Compliance Matrices for General
     // Anisotropic Materials and a Simple Measure
     // of Anisotropy Degree Based on Shear-Extension
     // Coupling Coefficient
     // p. 16
+    (void)p;
 
     const auto& d = this->D_2D;
 
@@ -97,8 +100,10 @@ double LinearElasticOrthotropic::beam_E_3D(gp_Dir dir) const{
     
     return E;
 }
-std::array<double, 2> LinearElasticOrthotropic::beam_EG_2D(gp_Dir dir) const{
+std::array<double, 2> LinearElasticOrthotropic::beam_EG_2D(const gp_Pnt& p, gp_Dir dir) const{
     // (Hyer, 2009), Stress analysis of fiber-reinforced composite materials, p. 202
+    (void)p;
+
     const double ca = dir.X(); 
     const double sa = dir.Y(); 
     const auto& d = this->D_2D;
@@ -107,13 +112,14 @@ std::array<double, 2> LinearElasticOrthotropic::beam_EG_2D(gp_Dir dir) const{
     const double G = ca*ca*ca*ca*d[8] + ca*ca*d[0]*sa*sa - 2*ca*ca*d[1]*sa*sa + ca*ca*d[4]*sa*sa - 2*ca*ca*d[8]*sa*sa + d[8]*sa*sa*sa*sa;
     return {E, G};
 }
-std::array<double, 4> LinearElasticOrthotropic::beam_EG_3D(gp_Dir dir) const{
+std::array<double, 4> LinearElasticOrthotropic::beam_EG_3D(const gp_Pnt& p, gp_Dir dir) const{
     // (Zhao, Song, Liu, 2016) 
     // Standardized Compliance Matrices for General
     // Anisotropic Materials and a Simple Measure
     // of Anisotropy Degree Based on Shear-Extension
     // Coupling Coefficient
     // p. 16
+    (void)p;
 
     const auto& d = this->D_2D;
 

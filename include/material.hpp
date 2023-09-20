@@ -52,10 +52,10 @@ class Material{
     virtual std::vector<double> stiffness_inverse_3D(const gp_Pnt& p) const = 0;
     virtual double get_density(const gp_Pnt& p) const = 0;
 
-    virtual double beam_E_2D(gp_Dir d = gp_Dir(1,0,0)) const = 0;
-    virtual double beam_E_3D(gp_Dir d = gp_Dir(1,0,0)) const = 0;
-    virtual std::array<double, 2> beam_EG_2D(gp_Dir d = gp_Dir(1,0,0)) const = 0;
-    virtual std::array<double, 4> beam_EG_3D(gp_Dir d = gp_Dir(1,0,0)) const = 0;
+    virtual double beam_E_2D(const gp_Pnt& p, gp_Dir d = gp_Dir(1,0,0)) const = 0;
+    virtual double beam_E_3D(const gp_Pnt& p, gp_Dir d = gp_Dir(1,0,0)) const = 0;
+    virtual std::array<double, 2> beam_EG_2D(const gp_Pnt& p, gp_Dir d = gp_Dir(1,0,0)) const = 0;
+    virtual std::array<double, 4> beam_EG_3D(const gp_Pnt& p, gp_Dir d = gp_Dir(1,0,0)) const = 0;
 
     virtual Type get_type() const{ return this->NONE; }
 
