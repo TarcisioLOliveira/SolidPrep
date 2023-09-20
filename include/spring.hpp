@@ -21,19 +21,23 @@
 #define SPRING_HPP
 
 #include <array>
+#include "material.hpp"
 #include "utils.hpp"
 #include "cross_section.hpp"
 
 class Spring{
     public:
 
-    Spring(CrossSection cross_section, std::array<double, 3> K, utils::ProblemType type);
+    Spring(CrossSection cross_section, gp_Dir normal, Material* mat, std::array<double, 3> L, utils::ProblemType type);
 
     const CrossSection S;
     const std::vector<double> K;
 
     private:
-    std::vector<double> generate_K(std::array<double, 3> K, utils::ProblemType type) const;
+    const gp_Dir normal;
+    const Material* mat;
+    const std::vector<double> L;
+    std::vector<double> generate_K(gp_Dir normal, Material* mat, std::array<double, 3> L, utils::ProblemType type) const;
 };
 
 #endif

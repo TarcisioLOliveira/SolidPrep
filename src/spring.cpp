@@ -21,21 +21,25 @@
 #include "spring.hpp"
 #include "utils.hpp"
 
-Spring::Spring(CrossSection cross_section, std::array<double, 3> K, utils::ProblemType type):
-    S(std::move(cross_section)), K(this->generate_K(K, type)){
+Spring::Spring(CrossSection cross_section, gp_Dir normal, Material* mat, std::array<double, 3> L, utils::ProblemType type):
+    S(std::move(cross_section)), K(this->generate_K(normal, mat, L, type)){
     
 }
 
-std::vector<double> Spring::generate_K(std::array<double, 3> K, utils::ProblemType type) const{
+std::vector<double> Spring::generate_K(gp_Dir normal, Material* mat, std::array<double, 3> L, utils::ProblemType type) const{
     if(type == utils::PROBLEM_TYPE_2D){
 
-        return std::vector<double>{K[0], 0,
-                                   0, K[1]};
+        auto EG = mat->beam_EG_2D(gp_Pnt(), normal);
+
+        return std::vector<double>{EG[0]/L[0], 0,
+                                   0, EG[1]/L[1]};
     } else if(type == utils::PROBLEM_TYPE_3D){
 
-        return std::vector<double>{K[0], 0, 0,
-                                   0, K[1], 0,
-                                   0, 0, K[2]};
+        auto EG = mat->beam_EG_3D(gp_Pnt(), normal);
+
+        return std::vector<double>{EG[0]/L[0], 0, 0,
+                                   0, EG[1]/L[1], 0,
+                                   0, 0, EG[2]/L[2]};
     }
 
     return std::vector<double>();

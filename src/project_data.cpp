@@ -874,30 +874,39 @@ std::vector<Support> ProjectData::get_support(const rapidjson::GenericValue<rapi
 
 std::vector<Spring> ProjectData::get_springs(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc){
     std::vector<Spring> forces;
-    if(this->type == utils::PROBLEM_TYPE_2D){
-        for(auto& f : doc.GetArray()){
-            logger::log_assert(f.IsObject(), logger::ERROR, "Each load must be stored as a JSON object");
-            this->log_data(f, "K", TYPE_ARRAY, true);
-            auto loads = f["K"].GetArray();
-            logger::log_assert(loads.Size() == 2, logger::ERROR, "Load vector must have exactly two dimensions in 2D problems");
+    for(auto& f : doc.GetArray()){
+        logger::log_assert(f.IsObject(), logger::ERROR, "Each load must be stored as a JSON object");
+        this->log_data(f, "L", TYPE_ARRAY, true);
+        this->log_data(f, "normal", TYPE_ARRAY, true);
+        this->log_data(f, "material", TYPE_STRING, true);
+        auto L = f["L"].GetArray();
+        auto normal = f["normal"].GetArray();
 
-            std::array<double, 3> l{loads[0].GetDouble(), loads[1].GetDouble(), 0};
+        std::array<double, 3> l{L[0].GetDouble(), L[1].GetDouble(), 0};
+        gp_Dir nv(normal[0].GetDouble(), normal[1].GetDouble(), 0);
 
-            auto S = this->get_cross_section(f);
-            forces.emplace_back(S, l, this->type);
+        if(this->type == utils::PROBLEM_TYPE_2D){
+            logger::log_assert(L.Size() == 2, logger::ERROR, "Length vector must have exactly two dimensions in 2D problems");
+            logger::log_assert(normal.Size() == 2, logger::ERROR, "Normal vector must have exactly two dimensions in 2D problems");
+        } else if(this->type == utils::PROBLEM_TYPE_3D) {
+            logger::log_assert(L.Size() == 3, logger::ERROR, "Length vector must have exactly three dimensions in 3D problems");
+            logger::log_assert(normal.Size() == 3, logger::ERROR, "Normal vector must have exactly two dimensions in 2D problems");
+
+            l[2] = L[2].GetDouble();
+            nv.SetZ(normal[2].GetDouble());
         }
-    } else if(this->type == utils::PROBLEM_TYPE_3D) {
-        for(auto& f : doc.GetArray()){
-            logger::log_assert(f.IsObject(), logger::ERROR, "Each load must be stored as a JSON object");
-            this->log_data(f, "K", TYPE_ARRAY, true);
-            auto loads = f["K"].GetArray();
-            logger::log_assert(loads.Size() == 3, logger::ERROR, "Load vector must have exactly three dimensions in 3D problems");
 
-            std::array<double, 3> l{loads[0].GetDouble(), loads[1].GetDouble(), loads[2].GetDouble()};
+        std::string mat_name(f["material"].GetString());
+        auto equal_name = [&mat_name](const std::unique_ptr<Material>& m)->bool{
+            return mat_name == m->name;
+        };
+        auto it = std::find_if(this->materials.begin(), this->materials.end(), equal_name);
+        logger::log_assert(it != this->materials.end(), logger::ERROR, "material with name '{}' not found", mat_name);
 
-            auto S = this->get_cross_section(f);
-            forces.emplace_back(S, l, this->type);
-        }
+        Material* mat(it->get());
+
+        auto S = this->get_cross_section(f);
+        forces.emplace_back(S, nv, mat, l, this->type);
     }
     return forces;
 }
