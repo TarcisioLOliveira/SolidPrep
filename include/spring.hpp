@@ -31,12 +31,13 @@ class Spring{
     Spring(CrossSection cross_section, gp_Dir normal, Material* mat, std::array<double, 3> L, utils::ProblemType type);
 
     const CrossSection S;
-    const std::vector<double> K;
+    std::vector<double> get_K(const gp_Pnt& p) const;
 
     private:
     const gp_Dir normal;
     const Material* mat;
-    const std::vector<double> L;
+    const std::array<double, 3> L;
+    const utils::ProblemType type;
     std::vector<double> generate_K(gp_Dir normal, Material* mat, std::array<double, 3> L, utils::ProblemType type) const;
 };
 

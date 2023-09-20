@@ -22,20 +22,20 @@
 #include "utils.hpp"
 
 Spring::Spring(CrossSection cross_section, gp_Dir normal, Material* mat, std::array<double, 3> L, utils::ProblemType type):
-    S(std::move(cross_section)), K(this->generate_K(normal, mat, L, type)){
+    S(std::move(cross_section)), normal(normal), mat(mat), L(L), type(type){
     
 }
 
-std::vector<double> Spring::generate_K(gp_Dir normal, Material* mat, std::array<double, 3> L, utils::ProblemType type) const{
+std::vector<double> Spring::get_K(const gp_Pnt& p) const{
     if(type == utils::PROBLEM_TYPE_2D){
 
-        auto EG = mat->beam_EG_2D(gp_Pnt(), normal);
+        auto EG = mat->beam_EG_2D(p, this->normal);
 
         return std::vector<double>{EG[0]/L[0], 0,
                                    0, EG[1]/L[1]};
     } else if(type == utils::PROBLEM_TYPE_3D){
 
-        auto EG = mat->beam_EG_3D(gp_Pnt(), normal);
+        auto EG = mat->beam_EG_3D(p, this->normal);
 
         return std::vector<double>{EG[0]/L[0], 0, 0,
                                    0, EG[1]/L[1], 0,
