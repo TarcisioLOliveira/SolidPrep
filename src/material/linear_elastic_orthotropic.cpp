@@ -97,6 +97,46 @@ double LinearElasticOrthotropic::beam_E_3D(gp_Dir dir) const{
     
     return E;
 }
+std::array<double, 2> LinearElasticOrthotropic::beam_EG_2D(gp_Dir dir) const{
+    // (Hyer, 2009), Stress analysis of fiber-reinforced composite materials, p. 202
+    const double ca = dir.X(); 
+    const double sa = dir.Y(); 
+    const auto& d = this->D_2D;
+
+    const double E = ca*ca*ca*ca*d[0] + 2*ca*ca*d[1]*sa*sa + ca*ca*d[8]*sa*sa + d[4]*sa*sa*sa*sa;
+    const double G = ca*ca*ca*ca*d[8] + ca*ca*d[0]*sa*sa - 2*ca*ca*d[1]*sa*sa + ca*ca*d[4]*sa*sa - 2*ca*ca*d[8]*sa*sa + d[8]*sa*sa*sa*sa;
+    return {E, G};
+}
+std::array<double, 4> LinearElasticOrthotropic::beam_EG_3D(gp_Dir dir) const{
+    // (Zhao, Song, Liu, 2016) 
+    // Standardized Compliance Matrices for General
+    // Anisotropic Materials and a Simple Measure
+    // of Anisotropy Degree Based on Shear-Extension
+    // Coupling Coefficient
+    // p. 16
+
+    const auto& d = this->D_2D;
+
+    gp_Dir z(0,0,1);
+    gp_Dir x(1,0,0);
+    if(dir.IsEqual(x, 0.001)){
+        return {D_3D[0], D_3D[21], D_3D[28], D_3D[35]};
+    }
+    double a = dir.AngleWithRef(x, z);
+    gp_Dir cross(dir.Crossed(z));
+    double b = M_PI/2 + dir.AngleWithRef(z, cross);
+    double cb = std::cos(b);
+    double sb = std::sin(b);
+    double ca = std::cos(a);
+    double sa = std::sin(a);
+
+   const double E = ca*ca*ca*ca*d[7]*sb*sb*sb*sb + 2*ca*ca*cb*cb*d[1]*sb*sb - ca*ca*cb*cb*d[21]*sb*sb - ca*ca*d[35]*sa*sa*sb*sb*sb*sb + 2*ca*ca*d[8]*sa*sa*sb*sb*sb*sb + cb*cb*cb*cb*d[0] + 2*cb*cb*d[2]*sa*sa*sb*sb - cb*cb*d[28]*sa*sa*sb*sb + d[14]*sa*sa*sa*sa*sb*sb*sb*sb;
+    const double G1 = -ca*ca*ca*ca*cb*cb*d[7]*sb*sb + ca*ca*cb*cb*cb*cb*d[21] + 2*ca*ca*cb*cb*d[1]*sb*sb - 2*ca*ca*cb*cb*d[21]*sb*sb + ca*ca*cb*cb*d[35]*sa*sa*sb*sb - 2*ca*ca*cb*cb*d[8]*sa*sa*sb*sb + ca*ca*d[21]*sb*sb*sb*sb + cb*cb*cb*cb*d[28]*sa*sa - cb*cb*d[0]*sb*sb - cb*cb*d[14]*sa*sa*sa*sa*sb*sb + 2*cb*cb*d[2]*sa*sa*sb*sb - 2*cb*cb*d[28]*sa*sa*sb*sb + d[28]*sa*sa*sb*sb*sb*sb;
+    const double G2 = ca*ca*ca*ca*d[35]*sb*sb + ca*ca*cb*cb*d[28] - ca*ca*d[14]*sa*sa*sb*sb - 2*ca*ca*d[35]*sa*sa*sb*sb - ca*ca*d[7]*sa*sa*sb*sb + 2*ca*ca*d[8]*sa*sa*sb*sb + cb*cb*d[21]*sa*sa + d[35]*sa*sa*sa*sa*sb*sb;
+    const double G3 = ca*ca*ca*ca*cb*cb*d[35] - ca*ca*cb*cb*d[14]*sa*sa - 2*ca*ca*cb*cb*d[35]*sa*sa - ca*ca*cb*cb*d[7]*sa*sa + 2*ca*ca*cb*cb*d[8]*sa*sa + ca*ca*d[28]*sb*sb + cb*cb*d[35]*sa*sa*sa*sa + d[21]*sa*sa*sb*sb;
+
+    return {E, G1, G2, G3};
+}
 
 std::vector<double> LinearElasticOrthotropic::get_max_stresses(gp_Dir d) const{
     // Principles of Composite Material Mechanics (Gibson, 2016)

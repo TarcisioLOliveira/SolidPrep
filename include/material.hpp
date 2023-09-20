@@ -22,6 +22,7 @@
 #define MATERIAL_HPP
 
 #include <vector>
+#include <array>
 #include <gp_Dir.hxx>
 
 class Material{
@@ -53,6 +54,8 @@ class Material{
 
     virtual double beam_E_2D(gp_Dir d = gp_Dir(1,0,0)) const = 0;
     virtual double beam_E_3D(gp_Dir d = gp_Dir(1,0,0)) const = 0;
+    virtual std::array<double, 2> beam_EG_2D(gp_Dir d = gp_Dir(1,0,0)) const = 0;
+    virtual std::array<double, 4> beam_EG_3D(gp_Dir d = gp_Dir(1,0,0)) const = 0;
 
     virtual Type get_type() const{ return this->NONE; }
 

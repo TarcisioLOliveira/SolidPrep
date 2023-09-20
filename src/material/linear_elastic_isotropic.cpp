@@ -27,7 +27,7 @@
 namespace material{
 
 LinearElasticIsotropic::LinearElasticIsotropic(const std::string& name, const double density, double E, double nu, double Smax, double Tmax, bool plane_stress):
-    Material(name, {Smax}, {Tmax}), E(E), nu(nu), density(density){
+    Material(name, {Smax}, {Tmax}), E(E), G(E/(2*(1 + nu))), nu(nu), density(density){
 
     this->D_2D.resize(9);
     if(plane_stress){
@@ -77,6 +77,14 @@ double LinearElasticIsotropic::beam_E_2D(gp_Dir d) const{
 double LinearElasticIsotropic::beam_E_3D(gp_Dir d) const{
     (void)d;
     return this->E;
+}
+std::array<double, 2> LinearElasticIsotropic::beam_EG_2D(gp_Dir d) const{
+    (void)d;
+    return {E, G};
+}
+std::array<double, 4> LinearElasticIsotropic::beam_EG_3D(gp_Dir d) const{
+    (void)d;
+    return {E, G, G, G};
 }
 
 std::vector<double> LinearElasticIsotropic::get_max_stresses(gp_Dir d) const{
