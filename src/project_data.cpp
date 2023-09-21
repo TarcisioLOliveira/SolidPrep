@@ -878,22 +878,37 @@ std::vector<Spring> ProjectData::get_springs(const rapidjson::GenericValue<rapid
         logger::log_assert(f.IsObject(), logger::ERROR, "Each load must be stored as a JSON object");
         this->log_data(f, "L", TYPE_ARRAY, true);
         this->log_data(f, "normal", TYPE_ARRAY, true);
+        this->log_data(f, "v", TYPE_ARRAY, true);
+        if(this->type == utils::PROBLEM_TYPE_3D) {
+            this->log_data(f, "w", TYPE_ARRAY, true);
+        }
         this->log_data(f, "material", TYPE_STRING, true);
         auto L = f["L"].GetArray();
         auto normal = f["normal"].GetArray();
+        auto v = f["v"].GetArray();
 
         std::array<double, 3> l{L[0].GetDouble(), L[1].GetDouble(), 0};
         gp_Dir nv(normal[0].GetDouble(), normal[1].GetDouble(), 0);
+        gp_Dir vv(v[0].GetDouble(), v[1].GetDouble(), 0);
+        gp_Dir wv(0, 0, 1);
 
         if(this->type == utils::PROBLEM_TYPE_2D){
             logger::log_assert(L.Size() == 2, logger::ERROR, "Length vector must have exactly two dimensions in 2D problems");
             logger::log_assert(normal.Size() == 2, logger::ERROR, "Normal vector must have exactly two dimensions in 2D problems");
+            logger::log_assert(v.Size() == 2, logger::ERROR, "'v' vector must have exactly two dimensions in 2D problems");
         } else if(this->type == utils::PROBLEM_TYPE_3D) {
             logger::log_assert(L.Size() == 3, logger::ERROR, "Length vector must have exactly three dimensions in 3D problems");
-            logger::log_assert(normal.Size() == 3, logger::ERROR, "Normal vector must have exactly two dimensions in 2D problems");
+            logger::log_assert(normal.Size() == 3, logger::ERROR, "Normal vector must have exactly two dimensions in 3D problems");
+            logger::log_assert(v.Size() == 3, logger::ERROR, "'v' vector must have exactly two dimensions in 3D problems");
+
+            auto w = f["w"].GetArray();
+            logger::log_assert(w.Size() == 3, logger::ERROR, "'w' vector must have exactly two dimensions in 3D problems");
 
             l[2] = L[2].GetDouble();
             nv.SetZ(normal[2].GetDouble());
+            vv.SetZ(v[2].GetDouble());
+
+            wv = gp_Dir(w[0].GetDouble(), w[1].GetDouble(), w[2].GetDouble());
         }
 
         std::string mat_name(f["material"].GetString());
@@ -906,7 +921,7 @@ std::vector<Spring> ProjectData::get_springs(const rapidjson::GenericValue<rapid
         Material* mat(it->get());
 
         auto S = this->get_cross_section(f);
-        forces.emplace_back(S, nv, mat, l, this->type);
+        forces.emplace_back(S, nv, vv, wv, mat, l, this->type);
     }
     return forces;
 }
