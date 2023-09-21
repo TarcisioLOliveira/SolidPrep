@@ -23,17 +23,14 @@
 #include "utils.hpp"
 
 Spring::Spring(CrossSection cross_section, gp_Dir normal, gp_Dir v, gp_Dir w, Material* mat, std::array<double, 3> L, utils::ProblemType type):
-    S(std::move(cross_section)), normal(normal), v(v), w(w), mat(mat), L(L), type(type){
-    
+    S(std::move(cross_section)), 
+    rot2D{{normal.X(), v.X()},
+          {normal.Y(), v.Y()}},
+    rot3D{{normal.X(), v.X(), w.X()},
+         {normal.Y(), v.Y(), w.Y()},
+         {normal.Z(), v.Z(), w.Z()}},
+    normal(normal), v(v), w(w), mat(mat), L(L), type(type){
 
-    if(type == utils::PROBLEM_TYPE_2D){
-        this->rot2D = Eigen::Matrix<double, 2, 2>{{normal.X(), v.X()},
-                                                  {normal.Y(), v.Y()}};
-    } else if(type == utils::PROBLEM_TYPE_3D){
-        this->rot3D = Eigen::Matrix<double, 3, 3>{{normal.X(), v.X(), w.X()},
-                                                  {normal.Y(), v.Y(), w.Y()},
-                                                  {normal.Z(), v.Z(), w.Z()}};
-    }
 }
 
 std::vector<double> Spring::get_K(const gp_Pnt& p) const{

@@ -31,8 +31,11 @@ class Spring{
 
     Spring(CrossSection cross_section, gp_Dir normal, gp_Dir v, gp_Dir w, Material* mat, std::array<double, 3> L, utils::ProblemType type);
 
-    const CrossSection S;
     std::vector<double> get_K(const gp_Pnt& p) const;
+
+    const CrossSection S;
+    const Eigen::Matrix<double, 2, 2> rot2D;
+    const Eigen::Matrix<double, 3, 3> rot3D;
 
     private:
     const gp_Dir normal;
@@ -41,8 +44,6 @@ class Spring{
     const Material* mat;
     const std::array<double, 3> L;
     const utils::ProblemType type;
-    Eigen::Matrix<double, 2, 2> rot2D;
-    Eigen::Matrix<double, 3, 3> rot3D;
     std::vector<double> generate_K(gp_Dir normal, Material* mat, std::array<double, 3> L, utils::ProblemType type) const;
 };
 
