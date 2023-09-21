@@ -177,7 +177,6 @@ void Averaging::filter_gradient(const std::vector<double>& df, std::vector<doubl
 
 void Averaging::filter_gradient_nodal(const std::vector<double>& df, std::vector<double>& new_df){
     const size_t num_nodes = mesh->elem_info->get_nodes_per_element();
-    const double t = this->mesh->thickness;
     if(new_df.size() < df.size()){
         new_df.resize(df.size());
     }
