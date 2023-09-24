@@ -50,6 +50,7 @@ class TET4 : public MeshElementCommon3DTet<TET4>{
     virtual std::vector<double> get_k(const std::vector<double>& D, const double t) const override;
     virtual std::vector<double> get_nodal_density_gradient(gp_Pnt p) const override;
     virtual std::vector<double> get_R(const std::vector<double>& K, const double t, const std::vector<gp_Pnt>& points) const override;
+    virtual std::vector<double> get_Rf(const std::vector<double>& S, const double t, const std::vector<gp_Pnt>& points) const override;
 
     virtual Eigen::MatrixXd diffusion_1dof(const double t, const std::vector<double>& A) const override;
     virtual Eigen::MatrixXd advection_1dof(const double t, const std::vector<double>& v) const override;

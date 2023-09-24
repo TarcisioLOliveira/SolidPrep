@@ -326,6 +326,64 @@ def make_R():
         print(formatted)
     print("};")
 
+def make_Rf():
+    """
+        Creates the Rf matrix.
+    """
+    init_L_function()
+    init_N()
+
+    # NN is the full interpolation matrix
+    NN1 = [N[0][0,0], N[0][0,1], N[0][0,2], N[1][0,0], N[1][0,1], N[1][0,2], N[2][0,0], N[2][0,1], N[2][0,2]]
+    NN2 = [N[0][1,0], N[0][1,1], N[0][1,2], N[1][1,0], N[1][1,1], N[1][1,2], N[2][1,0], N[2][1,1], N[2][1,2]]
+    NN = t*sympy.Matrix([NN1, NN2]).T
+
+    # Set up variables for line integral
+    x0, x1, y0, y1 = sympy.symbols("x0 x1 y0 y1")
+
+    M = spv.ReferenceFrame("M")
+
+    s = sympy.symbols("s")
+
+    xyz = sympy.Matrix([x, y])
+
+    Sl = sympy.symbols("S:4")
+    S = sympy.Matrix([[Sl[0], Sl[1]],
+                      [Sl[2], Sl[3]]])
+
+    NN = NN*S*xyz
+
+    rx = ((1-s)*x0+s*x1)
+    ry = ((1-s)*y0+s*y1)
+    dr = (x1-x0)*M.x + (y1-y0)*M.y
+
+    drnorm = sympy.sqrt((x1-x0)**2 + (y1-y0)**2)
+
+    print("std::vector<double> Rf{")
+    for i in range(len(NN)):
+        # Apply line integration
+        NN[i] = NN[i].subs({x:rx, y:ry})
+        NN[i] = NN[i]*drnorm
+        NN[i] = NN[i].integrate((s, 0, 1))
+
+
+        # Prepare for printing
+        NN[i] = sympy.simplify(sympy.nsimplify(NN[i], rational=True))
+
+        # Format output for use with C++
+        formatted = str(NN[i])
+        formatted = re.sub(r"([abcxyS]\d)\*\*2", r"\1*\1", formatted)
+        formatted = re.sub(r"([abcxyS]\d)\*\*3", r"\1*\1*\1", formatted)
+        formatted = re.sub(r"([abcxyS])(\d)", r"\1[\2]", formatted)
+
+        formatted = formatted.replace("delta**2", "(delta*delta)")
+        formatted = formatted.replace("sqrt", "std::sqrt")
+
+        if i > 0:
+            print(",")
+        print(formatted)
+    print("};")
+
 def make_diff():
     """
         Creates the 1 degree-of-freedom diffusion matrix.
@@ -548,6 +606,7 @@ def main():
         "-B": make_B,
         "-Nf": make_Nf,
         "-R": make_R,
+        "-Rf": make_Rf,
         "-diff": make_diff,
         "-adv": make_adv,
         "-abs": make_abs,

@@ -287,6 +287,93 @@ std::vector<double> H8::get_R(const std::vector<double>& K, const double t, cons
     return R_vec;
 }
 
+std::vector<double> H8::get_Rf(const std::vector<double>& S, const double t, const std::vector<gp_Pnt>& points) const{
+    (void)t;
+
+    // As I was unable to make this work using natural coordinates, this method
+    // has additional code to find which face of the hex the loads are being
+    // applied onto.
+    //
+    // This is probably (hopefully) not the best solution, but it works for now.
+
+    int xp[8] = {-1, 1, 1, -1, -1, 1, 1, -1};
+    int yp[8] = {1, 1, -1, -1, 1, 1, -1, -1};
+    int zp[8] = {-1, -1, -1, -1, 1, 1, 1, 1};
+
+    std::array<double, BOUNDARY_NODES_PER_ELEM> x, y, z;
+    const gp_Pnt c(this->get_centroid());
+    for(size_t i = 0; i < BOUNDARY_NODES_PER_ELEM; ++i){
+        x[i] = points[i].X() - c.X();
+        y[i] = points[i].Y() - c.Y();
+        z[i] = points[i].Z() - c.Z();
+    }
+    std::array<double, NODES_PER_ELEM> x2, y2, z2;
+    int idx[4];
+    int idx_i = 0;
+    for(size_t i = 0; i < NODES_PER_ELEM; ++i){
+        x2[i] = this->nodes[i]->point.X() - c.X();
+        y2[i] = this->nodes[i]->point.Y() - c.Y();
+        z2[i] = this->nodes[i]->point.Z() - c.Z();
+
+        for(size_t j = 0; j < BOUNDARY_NODES_PER_ELEM; ++j){
+            if(this->nodes[i]->point.IsEqual(points[j], Precision::Confusion())){
+                idx[idx_i] = i;
+                ++idx_i;
+            }
+        }
+    }
+    int xt = xp[idx[0]];
+    int yt = yp[idx[0]]; 
+    int zt = zp[idx[0]]; 
+    for(size_t i = 1; i < 4; ++i){
+        if(xp[idx[i]] != xt){
+            xt = 0;
+        }
+        if(yp[idx[i]] != yt){
+            yt = 0;
+        }
+        if(zp[idx[i]] != zt){
+            zt = 0;
+        }
+    }
+
+    Eigen::Vector<double, DIM> x_vec;
+    Eigen::Vector<double, K_DIM> Rf;
+    Eigen::Matrix<double, DIM, DIM> Sm = Eigen::Map<const Eigen::Matrix<double, DIM, DIM>>(S.data(), DIM, DIM);
+    Rf.fill(0);
+    constexpr size_t GN = 4;
+    const auto& GL = utils::GaussLegendre<GN>::get();
+
+    for(auto xi = GL.begin(); xi < GL.end(); ++xi){
+        for(auto eta = GL.begin(); eta < GL.end(); ++eta){
+            const auto drnorm = this->surface_drnorm(xi->x, eta->x, x, y, z);
+            if(xt != 0){
+                x_vec[0] = xt;
+                x_vec[1] = xi->x;
+                x_vec[2] = eta->x;
+                const auto NN = N_mat_norm(xt, xi->x, eta->x);
+                Rf += (xi->w*eta->w*drnorm)*NN.transpose()*Sm*x_vec;
+            } else if(yt != 0){
+                x_vec[0] = xi->x;
+                x_vec[1] = yt;
+                x_vec[2] = eta->x;
+                const auto NN = N_mat_norm(xi->x, yt, eta->x);
+                Rf += (xi->w*eta->w*drnorm)*NN.transpose()*Sm*x_vec;
+            } else if(zt != 0){
+                x_vec[0] = xi->x;
+                x_vec[1] = eta->x;
+                x_vec[2] = xt;
+                const auto NN = N_mat_norm(xi->x, eta->x, zt);
+                Rf += (xi->w*eta->w*drnorm)*NN.transpose()*Sm*x_vec;
+            }
+        }
+    }
+    std::vector<double> Rf_vec(K_DIM);
+    std::copy(Rf.data(), Rf.data()+K_DIM, Rf_vec.begin());
+
+    return Rf_vec;
+}
+
 Eigen::MatrixXd H8::diffusion_1dof(const double t, const std::vector<double>& A) const{
     (void)t;
     constexpr size_t N = H8::NODES_PER_ELEM;
