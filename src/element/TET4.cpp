@@ -760,7 +760,7 @@ std::vector<double> TET4::get_R(const std::vector<double>& K, const double t, co
     return R_vec;
 }
 
-std::vector<double> TET4::get_Rf(const std::vector<double>& S, const double t, const std::vector<gp_Pnt>& points) const{
+std::vector<double> TET4::get_Rf(const std::vector<double>& S, const std::vector<double>& F, const double t, const std::vector<gp_Pnt>& points) const{
     std::array<double, BOUNDARY_NODES_PER_ELEM> x, y, z;
     for(size_t i = 0; i < BOUNDARY_NODES_PER_ELEM; ++i){
         x[i] = points[i].X();
@@ -778,6 +778,7 @@ std::vector<double> TET4::get_Rf(const std::vector<double>& S, const double t, c
     }
 
     Eigen::Vector<double, DIM> x_vec;
+    Eigen::Vector<double, DIM> Fv{F[0], F[1], F[2]};
     Eigen::Vector<double, K_DIM> Rf;
     Eigen::Matrix<double, DIM, DIM> Sm = Eigen::Map<const Eigen::Matrix<double, DIM, DIM>>(S.data(), DIM, DIM);
     Rf.fill(0);
@@ -798,7 +799,7 @@ std::vector<double> TET4::get_Rf(const std::vector<double>& S, const double t, c
         //const auto r = this->surface_to_nat(xi->x, eta->x, A, B, C, x, y, z);
         //const auto NN = N_mat(r[0], r[1], r[2]);
         const auto NN = N_mat(xi, eta, zeta);
-        Rf += (drnorm*NN.transpose()*Sm*x_vec)/3.0;
+        Rf += (drnorm*NN.transpose()*(Sm*x_vec + Fv))/3.0;
     }
     std::vector<double> Rf_vec(K_DIM);
     std::copy(Rf.data(), Rf.data()+K_DIM, Rf_vec.begin());

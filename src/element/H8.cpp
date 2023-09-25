@@ -287,7 +287,7 @@ std::vector<double> H8::get_R(const std::vector<double>& K, const double t, cons
     return R_vec;
 }
 
-std::vector<double> H8::get_Rf(const std::vector<double>& S, const double t, const std::vector<gp_Pnt>& points) const{
+std::vector<double> H8::get_Rf(const std::vector<double>& S, const std::vector<double>& F, const double t, const std::vector<gp_Pnt>& points) const{
     (void)t;
 
     // As I was unable to make this work using natural coordinates, this method
@@ -338,6 +338,7 @@ std::vector<double> H8::get_Rf(const std::vector<double>& S, const double t, con
     }
 
     Eigen::Vector<double, DIM> x_vec;
+    Eigen::Vector<double, DIM> Fv{F[0], F[1], F[2]};
     Eigen::Vector<double, K_DIM> Rf;
     Eigen::Matrix<double, DIM, DIM> Sm = Eigen::Map<const Eigen::Matrix<double, DIM, DIM>>(S.data(), DIM, DIM);
     Rf.fill(0);
@@ -352,19 +353,19 @@ std::vector<double> H8::get_Rf(const std::vector<double>& S, const double t, con
                 x_vec[1] = xi->x;
                 x_vec[2] = eta->x;
                 const auto NN = N_mat_norm(xt, xi->x, eta->x);
-                Rf += (xi->w*eta->w*drnorm)*NN.transpose()*Sm*x_vec;
+                Rf += (xi->w*eta->w*drnorm)*NN.transpose()*(Sm*x_vec + Fv);
             } else if(yt != 0){
                 x_vec[0] = xi->x;
                 x_vec[1] = yt;
                 x_vec[2] = eta->x;
                 const auto NN = N_mat_norm(xi->x, yt, eta->x);
-                Rf += (xi->w*eta->w*drnorm)*NN.transpose()*Sm*x_vec;
+                Rf += (xi->w*eta->w*drnorm)*NN.transpose()*(Sm*x_vec + Fv);
             } else if(zt != 0){
                 x_vec[0] = xi->x;
                 x_vec[1] = eta->x;
                 x_vec[2] = xt;
                 const auto NN = N_mat_norm(xi->x, eta->x, zt);
-                Rf += (xi->w*eta->w*drnorm)*NN.transpose()*Sm*x_vec;
+                Rf += (xi->w*eta->w*drnorm)*NN.transpose()*(Sm*x_vec + Fv);
             }
         }
     }

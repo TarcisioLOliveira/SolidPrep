@@ -144,12 +144,13 @@ std::vector<double> Q4::get_R(const std::vector<double>& K, const double t, cons
     return R_vec;
 }
 
-std::vector<double> Q4::get_Rf(const std::vector<double>& S, const double t, const std::vector<gp_Pnt>& points) const{
+std::vector<double> Q4::get_Rf(const std::vector<double>& S, const std::vector<double>& F, const double t, const std::vector<gp_Pnt>& points) const{
     const double x[]{points[0].X(), points[1].X()};
     const double y[]{points[0].Y(), points[1].Y()};
     const double rnorm = 0.5*points[0].Distance(points[1]);
 
     Eigen::Vector<double, DIM> x_vec;
+    Eigen::Vector<double, DIM> Fv{F[0], F[1]};
     Eigen::Vector<double, K_DIM> Rf;
     Eigen::Matrix<double, DIM, DIM> Sm = Eigen::Map<const Eigen::Matrix<double, DIM, DIM>>(S.data(), DIM, DIM);
     Rf.fill(0);
@@ -164,7 +165,7 @@ std::vector<double> Q4::get_Rf(const std::vector<double>& S, const double t, con
         x_vec[1] = Y;
 
         const auto NN = N_mat(X, Y);
-        Rf += xi->w*NN.transpose()*Sm*x_vec;
+        Rf += xi->w*NN.transpose()*(Sm*x_vec + Fv);
     }
     Rf *= t*rnorm;
     std::vector<double> Rf_vec(K_DIM);

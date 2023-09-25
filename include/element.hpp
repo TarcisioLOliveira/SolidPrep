@@ -274,12 +274,13 @@ class MeshElement : public Element{
      * Creates and returns the elemental Robin vector.
      *
      * @param S Changed-basis stress matrix.
+     * @param F Changed-basis force vector.
      * @param t Geometry thickness.
      * @param points Points that define the boundary.
      *
      * @return The element stiffness matrix.
      */
-    virtual std::vector<double> get_Rf(const std::vector<double>& S, const double t, const std::vector<gp_Pnt>& points) const = 0;
+    virtual std::vector<double> get_Rf(const std::vector<double>& S, const std::vector<double>& F, const double t, const std::vector<gp_Pnt>& points) const = 0;
     /**
      * Calculates the internal load vector of the element.
      *

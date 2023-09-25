@@ -306,8 +306,10 @@ def make_Rf():
     Sl = sympy.symbols("S:4")
     S = sympy.Matrix([[Sl[0], Sl[1]],
                       [Sl[2], Sl[3]]])
+    Fl = sympy.symbols("F:2")
+    F = sympy.Matrix([Fl[0],Fl[1]])
 
-    NN = NN*S*xyz
+    NN = NN*(S*xyz + F)
 
     rx = ((1-s)*x0+s*x1)
     ry = ((1-s)*y0+s*y1)
@@ -327,8 +329,8 @@ def make_Rf():
 
         # Format output for use with C++
         formatted = str(NN[i])
-        formatted = re.sub(r"([abcxyS]\d)\*\*2", r"\1*\1", formatted)
-        formatted = re.sub(r"([abcxyS])(\d)", r"\1[\2]", formatted)
+        formatted = re.sub(r"([abcxySF]\d)\*\*2", r"\1*\1", formatted)
+        formatted = re.sub(r"([abcxySF])(\d)", r"\1[\2]", formatted)
 
         formatted = formatted.replace("sqrt", "std::sqrt")
 
