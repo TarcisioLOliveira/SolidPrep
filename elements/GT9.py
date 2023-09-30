@@ -344,8 +344,9 @@ def make_Rf():
     M = spv.ReferenceFrame("M")
 
     s = sympy.symbols("s")
+    cx, cy = sympy.symbols("cx cy")
 
-    xyz = sympy.Matrix([x, y])
+    xyz = sympy.Matrix([x - cx, y - cy])
 
     Sl = sympy.symbols("S:4")
     S = sympy.Matrix([[Sl[0], Sl[1]],

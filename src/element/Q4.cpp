@@ -144,7 +144,7 @@ std::vector<double> Q4::get_R(const std::vector<double>& K, const double t, cons
     return R_vec;
 }
 
-std::vector<double> Q4::get_Rf(const std::vector<double>& S, const std::vector<double>& F, const double t, const std::vector<gp_Pnt>& points) const{
+std::vector<double> Q4::get_Rf(const std::vector<double>& S, const std::vector<double>& F, const gp_Pnt& C, const double t, const std::vector<gp_Pnt>& points) const{
     const double x[]{points[0].X(), points[1].X()};
     const double y[]{points[0].Y(), points[1].Y()};
     const double rnorm = 0.5*points[0].Distance(points[1]);
@@ -161,8 +161,8 @@ std::vector<double> Q4::get_Rf(const std::vector<double>& S, const std::vector<d
         const double s = xi->x;
         const double X = 0.5*(x[0]*(1-s) + x[1]*(1+s));
         const double Y = 0.5*(y[0]*(1-s) + y[1]*(1+s));
-        x_vec[0] = X;
-        x_vec[1] = Y;
+        x_vec[0] = X - C.X();
+        x_vec[1] = Y - C.Y();
 
         const auto NN = N_mat(X, Y);
         Rf += xi->w*NN.transpose()*(Sm*x_vec + Fv);

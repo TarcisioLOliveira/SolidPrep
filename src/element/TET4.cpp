@@ -760,7 +760,8 @@ std::vector<double> TET4::get_R(const std::vector<double>& K, const double t, co
     return R_vec;
 }
 
-std::vector<double> TET4::get_Rf(const std::vector<double>& S, const std::vector<double>& F, const double t, const std::vector<gp_Pnt>& points) const{
+std::vector<double> TET4::get_Rf(const std::vector<double>& S, const std::vector<double>& F, const gp_Pnt& C, const double t, const std::vector<gp_Pnt>& points) const{
+    (void)t;
     std::array<double, BOUNDARY_NODES_PER_ELEM> x, y, z;
     for(size_t i = 0; i < BOUNDARY_NODES_PER_ELEM; ++i){
         x[i] = points[i].X();
@@ -768,13 +769,13 @@ std::vector<double> TET4::get_Rf(const std::vector<double>& S, const std::vector
         z[i] = points[i].Z();
     }
 
-    double B[3], C[3];
+    double BB[3], CC[3];
     for(size_t i = 0; i < BOUNDARY_NODES_PER_ELEM; ++i){
         size_t j = (i + 1) % BOUNDARY_NODES_PER_ELEM;
         size_t k = (i + 2) % BOUNDARY_NODES_PER_ELEM;
 
-        B[i] = points[j].Y() - points[k].Y();
-        C[i] = points[k].X() - points[j].X();
+        BB[i] = points[j].Y() - points[k].Y();
+        CC[i] = points[k].X() - points[j].X();
     }
 
     Eigen::Vector<double, DIM> x_vec;
@@ -787,15 +788,15 @@ std::vector<double> TET4::get_Rf(const std::vector<double>& S, const std::vector
                              {0, 0.5, 0.5},
                              {0.5, 0, 0.5}};
 
-    const auto drnorm = this->surface_drnorm(B, C, x, y, z);
+    const auto drnorm = this->surface_drnorm(BB, CC, x, y, z);
     const auto& p = points;
     for(size_t i = 0; i < 3; ++i){
         const double xi = GL[i][0]*p[0].X() + GL[i][1]*p[1].X() + GL[i][2]*p[2].X();
         const double eta = GL[i][0]*p[0].Y() + GL[i][1]*p[1].Y() + GL[i][2]*p[2].Y();
         const double zeta = GL[i][0]*p[0].Z() + GL[i][1]*p[1].Z() + GL[i][2]*p[2].Z();
-        x_vec[0] = xi;
-        x_vec[1] = eta;
-        x_vec[2] = zeta;
+        x_vec[0] = xi - C.X();
+        x_vec[1] = eta - C.Y();
+        x_vec[2] = zeta - C.Z();
         //const auto r = this->surface_to_nat(xi->x, eta->x, A, B, C, x, y, z);
         //const auto NN = N_mat(r[0], r[1], r[2]);
         const auto NN = N_mat(xi, eta, zeta);

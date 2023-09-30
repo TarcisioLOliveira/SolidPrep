@@ -287,7 +287,7 @@ std::vector<double> H8::get_R(const std::vector<double>& K, const double t, cons
     return R_vec;
 }
 
-std::vector<double> H8::get_Rf(const std::vector<double>& S, const std::vector<double>& F, const double t, const std::vector<gp_Pnt>& points) const{
+std::vector<double> H8::get_Rf(const std::vector<double>& S, const std::vector<double>& F, const gp_Pnt& C, const double t, const std::vector<gp_Pnt>& points) const{
     (void)t;
 
     // As I was unable to make this work using natural coordinates, this method
@@ -349,21 +349,21 @@ std::vector<double> H8::get_Rf(const std::vector<double>& S, const std::vector<d
         for(auto eta = GL.begin(); eta < GL.end(); ++eta){
             const auto drnorm = this->surface_drnorm(xi->x, eta->x, x, y, z);
             if(xt != 0){
-                x_vec[0] = xt;
-                x_vec[1] = xi->x;
-                x_vec[2] = eta->x;
+                x_vec[0] = xt - C.X();
+                x_vec[1] = xi->x - C.Y();
+                x_vec[2] = eta->x - C.Z();
                 const auto NN = N_mat_norm(xt, xi->x, eta->x);
                 Rf += (xi->w*eta->w*drnorm)*NN.transpose()*(Sm*x_vec + Fv);
             } else if(yt != 0){
-                x_vec[0] = xi->x;
-                x_vec[1] = yt;
-                x_vec[2] = eta->x;
+                x_vec[0] = xi->x - C.X();
+                x_vec[1] = yt - C.Y();
+                x_vec[2] = eta->x - C.Z();
                 const auto NN = N_mat_norm(xi->x, yt, eta->x);
                 Rf += (xi->w*eta->w*drnorm)*NN.transpose()*(Sm*x_vec + Fv);
             } else if(zt != 0){
-                x_vec[0] = xi->x;
-                x_vec[1] = eta->x;
-                x_vec[2] = xt;
+                x_vec[0] = xi->x - C.X();
+                x_vec[1] = eta->x - C.Y();
+                x_vec[2] = xt - C.Z();
                 const auto NN = N_mat_norm(xi->x, eta->x, zt);
                 Rf += (xi->w*eta->w*drnorm)*NN.transpose()*(Sm*x_vec + Fv);
             }
