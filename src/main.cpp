@@ -162,6 +162,8 @@ int main(int argc, char* argv[]){
                 auto strainview_X  = v->add_view("Normal Strain (X axis)", spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::STRESS);
                 auto strainview_Y  = v->add_view("Normal Strain (Y axis)", spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::STRESS);
                 auto strainview_XY = v->add_view("Shear Strain",           spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::STRESS);
+                auto displ = v->add_view("Displacement",           spview::defs::ViewType::VECTOR, spview::defs::DataType::DISPLACEMENT);
+                auto force = v->add_view("Force",           spview::defs::ViewType::VECTOR, spview::defs::DataType::DISPLACEMENT);
 
                 stressview_VM->update_view(stresses);
                 stressview_X ->update_view(stressesX);
@@ -170,6 +172,8 @@ int main(int argc, char* argv[]){
                 strainview_X ->update_view(strainX);
                 strainview_Y ->update_view(strainY);
                 strainview_XY->update_view(strainXY);
+                displ->update_view(u);
+                force->update_view(proj->topopt_mesher->load_vector);
 
                 v->wait();
                 v->end();
