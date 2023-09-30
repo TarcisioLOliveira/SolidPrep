@@ -35,6 +35,7 @@
 #include <set>
 #include <queue>
 #include <BRepBuilderAPI_Copy.hxx>
+#include <vector>
 
 
 void Meshing::generate_elements(const TopoDS_Shape& shape,
@@ -99,16 +100,16 @@ void Meshing::generate_elements(const TopoDS_Shape& shape,
     }
 
     this->load_vector.clear();
-    this->load_vector.resize(current);
+    this->load_vector.resize(current, 0);
+
+    logger::quick_log("loads");
+    this->generate_load_vector(shape, forces);
 
     logger::quick_log("springs");
     if(springs.size() > 0){
         this->apply_springs(springs);
         this->springs_copy = std::vector<Spring>(springs);
     }
-
-    logger::quick_log("loads");
-    this->generate_load_vector(shape, forces);
 
     logger::quick_log("Done.");
 }
@@ -208,6 +209,8 @@ void Meshing::apply_supports(const std::vector<Support>& supports){
 
 void Meshing::apply_springs(const std::vector<Spring>& springs){
     const size_t bound_nodes_per_elem = this->elem_info->get_boundary_nodes_per_element();
+    const size_t nodes_per_elem = this->elem_info->get_nodes_per_element();
+    const size_t dof = this->elem_info->get_dof_per_node();
     this->robin_elements.resize(springs.size());
 
     for(auto& e:this->boundary_elements){
@@ -222,6 +225,97 @@ void Meshing::apply_springs(const std::vector<Spring>& springs){
     }
     for(size_t i = 0; i < springs.size(); ++i){
         this->robin_elements[i].shrink_to_fit();
+    }
+
+    auto is_between_points = [](gp_Pnt p1, gp_Pnt p2, gp_Pnt p)->bool{
+        gp_Mat M(1, p1.X(), p1.Y(), 1, p2.X(), p2.Y(), 1, p.X(), p.Y());
+        bool in_line = std::abs(M.Determinant()) < Precision::Confusion();
+        bool within_bounds = p.Distance(p1) - p1.Distance(p2) < Precision::Confusion() &&
+                             p.Distance(p2) - p1.Distance(p2) < Precision::Confusion();
+
+        return in_line && within_bounds;
+    };
+    const auto problem_type = this->elem_info->get_problem_type();
+    if(problem_type == utils::PROBLEM_TYPE_2D){
+        const size_t N = 2;
+        for(size_t i = 0; i < this->robin_elements.size(); ++i){
+            const auto& elem_list = this->robin_elements[i];
+            const auto& s = springs[i];
+            const double A = thickness*s.S.get_dimension();
+            Eigen::Vector<double, 2> F0{s.F[0]/A, s.F[1]/A};
+            Eigen::Vector<double, 2> Fr = s.rot2D*F0;
+            std::vector<double> F{Fr[0], Fr[1]};
+            Eigen::Matrix<double, N, N> S{{0, 0},
+                                          {0, 0}};
+            std::vector<double> Sn(N*N);
+
+            gp_Dir Snormal = s.S.get_normal();
+            double Ssize = s.S.get_dimension();
+            gp_Pnt center = s.S.get_centroid();
+            gp_Dir line_dir = Snormal.Rotated(gp_Ax1(center, gp_Dir(0,0,1)), M_PI/2);
+            gp_Pnt p1 = center.Translated( 0.5*Ssize*line_dir);
+            gp_Pnt p2 = center.Translated(-0.5*Ssize*line_dir);
+            for(size_t j = 0; j < elem_list.size(); ++j){
+                const auto& e = elem_list[j];
+                const gp_Pnt c = e->get_centroid(bound_nodes_per_elem);
+                const auto EG = s.mat->beam_EG_2D(c, s.normal);
+                S(0,1) = EG[0]*s.curv[0];
+                Eigen::Matrix<double, N, N> Srot = s.rot2D*S*s.rot2D.transpose();
+                for(size_t row = 0; row < N; ++row){
+                    for(size_t col = 0; col < N; ++col){
+                        Sn[row*N + col] = Srot(row,col);
+                    }
+                }
+                std::vector<gp_Pnt> list;
+                list.reserve(bound_nodes_per_elem);
+                for(size_t i = 0; i < bound_nodes_per_elem; ++i){
+                    auto n = e->nodes[i];
+                    if(is_between_points(p1, p2, n->point)){
+                        list.push_back(n->point);
+                    }
+                }
+
+                std::vector<double> Rf;
+                if(list.size() >= 2){
+                     Rf = elem_list[j]->parent->get_Rf(Sn, F, center, this->thickness, list);
+                } else if(list.size() > 1) {
+                    for(size_t i = 0; i < bound_nodes_per_elem; ++i){
+                        size_t j = (i+1)%bound_nodes_per_elem;
+                        auto n1 = e->nodes[i]->point;
+                        auto n2 = e->nodes[j]->point;
+                        if(p1.IsEqual(n1, Precision::Confusion()) || p1.IsEqual(n2, Precision::Confusion()) ||
+                           p2.IsEqual(n1, Precision::Confusion()) || p2.IsEqual(n2, Precision::Confusion())){
+                            continue;
+                        }
+                        if(is_between_points(n1, n2, p1)){
+                            list.push_back(p1);
+                            break;
+                        } else if(is_between_points(n1, n2, p2)){
+                            list.push_back(p2);
+                            break;
+                        }
+                    }
+                    Rf = elem_list[j]->parent->get_Rf(Sn, F, center, this->thickness, list);
+                }
+                if(Rf.size() > 0){
+                    //logger::quick_log(fe);
+                    //for(auto& ff:fe){
+                    //    F += ff;
+                    //}
+                    for(size_t i = 0; i < nodes_per_elem; ++i){
+                        for(size_t j = 0; j < dof; ++j){
+                            auto n = e->parent->nodes[i];
+                            if(n->u_pos[j] >= 0){
+                                this->load_vector[n->u_pos[j]] += Rf[i*dof+j];
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+    } else if(problem_type == utils::PROBLEM_TYPE_3D){
+
     }
 }
 
