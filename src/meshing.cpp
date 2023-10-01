@@ -213,18 +213,33 @@ void Meshing::apply_springs(const std::vector<Spring>& springs){
     const size_t dof = this->elem_info->get_dof_per_node();
     this->robin_elements.resize(springs.size());
 
-    for(auto& e:this->boundary_elements){
-        const gp_Pnt c = e.get_centroid(bound_nodes_per_elem);
+    std::vector<std::vector<bool>> apply_spring(springs.size());
+    std::vector<size_t> num_elems(springs.size());
+    for(size_t j = 0; j < springs.size(); ++j){
+        const auto& s = springs[j];
+        apply_spring[j].resize(this->boundary_elements.size());
+        size_t num_elems_tmp = 0;
 
-        for(size_t i = 0; i < springs.size(); ++i){
-            auto& s = springs[i];
-            if(s.S.is_inside(c)){
-                this->robin_elements[i].push_back(&e);
+        #pragma omp parallel for reduction(+:num_elems_tmp)
+        for(size_t i = 0; i < this->boundary_elements.size(); ++i){
+            const auto& e = this->boundary_elements[i];
+            apply_spring[j][i] = s.S.is_inside(e.get_centroid(bound_nodes_per_elem));
+            if(apply_spring[j][i]){
+                ++num_elems_tmp;
             }
         }
+
+        num_elems[j] = num_elems_tmp;
     }
-    for(size_t i = 0; i < springs.size(); ++i){
-        this->robin_elements[i].shrink_to_fit();
+    for(size_t j = 0; j < springs.size(); ++j){
+        this->robin_elements[j].resize(num_elems[j]);
+        size_t cur_elem = 0;
+        for(size_t i = 0; i < this->boundary_elements.size(); ++i){
+            if(apply_spring[j][i]){
+                this->robin_elements[j][cur_elem] = &this->boundary_elements[i];
+                ++cur_elem;
+            }
+        }
     }
 
     auto is_between_points = [](gp_Pnt p1, gp_Pnt p2, gp_Pnt p)->bool{
