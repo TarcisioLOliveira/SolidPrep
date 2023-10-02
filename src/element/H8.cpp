@@ -348,22 +348,17 @@ std::vector<double> H8::get_Rf(const std::vector<double>& S, const std::vector<d
     for(auto xi = GL.begin(); xi < GL.end(); ++xi){
         for(auto eta = GL.begin(); eta < GL.end(); ++eta){
             const auto drnorm = this->surface_drnorm(xi->x, eta->x, x, y, z);
+            auto Xs = this->surface_to_nat(xi->x, eta->x, x, y, z);
+            x_vec[0] = Xs[0] + c.X() - C.X();
+            x_vec[1] = Xs[1] + c.Y() - C.Y();
+            x_vec[2] = Xs[2] + c.Z() - C.Z();
             if(xt != 0){
-                x_vec[0] = xt - C.X();
-                x_vec[1] = xi->x - C.Y();
-                x_vec[2] = eta->x - C.Z();
                 const auto NN = N_mat_norm(xt, xi->x, eta->x);
                 Rf += (xi->w*eta->w*drnorm)*NN.transpose()*(Sm*x_vec + Fv);
             } else if(yt != 0){
-                x_vec[0] = xi->x - C.X();
-                x_vec[1] = yt - C.Y();
-                x_vec[2] = eta->x - C.Z();
                 const auto NN = N_mat_norm(xi->x, yt, eta->x);
                 Rf += (xi->w*eta->w*drnorm)*NN.transpose()*(Sm*x_vec + Fv);
             } else if(zt != 0){
-                x_vec[0] = xi->x - C.X();
-                x_vec[1] = eta->x - C.Y();
-                x_vec[2] = xt - C.Z();
                 const auto NN = N_mat_norm(xi->x, eta->x, zt);
                 Rf += (xi->w*eta->w*drnorm)*NN.transpose()*(Sm*x_vec + Fv);
             }
