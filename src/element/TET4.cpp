@@ -80,6 +80,7 @@ void TET4::get_coeffs(){
 }
 
 std::vector<double> TET4::get_k(const std::vector<double>& D, const double t) const{
+    (void)t;
 
 std::vector<double> k{
 (D[0]*b[0]*b[0] + D[18]*b[0]*c[0] + D[21]*c[0]*c[0] + D[23]*c[0]*d[0] + D[3]*b[0]*c[0] + D[30]*b[0]*d[0] + D[33]*c[0]*d[0] + D[35]*d[0]*d[0] + D[5]*b[0]*d[0])/(36*V)
@@ -719,22 +720,7 @@ std::vector<double> TET4::get_nodal_density_gradient(gp_Pnt p) const{
 }
 
 std::vector<double> TET4::get_R(const std::vector<double>& K, const double t, const std::vector<gp_Pnt>& points) const{
-    std::array<double, BOUNDARY_NODES_PER_ELEM> x, y, z;
-    for(size_t i = 0; i < BOUNDARY_NODES_PER_ELEM; ++i){
-        x[i] = points[i].X();
-        y[i] = points[i].Y();
-        z[i] = points[i].Z();
-    }
-
-    double B[3], C[3];
-    for(size_t i = 0; i < BOUNDARY_NODES_PER_ELEM; ++i){
-        size_t j = (i + 1) % BOUNDARY_NODES_PER_ELEM;
-        size_t k = (i + 2) % BOUNDARY_NODES_PER_ELEM;
-
-        B[i] = points[j].Y() - points[k].Y();
-        C[i] = points[k].X() - points[j].X();
-    }
-
+    (void)t;
     Eigen::Matrix<double, K_DIM, K_DIM> R;
     Eigen::Matrix<double, DIM, DIM> Km = Eigen::Map<const Eigen::Matrix<double, DIM, DIM>>(K.data(), DIM, DIM);
     R.fill(0);
@@ -743,14 +729,14 @@ std::vector<double> TET4::get_R(const std::vector<double>& K, const double t, co
                              {0, 0.5, 0.5},
                              {0.5, 0, 0.5}};
 
-    const auto drnorm = this->surface_drnorm(B, C, x, y, z);
     const auto& p = points;
+    gp_Vec v1(p[1], p[0]);
+    gp_Vec v2(p[2], p[0]);
+    const double drnorm = (v1.Crossed(v2)).Magnitude();
     for(size_t i = 0; i < 3; ++i){
         const double xi = GL[i][0]*p[0].X() + GL[i][1]*p[1].X() + GL[i][2]*p[2].X();
         const double eta = GL[i][0]*p[0].Y() + GL[i][1]*p[1].Y() + GL[i][2]*p[2].Y();
         const double zeta = GL[i][0]*p[0].Z() + GL[i][1]*p[1].Z() + GL[i][2]*p[2].Z();
-        //const auto r = this->surface_to_nat(xi->x, eta->x, A, B, C, x, y, z);
-        //const auto NN = N_mat(r[0], r[1], r[2]);
         const auto NN = N_mat(xi, eta, zeta);
         R += (drnorm*NN.transpose()*Km*NN)/3.0;
     }
@@ -762,22 +748,6 @@ std::vector<double> TET4::get_R(const std::vector<double>& K, const double t, co
 
 std::vector<double> TET4::get_Rf(const std::vector<double>& S, const std::vector<double>& F, const gp_Pnt& C, const double t, const std::vector<gp_Pnt>& points) const{
     (void)t;
-    std::array<double, BOUNDARY_NODES_PER_ELEM> x, y, z;
-    for(size_t i = 0; i < BOUNDARY_NODES_PER_ELEM; ++i){
-        x[i] = points[i].X();
-        y[i] = points[i].Y();
-        z[i] = points[i].Z();
-    }
-
-    double BB[3], CC[3];
-    for(size_t i = 0; i < BOUNDARY_NODES_PER_ELEM; ++i){
-        size_t j = (i + 1) % BOUNDARY_NODES_PER_ELEM;
-        size_t k = (i + 2) % BOUNDARY_NODES_PER_ELEM;
-
-        BB[i] = points[j].Y() - points[k].Y();
-        CC[i] = points[k].X() - points[j].X();
-    }
-
     Eigen::Vector<double, DIM> x_vec;
     Eigen::Vector<double, DIM> Fv{F[0], F[1], F[2]};
     Eigen::Vector<double, K_DIM> Rf;
@@ -788,8 +758,10 @@ std::vector<double> TET4::get_Rf(const std::vector<double>& S, const std::vector
                              {0, 0.5, 0.5},
                              {0.5, 0, 0.5}};
 
-    const auto drnorm = this->surface_drnorm(BB, CC, x, y, z);
     const auto& p = points;
+    gp_Vec v1(p[1], p[0]);
+    gp_Vec v2(p[2], p[0]);
+    const double drnorm = (v1.Crossed(v2)).Magnitude()/2;
     for(size_t i = 0; i < 3; ++i){
         const double xi = GL[i][0]*p[0].X() + GL[i][1]*p[1].X() + GL[i][2]*p[2].X();
         const double eta = GL[i][0]*p[0].Y() + GL[i][1]*p[1].Y() + GL[i][2]*p[2].Y();
@@ -797,8 +769,6 @@ std::vector<double> TET4::get_Rf(const std::vector<double>& S, const std::vector
         x_vec[0] = xi - C.X();
         x_vec[1] = eta - C.Y();
         x_vec[2] = zeta - C.Z();
-        //const auto r = this->surface_to_nat(xi->x, eta->x, A, B, C, x, y, z);
-        //const auto NN = N_mat(r[0], r[1], r[2]);
         const auto NN = N_mat(xi, eta, zeta);
         Rf += (drnorm*NN.transpose()*(Sm*x_vec + Fv))/3.0;
     }

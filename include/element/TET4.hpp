@@ -144,29 +144,6 @@ class TET4 : public MeshElementCommon3DTet<TET4>{
 
         return Eigen::Vector<double, NODE_DOF>{X, Y, Z};
     }
-
-    inline double surface_drnorm(const double B[3], const double C[3], const std::array<double, BOUNDARY_NODES_PER_ELEM>& x, const std::array<double, BOUNDARY_NODES_PER_ELEM>& y, const std::array<double, BOUNDARY_NODES_PER_ELEM>& z) const{
-        double dXdx = 0, dYdx = 0, dZdx = 0;
-        double dXdy = 0, dYdy = 0, dZdy = 0;
-        for(size_t i = 0; i < BOUNDARY_NODES_PER_ELEM; ++i){
-            //const double Nix = dNdx_norm_surface(xi, eta, i);
-            //const double Niy = dNdy_norm_surface(xi, eta, i);
-            const double Nix = B[i];
-            const double Niy = C[i];
-
-            dXdx += Nix*x[i];
-            dYdx += Nix*y[i];
-            dZdx += Nix*z[i];
-
-            dXdy += Niy*x[i];
-            dYdy += Niy*y[i];
-            dZdy += Niy*z[i];
-        }
-        Eigen::Vector<double, 3> rx{dXdx, dYdx, dZdx};
-        Eigen::Vector<double, 3> ry{dXdy, dYdy, dZdy};
-
-        return (rx.cross(ry)).norm();
-    }
 };
 
 }
