@@ -152,7 +152,7 @@ std::vector<double> Q4::get_Rf(const std::vector<double>& S, const std::vector<d
     Eigen::Vector<double, DIM> x_vec;
     Eigen::Vector<double, DIM> Fv{F[0], F[1]};
     Eigen::Vector<double, K_DIM> Rf;
-    Eigen::Matrix<double, DIM, DIM> Sm = Eigen::Map<const Eigen::Matrix<double, DIM, DIM>>(S.data(), DIM, DIM);
+    Eigen::Matrix<double, DIM, DIM> Sm = Eigen::Map<const Eigen::Matrix<double, DIM, DIM>>(S.data(), DIM, DIM).transpose();
     Rf.fill(0);
     constexpr size_t GN = 3;
     const auto& GL = utils::GaussLegendre<GN>::get();

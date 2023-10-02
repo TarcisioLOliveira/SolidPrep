@@ -781,7 +781,7 @@ std::vector<double> TET4::get_Rf(const std::vector<double>& S, const std::vector
     Eigen::Vector<double, DIM> x_vec;
     Eigen::Vector<double, DIM> Fv{F[0], F[1], F[2]};
     Eigen::Vector<double, K_DIM> Rf;
-    Eigen::Matrix<double, DIM, DIM> Sm = Eigen::Map<const Eigen::Matrix<double, DIM, DIM>>(S.data(), DIM, DIM);
+    Eigen::Matrix<double, DIM, DIM> Sm = Eigen::Map<const Eigen::Matrix<double, DIM, DIM>>(S.data(), DIM, DIM).transpose();
     Rf.fill(0);
 
     const double GL[3][3] = {{0.5, 0.5, 0},
