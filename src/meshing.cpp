@@ -257,8 +257,8 @@ void Meshing::apply_springs(const std::vector<Spring>& springs){
             const auto& elem_list = this->robin_elements[i];
             const auto& s = springs[i];
             const double A = thickness*s.S.get_dimension();
-            Eigen::Vector<double, 2> F0{s.F[0]/A, s.F[1]/A};
-            Eigen::Vector<double, 2> Fr = s.rot2D*F0;
+            Eigen::Vector<double, N> F0{s.F[0]/A, s.F[1]/A};
+            Eigen::Vector<double, N> Fr = s.rot2D*F0;
             std::vector<double> F{Fr[0], Fr[1]};
             Eigen::Matrix<double, N, N> S{{0, 0},
                                           {0, 0}};
@@ -328,8 +328,57 @@ void Meshing::apply_springs(const std::vector<Spring>& springs){
                 }
             }
         }
-
     } else if(problem_type == utils::PROBLEM_TYPE_3D){
+        const size_t N = 3;
+        for(size_t i = 0; i < this->robin_elements.size(); ++i){
+            const auto& elem_list = this->robin_elements[i];
+            const auto& s = springs[i];
+            const double A = s.S.get_area();
+            Eigen::Vector<double, N> F0{s.F[0]/A, s.F[1]/A, s.F[2]/A};
+            Eigen::Vector<double, N> Fr = s.rot3D*F0;
+            std::vector<double> F{Fr[0], Fr[1], Fr[2]};
+            Eigen::Matrix<double, N, N> S{{0, 0, 0},
+                                          {0, 0, 0},
+                                          {0, 0, 0}};
+            std::vector<double> Sn(N*N);
+
+            gp_Pnt center = s.S.get_centroid();
+
+            for(size_t j = 0; j < elem_list.size(); ++j){
+                const auto& e = elem_list[j];
+                std::vector<gp_Pnt> points(bound_nodes_per_elem);
+                for(size_t i = 0; i < bound_nodes_per_elem; ++i){
+                    points[i] = e->nodes[i]->point;
+                }
+
+                const gp_Pnt c = e->get_centroid(bound_nodes_per_elem);
+                const auto EG = s.mat->beam_EG_3D(c, s.normal);
+                S(0,1) = EG[0]*s.curv[0];
+                S(0,2) = EG[0]*s.curv[1];
+                S(1,2) = -EG[3]*s.curv[2];
+                S(2,1) = EG[3]*s.curv[2];
+                Eigen::Matrix<double, N, N> Srot = s.rot3D*S*s.rot3D.transpose();
+                for(size_t row = 0; row < N; ++row){
+                    for(size_t col = 0; col < N; ++col){
+                        Sn[row*N + col] = Srot(row,col);
+                    }
+                }
+
+                const auto Rf = e->parent->get_Rf(Sn, F, center, this->thickness, points);
+                //logger::quick_log(fe);
+                //for(auto& ff:fe){
+                //    F += ff;
+                //}
+                for(size_t i = 0; i < nodes_per_elem; ++i){
+                    for(size_t j = 0; j < dof; ++j){
+                        const auto n = e->parent->nodes[i];
+                        if(n->u_pos[j] >= 0){
+                            this->load_vector[n->u_pos[j]] += Rf[i*dof+j];
+                        }
+                    }
+                }
+            }
+        }
 
     }
 }
