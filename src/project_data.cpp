@@ -17,6 +17,7 @@
  *   along with SolidPrep.  If not, see <https://www.gnu.org/licenses/>.
  *
  */
+#include "material/mandible.hpp"
 #include <cstring>
 #include <memory>
 #define _USE_MATH_DEFINES
@@ -41,6 +42,7 @@
 #include "pathfinding/visibility_graph.hpp"
 #include "material/linear_elastic_isotropic.hpp"
 #include "material/linear_elastic_orthotropic.hpp"
+#include "material/mandible.hpp"
 #include "sizing/standard_sizing.hpp"
 #include "finite_element/direct_solver.hpp"
 #include "finite_element/gradient_descent.hpp"
@@ -224,7 +226,13 @@ bool ProjectData::log_data(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc
 std::vector<std::unique_ptr<Material>> ProjectData::load_materials(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc){
     const auto& materials = doc["material"].GetArray();
     std::vector<std::unique_ptr<Material>> material;
+
+    std::vector<size_t> queue;
+    size_t mat_num = 0;
     for(const auto& mat:materials){
+        logger::log_assert(mat.HasMember("name"), logger::ERROR, "missing material property: name");
+        logger::log_assert(mat["name"].IsString(), logger::ERROR, "material property 'name' must be a string");
+        std::string name(mat["name"].GetString());
         this->log_data(mat, "type", TYPE_STRING, true);
         if(mat["type"] == "linear_elastic_orthotropic"){
             std::vector<std::string> properties{"E", "nu", "G", "Smax", "Tmax"};
@@ -249,9 +257,6 @@ std::vector<std::unique_ptr<Material>> ProjectData::load_materials(const rapidjs
                 }
             }
             this->log_data(mat, "density", TYPE_DOUBLE, true);
-            logger::log_assert(mat.HasMember("name"), logger::ERROR, "missing material property: name");
-            logger::log_assert(mat["name"].IsString(), logger::ERROR, "material property 'name' must be a string");
-            std::string name(mat["name"].GetString());
             double density = mat["density"].GetDouble();
 
             for(auto& i:values[0]) i *= 1e3; // E
@@ -274,11 +279,45 @@ std::vector<std::unique_ptr<Material>> ProjectData::load_materials(const rapidjs
             double density = mat["density"].GetDouble();
             bool plane_stress = mat["plane_stress"].GetBool();
 
-            logger::log_assert(mat.HasMember("name"), logger::ERROR, "missing material property: name");
-            logger::log_assert(mat["name"].IsString(), logger::ERROR, "material property 'name' must be a string");
-            std::string name(mat["name"].GetString());
             //this->material.reset(new material::LinearElasticIsotropic(E*1e9, nu, Smax*1e6, Tmax*1e6, plane_stress));
             material.emplace_back(new material::LinearElasticIsotropic(name, density, E*1e3, nu, Smax, Tmax, plane_stress));
+        } else if(mat["type"] == "mandible"){
+            queue.push_back(mat_num);
+        }
+        ++mat_num;
+    }
+
+    // Materials that depend on other materials.
+    for(auto& q:queue){
+        const auto& mat = materials[q];
+        std::string name(mat["name"].GetString());
+        if(mat["type"] == "mandible"){
+            std::vector<std::string> prop_strings{"material_inner", "material_outer", "path_points1", "path_points2"};
+            for(auto& s:prop_strings){
+                this->log_data(mat, s, TYPE_STRING, true);
+            }
+            this->log_data(mat, "C", TYPE_DOUBLE, true);
+            std::string inner = mat["material_inner"].GetString();
+            std::string outer = mat["material_outer"].GetString();
+            std::string path_points1 = this->folder_path;
+            path_points1.append(mat["path_points1"].GetString());
+            std::string path_points2 = this->folder_path;
+            path_points2.append(mat["path_points2"].GetString());
+            double C = mat["C"].GetDouble();
+            auto equal_name_inner = [&inner](const std::unique_ptr<Material>& m)->bool{
+                return inner == m->name;
+            };
+            auto equal_name_outer = [&outer](const std::unique_ptr<Material>& m)->bool{
+                return outer == m->name;
+            };
+            auto it = std::find_if(material.begin(), material.end(), equal_name_inner);
+            logger::log_assert(it != material.end(), logger::ERROR, "material with name '{}' not found", inner);
+            Material* i = it->get();
+            it = std::find_if(material.begin(), material.end(), equal_name_outer);
+            logger::log_assert(it != material.end(), logger::ERROR, "material with name '{}' not found", outer);
+            Material* o = it->get();
+
+            material.emplace_back(new material::Mandible(name, o, i, path_points1, path_points2, C));
         }
     }
 

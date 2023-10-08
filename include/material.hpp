@@ -30,7 +30,8 @@ class Material{
     enum Type{
         NONE,
         LINEAR_ELASTIC_ISOTROPIC,
-        LINEAR_ELASTIC_ORTHOTROPIC
+        LINEAR_ELASTIC_ORTHOTROPIC,
+        MANDIBLE
     };
 
     virtual ~Material() = default;
