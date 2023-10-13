@@ -332,6 +332,10 @@ class MeshElementCommon2D : public MeshElementCommon<T>{
         return this->_get_strain_tensor(p, u, indices, S_SIZE);
     }
 
+    virtual std::vector<double> get_strain_vector(const gp_Pnt& p, const std::vector<double>& u) const override{
+        return this->_get_strain_vector(p, u, S_SIZE);
+    }
+
     virtual void get_virtual_load(const std::vector<double>& D, double mult, const gp_Pnt& point, const std::vector<double>& u, std::vector<double>& l) const override{
         const std::vector<double> V{1, -0.5, 0,
                                    -0.5, 1, 0,
@@ -549,6 +553,10 @@ class MeshElementCommon3D : public MeshElementCommon<T>{
     virtual std::vector<double> get_strain_tensor(const gp_Pnt& p, const std::vector<double>& u) const override{
         const std::vector<size_t> indices{0, 3, 4, 3, 1, 5, 4, 5, 2};
         return this->_get_strain_tensor(p, u, indices, S_SIZE);
+    }
+
+    virtual std::vector<double> get_strain_vector(const gp_Pnt& p, const std::vector<double>& u) const override{
+        return this->_get_strain_vector(p, u, S_SIZE);
     }
 
     virtual void get_virtual_load(const std::vector<double>& D, double mult, const gp_Pnt& point, const std::vector<double>& u, std::vector<double>& l) const override{
