@@ -53,6 +53,7 @@ class H8 : public MeshElementCommon3DHex<H8>{
     virtual std::vector<double> get_nodal_density_gradient(gp_Pnt p) const override;
     virtual std::vector<double> get_R(const std::vector<double>& K, const double t, const std::vector<gp_Pnt>& points) const override;
     virtual std::vector<double> get_Rf(const std::vector<double>& S, const std::vector<double>& F, const gp_Pnt& C, const double t, const std::vector<gp_Pnt>& points) const override;
+    virtual std::vector<double> get_B(const gp_Pnt& point) const override;
 
     virtual Eigen::MatrixXd diffusion_1dof(const double t, const std::vector<double>& A) const override;
     virtual Eigen::MatrixXd advection_1dof(const double t, const std::vector<double>& v) const override;
@@ -66,7 +67,6 @@ class H8 : public MeshElementCommon3DHex<H8>{
     private:
     virtual std::vector<double> get_DB(const std::vector<double>& D, const gp_Pnt& point) const override;
     virtual std::vector<double> get_Nf(const double t, const std::vector<gp_Pnt>& points) const override;
-    virtual std::vector<double> get_B(const gp_Pnt& point) const override;
 
     inline double N_norm(double x, double y, double z, size_t i) const{
         switch(i){

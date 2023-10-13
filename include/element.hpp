@@ -439,6 +439,15 @@ class MeshElement : public Element{
     virtual std::vector<double> get_nodal_density_gradient(gp_Pnt p) const = 0;
 
     /**
+     * Gets the linear displacement matrix (B).
+     *
+     * @param point Point where it's measured at.
+     *
+     * @return B matrix.
+     */
+    virtual std::vector<double> get_B(const gp_Pnt& point) const = 0;
+
+    /**
      * Returns a 1 degree of freedom diffusion matrix.
      * 
      * @param t Geometry thickness.
@@ -516,8 +525,6 @@ class MeshElement : public Element{
      * @return The interpolation matrix for nodal forces, Nf.
      */
     virtual std::vector<double> get_Nf(const double t, const std::vector<gp_Pnt>& points) const = 0;
-
-    virtual std::vector<double> get_B(const gp_Pnt& point) const = 0;
 };
 
 #endif

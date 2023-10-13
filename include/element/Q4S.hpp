@@ -50,6 +50,7 @@ class Q4S : public MeshElementCommon2DQuad<Q4S>{
     virtual std::vector<double> get_nodal_density_gradient(gp_Pnt p) const override;
     virtual std::vector<double> get_R(const std::vector<double>& K, const double t, const std::vector<gp_Pnt>& points) const override;
     virtual std::vector<double> get_Rf(const std::vector<double>& S, const std::vector<double>& F, const gp_Pnt& C, const double t, const std::vector<gp_Pnt>& points) const override;
+    virtual std::vector<double> get_B(const gp_Pnt& point) const override;
 
     virtual Eigen::MatrixXd diffusion_1dof(const double t, const std::vector<double>& A) const override;
     virtual Eigen::MatrixXd advection_1dof(const double t, const std::vector<double>& v) const override;
@@ -65,7 +66,6 @@ class Q4S : public MeshElementCommon2DQuad<Q4S>{
 
     virtual std::vector<double> get_DB(const std::vector<double>& D, const gp_Pnt& point) const override;
     virtual std::vector<double> get_Nf(const double t, const std::vector<gp_Pnt>& points) const override;
-    virtual std::vector<double> get_B(const gp_Pnt& point) const override;
 
     inline gp_Pnt normalize(const gp_Pnt& point) const{
         return gp_Pnt(

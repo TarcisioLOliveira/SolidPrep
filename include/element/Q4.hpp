@@ -57,6 +57,7 @@ class Q4 : public MeshElementCommon2DQuad<Q4>{
     virtual Eigen::MatrixXd advection_1dof(const double t, const std::vector<double>& v) const override;
     virtual Eigen::MatrixXd absorption_1dof(const double t) const override;
     virtual Eigen::VectorXd source_1dof(const double t) const override;
+    virtual std::vector<double> get_B(const gp_Pnt& point) const override;
 
     virtual inline std::unique_ptr<MeshElementFactory> get_element_info() const override{
         return std::unique_ptr<MeshElementFactory>(new MeshElementFactoryImpl<Q4>());
@@ -65,7 +66,6 @@ class Q4 : public MeshElementCommon2DQuad<Q4>{
     private:
     virtual std::vector<double> get_DB(const std::vector<double>& D, const gp_Pnt& point) const override;
     virtual std::vector<double> get_Nf(const double t, const std::vector<gp_Pnt>& points) const override;
-    virtual std::vector<double> get_B(const gp_Pnt& point) const override;
 
     double a[NODES_PER_ELEM], b[NODES_PER_ELEM], c[NODES_PER_ELEM], d[NODES_PER_ELEM], A;
 
