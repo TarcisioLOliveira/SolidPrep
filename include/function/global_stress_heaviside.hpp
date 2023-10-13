@@ -29,8 +29,6 @@ namespace function{
 
 class GlobalStressHeaviside : public DensityBasedFunction{
     public:
-    const double K_MIN = 1e-6;
-
     GlobalStressHeaviside(const Meshing* const mesh, FiniteElement* fem, double max_stress, double C, double pc, double pt, double psiK, double psiS);
 
     virtual ~GlobalStressHeaviside() = default;

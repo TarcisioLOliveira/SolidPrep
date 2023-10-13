@@ -158,7 +158,7 @@ double GlobalStressHeaviside::calculate_with_gradient(const Optimizer* const op,
                         g->materials.get_gradD(x_it, psiS, c, gradD_S);
                         g->materials.get_D(x_it, psiS, c, D_S);
 
-                        double lKu = pc*std::pow(*x_it, pc-1)*e->get_compliance(D_S, this->mesh->thickness, u, l);
+                        double lKu = pc*std::pow(*x_it, pc-1)*e->get_compliance(gradD_K[0], this->mesh->thickness, u, l);
                         const double S = e->get_stress_at(D_S, c, u, this->vm_eps);
                         const double rho = this->relaxed_rho(*x_it);
                         const double drho = this->relaxed_rho_grad(*x_it);
@@ -168,14 +168,15 @@ double GlobalStressHeaviside::calculate_with_gradient(const Optimizer* const op,
 
                         *grad_it = (dH*rho*Se + H)*drho*Se - lKu;
 
+                        const double mult = rho*this->heaviside_grad(S)/S;
+                        const double rho_lKu = std::pow(*x_it, pc);
+
                         ++x_it;
                         ++grad_it;
                         for(size_t i = 1; i < num_den; ++i){
-                            double lKu = std::pow(*x_it, pc)*e->get_compliance(gradD_K[i], this->mesh->thickness, u, l);
+                            double lKu = rho_lKu*e->get_compliance(gradD_K[i], this->mesh->thickness, u, l);
                             const auto c = e->get_centroid();
-                            const double rho = this->relaxed_rho(*x_it);
-                            const double S = e->get_stress_at(D_S, c, u, this->vm_eps);
-                            const double Se = e->von_Mises_derivative(D_S, gradD_S[i], rho*this->heaviside_grad(S)/S, c, u);
+                            const double Se = e->von_Mises_derivative(D_S, gradD_S[i], mult, c, u);
                             const double H = this->heaviside(Se);
                             const double dH = this->heaviside_grad(Se);
 
@@ -193,9 +194,10 @@ double GlobalStressHeaviside::calculate_with_gradient(const Optimizer* const op,
                         g->materials.get_D(x_it, psiS, c, D_S);
 
                         const double S = e->get_stress_at(D_S, c, u, this->vm_eps);
+                        const double mult = this->heaviside_grad(S)/S;
                         for(size_t i = 0; i < num_den; ++i){
                             double lKu = e->get_compliance(gradD_K[i], this->mesh->thickness, u, l);
-                            const double Se = e->von_Mises_derivative(D_S, gradD_S[i], this->heaviside_grad(S)/S, c, u);
+                            const double Se = e->von_Mises_derivative(D_S, gradD_S[i], mult, c, u);
                             const double H = this->heaviside(Se);
                             const double dH = this->heaviside_grad(Se);
 
