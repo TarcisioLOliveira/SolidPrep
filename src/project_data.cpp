@@ -77,6 +77,7 @@
 #include "function/am_support.hpp"
 #include "function/mass.hpp"
 #include "function/mass_first_material.hpp"
+#include "function/mechanostat.hpp"
 
 ProjectData::ProjectData(std::string project_file){
 #ifdef _WIN32
@@ -758,6 +759,22 @@ std::unique_ptr<DensityBasedFunction> ProjectData::get_function(const rapidjson:
         gp_Dir a(aa[0].GetDouble(), aa[1].GetDouble(), aa[2].GetDouble());
 
         return std::make_unique<function::AMSupport>(this->topopt_mesher.get(), this->density_filter.get(), this->projection.get(), a, v, L, beta, angle*M_PI/180);
+    } else if(type == "mechanostat"){
+        this->log_data(doc, "beta", TYPE_DOUBLE, true);
+        this->log_data(doc, "traction", TYPE_ARRAY, true);
+        this->log_data(doc, "compression", TYPE_ARRAY, true);
+        this->log_data(doc, "shear", TYPE_ARRAY, true);
+        double beta = doc["beta"].GetDouble();
+        auto traction = doc["traction"].GetArray();
+        auto compression = doc["compression"].GetArray();
+        auto shear = doc["shear"].GetArray();
+        logger::log_assert(traction.Size() == 2, logger::ERROR, "\"traction\" item must have size 2.");
+        logger::log_assert(compression.Size() == 2, logger::ERROR, "\"compression\" item must have size 2.");
+        logger::log_assert(shear.Size() == 2, logger::ERROR, "\"shear\" item must have size 2.");
+        function::Mechanostat::Range t{traction[0].GetDouble()*1e-6, traction[1].GetDouble()*1e-6};
+        function::Mechanostat::Range c{compression[0].GetDouble()*1e-6, compression[1].GetDouble()*1e-6};
+        function::Mechanostat::Range s{shear[0].GetDouble()*1e-6, shear[1].GetDouble()*1e-6};
+        return std::make_unique<function::Mechanostat>(this->topopt_mesher.get(), this->topopt_fea.get(), pc, psiK, beta, t, c, s, this->type);
     }
     logger::log_assert(false, logger::ERROR, "function \"{}\" not found.", type);
 
