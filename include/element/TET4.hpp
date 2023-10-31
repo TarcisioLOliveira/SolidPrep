@@ -32,6 +32,8 @@
 
 namespace element{
 
+class TRI3;
+
 class TET4 : public MeshElementCommon3DTet<TET4>{
     public:
     static const size_t ORDER          = 1;
@@ -42,6 +44,7 @@ class TET4 : public MeshElementCommon3DTet<TET4>{
 
     static const size_t BOUNDARY_NODES_PER_ELEM = 3;
     static const size_t BOUNDARY_GMSH_TYPE = 2;
+    static std::unique_ptr<MeshElementFactory> get_boundary_element_info();
 
     static const spview::defs::ElementType SPVIEW_CODE = spview::defs::TET4;
 

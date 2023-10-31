@@ -20,6 +20,7 @@
 
 #include <lapacke.h>
 #include "element/H8.hpp"
+#include "element/Q4.hpp"
 #include "logger.hpp"
 #include "utils/gauss_legendre.hpp"
 
@@ -27,6 +28,10 @@ namespace element{
 
 H8::H8(ElementShape s):
     MeshElementCommon3DHex<H8>(s.nodes){
+}
+
+std::unique_ptr<MeshElementFactory> H8::get_boundary_element_info(){
+    return std::unique_ptr<MeshElementFactory>(new MeshElementFactoryImpl<Q4>());
 }
 
 std::vector<double> H8::get_k(const std::vector<double>& D, const double t) const{

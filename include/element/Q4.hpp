@@ -43,6 +43,10 @@ class Q4 : public MeshElementCommon2DQuad<Q4>{
 
     static const size_t BOUNDARY_NODES_PER_ELEM = 2;
     static const size_t BOUNDARY_GMSH_TYPE = 1;
+    static inline std::unique_ptr<MeshElementFactory> get_boundary_element_info(){
+        logger::log_assert(false, logger::ERROR, "LINE ELEMENT TYPE NOT IMPLEMENTED");
+        return std::unique_ptr<MeshElementFactory>();
+    }
 
     static const spview::defs::ElementType SPVIEW_CODE = spview::defs::Q4;
 

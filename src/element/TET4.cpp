@@ -21,6 +21,7 @@
 #include <Eigen/Core>
 #include <Eigen/Dense>
 #include "element/TET4.hpp"
+#include "element/TRI3.hpp"
 #include "cblas.h"
 #include "logger.hpp"
 #include <BRepBuilderAPI_MakeVertex.hxx>
@@ -39,6 +40,10 @@ TET4::TET4(ElementShape s):
     MeshElementCommon3DTet<TET4>(s.nodes){
 
     this->get_coeffs();    
+}
+
+std::unique_ptr<MeshElementFactory> TET4::get_boundary_element_info() {
+    return std::unique_ptr<MeshElementFactory>(new MeshElementFactoryImpl<TRI3>());
 }
 
 void TET4::get_coeffs(){

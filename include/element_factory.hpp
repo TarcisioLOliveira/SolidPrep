@@ -25,6 +25,7 @@
 #include "element/beam_linear_2D.hpp"
 #include "utils.hpp"
 #include "defs.hpp"
+#include <memory>
 #include <vector>
 
 class ProjectData;
@@ -84,6 +85,7 @@ class MeshElementFactory{
     // Boundary information
     inline virtual size_t get_boundary_nodes_per_element() const = 0;
     inline virtual size_t get_boundary_gmsh_element_type() const = 0;
+    inline virtual std::unique_ptr<MeshElementFactory> get_boundary_element_info() const = 0;
 };
 
 template<class T>
@@ -127,6 +129,9 @@ class MeshElementFactoryImpl : public MeshElementFactory{
     }
     inline size_t get_boundary_gmsh_element_type() const override{
         return T::BOUNDARY_GMSH_TYPE;
+    }
+    inline std::unique_ptr<MeshElementFactory> get_boundary_element_info() const override{
+        return T::get_boundary_element_info();
     }
     inline spview::defs::ElementType get_spview_code() const override{
         return T::SPVIEW_CODE;
