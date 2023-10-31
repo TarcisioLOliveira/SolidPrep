@@ -93,7 +93,7 @@ class Meshing{
      */
     virtual void mesh(const std::vector<Force>& forces, 
                       const std::vector<Support>& supports,
-                      const std::vector<Spring>& springs) = 0;
+                      std::vector<Spring>& springs) = 0;
 
     /**
      * Removes elements below a certain density threshold. Useful for
@@ -116,7 +116,7 @@ class Meshing{
     std::vector<BoundaryElement> boundary_elements;
     std::vector<MeshNode*> boundary_node_list;
     std::vector<std::vector<BoundaryElement*>> robin_elements;
-    std::vector<Spring> springs_copy;
+    std::vector<Spring>* springs;
 
     protected:
     std::vector<bool> get_support_dof(const Support& support, const MeshElementFactory* elem_maker) const;
@@ -149,7 +149,7 @@ class Meshing{
                                    std::unordered_map<size_t, MeshNode*>& id_map,
                                    const std::vector<Force>& forces, 
                                    const std::vector<Support>& supports,
-                                   const std::vector<Spring>& springs,
+                                   std::vector<Spring>& springs,
                                    const bool deduplicate,
                                    const bool boundary_condition_inside);
 

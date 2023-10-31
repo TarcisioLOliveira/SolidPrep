@@ -45,7 +45,7 @@ void Meshing::generate_elements(const TopoDS_Shape& shape,
                                 std::unordered_map<size_t, MeshNode*>& id_map,
                                 const std::vector<Force>& forces, 
                                 const std::vector<Support>& supports,
-                                const std::vector<Spring>& springs,
+                                std::vector<Spring>& springs,
                                 const bool deduplicate,
                                 const bool boundary_condition_inside){
 
@@ -108,7 +108,7 @@ void Meshing::generate_elements(const TopoDS_Shape& shape,
     logger::quick_log("springs");
     if(springs.size() > 0){
         this->apply_springs(springs);
-        this->springs_copy = std::vector<Spring>(springs);
+        this->springs = &springs;
     }
 
     logger::quick_log("Done.");

@@ -42,7 +42,7 @@ StandardBeamMesher::StandardBeamMesher(const std::vector<std::unique_ptr<Geometr
 
 void StandardBeamMesher::mesh(const std::vector<Force>& forces, 
                              const std::vector<Support>& supports,
-                             const std::vector<Spring>& springs){
+                             std::vector<Spring>& springs){
     (void)springs;
     auto sh = this->make_compound(this->geometries);
     this->node_list.clear();

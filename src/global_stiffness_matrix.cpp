@@ -36,7 +36,7 @@ void GlobalStiffnessMatrix::generate_base(const Meshing * const mesh, const std:
             }
         }
     }
-    if(mesh->springs_copy.size() > 0){
+    if(mesh->springs->size() > 0){
         this->add_springs(mesh);
     }
     for(size_t i = 0; i < mesh->load_vector.size(); ++i){
@@ -76,7 +76,7 @@ void GlobalStiffnessMatrix::add_springs(const Meshing * const mesh){
     for(size_t it = 0; it < mesh->robin_elements.size(); ++it){
         for(const auto& b : mesh->robin_elements[it]){
             const auto c = b->get_centroid(bnode_num);
-            const auto& K = mesh->springs_copy[it].get_K(c);
+            const auto& K = mesh->springs->at(it).get_K(c);
             const auto& e = b->parent;
             for(size_t i = 0; i < bnode_num; ++i){
                 points[i] = b->nodes[i]->point;
