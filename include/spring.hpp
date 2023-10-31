@@ -20,8 +20,10 @@
 #ifndef SPRING_HPP
 #define SPRING_HPP
 
+#include <algorithm>
 #include <array>
 #include <Eigen/Core>
+#include "element_factory.hpp"
 #include "material.hpp"
 #include "utils.hpp"
 #include "cross_section.hpp"
@@ -29,7 +31,8 @@
 class Spring{
     public:
 
-    Spring(CrossSection cross_section, gp_Dir normal, gp_Dir v, gp_Dir w, Material* mat, std::array<double, 3> L, std::array<double, 3> F, std::array<double, 3> curv, utils::ProblemType type);
+    Spring(CrossSection cross_section, gp_Dir normal, gp_Dir v, gp_Dir w, Material* mat, std::array<double, 3> L, std::array<double, 3> F, std::array<double, 3> curv, MeshElementFactory* bound_elem, utils::ProblemType type);
+    Spring(Spring&&) = default;
 
     std::vector<double> get_K(const gp_Pnt& p) const;
 
@@ -40,6 +43,8 @@ class Spring{
     const std::array<double, 3> curv;
     const Material* mat;
     const gp_Dir normal;
+    const MeshElementFactory* boundary_elem_info;
+    std::vector<std::unique_ptr<MeshNode>> mesh;
 
     private:
     const gp_Dir v;

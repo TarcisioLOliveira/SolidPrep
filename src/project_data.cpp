@@ -155,6 +155,7 @@ ProjectData::ProjectData(std::string project_file){
     if(this->log_data(doc, "mesher", TYPE_OBJECT, true)){
         this->log_data(doc["mesher"], "element_type", TYPE_STRING, true);
         this->topopt_element = this->get_element_type(doc["mesher"]["element_type"]);
+        this->topopt_boundary_element = this->topopt_element->get_boundary_element_info();
     }
     if(this->log_data(doc, "geometry", TYPE_ARRAY, true)){
         this->geometries = this->load_geometries(doc);
@@ -929,7 +930,7 @@ std::vector<Support> ProjectData::get_support(const rapidjson::GenericValue<rapi
 }
 
 std::vector<Spring> ProjectData::get_springs(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc){
-    std::vector<Spring> forces;
+    std::vector<Spring> springs;
     for(auto& f : doc.GetArray()){
         logger::log_assert(f.IsObject(), logger::ERROR, "Each load must be stored as a JSON object");
         this->log_data(f, "L", TYPE_ARRAY, true);
@@ -989,9 +990,9 @@ std::vector<Spring> ProjectData::get_springs(const rapidjson::GenericValue<rapid
         Material* mat(it->get());
 
         auto S = this->get_cross_section(f);
-        forces.emplace_back(S, nv, vv, wv, mat, l, F, curv, this->type);
+        springs.emplace_back(S, nv, vv, wv, mat, l, F, curv, this->topopt_boundary_element.get(), this->type);
     }
-    return forces;
+    return springs;
 }
 
 CrossSection ProjectData::get_cross_section(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc) const{

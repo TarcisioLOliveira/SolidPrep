@@ -22,7 +22,7 @@
 #include "spring.hpp"
 #include "utils.hpp"
 
-Spring::Spring(CrossSection cross_section, gp_Dir normal, gp_Dir v, gp_Dir w, Material* mat, std::array<double, 3> L, std::array<double, 3> F, std::array<double, 3> curv, utils::ProblemType type):
+Spring::Spring(CrossSection cross_section, gp_Dir normal, gp_Dir v, gp_Dir w, Material* mat, std::array<double, 3> L, std::array<double, 3> F, std::array<double, 3> curv, MeshElementFactory* bound_elem, utils::ProblemType type):
     S(std::move(cross_section)), 
     rot2D{{normal.X(), v.X()},
           {normal.Y(), v.Y()}},
@@ -32,6 +32,7 @@ Spring::Spring(CrossSection cross_section, gp_Dir normal, gp_Dir v, gp_Dir w, Ma
     F(F), curv(curv),
     mat(mat),
     normal(normal), 
+    boundary_elem_info(bound_elem),
     v(v), w(w), L(L), 
     type(type){
 
