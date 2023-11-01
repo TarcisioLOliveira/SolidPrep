@@ -990,7 +990,7 @@ std::vector<Spring> ProjectData::get_springs(const rapidjson::GenericValue<rapid
         Material* mat(it->get());
 
         auto S = this->get_cross_section(f);
-        springs.emplace_back(S, nv, vv, wv, mat, l, F, curv, this->topopt_boundary_element.get(), this->type);
+        springs.emplace_back(S, nv, vv, wv, mat, l, F, curv, this->topopt_element.get(), this->topopt_boundary_element.get(), this->type);
     }
     return springs;
 }

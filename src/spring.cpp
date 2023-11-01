@@ -21,8 +21,9 @@
 #include "logger.hpp"
 #include "spring.hpp"
 #include "utils.hpp"
+#include "meshing.hpp"
 
-Spring::Spring(CrossSection cross_section, gp_Dir normal, gp_Dir v, gp_Dir w, Material* mat, std::array<double, 3> L, std::array<double, 3> F, std::array<double, 3> curv, MeshElementFactory* bound_elem, utils::ProblemType type):
+Spring::Spring(CrossSection cross_section, gp_Dir normal, gp_Dir v, gp_Dir w, Material* mat, std::array<double, 3> L, std::array<double, 3> F, std::array<double, 3> curv, MeshElementFactory* elem, MeshElementFactory* bound_elem, utils::ProblemType type):
     S(std::move(cross_section)), 
     rot2D{{normal.X(), v.X()},
           {normal.Y(), v.Y()}},
@@ -31,7 +32,8 @@ Spring::Spring(CrossSection cross_section, gp_Dir normal, gp_Dir v, gp_Dir w, Ma
          {normal.Z(), v.Z(), w.Z()}},
     F(F), curv(curv),
     mat(mat),
-    normal(normal), 
+    normal(normal),
+    elem_info(elem),
     boundary_elem_info(bound_elem),
     v(v), w(w), L(L), 
     type(type){
@@ -69,4 +71,43 @@ std::vector<double> Spring::get_K(const gp_Pnt& p) const{
     }
 
     return std::vector<double>();
+}
+
+void Spring::generate_mesh(std::vector<BoundaryElement>& boundary_elements){
+    const size_t bound_nodes_per_elem = this->elem_info->get_boundary_nodes_per_element();
+    const size_t nodes_per_elem = this->elem_info->get_nodes_per_element();
+    const size_t dof = this->elem_info->get_dof_per_node();
+
+    std::vector<bool> apply_spring(boundary_elements.size());
+    size_t num_elems = 0;
+    // Fill apply_spring concurrently
+    // (CrossSection::is_inside() is pretty slow, unfortunately
+    {
+        #pragma omp parallel for reduction(+:num_elems)
+        for(size_t i = 0; i < boundary_elements.size(); ++i){
+            const auto& e = boundary_elements[i];
+            apply_spring[i] = this->S.is_inside(e.get_centroid(bound_nodes_per_elem));
+            if(apply_spring[i]){
+                ++num_elems;
+            }
+        }
+
+    }
+    {
+        this->submesh.resize(num_elems);
+        this->boundary_mesh.resize(num_elems);
+        size_t cur_elem = 0;
+        ElementShape sh;
+        sh.nodes.resize(bound_nodes_per_elem);
+        for(size_t i = 0; i < boundary_elements.size(); ++i){
+            if(apply_spring[i]){
+                this->submesh[cur_elem] = &boundary_elements[i];
+                for(size_t j = 0; i < bound_nodes_per_elem; ++i){
+                    sh.nodes[j] = boundary_elements[i].nodes[j];
+                }
+                this->boundary_mesh[cur_elem].reset(this->boundary_elem_info->make_element(sh));
+                ++cur_elem;
+            }
+        }
+    }
 }

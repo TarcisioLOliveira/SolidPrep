@@ -28,11 +28,17 @@
 #include "utils.hpp"
 #include "cross_section.hpp"
 
+class BoundaryElement;
+
 class Spring{
     public:
 
-    Spring(CrossSection cross_section, gp_Dir normal, gp_Dir v, gp_Dir w, Material* mat, std::array<double, 3> L, std::array<double, 3> F, std::array<double, 3> curv, MeshElementFactory* bound_elem, utils::ProblemType type);
+    Spring(CrossSection cross_section, gp_Dir normal, gp_Dir v, gp_Dir w, Material* mat, std::array<double, 3> L, std::array<double, 3> F, std::array<double, 3> curv, MeshElementFactory* elem, MeshElementFactory* bound_elem, utils::ProblemType type);
     Spring(Spring&&) = default;
+
+    inline void clear_curvature_data(){
+        this->boundary_mesh.clear();
+    }
 
     std::vector<double> get_K(const gp_Pnt& p) const;
 
@@ -43,15 +49,22 @@ class Spring{
     const std::array<double, 3> curv;
     const Material* mat;
     const gp_Dir normal;
+    const MeshElementFactory* elem_info;
     const MeshElementFactory* boundary_elem_info;
-    std::vector<std::unique_ptr<MeshNode>> mesh;
+    std::vector<const BoundaryElement*> submesh;
 
     private:
     const gp_Dir v;
     const gp_Dir w;
     const std::array<double, 3> L;
     const utils::ProblemType type;
-    std::vector<double> generate_K(gp_Dir normal, Material* mat, std::array<double, 3> L, utils::ProblemType type) const;
+
+    std::vector<std::unique_ptr<MeshElement>> boundary_mesh;
+
+    void generate_mesh(std::vector<BoundaryElement>& boundary_elements);
+
+    // Base it off Meshing::apply_springs
+    void apply_load(const std::vector<double>& load_vector) const;
 };
 
 #endif
