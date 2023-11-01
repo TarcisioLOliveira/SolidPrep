@@ -59,6 +59,7 @@ class Spring{
     const std::array<double, 3> L;
     const utils::ProblemType type;
 
+    std::vector<std::unique_ptr<MeshNode>> boundary_nodes;
     std::vector<std::unique_ptr<MeshElement>> boundary_mesh;
 
     void generate_mesh(std::vector<BoundaryElement>& boundary_elements);

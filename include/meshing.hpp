@@ -35,7 +35,7 @@ class ProjectData;
 
 class BoundaryElement{
     public:
-    MeshNode** const nodes;
+    const MeshNode** const nodes;
     const MeshElement* const parent;
     const gp_Dir normal;
     
@@ -63,8 +63,8 @@ class BoundaryElement{
      *
      * @return Newly allocated matrix containing pointer to node array.
      */
-    MeshNode** allocate_nodes(const std::vector<MeshNode*>& n){
-        MeshNode** nodes(new MeshNode*[n.size()]);
+    const MeshNode** allocate_nodes(const std::vector<MeshNode*>& n){
+        const MeshNode** nodes(new const MeshNode*[n.size()]);
         std::copy(n.begin(), n.end(), nodes);
         return nodes;
     }
