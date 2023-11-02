@@ -143,7 +143,7 @@ Mandible::RingPoint Mandible::Ring::get_r_max(const double theta) const{
     auto pos = std::find_if(this->points.begin(), this->points.end(), 
             [theta](const RingPointCartesian& p){return p.theta > theta;});
 
-    size_t top = pos - this->points.begin();
+    size_t top = (pos - this->points.begin()) % this->points.size();
     size_t bot = (top + this->points.size() - 1) % this->points.size();
 
     auto p1 = this->points[bot];
