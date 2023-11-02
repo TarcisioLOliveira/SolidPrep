@@ -147,16 +147,16 @@ ProjectData::ProjectData(std::string project_file){
     if(this->log_data(doc, "supports", TYPE_ARRAY, false)){
         this->supports = this->get_support(doc["supports"]);
     }
-    if(this->log_data(doc, "springs", TYPE_ARRAY, false)){
-        this->springs = this->get_springs(doc["springs"]);
-    }
-    logger::log_assert(this->supports.size() > 0 || this->springs.size() > 0, logger::ERROR,
-                       "a support or spring must be specified to prevent matrix singularity.");
     if(this->log_data(doc, "mesher", TYPE_OBJECT, true)){
         this->log_data(doc["mesher"], "element_type", TYPE_STRING, true);
         this->topopt_element = this->get_element_type(doc["mesher"]["element_type"]);
         this->topopt_boundary_element = this->topopt_element->get_boundary_element_info();
     }
+    if(this->log_data(doc, "springs", TYPE_ARRAY, false)){
+        this->springs = this->get_springs(doc["springs"]);
+    }
+    logger::log_assert(this->supports.size() > 0 || this->springs.size() > 0, logger::ERROR,
+                       "a support or spring must be specified to prevent matrix singularity.");
     if(this->log_data(doc, "geometry", TYPE_ARRAY, true)){
         this->geometries = this->load_geometries(doc);
     }
