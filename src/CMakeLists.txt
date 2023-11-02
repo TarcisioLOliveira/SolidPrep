@@ -20,6 +20,7 @@ set(SOURCES
     multimaterial.cpp
     global_stiffness_matrix.cpp
     spring.cpp
+    curvature.cpp
 )
 
 add_subdirectory(pathfinding)
