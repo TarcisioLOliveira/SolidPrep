@@ -27,6 +27,7 @@
 #include "material.hpp"
 #include "utils.hpp"
 #include "cross_section.hpp"
+#include "curvature.hpp"
 
 class BoundaryElement;
 
@@ -38,9 +39,16 @@ class Spring{
 
     inline void clear_curvature_data(){
         this->boundary_mesh.clear();
+        this->boundary_nodes.clear();
+        this->curvature.reset();
     }
 
     std::vector<double> get_K(const gp_Pnt& p) const;
+
+    void calculate_curvature(std::vector<BoundaryElement>& boundary_elements){
+        this->generate_mesh(boundary_elements);
+        this->curvature->generate_curvature_3D(this->boundary_mesh, this->curv);
+    }
 
     const CrossSection S;
     const Eigen::Matrix<double, 2, 2> rot2D;
@@ -52,6 +60,7 @@ class Spring{
     const MeshElementFactory* elem_info;
     const MeshElementFactory* boundary_elem_info;
     std::vector<const BoundaryElement*> submesh;
+    std::unique_ptr<Curvature> curvature;
 
     private:
     const gp_Dir v;

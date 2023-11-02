@@ -107,6 +107,10 @@ void Meshing::generate_elements(const TopoDS_Shape& shape,
 
     logger::quick_log("springs");
     if(springs.size() > 0){
+        for(auto& s:springs){
+            s.calculate_curvature(this->boundary_elements);
+        }
+        exit(0);
         this->apply_springs(springs);
         this->springs = &springs;
     }

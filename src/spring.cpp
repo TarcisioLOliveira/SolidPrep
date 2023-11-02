@@ -40,6 +40,7 @@ Spring::Spring(CrossSection cross_section, gp_Dir normal, gp_Dir v, gp_Dir w, Ma
     v(v), w(w), L(L), 
     type(type){
 
+    this->curvature = std::make_unique<Curvature>(mat, normal, v, w, rot2D, rot3D, this->boundary_elem_info->get_shape_type());
 }
 
 std::vector<double> Spring::get_K(const gp_Pnt& p) const{
@@ -99,8 +100,6 @@ struct NodeComp{
 
 void Spring::generate_mesh(std::vector<BoundaryElement>& boundary_elements){
     const size_t bound_nodes_per_elem = this->elem_info->get_boundary_nodes_per_element();
-    const size_t nodes_per_elem = this->elem_info->get_nodes_per_element();
-    const size_t bound_dof = this->boundary_elem_info->get_dof_per_node();
 
     std::vector<bool> apply_spring(boundary_elements.size());
     size_t num_elems = 0;
@@ -123,7 +122,7 @@ void Spring::generate_mesh(std::vector<BoundaryElement>& boundary_elements){
             const auto& b = boundary_elements[i];
             for(size_t j = 0; j < bound_nodes_per_elem; ++j){
                 const auto& n = b.nodes[j];
-                std::unique_ptr<MeshNode> node(std::make_unique<MeshNode>(n->point, id, bound_dof));
+                std::unique_ptr<MeshNode> node(std::make_unique<MeshNode>(n->point, id, 0));
                 nodes.insert(std::move(node));
                 ++id;
             }
