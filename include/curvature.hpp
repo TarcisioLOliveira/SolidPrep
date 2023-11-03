@@ -66,9 +66,9 @@ class Curvature{
     };
 
     double EA;
-    gp_Pnt neutral;
     double EI_v;
     double EI_w;
+    double c_v, c_w;
     double curv_v;
     double curv_w;
     std::vector<double> phi;
@@ -78,6 +78,12 @@ class Curvature{
     inline double make_EA_base_3D(const gp_Pnt& p, const gp_Pnt& px) const{
         (void)px;
         return this->mat->beam_E_3D(p, this->u);
+    }
+    inline double make_EA_v_base_3D(const gp_Pnt& p, const gp_Pnt& px) const{
+        return this->mat->beam_E_3D(p, this->u)*px.Y();
+    }
+    inline double make_EA_w_base_3D(const gp_Pnt& p, const gp_Pnt& px) const{
+        return this->mat->beam_E_3D(p, this->u)*px.Z();
     }
 };
 
