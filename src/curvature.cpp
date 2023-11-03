@@ -44,24 +44,36 @@ void Curvature::generate_curvature_3D(const std::vector<std::unique_ptr<MeshElem
         [this](const gp_Pnt& p, const gp_Pnt& px)->double{
             return this->make_EA_w_base_3D(p, px);
         };
+    const auto fn_EI_v =
+        [this](const gp_Pnt& p, const gp_Pnt& px)->double{
+            return this->make_EI_v_base_3D(p, px);
+        };
+    const auto fn_EI_w =
+        [this](const gp_Pnt& p, const gp_Pnt& px)->double{
+            return this->make_EI_w_base_3D(p, px);
+        };
 
     this->EA = this->integrate_surface_3D(boundary_mesh, fn_EA);
     const double EA_v = this->integrate_surface_3D(boundary_mesh, fn_EA_v);
     const double EA_w = this->integrate_surface_3D(boundary_mesh, fn_EA_w);
     this->c_v = EA_v/this->EA;
     this->c_w = EA_w/this->EA;
+    const double EI_v = this->integrate_surface_3D(boundary_mesh, fn_EI_v);
+    const double EI_w = this->integrate_surface_3D(boundary_mesh, fn_EI_w);
     logger::quick_log("A: ", EA/180000);
     logger::quick_log("EA: ", EA);
     logger::quick_log("c_v: ", c_v);
     logger::quick_log("c_w: ", c_w);
+    logger::quick_log("EI_v", EI_v/180000);
+    logger::quick_log("EI_w", EI_w/180000);
 }
 
 double Curvature::integrate_surface_3D(const std::vector<std::unique_ptr<MeshElement>>& boundary_mesh, const std::function<double(const gp_Pnt&, const gp_Pnt&)>& fn) const{
     double result = 0;
     if(this->elem_shape == Element::Shape::TRI){
-        Eigen::Matrix<double, 3, 3> points{{0,0,0},{0,0,0},{0,0,0}};
         #pragma omp parallel for reduction(+:result)
         for(size_t i = 0; i < boundary_mesh.size(); ++i){
+            Eigen::Matrix<double, 3, 3> points{{0,0,0},{0,0,0},{0,0,0}};
             const auto& e = boundary_mesh[i];
             std::array<gp_Pnt, 3> old_points;
             for(size_t x = 0; x < 3; ++x){
