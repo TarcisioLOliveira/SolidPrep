@@ -56,7 +56,7 @@ double Curvature::integrate_surface_3D(const std::vector<std::unique_ptr<MeshEle
                     points(y, x) = old_points[x].Coord(y+1);
                 }
             }
-            Eigen::Matrix<double, 3, 3> rotd_p = this->rot3D*points;
+            Eigen::Matrix<double, 3, 3> rotd_p = this->rot3D.transpose()*points;
             std::array<gp_Pnt, 3> new_points{
                 gp_Pnt(rotd_p(0, 0), rotd_p(1, 0), rotd_p(2, 0)),
                 gp_Pnt(rotd_p(0, 1), rotd_p(1, 1), rotd_p(2, 1)),
@@ -72,10 +72,10 @@ double Curvature::integrate_surface_3D(const std::vector<std::unique_ptr<MeshEle
 
 double Curvature::GS_tri(const std::array<gp_Pnt, 3>& p, const std::array<gp_Pnt, 3>& px, const std::function<double(const gp_Pnt&, const gp_Pnt&)>& fn) const{
     double result = 0;
-    //gp_Vec v1(p[1], p[0]);
-    //gp_Vec v2(p[2], p[0]);
-    //const double drnorm = (v1.Crossed(v2)).Magnitude();
-    for(size_t i = 0; i < 7; ++i){
+    gp_Vec v1(p[1], p[0]);
+    gp_Vec v2(p[2], p[0]);
+    const double drnorm = (v1.Crossed(v2)).Magnitude()/2;
+    for(size_t i = 0; i < 12; ++i){
         auto P = this->GS_tri_params.data()+i*4;
         gp_Pnt pi{
             P[0]*p[0].X() + P[1]*p[1].X() + P[2]*p[2].X(),
@@ -89,7 +89,7 @@ double Curvature::GS_tri(const std::array<gp_Pnt, 3>& p, const std::array<gp_Pnt
         };
         result += P[3]*fn(pi, pxi);
     }
-    //result *= drnorm;
+    result *= drnorm;
 
     return result;
 }
