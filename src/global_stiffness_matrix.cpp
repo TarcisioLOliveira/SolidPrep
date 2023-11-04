@@ -20,6 +20,7 @@
 
 #include "global_stiffness_matrix.hpp"
 #include "cblas.h"
+#include "logger.hpp"
 
 void GlobalStiffnessMatrix::generate_base(const Meshing * const mesh, const std::vector<double>& density, const double pc, const double psi){
     if(density.size() == 0){
@@ -73,8 +74,8 @@ void GlobalStiffnessMatrix::add_springs(const Meshing * const mesh){
     std::vector<gp_Pnt> points(bnode_num);
 
     std::vector<long> u_pos(dof*node_num);
-    for(size_t it = 0; it < mesh->robin_elements.size(); ++it){
-        for(const auto& b : mesh->robin_elements[it]){
+    for(size_t it = 0; it < mesh->springs->size(); ++it){
+        for(const auto& b : mesh->springs->at(it).submesh){
             const auto c = b->get_centroid(bnode_num);
             const auto& K = mesh->springs->at(it).get_K(c);
             const auto& e = b->parent;

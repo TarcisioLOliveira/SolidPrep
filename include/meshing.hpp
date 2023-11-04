@@ -115,7 +115,6 @@ class Meshing{
     std::unordered_multimap<size_t, MeshElement*> inverse_mesh;
     std::vector<BoundaryElement> boundary_elements;
     std::vector<MeshNode*> boundary_node_list;
-    std::vector<std::vector<BoundaryElement*>> robin_elements;
     std::vector<Spring>* springs;
 
     protected:
@@ -194,7 +193,7 @@ class Meshing{
      *
      * @param springs List of springs to be applied.
      */
-    void apply_springs(const std::vector<Spring>& springs);
+    void apply_springs(std::vector<Spring>& springs);
 
     /**
      * Generates the load vector member variable based on the mesh, shape and

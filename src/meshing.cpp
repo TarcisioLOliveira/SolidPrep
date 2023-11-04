@@ -107,10 +107,6 @@ void Meshing::generate_elements(const TopoDS_Shape& shape,
 
     logger::quick_log("springs");
     if(springs.size() > 0){
-        for(auto& s:springs){
-            s.calculate_curvature(this->boundary_elements);
-        }
-        exit(0);
         this->apply_springs(springs);
         this->springs = &springs;
     }
@@ -211,182 +207,21 @@ void Meshing::apply_supports(const std::vector<Support>& supports){
     }
 }
 
-void Meshing::apply_springs(const std::vector<Spring>& springs){
-    const size_t bound_nodes_per_elem = this->elem_info->get_boundary_nodes_per_element();
-    const size_t nodes_per_elem = this->elem_info->get_nodes_per_element();
-    const size_t dof = this->elem_info->get_dof_per_node();
-
-    //{ REMOVE LATER
-        this->robin_elements.resize(springs.size());
-
-        std::vector<std::vector<bool>> apply_spring(springs.size());
-        std::vector<size_t> num_elems(springs.size());
-        for(size_t j = 0; j < springs.size(); ++j){
-            const auto& s = springs[j];
-            apply_spring[j].resize(this->boundary_elements.size());
-            size_t num_elems_tmp = 0;
-
-            #pragma omp parallel for reduction(+:num_elems_tmp)
-            for(size_t i = 0; i < this->boundary_elements.size(); ++i){
-                const auto& e = this->boundary_elements[i];
-                apply_spring[j][i] = s.S.is_inside(e.get_centroid(bound_nodes_per_elem));
-                if(apply_spring[j][i]){
-                    ++num_elems_tmp;
-                }
-            }
-
-            num_elems[j] = num_elems_tmp;
-        }
-        for(size_t j = 0; j < springs.size(); ++j){
-            this->robin_elements[j].resize(num_elems[j]);
-            size_t cur_elem = 0;
-            for(size_t i = 0; i < this->boundary_elements.size(); ++i){
-                if(apply_spring[j][i]){
-                    this->robin_elements[j][cur_elem] = &this->boundary_elements[i];
-                    ++cur_elem;
-                }
-            }
-        }
-    //}
-
-    auto is_between_points = [](gp_Pnt p1, gp_Pnt p2, gp_Pnt p)->bool{
-        gp_Mat M(1, p1.X(), p1.Y(), 1, p2.X(), p2.Y(), 1, p.X(), p.Y());
-        bool in_line = std::abs(M.Determinant()) < Precision::Confusion();
-        bool within_bounds = p.Distance(p1) - p1.Distance(p2) < Precision::Confusion() &&
-                             p.Distance(p2) - p1.Distance(p2) < Precision::Confusion();
-
-        return in_line && within_bounds;
-    };
+void Meshing::apply_springs(std::vector<Spring>& springs){
     const auto problem_type = this->elem_info->get_problem_type();
+    for(auto& s:springs){
+        s.calculate_curvature(this->boundary_elements);
+    }
     if(problem_type == utils::PROBLEM_TYPE_2D){
-        const size_t N = 2;
-        for(size_t i = 0; i < this->robin_elements.size(); ++i){
-            const auto& elem_list = this->robin_elements[i];
-            const auto& s = springs[i];
-            const double A = thickness*s.S.get_dimension();
-            Eigen::Vector<double, N> F0{s.F[0]/A, s.F[1]/A};
-            Eigen::Vector<double, N> Fr = s.rot2D*F0;
-            std::vector<double> F{Fr[0], Fr[1]};
-            Eigen::Matrix<double, N, N> S{{0, 0},
-                                          {0, 0}};
-            std::vector<double> Sn(N*N);
-
-            gp_Dir Snormal = s.S.get_normal();
-            double Ssize = s.S.get_dimension();
-            gp_Pnt center = s.S.get_centroid();
-            gp_Dir line_dir = Snormal.Rotated(gp_Ax1(center, gp_Dir(0,0,1)), M_PI/2);
-            gp_Pnt p1 = center.Translated( 0.5*Ssize*line_dir);
-            gp_Pnt p2 = center.Translated(-0.5*Ssize*line_dir);
-            for(size_t j = 0; j < elem_list.size(); ++j){
-                const auto& e = elem_list[j];
-                const gp_Pnt c = e->get_centroid(bound_nodes_per_elem);
-                const auto EG = s.mat->beam_EG_2D(c, s.normal);
-                S(0,1) = EG[0]*s.curv[0];
-                Eigen::Matrix<double, N, N> Srot = s.rot2D*S*s.rot2D.transpose();
-                for(size_t row = 0; row < N; ++row){
-                    for(size_t col = 0; col < N; ++col){
-                        Sn[row*N + col] = Srot(row,col);
-                    }
-                }
-                std::vector<gp_Pnt> list;
-                list.reserve(bound_nodes_per_elem);
-                for(size_t i = 0; i < bound_nodes_per_elem; ++i){
-                    auto n = e->nodes[i];
-                    if(is_between_points(p1, p2, n->point)){
-                        list.push_back(n->point);
-                    }
-                }
-
-                std::vector<double> Rf;
-                if(list.size() >= 2){
-                     Rf = elem_list[j]->parent->get_Rf(Sn, F, center, this->thickness, list);
-                } else if(list.size() > 1) {
-                    for(size_t i = 0; i < bound_nodes_per_elem; ++i){
-                        size_t j = (i+1)%bound_nodes_per_elem;
-                        auto n1 = e->nodes[i]->point;
-                        auto n2 = e->nodes[j]->point;
-                        if(p1.IsEqual(n1, Precision::Confusion()) || p1.IsEqual(n2, Precision::Confusion()) ||
-                           p2.IsEqual(n1, Precision::Confusion()) || p2.IsEqual(n2, Precision::Confusion())){
-                            continue;
-                        }
-                        if(is_between_points(n1, n2, p1)){
-                            list.push_back(p1);
-                            break;
-                        } else if(is_between_points(n1, n2, p2)){
-                            list.push_back(p2);
-                            break;
-                        }
-                    }
-                    Rf = elem_list[j]->parent->get_Rf(Sn, F, center, this->thickness, list);
-                }
-                if(Rf.size() > 0){
-                    //logger::quick_log(fe);
-                    //for(auto& ff:fe){
-                    //    F += ff;
-                    //}
-                    for(size_t i = 0; i < nodes_per_elem; ++i){
-                        for(size_t j = 0; j < dof; ++j){
-                            auto n = e->parent->nodes[i];
-                            if(n->u_pos[j] >= 0){
-                                this->load_vector[n->u_pos[j]] += Rf[i*dof+j];
-                            }
-                        }
-                    }
-                }
-            }
+        for(auto& s:springs){
+            s.apply_load_2D(this->load_vector);
+            s.clear_curvature_data();
         }
     } else if(problem_type == utils::PROBLEM_TYPE_3D){
-        const size_t N = 3;
-        for(size_t i = 0; i < this->robin_elements.size(); ++i){
-            const auto& elem_list = this->robin_elements[i];
-            const auto& s = springs[i];
-            const double A = s.S.get_area();
-            Eigen::Vector<double, N> F0{s.F[0]/A, s.F[1]/A, s.F[2]/A};
-            Eigen::Vector<double, N> Fr = s.rot3D*F0;
-            std::vector<double> F{Fr[0], Fr[1], Fr[2]};
-            Eigen::Matrix<double, N, N> S{{0, 0, 0},
-                                          {0, 0, 0},
-                                          {0, 0, 0}};
-            std::vector<double> Sn(N*N);
-
-            gp_Pnt center = s.S.get_centroid();
-
-            for(size_t j = 0; j < elem_list.size(); ++j){
-                const auto& e = elem_list[j];
-                std::vector<gp_Pnt> points(bound_nodes_per_elem);
-                for(size_t i = 0; i < bound_nodes_per_elem; ++i){
-                    points[i] = e->nodes[i]->point;
-                }
-
-                const gp_Pnt c = e->get_centroid(bound_nodes_per_elem);
-                const auto EG = s.mat->beam_EG_3D(c, s.normal);
-                S(0,1) = EG[0]*s.curv[0];
-                S(0,2) = EG[0]*s.curv[1];
-                S(1,2) = -EG[3]*s.curv[2];
-                S(2,1) = EG[3]*s.curv[2];
-                Eigen::Matrix<double, N, N> Srot = s.rot3D*S*s.rot3D.transpose();
-                for(size_t row = 0; row < N; ++row){
-                    for(size_t col = 0; col < N; ++col){
-                        Sn[row*N + col] = Srot(row,col);
-                    }
-                }
-
-                const auto Rf = e->parent->get_Rf(Sn, F, center, this->thickness, points);
-                //logger::quick_log(fe);
-                //for(auto& ff:fe){
-                //    F += ff;
-                //}
-                for(size_t i = 0; i < nodes_per_elem; ++i){
-                    for(size_t j = 0; j < dof; ++j){
-                        const auto n = e->parent->nodes[i];
-                        if(n->u_pos[j] >= 0){
-                            this->load_vector[n->u_pos[j]] += Rf[i*dof+j];
-                        }
-                    }
-                }
-            }
+        for(auto& s:springs){
+            s.apply_load_3D(this->load_vector);
+            s.clear_curvature_data();
         }
-
     }
 }
 
