@@ -935,7 +935,7 @@ std::vector<Spring> ProjectData::get_springs(const rapidjson::GenericValue<rapid
         logger::log_assert(f.IsObject(), logger::ERROR, "Each load must be stored as a JSON object");
         this->log_data(f, "L", TYPE_ARRAY, true);
         this->log_data(f, "F", TYPE_ARRAY, true);
-        this->log_data(f, "curv", TYPE_ARRAY, true);
+        this->log_data(f, "M", TYPE_ARRAY, true);
         this->log_data(f, "normal", TYPE_ARRAY, true);
         this->log_data(f, "v", TYPE_ARRAY, true);
         if(this->type == utils::PROBLEM_TYPE_3D) {
@@ -946,11 +946,11 @@ std::vector<Spring> ProjectData::get_springs(const rapidjson::GenericValue<rapid
         auto normal = f["normal"].GetArray();
         auto v = f["v"].GetArray();
         auto Fa = f["F"].GetArray();
-        auto curva = f["curv"].GetArray();
+        auto Ma = f["M"].GetArray();
 
         std::array<double, 3> l{L[0].GetDouble(), L[1].GetDouble(), 0};
         std::array<double, 3> F{Fa[0].GetDouble(), Fa[1].GetDouble(), 0};
-        std::array<double, 3> curv{curva[0].GetDouble(), curva[1].GetDouble(), 0};
+        std::array<double, 3> M{Ma[0].GetDouble(), Ma[1].GetDouble(), 0};
         gp_Dir nv(normal[0].GetDouble(), normal[1].GetDouble(), 0);
         gp_Dir vv(v[0].GetDouble(), v[1].GetDouble(), 0);
         gp_Dir wv(0, 0, 1);
@@ -960,13 +960,13 @@ std::vector<Spring> ProjectData::get_springs(const rapidjson::GenericValue<rapid
             logger::log_assert(normal.Size() == 2, logger::ERROR, "Normal vector must have exactly two dimensions in 2D problems");
             logger::log_assert(v.Size() == 2, logger::ERROR, "'v' vector must have exactly two dimensions in 2D problems");
             logger::log_assert(Fa.Size() == 2, logger::ERROR, "Force vector must have exactly two dimensions in 2D problems");
-            logger::log_assert(curva.Size() == 2, logger::ERROR, "Curvature vector must have exactly two dimensions in 2D problems");
+            logger::log_assert(Ma.Size() == 2, logger::ERROR, "Moment vector must have exactly two dimensions in 2D problems");
         } else if(this->type == utils::PROBLEM_TYPE_3D) {
             logger::log_assert(L.Size() == 3, logger::ERROR, "Length vector must have exactly three dimensions in 3D problems");
             logger::log_assert(normal.Size() == 3, logger::ERROR, "Normal vector must have exactly three dimensions in 3D problems");
             logger::log_assert(v.Size() == 3, logger::ERROR, "'v' vector must have exactly three dimensions in 3D problems");
             logger::log_assert(Fa.Size() == 3, logger::ERROR, "Force vector must have exactly three dimensions in 3D problems");
-            logger::log_assert(curva.Size() == 3, logger::ERROR, "Curvature vector must have exactly three dimensions in 3D problems");
+            logger::log_assert(Ma.Size() == 3, logger::ERROR, "Moment vector must have exactly three dimensions in 3D problems");
 
             auto w = f["w"].GetArray();
             logger::log_assert(w.Size() == 3, logger::ERROR, "'w' vector must have exactly two dimensions in 3D problems");
@@ -975,7 +975,7 @@ std::vector<Spring> ProjectData::get_springs(const rapidjson::GenericValue<rapid
             nv.SetZ(normal[2].GetDouble());
             vv.SetZ(v[2].GetDouble());
             F[2] = Fa[2].GetDouble();
-            curv[2] = curva[2].GetDouble();
+            M[2] = Ma[2].GetDouble();
 
             wv = gp_Dir(w[0].GetDouble(), w[1].GetDouble(), w[2].GetDouble());
         }
@@ -990,7 +990,7 @@ std::vector<Spring> ProjectData::get_springs(const rapidjson::GenericValue<rapid
         Material* mat(it->get());
 
         auto S = this->get_cross_section(f);
-        springs.emplace_back(S, nv, vv, wv, mat, l, F, curv, this->topopt_element.get(), this->topopt_boundary_element.get(), this->type);
+        springs.emplace_back(S, this->thickness, nv, vv, wv, mat, l, F, M, this->topopt_element.get(), this->topopt_boundary_element.get(), this->type);
     }
     return springs;
 }

@@ -34,7 +34,7 @@ class BoundaryElement;
 class Spring{
     public:
 
-    Spring(CrossSection cross_section, gp_Dir normal, gp_Dir v, gp_Dir w, Material* mat, std::array<double, 3> L, std::array<double, 3> F, std::array<double, 3> curv, MeshElementFactory* elem, MeshElementFactory* bound_elem, utils::ProblemType type);
+    Spring(CrossSection cross_section, double thickness, gp_Dir normal, gp_Dir v, gp_Dir w, Material* mat, std::array<double, 3> L, std::array<double, 3> F, std::array<double, 3> curv, MeshElementFactory* elem, MeshElementFactory* bound_elem, utils::ProblemType type);
     Spring(Spring&&) = default;
 
     inline void clear_curvature_data(){
@@ -53,11 +53,16 @@ class Spring{
         this->center = this->curvature->get_center();
     }
 
+    void apply_load_2D(std::vector<double>& load_vector) const;
+    void apply_load_3D(std::vector<double>& load_vector) const;
+
     const CrossSection S;
+    const double A;
+    const double thickness;
     const Eigen::Matrix<double, 2, 2> rot2D;
     const Eigen::Matrix<double, 3, 3> rot3D;
     const std::array<double, 3> F;
-    const std::array<double, 3> curv;
+    const std::array<double, 3> M;
     const Material* mat;
     const gp_Dir normal;
     const MeshElementFactory* elem_info;
