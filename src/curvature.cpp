@@ -29,7 +29,7 @@ Curvature::Curvature(const Material* mat, gp_Dir u, gp_Dir v, gp_Dir w, Eigen::M
 
 }
 
-void Curvature::generate_curvature_3D(const std::vector<std::unique_ptr<MeshElement>>& boundary_mesh, const std::array<double, 3>& M){
+void Curvature::generate_curvature_3D(const std::vector<std::unique_ptr<MeshElement>>& boundary_mesh){
     std::array<gp_Pnt, 3> points;
 
     const auto fn_EA =
@@ -58,8 +58,8 @@ void Curvature::generate_curvature_3D(const std::vector<std::unique_ptr<MeshElem
     const double EA_w = this->integrate_surface_3D(boundary_mesh, fn_EA_w);
     this->c_v = EA_v/this->EA;
     this->c_w = EA_w/this->EA;
-    const double EI_v = this->integrate_surface_3D(boundary_mesh, fn_EI_v);
-    const double EI_w = this->integrate_surface_3D(boundary_mesh, fn_EI_w);
+    this->EI_v = this->integrate_surface_3D(boundary_mesh, fn_EI_v);
+    this->EI_w = this->integrate_surface_3D(boundary_mesh, fn_EI_w);
     logger::quick_log("A: ", EA/180000);
     logger::quick_log("EA: ", EA);
     logger::quick_log("c_v: ", c_v);

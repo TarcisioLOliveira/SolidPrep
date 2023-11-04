@@ -47,7 +47,10 @@ class Spring{
 
     void calculate_curvature(std::vector<BoundaryElement>& boundary_elements){
         this->generate_mesh(boundary_elements);
-        this->curvature->generate_curvature_3D(this->boundary_mesh, this->curv);
+        this->curvature->generate_curvature_3D(this->boundary_mesh);
+
+        this->EI = this->curvature->get_EI();
+        this->center = this->curvature->get_center();
     }
 
     const CrossSection S;
@@ -67,6 +70,9 @@ class Spring{
     const gp_Dir w;
     const std::array<double, 3> L;
     const utils::ProblemType type;
+
+    std::array<double, 2> EI;
+    gp_Pnt center;
 
     std::vector<std::unique_ptr<MeshNode>> boundary_nodes;
     std::vector<std::unique_ptr<MeshElement>> boundary_mesh;

@@ -31,7 +31,14 @@ class Curvature{
     public:
     Curvature(const Material* mat, gp_Dir u, gp_Dir v, gp_Dir w, Eigen::Matrix<double, 2, 2> rot2D, Eigen::Matrix<double, 3, 3> rot3D, Element::Shape elem_shape);
 
-    void generate_curvature_3D(const std::vector<std::unique_ptr<MeshElement>>& boundary_mesh, const std::array<double, 3>& M);
+    void generate_curvature_3D(const std::vector<std::unique_ptr<MeshElement>>& boundary_mesh);
+
+    inline std::array<double, 2> get_EI() const{
+        return {EI_v, EI_w};
+    }
+    inline gp_Pnt get_center() const{
+        return gp_Pnt(0, c_v, c_w);
+    }
 
     private:
     const Material* mat;
