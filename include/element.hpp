@@ -536,4 +536,49 @@ class MeshElement : public Element{
     virtual std::vector<double> get_Nf(const double t, const std::vector<gp_Pnt>& points) const = 0;
 };
 
+class BoundaryMeshElement : public Element{
+    public:
+    /**
+     * Returns a 1 degree of freedom diffusion matrix.
+     * 
+     * @param A Diffusivity matrix.
+     *
+     * @return Diffusion matrix.
+     */
+    virtual Eigen::MatrixXd diffusion_1dof(const Eigen::MatrixXd& A) const = 0;
+
+    /**
+     * Returns a 1 degree of freedom advection matrix.
+     *
+     * @param v Direction of advection.
+     *
+     * @return Advection matrix.
+     */
+    virtual Eigen::MatrixXd advection_1dof(const Eigen::VectorXd& v) const = 0;
+
+    /**
+     * Returns a 1 degree of freedom absorption matrix.
+     *
+     * @return Absorption matrix.
+     */
+    virtual Eigen::MatrixXd absorption_1dof() const = 0;
+
+    /**
+     * Returns a 1 degree of freedom source vector.
+     *
+     * @return source matrix.
+     */
+    virtual Eigen::VectorXd source_1dof() const = 0;
+
+    protected:
+    /**
+     * Creates an element with the specified nodes.
+     *
+     * @param nodes List of nodes.
+     */
+    BoundaryMeshElement(const std::vector<MeshNode*>& nodes):
+        Element(std::vector<Node*>(nodes.begin(), nodes.end()))
+        {}
+};
+
 #endif
