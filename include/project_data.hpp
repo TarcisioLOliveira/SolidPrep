@@ -83,7 +83,7 @@ class ProjectData {
     std::unique_ptr<FiniteElement> topopt_fea;
     std::unique_ptr<Meshing> topopt_mesher;
     std::unique_ptr<MeshElementFactory> topopt_element;
-    std::unique_ptr<MeshElementFactory> topopt_boundary_element;
+    std::unique_ptr<BoundaryMeshElementFactory> topopt_boundary_element;
     std::unique_ptr<DensityFilter> density_filter;
     std::unique_ptr<Projection> projection;
     std::unique_ptr<Optimizer> optimizer;

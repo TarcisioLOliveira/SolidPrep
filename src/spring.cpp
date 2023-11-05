@@ -25,7 +25,7 @@
 #include <memory>
 #include <set>
 
-Spring::Spring(CrossSection cross_section, double thickness, gp_Dir normal, gp_Dir v, gp_Dir w, Material* mat, std::array<double, 3> L, std::array<double, 3> F, std::array<double, 3> M, MeshElementFactory* elem, MeshElementFactory* bound_elem, utils::ProblemType type):
+Spring::Spring(CrossSection cross_section, double thickness, gp_Dir normal, gp_Dir v, gp_Dir w, Material* mat, std::array<double, 3> L, std::array<double, 3> F, std::array<double, 3> M, MeshElementFactory* elem, BoundaryMeshElementFactory* bound_elem, utils::ProblemType type):
     S(std::move(cross_section)), 
     A(S.get_area()),
     thickness(thickness),

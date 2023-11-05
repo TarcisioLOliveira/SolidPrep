@@ -34,7 +34,7 @@ class BoundaryElement;
 class Spring{
     public:
 
-    Spring(CrossSection cross_section, double thickness, gp_Dir normal, gp_Dir v, gp_Dir w, Material* mat, std::array<double, 3> L, std::array<double, 3> F, std::array<double, 3> curv, MeshElementFactory* elem, MeshElementFactory* bound_elem, utils::ProblemType type);
+    Spring(CrossSection cross_section, double thickness, gp_Dir normal, gp_Dir v, gp_Dir w, Material* mat, std::array<double, 3> L, std::array<double, 3> F, std::array<double, 3> curv, MeshElementFactory* elem, BoundaryMeshElementFactory* bound_elem, utils::ProblemType type);
     Spring(Spring&&) = default;
 
     inline void clear_curvature_data(){
@@ -66,7 +66,7 @@ class Spring{
     const Material* mat;
     const gp_Dir normal;
     const MeshElementFactory* elem_info;
-    const MeshElementFactory* boundary_elem_info;
+    const BoundaryMeshElementFactory* boundary_elem_info;
     std::vector<const BoundaryElement*> submesh;
     std::unique_ptr<Curvature> curvature;
 
@@ -80,7 +80,7 @@ class Spring{
     gp_Pnt center;
 
     std::vector<std::unique_ptr<MeshNode>> boundary_nodes;
-    std::vector<std::unique_ptr<MeshElement>> boundary_mesh;
+    std::vector<std::unique_ptr<BoundaryMeshElement>> boundary_mesh;
 
     void generate_mesh(std::vector<BoundaryElement>& boundary_elements);
 

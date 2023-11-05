@@ -30,7 +30,7 @@ Curvature::Curvature(const Material* mat, gp_Dir u, gp_Dir v, gp_Dir w, Eigen::M
 
 }
 
-void Curvature::generate_curvature_3D(const std::vector<std::unique_ptr<MeshElement>>& boundary_mesh){
+void Curvature::generate_curvature_3D(const std::vector<std::unique_ptr<BoundaryMeshElement>>& boundary_mesh){
     std::array<gp_Pnt, 3> points;
 
     const auto fn_EA =
@@ -69,7 +69,7 @@ void Curvature::generate_curvature_3D(const std::vector<std::unique_ptr<MeshElem
     logger::quick_log("EI_w", EI_w/180000);
 }
 
-double Curvature::integrate_surface_3D(const std::vector<std::unique_ptr<MeshElement>>& boundary_mesh, const std::function<double(const gp_Pnt&, const gp_Pnt&)>& fn) const{
+double Curvature::integrate_surface_3D(const std::vector<std::unique_ptr<BoundaryMeshElement>>& boundary_mesh, const std::function<double(const gp_Pnt&, const gp_Pnt&)>& fn) const{
     double result = 0;
     if(this->elem_shape == Element::Shape::TRI){
         #pragma omp parallel for reduction(+:result)

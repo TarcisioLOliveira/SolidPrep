@@ -30,8 +30,10 @@ H8::H8(ElementShape s):
     MeshElementCommon3DHex<H8>(s.nodes){
 }
 
-std::unique_ptr<MeshElementFactory> H8::get_boundary_element_info(){
-    return std::unique_ptr<MeshElementFactory>(new MeshElementFactoryImpl<Q4>());
+std::unique_ptr<BoundaryMeshElementFactory> H8::get_boundary_element_info() {
+    logger::log_assert(false, logger::ERROR, "BQ4 ELEMENT TYPE NOT IMPLEMENTED");
+    return std::unique_ptr<BoundaryMeshElementFactory>();
+    //return std::unique_ptr<BoundaryMeshElementFactory>(new BoundaryMeshElementFactoryImpl<boundary_element::BQ4>());
 }
 
 std::vector<double> H8::get_k(const std::vector<double>& D, const double t) const{

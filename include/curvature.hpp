@@ -31,7 +31,7 @@ class Curvature{
     public:
     Curvature(const Material* mat, gp_Dir u, gp_Dir v, gp_Dir w, Eigen::Matrix<double, 2, 2> rot2D, Eigen::Matrix<double, 3, 3> rot3D, Element::Shape elem_shape);
 
-    void generate_curvature_3D(const std::vector<std::unique_ptr<MeshElement>>& boundary_mesh);
+    void generate_curvature_3D(const std::vector<std::unique_ptr<BoundaryMeshElement>>& boundary_mesh);
 
     inline std::array<double, 2> get_EI() const{
         return {EI_v, EI_w};
@@ -55,7 +55,7 @@ class Curvature{
     double curv_w;
     std::vector<double> phi;
 
-    double integrate_surface_3D(const std::vector<std::unique_ptr<MeshElement>>& boundary_mesh, const std::function<double(const gp_Pnt&, const gp_Pnt& px)>& fn) const;
+    double integrate_surface_3D(const std::vector<std::unique_ptr<BoundaryMeshElement>>& boundary_mesh, const std::function<double(const gp_Pnt&, const gp_Pnt& px)>& fn) const;
     double GS_tri(const std::array<gp_Pnt, 3>& p, const std::array<gp_Pnt, 3>& px, const std::function<double(const gp_Pnt&, const gp_Pnt& px)>& fn) const;
     inline double make_EA_base_3D(const gp_Pnt& p, const gp_Pnt& px) const{
         (void)px;
