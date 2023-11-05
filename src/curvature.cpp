@@ -20,6 +20,7 @@
 
 #include "curvature.hpp"
 #include "logger.hpp"
+#include "utils/gauss_legendre.hpp"
 
 Curvature::Curvature(const Material* mat, gp_Dir u, gp_Dir v, gp_Dir w, Eigen::Matrix<double, 2, 2> rot2D, Eigen::Matrix<double, 3, 3> rot3D, Element::Shape elem_shape):
     mat(mat), u(u), v(v), w(w),
@@ -101,19 +102,19 @@ double Curvature::GS_tri(const std::array<gp_Pnt, 3>& p, const std::array<gp_Pnt
     gp_Vec v1(p[1], p[0]);
     gp_Vec v2(p[2], p[0]);
     const double drnorm = (v1.Crossed(v2)).Magnitude()/2;
-    for(size_t i = 0; i < 12; ++i){
-        auto P = this->GS_tri_params.data()+i*4;
+    const auto& gsi = utils::GaussLegendreTri<6>::get();
+    for(auto it = gsi.begin(); it < gsi.end(); ++it){
         gp_Pnt pi{
-            P[0]*p[0].X() + P[1]*p[1].X() + P[2]*p[2].X(),
-            P[0]*p[0].Y() + P[1]*p[1].Y() + P[2]*p[2].Y(),
-            P[0]*p[0].Z() + P[1]*p[1].Z() + P[2]*p[2].Z()
+            it->a*p[0].X() + it->b*p[1].X() + it->c*p[2].X(),
+            it->a*p[0].Y() + it->b*p[1].Y() + it->c*p[2].Y(),
+            it->a*p[0].Z() + it->b*p[1].Z() + it->c*p[2].Z()
         };
         gp_Pnt pxi{
-            P[0]*px[0].X() + P[1]*px[1].X() + P[2]*px[2].X(),
-            P[0]*px[0].Y() + P[1]*px[1].Y() + P[2]*px[2].Y(),
-            P[0]*px[0].Z() + P[1]*px[1].Z() + P[2]*px[2].Z()
+            it->a*px[0].X() + it->b*px[1].X() + it->c*px[2].X(),
+            it->a*px[0].Y() + it->b*px[1].Y() + it->c*px[2].Y(),
+            it->a*px[0].Z() + it->b*px[1].Z() + it->c*px[2].Z()
         };
-        result += P[3]*fn(pi, pxi);
+        result += it->w*fn(pi, pxi);
     }
     result *= drnorm;
 
