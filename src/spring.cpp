@@ -265,12 +265,15 @@ void Spring::generate_mesh(std::vector<BoundaryElement>& boundary_elements){
         }
     }
     this->boundary_nodes.resize(nodes.size());
+    size_t nid = 0;
     for(size_t i = 0; i < this->boundary_nodes.size(); ++i){
         auto nit = nodes.begin();
         this->boundary_nodes[i] = std::move(nodes.extract(nit).value());
+        this->boundary_nodes[i]->id = nid;
+        ++nid;
     }
     nodes.clear();
-
+    this->phi_size = nid;
 
     // Generate the proper mesh using the associated boundary elements
     this->submesh.resize(num_elems);
