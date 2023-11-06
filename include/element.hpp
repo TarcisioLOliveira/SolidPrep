@@ -570,6 +570,23 @@ class BoundaryMeshElement : public Element{
      */
     virtual Eigen::VectorXd source_1dof() const = 0;
 
+    /**
+     * Returns the gradient at point p for 1 dof field.
+     *
+     * @param p Point to be measured.
+     * @param phi Nodal value vector (1 dof).
+     *
+     * @return gradient vector.
+     */
+    virtual Eigen::VectorXd grad_1dof(const gp_Pnt& p, const std::vector<double>& phi) const = 0;
+
+    /**
+     * Calculates the centroid of the element.
+     *
+     * @return The centroid.
+     */
+    virtual gp_Pnt get_centroid() const = 0;
+
     protected:
     /**
      * Creates an element with the specified nodes.

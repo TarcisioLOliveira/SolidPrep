@@ -50,6 +50,24 @@ class BTRI3 : public BoundaryMeshElement{
     virtual Eigen::MatrixXd absorption_1dof() const override;
     virtual Eigen::VectorXd source_1dof() const override;
 
+    virtual Eigen::VectorXd grad_1dof(const gp_Pnt& p, const std::vector<double>& phi) const override;
+
+    virtual gp_Pnt get_centroid() const override{
+        const size_t N = BTRI3::NODES_PER_ELEM;
+
+        double x = 0;
+        double y = 0;
+        double z = 0;
+        for(size_t i = 0; i < N; ++i){
+            const auto& n = this->nodes[i];
+            x += n->point.X();
+            y += n->point.Y();
+            z += n->point.Z();
+        }
+
+        return gp_Pnt(x/N, y/N, z/N);
+    }
+
     private:
     double a[3], b[3], c[3], delta;
 

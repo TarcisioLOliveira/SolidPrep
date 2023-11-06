@@ -85,5 +85,14 @@ Eigen::MatrixXd BTRI3::absorption_1dof() const{
 Eigen::VectorXd BTRI3::source_1dof() const{
     return this->delta*this->N_mat_1dof(this->GS_point(1.0/3.0, 1.0/3.0, 1.0/3.0));
 }
+Eigen::VectorXd BTRI3::grad_1dof(const gp_Pnt& p, const std::vector<double>& phi) const{
+    (void)p;
+    Eigen::Vector<double, 3> phiv{
+        phi[this->nodes[0]->id],
+        phi[this->nodes[1]->id],
+        phi[this->nodes[2]->id]
+    };
+    return this->dN_mat_1dof()*phiv;
+};
 
 }
