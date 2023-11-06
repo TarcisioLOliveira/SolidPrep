@@ -41,6 +41,8 @@ class Curvature{
         return gp_Pnt(0, c_v, c_w);
     }
 
+    void get_shear_in_3D(const BoundaryMeshElement* e, double& t_xz, double& t_yz) const;
+
     private:
     const Material* mat;
     const gp_Dir u, v, w;

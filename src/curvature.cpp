@@ -73,6 +73,16 @@ void Curvature::generate_curvature_3D(const std::vector<std::unique_ptr<Boundary
     this->phi_shear.resize(phi_size,0);
 }
 
+void Curvature::get_shear_in_3D(const BoundaryMeshElement* e, double& t_xz, double& t_yz) const{
+    auto c = e->get_centroid();
+    t_xz = 0;
+    t_yz = 0;
+
+    Eigen::Vector<double, 3> grad = this->theta*this->rot3D.transpose()*e->grad_1dof(c, this->phi_torsion);
+    t_xz += grad[1];
+    t_yz -= grad[0];
+}
+
 double Curvature::integrate_surface_3D(const std::vector<std::unique_ptr<BoundaryMeshElement>>& boundary_mesh, const std::function<double(const gp_Pnt&, const gp_Pnt&)>& fn) const{
     double result = 0;
     if(this->elem_info->get_shape_type() == Element::Shape::TRI){
