@@ -26,10 +26,11 @@
 #include <gp_Dir.hxx>
 #include "material.hpp"
 #include "element.hpp"
+#include "element_factory.hpp"
 
 class Curvature{
     public:
-    Curvature(const Material* mat, gp_Dir u, gp_Dir v, gp_Dir w, Eigen::Matrix<double, 2, 2> rot2D, Eigen::Matrix<double, 3, 3> rot3D, Element::Shape elem_shape);
+    Curvature(const Material* mat, gp_Dir u, gp_Dir v, gp_Dir w, Eigen::Matrix<double, 2, 2> rot2D, Eigen::Matrix<double, 3, 3> rot3D, const BoundaryMeshElementFactory* elem_info, double V_v, double V_w);
 
     void generate_curvature_3D(const std::vector<std::unique_ptr<BoundaryMeshElement>>& boundary_mesh, size_t phi_size);
 
@@ -45,7 +46,8 @@ class Curvature{
     const gp_Dir u, v, w;
     const Eigen::Matrix<double, 2, 2> rot2D;
     const Eigen::Matrix<double, 3, 3> rot3D;
-    const Element::Shape elem_shape;
+    const BoundaryMeshElementFactory* elem_info;
+    const double V_v, V_w;
 
     double EA;
     double EI_v;

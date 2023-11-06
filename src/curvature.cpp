@@ -22,10 +22,11 @@
 #include "logger.hpp"
 #include "utils/gauss_legendre.hpp"
 
-Curvature::Curvature(const Material* mat, gp_Dir u, gp_Dir v, gp_Dir w, Eigen::Matrix<double, 2, 2> rot2D, Eigen::Matrix<double, 3, 3> rot3D, Element::Shape elem_shape):
+Curvature::Curvature(const Material* mat, gp_Dir u, gp_Dir v, gp_Dir w, Eigen::Matrix<double, 2, 2> rot2D, Eigen::Matrix<double, 3, 3> rot3D, const BoundaryMeshElementFactory* elem_info, double V_v, double V_w):
     mat(mat), u(u), v(v), w(w),
     rot2D(rot2D), rot3D(rot3D), 
-    elem_shape(elem_shape)
+    elem_info(elem_info),
+    V_v(V_v), V_w(V_w)
 {
 
 }
@@ -74,7 +75,7 @@ void Curvature::generate_curvature_3D(const std::vector<std::unique_ptr<Boundary
 
 double Curvature::integrate_surface_3D(const std::vector<std::unique_ptr<BoundaryMeshElement>>& boundary_mesh, const std::function<double(const gp_Pnt&, const gp_Pnt&)>& fn) const{
     double result = 0;
-    if(this->elem_shape == Element::Shape::TRI){
+    if(this->elem_info->get_shape_type() == Element::Shape::TRI){
         #pragma omp parallel for reduction(+:result)
         for(size_t i = 0; i < boundary_mesh.size(); ++i){
             Eigen::Matrix<double, 3, 3> points{{0,0,0},{0,0,0},{0,0,0}};
@@ -94,7 +95,7 @@ double Curvature::integrate_surface_3D(const std::vector<std::unique_ptr<Boundar
             };
             result += this->GS_tri(old_points, new_points, fn);
         }
-    } else if(this->elem_shape == Element::Shape::QUAD){
+    } else if(this->elem_info->get_shape_type() == Element::Shape::QUAD){
 
     }
     return result;

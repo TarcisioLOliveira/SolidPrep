@@ -42,7 +42,7 @@ Spring::Spring(CrossSection cross_section, double thickness, gp_Dir normal, gp_D
     v(v), w(w), L(L), 
     type(type){
 
-    this->curvature = std::make_unique<Curvature>(mat, normal, v, w, rot2D, rot3D, this->boundary_elem_info->get_shape_type());
+    this->curvature = std::make_unique<Curvature>(mat, normal, v, w, rot2D, rot3D, this->boundary_elem_info, F[1], F[2]);
 }
 
 void Spring::apply_load_2D(std::vector<double>& load_vector) const{
