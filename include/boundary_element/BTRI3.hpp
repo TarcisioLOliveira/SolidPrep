@@ -79,7 +79,7 @@ class BTRI3 : public BoundaryMeshElement{
         );
     }
     inline double N(const gp_Pnt& p, size_t i) const{
-        return (a[i]*p.X() + b[i]*p.Y() + c[i]*p.Z())/(2*delta);
+        return a[i]*p.X() + b[i]*p.Y() + c[i]*p.Z();
     }
     inline Eigen::Vector<double, 3> N_mat_1dof(const gp_Pnt& p) const{
         return Eigen::Vector<double, 3>(N(p, 0), N(p, 1), N(p, 2));
@@ -87,7 +87,7 @@ class BTRI3 : public BoundaryMeshElement{
     inline Eigen::Matrix<double, 3, 3> dN_mat_1dof() const{
         return Eigen::Matrix<double, 3, 3>{{a[0], a[1], a[2]},
                                            {b[0], b[1], b[2]},
-                                           {c[0], c[1], c[2]}}/(2*delta);
+                                           {c[0], c[1], c[2]}};
     }
 };
 
