@@ -81,12 +81,12 @@ class Curvature{
         return this->mat->beam_E_3D(p, this->u)*px.Z();
     }
     inline double make_EI_v_base_3D(const gp_Pnt& p, const gp_Pnt& px) const{
-        const double dy = px.Y() - c_v;
-        return this->mat->beam_E_3D(p, this->u)*dy*dy;
-    }
-    inline double make_EI_w_base_3D(const gp_Pnt& p, const gp_Pnt& px) const{
         const double dz = px.Z() - c_w;
         return this->mat->beam_E_3D(p, this->u)*dz*dz;
+    }
+    inline double make_EI_w_base_3D(const gp_Pnt& p, const gp_Pnt& px) const{
+        const double dy = px.Y() - c_v;
+        return this->mat->beam_E_3D(p, this->u)*dy*dy;
     }
 };
 
