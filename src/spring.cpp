@@ -22,6 +22,7 @@
 #include "spring.hpp"
 #include "utils.hpp"
 #include "meshing.hpp"
+#include <Eigen/src/Core/Matrix.h>
 #include <memory>
 #include <set>
 
@@ -75,7 +76,6 @@ void Spring::apply_load_2D(std::vector<double>& load_vector) const{
     for(size_t j = 0; j < this->submesh.size(); ++j){
         const auto& e = this->submesh[j];
         const gp_Pnt c = e->get_centroid(bound_nodes_per_elem);
-        // Check if it's equivalent to EG
         const auto E = this->mat->beam_E_2D(c, this->normal);
         S(0,1) = M[1]*E/this->EI[0];
         Eigen::Matrix<double, N, N> Srot = this->rot2D*S*this->rot2D.transpose();
@@ -157,7 +157,7 @@ void Spring::apply_load_3D(std::vector<double>& load_vector) const{
         S(0,1) = M[1]*E/this->EI[0];
         S(0,2) = M[2]*E/this->EI[1];
         this->curvature->get_shear_in_3D(b.get(), t_uv, t_uw);
-        Eigen::Vector<double, N> F0{this->F[0]/A, t_uv, t_uw};
+        Eigen::Vector<double, N> F0{this->F[0]/A, -t_uv, -t_uw};
         Eigen::Vector<double, N> Fr = this->rot3D*F0;
         std::vector<double> F{Fr[0], Fr[1], Fr[2]};
         
@@ -232,11 +232,11 @@ class PointSort{
 };
 
 struct NodeComp{
-    NodeComp(const MeshNode* n): n{n} {}
+    NodeComp(gp_Pnt p): p{p} {}
     bool operator()(const std::unique_ptr<MeshNode>& o) const{ 
-        return o->point.IsEqual(n->point, Precision::Confusion());
+        return o->point.IsEqual(p, Precision::Confusion());
     }
-    const MeshNode* n;
+    const gp_Pnt p;
 };
 
 void Spring::generate_mesh(std::vector<BoundaryElement>& boundary_elements){
@@ -255,7 +255,7 @@ void Spring::generate_mesh(std::vector<BoundaryElement>& boundary_elements){
         }
     }
 
-    // Copy necessary nodes
+    // Copy and transform necessary nodes
     std::set<std::unique_ptr<MeshNode>, PointSort> nodes;
     size_t id = 0;
     for(size_t i = 0; i < boundary_elements.size(); ++i){
@@ -263,7 +263,8 @@ void Spring::generate_mesh(std::vector<BoundaryElement>& boundary_elements){
             const auto& b = boundary_elements[i];
             for(size_t j = 0; j < bound_nodes_per_elem; ++j){
                 const auto& n = b.nodes[j];
-                std::unique_ptr<MeshNode> node(std::make_unique<MeshNode>(n->point, id, 1));
+                gp_Pnt p = utils::change_point(n->point, this->rot3D.transpose());
+                std::unique_ptr<MeshNode> node(std::make_unique<MeshNode>(p, id, 1));
                 nodes.insert(std::move(node));
                 ++id;
             }
@@ -274,9 +275,10 @@ void Spring::generate_mesh(std::vector<BoundaryElement>& boundary_elements){
     for(size_t i = 0; i < this->boundary_nodes.size(); ++i){
         auto nit = nodes.begin();
         this->boundary_nodes[i] = std::move(nodes.extract(nit).value());
+        // TEMPORARY
         const double z = this->boundary_nodes[i]->point.Z();
         const double y = this->boundary_nodes[i]->point.Y();
-        if(z*z == 400 || y*y == 400){
+        if(std::abs(z*z - 400) < 1e-7 || std::abs(y*y - 400) < 1e-7){
             this->boundary_nodes[i]->u_pos[0] = -1;
         } else {
             this->boundary_nodes[i]->u_pos[0] = npos;
@@ -295,9 +297,12 @@ void Spring::generate_mesh(std::vector<BoundaryElement>& boundary_elements){
     for(size_t i = 0; i < boundary_elements.size(); ++i){
         if(apply_spring[i]){
             this->submesh[cur_elem] = &boundary_elements[i];
+            const auto& b = boundary_elements[i];
             for(size_t j = 0; j < bound_nodes_per_elem; ++j){
-                MeshNode* n = std::find_if(this->boundary_nodes.begin(), this->boundary_nodes.end(), NodeComp(boundary_elements[i].nodes[j]))->get();
-                sh.nodes[j] = n;
+                const auto& n = b.nodes[j];
+                gp_Pnt p = utils::change_point(n->point, this->rot3D.transpose());
+                MeshNode* nn = std::find_if(this->boundary_nodes.begin(), this->boundary_nodes.end(), NodeComp(p))->get();
+                sh.nodes[j] = nn;
             }
             this->boundary_mesh[cur_elem].reset(this->boundary_elem_info->make_element(sh));
             ++cur_elem;

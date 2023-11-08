@@ -25,7 +25,6 @@
 #include <Eigen/Core>
 #include <Eigen/Sparse>
 #include <Eigen/SparseCholesky>
-#include <Eigen/SparseLU>
 #include <gp_Dir.hxx>
 #include "material.hpp"
 #include "element.hpp"
@@ -43,7 +42,6 @@ class Curvature{
     inline gp_Pnt get_center() const{
         return gp_Pnt(0, c_v, c_w);
     }
-
     void get_shear_in_3D(const BoundaryMeshElement* e, double& t_uv, double& t_uw) const;
 
     private:
@@ -66,8 +64,7 @@ class Curvature{
     std::vector<double> phi_torsion;
     std::vector<double> phi_shear;
     Eigen::SparseMatrix<double> M;
-    //Eigen::SimplicialCholesky<Eigen::SparseMatrix<double>, Eigen::Lower, Eigen::COLAMDOrdering<int>> solver;
-    Eigen::SparseLU<Eigen::SparseMatrix<double>, Eigen::COLAMDOrdering<int>> solver;
+    Eigen::SimplicialLLT<Eigen::SparseMatrix<double>, Eigen::Lower, Eigen::COLAMDOrdering<int>> solver;
 
     void calculate_torsion(const std::vector<std::unique_ptr<BoundaryMeshElement>>& boundary_mesh);
 

@@ -43,6 +43,11 @@ class BTRI3 : public BoundaryMeshElement{
     static const Element::Shape SHAPE_TYPE = Element::Shape::TRI;
     static const utils::ProblemType PROBLEM_TYPE = utils::PROBLEM_TYPE_3D;
 
+    //
+    // USES TRANSFORMED COORDINATES
+    // (u, v, w) system used for applying Spring objects
+    //
+
     BTRI3(ElementShape s);
 
     virtual Eigen::MatrixXd diffusion_1dof(const Eigen::MatrixXd& A) const override;
@@ -79,20 +84,19 @@ class BTRI3 : public BoundaryMeshElement{
 
     inline gp_Pnt GS_point(double c1, double c2, double c3) const{
         return gp_Pnt(
-            c1*this->nodes[0]->point.X() + c2*this->nodes[1]->point.X() + c3*this->nodes[2]->point.X(),
+            0,
             c1*this->nodes[0]->point.Y() + c2*this->nodes[1]->point.Y() + c3*this->nodes[2]->point.Y(),
             c1*this->nodes[0]->point.Z() + c2*this->nodes[1]->point.Z() + c3*this->nodes[2]->point.Z()
         );
     }
     inline double N(const gp_Pnt& p, size_t i) const{
-        return a[i]*p.X() + b[i]*p.Y() + c[i]*p.Z();
+        return a[i] + b[i]*p.Y() + c[i]*p.Z();
     }
     inline Eigen::Vector<double, 3> N_mat_1dof(const gp_Pnt& p) const{
         return Eigen::Vector<double, 3>(N(p, 0), N(p, 1), N(p, 2));
     }
-    inline Eigen::Matrix<double, 3, 3> dN_mat_1dof() const{
-        return Eigen::Matrix<double, 3, 3>{{a[0], a[1], a[2]},
-                                           {b[0], b[1], b[2]},
+    inline Eigen::Matrix<double, 2, 3> dN_mat_1dof() const{
+        return Eigen::Matrix<double, 2, 3>{{b[0], b[1], b[2]},
                                            {c[0], c[1], c[2]}};
     }
 };

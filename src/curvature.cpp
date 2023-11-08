@@ -82,18 +82,14 @@ void Curvature::generate_curvature_3D(const std::vector<std::unique_ptr<Boundary
 void Curvature::get_shear_in_3D(const BoundaryMeshElement* e, double& t_uv, double& t_uw) const{
     auto c = e->get_centroid();
 
-    Eigen::Vector<double, 3> grad = this->theta*this->rot3D.transpose()*e->grad_1dof(c, this->phi_torsion);
-    logger::quick_log(grad, '\n');
-    t_uv = -grad[2];
-    t_uw =  grad[1];
+    Eigen::Vector<double, 2> grad = this->theta*e->grad_1dof(c, this->phi_torsion);
+    t_uv = -grad[1];
+    t_uw =  grad[0];
 }
 
 void Curvature::calculate_torsion(const std::vector<std::unique_ptr<BoundaryMeshElement>>& boundary_mesh){
     const size_t num_nodes = this->elem_info->get_nodes_per_element();
 
-    Eigen::Matrix<double, 3, 2> R = this->rot3D(Eigen::all, {1, 2});
-    Eigen::Vector<double, 3> v{1, 0, 0};
-    Eigen::Vector<double, 3> vR = (v.transpose()*this->rot3D.transpose()).transpose();
     Eigen::VectorXd b;
     b.resize(this->phi_torsion.size());
     b.fill(0);
@@ -102,22 +98,19 @@ void Curvature::calculate_torsion(const std::vector<std::unique_ptr<BoundaryMesh
     Eigen::Matrix<double, 2, 2> G{{0,0},{0,0}};
 
     for(const auto& e:boundary_mesh){
-        const auto N = 2*e->source_1dof();
-        const auto c = e->get_centroid();
-        //const auto n = e->get_normal();
+        const auto N = -2*e->source_1dof();
+        gp_Pnt c = utils::change_point(e->get_centroid(), this->rot3D);
         const auto EG = this->mat->beam_EG_3D(c, this->u);
         G(0,0) = 1.0/EG[2]; // G_uw
         G(1,1) = 1.0/EG[1]; // G_uv
-        Eigen::Matrix<double, 3, 3> G2 = R*G*R.transpose();
 
-        const auto M_e = e->diffusion_1dof(G2) + e->advection_1dof(vR);
+        const auto M_e = e->diffusion_1dof(G);
 
         for(size_t i = 0; i < num_nodes; ++i){
             const long id1 = e->nodes[i]->u_pos[0];
             if(id1 < 0){
                 continue;
             }
-            //for(size_t j = 0; j <= i; ++j){
             for(size_t j = 0; j < num_nodes; ++j){
                 const long id2 = e->nodes[j]->u_pos[0];
                 if(id2 < 0){
@@ -168,20 +161,20 @@ double Curvature::integrate_surface_3D(const std::vector<std::unique_ptr<Boundar
         for(size_t i = 0; i < boundary_mesh.size(); ++i){
             Eigen::Matrix<double, 3, 3> points{{0,0,0},{0,0,0},{0,0,0}};
             const auto& e = boundary_mesh[i];
-            std::array<gp_Pnt, 3> old_points;
+            std::array<gp_Pnt, 3> rel_points;
             for(size_t x = 0; x < 3; ++x){
-                old_points[x] = e->nodes[x]->point;
+                rel_points[x] = e->nodes[x]->point;
                 for(size_t y = 0; y < 3; ++y){
-                    points(y, x) = old_points[x].Coord(y+1);
+                    points(y, x) = rel_points[x].Coord(y+1);
                 }
             }
-            Eigen::Matrix<double, 3, 3> rotd_p = this->rot3D.transpose()*points;
-            std::array<gp_Pnt, 3> new_points{
+            Eigen::Matrix<double, 3, 3> rotd_p = this->rot3D*points;
+            std::array<gp_Pnt, 3> abs_points{
                 gp_Pnt(rotd_p(0, 0), rotd_p(1, 0), rotd_p(2, 0)),
                 gp_Pnt(rotd_p(0, 1), rotd_p(1, 1), rotd_p(2, 1)),
                 gp_Pnt(rotd_p(0, 2), rotd_p(1, 2), rotd_p(2, 2))
             };
-            result += this->GS_tri(old_points, new_points, fn);
+            result += this->GS_tri(abs_points, rel_points, fn);
         }
     } else if(this->elem_info->get_shape_type() == Element::Shape::QUAD){
 

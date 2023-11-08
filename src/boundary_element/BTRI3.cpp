@@ -35,9 +35,9 @@ BTRI3::BTRI3(ElementShape s):
         z[i] = this->nodes[i]->point.Z();
     }
     std::array<double, N*N> M = 
-        {x[0], y[0], z[0],
-         x[1], y[1], z[1],
-         x[2], y[2], z[2]};
+        {1, y[0], z[0],
+         1, y[1], z[1],
+         1, y[2], z[2]};
 
     std::array<int, N> ipiv;
 
