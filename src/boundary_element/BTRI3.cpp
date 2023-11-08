@@ -77,7 +77,7 @@ Eigen::MatrixXd BTRI3::absorption_1dof() const{
     Eigen::MatrixXd result{{0, 0, 0},{0, 0, 0},{0, 0, 0}};
     for(auto it = gsi.begin(); it < gsi.end(); ++it){
         const auto NN = this->N_mat_1dof(this->GS_point(it->a, it->b, it->c));
-        result += NN.transpose()*NN;
+        result += it->w*NN.transpose()*NN;
     }
 
     return delta*result;
