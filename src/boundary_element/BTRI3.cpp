@@ -87,11 +87,13 @@ Eigen::VectorXd BTRI3::source_1dof() const{
 }
 Eigen::VectorXd BTRI3::grad_1dof(const gp_Pnt& p, const std::vector<double>& phi) const{
     (void)p;
-    Eigen::Vector<double, 3> phiv{
-        phi[this->nodes[0]->id],
-        phi[this->nodes[1]->id],
-        phi[this->nodes[2]->id]
-    };
+    Eigen::Vector<double, 3> phiv{0, 0, 0};
+    for(size_t i = 0; i < 3; ++i){
+        const auto p = this->nodes[i]->u_pos[0];
+        if(p > -1){
+            phiv[i] = phi[p];
+        }
+    }
     return this->dN_mat_1dof()*phiv;
 };
 

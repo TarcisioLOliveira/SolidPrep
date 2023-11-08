@@ -258,22 +258,28 @@ void Spring::generate_mesh(std::vector<BoundaryElement>& boundary_elements){
             const auto& b = boundary_elements[i];
             for(size_t j = 0; j < bound_nodes_per_elem; ++j){
                 const auto& n = b.nodes[j];
-                std::unique_ptr<MeshNode> node(std::make_unique<MeshNode>(n->point, id, 0));
+                std::unique_ptr<MeshNode> node(std::make_unique<MeshNode>(n->point, id, 1));
                 nodes.insert(std::move(node));
                 ++id;
             }
         }
     }
     this->boundary_nodes.resize(nodes.size());
-    size_t nid = 0;
+    long npos = 0;
     for(size_t i = 0; i < this->boundary_nodes.size(); ++i){
         auto nit = nodes.begin();
         this->boundary_nodes[i] = std::move(nodes.extract(nit).value());
-        this->boundary_nodes[i]->id = nid;
-        ++nid;
+        const double z = this->boundary_nodes[i]->point.Z();
+        const double y = this->boundary_nodes[i]->point.Y();
+        if(z*z == 400 || y*y == 400){
+            this->boundary_nodes[i]->u_pos[0] = -1;
+        } else {
+            this->boundary_nodes[i]->u_pos[0] = npos;
+            ++npos;
+        }
     }
     nodes.clear();
-    this->phi_size = nid;
+    this->phi_size = npos;
 
     // Generate the proper mesh using the associated boundary elements
     this->submesh.resize(num_elems);
