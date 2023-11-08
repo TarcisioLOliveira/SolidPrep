@@ -46,9 +46,9 @@ BTRI3::BTRI3(ElementShape s):
     //      b[0], b[1], b[2],
     //      c[0], c[1], c[2]}
     int info = LAPACKE_dgetrf(LAPACK_COL_MAJOR, N, N, M.data(), N, ipiv.data());
-    logger::log_assert(info == 0, logger::ERROR, "LAPACKE returned {} while calculating LU in Q4.", info);
+    logger::log_assert(info == 0, logger::ERROR, "LAPACKE returned {} while calculating LU in BTRI3.", info);
     info = LAPACKE_dgetri(LAPACK_COL_MAJOR, N, M.data(), N, ipiv.data());
-    logger::log_assert(info == 0, logger::ERROR, "LAPACKE returned {} while calculating computing inverse from LU in Q4.", info);
+    logger::log_assert(info == 0, logger::ERROR, "LAPACKE returned {} while calculating computing inverse from LU in BTRI3.", info);
 
     for(size_t i = 0; i < N; ++i){
         this->a[i] = M[i];
