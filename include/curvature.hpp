@@ -23,6 +23,9 @@
 
 #include <memory>
 #include <Eigen/Core>
+#include <Eigen/Sparse>
+#include <Eigen/SparseCholesky>
+#include <Eigen/SparseLU>
 #include <gp_Dir.hxx>
 #include "material.hpp"
 #include "element.hpp"
@@ -30,7 +33,7 @@
 
 class Curvature{
     public:
-    Curvature(const Material* mat, gp_Dir u, gp_Dir v, gp_Dir w, Eigen::Matrix<double, 2, 2> rot2D, Eigen::Matrix<double, 3, 3> rot3D, const BoundaryMeshElementFactory* elem_info, double V_v, double V_w);
+    Curvature(const Material* mat, gp_Dir u, gp_Dir v, gp_Dir w, Eigen::Matrix<double, 2, 2> rot2D, Eigen::Matrix<double, 3, 3> rot3D, const BoundaryMeshElementFactory* elem_info, double V_v, double V_w, double M_u);
 
     void generate_curvature_3D(const std::vector<std::unique_ptr<BoundaryMeshElement>>& boundary_mesh, size_t phi_size);
 
@@ -41,7 +44,7 @@ class Curvature{
         return gp_Pnt(0, c_v, c_w);
     }
 
-    void get_shear_in_3D(const BoundaryMeshElement* e, double& t_xz, double& t_yz) const;
+    void get_shear_in_3D(const BoundaryMeshElement* e, double& t_uv, double& t_uw) const;
 
     private:
     const Material* mat;
@@ -50,6 +53,7 @@ class Curvature{
     const Eigen::Matrix<double, 3, 3> rot3D;
     const BoundaryMeshElementFactory* elem_info;
     const double V_v, V_w;
+    const double M_u;
 
     double EA;
     double EI_v;
@@ -61,6 +65,11 @@ class Curvature{
     double theta;
     std::vector<double> phi_torsion;
     std::vector<double> phi_shear;
+    Eigen::SparseMatrix<double> M;
+    //Eigen::SimplicialCholesky<Eigen::SparseMatrix<double>, Eigen::Lower, Eigen::COLAMDOrdering<int>> solver;
+    Eigen::SparseLU<Eigen::SparseMatrix<double>, Eigen::COLAMDOrdering<int>> solver;
+
+    void calculate_torsion(const std::vector<std::unique_ptr<BoundaryMeshElement>>& boundary_mesh);
 
     double integrate_surface_3D(const std::vector<std::unique_ptr<BoundaryMeshElement>>& boundary_mesh, const std::function<double(const gp_Pnt&, const gp_Pnt& px)>& fn) const;
     double GS_tri(const std::array<gp_Pnt, 3>& p, const std::array<gp_Pnt, 3>& px, const std::function<double(const gp_Pnt&, const gp_Pnt& px)>& fn) const;

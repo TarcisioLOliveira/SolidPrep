@@ -21,12 +21,13 @@
 #include "curvature.hpp"
 #include "logger.hpp"
 #include "utils/gauss_legendre.hpp"
+#include <Eigen/src/Core/Matrix.h>
 
-Curvature::Curvature(const Material* mat, gp_Dir u, gp_Dir v, gp_Dir w, Eigen::Matrix<double, 2, 2> rot2D, Eigen::Matrix<double, 3, 3> rot3D, const BoundaryMeshElementFactory* elem_info, double V_v, double V_w):
+Curvature::Curvature(const Material* mat, gp_Dir u, gp_Dir v, gp_Dir w, Eigen::Matrix<double, 2, 2> rot2D, Eigen::Matrix<double, 3, 3> rot3D, const BoundaryMeshElementFactory* elem_info, double V_v, double V_w, double M_u):
     mat(mat), u(u), v(v), w(w),
     rot2D(rot2D), rot3D(rot3D), 
     elem_info(elem_info),
-    V_v(V_v), V_w(V_w)
+    V_v(V_v), V_w(V_w), M_u(M_u)
 {
 
 }
@@ -71,16 +72,93 @@ void Curvature::generate_curvature_3D(const std::vector<std::unique_ptr<Boundary
 
     this->phi_torsion.resize(phi_size,0);
     this->phi_shear.resize(phi_size,0);
+    this->M = Eigen::SparseMatrix<double>(phi_size, phi_size);
+
+    if(this->M_u != 0){
+        this->calculate_torsion(boundary_mesh);
+    }
 }
 
-void Curvature::get_shear_in_3D(const BoundaryMeshElement* e, double& t_xz, double& t_yz) const{
+void Curvature::get_shear_in_3D(const BoundaryMeshElement* e, double& t_uv, double& t_uw) const{
     auto c = e->get_centroid();
-    t_xz = 0;
-    t_yz = 0;
 
     Eigen::Vector<double, 3> grad = this->theta*this->rot3D.transpose()*e->grad_1dof(c, this->phi_torsion);
-    t_xz += grad[1];
-    t_yz -= grad[0];
+    logger::quick_log(grad, '\n');
+    t_uv = -grad[2];
+    t_uw =  grad[1];
+}
+
+void Curvature::calculate_torsion(const std::vector<std::unique_ptr<BoundaryMeshElement>>& boundary_mesh){
+    const size_t num_nodes = this->elem_info->get_nodes_per_element();
+
+    Eigen::Matrix<double, 3, 2> R = this->rot3D(Eigen::all, {1, 2});
+    Eigen::Vector<double, 3> v{1, 0, 0};
+    Eigen::Vector<double, 3> vR = (v.transpose()*this->rot3D.transpose()).transpose();
+    Eigen::VectorXd b;
+    b.resize(this->phi_torsion.size());
+    b.fill(0);
+    std::fill(this->M.valuePtr(), this->M.valuePtr() + this->M.nonZeros(), 0);
+
+    Eigen::Matrix<double, 2, 2> G{{0,0},{0,0}};
+
+    for(const auto& e:boundary_mesh){
+        const auto N = 2*e->source_1dof();
+        const auto c = e->get_centroid();
+        //const auto n = e->get_normal();
+        const auto EG = this->mat->beam_EG_3D(c, this->u);
+        G(0,0) = 1.0/EG[2]; // G_uw
+        G(1,1) = 1.0/EG[1]; // G_uv
+        Eigen::Matrix<double, 3, 3> G2 = R*G*R.transpose();
+
+        const auto M_e = e->diffusion_1dof(G2) + e->advection_1dof(vR);
+
+        for(size_t i = 0; i < num_nodes; ++i){
+            const long id1 = e->nodes[i]->u_pos[0];
+            if(id1 < 0){
+                continue;
+            }
+            //for(size_t j = 0; j <= i; ++j){
+            for(size_t j = 0; j < num_nodes; ++j){
+                const long id2 = e->nodes[j]->u_pos[0];
+                if(id2 < 0){
+                    continue;
+                }
+                if(std::abs(M_e(i,j)) > 1e-14){
+                    this->M.coeffRef(id1, id2) += M_e(i, j);
+                }
+            }
+        }
+
+        for(size_t i = 0; i < num_nodes; ++i){
+            const long id1 = e->nodes[i]->u_pos[0];
+            if(id1 < 0){
+                continue;
+            }
+            b[id1] += N[i];
+        }
+    }
+
+    this->M.makeCompressed();
+    this->solver.analyzePattern(M);
+
+    this->solver.factorize(this->M);
+    logger::log_assert(this->solver.info() == Eigen::Success, logger::ERROR, "matrix decomposition failed");
+    Eigen::VectorXd phi_tmp = this->solver.solve(b);
+
+    std::copy(phi_tmp.begin(), phi_tmp.end(), this->phi_torsion.begin());
+    double phi_int = 0;
+    for(const auto& e:boundary_mesh){
+        const auto N = e->source_1dof();
+
+        for(size_t i = 0; i < num_nodes; ++i){
+            const long id1 = e->nodes[i]->u_pos[0];
+            if(id1 < 0){
+                continue;
+            }
+            phi_int += N[i]*this->phi_torsion[id1];
+        }
+    }
+    this->theta = this->M_u/(2*phi_int);
 }
 
 double Curvature::integrate_surface_3D(const std::vector<std::unique_ptr<BoundaryMeshElement>>& boundary_mesh, const std::function<double(const gp_Pnt&, const gp_Pnt&)>& fn) const{
