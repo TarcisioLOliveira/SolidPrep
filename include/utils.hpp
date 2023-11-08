@@ -21,6 +21,7 @@
 #ifndef UTILS_HPP
 #define UTILS_HPP
 
+#include <Eigen/Core>
 #include <string>
 #include <utility>
 #include <gp_Pnt.hxx>
@@ -36,6 +37,20 @@ namespace utils{
         PROBLEM_TYPE_2D,
         PROBLEM_TYPE_3D
     };
+
+    /**
+     * Change of basis for gp_Pnt instances.
+     *
+     * @param p Point.
+     * @param R Change-of-basis matrix.
+     *
+     * @return Changed point
+     */
+    inline gp_Pnt change_point(const gp_Pnt& p, const Eigen::Matrix<double, 3, 3>& R){
+        Eigen::Vector<double, 3> pv{p.X(), p.Y(), p.Z()};
+        pv = R*pv;
+        return gp_Pnt(pv[0], pv[1], pv[2]);
+    }
 
     /**
      * Simple dynamic array that manages its own lifetime.
