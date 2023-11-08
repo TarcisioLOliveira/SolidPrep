@@ -67,6 +67,12 @@ class BTRI3 : public BoundaryMeshElement{
 
         return gp_Pnt(x/N, y/N, z/N);
     }
+    virtual gp_Dir get_normal() const override{
+        gp_Vec v1(this->nodes[0]->point, this->nodes[1]->point);
+        gp_Vec v2(this->nodes[0]->point, this->nodes[2]->point);
+
+        return v1.Crossed(v2);
+    }
 
     private:
     double a[3], b[3], c[3], delta;

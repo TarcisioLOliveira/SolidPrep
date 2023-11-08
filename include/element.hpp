@@ -586,6 +586,12 @@ class BoundaryMeshElement : public Element{
      * @return The centroid.
      */
     virtual gp_Pnt get_centroid() const = 0;
+    /**
+     * Calculates the normal of the element.
+     *
+     * @return The normal.
+     */
+    virtual gp_Dir get_normal() const = 0;
 
     protected:
     /**
