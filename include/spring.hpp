@@ -34,6 +34,9 @@ class BoundaryElement;
 class Spring{
     public:
 
+    // ASSUMES CROSS SECTION IS PLANE
+    // ASSUMES this->normal == this->S.normal
+
     Spring(CrossSection cross_section, double thickness, gp_Dir normal, gp_Dir v, gp_Dir w, Material* mat, std::array<double, 3> L, std::array<double, 3> F, std::array<double, 3> curv, MeshElementFactory* elem, BoundaryMeshElementFactory* bound_elem, utils::ProblemType type);
     Spring(Spring&&) = default;
 
