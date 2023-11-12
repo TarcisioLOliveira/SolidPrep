@@ -270,23 +270,15 @@ void Spring::generate_mesh(std::vector<BoundaryElement>& boundary_elements){
             }
         }
     }
+
+    this->generate_boundary();
+
     this->boundary_nodes.resize(nodes.size());
-    long npos = 0;
     for(size_t i = 0; i < this->boundary_nodes.size(); ++i){
         auto nit = nodes.begin();
         this->boundary_nodes[i] = std::move(nodes.extract(nit).value());
-        // TEMPORARY
-        const double z = this->boundary_nodes[i]->point.Z();
-        const double y = this->boundary_nodes[i]->point.Y();
-        if(std::abs(z*z - 400) < 1e-7 || std::abs(y*y - 400) < 1e-7){
-            this->boundary_nodes[i]->u_pos[0] = -1;
-        } else {
-            this->boundary_nodes[i]->u_pos[0] = npos;
-            ++npos;
-        }
     }
     nodes.clear();
-    this->phi_size = npos;
 
     // Generate the proper mesh using the associated boundary elements
     this->submesh.resize(num_elems);
@@ -308,4 +300,49 @@ void Spring::generate_mesh(std::vector<BoundaryElement>& boundary_elements){
             ++cur_elem;
         }
     }
+
+    this->generate_boundary();
+
+    long npos = 0;
+    for(size_t i = 0; i < this->boundary_nodes.size(); ++i){
+        const auto it = std::find(this->line_nodes.begin(), this->line_nodes.end(), this->boundary_nodes[i].get());
+        if(it != this->line_nodes.end()){
+            this->boundary_nodes[i]->u_pos[0] = -1;
+        } else {
+            this->boundary_nodes[i]->u_pos[0] = npos;
+            ++npos;
+        }
+    }
+    nodes.clear();
+    this->phi_size = npos;
+}
+
+void Spring::generate_boundary() {
+    std::list<LineBoundary> bound_tmp;
+    const size_t N = (this->elem_info->get_shape_type() == Element::Shape::TRI) ? 3 : 4;
+
+    for(const auto& e : this->boundary_mesh){
+        for(size_t i = 0; i < N; ++i){
+            const size_t j = (i+1) % N;
+            const auto& n1 = e->nodes[i];
+            const auto& n2 = e->nodes[j];
+            // TODO: detect inner boundaries
+            LineBoundary b{{n1, n2}, false, e.get()};
+            auto it = std::find(bound_tmp.begin(), bound_tmp.end(), b);
+            if(it == bound_tmp.end()){
+                bound_tmp.push_back(b);
+            } else {
+                bound_tmp.erase(it);
+            }
+        }
+    }
+
+    this->line_bounds.resize(bound_tmp.size());
+    std::move(bound_tmp.begin(), bound_tmp.end(), this->line_bounds.begin());
+    std::set<const Node*> nodes_tmp;
+    for(const auto& l:this->line_bounds){
+        nodes_tmp.insert(l.edges.begin(), l.edges.end());
+    }
+    this->line_nodes.resize(nodes_tmp.size());
+    std::copy(nodes_tmp.begin(), nodes_tmp.end(), this->line_nodes.begin());
 }
