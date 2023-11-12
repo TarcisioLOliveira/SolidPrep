@@ -43,7 +43,7 @@ Spring::Spring(CrossSection cross_section, double thickness, gp_Dir normal, gp_D
     v(v), w(w), L(L), 
     type(type){
 
-    this->curvature = std::make_unique<Curvature>(mat, normal, v, w, rot2D, rot3D, this->boundary_elem_info, F[1], F[2], M[0]);
+    this->curvature = std::make_unique<Curvature>(mat, normal, v, w, rot2D, rot3D, this->boundary_elem_info, F[1], F[2], M[0], M[1], M[2]);
 }
 
 void Spring::apply_load_2D(std::vector<double>& load_vector) const{
@@ -77,7 +77,7 @@ void Spring::apply_load_2D(std::vector<double>& load_vector) const{
         const auto& e = this->submesh[j];
         const gp_Pnt c = e->get_centroid(bound_nodes_per_elem);
         const auto E = this->mat->beam_E_2D(c, this->normal);
-        S(0,1) = M[1]*E/this->EI[0];
+        S(0,1) = E*this->curv[0];
         Eigen::Matrix<double, N, N> Srot = this->rot2D*S*this->rot2D.transpose();
         for(size_t row = 0; row < N; ++row){
             for(size_t col = 0; col < N; ++col){
@@ -154,8 +154,8 @@ void Spring::apply_load_3D(std::vector<double>& load_vector) const{
 
         const gp_Pnt c = e->get_centroid(bound_nodes_per_elem);
         const auto E = this->mat->beam_E_3D(c, this->normal);
-        S(0,1) = -M[2]*E/this->EI[1];
-        S(0,2) =  M[1]*E/this->EI[0];
+        S(0,1) = E*this->curv[0];
+        S(0,2) = E*this->curv[1];
         this->curvature->get_shear_in_3D(b.get(), t_uv, t_uw);
         Eigen::Vector<double, N> F0{this->F[0]/A, -t_uv, -t_uw};
         Eigen::Vector<double, N> Fr = this->rot3D*F0;

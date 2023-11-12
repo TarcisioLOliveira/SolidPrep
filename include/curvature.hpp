@@ -32,12 +32,13 @@
 
 class Curvature{
     public:
-    Curvature(const Material* mat, gp_Dir u, gp_Dir v, gp_Dir w, Eigen::Matrix<double, 2, 2> rot2D, Eigen::Matrix<double, 3, 3> rot3D, const BoundaryMeshElementFactory* elem_info, double V_v, double V_w, double M_u);
+
+    Curvature(const Material* mat, gp_Dir u, gp_Dir v, gp_Dir w, Eigen::Matrix<double, 2, 2> rot2D, Eigen::Matrix<double, 3, 3> rot3D, const BoundaryMeshElementFactory* elem_info, double V_v, double V_w, double M_u, double M_v, double M_w);
 
     void generate_curvature_3D(const std::vector<std::unique_ptr<BoundaryMeshElement>>& boundary_mesh, size_t phi_size);
 
-    inline std::array<double, 2> get_EI() const{
-        return {EI_v, EI_w};
+    inline std::array<double, 2> get_curvatures() const{
+        return {curv_v, curv_w};
     }
     inline gp_Pnt get_center() const{
         return gp_Pnt(0, c_v, c_w);
@@ -51,11 +52,12 @@ class Curvature{
     const Eigen::Matrix<double, 3, 3> rot3D;
     const BoundaryMeshElementFactory* elem_info;
     const double V_v, V_w;
-    const double M_u;
+    const double M_u, M_v, M_w;
 
     double EA;
     double EI_v;
     double EI_w;
+    double EI_vw;
     double c_v, c_w;
     double curv_v;
     double curv_w;
@@ -87,6 +89,11 @@ class Curvature{
     inline double make_EI_w_base_3D(const gp_Pnt& p, const gp_Pnt& px) const{
         const double dy = px.Y() - c_v;
         return this->mat->beam_E_3D(p, this->u)*dy*dy;
+    }
+    inline double make_EI_vw_base_3D(const gp_Pnt& p, const gp_Pnt& px) const{
+        const double dy = px.Y() - c_v;
+        const double dz = px.Z() - c_w;
+        return this->mat->beam_E_3D(p, this->u)*dy*dz;
     }
 };
 

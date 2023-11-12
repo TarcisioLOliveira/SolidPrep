@@ -64,7 +64,7 @@ class Spring{
         this->generate_mesh(boundary_elements);
         this->curvature->generate_curvature_3D(this->boundary_mesh, this->phi_size);
 
-        this->EI = this->curvature->get_EI();
+        this->curv = this->curvature->get_curvatures();
         this->center = this->curvature->get_center();
     }
 
@@ -91,7 +91,7 @@ class Spring{
     const std::array<double, 3> L;
     const utils::ProblemType type;
 
-    std::array<double, 2> EI;
+    std::array<double, 2> curv;
     gp_Pnt center;
     size_t phi_size;
 

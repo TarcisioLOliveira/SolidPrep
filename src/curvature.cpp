@@ -19,15 +19,18 @@
  */
 
 #include "curvature.hpp"
+#include <Eigen/Dense>
 #include "logger.hpp"
 #include "utils/gauss_legendre.hpp"
-#include <Eigen/src/Core/Matrix.h>
 
-Curvature::Curvature(const Material* mat, gp_Dir u, gp_Dir v, gp_Dir w, Eigen::Matrix<double, 2, 2> rot2D, Eigen::Matrix<double, 3, 3> rot3D, const BoundaryMeshElementFactory* elem_info, double V_v, double V_w, double M_u):
+Curvature::Curvature(const Material* mat, gp_Dir u, gp_Dir v, gp_Dir w, Eigen::Matrix<double, 2, 2> rot2D, Eigen::Matrix<double, 3, 3> rot3D, const BoundaryMeshElementFactory* elem_info, double V_v, double V_w, double M_u, double M_v, double M_w):
     mat(mat), u(u), v(v), w(w),
     rot2D(rot2D), rot3D(rot3D), 
     elem_info(elem_info),
-    V_v(V_v), V_w(V_w), M_u(M_u)
+    V_v(V_v), V_w(V_w), 
+    M_u(M_u), 
+    M_v(M_v),
+    M_w(M_w)
 {
 
 }
@@ -55,6 +58,10 @@ void Curvature::generate_curvature_3D(const std::vector<std::unique_ptr<Boundary
         [this](const gp_Pnt& p, const gp_Pnt& px)->double{
             return this->make_EI_w_base_3D(p, px);
         };
+    const auto fn_EI_vw =
+        [this](const gp_Pnt& p, const gp_Pnt& px)->double{
+            return this->make_EI_vw_base_3D(p, px);
+        };
 
     this->EA = this->integrate_surface_3D(boundary_mesh, fn_EA);
     const double EA_v = this->integrate_surface_3D(boundary_mesh, fn_EA_v);
@@ -63,12 +70,22 @@ void Curvature::generate_curvature_3D(const std::vector<std::unique_ptr<Boundary
     this->c_w = EA_w/this->EA;
     this->EI_v = this->integrate_surface_3D(boundary_mesh, fn_EI_v);
     this->EI_w = this->integrate_surface_3D(boundary_mesh, fn_EI_w);
+    this->EI_vw = this->integrate_surface_3D(boundary_mesh, fn_EI_vw);
     logger::quick_log("A: ", EA/180000);
     logger::quick_log("EA: ", EA);
     logger::quick_log("c_v: ", c_v);
     logger::quick_log("c_w: ", c_w);
     logger::quick_log("EI_v", EI_v/180000);
     logger::quick_log("EI_w", EI_w/180000);
+    logger::quick_log("EI_vw", EI_vw/180000);
+
+    const Eigen::Vector<double, 2> Mv{M_v, M_w};
+    const Eigen::Matrix<double, 2, 2> EI{{ EI_vw,  EI_w},
+                                         {-EI_v, -EI_vw}};
+
+    const Eigen::Vector<double, 2> cv = EI.fullPivLu().solve(Mv);
+    this->curv_v = cv[0];
+    this->curv_w = cv[1];
 
     this->phi_torsion.resize(phi_size,0);
     this->phi_shear.resize(phi_size,0);
