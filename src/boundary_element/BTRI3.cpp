@@ -97,4 +97,23 @@ Eigen::VectorXd BTRI3::grad_1dof(const gp_Pnt& p, const std::vector<double>& phi
     return this->dN_mat_1dof()*phiv;
 };
 
+Eigen::VectorXd BTRI3::source_1dof(const Eigen::Vector<double, 3>& v) const{
+    const auto& gsi = utils::GaussLegendreTri<2>::get();
+    Eigen::Vector<double, 3>  result{0, 0, 0};
+    for(auto it = gsi.begin(); it < gsi.end(); ++it){
+        const gp_Pnt p = this->GS_point(it->a, it->b, it->c);
+        // CENTER
+        Eigen::Vector<double, 3> X{p.X(), p.Y(), p.Z()};
+        const auto NN = this->N_mat_1dof(p);
+        result += it->w*NN*(v.transpose()*X);
+    }
+
+    return delta*result;
+}
+Eigen::VectorXd BTRI3::source_grad_1dof(const Eigen::VectorXd& v) const{
+    const auto B = this->dN_mat_1dof();
+
+    return delta*B.transpose()*v;
+}
+
 }

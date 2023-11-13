@@ -571,6 +571,22 @@ class BoundaryMeshElement : public Element{
     virtual Eigen::VectorXd source_1dof() const = 0;
 
     /**
+     * Returns a 1 degree of freedom source vector.
+     *
+     * @param v Linear, position-based function (parameters only).
+     *
+     * @return source matrix.
+     */
+    virtual Eigen::VectorXd source_1dof(const Eigen::Vector<double, 3>& v) const = 0;
+
+    /**
+     * Returns a 1 degree of freedom source gradient vector.
+     *
+     * @return source matrix.
+     */
+    virtual Eigen::VectorXd source_grad_1dof(const Eigen::VectorXd& v) const = 0;
+
+    /**
      * Returns the gradient at point p for 1 dof field.
      *
      * @param p Point to be measured.

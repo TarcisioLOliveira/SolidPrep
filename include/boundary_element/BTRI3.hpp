@@ -54,6 +54,8 @@ class BTRI3 : public BoundaryMeshElement{
     virtual Eigen::MatrixXd advection_1dof(const Eigen::VectorXd& v) const override;
     virtual Eigen::MatrixXd absorption_1dof() const override;
     virtual Eigen::VectorXd source_1dof() const override;
+    virtual Eigen::VectorXd source_1dof(const Eigen::Vector<double, 3>& v) const override;
+    virtual Eigen::VectorXd source_grad_1dof(const Eigen::VectorXd& v) const override;
 
     virtual Eigen::VectorXd grad_1dof(const gp_Pnt& p, const std::vector<double>& phi) const override;
 
