@@ -157,7 +157,7 @@ void Spring::apply_load_3D(std::vector<double>& load_vector) const{
         S(0,1) = E*this->curv[0];
         S(0,2) = E*this->curv[1];
         this->curvature->get_shear_in_3D(b.get(), t_uv, t_uw);
-        Eigen::Vector<double, N> F0{this->F[0]/A, -t_uv, -t_uw};
+        Eigen::Vector<double, N> F0{this->F[0]/A, t_uv, t_uw};
         Eigen::Vector<double, N> Fr = this->rot3D*F0;
         std::vector<double> F{Fr[0], Fr[1], Fr[2]};
         
@@ -257,16 +257,14 @@ void Spring::generate_mesh(std::vector<BoundaryElement>& boundary_elements){
 
     // Copy and transform necessary nodes
     std::set<std::unique_ptr<MeshNode>, PointSort> nodes;
-    size_t id = 0;
     for(size_t i = 0; i < boundary_elements.size(); ++i){
         if(apply_spring[i]){
             const auto& b = boundary_elements[i];
             for(size_t j = 0; j < bound_nodes_per_elem; ++j){
                 const auto& n = b.nodes[j];
                 gp_Pnt p = utils::change_point(n->point, this->rot3D.transpose());
-                std::unique_ptr<MeshNode> node(std::make_unique<MeshNode>(p, id, 1));
+                std::unique_ptr<MeshNode> node(std::make_unique<MeshNode>(p, 0, 1));
                 nodes.insert(std::move(node));
-                ++id;
             }
         }
     }
@@ -304,6 +302,7 @@ void Spring::generate_mesh(std::vector<BoundaryElement>& boundary_elements){
     this->generate_boundary();
 
     long npos = 0;
+    long id = 0;
     for(size_t i = 0; i < this->boundary_nodes.size(); ++i){
         const auto it = std::find(this->line_nodes.begin(), this->line_nodes.end(), this->boundary_nodes[i].get());
         if(it != this->line_nodes.end()){
@@ -312,6 +311,8 @@ void Spring::generate_mesh(std::vector<BoundaryElement>& boundary_elements){
             this->boundary_nodes[i]->u_pos[0] = npos;
             ++npos;
         }
+        this->boundary_nodes[i]->id = id;
+        ++id;
     }
     nodes.clear();
     this->phi_size = npos;

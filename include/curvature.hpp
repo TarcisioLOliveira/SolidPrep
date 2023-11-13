@@ -35,10 +35,13 @@ class Curvature{
 
     Curvature(const Material* mat, gp_Dir u, gp_Dir v, gp_Dir w, Eigen::Matrix<double, 2, 2> rot2D, Eigen::Matrix<double, 3, 3> rot3D, const BoundaryMeshElementFactory* elem_info, double V_v, double V_w, double M_u, double M_v, double M_w);
 
-    void generate_curvature_3D(const std::vector<std::unique_ptr<BoundaryMeshElement>>& boundary_mesh, size_t phi_size);
+    void generate_curvature_3D(const std::vector<std::unique_ptr<BoundaryMeshElement>>& boundary_mesh, size_t phi_size, size_t psi_size);
 
     inline std::array<double, 2> get_curvatures() const{
         return {curv_v, curv_w};
+    }
+    inline std::array<double, 2> get_curvatures_dx() const{
+        return {dcurv_v, dcurv_w};
     }
     inline gp_Pnt get_center() const{
         return gp_Pnt(0, c_v, c_w);
@@ -61,14 +64,15 @@ class Curvature{
     double c_v, c_w;
     double curv_v;
     double curv_w;
+    double dcurv_v;
+    double dcurv_w;
 
     double theta;
     std::vector<double> phi_torsion;
-    std::vector<double> phi_shear;
-    Eigen::SparseMatrix<double> M;
-    Eigen::SimplicialLLT<Eigen::SparseMatrix<double>, Eigen::Lower, Eigen::COLAMDOrdering<int>> solver;
+    std::vector<double> psi_shear;
 
     void calculate_torsion(const std::vector<std::unique_ptr<BoundaryMeshElement>>& boundary_mesh);
+    void calculate_shear_3D(const std::vector<std::unique_ptr<BoundaryMeshElement>>& boundary_mesh);
 
     double integrate_surface_3D(const std::vector<std::unique_ptr<BoundaryMeshElement>>& boundary_mesh, const std::function<double(const gp_Pnt&, const gp_Pnt& px)>& fn) const;
     double GS_tri(const std::array<gp_Pnt, 3>& p, const std::array<gp_Pnt, 3>& px, const std::function<double(const gp_Pnt&, const gp_Pnt& px)>& fn) const;
