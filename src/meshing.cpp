@@ -889,6 +889,7 @@ std::vector<ElementShape> Meshing::generate_element_shapes(
     const size_t N0 = elem_node_tags.size()/nodes_per_elem;
     for(size_t i = 0; i < N0; ++i){
         bool found_all_nodes = true;
+        bool all_nodes_equal = true;
         for(size_t j = 0; j < nodes_per_elem; ++j){
             size_t n = elem_node_tags[i*nodes_per_elem + j];
             auto pos = id_map.find(n);
@@ -898,8 +899,11 @@ std::vector<ElementShape> Meshing::generate_element_shapes(
                 found_all_nodes = false;
                 break;
             }
+            if(j > 0){
+                all_nodes_equal &= id_map.at(n) == id_map.at(elem_tmp[j-1]);
+            }
         }
-        if(found_all_nodes){
+        if(found_all_nodes && !all_nodes_equal){
             filtered_tags.insert(filtered_tags.end(), elem_tmp.begin(), elem_tmp.end());
         }
     }
@@ -962,16 +966,18 @@ std::vector<size_t> Meshing::find_duplicates(std::unordered_map<size_t, MeshNode
     // alternative.
     std::sort(this->node_list.begin(), this->node_list.end(), point_sort);
 
+    double eps = Precision::Confusion();
     logger::quick_log(node_list.size());
     auto i = this->node_list.begin();
     while(i < this->node_list.end()-1){
-        if((*i)->point.IsEqual((*(i+1))->point, Precision::Confusion())){
+        if((*i)->point.IsEqual((*(i+1))->point, eps)){
             id_map[(*(i+1))->id] = id_map[(*i)->id];
             auto bn = std::find(this->boundary_node_list.begin(), this->boundary_node_list.end(), (i+1)->get());
             if(bn != this->boundary_node_list.end()){
                 this->boundary_node_list.erase(bn);
             }
-            this->node_list.erase(i+1);
+            i = this->node_list.erase(i+1);
+            --i;
         } else {
             ++i;
         }
