@@ -83,10 +83,11 @@ std::vector<double> PETScPCG::calculate_displacements(const Meshing* const mesh,
         KSPCreate(PETSC_COMM_WORLD, &this->ksp);
         KSPSetType(this->ksp, KSPCG);
         KSPCGSetType(this->ksp, KSP_CG_HERMITIAN);
-        KSPSetInitialGuessNonzero(this->ksp, PETSC_TRUE);
+        KSPSetInitialGuessNonzero(this->ksp, PETSC_FALSE);
 
         KSPGetPC(this->ksp, &this->pc);
-        PCSetType(this->pc, PCGAMG);
+        PCFactorSetUseInPlace(this->pc, PETSC_TRUE);
+        PCSetType(this->pc, PCJACOBI);
 
         this->first_time = false;
     }
