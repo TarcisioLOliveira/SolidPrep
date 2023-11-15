@@ -118,12 +118,13 @@ std::unordered_map<size_t, MeshNode*> Gmsh::gmsh_meshing(bool has_condition_insi
     gmsh::initialize();
 
     gmsh::model::add("base");
+    gmsh::option::setNumber("Geometry.AutoCoherence", 2);
 
     gmsh::vectorpair vec;
     gmsh::model::occ::importShapesNativePointer(static_cast<const void*>(&sh), vec);
     gmsh::model::occ::synchronize();
 
-    gmsh::option::setNumber("Mesh.MeshSizeMin", 0);
+    gmsh::option::setNumber("Mesh.MeshSizeMin", 0.5*this->size);
     gmsh::option::setNumber("Mesh.MeshSizeMax", this->size);
 
     gmsh::option::setNumber("Mesh.Algorithm", this->algorithm2D);
@@ -131,8 +132,16 @@ std::unordered_map<size_t, MeshNode*> Gmsh::gmsh_meshing(bool has_condition_insi
 
     gmsh::option::setNumber("Mesh.ElementOrder", this->elem_info->get_element_order());
     gmsh::option::setNumber("Mesh.Optimize", 1);
+    gmsh::option::setNumber("Mesh.OptimizeThreshold", 0.5);
+    gmsh::option::setNumber("Geometry.Tolerance", 1e-2);
+    gmsh::option::setNumber("Mesh.Smoothing", 100);
+    //gmsh::option::setNumber("Mesh.RefineSteps", 50);
 
-    gmsh::option::setNumber("Mesh.AngleToleranceFacetOverlap", 0.00001);
+    gmsh::option::setNumber("Mesh.AngleToleranceFacetOverlap", 1e-10);//0.00001);
+    gmsh::option::setNumber("Mesh.MeshSizeExtendFromBoundary", 0);
+    gmsh::option::setNumber("Mesh.MeshSizeFromPoints", 0);
+    gmsh::option::setNumber("Mesh.MeshSizeFromCurvature", 0);
+    gmsh::option::setNumber("Mesh.ToleranceInitialDelaunay", 1e-2);
 
     // Quad/hex recombination
     auto problem_type = this->elem_info->get_problem_type();
