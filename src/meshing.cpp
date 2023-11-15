@@ -82,8 +82,8 @@ void Meshing::generate_elements(const TopoDS_Shape& shape,
             n->u_pos[j] = 0;
         }
     }
-    logger::quick_log("supports");
     if(supports.size() > 0){
+        logger::quick_log("supports");
         this->apply_supports(supports);
     }
 
@@ -105,11 +105,11 @@ void Meshing::generate_elements(const TopoDS_Shape& shape,
     logger::quick_log("loads");
     this->generate_load_vector(shape, forces);
 
-    logger::quick_log("springs");
     if(springs.size() > 0){
+        logger::quick_log("springs");
         this->apply_springs(springs);
-        this->springs = &springs;
     }
+    this->springs = &springs;
 
     logger::quick_log("Done.");
 }
