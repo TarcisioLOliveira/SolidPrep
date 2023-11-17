@@ -125,14 +125,13 @@ void Curvature::calculate_torsion(const std::vector<std::unique_ptr<BoundaryMesh
     b.resize(phi_size);
     b.fill(0);
 
-    Eigen::Matrix<double, 2, 2> G{{0,0},{0,0}};
+    Eigen::Matrix<double, 2, 2> G{{1,0},
+                                  {0,1}};
 
     for(const auto& e:boundary_mesh){
-        const auto N = 2*e->source_1dof();
         gp_Pnt c = utils::change_point(e->get_centroid(), this->rot3D);
         const auto EG = this->mat->beam_EG_3D(c, this->u);
-        G(0,0) = 1.0/EG[2]; // G_uw
-        G(1,1) = 1.0/EG[1]; // G_uv
+        const auto N = (EG[1] + EG[2])*e->source_1dof();
 
         const auto M_e = e->diffusion_1dof(G);
 
@@ -146,7 +145,7 @@ void Curvature::calculate_torsion(const std::vector<std::unique_ptr<BoundaryMesh
                 if(id2 < 0){
                     continue;
                 }
-                if(std::abs(M_e(i,j)) > 1e-14){
+                if(std::abs(M_e(i,j)) > 0){
                     M.coeffRef(id1, id2) += M_e(i, j);
                 }
             }
