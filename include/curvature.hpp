@@ -29,13 +29,14 @@
 #include "material.hpp"
 #include "element.hpp"
 #include "element_factory.hpp"
+#include "utils/boundary_nullifier.hpp"
 
 class Curvature{
     public:
 
     Curvature(const Material* mat, gp_Dir u, gp_Dir v, gp_Dir w, Eigen::Matrix<double, 2, 2> rot2D, Eigen::Matrix<double, 3, 3> rot3D, const BoundaryMeshElementFactory* elem_info, double V_v, double V_w, double M_u, double M_v, double M_w);
 
-    void generate_curvature_3D(const std::vector<std::unique_ptr<BoundaryMeshElement>>& boundary_mesh, size_t phi_size, size_t psi_size);
+    void generate_curvature_3D(const std::vector<std::unique_ptr<BoundaryMeshElement>>& boundary_mesh, const std::vector<utils::LineBoundary>& line_bound, size_t phi_size, size_t psi_size);
 
     inline std::array<double, 2> get_curvatures() const{
         return {curv_v, curv_w};
@@ -56,6 +57,7 @@ class Curvature{
     const BoundaryMeshElementFactory* elem_info;
     const double V_v, V_w;
     const double M_u, M_v, M_w;
+    const double line_mesh_size = 0.5;
 
     double EA;
     double EI_v;
@@ -72,7 +74,7 @@ class Curvature{
     std::vector<double> psi_shear;
 
     void calculate_torsion(const std::vector<std::unique_ptr<BoundaryMeshElement>>& boundary_mesh);
-    void calculate_shear_3D(const std::vector<std::unique_ptr<BoundaryMeshElement>>& boundary_mesh);
+    void calculate_shear_3D(const std::vector<std::unique_ptr<BoundaryMeshElement>>& boundary_mesh, const std::vector<utils::LineBoundary>& line_bound);
 
     double integrate_surface_3D(const std::vector<std::unique_ptr<BoundaryMeshElement>>& boundary_mesh, const std::function<double(const gp_Pnt&, const gp_Pnt& px)>& fn) const;
     double GS_tri(const std::array<gp_Pnt, 3>& p, const std::array<gp_Pnt, 3>& px, const std::function<double(const gp_Pnt&, const gp_Pnt& px)>& fn) const;

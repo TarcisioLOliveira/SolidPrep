@@ -51,7 +51,7 @@ class Spring{
 
     void calculate_curvature(std::vector<BoundaryElement>& boundary_elements){
         this->generate_mesh(boundary_elements);
-        this->curvature->generate_curvature_3D(this->boundary_mesh, this->phi_size, this->boundary_nodes.size());
+        this->curvature->generate_curvature_3D(this->boundary_mesh, this->line_bounds, this->phi_size, this->boundary_nodes.size());
 
         this->curv = this->curvature->get_curvatures();
         this->center = this->curvature->get_center();

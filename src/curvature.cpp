@@ -20,8 +20,10 @@
 
 #include "curvature.hpp"
 #include <Eigen/Dense>
+#include <vector>
 #include "logger.hpp"
 #include "utils/gauss_legendre.hpp"
+#include "utils/boundary_nullifier.hpp"
 
 Curvature::Curvature(const Material* mat, gp_Dir u, gp_Dir v, gp_Dir w, Eigen::Matrix<double, 2, 2> rot2D, Eigen::Matrix<double, 3, 3> rot3D, const BoundaryMeshElementFactory* elem_info, double V_v, double V_w, double M_u, double M_v, double M_w):
     mat(mat), u(u), v(v), w(w),
@@ -35,7 +37,7 @@ Curvature::Curvature(const Material* mat, gp_Dir u, gp_Dir v, gp_Dir w, Eigen::M
 
 }
 
-void Curvature::generate_curvature_3D(const std::vector<std::unique_ptr<BoundaryMeshElement>>& boundary_mesh, size_t phi_size, size_t psi_size){
+void Curvature::generate_curvature_3D(const std::vector<std::unique_ptr<BoundaryMeshElement>>& boundary_mesh, const std::vector<utils::LineBoundary>& line_bound, size_t phi_size, size_t psi_size){
     std::array<gp_Pnt, 3> points;
 
     const auto fn_EA =
@@ -98,7 +100,7 @@ void Curvature::generate_curvature_3D(const std::vector<std::unique_ptr<Boundary
         this->calculate_torsion(boundary_mesh);
     }
     if(this->V_v != 0 || this->V_w != 0){
-        this->calculate_shear_3D(boundary_mesh);
+        this->calculate_shear_3D(boundary_mesh, line_bound);
     }
 }
 
@@ -183,7 +185,11 @@ void Curvature::calculate_torsion(const std::vector<std::unique_ptr<BoundaryMesh
     this->theta = -this->M_u/(2*phi_int);
 }
 
-void Curvature::calculate_shear_3D(const std::vector<std::unique_ptr<BoundaryMeshElement>>& boundary_mesh){
+void Curvature::calculate_shear_3D(const std::vector<std::unique_ptr<BoundaryMeshElement>>& boundary_mesh, const std::vector<utils::LineBoundary>& line_bound){
+    
+    utils::BoundaryNullifier<1, 2> bn1(line_bound, this->mat, this->line_mesh_size, gp_Pnt(0, c_v, c_w));
+    utils::BoundaryNullifier<2, 1> bn2(line_bound, this->mat, this->line_mesh_size, gp_Pnt(0, c_v, c_w));
+    /*
     const size_t num_nodes = this->elem_info->get_nodes_per_element();
 
     const size_t psi_size = this->psi_shear.size();
@@ -242,6 +248,7 @@ void Curvature::calculate_shear_3D(const std::vector<std::unique_ptr<BoundaryMes
     Eigen::VectorXd psi_tmp = solver.solve(b);
 
     std::copy(psi_tmp.begin(), psi_tmp.end(), this->psi_shear.begin());
+    */
 }
 
 double Curvature::integrate_surface_3D(const std::vector<std::unique_ptr<BoundaryMeshElement>>& boundary_mesh, const std::function<double(const gp_Pnt&, const gp_Pnt&)>& fn) const{
