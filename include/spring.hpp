@@ -28,6 +28,7 @@
 #include "utils.hpp"
 #include "cross_section.hpp"
 #include "curvature.hpp"
+#include "utils/boundary_nullifier.hpp"
 
 class BoundaryElement;
 
@@ -36,18 +37,6 @@ class Spring{
 
     // ASSUMES CROSS SECTION IS PLANE
     // ASSUMES this->normal == this->S.normal
-
-    class LineBoundary{
-        public:
-        std::array<const Node*, 2> edges;
-        bool inner;
-        BoundaryMeshElement* parent;
-
-        bool operator==(const LineBoundary& l) const{
-            return (this->edges[0]->point.IsEqual(l.edges[0]->point, Precision::Confusion()) && this->edges[1]->point.IsEqual(l.edges[1]->point, Precision::Confusion())) ||
-                   (this->edges[1]->point.IsEqual(l.edges[0]->point, Precision::Confusion()) && this->edges[0]->point.IsEqual(l.edges[1]->point, Precision::Confusion()));
-        }
-    };
 
     Spring(CrossSection cross_section, double thickness, gp_Dir normal, gp_Dir v, gp_Dir w, Material* mat, std::array<double, 3> L, std::array<double, 3> F, std::array<double, 3> curv, MeshElementFactory* elem, BoundaryMeshElementFactory* bound_elem, utils::ProblemType type);
     Spring(Spring&&) = default;
@@ -98,7 +87,7 @@ class Spring{
     std::vector<std::unique_ptr<MeshNode>> boundary_nodes;
     std::vector<std::unique_ptr<BoundaryMeshElement>> boundary_mesh;
 
-    std::vector<LineBoundary> line_bounds;
+    std::vector<utils::LineBoundary> line_bounds;
     std::vector<const Node*> line_nodes;
 
     void generate_mesh(std::vector<BoundaryElement>& boundary_elements);

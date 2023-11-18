@@ -319,7 +319,7 @@ void Spring::generate_mesh(std::vector<BoundaryElement>& boundary_elements){
 }
 
 void Spring::generate_boundary() {
-    std::list<LineBoundary> bound_tmp;
+    std::list<utils::LineBoundary> bound_tmp;
     const size_t N = (this->elem_info->get_shape_type() == Element::Shape::TRI) ? 3 : 4;
 
     for(const auto& e : this->boundary_mesh){
@@ -328,7 +328,7 @@ void Spring::generate_boundary() {
             const auto& n1 = e->nodes[i];
             const auto& n2 = e->nodes[j];
             // TODO: detect inner boundaries
-            LineBoundary b{{n1, n2}, false, e.get()};
+            utils::LineBoundary b{{n1, n2}, false, e.get()};
             auto it = std::find(bound_tmp.begin(), bound_tmp.end(), b);
             if(it == bound_tmp.end()){
                 bound_tmp.push_back(b);
