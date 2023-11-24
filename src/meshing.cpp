@@ -362,17 +362,50 @@ void Meshing::generate_load_vector(const TopoDS_Shape& shape,
             logger::quick_log(F);
         }
     } else if(this->elem_info->get_problem_type() == utils::PROBLEM_TYPE_3D){
+        const auto A_tri = [](const MeshNode** const nodes)->double{
+            const gp_Vec v1(nodes[0]->point, nodes[1]->point);
+            const gp_Vec v2(nodes[0]->point, nodes[2]->point);
+
+            return 0.5*v1.Crossed(v2).Magnitude();
+        };
+        const auto A_quad = [](const MeshNode** const nodes)->double{
+            const gp_Vec v1(nodes[0]->point, nodes[1]->point);
+            const gp_Vec v2(nodes[0]->point, nodes[3]->point);
+
+            const gp_Vec v3(nodes[2]->point, nodes[1]->point);
+            const gp_Vec v4(nodes[2]->point, nodes[3]->point);
+
+            return 0.5*(v1.Crossed(v2).Magnitude() + v3.Crossed(v4).Magnitude());
+        };
         double F = 0;
         for(auto& f : forces){
             double norm = f.vec.Magnitude()/f.S.get_area();
             gp_Dir dir(f.vec);
 
             std::vector<bool> apply_force(this->boundary_elements.size());
-            #pragma omp parallel for
-            for(size_t i = 0; i < apply_force.size(); ++i){
-                const auto& e = this->boundary_elements[i];
-                apply_force[i] = f.S.is_inside(e.get_centroid(Nb));
+            double A = 0;
+            if(this->elem_info->get_shape_type() == Element::Shape::TRI){
+                #pragma omp parallel for reduction(+:A)
+                for(size_t i = 0; i < apply_force.size(); ++i){
+                    const auto& e = this->boundary_elements[i];
+                    apply_force[i] = f.S.is_inside(e.get_centroid(Nb));
+                    if(apply_force[i]){
+                        A += A_tri(e.nodes);
+                    }
+                }
+            } else if(this->elem_info->get_shape_type() == Element::Shape::QUAD){
+                #pragma omp parallel for reduction(+:A)
+                for(size_t i = 0; i < apply_force.size(); ++i){
+                    const auto& e = this->boundary_elements[i];
+                    apply_force[i] = f.S.is_inside(e.get_centroid(Nb));
+                    if(apply_force[i]){
+                        A += A_quad(e.nodes);
+                    }
+                }
             }
+
+            double norm = f.vec.Magnitude()/A;
+            gp_Dir dir(f.vec);
 
             for(size_t i = 0; i < apply_force.size(); ++i){
                 if(apply_force[i]){
