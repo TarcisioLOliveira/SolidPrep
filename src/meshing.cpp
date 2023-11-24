@@ -379,8 +379,9 @@ void Meshing::generate_load_vector(const TopoDS_Shape& shape,
         };
         double F = 0;
         for(auto& f : forces){
-            double norm = f.vec.Magnitude()/f.S.get_area();
-            gp_Dir dir(f.vec);
+            if(f.vec.Magnitude() < Precision::Confusion()){
+                continue;
+            }
 
             std::vector<bool> apply_force(this->boundary_elements.size());
             double A = 0;
