@@ -28,6 +28,7 @@ namespace utils{
 
 class LIN3B{
     public:
+    LIN3B() = default;
     LIN3B(std::array<double, 3> Y);
 
     Eigen::Matrix<double, 3, 3> absorption() const;
