@@ -34,10 +34,10 @@ class LIN3B{
     Eigen::Matrix<double, 3, 3> absorption() const;
     Eigen::Vector<double, 3> source(std::function<double(double)> fn) const;
 
-    double N(double y, size_t i) const{
+    inline double N(double y, size_t i) const{
         return a[i] + b[i]*y + c[i]*y*y;
     }
-    double dN(double y, size_t i) const{
+    inline double dN(double y, size_t i) const{
         return b[i] + 2*c[i]*y;
     }
     std::array<double, 3> Y;
@@ -46,10 +46,10 @@ class LIN3B{
     double a[3], b[3], c[3];
     double len;
 
-    Eigen::Vector<double, 3> NN(double y) const{
+    inline Eigen::Vector<double, 3> NN(double y) const{
         return{N(y,0), N(y,1), N(y,2)};
     }
-    Eigen::Vector<double, 3> dNN(double y) const{
+    inline Eigen::Vector<double, 3> dNN(double y) const{
         return{dN(y,0), dN(y,1), dN(y,2)};
     }
 };
