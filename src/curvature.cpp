@@ -187,8 +187,8 @@ void Curvature::calculate_torsion(const std::vector<std::unique_ptr<BoundaryMesh
 
 void Curvature::calculate_shear_3D(const std::vector<std::unique_ptr<BoundaryMeshElement>>& boundary_mesh, const std::vector<utils::LineBoundary>& line_bound){
     
-    utils::BoundaryNullifier<1, 2> bn1(line_bound, this->mat, this->line_mesh_size, gp_Pnt(0, c_v, c_w));
-    utils::BoundaryNullifier<2, 1> bn2(line_bound, this->mat, this->line_mesh_size, gp_Pnt(0, c_v, c_w));
+    utils::BoundaryNullifier<1, 2> bn1(line_bound, this->line_mesh_size, gp_Pnt(0, c_v, c_w));
+    utils::BoundaryNullifier<2, 1> bn2(line_bound, this->line_mesh_size, gp_Pnt(0, c_v, c_w));
     /*
     const size_t num_nodes = this->elem_info->get_nodes_per_element();
 

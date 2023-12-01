@@ -54,7 +54,7 @@ class LineBoundary{
 template<size_t Y, size_t Z>
 class BoundaryNullifier{
     public:
-    BoundaryNullifier(std::vector<LineBoundary> bounds, const Material* mat, size_t mesh_size, gp_Pnt center);
+    BoundaryNullifier(std::vector<LineBoundary> bounds, double mesh_size, gp_Pnt center);
 
     inline double height(const gp_Pnt& p) const{
         return p.Coord(1+Y) - center.Coord(1+Y);
@@ -63,16 +63,30 @@ class BoundaryNullifier{
         return p.Coord(1+Z) - center.Coord(1+Z);
     }
 
+    inline double get_F(const gp_Pnt& p) const{
+        const double y = height(p);
+        const double z = width(p);
+
+        if(z >= 0){
+            return this->Fp.get(y);
+        } else {
+            return this->Fm.get(y);
+        }
+    }
+
     private:
     const gp_Pnt center;
     class F{
         public:
         F() = default;
-        F(const std::vector<gp_Pnt>& points, const Material* mat, size_t mesh_size);
+        F(const std::vector<gp_Pnt>& points, double mesh_size);
 
-        double operator()(double y) const;
+        double get(double y) const;
+        double get_derivative(double y) const;
 
         private:
+        double mesh_size;
+        double miny, maxy;
         std::vector<double> nodal_values;
         std::vector<LIN3B> mesh;
     } Fp, Fm;
@@ -98,7 +112,7 @@ class BoundaryNullifier{
 };
 
 template<size_t Y, size_t Z>
-BoundaryNullifier<Y, Z>::BoundaryNullifier(std::vector<LineBoundary> bounds, const Material* mat, size_t mesh_size, gp_Pnt center):
+BoundaryNullifier<Y, Z>::BoundaryNullifier(std::vector<LineBoundary> bounds, double mesh_size, gp_Pnt center):
     center(center){
 
     const auto Y_comp_pos = [&](const gp_Pnt& p1, const gp_Pnt p2)->bool{
@@ -163,14 +177,9 @@ BoundaryNullifier<Y, Z>::BoundaryNullifier(std::vector<LineBoundary> bounds, con
 
     std::sort(points_pos.begin(), points_pos.end(), Y_comp_pos);
     std::sort(points_neg.begin(), points_neg.end(), Y_comp_neg);
-    for(const auto& p:points_pos){
-        logger::quick_log(p.X(), p.Y(), p.Z());
-    }
-    logger::quick_log("");
-    for(const auto& p:points_neg){
-        logger::quick_log(p.X(), p.Y(), p.Z());
-    }
-    logger::quick_log("");
+
+    this->Fp = F(points_pos, mesh_size);
+    this->Fm = F(points_neg, mesh_size);
 }
 
 template<size_t Y, size_t Z>
@@ -195,6 +204,126 @@ void BoundaryNullifier<Y, Z>::order_boundary(std::vector<LineBoundary>& bounds) 
             }
         }
     }
+}
+
+template<size_t Y, size_t Z>
+BoundaryNullifier<Y, Z>::F::F(const std::vector<gp_Pnt>& points, double mesh_size):
+    mesh_size(mesh_size){
+
+    const auto equal = [](double y1, double y2)->bool{
+        return std::abs(y1 - y2) < Precision::Confusion();
+    };
+
+    const auto max_z_sqr = [&](size_t& i0, double y)->double{
+        double z_sqr = 0;
+        while(i0 < points.size()){
+            if(equal(points[i0].Y(), y)){
+                while(equal(points[i0].Y(), y)){
+                    const double z = points[i0].Z();
+                    if(z*z > z_sqr){
+                        z_sqr = z*z;
+                    }
+                    ++i0;
+                }
+                --i0;
+                break;
+            } else {
+                if(y > points[i0].Y() && y < points[i0+1].Y()){
+                    const double a = points[i0+1].Y() - points[i0].Y();
+                    if(!equal(a, 0)){
+                        // LINE INTERPOLATION
+                        const double x = (y - points[i0].Y())/a;
+                        const double z1 = points[i0].Z();
+                        const double z2 = points[i0+1].Z();
+                        const double z = (z2 - z1)*x + z1;
+                        z_sqr = z*z;
+                        break;
+                    }
+                } 
+                ++i0;
+            }
+        }
+        if(y > points.back().Y() || equal(points.back().Y(), y)){
+            const double z = points.back().Z();
+            z_sqr = z*z;
+        }
+        return z_sqr;
+    };
+
+    this->miny = points.front().Y();
+    this->maxy = points.back().Y();
+
+    double num_elem_tmp = (maxy - miny)/mesh_size;
+    size_t num_elem = 0;
+    if(equal(std::floor(num_elem_tmp), num_elem_tmp)){
+        num_elem = num_elem_tmp;
+    } else {
+        num_elem = num_elem_tmp + 1;
+    }
+    this->mesh.resize(num_elem);
+    this->nodal_values.resize(2*num_elem + 1);
+
+    double y3 = miny;
+    for(size_t i = 0; i < this->mesh.size(); ++i){
+        const double y1 = y3;
+        y3 = std::min(maxy, miny + mesh_size*(i+1));
+        const double y2 = (y1 + y3)/2;
+        this->mesh[i] = utils::LIN3B({y1, y2, y3});
+    }
+
+    size_t ip = 0;
+    size_t in = 0;
+    for(size_t i = 0; i < this->mesh.size(); ++i){
+        const double y1 = this->mesh[i].Y[0];
+        const double z1_sqr = max_z_sqr(ip, y1);
+        this->nodal_values[in] = z1_sqr;
+        ++in;
+
+        const double y2 = this->mesh[i].Y[1];
+        const double z2_sqr = max_z_sqr(ip, y2);
+        this->nodal_values[in] = z2_sqr;
+        ++in;
+    }
+}
+
+template<size_t Y, size_t Z>
+double BoundaryNullifier<Y,Z>::F::get(double y) const{
+    double result = 0;
+    int e_tmp = (y - miny)/mesh_size;
+    size_t e = 0;
+    if(e_tmp >= this->mesh.size()){
+        e = this->mesh.size() - 1;
+    } else if(e_tmp < 0){
+        e = 0;
+    } else {
+        e = e_tmp;
+    }
+    size_t n = 2*e;
+    for(size_t i = 0; i < 3; ++i){
+        result += this->nodal_values[n+i]*this->mesh[e].N(y, i);
+    }
+
+    return result;
+}
+
+template<size_t Y, size_t Z>
+double BoundaryNullifier<Y,Z>::F::get_derivative(double y) const{
+    double result = 0;
+    int e_tmp = (y - miny)/mesh_size;
+    size_t e = 0;
+    if(e_tmp >= this->mesh.size()){
+        e = this->mesh.size() - 1;
+    } else if(e_tmp < 0){
+        e = 0;
+    } else {
+        e = e_tmp;
+    }
+    size_t n = 2*e;
+    for(size_t i = 0; i < 3; ++i){
+        result += this->nodal_values[n+i]*this->mesh[e].dN(y, i);
+    }
+
+    return result;
 }
 
 }
