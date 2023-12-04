@@ -73,6 +73,16 @@ class BoundaryNullifier{
             return this->Fm.get(y);
         }
     }
+    inline double get_F_derivative(const gp_Pnt& p) const{
+        const double y = height(p);
+        const double z = width(p);
+
+        if(z >= 0){
+            return this->Fp.get_derivative(y);
+        } else {
+            return this->Fm.get_derivative(y);
+        }
+    }
 
     private:
     const gp_Pnt center;
