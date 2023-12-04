@@ -144,6 +144,7 @@ void Spring::apply_load_3D(std::vector<double>& load_vector) const{
 
     double t_uv = 0, t_uw = 0;
 
+    double FF = 0;
     for(size_t j = 0; j < submesh.size(); ++j){
         const auto& e = submesh[j];
         const auto& b = this->boundary_mesh[j];
@@ -170,9 +171,9 @@ void Spring::apply_load_3D(std::vector<double>& load_vector) const{
 
         const auto Rf = e->parent->get_Rf(Sn, F, this->center, this->thickness, points);
         //logger::quick_log(fe);
-        //for(auto& ff:fe){
-        //    F += ff;
-        //}
+        for(auto& ff:Rf){
+            FF += ff;
+        }
         for(size_t i = 0; i < nodes_per_elem; ++i){
             for(size_t j = 0; j < dof; ++j){
                 const auto n = e->parent->nodes[i];
@@ -182,6 +183,7 @@ void Spring::apply_load_3D(std::vector<double>& load_vector) const{
             }
         }
     }
+    logger::quick_log(FF);
 }
 
 std::vector<double> Spring::get_K(const gp_Pnt& p) const{

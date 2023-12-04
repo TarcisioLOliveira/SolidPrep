@@ -94,7 +94,7 @@ void Curvature::generate_curvature_3D(const std::vector<std::unique_ptr<Boundary
     this->dcurv_w = dcv[1];
 
     this->phi_torsion.resize(phi_size,0);
-    this->psi_shear.resize(psi_size,0);
+    this->psi_shear.resize(phi_size,0);
 
     if(this->M_u != 0){
         this->calculate_torsion(boundary_mesh);
@@ -112,8 +112,12 @@ void Curvature::get_shear_in_3D(const BoundaryMeshElement* e, double& t_uv, doub
     t_uw =  grad[0];
     grad = e->grad_1dof(c, this->psi_shear);
     const auto EG = this->mat->beam_EG_2D(c, this->u);
-    t_uv += EG[1]*(grad[0])/2;
-    t_uw += EG[2]*(grad[1])/2;
+    const double w1 = this->bn1.width(c);
+    const double f1 = this->bn1.get_F(c);
+    const double w2 = this->bn2.width(c);
+    const double f2 = this->bn2.get_F(c);
+    t_uv += -grad[1] - EG[0]*this->dcurv_w*(w2*w2 - f2)/2;
+    t_uw +=  grad[0] + EG[0]*this->dcurv_v*(w1*w1 - f1)/2;
 }
 
 void Curvature::calculate_torsion(const std::vector<std::unique_ptr<BoundaryMeshElement>>& boundary_mesh){
@@ -187,9 +191,9 @@ void Curvature::calculate_torsion(const std::vector<std::unique_ptr<BoundaryMesh
 
 void Curvature::calculate_shear_3D(const std::vector<std::unique_ptr<BoundaryMeshElement>>& boundary_mesh, const std::vector<utils::LineBoundary>& line_bound){
     
-    utils::BoundaryNullifier<1, 2> bn1(line_bound, this->line_mesh_size, gp_Pnt(0, c_v, c_w));
-    utils::BoundaryNullifier<2, 1> bn2(line_bound, this->line_mesh_size, gp_Pnt(0, c_v, c_w));
-    /*
+    this->bn1 = utils::BoundaryNullifier<1, 2>(line_bound, this->line_mesh_size, gp_Pnt(0, c_v, c_w));
+    this->bn2 = utils::BoundaryNullifier<2, 1>(line_bound, this->line_mesh_size, gp_Pnt(0, c_v, c_w));
+    
     const size_t num_nodes = this->elem_info->get_nodes_per_element();
 
     const size_t psi_size = this->psi_shear.size();
@@ -197,6 +201,7 @@ void Curvature::calculate_shear_3D(const std::vector<std::unique_ptr<BoundaryMes
     Eigen::SimplicialLLT<Eigen::SparseMatrix<double>, Eigen::Lower, Eigen::COLAMDOrdering<int>> solver;
 
     Eigen::VectorXd b;
+    gp_Pnt center(0, c_v, c_w);
     b.resize(psi_size);
     b.fill(0);
 
@@ -205,34 +210,30 @@ void Curvature::calculate_shear_3D(const std::vector<std::unique_ptr<BoundaryMes
     for(const auto& e:boundary_mesh){
         gp_Pnt c = utils::change_point(e->get_centroid(), this->rot3D);
         const auto EG = this->mat->beam_EG_3D(c, this->u);
-        G(0,0) = EG[1]/2; // G_uv
-        G(1,1) = EG[2]/2; // G_uw
-        Eigen::Vector<double, 3> v1{0, dcurv_v, dcurv_w};
-        const auto N1 = EG[0]*e->source_1dof(v1);
-        Eigen::Vector<double, 2> v2{EG[1]*curv_v, EG[2]*curv_w};
-        const auto N2 = e->source_grad_1dof(v2);
-        const auto N = N1;// - N2;
+        const auto S = this->mat->S12_S13_3D(c, this->u);
+        G(0,0) = 1e9/EG[2]; // G_uw
+        G(1,1) = 1e9/EG[1]; // G_uv
+        const auto N12 = e->source_1dof(S[1], EG[1], &bn1, S[0], EG[2], &bn2, center);
+        const auto N = 1e9*EG[0]*(this->dcurv_v*N12[0] + this->dcurv_w*N12[1]);
 
         const auto M_e = e->diffusion_1dof(G);
 
         for(size_t i = 0; i < num_nodes; ++i){
-            const long id1 = e->nodes[i]->id;
+            const long id1 = e->nodes[i]->u_pos[0];
             if(id1 < 0){
                 continue;
             }
             for(size_t j = 0; j < num_nodes; ++j){
-                const long id2 = e->nodes[j]->id;
+                const long id2 = e->nodes[j]->u_pos[0];
                 if(id2 < 0){
                     continue;
                 }
-                if(std::abs(M_e(i,j)) > 1e-14){
-                    M.coeffRef(id1, id2) += M_e(i, j);
-                }
+                M.coeffRef(id1, id2) += M_e(i, j);
             }
         }
 
         for(size_t i = 0; i < num_nodes; ++i){
-            const long id1 = e->nodes[i]->id;
+            const long id1 = e->nodes[i]->u_pos[0];
             if(id1 < 0){
                 continue;
             }
@@ -248,7 +249,6 @@ void Curvature::calculate_shear_3D(const std::vector<std::unique_ptr<BoundaryMes
     Eigen::VectorXd psi_tmp = solver.solve(b);
 
     std::copy(psi_tmp.begin(), psi_tmp.end(), this->psi_shear.begin());
-    */
 }
 
 double Curvature::integrate_surface_3D(const std::vector<std::unique_ptr<BoundaryMeshElement>>& boundary_mesh, const std::function<double(const gp_Pnt&, const gp_Pnt&)>& fn) const{
