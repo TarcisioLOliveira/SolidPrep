@@ -54,6 +54,7 @@ class LineBoundary{
 template<size_t Y, size_t Z>
 class BoundaryNullifier{
     public:
+    BoundaryNullifier() = default;
     BoundaryNullifier(std::vector<LineBoundary> bounds, double mesh_size, gp_Pnt center);
 
     inline double height(const gp_Pnt& p) const{
@@ -85,7 +86,7 @@ class BoundaryNullifier{
     }
 
     private:
-    const gp_Pnt center;
+    gp_Pnt center;
     class F{
         public:
         F() = default;
