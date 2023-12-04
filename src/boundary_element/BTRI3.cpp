@@ -21,6 +21,7 @@
 #include <lapacke.h>
 #include "boundary_element/BTRI3.hpp"
 #include "utils/gauss_legendre.hpp"
+#include "utils/boundary_nullifier.hpp"
 
 namespace boundary_element{
 
@@ -110,6 +111,26 @@ Eigen::VectorXd BTRI3::source_1dof(const Eigen::Vector<double, 3>& v) const{
 
     return delta*result;
 }
+
+std::array<Eigen::VectorXd, 2> BTRI3::source_1dof(const double S13, const double Gxy, const utils::BoundaryNullifier<1, 2>* b1, const double S12, const double Gxz, const utils::BoundaryNullifier<2, 1>* b2, const gp_Pnt& center) const{
+    const auto& gsi = utils::GaussLegendreTri<4>::get();
+    std::array<Eigen::VectorXd, 2>  result{
+        Eigen::Vector<double, 3>{0,0,0}, 
+        Eigen::Vector<double, 3>{0,0,0}};
+    for(auto it = gsi.begin(); it < gsi.end(); ++it){
+        const gp_Pnt p = this->GS_point(it->a, it->b, it->c);
+        // CENTER
+        Eigen::Vector<double, 3> X{p.X() - center.X(), p.Y() - center.Y(), p.Z() - center.Z()};
+        const auto NN = this->N_mat_1dof(p);
+        result[0] -= it->w*NN*(-2*S13*X[1] - b1->get_F_derivative(p)/(2*Gxy));
+        result[1] += it->w*NN*(-2*S12*X[2] - b2->get_F_derivative(p)/(2*Gxz));
+    }
+    result[0] *= delta;
+    result[1] *= delta;
+
+    return result;
+}
+
 Eigen::VectorXd BTRI3::source_grad_1dof(const Eigen::VectorXd& v) const{
     const auto B = this->dN_mat_1dof();
 

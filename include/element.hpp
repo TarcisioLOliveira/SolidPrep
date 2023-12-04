@@ -536,6 +536,11 @@ class MeshElement : public Element{
     virtual std::vector<double> get_Nf(const double t, const std::vector<gp_Pnt>& points) const = 0;
 };
 
+namespace utils{
+    template<size_t Y, size_t Z>
+    class BoundaryNullifier;
+}
+
 class BoundaryMeshElement : public Element{
     public:
     /**
@@ -578,6 +583,16 @@ class BoundaryMeshElement : public Element{
      * @return source matrix.
      */
     virtual Eigen::VectorXd source_1dof(const Eigen::Vector<double, 3>& v) const = 0;
+
+    /**
+     * Returns a 1 degree of freedom source vector.
+     *
+     * @param b1 Vertical nullifier.
+     * @param b2 Horizontal nullifier.
+     *
+     * @return source matrix.
+     */
+    virtual std::array<Eigen::VectorXd, 2> source_1dof(const double S13, const double Gxy, const utils::BoundaryNullifier<1, 2>* b1, const double S12, const double Gxz, const utils::BoundaryNullifier<2, 1>* b2, const gp_Pnt& center) const = 0;
 
     /**
      * Returns a 1 degree of freedom source gradient vector.

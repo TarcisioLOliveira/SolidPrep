@@ -56,6 +56,7 @@ class BTRI3 : public BoundaryMeshElement{
     virtual Eigen::VectorXd source_1dof() const override;
     virtual Eigen::VectorXd source_1dof(const Eigen::Vector<double, 3>& v) const override;
     virtual Eigen::VectorXd source_grad_1dof(const Eigen::VectorXd& v) const override;
+    virtual std::array<Eigen::VectorXd, 2> source_1dof(const double S13, const double Gxy, const utils::BoundaryNullifier<1, 2>* b1, const double S12, const double Gxz, const utils::BoundaryNullifier<2, 1>* b2, const gp_Pnt& center) const override;
 
     virtual Eigen::VectorXd grad_1dof(const gp_Pnt& p, const std::vector<double>& phi) const override;
 
