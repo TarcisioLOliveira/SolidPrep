@@ -39,6 +39,8 @@ class Mandible : public Material{
     virtual double beam_E_3D(const gp_Pnt& p, gp_Dir d) const override;
     virtual std::array<double, 2> beam_EG_2D(const gp_Pnt& p, gp_Dir d) const override;
     virtual std::array<double, 4> beam_EG_3D(const gp_Pnt& p, gp_Dir d) const override;
+    virtual double S12_2D(const gp_Pnt& p, gp_Dir d = gp_Dir(1,0,0)) const override;
+    virtual std::array<double, 2> S12_S13_3D(const gp_Pnt& p, gp_Dir d = gp_Dir(1,0,0)) const override;
 
     virtual Type get_type() const override{ return this->MANDIBLE; }
 

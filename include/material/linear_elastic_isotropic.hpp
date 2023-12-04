@@ -49,6 +49,16 @@ class LinearElasticIsotropic : public Material{
         (void)p;
         return density;
     }
+    inline virtual double S12_2D(const gp_Pnt& p, gp_Dir d = gp_Dir(1,0,0)) const override{
+        (void)p;
+        (void)d;
+        return S_2D[1];
+    }
+    inline virtual std::array<double, 2> S12_S13_3D(const gp_Pnt& p, gp_Dir d = gp_Dir(1,0,0)) const override{
+        (void)p;
+        (void)d;
+        return {S_3D[1], S_3D[2]};
+    }
 
     virtual double beam_E_2D(const gp_Pnt& p, gp_Dir d) const override;
     virtual double beam_E_3D(const gp_Pnt& p, gp_Dir d) const override;

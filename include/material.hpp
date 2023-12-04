@@ -57,6 +57,8 @@ class Material{
     virtual double beam_E_3D(const gp_Pnt& p, gp_Dir d = gp_Dir(1,0,0)) const = 0;
     virtual std::array<double, 2> beam_EG_2D(const gp_Pnt& p, gp_Dir d = gp_Dir(1,0,0)) const = 0;
     virtual std::array<double, 4> beam_EG_3D(const gp_Pnt& p, gp_Dir d = gp_Dir(1,0,0)) const = 0;
+    virtual double S12_2D(const gp_Pnt& p, gp_Dir d = gp_Dir(1,0,0)) const = 0;
+    virtual std::array<double, 2> S12_S13_3D(const gp_Pnt& p, gp_Dir d = gp_Dir(1,0,0)) const = 0;
 
     virtual Type get_type() const{ return this->NONE; }
 

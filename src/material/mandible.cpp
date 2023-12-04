@@ -114,6 +114,24 @@ std::array<double, 4> Mandible::beam_EG_3D(const gp_Pnt& p, gp_Dir d) const{
     }
     return EG_o;
 }
+double Mandible::S12_2D(const gp_Pnt& p, gp_Dir d) const{
+    auto EG_o = this->outer->S12_2D(p, d);
+    auto EG_i = this->inner->S12_2D(p, d);
+    auto coeff = this->get_multiplier(p);
+
+    EG_o = (1 - coeff)*EG_o + coeff*EG_i;
+    return EG_o;
+}
+std::array<double, 2> Mandible::S12_S13_3D(const gp_Pnt& p, gp_Dir d) const{
+    auto EG_o = this->outer->S12_S13_3D(p, d);
+    auto EG_i = this->inner->S12_S13_3D(p, d);
+    auto coeff = this->get_multiplier(p);
+
+    for(size_t i = 0; i < 2; ++i){
+        EG_o[i] = (1 - coeff)*EG_o[i] + coeff*EG_i[i];
+    }
+    return EG_o;
+}
     
 void Mandible::Ring::initialize_center(const std::vector<gp_Pnt>& init){
     double X = 0, Y = 0, Z = 0;
