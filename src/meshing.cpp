@@ -178,10 +178,18 @@ void Meshing::populate_boundary_elements(const std::vector<ElementShape>& bounda
                 gp_Pnt ec((*common_nodes.begin())->get_centroid());
                 gp_Dir d(gp_Vec(bc, ec));
                 gp_Dir n(b.normal);
-                if(d.Dot(n) > 0){
-                    n = -n;
+                const double mult = (d.Dot(n) < 0) ? 1 : -1;
+                if(common_nodes.size() == 1){
+                    auto it = common_nodes.begin();
+                    this->boundary_elements.emplace_back(b.nodes, *it, mult*n);
+                } else if(common_nodes.size() == 2){
+                    auto it = common_nodes.begin();
+                    this->boundary_elements.emplace_back(b.nodes, *it, mult*n);
+                    ++it;
+                    this->boundary_elements.emplace_back(b.nodes, *it, -mult*n);
+                } else {
+                    logger::log_assert(false, logger::ERROR, "More than two elements are connected to a single boundary (this shouldn't happen).");
                 }
-                this->boundary_elements.emplace_back(b.nodes, *common_nodes.begin(), n);
             }
         }
     }
@@ -251,12 +259,37 @@ void Meshing::distribute_elements(const std::vector<size_t>& geom_elem_mapping,
                       g->mesh.begin());
             ++geom_num;
         }
+        // Dirty and slow, but it was easier to implement
+        // TODO: improve this
+        for(auto& b:this->boundary_elements){
+            for(auto& g:this->geometries){
+                bool found = false;
+                for(const auto& e:g->mesh){
+                    if(e.get() == b.parent){
+                        g->boundary_mesh.push_back(&b);
+                        found = true;
+                        break;
+                    }
+                }
+                if(found){
+                    break;
+                }
+            }
+        }
+        for(auto& g:this->geometries){
+            g->boundary_mesh.shrink_to_fit();
+        }
     } else if(geometries.size() == 1){
         auto& g = geometries[0];
         g->mesh.clear();
+        g->boundary_mesh.clear();
         g->mesh.reserve(element_list.size());
+        g->boundary_mesh.reserve(boundary_elements.size());
         for(auto& e:element_list){
             g->mesh.push_back(std::move(e));
+        }
+        for(auto& e:boundary_elements){
+            g->boundary_mesh.push_back(&e);
         }
     }
 }

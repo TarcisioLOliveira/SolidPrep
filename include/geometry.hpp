@@ -31,6 +31,7 @@
 #include <BRepClass3d_SolidClassifier.hxx>
 
 class Meshing;
+class BoundaryElement;
 
 class Geometry{
     public:
@@ -87,6 +88,7 @@ class Geometry{
     const size_t id;
 
     std::vector<std::unique_ptr<MeshElement>> mesh;
+    std::vector<BoundaryElement*> boundary_mesh;
     // Only used for non-linear FEA
     std::vector<std::unique_ptr<MeshNode>> node_list; 
     private:
