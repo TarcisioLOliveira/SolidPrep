@@ -34,9 +34,9 @@ class Meshing;
 
 class Geometry{
     public:
-    Geometry(const std::string& path, double scale, utils::ProblemType type, MeshElementFactory* elem_type, bool do_topopt, bool with_void, std::vector<Material*> materials);
+    Geometry(const std::string& path, double scale, utils::ProblemType type, MeshElementFactory* elem_type, bool do_topopt, bool with_void, std::vector<Material*> materials, size_t id);
 
-    Geometry(TopoDS_Shape shape, utils::ProblemType type, MeshElementFactory* elem_type, bool do_topopt, bool with_void, std::vector<Material*> materials);
+    Geometry(TopoDS_Shape shape, utils::ProblemType type, MeshElementFactory* elem_type, bool do_topopt, bool with_void, std::vector<Material*> materials, size_t id);
 
     void get_stresses(const std::vector<double>& u, const double p, const double psi, std::vector<double>::const_iterator& rho_it, std::vector<double>::iterator& stress_it) const;
 
@@ -84,6 +84,7 @@ class Geometry{
     const MeshElementFactory* const element_type;
     const bool do_topopt;
     const bool with_void;
+    const size_t id;
 
     std::vector<std::unique_ptr<MeshElement>> mesh;
     // Only used for non-linear FEA

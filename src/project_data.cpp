@@ -329,6 +329,7 @@ std::vector<std::unique_ptr<Material>> ProjectData::load_materials(const rapidjs
 std::vector<std::unique_ptr<Geometry>> ProjectData::load_geometries(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc){
     const auto& geometries = doc["geometry"].GetArray();
     std::vector<std::unique_ptr<Geometry>> geometry;
+    size_t id = 0;
     for(const auto& geom:geometries){
         std::string absolute_path = folder_path;
         std::string geom_path = geom["file_path"].GetString();
@@ -373,7 +374,8 @@ std::vector<std::unique_ptr<Geometry>> ProjectData::load_geometries(const rapidj
             with_void = geom["with_void"].GetBool();
         }
 
-        geometry.emplace_back(new Geometry(absolute_path, scale, this->type, this->topopt_element.get(), do_topopt, with_void, mats));
+        geometry.emplace_back(new Geometry(absolute_path, scale, this->type, this->topopt_element.get(), do_topopt, with_void, mats, id));
+        ++id;
     }
     return geometry;
 }
