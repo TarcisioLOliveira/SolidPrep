@@ -25,6 +25,8 @@
 #include <array>
 #include <gp_Dir.hxx>
 
+class MeshElement;
+
 class Material{
     public:
     enum Type{
@@ -47,18 +49,18 @@ class Material{
      */
     Material(const std::string& name, std::vector<double> Smax, std::vector<double> Tmax);
 
-    virtual std::vector<double> stiffness_2D(const gp_Pnt& p) const = 0;
-    virtual std::vector<double> stiffness_3D(const gp_Pnt& p) const = 0;
-    virtual std::vector<double> stiffness_inverse_2D(const gp_Pnt& p) const = 0;
-    virtual std::vector<double> stiffness_inverse_3D(const gp_Pnt& p) const = 0;
-    virtual double get_density(const gp_Pnt& p) const = 0;
+    virtual std::vector<double> stiffness_2D(const MeshElement* const e, const gp_Pnt& p) const = 0;
+    virtual std::vector<double> stiffness_3D(const MeshElement* const e, const gp_Pnt& p) const = 0;
+    virtual std::vector<double> stiffness_inverse_2D(const MeshElement* const e, const gp_Pnt& p) const = 0;
+    virtual std::vector<double> stiffness_inverse_3D(const MeshElement* const e, const gp_Pnt& p) const = 0;
+    virtual double get_density(const MeshElement* const e, const gp_Pnt& p) const = 0;
 
-    virtual double beam_E_2D(const gp_Pnt& p, gp_Dir d = gp_Dir(1,0,0)) const = 0;
-    virtual double beam_E_3D(const gp_Pnt& p, gp_Dir d = gp_Dir(1,0,0)) const = 0;
-    virtual std::array<double, 2> beam_EG_2D(const gp_Pnt& p, gp_Dir d = gp_Dir(1,0,0)) const = 0;
-    virtual std::array<double, 4> beam_EG_3D(const gp_Pnt& p, gp_Dir d = gp_Dir(1,0,0)) const = 0;
-    virtual double S12_2D(const gp_Pnt& p, gp_Dir d = gp_Dir(1,0,0)) const = 0;
-    virtual std::array<double, 2> S12_S13_3D(const gp_Pnt& p, gp_Dir d = gp_Dir(1,0,0)) const = 0;
+    virtual double beam_E_2D(const MeshElement* const e, const gp_Pnt& p, gp_Dir d = gp_Dir(1,0,0)) const = 0;
+    virtual double beam_E_3D(const MeshElement* const e, const gp_Pnt& p, gp_Dir d = gp_Dir(1,0,0)) const = 0;
+    virtual std::array<double, 2> beam_EG_2D(const MeshElement* const e, const gp_Pnt& p, gp_Dir d = gp_Dir(1,0,0)) const = 0;
+    virtual std::array<double, 4> beam_EG_3D(const MeshElement* const e, const gp_Pnt& p, gp_Dir d = gp_Dir(1,0,0)) const = 0;
+    virtual double S12_2D(const MeshElement* const e, const gp_Pnt& p, gp_Dir d = gp_Dir(1,0,0)) const = 0;
+    virtual std::array<double, 2> S12_S13_3D(const MeshElement* const e, const gp_Pnt& p, gp_Dir d = gp_Dir(1,0,0)) const = 0;
 
     virtual Type get_type() const{ return this->NONE; }
 

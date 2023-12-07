@@ -76,7 +76,7 @@ void Spring::apply_load_2D(std::vector<double>& load_vector) const{
     for(size_t j = 0; j < this->submesh.size(); ++j){
         const auto& e = this->submesh[j];
         const gp_Pnt c = e->get_centroid(bound_nodes_per_elem);
-        const auto E = this->mat->beam_E_2D(c, this->normal);
+        const auto E = this->mat->beam_E_2D(e->parent, c, this->normal);
         S(0,1) = E*this->curv[0];
         Eigen::Matrix<double, N, N> Srot = this->rot2D*S*this->rot2D.transpose();
         for(size_t row = 0; row < N; ++row){
@@ -154,7 +154,7 @@ void Spring::apply_load_3D(std::vector<double>& load_vector) const{
         }
 
         const gp_Pnt c = e->get_centroid(bound_nodes_per_elem);
-        const auto E = this->mat->beam_E_3D(c, this->normal);
+        const auto E = this->mat->beam_E_3D(e->parent, c, this->normal);
         S(0,1) = E*this->curv[0];
         S(0,2) = E*this->curv[1];
         this->curvature->get_shear_in_3D(b.get(), t_uv, t_uw);
@@ -186,10 +186,10 @@ void Spring::apply_load_3D(std::vector<double>& load_vector) const{
     logger::quick_log(FF);
 }
 
-std::vector<double> Spring::get_K(const gp_Pnt& p) const{
+std::vector<double> Spring::get_K(const MeshElement* const e, const gp_Pnt& p) const{
     if(type == utils::PROBLEM_TYPE_2D){
 
-        auto EG = mat->beam_EG_2D(p, this->normal);
+        auto EG = mat->beam_EG_2D(e, p, this->normal);
 
         Eigen::Matrix<double, 2, 2> Korig{{EG[0]/L[0], 0},
                                           {0, EG[1]/L[1]}};
@@ -202,7 +202,7 @@ std::vector<double> Spring::get_K(const gp_Pnt& p) const{
         return K;
     } else if(type == utils::PROBLEM_TYPE_3D){
 
-        auto EG = mat->beam_EG_3D(p, this->normal);
+        auto EG = mat->beam_EG_3D(e, p, this->normal);
 
         Eigen::Matrix<double, 3, 3> Korig{{EG[0]/L[0], 0, 0},
                                           {0, EG[1]/L[1], 0},
@@ -296,7 +296,7 @@ void Spring::generate_mesh(std::vector<BoundaryElement>& boundary_elements){
                 MeshNode* nn = std::find_if(this->boundary_nodes.begin(), this->boundary_nodes.end(), NodeComp(p))->get();
                 sh.nodes[j] = nn;
             }
-            this->boundary_mesh[cur_elem].reset(this->boundary_elem_info->make_element(sh));
+            this->boundary_mesh[cur_elem].reset(this->boundary_elem_info->make_element(sh, boundary_elements[i].parent));
             ++cur_elem;
         }
     }

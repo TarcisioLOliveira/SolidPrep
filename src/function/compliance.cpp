@@ -53,7 +53,7 @@ double Compliance::calculate_with_gradient(const Optimizer* const op, const std:
             if(g->with_void){
                 for(const auto& e:g->mesh){
                     const auto p = e->get_centroid();
-                    g->materials.get_gradD(rho_it, psi, p, gradD);
+                    g->materials.get_gradD(rho_it, psi, e.get(), p, gradD);
                     const double uKu = e->get_compliance(gradD[0], this->mesh->thickness, u);
                     *grad_it = -pc*std::pow(*rho_it, pc-1)*uKu;
 
@@ -70,7 +70,7 @@ double Compliance::calculate_with_gradient(const Optimizer* const op, const std:
             } else {
                 for(const auto& e:g->mesh){
                     const auto p = e->get_centroid();
-                    g->materials.get_gradD(rho_it, psi, p, gradD);
+                    g->materials.get_gradD(rho_it, psi, e.get(), p, gradD);
                     for(auto& D:gradD){
                         const double uKu = e->get_compliance(D, this->mesh->thickness, u);
                         *grad_it = -uKu;

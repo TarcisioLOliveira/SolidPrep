@@ -61,7 +61,7 @@ LinearElasticOrthotropic::LinearElasticOrthotropic(const std::string& name, cons
     this->D_3D = std::move(S_3D_tmp);
 }
 
-double LinearElasticOrthotropic::beam_E_2D(const gp_Pnt& p, gp_Dir dir) const{
+double LinearElasticOrthotropic::beam_E_2D(const MeshElement* const e, const gp_Pnt& p, gp_Dir dir) const{
     // Anisotropic Elasticity: Theory and Applications
     // (Ting, 1996)
     (void)p;
@@ -74,7 +74,7 @@ double LinearElasticOrthotropic::beam_E_2D(const gp_Pnt& p, gp_Dir dir) const{
 
     return E;
 }
-double LinearElasticOrthotropic::beam_E_3D(const gp_Pnt& p, gp_Dir dir) const{
+double LinearElasticOrthotropic::beam_E_3D(const MeshElement* const e, const gp_Pnt& p, gp_Dir dir) const{
     // Anisotropic Elasticity: Theory and Applications
     // (Ting, 1996)
     (void)p;
@@ -98,7 +98,7 @@ double LinearElasticOrthotropic::beam_E_3D(const gp_Pnt& p, gp_Dir dir) const{
     
     return E;
 }
-std::array<double, 2> LinearElasticOrthotropic::beam_EG_2D(const gp_Pnt& p, gp_Dir dir) const{
+std::array<double, 2> LinearElasticOrthotropic::beam_EG_2D(const MeshElement* const e, const gp_Pnt& p, gp_Dir dir) const{
     // Anisotropic Elasticity: Theory and Applications
     // (Ting, 1996)
     (void)p;
@@ -112,7 +112,7 @@ std::array<double, 2> LinearElasticOrthotropic::beam_EG_2D(const gp_Pnt& p, gp_D
 
     return {E, G};
 }
-std::array<double, 4> LinearElasticOrthotropic::beam_EG_3D(const gp_Pnt& p, gp_Dir dir) const{
+std::array<double, 4> LinearElasticOrthotropic::beam_EG_3D(const MeshElement* const e, const gp_Pnt& p, gp_Dir dir) const{
     // Anisotropic Elasticity: Theory and Applications
     // (Ting, 1996)
     (void)p;
@@ -204,7 +204,7 @@ std::vector<double> LinearElasticOrthotropic::get_max_stresses(gp_Dir d) const{
 }
 
 
-double LinearElasticOrthotropic::S12_2D(const gp_Pnt& p, gp_Dir dir) const{
+double LinearElasticOrthotropic::S12_2D(const MeshElement* const e, const gp_Pnt& p, gp_Dir dir) const{
     (void)p;
     const double ca = dir.X(); 
     const double sa = dir.Y(); 
@@ -215,7 +215,7 @@ double LinearElasticOrthotropic::S12_2D(const gp_Pnt& p, gp_Dir dir) const{
     return S12;
 }
 
-std::array<double, 2> LinearElasticOrthotropic::S12_S13_3D(const gp_Pnt& p, gp_Dir dir) const{
+std::array<double, 2> LinearElasticOrthotropic::S12_S13_3D(const MeshElement* const e, const gp_Pnt& p, gp_Dir dir) const{
     (void)p;
     const auto& s = this->S_3D;
 

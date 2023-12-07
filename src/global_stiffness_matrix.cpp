@@ -53,7 +53,7 @@ void GlobalStiffnessMatrix::add_geometry(const Meshing* const mesh, const Geomet
     std::vector<long> u_pos(dof*node_num);
     for(auto& e : g->mesh){
         const gp_Pnt c = e->get_centroid();
-        const auto D = g->materials.get_D(c);
+        const auto D = g->materials.get_D(e.get(), c);
         for(size_t i = 0; i < node_num; ++i){
             const auto& n = e->nodes[i];
             for(size_t j = 0; j < dof; ++j){
@@ -77,7 +77,7 @@ void GlobalStiffnessMatrix::add_springs(const Meshing * const mesh){
     for(size_t it = 0; it < mesh->springs->size(); ++it){
         for(const auto& b : mesh->springs->at(it).submesh){
             const auto c = b->get_centroid(bnode_num);
-            const auto& K = mesh->springs->at(it).get_K(c);
+            const auto& K = mesh->springs->at(it).get_K(b->parent, c);
             const auto& e = b->parent;
             for(size_t i = 0; i < bnode_num; ++i){
                 points[i] = b->nodes[i]->point;
@@ -114,7 +114,7 @@ void GlobalStiffnessMatrix::add_geometry(const Meshing* const mesh, const Geomet
                     }
                 }
                 const gp_Pnt c = e->get_centroid();
-                g->materials.get_D(rho, psi, c, D);
+                g->materials.get_D(rho, psi, e.get(), c, D);
                 std::vector<double> k = e->get_k(D, t);
                 cblas_dscal(k_size*k_size, std::pow(*rho, pc), k.data(), 1);
                 this->insert_element_matrix(k, u_pos);
@@ -131,7 +131,7 @@ void GlobalStiffnessMatrix::add_geometry(const Meshing* const mesh, const Geomet
                 }
             }
             const gp_Pnt c = e->get_centroid();
-            g->materials.get_D(rho, psi, c, D);
+            g->materials.get_D(rho, psi, e.get(), c, D);
             const std::vector<double> k = e->get_k(D, t);
             this->insert_element_matrix(k, u_pos);
 

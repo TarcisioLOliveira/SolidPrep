@@ -125,10 +125,11 @@ int main(int argc, char* argv[]){
                 strainX .reserve(s_size);
                 strainY .reserve(s_size);
                 strainXY.reserve(s_size);
+
                 for(auto& g:proj->geometries){
                     for(auto& e:g->mesh){
                         const gp_Pnt c = e->get_centroid();
-                        const auto D = g->materials.get_D(c);
+                        const auto D = g->materials.get_D(e.get(), c);
                         stresses.push_back(e->get_stress_at(D, e->get_centroid(), u));
                         auto tensor = e->get_stress_tensor(D, e->get_centroid(), u);
                         stressesX.push_back(tensor[0]);
@@ -140,6 +141,7 @@ int main(int argc, char* argv[]){
                         strainXY.push_back(tensor[1]);
                     }
                 }
+
 
                 if(proj->analysis == ProjectData::BEAMS_ONLY){
                     logger::quick_log("");
@@ -211,7 +213,7 @@ int main(int argc, char* argv[]){
                 for(auto& g:proj->geometries){
                     for(auto& e:g->mesh){
                         const gp_Pnt c = e->get_centroid();
-                        const auto D = g->materials.get_D(c);
+                        const auto D = g->materials.get_D(e.get(), c);
                         stresses.push_back(e->get_stress_at(D, e->get_centroid(), u));
                         auto tensor = e->get_stress_tensor(D, e->get_centroid(), u);
                         stressesX.push_back(tensor[0]);

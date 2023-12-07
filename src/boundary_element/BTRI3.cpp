@@ -25,8 +25,8 @@
 
 namespace boundary_element{
 
-BTRI3::BTRI3(ElementShape s):
-    BoundaryMeshElement(s.nodes){
+BTRI3::BTRI3(ElementShape s, const MeshElement* const parent):
+    BoundaryMeshElement(s.nodes, parent){
     const size_t N = BTRI3::NODES_PER_ELEM;
     
     std::array<double, N> x, y, z;

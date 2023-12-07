@@ -147,7 +147,7 @@ double Mechanostat::calculate_with_gradient(const Optimizer* const op, const std
                 std::vector<double> D_S(std::vector<double>(s_size*s_size, 0));
                 for(const auto& e:g->mesh){
                     const auto c = e->get_centroid();
-                    g->materials.get_gradD(x_it, psiK, c, gradD_K);
+                    g->materials.get_gradD(x_it, psiK, e.get(), c, gradD_K);
 
                     if(g->with_void){
                         double lKu = pc*std::pow(*x_it, pc-1)*e->get_compliance(gradD_K[0], this->mesh->thickness, u, l);

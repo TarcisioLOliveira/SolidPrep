@@ -144,7 +144,7 @@ class BoundaryMeshElementFactory{
     public:
     virtual ~BoundaryMeshElementFactory() = default;
 
-    inline virtual BoundaryMeshElement* make_element(const ElementShape& shape) const = 0;
+    inline virtual BoundaryMeshElement* make_element(const ElementShape& shape, const MeshElement* const parent) const = 0;
     inline virtual size_t get_k_dimension() const = 0;
     inline virtual size_t get_D_dimension() const = 0;
     inline virtual size_t get_dof_per_node() const = 0;
@@ -164,8 +164,8 @@ class BoundaryMeshElementFactory{
 template<class T>
 class BoundaryMeshElementFactoryImpl : public BoundaryMeshElementFactory{
     public:
-    inline BoundaryMeshElement* make_element(const ElementShape& shape) const override{
-        return new T(shape);
+    inline BoundaryMeshElement* make_element(const ElementShape& shape, const MeshElement* const parent) const override{
+        return new T(shape, parent);
     }
     inline size_t get_k_dimension() const override{
         return T::K_DIM;

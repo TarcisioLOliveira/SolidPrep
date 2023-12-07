@@ -543,6 +543,7 @@ namespace utils{
 
 class BoundaryMeshElement : public Element{
     public:
+    const MeshElement* const parent;
     /**
      * Returns a 1 degree of freedom diffusion matrix.
      * 
@@ -630,8 +631,8 @@ class BoundaryMeshElement : public Element{
      *
      * @param nodes List of nodes.
      */
-    BoundaryMeshElement(const std::vector<MeshNode*>& nodes):
-        Element(std::vector<Node*>(nodes.begin(), nodes.end()))
+    BoundaryMeshElement(const std::vector<MeshNode*>& nodes, const MeshElement* const parent):
+        Element(std::vector<Node*>(nodes.begin(), nodes.end())), parent(parent)
         {}
 };
 

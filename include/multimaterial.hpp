@@ -28,22 +28,22 @@ class MultiMaterial{
     public:
     MultiMaterial(std::vector<Material*> materials, utils::ProblemType type, bool has_void);
 
-    inline std::vector<double> get_D(const gp_Pnt& p) const{
+    inline std::vector<double> get_D(const MeshElement* e, const gp_Pnt& p) const{
         if(this->problem_type == utils::PROBLEM_TYPE_2D){
-            return this->materials[0]->stiffness_2D(p);
+            return this->materials[0]->stiffness_2D(e, p);
         } else if(this->problem_type == utils::PROBLEM_TYPE_3D){
-            return this->materials[0]->stiffness_3D(p);
+            return this->materials[0]->stiffness_3D(e, p);
         }
         return std::vector<double>();
     }
 
-    void get_D(std::vector<double>::const_iterator rho, const double mix, const gp_Pnt& p, std::vector<double>& D) const;
+    void get_D(std::vector<double>::const_iterator rho, const double mix, const MeshElement* e, const gp_Pnt& p, std::vector<double>& D) const;
 
-    void get_gradD(std::vector<double>::const_iterator rho, const double mix, const gp_Pnt& p, std::vector<std::vector<double>>& gradD) const;
+    void get_gradD(std::vector<double>::const_iterator rho, const double mix, const MeshElement* e, const gp_Pnt& p, std::vector<std::vector<double>>& gradD) const;
 
-    double get_density(std::vector<double>::const_iterator rho, const gp_Pnt& p) const;
+    double get_density(std::vector<double>::const_iterator rho, const MeshElement* e, const gp_Pnt& p) const;
 
-    double get_density_deriv(std::vector<double>::const_iterator rho, const gp_Pnt& p, std::vector<double>::iterator& grad) const;
+    double get_density_deriv(std::vector<double>::const_iterator rho, const MeshElement* e, const gp_Pnt& p, std::vector<double>::iterator& grad) const;
 
     inline size_t number_of_materials() const{
         return this->materials.size();
@@ -58,8 +58,8 @@ class MultiMaterial{
     const utils::ProblemType problem_type;
     const bool has_void;
 
-    void get_D_internal(std::vector<double>::const_iterator& rho, const double* pos, const size_t posN, const double mix, const gp_Pnt& p, std::vector<double>& D) const;
-    void get_gradD_internal(std::vector<double>::const_iterator& rho, const double* pos, const size_t posN, const double mix, const gp_Pnt& p, std::vector<std::vector<double>>& gradD) const;
+    void get_D_internal(std::vector<double>::const_iterator& rho, const double* pos, const size_t posN, const double mix, const MeshElement* e, const gp_Pnt& p, std::vector<double>& D) const;
+    void get_gradD_internal(std::vector<double>::const_iterator& rho, const double* pos, const size_t posN, const double mix, const MeshElement* e, const gp_Pnt& p, std::vector<std::vector<double>>& gradD) const;
 };
 
 #endif

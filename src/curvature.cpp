@@ -41,28 +41,28 @@ void Curvature::generate_curvature_3D(const std::vector<std::unique_ptr<Boundary
     std::array<gp_Pnt, 3> points;
 
     const auto fn_EA =
-        [this](const gp_Pnt& p, const gp_Pnt& px)->double{
-            return this->make_EA_base_3D(p, px);
+        [this](const MeshElement* const e, const gp_Pnt& p, const gp_Pnt& px)->double{
+            return this->make_EA_base_3D(e, p, px);
         };
     const auto fn_EA_v =
-        [this](const gp_Pnt& p, const gp_Pnt& px)->double{
-            return this->make_EA_v_base_3D(p, px);
+        [this](const MeshElement* const e, const gp_Pnt& p, const gp_Pnt& px)->double{
+            return this->make_EA_v_base_3D(e, p, px);
         };
     const auto fn_EA_w =
-        [this](const gp_Pnt& p, const gp_Pnt& px)->double{
-            return this->make_EA_w_base_3D(p, px);
+        [this](const MeshElement* const e, const gp_Pnt& p, const gp_Pnt& px)->double{
+            return this->make_EA_w_base_3D(e, p, px);
         };
     const auto fn_EI_v =
-        [this](const gp_Pnt& p, const gp_Pnt& px)->double{
-            return this->make_EI_v_base_3D(p, px);
+        [this](const MeshElement* const e, const gp_Pnt& p, const gp_Pnt& px)->double{
+            return this->make_EI_v_base_3D(e, p, px);
         };
     const auto fn_EI_w =
-        [this](const gp_Pnt& p, const gp_Pnt& px)->double{
-            return this->make_EI_w_base_3D(p, px);
+        [this](const MeshElement* const e, const gp_Pnt& p, const gp_Pnt& px)->double{
+            return this->make_EI_w_base_3D(e, p, px);
         };
     const auto fn_EI_vw =
-        [this](const gp_Pnt& p, const gp_Pnt& px)->double{
-            return this->make_EI_vw_base_3D(p, px);
+        [this](const MeshElement* const e, const gp_Pnt& p, const gp_Pnt& px)->double{
+            return this->make_EI_vw_base_3D(e, p, px);
         };
 
     this->EA = this->integrate_surface_3D(boundary_mesh, fn_EA);
@@ -111,7 +111,7 @@ void Curvature::get_shear_in_3D(const BoundaryMeshElement* e, double& t_uv, doub
     t_uv = -grad[1];
     t_uw =  grad[0];
     grad = e->grad_1dof(c, this->psi_shear);
-    const auto EG = this->mat->beam_EG_2D(c, this->u);
+    const auto EG = this->mat->beam_EG_2D(e->parent, c, this->u);
     const double w1 = this->bn1.width(c);
     const double f1 = this->bn1.get_F(c);
     const double w2 = this->bn2.width(c);
@@ -136,7 +136,7 @@ void Curvature::calculate_torsion(const std::vector<std::unique_ptr<BoundaryMesh
 
     for(const auto& e:boundary_mesh){
         gp_Pnt c = utils::change_point(e->get_centroid(), this->rot3D);
-        const auto EG = this->mat->beam_EG_3D(c, this->u);
+        const auto EG = this->mat->beam_EG_3D(e->parent, c, this->u);
         const auto N = (EG[1] + EG[2])*e->source_1dof();
 
         const auto M_e = e->diffusion_1dof(G);
@@ -209,8 +209,8 @@ void Curvature::calculate_shear_3D(const std::vector<std::unique_ptr<BoundaryMes
 
     for(const auto& e:boundary_mesh){
         gp_Pnt c = utils::change_point(e->get_centroid(), this->rot3D);
-        const auto EG = this->mat->beam_EG_3D(c, this->u);
-        const auto S = this->mat->S12_S13_3D(c, this->u);
+        const auto EG = this->mat->beam_EG_3D(e->parent, c, this->u);
+        const auto S = this->mat->S12_S13_3D(e->parent, c, this->u);
         G(0,0) = 1e9/EG[2]; // G_uw
         G(1,1) = 1e9/EG[1]; // G_uv
         const auto N12 = e->source_1dof(S[1], EG[1], &bn1, S[0], EG[2], &bn2, center);
@@ -251,7 +251,7 @@ void Curvature::calculate_shear_3D(const std::vector<std::unique_ptr<BoundaryMes
     std::copy(psi_tmp.begin(), psi_tmp.end(), this->psi_shear.begin());
 }
 
-double Curvature::integrate_surface_3D(const std::vector<std::unique_ptr<BoundaryMeshElement>>& boundary_mesh, const std::function<double(const gp_Pnt&, const gp_Pnt&)>& fn) const{
+double Curvature::integrate_surface_3D(const std::vector<std::unique_ptr<BoundaryMeshElement>>& boundary_mesh, const std::function<double(const MeshElement* const, const gp_Pnt&, const gp_Pnt&)>& fn) const{
     double result = 0;
     if(this->elem_info->get_shape_type() == Element::Shape::TRI){
         #pragma omp parallel for reduction(+:result)
@@ -271,7 +271,7 @@ double Curvature::integrate_surface_3D(const std::vector<std::unique_ptr<Boundar
                 gp_Pnt(rotd_p(0, 1), rotd_p(1, 1), rotd_p(2, 1)),
                 gp_Pnt(rotd_p(0, 2), rotd_p(1, 2), rotd_p(2, 2))
             };
-            result += this->GS_tri(abs_points, rel_points, fn);
+            result += this->GS_tri(e->parent, abs_points, rel_points, fn);
         }
     } else if(this->elem_info->get_shape_type() == Element::Shape::QUAD){
 
@@ -279,7 +279,7 @@ double Curvature::integrate_surface_3D(const std::vector<std::unique_ptr<Boundar
     return result;
 }
 
-double Curvature::GS_tri(const std::array<gp_Pnt, 3>& p, const std::array<gp_Pnt, 3>& px, const std::function<double(const gp_Pnt&, const gp_Pnt&)>& fn) const{
+double Curvature::GS_tri(const MeshElement* const e, const std::array<gp_Pnt, 3>& p, const std::array<gp_Pnt, 3>& px, const std::function<double(const MeshElement* const, const gp_Pnt&, const gp_Pnt&)>& fn) const{
     double result = 0;
     gp_Vec v1(p[1], p[0]);
     gp_Vec v2(p[2], p[0]);
@@ -296,7 +296,7 @@ double Curvature::GS_tri(const std::array<gp_Pnt, 3>& p, const std::array<gp_Pnt
             it->a*px[0].Y() + it->b*px[1].Y() + it->c*px[2].Y(),
             it->a*px[0].Z() + it->b*px[1].Z() + it->c*px[2].Z()
         };
-        result += it->w*fn(pi, pxi);
+        result += it->w*fn(e, pi, pxi);
     }
     result *= drnorm;
 

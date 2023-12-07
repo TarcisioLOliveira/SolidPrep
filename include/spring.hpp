@@ -47,7 +47,7 @@ class Spring{
         this->curvature.reset();
     }
 
-    std::vector<double> get_K(const gp_Pnt& p) const;
+    std::vector<double> get_K(const MeshElement* const e, const gp_Pnt& p) const;
 
     void calculate_curvature(std::vector<BoundaryElement>& boundary_elements){
         this->generate_mesh(boundary_elements);

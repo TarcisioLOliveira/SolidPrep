@@ -323,7 +323,7 @@ TopoDS_Shape StandardSizing::expansion_2D(const meshing::StandardBeamMesher& mes
         const size_t num_nodes = mesh.elem_info->get_nodes_per_element();
         for(auto& g:mesh.geometries){
             for(auto& e:g->mesh){
-                const auto D = g->materials.get_D(e->get_centroid());
+                const auto D = g->materials.get_D(e.get(), e->get_centroid());
 
                 // Heuristic filter
                 TopoDS_Vertex v = BRepBuilderAPI_MakeVertex(e->get_centroid());

@@ -44,7 +44,7 @@ void Geometry::get_stresses(const std::vector<double>& u, const double pc, const
         if(this->with_void){
             for(const auto& e:this->mesh){
                 const gp_Pnt c = e->get_centroid();
-                this->materials.get_D(rho_it, psi, c, D);
+                this->materials.get_D(rho_it, psi, e.get(), c, D);
                 const double S = std::pow(*rho_it, pc)*e->get_stress_at(D, c, u);
                 *stress_it = S;
 
@@ -54,7 +54,7 @@ void Geometry::get_stresses(const std::vector<double>& u, const double pc, const
         } else {
             for(const auto& e:this->mesh){
                 const gp_Pnt c = e->get_centroid();
-                this->materials.get_D(rho_it, psi, c, D);
+                this->materials.get_D(rho_it, psi, e.get(), c, D);
                 const double S = e->get_stress_at(D, c, u);
                 *stress_it = S;
 
@@ -65,7 +65,7 @@ void Geometry::get_stresses(const std::vector<double>& u, const double pc, const
     } else {
         for(const auto& e:this->mesh){
             const gp_Pnt c = e->get_centroid();
-            const auto D = this->materials.get_D(c);
+            const auto D = this->materials.get_D(e.get(), c);
             double S = e->get_stress_at(D, c, u);
             *stress_it = S;
             ++stress_it;

@@ -49,7 +49,7 @@ double Mass::calculate(const Optimizer* const op, const std::vector<double>& u, 
         if(g->do_topopt){
             for(const auto& e:g->mesh){
                 const gp_Pnt p = e->get_centroid();
-                const double d = g->materials.get_density(x_it, p);
+                const double d = g->materials.get_density(x_it, e.get(), p);
                 V += d*(*v_it);
                 ++v_it;
                 x_it += num_den;
@@ -83,7 +83,7 @@ double Mass::calculate_with_gradient(const Optimizer* const op, const std::vecto
             for(const auto& e:g->mesh){
                 auto grad_it2 = grad_it;
                 const gp_Pnt p = e->get_centroid();
-                const auto d = g->materials.get_density_deriv(x_it, p, grad_it2);
+                const auto d = g->materials.get_density_deriv(x_it, e.get(), p, grad_it2);
                 V += d*(*v_it);
                 while(grad_it < grad_it2){
                     *grad_it *= *v_it*1e3/1e9;

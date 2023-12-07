@@ -29,18 +29,18 @@ class Mandible : public Material{
     public:
     Mandible(const std::string& name, Material* outer, Material* inner, const std::string& path_points1, const std::string& path_points2, double C, bool with_implant = false, double implant_strength = 0, gp_Dir implant_normal = gp_Dir(1,0,0), gp_Pnt implant_center_1 = gp_Pnt(0,0,0), gp_Pnt implant_center_2 = gp_Pnt(0,0,0), double implant_r1 = 0, double implant_r2 = 0);
 
-    virtual std::vector<double> stiffness_2D(const gp_Pnt& p) const override;
-    virtual std::vector<double> stiffness_3D(const gp_Pnt& p) const override;
-    virtual std::vector<double> stiffness_inverse_2D(const gp_Pnt& p) const override;
-    virtual std::vector<double> stiffness_inverse_3D(const gp_Pnt& p) const override;
-    virtual double get_density(const gp_Pnt& p) const override;
+    virtual std::vector<double> stiffness_2D(const MeshElement* const e, const gp_Pnt& p) const override;
+    virtual std::vector<double> stiffness_3D(const MeshElement* const e, const gp_Pnt& p) const override;
+    virtual std::vector<double> stiffness_inverse_2D(const MeshElement* const e, const gp_Pnt& p) const override;
+    virtual std::vector<double> stiffness_inverse_3D(const MeshElement* const e, const gp_Pnt& p) const override;
+    virtual double get_density(const MeshElement* const e, const gp_Pnt& p) const override;
 
-    virtual double beam_E_2D(const gp_Pnt& p, gp_Dir d) const override;
-    virtual double beam_E_3D(const gp_Pnt& p, gp_Dir d) const override;
-    virtual std::array<double, 2> beam_EG_2D(const gp_Pnt& p, gp_Dir d) const override;
-    virtual std::array<double, 4> beam_EG_3D(const gp_Pnt& p, gp_Dir d) const override;
-    virtual double S12_2D(const gp_Pnt& p, gp_Dir d = gp_Dir(1,0,0)) const override;
-    virtual std::array<double, 2> S12_S13_3D(const gp_Pnt& p, gp_Dir d = gp_Dir(1,0,0)) const override;
+    virtual double beam_E_2D(const MeshElement* const e, const gp_Pnt& p, gp_Dir d) const override;
+    virtual double beam_E_3D(const MeshElement* const e, const gp_Pnt& p, gp_Dir d) const override;
+    virtual std::array<double, 2> beam_EG_2D(const MeshElement* const e, const gp_Pnt& p, gp_Dir d) const override;
+    virtual std::array<double, 4> beam_EG_3D(const MeshElement* const e, const gp_Pnt& p, gp_Dir d) const override;
+    virtual double S12_2D(const MeshElement* const e, const gp_Pnt& p, gp_Dir d = gp_Dir(1,0,0)) const override;
+    virtual std::array<double, 2> S12_S13_3D(const MeshElement* const e, const gp_Pnt& p, gp_Dir d = gp_Dir(1,0,0)) const override;
 
     virtual Type get_type() const override{ return this->MANDIBLE; }
 

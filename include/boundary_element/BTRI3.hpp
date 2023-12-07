@@ -48,7 +48,7 @@ class BTRI3 : public BoundaryMeshElement{
     // (u, v, w) system used for applying Spring objects
     //
 
-    BTRI3(ElementShape s);
+    BTRI3(ElementShape s, const MeshElement* const parent);
 
     virtual Eigen::MatrixXd diffusion_1dof(const Eigen::MatrixXd& A) const override;
     virtual Eigen::MatrixXd advection_1dof(const Eigen::VectorXd& v) const override;
