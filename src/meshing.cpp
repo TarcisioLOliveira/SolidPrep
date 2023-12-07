@@ -945,7 +945,7 @@ std::vector<ElementShape> Meshing::generate_element_shapes(
     std::vector<ElementShape> list(N);
     std::vector<gp_Dir> normals(N);
     if(calc_normals){
-        if(nodes_per_elem == 2){
+        if(this->elem_info->get_problem_type() == utils::PROBLEM_TYPE_2D){
             for(size_t i = 0; i < N; ++i){
                 gp_Pnt p0 = id_map.at(filtered_tags[i*nodes_per_elem + 0])->point;
                 gp_Pnt p1 = id_map.at(filtered_tags[i*nodes_per_elem + 1])->point;
