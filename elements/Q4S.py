@@ -411,6 +411,50 @@ def make_src():
         print(formatted)
     print("};")
 
+def make_flow():
+    """
+        Creates the 1 degree-of-freedom flow vector.
+    """
+    init_N()
+
+    NN = t*sympy.Matrix([N[0], N[1], N[2], N[3]]).T
+
+    # Set up variables for line integral
+    x0, x1, y0, y1 = sympy.symbols("x0 x1 y0 y1")
+
+    M = spv.ReferenceFrame("M")
+
+    s = sympy.symbols("s")
+
+    rx = ((1-s)*x0+s*x1)
+    ry = ((1-s)*y0+s*y1)
+    dr = (x1-x0)*M.x + (y1-y0)*M.y
+
+    drnorm = sympy.sqrt((x1-x0)**2 + (y1-y0)**2)
+
+    print("Eigen::VectorXd M{")
+    for i in range(len(NN)):
+        # Apply line integration
+        NN[i] = NN[i].subs({xi:rx, eta:ry})
+        NN[i] = NN[i]*drnorm
+        NN[i] = NN[i].integrate((s, 0, 1))
+
+
+        # Prepare for printing
+        NN[i] = sympy.simplify(sympy.nsimplify(sympy.expand(NN[i]), rational=True))
+
+        # Format output for use with C++
+        formatted = str(NN[i])
+        formatted = re.sub(r"([abcdxy]\d)\*\*2", r"\1*\1", formatted)
+        formatted = re.sub(r"([abcdxy])(\d)", r"\1[\2]", formatted)
+
+        formatted = formatted.replace("sqrt", "std::sqrt")
+
+        if i > 0:
+            print(",")
+        print(formatted)
+    print("};")
+
 def main():
     # Backwards compatible switch statement
     args = {
@@ -424,6 +468,7 @@ def main():
         "-adv": make_adv,
         "-abs": make_abs,
         "-src": make_src,
+        "-flow": make_flow,
     }
     for i in range(1, len(sys.argv)):
         args[sys.argv[i]]()

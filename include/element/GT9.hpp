@@ -61,6 +61,7 @@ class GT9 : public MeshElementCommon2DTri<GT9>{
     virtual Eigen::MatrixXd advection_1dof(const double t, const std::vector<double>& v) const override;
     virtual Eigen::MatrixXd absorption_1dof(const double t) const override;
     virtual Eigen::VectorXd source_1dof(const double t) const override;
+    virtual Eigen::VectorXd flow_1dof(const double t, const MeshNode** nodes) const override;
 
     virtual inline std::unique_ptr<MeshElementFactory> get_element_info() const override{
         return std::unique_ptr<MeshElementFactory>(new MeshElementFactoryImpl<GT9>());

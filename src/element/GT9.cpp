@@ -532,5 +532,19 @@ Eigen::VectorXd GT9::source_1dof(const double t) const{
 
     return M;
 }
+Eigen::VectorXd GT9::flow_1dof(const double t, const MeshNode** nodes) const{
+    std::array<double, 2> x{nodes[0]->point.X(), nodes[1]->point.X()};
+    std::array<double, 2> y{nodes[0]->point.Y(), nodes[1]->point.Y()};
+
+    Eigen::Vector<double, 3> M{
+    t*(2*a[0] + b[0]*x[0] + b[0]*x[1] + c[0]*y[0] + c[0]*y[1])*std::sqrt(x[0]*x[0] - 2*x[0]*x[1] + x[1]*x[1] + y[0]*y[0] - 2*y[0]*y[1] + y[1]*y[1])/(4*delta)
+    ,
+    t*(2*a[1] + b[1]*x[0] + b[1]*x[1] + c[1]*y[0] + c[1]*y[1])*std::sqrt(x[0]*x[0] - 2*x[0]*x[1] + x[1]*x[1] + y[0]*y[0] - 2*y[0]*y[1] + y[1]*y[1])/(4*delta)
+    ,
+    t*(2*a[2] + b[2]*x[0] + b[2]*x[1] + c[2]*y[0] + c[2]*y[1])*std::sqrt(x[0]*x[0] - 2*x[0]*x[1] + x[1]*x[1] + y[0]*y[0] - 2*y[0]*y[1] + y[1]*y[1])/(4*delta)
+    };
+
+    return M;
+}
 
 }

@@ -28,6 +28,7 @@
 #include <BRepBuilderAPI_MakeEdge.hxx>
 #include <BRepBuilderAPI_MakeWire.hxx>
 #include <BRepBuilderAPI_MakeFace.hxx>
+#include <Eigen/src/Core/Matrix.h>
 #include <TopoDS_Wire.hxx>
 #include <TopoDS_Face.hxx>
 #include <TopoDS.hxx>
@@ -911,6 +912,33 @@ Eigen::VectorXd TET4::source_1dof(const double t) const{
         ,
         V/4
     };
+    return M;
+}
+
+Eigen::VectorXd TET4::flow_1dof(const double t, const MeshNode** nodes) const{
+    (void)t;
+
+    const gp_Vec v1(nodes[0]->point, nodes[1]->point);
+    const gp_Vec v2(nodes[0]->point, nodes[2]->point);
+
+    const double AA = v1.Crossed(v2).Magnitude()/6;
+    double A[4] = {0,0,0,0};
+    for(size_t i = 0; i < 4; ++i){
+        for(size_t j = 0; j < 3; ++j){
+            if(nodes[j]->point.IsEqual(this->nodes[i]->point, Precision::Confusion())){
+                A[i] = AA;
+                break;
+            }
+        }
+    }
+
+    Eigen::Vector<double, 4> M{
+        A[0],
+        A[1],
+        A[2],
+        A[3]
+    };
+
     return M;
 }
 

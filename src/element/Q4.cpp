@@ -285,6 +285,28 @@ Eigen::VectorXd Q4::source_1dof(const double t) const{
     return M;
 }
 
+Eigen::VectorXd Q4::flow_1dof(const double t, const MeshNode** nodes) const{
+    std::array<double, 2> x{nodes[0]->point.X(), nodes[1]->point.X()};
+    std::array<double, 2> y{nodes[0]->point.Y(), nodes[1]->point.Y()};
+
+    const double rnorm = 0.5*nodes[0]->point.Distance(nodes[1]->point);
+
+    Eigen::Vector<double, NODES_PER_ELEM> M;
+    M.fill(0);
+    constexpr size_t GN = 1;
+    const auto& GL = utils::GaussLegendre<GN>::get();
+
+    for(auto xi = GL.begin(); xi < GL.end(); ++xi){
+        const double s = xi->x;
+        const double X = 0.5*(x[0]*(1-s) + x[1]*(1+s));
+        const double Y = 0.5*(y[0]*(1-s) + y[1]*(1+s));
+        M += xi->w*N_mat_1dof(X, Y);
+    }
+    M *= t*rnorm;
+
+    return M;
+};
+
 std::vector<double> Q4::get_B(const gp_Pnt& point) const{
     const double x = point.X();
     const double y = point.Y();

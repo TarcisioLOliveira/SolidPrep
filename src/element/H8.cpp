@@ -501,4 +501,75 @@ Eigen::VectorXd H8::source_1dof(const double t) const{
     return M;
 }
 
+Eigen::VectorXd H8::flow_1dof(const double t, const MeshNode** nodes) const{
+    (void)t;
+
+    // As I was unable to make this work using natural coordinates, this method
+    // has additional code to find which face of the hex the loads are being
+    // applied onto.
+    //
+    // This is probably (hopefully) not the best solution, but it works for now.
+
+    int xp[8] = {-1, 1, 1, -1, -1, 1, 1, -1};
+    int yp[8] = {1, 1, -1, -1, 1, 1, -1, -1};
+    int zp[8] = {-1, -1, -1, -1, 1, 1, 1, 1};
+
+    std::array<double, BOUNDARY_NODES_PER_ELEM> x, y, z;
+    const gp_Pnt c(this->get_centroid());
+    for(size_t i = 0; i < BOUNDARY_NODES_PER_ELEM; ++i){
+        x[i] = nodes[i]->point.X() - c.X();
+        y[i] = nodes[i]->point.Y() - c.Y();
+        z[i] = nodes[i]->point.Z() - c.Z();
+    }
+    std::array<double, NODES_PER_ELEM> x2, y2, z2;
+    int idx[4];
+    int idx_i = 0;
+    for(size_t i = 0; i < NODES_PER_ELEM; ++i){
+        x2[i] = this->nodes[i]->point.X() - c.X();
+        y2[i] = this->nodes[i]->point.Y() - c.Y();
+        z2[i] = this->nodes[i]->point.Z() - c.Z();
+
+        for(size_t j = 0; j < BOUNDARY_NODES_PER_ELEM; ++j){
+            if(this->nodes[i]->point.IsEqual(nodes[j]->point, Precision::Confusion())){
+                idx[idx_i] = i;
+                ++idx_i;
+            }
+        }
+    }
+    int xt = xp[idx[0]];
+    int yt = yp[idx[0]]; 
+    int zt = zp[idx[0]]; 
+    for(size_t i = 1; i < 4; ++i){
+        if(xp[idx[i]] != xt){
+            xt = 0;
+        }
+        if(yp[idx[i]] != yt){
+            yt = 0;
+        }
+        if(zp[idx[i]] != zt){
+            zt = 0;
+        }
+    }
+
+    Eigen::Vector<double, NODES_PER_ELEM> M;
+    M.fill(0);
+    constexpr size_t GN = 2;
+    const auto& GL = utils::GaussLegendre<GN>::get();
+
+    for(auto xi = GL.begin(); xi < GL.end(); ++xi){
+        for(auto eta = GL.begin(); eta < GL.end(); ++eta){
+            const auto drnorm = this->surface_drnorm(xi->x, eta->x, x, y, z);
+            if(xt != 0){
+                M += (xi->w*eta->w*drnorm)*N_mat_1dof(xt, xi->x, eta->x);
+            } else if(yt != 0){
+                M += (xi->w*eta->w*drnorm)*N_mat_1dof(xi->x, yt, eta->x);
+            } else if(zt != 0){
+                M += (xi->w*eta->w*drnorm)*N_mat_1dof(xi->x, eta->x, zt);
+            }
+        }
+    }
+
+    return M;
+}
+
 }

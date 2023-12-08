@@ -495,6 +495,16 @@ class MeshElement : public Element{
     virtual Eigen::VectorXd source_1dof(const double t) const = 0;
 
     /**
+     * Returns a 1 degree of freedom flow vector.
+     *
+     * @param t Geometry thickness.
+     * @param nodes Delimiting boundary nodes
+     *
+     * @return Flow vector.
+     */
+    virtual Eigen::VectorXd flow_1dof(const double t, const MeshNode** nodes) const = 0;
+
+    /**
      * Returns an element node.
      *
      * @param node Number of the node within the element's list of nodes.
