@@ -78,6 +78,7 @@
 #include "function/mass.hpp"
 #include "function/mass_first_material.hpp"
 #include "function/mechanostat.hpp"
+#include "field/orthotropic_flow.hpp"
 
 ProjectData::ProjectData(std::string project_file){
 #ifdef _WIN32
@@ -159,6 +160,9 @@ ProjectData::ProjectData(std::string project_file){
                        "a support or spring must be specified to prevent matrix singularity.");
     if(this->log_data(doc, "geometry", TYPE_ARRAY, true)){
         this->geometries = this->load_geometries(doc);
+    }
+    if(this->log_data(doc, "fields", TYPE_ARRAY, false)){
+        this->fields = this->load_fields(doc);
     }
     if(this->log_data(doc, "sizing", TYPE_OBJECT, needs_sizing)){
         if(this->log_data(doc["sizing"], "pathfinding", TYPE_OBJECT, false)){
@@ -861,6 +865,40 @@ std::unique_ptr<MeshElementFactory> ProjectData::get_element_type(const rapidjso
                 ));
     }
     return nullptr;
+}
+
+std::vector<std::unique_ptr<Field>> ProjectData::load_fields(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc){
+    std::vector<std::unique_ptr<Field>> fields;
+    const auto& fields_array = doc["fields"].GetArray();
+    for(auto& f : fields_array){
+        logger::log_assert(f.IsObject(), logger::ERROR, "Each field must be stored as a JSON object");
+        this->log_data(f, "type", TYPE_STRING, true);
+        std::string type = f["type"].GetString();
+        if(type == "orthotropic_flow"){
+            this->log_data(f, "geometries", TYPE_ARRAY, true);
+            this->log_data(f, "boundary_conditions", TYPE_ARRAY, true);
+            this->log_data(f, "display", TYPE_BOOL, true);
+
+            std::vector<Geometry*> geoms;
+            std::vector<CrossSection> cs;
+            std::vector<double> coeffs;
+            bool show = f["display"].GetBool();
+            for(const auto& g:f["geometries"].GetArray()){
+                logger::log_assert(g.GetInt() < this->geometries.size(), logger::ERROR, "there are only {} geometries being loaded, but geometry number {} was selected for field of type {}", this->geometries.size(), g.GetInt(), type);
+                geoms.push_back(this->geometries[g.GetInt()].get());
+            }
+            for(const auto& c:f["boundary_conditions"].GetArray()){
+                logger::log_assert(c.IsObject(), logger::ERROR, "Each boundary_condition element must be stored as a JSON object");
+                cs.push_back(get_cross_section(c));
+                this->log_data(c, "coeff", TYPE_DOUBLE, true);
+                coeffs.push_back(c["coeff"].GetDouble());
+            }
+
+            fields.emplace_back(std::make_unique<field::OrthotropicFlow>(this->topopt_element.get(), geoms, cs, coeffs, this->thickness, show));
+        }
+    }
+
+    return fields;
 }
 
 std::vector<Force> ProjectData::get_loads(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc){

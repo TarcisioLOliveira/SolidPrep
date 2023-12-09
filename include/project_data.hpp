@@ -40,6 +40,7 @@
 #include "function.hpp"
 #include "optimizer.hpp"
 #include "spring.hpp"
+#include "field.hpp"
 
 /**
  * Reads and stores project data.
@@ -87,6 +88,7 @@ class ProjectData {
     std::unique_ptr<DensityFilter> density_filter;
     std::unique_ptr<Projection> projection;
     std::unique_ptr<Optimizer> optimizer;
+    std::vector<std::unique_ptr<Field>> fields;
     AnalysisType analysis;
     std::string folder_path;
     
@@ -124,6 +126,8 @@ class ProjectData {
     std::unique_ptr<Projection> load_projection(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc);
 
     std::unique_ptr<Optimizer> load_optimizer(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc);
+
+    std::vector<std::unique_ptr<Field>> load_fields(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc);
 
     std::unique_ptr<DensityBasedFunction> get_function(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc, double pc, double psiK);
 
