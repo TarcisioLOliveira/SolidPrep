@@ -92,6 +92,9 @@ int main(int argc, char* argv[]){
     // May be removed to use Gmsh with MPI
     if(mpi_id == 0){
         proj->topopt_mesher->mesh(proj->forces, proj->supports, proj->springs);
+        for(auto& f:proj->fields){
+            f->generate();
+        }
     }
     std::vector<MeshElement*> elems;
     std::vector<double> loads;
@@ -167,6 +170,10 @@ int main(int argc, char* argv[]){
                 auto displ = v->add_view("Displacement",           spview::defs::ViewType::VECTOR, spview::defs::DataType::DISPLACEMENT);
                 auto force = v->add_view("Force",           spview::defs::ViewType::VECTOR, spview::defs::DataType::DISPLACEMENT);
 
+                for(auto& f:proj->fields){
+                    f->initialize_views(v.get());
+                }
+
                 stressview_VM->update_view(stresses);
                 stressview_X ->update_view(stressesX);
                 stressview_Y ->update_view(stressesY);
@@ -176,6 +183,10 @@ int main(int argc, char* argv[]){
                 strainview_XY->update_view(strainXY);
                 displ->update_view(u);
                 force->update_view(proj->topopt_mesher->load_vector);
+
+                for(auto& f:proj->fields){
+                    f->display_views();
+                }
 
                 v->wait();
                 v->end();
@@ -262,6 +273,10 @@ int main(int argc, char* argv[]){
                 auto displ = v->add_view("Displacement",           spview::defs::ViewType::VECTOR, spview::defs::DataType::DISPLACEMENT);
                 auto force = v->add_view("Force",           spview::defs::ViewType::VECTOR, spview::defs::DataType::DISPLACEMENT);
 
+                for(auto& f:proj->fields){
+                    f->initialize_views(v.get());
+                }
+
                 stressview_VM->update_view(stresses);
                 stressview_X ->update_view(stressesX);
                 stressview_Y ->update_view(stressesY);
@@ -278,6 +293,10 @@ int main(int argc, char* argv[]){
                 displ->update_view(u);
                 force->update_view(proj->topopt_mesher->load_vector);
 
+                for(auto& f:proj->fields){
+                    f->display_views();
+                }
+
                 v->wait();
                 v->end();
             }
@@ -290,6 +309,12 @@ int main(int argc, char* argv[]){
 
             //proj->topopt->initialize_views(&v);
             proj->optimizer->initialize_views(v.get());
+            for(auto& f:proj->fields){
+                f->initialize_views(v.get());
+            }
+            for(auto& f:proj->fields){
+                f->display_views();
+            }
         }
 
         auto start_to = std::chrono::high_resolution_clock::now();
