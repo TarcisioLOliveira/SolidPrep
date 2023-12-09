@@ -54,9 +54,42 @@ void ViewHandler::update_view(const std::vector<double>& data, const std::vector
             }
             tag_offset += size;
         }
-    } else { // Not elemental
+    } else if(geometries.size() == 0){ // Not elemental
         tags.resize(this->node_num);
         std::iota(tags.begin(), tags.end(), 0);
+    } else {
+        const size_t nodes_per_elem = this->mesh->elem_info->get_nodes_per_element();
+        std::vector<double> used_nodes(this->node_num, false);
+        for(size_t i = 0; i < this->mesh->geometries.size(); ++i){
+            const auto pos = std::find(geometries.begin(), geometries.end(), i);
+            if(pos < geometries.end()){
+                const auto& g = this->mesh->geometries[i];
+                #pragma omp parallel for
+                for(const auto& e:g->mesh){
+                    for(size_t j = 0; j < nodes_per_elem; ++j){
+                        const auto& n = e->nodes[j];
+                        used_nodes[n->id] = true;
+                    }
+                }
+            }
+        }
+
+        size_t num_nodes = 0;
+        #pragma omp parallel for reduction(+:num_nodes)
+        for(const auto& b:used_nodes){
+            if(b){
+                ++num_nodes;
+            }
+        }
+
+        tags.resize(num_nodes);
+        auto tag_it = tags.begin();
+        for(size_t node_id = 0; node_id < this->node_num; ++node_id){
+            if(used_nodes[node_id]){
+                *tag_it = node_id;
+                ++tag_it;
+            }
+        }
     }
 
     // Elemental view shouldn't really be used for displacement
