@@ -72,6 +72,7 @@ void Meshing::generate_elements(const TopoDS_Shape& shape,
     {
         auto bound_list = this->generate_element_shapes(bound_elem_node_tags, bound_nodes_per_elem, id_map, true);
         this->populate_boundary_elements(bound_list, boundary_condition_inside);
+        this->distribute_boundary_elements();
     }
 
     // Zero positioning
@@ -259,6 +260,18 @@ void Meshing::distribute_elements(const std::vector<size_t>& geom_elem_mapping,
                       g->mesh.begin());
             ++geom_num;
         }
+    } else if(geometries.size() == 1){
+        auto& g = geometries[0];
+        g->mesh.clear();
+        g->mesh.reserve(element_list.size());
+        for(auto& e:element_list){
+            g->mesh.push_back(std::move(e));
+        }
+    }
+}
+
+void Meshing::distribute_boundary_elements(){
+    if(geometries.size() > 1){
         // Dirty and slow, but it was easier to implement
         // TODO: improve this
         for(auto& b:this->boundary_elements){
@@ -281,13 +294,8 @@ void Meshing::distribute_elements(const std::vector<size_t>& geom_elem_mapping,
         }
     } else if(geometries.size() == 1){
         auto& g = geometries[0];
-        g->mesh.clear();
         g->boundary_mesh.clear();
-        g->mesh.reserve(element_list.size());
         g->boundary_mesh.reserve(boundary_elements.size());
-        for(auto& e:element_list){
-            g->mesh.push_back(std::move(e));
-        }
         for(auto& e:boundary_elements){
             g->boundary_mesh.push_back(&e);
         }

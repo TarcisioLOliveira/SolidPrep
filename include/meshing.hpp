@@ -215,6 +215,13 @@ class Meshing{
                              std::vector<std::unique_ptr<MeshElement>>& element_list);
 
     /**
+     * Distributes boundary elements to their respective geometries.
+     *
+     * @param element_list List of elements
+     */
+    void distribute_boundary_elements();
+
+    /**
      * DEPRECATED. Only used by StandardBeamMesher (which is also being
      * deprecated).
      *
