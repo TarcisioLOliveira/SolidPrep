@@ -137,7 +137,9 @@ void Curvature::calculate_torsion(const std::vector<std::unique_ptr<BoundaryMesh
     for(const auto& e:boundary_mesh){
         gp_Pnt c = utils::change_point(e->get_centroid(), this->rot3D);
         const auto EG = this->mat->beam_EG_3D(e->parent, c, this->u);
-        const auto N = (EG[1] + EG[2])*e->source_1dof();
+        G(0,0) = 1e9/EG[2];
+        G(1,1) = 1e9/EG[1];
+        const auto N = 1e9*2*e->source_1dof();
 
         const auto M_e = e->diffusion_1dof(G);
 
