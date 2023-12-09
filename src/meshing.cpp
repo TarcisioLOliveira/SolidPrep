@@ -185,9 +185,18 @@ void Meshing::populate_boundary_elements(const std::vector<ElementShape>& bounda
                     this->boundary_elements.emplace_back(b.nodes, *it, mult*n);
                 } else if(common_nodes.size() == 2){
                     auto it = common_nodes.begin();
-                    this->boundary_elements.emplace_back(b.nodes, *it, mult*n);
-                    ++it;
-                    this->boundary_elements.emplace_back(b.nodes, *it, -mult*n);
+                    bool found = false;
+                    for(const auto& be:this->boundary_elements){
+                        if(be.parent == *it && be.normal.IsEqual(mult*n, Precision::Confusion())){
+                            found = true;
+                            break;
+                        }
+                    }
+                    if(!found){
+                        this->boundary_elements.emplace_back(b.nodes, *it, mult*n);
+                        ++it;
+                        this->boundary_elements.emplace_back(b.nodes, *it, -mult*n);
+                    }
                 } else {
                     logger::log_assert(false, logger::ERROR, "More than two elements are connected to a single boundary (this shouldn't happen).");
                 }
