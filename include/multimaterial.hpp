@@ -26,6 +26,7 @@
 
 class MultiMaterial{
     public:
+    MultiMaterial() = default;
     MultiMaterial(std::vector<Material*> materials, utils::ProblemType type, bool has_void);
 
     inline std::vector<double> get_D(const MeshElement* e, const gp_Pnt& p) const{
@@ -54,9 +55,9 @@ class MultiMaterial{
     }
 
     private:
-    const std::vector<Material*> materials;
-    const utils::ProblemType problem_type;
-    const bool has_void;
+    std::vector<Material*> materials;
+    utils::ProblemType problem_type;
+    bool has_void;
 
     void get_D_internal(std::vector<double>::const_iterator& rho, const double* pos, const size_t posN, const double mix, const MeshElement* e, const gp_Pnt& p, std::vector<double>& D) const;
     void get_gradD_internal(std::vector<double>::const_iterator& rho, const double* pos, const size_t posN, const double mix, const MeshElement* e, const gp_Pnt& p, std::vector<std::vector<double>>& gradD) const;
