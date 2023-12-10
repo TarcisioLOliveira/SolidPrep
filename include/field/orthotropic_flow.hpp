@@ -39,7 +39,10 @@ class OrthotropicFlow : public CoordinateField {
     virtual Eigen::Matrix<double, 3, 3> get_matrix(const MeshElement* e, const gp_Pnt& p) const override;
 
     inline virtual Class get_class() const override{
-        return ORTHOTROPIC_FLOW;
+        return Class::ORTHOTROPIC_FLOW;
+    }
+    inline virtual SubType get_sub_type() const override{
+        return SubType::DOMAIN;
     }
 
     private:

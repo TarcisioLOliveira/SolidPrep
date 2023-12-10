@@ -43,6 +43,7 @@ class Field{
     virtual void initialize_views(Visualization* viz) = 0;
     virtual void display_views() const = 0;
     virtual Type get_type() const = 0;
+    virtual SubType get_sub_type() const = 0;
 };
 
 class ScalarField : public Field{
@@ -71,7 +72,7 @@ class DirectionField : public Field{
 
 class CoordinateField : public Field{
     public:
-    enum Class{
+    enum class Class{
         ORTHOTROPIC_FLOW
     };
     inline virtual Type get_type() const override{
