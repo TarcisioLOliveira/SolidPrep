@@ -79,7 +79,7 @@ double LinearElasticOrthotropic::beam_E_3D(const MeshElement* const e, const gp_
     // (Ting, 1996)
     (void)p;
 
-    const auto& d = this->D_2D;
+    const auto& d = this->D_3D;
 
     gp_Dir z(0,0,1);
     gp_Dir x(1,0,0);
