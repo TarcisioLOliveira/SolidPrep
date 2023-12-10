@@ -43,6 +43,7 @@
 #include "material/linear_elastic_isotropic.hpp"
 #include "material/linear_elastic_orthotropic.hpp"
 #include "material/mandible.hpp"
+#include "material/linear_elastic_orthotropic_field.hpp"
 #include "sizing/standard_sizing.hpp"
 #include "finite_element/direct_solver.hpp"
 #include "finite_element/gradient_descent.hpp"
@@ -288,6 +289,47 @@ std::vector<std::unique_ptr<Material>> ProjectData::load_materials(const rapidjs
 
             //this->material.reset(new material::LinearElasticIsotropic(E*1e9, nu, Smax*1e6, Tmax*1e6, plane_stress));
             material.emplace_back(new material::LinearElasticIsotropic(name, density, E*1e3, nu, Smax, Tmax, plane_stress));
+        } else if(mat["type"] == "linear_elastic_orthotropic_field"){
+            std::vector<std::string> properties{"E", "nu", "G", "Smax", "Tmax"};
+            for(auto& s:properties){
+                logger::log_assert(mat.HasMember(s.c_str()), logger::ERROR, "missing material property: {}", s);
+                logger::log_assert(mat[s.c_str()].IsArray() || mat[s.c_str()].IsDouble(), logger::ERROR, "material property {} must be either a number or an array of numbers", s);
+            }
+            std::vector<std::vector<double>> values(5);
+            for(size_t i = 0; i < properties.size(); ++i){
+                if(mat[properties[i].c_str()].IsArray()){
+                    const auto& a = mat[properties[i].c_str()].GetArray();
+                    if(a.Size() == 1){
+                        values[i].resize(3, a[0].GetDouble());
+                    } else {
+                        values[i].resize(3, 0);
+                        for(size_t j = 0; j < std::min(a.Size(), (rapidjson::SizeType) 3); ++j){
+                            values[i][j] = a[j].GetDouble();
+                        }
+                    }
+                } else {
+                    values[i].resize(3, mat[properties[i].c_str()].GetDouble());
+                }
+            }
+            this->log_data(mat, "field", TYPE_INT, true);
+            this->log_data(mat, "density", TYPE_DOUBLE, true);
+            double density = mat["density"].GetDouble();
+            int field_num = mat["field"].GetInt();
+
+            for(auto& i:values[0]) i *= 1e3; // E
+            for(auto& i:values[2]) i *= 1e3; // G
+            // for(auto& i:values[0]) i *= 1e9; // E
+            // for(auto& i:values[2]) i *= 1e9; // G
+            // for(auto& i:values[3]) i *= 1e6; // Smax
+            // for(auto& i:values[4]) i *= 1e6; // Tmax
+
+            logger::log_assert(field_num >= 0, logger::ERROR, "field id must be non-negative");
+            logger::log_assert((size_t)field_num < this->fields.size(), logger::ERROR, "field id is greater or equal to number of defined fields");
+            Field* f = this->fields[field_num].get();
+            logger::log_assert(f->get_type() == Field::Type::COORDINATE, logger::ERROR, "orthotropic_field material type requires a coordinate field");
+            CoordinateField* cf = static_cast<CoordinateField*>(f);
+
+            material.emplace_back(new material::LinearElasticOrthotropicField(name, density, values[0], values[1], values[2], values[3], values[4], cf));
         } else if(mat["type"] == "mandible"){
             queue.push_back(mat_num);
         }

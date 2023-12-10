@@ -34,7 +34,8 @@ class Material{
         NONE,
         LINEAR_ELASTIC_ISOTROPIC,
         LINEAR_ELASTIC_ORTHOTROPIC,
-        MANDIBLE
+        MANDIBLE,
+        LINEAR_ELASTIC_ORTHOTROPIC_FIELD,
     };
 
     virtual ~Material() = default;
