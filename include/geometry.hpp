@@ -35,11 +35,15 @@ class BoundaryElement;
 
 class Geometry{
     public:
-    Geometry(const std::string& path, double scale, utils::ProblemType type, MeshElementFactory* elem_type, bool do_topopt, bool with_void, std::vector<Material*> materials, size_t id);
+    Geometry(const std::string& path, double scale, utils::ProblemType type, MeshElementFactory* elem_type, bool do_topopt, bool with_void, size_t id);
 
-    Geometry(TopoDS_Shape shape, utils::ProblemType type, MeshElementFactory* elem_type, bool do_topopt, bool with_void, std::vector<Material*> materials, size_t id);
+    Geometry(TopoDS_Shape shape, utils::ProblemType type, MeshElementFactory* elem_type, bool do_topopt, bool with_void, size_t id);
 
     void get_stresses(const std::vector<double>& u, const double p, const double psi, std::vector<double>::const_iterator& rho_it, std::vector<double>::iterator& stress_it) const;
+
+    inline void set_materials(std::vector<Material*> materials){
+        this->M = MultiMaterial(materials, this->type, this->with_void);
+    }
 
     /**
      * Check if point is inside the geometry.
@@ -81,7 +85,7 @@ class Geometry{
     }
 
     TopoDS_Shape shape;
-    const MultiMaterial materials;
+    const MultiMaterial& materials = this->M;
     const MeshElementFactory* const element_type;
     const bool do_topopt;
     const bool with_void;
@@ -93,6 +97,7 @@ class Geometry{
     std::vector<std::unique_ptr<MeshNode>> node_list; 
     private:
     const utils::ProblemType type;
+    MultiMaterial M;
 
     inline bool is_inside_2D(const gp_Pnt& p) const{
         BRepClass3d_SolidClassifier insider(this->shape, p, 0.01);

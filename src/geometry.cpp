@@ -23,16 +23,14 @@
 #include "element_factory.hpp"
 
 Geometry::Geometry(const std::string& path, double scale, utils::ProblemType type,
-        MeshElementFactory* elem_type, bool do_topopt, bool with_void, std::vector<Material*> materials, size_t id):
+        MeshElementFactory* elem_type, bool do_topopt, bool with_void, size_t id):
     shape(utils::load_shape(path, scale)),
-    materials(materials, type, with_void),
     element_type(elem_type), do_topopt(do_topopt), with_void(with_void), id(id), mesh(), 
     type(type){}
 
 Geometry::Geometry(TopoDS_Shape shape, utils::ProblemType type,
-        MeshElementFactory* elem_type, bool do_topopt, bool with_void, std::vector<Material*> materials, size_t id):
+        MeshElementFactory* elem_type, bool do_topopt, bool with_void, size_t id):
     shape(std::move(shape)),
-    materials(materials, type, with_void),
     element_type(elem_type), do_topopt(do_topopt), with_void(with_void), id(id), mesh(), 
     type(type){}
 

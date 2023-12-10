@@ -136,9 +136,6 @@ ProjectData::ProjectData(std::string project_file){
             this->thickness = doc["thickness"].GetDouble();
         }
     }
-    if(this->log_data(doc, "material", TYPE_ARRAY, true)){
-        this->materials = this->load_materials(doc);
-    }
     if(this->log_data(doc, "finite_element", TYPE_OBJECT, false)){
         this->topopt_fea = this->load_fea(doc);
     }
@@ -153,17 +150,21 @@ ProjectData::ProjectData(std::string project_file){
         this->topopt_element = this->get_element_type(doc["mesher"]["element_type"]);
         this->topopt_boundary_element = this->topopt_element->get_boundary_element_info();
     }
-    if(this->log_data(doc, "springs", TYPE_ARRAY, false)){
-        this->springs = this->get_springs(doc["springs"]);
-    }
-    logger::log_assert(this->supports.size() > 0 || this->springs.size() > 0, logger::ERROR,
-                       "a support or spring must be specified to prevent matrix singularity.");
     if(this->log_data(doc, "geometry", TYPE_ARRAY, true)){
         this->geometries = this->load_geometries(doc);
     }
     if(this->log_data(doc, "fields", TYPE_ARRAY, false)){
         this->fields = this->load_fields(doc);
     }
+    if(this->log_data(doc, "material", TYPE_ARRAY, true)){
+        this->materials = this->load_materials(doc);
+    }
+    this->assign_materials(doc);
+    if(this->log_data(doc, "springs", TYPE_ARRAY, false)){
+        this->springs = this->get_springs(doc["springs"]);
+    }
+    logger::log_assert(this->supports.size() > 0 || this->springs.size() > 0, logger::ERROR,
+                       "a support or spring must be specified to prevent matrix singularity.");
     if(this->log_data(doc, "sizing", TYPE_OBJECT, needs_sizing)){
         if(this->log_data(doc["sizing"], "pathfinding", TYPE_OBJECT, false)){
             this->pathfinder = this->load_pathfinder(doc["sizing"]);
@@ -349,6 +350,29 @@ std::vector<std::unique_ptr<Geometry>> ProjectData::load_geometries(const rapidj
 
         bool do_topopt = geom["do_topopt"].GetBool();
 
+        size_t alt_size = 0;
+        if(this->log_data(geom, "alt_materials", TYPE_ARRAY, false)){
+            const auto& alt = geom["alt_materials"].GetArray();
+            alt_size = alt.Size();
+        }
+
+        bool with_void = ((alt_size == 1) ? true : false) && do_topopt;
+        if(this->log_data(geom, "with_void", TYPE_BOOL, false) && alt_size > 0 && do_topopt){
+            with_void = geom["with_void"].GetBool();
+        }
+
+        geometry.emplace_back(new Geometry(absolute_path, scale, this->type, this->topopt_element.get(), do_topopt, with_void, id));
+        ++id;
+    }
+    return geometry;
+}
+
+void ProjectData::assign_materials(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc){
+    const auto& geometries = doc["geometry"].GetArray();
+    std::vector<std::unique_ptr<Geometry>> geometry;
+    size_t id = 0;
+    for(const auto& geom:geometries){
+
         std::string mat_name(geom["material"].GetString());
         auto equal_name = [&mat_name](const std::unique_ptr<Material>& m)->bool{
             return mat_name == m->name;
@@ -373,15 +397,10 @@ std::vector<std::unique_ptr<Geometry>> ProjectData::load_geometries(const rapidj
             }
         }
 
-        bool with_void = ((mats.size() == 1) ? true : false) && do_topopt;
-        if(this->log_data(geom, "with_void", TYPE_BOOL, false) && mats.size() > 1 && do_topopt){
-            with_void = geom["with_void"].GetBool();
-        }
+        this->geometries[id]->set_materials(mats);
 
-        geometry.emplace_back(new Geometry(absolute_path, scale, this->type, this->topopt_element.get(), do_topopt, with_void, mats, id));
         ++id;
     }
-    return geometry;
 }
 
 std::unique_ptr<Pathfinding> ProjectData::load_pathfinder(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc){

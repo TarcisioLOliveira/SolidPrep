@@ -111,6 +111,8 @@ class ProjectData {
 
     std::vector<std::unique_ptr<Geometry>> load_geometries(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc);
 
+    void assign_materials(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc);
+
     std::unique_ptr<Pathfinding> load_pathfinder(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc);
 
     std::unique_ptr<Sizing> load_sizer(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc);
