@@ -168,8 +168,8 @@ void OrthotropicFlow::generate(){
     utils::SparseMatrix Mtmp;
     Eigen::SparseMatrix<double> M = Eigen::SparseMatrix<double>(phi_size, phi_size);
     Eigen::ConjugateGradient<Eigen::SparseMatrix<double>, Eigen::Lower|Eigen::Upper, Eigen::DiagonalPreconditioner<double>> solver;
-    solver.setTolerance(1e-20);
-    solver.setMaxIterations(phi_size*3);
+    //solver.setTolerance(1e-20);
+    //solver.setMaxIterations(phi_size*3);
 
     Eigen::VectorXd b;
     b.resize(phi_size);
