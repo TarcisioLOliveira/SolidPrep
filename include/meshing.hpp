@@ -82,18 +82,30 @@ class Meshing{
 
     /**
      * Just generates a mesh from a group of geometries, depending on analysis
-     * parameters set in their construction. Returns ElementShape instances,
-     * not elements. Elements should be made using prepare_for_FEM().
+     * parameters set in their construction, and initializes nodes and elements.
      *
-     * @param geoemtries The geometries to be meshed
-     * @param elem_type Element type
+     * DOES NOT APPLY BOUNDARY CONDITIONS. Knowing the area of application is
+     * necessary for some procedures. Needs a better alternative to make
+     * that clearer.
      *
-     * @return collection of ElementShapes (which are just a collection of
-     *         MeshNodes
+     * @param forces Forces to be used
+     * @param supports Supports to be used
+     * @param springs Springs to be used
      */
     virtual void mesh(const std::vector<Force>& forces, 
                       const std::vector<Support>& supports,
                       std::vector<Spring>& springs) = 0;
+
+    /**
+     * Applies the specified boundary conditions onto the mesh.
+     *
+     * @param forces Forces to be used
+     * @param supports Supports to be used
+     * @param springs Springs to be used
+     */
+    virtual void apply_boundary_conditions(const std::vector<Force>& forces, 
+                                           const std::vector<Support>& supports,
+                                           std::vector<Spring>& springs);
 
     /**
      * Removes elements below a certain density threshold. Useful for
@@ -118,6 +130,7 @@ class Meshing{
     std::vector<Spring>* springs;
 
     protected:
+    TopoDS_Shape orig_shape;
     std::vector<bool> get_support_dof(const Support& support, const MeshElementFactory* elem_maker) const;
     std::vector<double> get_force_dof(const Force& force, const MeshElementFactory* elem_maker) const;
     void reverse_cuthill_mckee(const std::vector<ElementShape>& elem_list);
@@ -135,9 +148,6 @@ class Meshing{
      * @param elem_node_tags Map each node to its elements
      * @param bound_elem_node_tags Maps each boundary node to boundary elements
      * @param id_map Maps the original node tags (e.g. from Gmsh) to their MeshNode instance
-     * @param forces Forces to be used
-     * @param supports Supports to be used
-     * @param springs Springs to be used
      * @param deduplicate Whether to deduplicate nodes
      * @param boundary_condition_inside Whether there is one or more boundary conditions inside the geometry
      */
@@ -146,9 +156,6 @@ class Meshing{
                                    const std::vector<size_t>& elem_node_tags, 
                                    const std::vector<size_t>& bound_elem_node_tags,
                                    std::unordered_map<size_t, MeshNode*>& id_map,
-                                   const std::vector<Force>& forces, 
-                                   const std::vector<Support>& supports,
-                                   std::vector<Spring>& springs,
                                    const bool deduplicate,
                                    const bool boundary_condition_inside);
 

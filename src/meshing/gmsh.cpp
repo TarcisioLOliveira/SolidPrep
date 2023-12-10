@@ -107,9 +107,6 @@ void Gmsh::mesh(const std::vector<Force>& forces,
                             elem_node_tags, 
                             bound_elem_node_tags,
                             id_map,
-                            forces, 
-                            supports,
-                            springs,
                             deduplicate,
                             has_condition_inside);
 }

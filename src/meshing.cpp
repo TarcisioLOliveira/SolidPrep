@@ -43,12 +43,10 @@ void Meshing::generate_elements(const TopoDS_Shape& shape,
                                 const std::vector<size_t>& elem_node_tags, 
                                 const std::vector<size_t>& bound_elem_node_tags,
                                 std::unordered_map<size_t, MeshNode*>& id_map,
-                                const std::vector<Force>& forces, 
-                                const std::vector<Support>& supports,
-                                std::vector<Spring>& springs,
                                 const bool deduplicate,
                                 const bool boundary_condition_inside){
 
+    this->orig_shape = shape;
     logger::quick_log("Generating elements and preparing for finite element analysis...");
 
     if(deduplicate){
@@ -57,7 +55,6 @@ void Meshing::generate_elements(const TopoDS_Shape& shape,
 
     const size_t nodes_per_elem = this->elem_info->get_nodes_per_element();
     const size_t bound_nodes_per_elem = this->elem_info->get_boundary_nodes_per_element();
-    const size_t dof = this->elem_info->get_dof_per_node();
 
     {
         auto list = this->generate_element_shapes(elem_node_tags, nodes_per_elem, id_map);
@@ -74,6 +71,15 @@ void Meshing::generate_elements(const TopoDS_Shape& shape,
         this->populate_boundary_elements(bound_list, boundary_condition_inside);
         this->distribute_boundary_elements();
     }
+    logger::quick_log("Done.");
+}
+
+void Meshing::apply_boundary_conditions(const std::vector<Force>& forces, 
+                                        const std::vector<Support>& supports,
+                                        std::vector<Spring>& springs){
+
+    const size_t dof = this->elem_info->get_dof_per_node();
+    logger::quick_log("Applying boundary conditions...");
 
     // Zero positioning
     #pragma omp parallel for
@@ -104,7 +110,7 @@ void Meshing::generate_elements(const TopoDS_Shape& shape,
     this->load_vector.resize(current, 0);
 
     logger::quick_log("loads");
-    this->generate_load_vector(shape, forces);
+    this->generate_load_vector(this->orig_shape, forces);
 
     if(springs.size() > 0){
         logger::quick_log("springs");
