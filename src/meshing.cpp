@@ -212,19 +212,58 @@ void Meshing::populate_boundary_elements(const std::vector<ElementShape>& bounda
 }
 
 void Meshing::apply_supports(const std::vector<Support>& supports){
+    if(supports.size() == 0){
+        return;
+    }
     const size_t dof = this->elem_info->get_dof_per_node();
 
-    #pragma omp parallel for
-    for(size_t i = 0; i < this->boundary_node_list.size(); ++i){
-        auto& n = this->boundary_node_list[i];
+    std::vector<Support> bound_s, dom_s;
+    bound_s.reserve(supports.size());
+    dom_s.reserve(supports.size());
+    for(auto& s : supports){
+        if(s.S.get_area() > 0){
+            bound_s.push_back(s);
+        } else {
+            dom_s.push_back(s);
+        }
+    }
 
-        for(auto& s : supports){
-            if(s.S.is_inside(n->point)){
-                std::vector<bool> sup_pos = this->get_support_dof(s, this->elem_info);
-                for(size_t j = 0; j < dof; ++j){
-                    if(sup_pos[j]){
-                        n->u_pos[j] = -1;
+    if(bound_s.size() > 0){
+        #pragma omp parallel for
+        for(size_t i = 0; i < this->boundary_node_list.size(); ++i){
+            const auto& n = this->boundary_node_list[i];
+
+            for(auto& s : bound_s){
+                if(s.S.is_inside(n->point)){
+                    logger::quick_log("found2");
+                    std::vector<bool> sup_pos = this->get_support_dof(s, this->elem_info);
+                    for(size_t j = 0; j < dof; ++j){
+                        if(sup_pos[j]){
+                            n->u_pos[j] = -1;
+                        }
                     }
+                }
+            }
+        }
+    } else if(dom_s.size() > 0){
+        for(auto& s : dom_s){
+            const gp_Pnt c = s.S.get_centroid();
+            const MeshNode* curr = nullptr;
+            double dist = 1e100;
+            for(size_t i = 0; i < this->node_list.size(); ++i){
+                const auto& n = this->node_list[i];
+
+                double d = c.Distance(n->point);
+                if(d < dist){
+                    dist = d;
+                    curr = n.get();
+                }
+            }
+            logger::quick_log(curr->point.X(), curr->point.Y(), curr->point.Z());
+            std::vector<bool> sup_pos = this->get_support_dof(s, this->elem_info);
+            for(size_t j = 0; j < dof; ++j){
+                if(sup_pos[j]){
+                    curr->u_pos[j] = -1;
                 }
             }
         }

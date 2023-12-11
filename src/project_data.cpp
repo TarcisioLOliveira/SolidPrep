@@ -1099,8 +1099,9 @@ std::vector<Spring> ProjectData::get_springs(const rapidjson::GenericValue<rapid
 CrossSection ProjectData::get_cross_section(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc) const{
     if(this->type == utils::PROBLEM_TYPE_2D){
         bool has_vertices = this->log_data(doc, "vertices", TYPE_ARRAY, false);
+        bool has_point = this->log_data(doc, "point", TYPE_ARRAY, false);
 
-        logger::log_assert(has_vertices, logger::ERROR, "invalid cross-section definition in configuration file.");
+        logger::log_assert(has_vertices || has_point, logger::ERROR, "invalid cross-section definition in configuration file.");
         if(has_vertices){
             auto vertices = doc["vertices"].GetArray();
 
@@ -1110,12 +1111,19 @@ CrossSection ProjectData::get_cross_section(const rapidjson::GenericValue<rapidj
                 vlist.emplace_back(v[0].GetDouble(), v[1].GetDouble(), 0);
             }
             return CrossSection(vlist, this->thickness);
+        } else if(has_point){
+            const auto& pa = doc["point"].GetArray();
+            logger::log_assert(pa.Size() == 2, logger::ERROR, "Vertices must have exactly two dimensions in 2D problems");
+            gp_Pnt p(pa[0].GetDouble(), pa[1].GetDouble(), 0);
+
+            return CrossSection(p);
         }
     } else if(this->type == utils::PROBLEM_TYPE_3D) {
         bool has_rect = this->log_data(doc, "rectangle", TYPE_OBJECT, false);
         bool has_file = this->log_data(doc, "file", TYPE_OBJECT, false);
+        bool has_point = this->log_data(doc, "point", TYPE_ARRAY, false);
 
-        logger::log_assert(has_rect || has_file, logger::ERROR, "invalid cross-section definition in configuration file.");
+        logger::log_assert(has_rect || has_file || has_point, logger::ERROR, "invalid cross-section definition in configuration file.");
         if(has_rect){
             const auto& rect = doc["rectangle"];
             this->log_data(rect, "center", TYPE_ARRAY, true);
@@ -1157,6 +1165,12 @@ CrossSection ProjectData::get_cross_section(const rapidjson::GenericValue<rapidj
             absolute_path.append(path);
 
             return CrossSection(absolute_path, scale);
+        } else if(has_point){
+            const auto& pa = doc["point"].GetArray();
+            logger::log_assert(pa.Size() == 3, logger::ERROR, "Vertices must have exactly three dimensions in 3D problems");
+            gp_Pnt p(pa[0].GetDouble(), pa[1].GetDouble(), pa[2].GetDouble());
+
+            return CrossSection(p);
         }
     }
     logger::log_assert(false, logger::ERROR, "unknown problem type detected in get_cross_section(), this shouldn't have happened.");
