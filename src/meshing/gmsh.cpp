@@ -22,6 +22,7 @@
 #include "logger.hpp"
 #include "utils.hpp"
 #include <BRepBuilderAPI_Transform.hxx>
+#include <BRep_Builder.hxx>
 #include <cmath>
 #include <gmsh.h>
 #include <algorithm>
@@ -60,7 +61,7 @@ void Gmsh::mesh(const std::vector<Force>& forces,
     } else {
         // Maybe disable for cubic elements?
         for(auto& f:forces){
-            has_condition_inside = this->is_strictly_inside3D(f.S.get_centroid(), shape);
+            //has_condition_inside = this->is_strictly_inside3D(f.S.get_centroid(), shape);
             BOPAlgo_Splitter splitter;
             splitter.SetNonDestructive(true);
             splitter.AddArgument(sh);
@@ -69,15 +70,18 @@ void Gmsh::mesh(const std::vector<Force>& forces,
             sh = splitter.Shape();
         }
         for(auto& s:supports){
-            has_condition_inside = this->is_strictly_inside3D(s.S.get_centroid(), shape);
-            BOPAlgo_Splitter splitter;
-            splitter.SetNonDestructive(true);
-            splitter.AddArgument(sh);
-            splitter.AddTool(s.S.get_shape());
-            splitter.Perform();
-            sh = splitter.Shape();
+            //has_condition_inside = this->is_strictly_inside3D(s.S.get_centroid(), shape);
+            if(s.S.get_area() > 0){
+                BOPAlgo_Splitter splitter;
+                splitter.SetNonDestructive(true);
+                splitter.AddArgument(sh);
+                splitter.AddTool(s.S.get_shape());
+                splitter.Perform();
+                sh = splitter.Shape();
+            }
         }
     }
+
     // if(has_condition_inside){
     //     // Workaround so that this does not break current (faster) method of
     //     // distributing elements to the different geometry instances, at least
