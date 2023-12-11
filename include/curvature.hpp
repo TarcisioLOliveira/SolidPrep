@@ -83,26 +83,26 @@ class Curvature{
 
     inline double make_EA_base_3D(const MeshElement* const e, const gp_Pnt& p, const gp_Pnt& px) const{
         (void)px;
-        return this->mat->beam_E_3D(e, p, this->u);
+        return this->mat->beam_E_3D(e, p, this->rot3D);
     }
     inline double make_EA_v_base_3D(const MeshElement* const e, const gp_Pnt& p, const gp_Pnt& px) const{
-        return this->mat->beam_E_3D(e, p, this->u)*px.Y();
+        return this->mat->beam_E_3D(e, p, this->rot3D)*px.Y();
     }
     inline double make_EA_w_base_3D(const MeshElement* const e, const gp_Pnt& p, const gp_Pnt& px) const{
-        return this->mat->beam_E_3D(e, p, this->u)*px.Z();
+        return this->mat->beam_E_3D(e, p, this->rot3D)*px.Z();
     }
     inline double make_EI_v_base_3D(const MeshElement* const e, const gp_Pnt& p, const gp_Pnt& px) const{
         const double dz = px.Z() - c_w;
-        return this->mat->beam_E_3D(e, p, this->u)*dz*dz;
+        return this->mat->beam_E_3D(e, p, this->rot3D)*dz*dz;
     }
     inline double make_EI_w_base_3D(const MeshElement* const e, const gp_Pnt& p, const gp_Pnt& px) const{
         const double dy = px.Y() - c_v;
-        return this->mat->beam_E_3D(e, p, this->u)*dy*dy;
+        return this->mat->beam_E_3D(e, p, this->rot3D)*dy*dy;
     }
     inline double make_EI_vw_base_3D(const MeshElement* const e, const gp_Pnt& p, const gp_Pnt& px) const{
         const double dy = px.Y() - c_v;
         const double dz = px.Z() - c_w;
-        return this->mat->beam_E_3D(e, p, this->u)*dy*dz;
+        return this->mat->beam_E_3D(e, p, this->rot3D)*dy*dz;
     }
 };
 

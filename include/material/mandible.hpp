@@ -35,12 +35,12 @@ class Mandible : public Material{
     virtual std::vector<double> stiffness_inverse_3D(const MeshElement* const e, const gp_Pnt& p) const override;
     virtual double get_density(const MeshElement* const e, const gp_Pnt& p) const override;
 
-    virtual double beam_E_2D(const MeshElement* const e, const gp_Pnt& p, gp_Dir d) const override;
-    virtual double beam_E_3D(const MeshElement* const e, const gp_Pnt& p, gp_Dir d) const override;
-    virtual std::array<double, 2> beam_EG_2D(const MeshElement* const e, const gp_Pnt& p, gp_Dir d) const override;
-    virtual std::array<double, 4> beam_EG_3D(const MeshElement* const e, const gp_Pnt& p, gp_Dir d) const override;
-    virtual double S12_2D(const MeshElement* const e, const gp_Pnt& p, gp_Dir d = gp_Dir(1,0,0)) const override;
-    virtual std::array<double, 2> S12_S13_3D(const MeshElement* const e, const gp_Pnt& p, gp_Dir d = gp_Dir(1,0,0)) const override;
+    virtual double beam_E_2D(const MeshElement* const e, const gp_Pnt& p, const Eigen::Matrix<double, 2, 2>& R) const override;
+    virtual double beam_E_3D(const MeshElement* const e, const gp_Pnt& p, const Eigen::Matrix<double, 3, 3>& R) const override;
+    virtual std::array<double, 2> beam_EG_2D(const MeshElement* const e, const gp_Pnt& p, const Eigen::Matrix<double, 2, 2>& R) const override;
+    virtual std::array<double, 4> beam_EG_3D(const MeshElement* const e, const gp_Pnt& p, const Eigen::Matrix<double, 3, 3>& R) const override;
+    virtual double S12_2D(const MeshElement* const e, const gp_Pnt& p, const Eigen::Matrix<double, 2, 2>& R) const override;
+    virtual std::array<double, 2> S12_S13_3D(const MeshElement* const e, const gp_Pnt& p, const Eigen::Matrix<double, 3, 3>& R) const override;
 
     virtual Type get_type() const override{ return this->MANDIBLE; }
 

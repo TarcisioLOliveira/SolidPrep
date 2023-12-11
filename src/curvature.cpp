@@ -117,13 +117,13 @@ void Curvature::get_shear_in_3D(const BoundaryMeshElement* e, double& t_uv, doub
     }
     if(this->V_v != 0 || this->V_w != 0){
         Eigen::Vector<double, 2> grad = e->grad_1dof(c, this->psi_shear);
-        const auto EG = this->mat->beam_EG_2D(e->parent, c, this->u);
+        const auto E = this->mat->beam_E_3D(e->parent, c, this->rot3D);
         const double w1 = this->bn1.width(c);
         const double f1 = this->bn1.get_F(c);
         const double w2 = this->bn2.width(c);
         const double f2 = this->bn2.get_F(c);
-        t_uv += -grad[1] - EG[0]*this->dcurv_w*(w2*w2 - f2)/2;
-        t_uw +=  grad[0] + EG[0]*this->dcurv_v*(w1*w1 - f1)/2;
+        t_uv += -grad[1] - E*this->dcurv_w*(w2*w2 - f2)/2;
+        t_uw +=  grad[0] + E*this->dcurv_v*(w1*w1 - f1)/2;
     }
 }
 
@@ -143,7 +143,7 @@ void Curvature::calculate_torsion(const std::vector<std::unique_ptr<BoundaryMesh
 
     for(const auto& e:boundary_mesh){
         gp_Pnt c = utils::change_point(e->get_centroid(), this->rot3D);
-        const auto EG = this->mat->beam_EG_3D(e->parent, c, this->u);
+        const auto EG = this->mat->beam_EG_3D(e->parent, c, this->rot3D);
         G(0,0) = 1e9/EG[2];
         G(1,1) = 1e9/EG[1];
         const auto N = 1e9*2*e->source_1dof();
@@ -218,8 +218,8 @@ void Curvature::calculate_shear_3D(const std::vector<std::unique_ptr<BoundaryMes
 
     for(const auto& e:boundary_mesh){
         gp_Pnt c = utils::change_point(e->get_centroid(), this->rot3D);
-        const auto EG = this->mat->beam_EG_3D(e->parent, c, this->u);
-        const auto S = this->mat->S12_S13_3D(e->parent, c, this->u);
+        const auto EG = this->mat->beam_EG_3D(e->parent, c, this->rot3D);
+        const auto S = this->mat->S12_S13_3D(e->parent, c, this->rot3D);
         G(0,0) = 1e9/EG[2]; // G_uw
         G(1,1) = 1e9/EG[1]; // G_uv
         const auto N12 = e->source_1dof(S[1], EG[1], &bn1, S[0], EG[2], &bn2, center);

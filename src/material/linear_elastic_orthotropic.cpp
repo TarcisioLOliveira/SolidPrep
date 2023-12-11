@@ -20,6 +20,7 @@
 
 #include "material/linear_elastic_orthotropic.hpp"
 #include "logger.hpp"
+#include "utils/basis_tensor.hpp"
 #include <cmath>
 #include <lapacke.h>
 #include <cblas.h>
@@ -61,83 +62,53 @@ LinearElasticOrthotropic::LinearElasticOrthotropic(const std::string& name, cons
     this->D_3D = std::move(S_3D_tmp);
 }
 
-double LinearElasticOrthotropic::beam_E_2D(const MeshElement* const e, const gp_Pnt& p, gp_Dir dir) const{
+double LinearElasticOrthotropic::beam_E_2D(const MeshElement* const e, const gp_Pnt& p, const Eigen::Matrix<double, 2, 2>& R) const{
     // Anisotropic Elasticity: Theory and Applications
     // (Ting, 1996)
     (void)p;
+    (void)e;
 
-    const double ca = dir.X(); 
-    const double sa = dir.Y(); 
-    const auto& d = this->D_2D;
+    const auto Rt = utils::basis_tensor_2D(R);
+    auto d = this->D_2D;
+    this->rotate_D_2D(d, Rt);
 
-    const double E = ca*ca*ca*ca*d[0] + 2*ca*ca*d[1]*sa*sa + ca*ca*d[8]*sa*sa + d[4]*sa*sa*sa*sa;
-
-    return E;
+    return d[0];
 }
-double LinearElasticOrthotropic::beam_E_3D(const MeshElement* const e, const gp_Pnt& p, gp_Dir dir) const{
+double LinearElasticOrthotropic::beam_E_3D(const MeshElement* const e, const gp_Pnt& p, const Eigen::Matrix<double, 3, 3>& R) const{
     // Anisotropic Elasticity: Theory and Applications
     // (Ting, 1996)
     (void)p;
+    (void)e;
 
-    const auto& d = this->D_3D;
+    const auto Rt = utils::basis_tensor_3D(R);
+    auto d = this->D_3D;
+    this->rotate_D_3D(d, Rt);
 
-    gp_Dir z(0,0,1);
-    gp_Dir x(1,0,0);
-    if(dir.IsEqual(x, 0.001)){
-        return this->D_3D[0];
-    }
-    double a = dir.AngleWithRef(x, z);
-    gp_Dir cross(dir.Crossed(z));
-    double b = M_PI/2 + dir.AngleWithRef(z, cross);
-    double cb = std::cos(b);
-    double sb = std::sin(b);
-    double ca = std::cos(a);
-    double sa = std::sin(a);
-
-   const double E = ca*ca*ca*ca*d[7]*sb*sb*sb*sb + 2*ca*ca*cb*cb*d[1]*sb*sb - ca*ca*cb*cb*d[21]*sb*sb - ca*ca*d[35]*sa*sa*sb*sb*sb*sb + 2*ca*ca*d[8]*sa*sa*sb*sb*sb*sb + cb*cb*cb*cb*d[0] + 2*cb*cb*d[2]*sa*sa*sb*sb - cb*cb*d[28]*sa*sa*sb*sb + d[14]*sa*sa*sa*sa*sb*sb*sb*sb;
-    
-    return E;
+    return d[0];
 }
-std::array<double, 2> LinearElasticOrthotropic::beam_EG_2D(const MeshElement* const e, const gp_Pnt& p, gp_Dir dir) const{
+std::array<double, 2> LinearElasticOrthotropic::beam_EG_2D(const MeshElement* const e, const gp_Pnt& p, const Eigen::Matrix<double, 2, 2>& R) const{
     // Anisotropic Elasticity: Theory and Applications
     // (Ting, 1996)
     (void)p;
+    (void)e;
 
-    const double ca = dir.X(); 
-    const double sa = dir.Y(); 
-    const auto& d = this->D_2D;
+    const auto Rt = utils::basis_tensor_2D(R);
+    auto d = this->D_2D;
+    this->rotate_D_2D(d, Rt);
 
-    const double E = ca*ca*ca*ca*d[0] + 2*ca*ca*d[1]*sa*sa + ca*ca*d[8]*sa*sa + d[4]*sa*sa*sa*sa;
-    const double G = ca*ca*ca*ca*d[8] + ca*ca*d[0]*sa*sa - 2*ca*ca*d[1]*sa*sa + ca*ca*d[4]*sa*sa - 2*ca*ca*d[8]*sa*sa + d[8]*sa*sa*sa*sa;
-
-    return {E, G};
+    return {d[0], d[8]};
 }
-std::array<double, 4> LinearElasticOrthotropic::beam_EG_3D(const MeshElement* const e, const gp_Pnt& p, gp_Dir dir) const{
+std::array<double, 4> LinearElasticOrthotropic::beam_EG_3D(const MeshElement* const e, const gp_Pnt& p, const Eigen::Matrix<double, 3, 3>& R) const{
     // Anisotropic Elasticity: Theory and Applications
     // (Ting, 1996)
     (void)p;
+    (void)e;
 
-    const auto& d = this->D_3D;
+    const auto Rt = utils::basis_tensor_3D(R);
+    auto d = this->D_3D;
+    this->rotate_D_3D(d, Rt);
 
-    gp_Dir z(0,0,1);
-    gp_Dir x(1,0,0);
-    if(dir.IsEqual(x, 0.001)){
-        return {D_3D[0], D_3D[21], D_3D[28], D_3D[35]};
-    }
-    double a = dir.AngleWithRef(x, z);
-    gp_Dir cross(dir.Crossed(z));
-    double b = M_PI/2 + dir.AngleWithRef(z, cross);
-    double cb = std::cos(b);
-    double sb = std::sin(b);
-    double ca = std::cos(a);
-    double sa = std::sin(a);
-
-    const double E = ca*ca*ca*ca*d[7]*sb*sb*sb*sb + 2*ca*ca*cb*cb*d[1]*sb*sb + ca*ca*cb*cb*d[21]*sb*sb + ca*ca*d[35]*sa*sa*sb*sb*sb*sb + 2*ca*ca*d[8]*sa*sa*sb*sb*sb*sb + cb*cb*cb*cb*d[0] + 2*cb*cb*d[2]*sa*sa*sb*sb + cb*cb*d[28]*sa*sa*sb*sb + d[14]*sa*sa*sa*sa*sb*sb*sb*sb;
-    const double G1 = ca*ca*ca*ca*cb*cb*d[7]*sb*sb + ca*ca*cb*cb*cb*cb*d[21] - 2*ca*ca*cb*cb*d[1]*sb*sb - 2*ca*ca*cb*cb*d[21]*sb*sb + ca*ca*cb*cb*d[35]*sa*sa*sb*sb + 2*ca*ca*cb*cb*d[8]*sa*sa*sb*sb + ca*ca*d[21]*sb*sb*sb*sb + cb*cb*cb*cb*d[28]*sa*sa + cb*cb*d[0]*sb*sb + cb*cb*d[14]*sa*sa*sa*sa*sb*sb - 2*cb*cb*d[2]*sa*sa*sb*sb - 2*cb*cb*d[28]*sa*sa*sb*sb + d[28]*sa*sa*sb*sb*sb*sb;
-    const double G2 = ca*ca*ca*ca*d[35]*sb*sb + ca*ca*cb*cb*d[28] + ca*ca*d[14]*sa*sa*sb*sb - 2*ca*ca*d[35]*sa*sa*sb*sb + ca*ca*d[7]*sa*sa*sb*sb - 2*ca*ca*d[8]*sa*sa*sb*sb + cb*cb*d[21]*sa*sa + d[35]*sa*sa*sa*sa*sb*sb;
-    const double G3 = ca*ca*ca*ca*cb*cb*d[35] + ca*ca*cb*cb*d[14]*sa*sa - 2*ca*ca*cb*cb*d[35]*sa*sa + ca*ca*cb*cb*d[7]*sa*sa - 2*ca*ca*cb*cb*d[8]*sa*sa + ca*ca*d[28]*sb*sb + cb*cb*d[35]*sa*sa*sa*sa + d[21]*sa*sa*sb*sb;
-
-    return {E, G1, G2, G3};
+    return {d[0], d[21], d[28], d[35]};
 }
 
 std::vector<double> LinearElasticOrthotropic::get_max_stresses(gp_Dir d) const{
@@ -204,38 +175,26 @@ std::vector<double> LinearElasticOrthotropic::get_max_stresses(gp_Dir d) const{
 }
 
 
-double LinearElasticOrthotropic::S12_2D(const MeshElement* const e, const gp_Pnt& p, gp_Dir dir) const{
+double LinearElasticOrthotropic::S12_2D(const MeshElement* const e, const gp_Pnt& p, const Eigen::Matrix<double, 2, 2>& R) const{
     (void)p;
-    const double ca = dir.X(); 
-    const double sa = dir.Y(); 
-    const auto& s = this->S_2D;
+    (void)e;
 
-    const double S12 = ca*ca*ca*ca*s[1] + ca*ca*s[0]*sa*sa + ca*ca*s[4]*sa*sa - ca*ca*s[8]*sa*sa + s[1]*sa*sa*sa*sa;
+    const auto Rt = utils::basis_tensor_2D(R.transpose());
+    auto s = this->S_2D;
+    this->rotate_S_2D(s, Rt);
 
-    return S12;
+    return s[1];
 }
 
-std::array<double, 2> LinearElasticOrthotropic::S12_S13_3D(const MeshElement* const e, const gp_Pnt& p, gp_Dir dir) const{
+std::array<double, 2> LinearElasticOrthotropic::S12_S13_3D(const MeshElement* const e, const gp_Pnt& p, const Eigen::Matrix<double, 3, 3>& R) const{
     (void)p;
-    const auto& s = this->S_3D;
+    (void)e;
 
-    gp_Dir z(0,0,1);
-    gp_Dir x(1,0,0);
-    if(dir.IsEqual(x, 0.001)){
-        return {S_3D[1], S_3D[2]};
-    }
-    double a = dir.AngleWithRef(x, z);
-    gp_Dir cross(dir.Crossed(z));
-    double b = M_PI/2 + dir.AngleWithRef(z, cross);
-    double cb = std::cos(b);
-    double sb = std::sin(b);
-    double ca = std::cos(a);
-    double sa = std::sin(a);
+    const auto Rt = utils::basis_tensor_3D(R.transpose());
+    auto s = this->S_3D;
+    this->rotate_S_3D(s, Rt);
 
-    const double S12 = ca*ca*ca*ca*cb*cb*s[7]*sb*sb + ca*ca*cb*cb*cb*cb*s[1] - ca*ca*cb*cb*s[21]*sb*sb + ca*ca*cb*cb*s[35]*sa*sa*sb*sb + 2*ca*ca*cb*cb*s[8]*sa*sa*sb*sb + ca*ca*s[1]*sb*sb*sb*sb + cb*cb*cb*cb*s[2]*sa*sa + cb*cb*s[0]*sb*sb + cb*cb*s[14]*sa*sa*sa*sa*sb*sb - cb*cb*s[28]*sa*sa*sb*sb + s[2]*sa*sa*sb*sb*sb*sb;
-    const double S13 = ca*ca*ca*ca*s[8]*sb*sb + ca*ca*cb*cb*s[2] + ca*ca*s[14]*sa*sa*sb*sb - ca*ca*s[35]*sa*sa*sb*sb + ca*ca*s[7]*sa*sa*sb*sb + cb*cb*s[1]*sa*sa + s[8]*sa*sa*sa*sa*sb*sb;
-
-    return {S12, S13};
+    return {s[1], s[2]};
 }
 
 }

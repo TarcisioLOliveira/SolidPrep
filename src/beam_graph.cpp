@@ -98,9 +98,14 @@ std::vector<double> BeamGraph::run(){
             }
             double E = 0;
             if(data->type == utils::PROBLEM_TYPE_2D){
-                E = this->data->materials[0]->beam_E_2D(nullptr, gp_Pnt(), v1);
+                Eigen::Matrix<double, 2, 2> R
+                    {{v1.X(), -v1.Y()},
+                     {v1.Y(), v1.X()}};
+                E = this->data->materials[0]->beam_E_2D(nullptr, gp_Pnt(), R);
             } else {
-                E = this->data->materials[0]->beam_E_3D(nullptr, gp_Pnt(), v1);
+                logger::log_assert(false, logger::ERROR, "3D beam graph not fully implemented");
+                // TODO
+                //E = this->data->materials[0]->beam_E_3D(nullptr, gp_Pnt(), R);
             }
             for(size_t i = 0; i < 3; ++i){
                 this->nodes[0]->u_pos[i] = pos[i];
@@ -129,9 +134,14 @@ std::vector<double> BeamGraph::run(){
             }
             double E = 0;
             if(data->type == utils::PROBLEM_TYPE_2D){
-                E = this->data->materials[0]->beam_E_2D(nullptr, gp_Pnt(), v);
+                Eigen::Matrix<double, 2, 2> R
+                    {{v.X(), -v.Y()},
+                     {v.Y(), v.X()}};
+                E = this->data->materials[0]->beam_E_2D(nullptr, gp_Pnt(), R);
             } else {
-                E = this->data->materials[0]->beam_E_3D(nullptr, gp_Pnt(), v);
+                logger::log_assert(false, logger::ERROR, "3D beam graph not fully implemented");
+                // TODO
+                //E = this->data->materials[0]->beam_E_3D(nullptr, gp_Pnt(), R);
             }
             for(size_t i = 0; i < 3; ++i){
                 this->nodes[true_pos+1]->u_pos[i] = pos[i+3];

@@ -80,23 +80,23 @@ double Mandible::get_density(const MeshElement* const e, const gp_Pnt& p) const{
 
     return (1 - coeff)*d_o + coeff*d_i;
 }
-double Mandible::beam_E_2D(const MeshElement* const e, const gp_Pnt& p, gp_Dir d) const{
-    double E_o = this->outer->beam_E_2D(e, p, d);
-    double E_i = this->inner->beam_E_2D(e, p, d);
+double Mandible::beam_E_2D(const MeshElement* const e, const gp_Pnt& p, const Eigen::Matrix<double, 2, 2>& R) const{
+    double E_o = this->outer->beam_E_2D(e, p, R);
+    double E_i = this->inner->beam_E_2D(e, p, R);
     auto coeff = this->get_multiplier(p);
 
     return (1 - coeff)*E_o + coeff*E_i;
 }
-double Mandible::beam_E_3D(const MeshElement* const e, const gp_Pnt& p, gp_Dir d) const{
-    double E_o = this->outer->beam_E_3D(e, p, d);
-    double E_i = this->inner->beam_E_3D(e, p, d);
+double Mandible::beam_E_3D(const MeshElement* const e, const gp_Pnt& p, const Eigen::Matrix<double, 3, 3>& R) const{
+    double E_o = this->outer->beam_E_3D(e, p, R);
+    double E_i = this->inner->beam_E_3D(e, p, R);
     auto coeff = this->get_multiplier(p);
 
     return (1 - coeff)*E_o + coeff*E_i;
 }
-std::array<double, 2> Mandible::beam_EG_2D(const MeshElement* const e, const gp_Pnt& p, gp_Dir d) const{
-    auto EG_o = this->outer->beam_EG_2D(e, p, d);
-    auto EG_i = this->inner->beam_EG_2D(e, p, d);
+std::array<double, 2> Mandible::beam_EG_2D(const MeshElement* const e, const gp_Pnt& p, const Eigen::Matrix<double, 2, 2>& R) const{
+    auto EG_o = this->outer->beam_EG_2D(e, p, R);
+    auto EG_i = this->inner->beam_EG_2D(e, p, R);
     auto coeff = this->get_multiplier(p);
 
     for(size_t i = 0; i < 2; ++i){
@@ -104,9 +104,9 @@ std::array<double, 2> Mandible::beam_EG_2D(const MeshElement* const e, const gp_
     }
     return EG_o;
 }
-std::array<double, 4> Mandible::beam_EG_3D(const MeshElement* const e, const gp_Pnt& p, gp_Dir d) const{
-    auto EG_o = this->outer->beam_EG_3D(e, p, d);
-    auto EG_i = this->inner->beam_EG_3D(e, p, d);
+std::array<double, 4> Mandible::beam_EG_3D(const MeshElement* const e, const gp_Pnt& p, const Eigen::Matrix<double, 3, 3>& R) const{
+    auto EG_o = this->outer->beam_EG_3D(e, p, R);
+    auto EG_i = this->inner->beam_EG_3D(e, p, R);
     auto coeff = this->get_multiplier(p);
 
     for(size_t i = 0; i < 4; ++i){
@@ -114,17 +114,17 @@ std::array<double, 4> Mandible::beam_EG_3D(const MeshElement* const e, const gp_
     }
     return EG_o;
 }
-double Mandible::S12_2D(const MeshElement* const e, const gp_Pnt& p, gp_Dir d) const{
-    auto EG_o = this->outer->S12_2D(e, p, d);
-    auto EG_i = this->inner->S12_2D(e, p, d);
+double Mandible::S12_2D(const MeshElement* const e, const gp_Pnt& p, const Eigen::Matrix<double, 2, 2>& R) const{
+    auto EG_o = this->outer->S12_2D(e, p, R);
+    auto EG_i = this->inner->S12_2D(e, p, R);
     auto coeff = this->get_multiplier(p);
 
     EG_o = (1 - coeff)*EG_o + coeff*EG_i;
     return EG_o;
 }
-std::array<double, 2> Mandible::S12_S13_3D(const MeshElement* const e, const gp_Pnt& p, gp_Dir d) const{
-    auto EG_o = this->outer->S12_S13_3D(e, p, d);
-    auto EG_i = this->inner->S12_S13_3D(e, p, d);
+std::array<double, 2> Mandible::S12_S13_3D(const MeshElement* const e, const gp_Pnt& p, const Eigen::Matrix<double, 3, 3>& R) const{
+    auto EG_o = this->outer->S12_S13_3D(e, p, R);
+    auto EG_i = this->inner->S12_S13_3D(e, p, R);
     auto coeff = this->get_multiplier(p);
 
     for(size_t i = 0; i < 2; ++i){

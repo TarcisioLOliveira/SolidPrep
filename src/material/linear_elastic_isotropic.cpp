@@ -70,31 +70,6 @@ LinearElasticIsotropic::LinearElasticIsotropic(const std::string& name, const do
     this->S_3D = std::move(D_3D_tmp);
 }
 
-double LinearElasticIsotropic::beam_E_2D(const MeshElement* const e, const gp_Pnt& p, gp_Dir d) const{
-    (void)d;
-    (void)p;
-    (void)e;
-    return this->E;
-}
-double LinearElasticIsotropic::beam_E_3D(const MeshElement* const e, const gp_Pnt& p, gp_Dir d) const{
-    (void)d;
-    (void)p;
-    (void)e;
-    return this->E;
-}
-std::array<double, 2> LinearElasticIsotropic::beam_EG_2D(const MeshElement* const e, const gp_Pnt& p, gp_Dir d) const{
-    (void)d;
-    (void)p;
-    (void)e;
-    return {E, G};
-}
-std::array<double, 4> LinearElasticIsotropic::beam_EG_3D(const MeshElement* const e, const gp_Pnt& p, gp_Dir d) const{
-    (void)d;
-    (void)p;
-    (void)e;
-    return {E, G, G, G};
-}
-
 std::vector<double> LinearElasticIsotropic::get_max_stresses(gp_Dir d) const{
     (void)d;
     return {this->Smax[0], this->Smax[0], this->Tmax[0]};
