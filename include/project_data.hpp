@@ -40,6 +40,7 @@
 #include "function.hpp"
 #include "optimizer.hpp"
 #include "spring.hpp"
+#include "internal_loads.hpp"
 #include "field.hpp"
 
 /**
@@ -79,6 +80,7 @@ class ProjectData {
     std::vector<Force> forces;
     std::vector<Support> supports;
     std::vector<Spring> springs;
+    std::vector<InternalLoads> internal_loads;
     std::unique_ptr<FiniteElement> sizer_fea;
     std::unique_ptr<TopologyOptimization> topopt;
     std::unique_ptr<FiniteElement> topopt_fea;
@@ -144,6 +146,8 @@ class ProjectData {
     std::vector<Support> get_support(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc);
 
     std::vector<Spring> get_springs(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc);
+
+    std::vector<InternalLoads> get_internal_loads(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc);
 
     Projection::Parameter get_projection_parameter(const rapidjson::GenericValue<rapidjson::UTF8<>>& p) const;
 

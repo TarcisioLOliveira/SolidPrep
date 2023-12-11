@@ -21,6 +21,7 @@ set(SOURCES
     global_stiffness_matrix.cpp
     spring.cpp
     curvature.cpp
+    internal_loads.cpp
 )
 
 add_subdirectory(pathfinding)

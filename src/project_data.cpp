@@ -166,6 +166,9 @@ ProjectData::ProjectData(std::string project_file){
     }
     logger::log_assert(this->supports.size() > 0 || this->springs.size() > 0, logger::ERROR,
                        "a support or spring must be specified to prevent matrix singularity.");
+    if(this->log_data(doc, "internal_loads", TYPE_ARRAY, false)){
+        this->internal_loads = this->get_internal_loads(doc["internal_loads"]);
+    }
     if(this->log_data(doc, "sizing", TYPE_OBJECT, needs_sizing)){
         if(this->log_data(doc["sizing"], "pathfinding", TYPE_OBJECT, false)){
             this->pathfinder = this->load_pathfinder(doc["sizing"]);
@@ -1035,8 +1038,6 @@ std::vector<Spring> ProjectData::get_springs(const rapidjson::GenericValue<rapid
     for(auto& f : doc.GetArray()){
         logger::log_assert(f.IsObject(), logger::ERROR, "Each load must be stored as a JSON object");
         this->log_data(f, "L", TYPE_ARRAY, true);
-        this->log_data(f, "F", TYPE_ARRAY, true);
-        this->log_data(f, "M", TYPE_ARRAY, true);
         this->log_data(f, "normal", TYPE_ARRAY, true);
         this->log_data(f, "v", TYPE_ARRAY, true);
         if(this->type == utils::PROBLEM_TYPE_3D) {
@@ -1046,12 +1047,8 @@ std::vector<Spring> ProjectData::get_springs(const rapidjson::GenericValue<rapid
         auto L = f["L"].GetArray();
         auto normal = f["normal"].GetArray();
         auto v = f["v"].GetArray();
-        auto Fa = f["F"].GetArray();
-        auto Ma = f["M"].GetArray();
 
         std::array<double, 3> l{L[0].GetDouble(), L[1].GetDouble(), 0};
-        std::array<double, 3> F{Fa[0].GetDouble(), Fa[1].GetDouble(), 0};
-        std::array<double, 3> M{Ma[0].GetDouble(), Ma[1].GetDouble(), 0};
         gp_Dir nv(normal[0].GetDouble(), normal[1].GetDouble(), 0);
         gp_Dir vv(v[0].GetDouble(), v[1].GetDouble(), 0);
         gp_Dir wv(0, 0, 1);
@@ -1060,10 +1057,65 @@ std::vector<Spring> ProjectData::get_springs(const rapidjson::GenericValue<rapid
             logger::log_assert(L.Size() == 2, logger::ERROR, "Length vector must have exactly two dimensions in 2D problems");
             logger::log_assert(normal.Size() == 2, logger::ERROR, "Normal vector must have exactly two dimensions in 2D problems");
             logger::log_assert(v.Size() == 2, logger::ERROR, "'v' vector must have exactly two dimensions in 2D problems");
+        } else if(this->type == utils::PROBLEM_TYPE_3D) {
+            logger::log_assert(L.Size() == 3, logger::ERROR, "Length vector must have exactly three dimensions in 3D problems");
+            logger::log_assert(normal.Size() == 3, logger::ERROR, "Normal vector must have exactly three dimensions in 3D problems");
+            logger::log_assert(v.Size() == 3, logger::ERROR, "'v' vector must have exactly three dimensions in 3D problems");
+
+            auto w = f["w"].GetArray();
+            logger::log_assert(w.Size() == 3, logger::ERROR, "'w' vector must have exactly two dimensions in 3D problems");
+
+            l[2] = L[2].GetDouble();
+            nv.SetZ(normal[2].GetDouble());
+            vv.SetZ(v[2].GetDouble());
+
+            wv = gp_Dir(w[0].GetDouble(), w[1].GetDouble(), w[2].GetDouble());
+        }
+
+        std::string mat_name(f["material"].GetString());
+        auto equal_name = [&mat_name](const std::unique_ptr<Material>& m)->bool{
+            return mat_name == m->name;
+        };
+        auto it = std::find_if(this->materials.begin(), this->materials.end(), equal_name);
+        logger::log_assert(it != this->materials.end(), logger::ERROR, "material with name '{}' not found", mat_name);
+
+        Material* mat(it->get());
+
+        auto S = this->get_cross_section(f);
+        springs.emplace_back(S, this->thickness, nv, vv, wv, mat, l, this->topopt_element.get(), this->type);
+    }
+    return springs;
+}
+
+std::vector<InternalLoads> ProjectData::get_internal_loads(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc){
+    std::vector<InternalLoads> internal_loads;
+    for(auto& f : doc.GetArray()){
+        logger::log_assert(f.IsObject(), logger::ERROR, "Each load must be stored as a JSON object");
+        this->log_data(f, "F", TYPE_ARRAY, true);
+        this->log_data(f, "M", TYPE_ARRAY, true);
+        this->log_data(f, "normal", TYPE_ARRAY, true);
+        this->log_data(f, "v", TYPE_ARRAY, true);
+        if(this->type == utils::PROBLEM_TYPE_3D) {
+            this->log_data(f, "w", TYPE_ARRAY, true);
+        }
+        this->log_data(f, "material", TYPE_STRING, true);
+        auto normal = f["normal"].GetArray();
+        auto v = f["v"].GetArray();
+        auto Fa = f["F"].GetArray();
+        auto Ma = f["M"].GetArray();
+
+        std::array<double, 3> F{Fa[0].GetDouble(), Fa[1].GetDouble(), 0};
+        std::array<double, 3> M{Ma[0].GetDouble(), Ma[1].GetDouble(), 0};
+        gp_Dir nv(normal[0].GetDouble(), normal[1].GetDouble(), 0);
+        gp_Dir vv(v[0].GetDouble(), v[1].GetDouble(), 0);
+        gp_Dir wv(0, 0, 1);
+
+        if(this->type == utils::PROBLEM_TYPE_2D){
+            logger::log_assert(normal.Size() == 2, logger::ERROR, "Normal vector must have exactly two dimensions in 2D problems");
+            logger::log_assert(v.Size() == 2, logger::ERROR, "'v' vector must have exactly two dimensions in 2D problems");
             logger::log_assert(Fa.Size() == 2, logger::ERROR, "Force vector must have exactly two dimensions in 2D problems");
             logger::log_assert(Ma.Size() == 2, logger::ERROR, "Moment vector must have exactly two dimensions in 2D problems");
         } else if(this->type == utils::PROBLEM_TYPE_3D) {
-            logger::log_assert(L.Size() == 3, logger::ERROR, "Length vector must have exactly three dimensions in 3D problems");
             logger::log_assert(normal.Size() == 3, logger::ERROR, "Normal vector must have exactly three dimensions in 3D problems");
             logger::log_assert(v.Size() == 3, logger::ERROR, "'v' vector must have exactly three dimensions in 3D problems");
             logger::log_assert(Fa.Size() == 3, logger::ERROR, "Force vector must have exactly three dimensions in 3D problems");
@@ -1072,7 +1124,6 @@ std::vector<Spring> ProjectData::get_springs(const rapidjson::GenericValue<rapid
             auto w = f["w"].GetArray();
             logger::log_assert(w.Size() == 3, logger::ERROR, "'w' vector must have exactly two dimensions in 3D problems");
 
-            l[2] = L[2].GetDouble();
             nv.SetZ(normal[2].GetDouble());
             vv.SetZ(v[2].GetDouble());
             F[2] = Fa[2].GetDouble();
@@ -1091,9 +1142,9 @@ std::vector<Spring> ProjectData::get_springs(const rapidjson::GenericValue<rapid
         Material* mat(it->get());
 
         auto S = this->get_cross_section(f);
-        springs.emplace_back(S, this->thickness, nv, vv, wv, mat, l, F, M, this->topopt_element.get(), this->topopt_boundary_element.get(), this->type);
+        internal_loads.emplace_back(S, this->thickness, nv, vv, wv, mat, F, M, this->topopt_element.get(), this->topopt_boundary_element.get(), this->type);
     }
-    return springs;
+    return internal_loads;
 }
 
 CrossSection ProjectData::get_cross_section(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc) const{

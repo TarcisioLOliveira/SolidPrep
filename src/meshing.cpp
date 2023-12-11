@@ -76,7 +76,8 @@ void Meshing::generate_elements(const TopoDS_Shape& shape,
 
 void Meshing::apply_boundary_conditions(const std::vector<Force>& forces, 
                                         const std::vector<Support>& supports,
-                                        std::vector<Spring>& springs){
+                                        std::vector<Spring>& springs,
+                                        std::vector<InternalLoads>& internal_loads){
 
     const size_t dof = this->elem_info->get_dof_per_node();
     logger::quick_log("Applying boundary conditions...");
@@ -117,6 +118,12 @@ void Meshing::apply_boundary_conditions(const std::vector<Force>& forces,
         this->apply_springs(springs);
     }
     this->springs = &springs;
+
+    if(internal_loads.size() > 0){
+        logger::quick_log("internal_loads");
+        this->apply_internal_loads(internal_loads);
+    }
+    this->internal_loads = &internal_loads;
 
     logger::quick_log("Done.");
 }
@@ -271,17 +278,23 @@ void Meshing::apply_supports(const std::vector<Support>& supports){
 }
 
 void Meshing::apply_springs(std::vector<Spring>& springs){
-    const auto problem_type = this->elem_info->get_problem_type();
     for(auto& s:springs){
+        s.generate_mesh(this->boundary_elements);
+    }
+}
+
+void Meshing::apply_internal_loads(std::vector<InternalLoads>& loads){
+    const auto problem_type = this->elem_info->get_problem_type();
+    for(auto& s:loads){
         s.calculate_curvature(this->boundary_elements);
     }
     if(problem_type == utils::PROBLEM_TYPE_2D){
-        for(auto& s:springs){
+        for(auto& s:loads){
             s.apply_load_2D(this->load_vector);
             s.clear_curvature_data();
         }
     } else if(problem_type == utils::PROBLEM_TYPE_3D){
-        for(auto& s:springs){
+        for(auto& s:loads){
             s.apply_load_3D(this->load_vector);
             s.clear_curvature_data();
         }

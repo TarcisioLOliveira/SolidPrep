@@ -95,7 +95,7 @@ int main(int argc, char* argv[]){
         for(auto& f:proj->fields){
             f->generate();
         }
-        proj->topopt_mesher->apply_boundary_conditions(proj->forces, proj->supports, proj->springs);
+        proj->topopt_mesher->apply_boundary_conditions(proj->forces, proj->supports, proj->springs, proj->internal_loads);
     }
     std::vector<MeshElement*> elems;
     std::vector<double> loads;

@@ -28,6 +28,7 @@
 #include "support.hpp"
 #include "force.hpp"
 #include "spring.hpp"
+#include "internal_loads.hpp"
 #include "element_factory.hpp"
 #include "geometry.hpp"
 
@@ -102,10 +103,12 @@ class Meshing{
      * @param forces Forces to be used
      * @param supports Supports to be used
      * @param springs Springs to be used
+     * @param internal_loads Internal loads to be used
      */
     virtual void apply_boundary_conditions(const std::vector<Force>& forces, 
                                            const std::vector<Support>& supports,
-                                           std::vector<Spring>& springs);
+                                           std::vector<Spring>& springs,
+                                           std::vector<InternalLoads>& internal_loads);
 
     /**
      * Removes elements below a certain density threshold. Useful for
@@ -128,6 +131,7 @@ class Meshing{
     std::vector<BoundaryElement> boundary_elements;
     std::vector<MeshNode*> boundary_node_list;
     std::vector<Spring>* springs;
+    std::vector<InternalLoads>* internal_loads;
 
     protected:
     TopoDS_Shape orig_shape;
@@ -201,6 +205,13 @@ class Meshing{
      * @param springs List of springs to be applied.
      */
     void apply_springs(std::vector<Spring>& springs);
+
+    /**
+     * Calculate and apply internal loads to load vector;
+     *
+     * @param springs List of springs to be applied.
+     */
+    void apply_internal_loads(std::vector<InternalLoads>& loads);
 
     /**
      * Generates the load vector member variable based on the mesh, shape and
