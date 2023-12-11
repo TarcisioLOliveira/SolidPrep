@@ -109,7 +109,8 @@ CrossSection::CrossSection(std::vector<gp_Pnt> vertices, double thickness){
     this->get_bounding_box();
 }
 CrossSection::CrossSection(gp_Pnt p):
-    centroid(p), inertia(), normal(), max_dim(0), shape(BRepBuilderAPI_MakeVertex(p)), area(0){
+    centroid(p), inertia(), normal(), max_dim(0), shape(BRepBuilderAPI_MakeVertex(p)), area(0),
+    xmin(p.X()), xmax(p.X()), ymin(p.Y()), ymax(p.Y()), zmin(p.Z()), zmax(p.Z()){
 
 }
 
