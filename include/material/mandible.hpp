@@ -91,7 +91,7 @@ class Mandible : public Material{
     };
 
     inline double heaviside(const double r, const double r_max) const{
-        return std::tanh(C*(r - r_max))/2.0 + 0.5;
+        return std::tanh(-C*(r - r_max))/2.0 + 0.5;
     }
 
     std::vector<gp_Pnt> load_points(const std::string& path) const;
