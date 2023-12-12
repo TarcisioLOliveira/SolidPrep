@@ -36,6 +36,16 @@ namespace logger{
         ERROR
     };
 
+    inline void log_matrix(const std::vector<double>& v, size_t M, size_t N){
+        for(size_t i = 0; i < M; ++i){
+            for(size_t j = 0; j < N; ++j){
+                std::cout << v[i*N + j] << " ";
+            }
+            std::cout << std::endl;
+        }
+        std::cout << std::endl;
+    }
+
     /**
      * Logs a message to stderror based on an assertion.
      *
