@@ -105,10 +105,9 @@ void Curvature::generate_curvature_3D(const std::vector<std::unique_ptr<Boundary
 }
 
 void Curvature::get_shear_in_3D(const BoundaryMeshElement* e, double& t_uv, double& t_uw) const{
-    auto c = e->get_centroid();
-
     t_uv = 0;
     t_uw = 0;
+    gp_Pnt c = utils::change_point(e->get_centroid(), this->rot3D);
     if(this->M_u != 0){
         Eigen::Vector<double, 2> grad = this->theta*e->grad_1dof(c, this->phi_torsion);
         t_uv += -grad[1];
