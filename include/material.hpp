@@ -80,11 +80,6 @@ class Material{
     // Unused, may delete later
     virtual double get_max_Von_Mises_2D() const;
     virtual double get_max_Von_Mises_3D() const;
-
-    const std::string name;
-    protected:
-    std::vector<double> Smax;
-    std::vector<double> Tmax;
     
     inline void rotate_D_base(std::vector<double>& D, const std::vector<double>& R, const size_t N) const{
         std::vector<double> Dtmp(N*N, 0);
@@ -109,6 +104,11 @@ class Material{
     inline void rotate_S_3D(std::vector<double>& S, const std::vector<double>& R) const{
         return rotate_S_base(S, R, 6);
     }
+
+    const std::string name;
+    protected:
+    std::vector<double> Smax;
+    std::vector<double> Tmax;
 };
 
 #endif
