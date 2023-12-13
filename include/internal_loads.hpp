@@ -24,7 +24,9 @@
 #include <algorithm>
 #include <array>
 #include <Eigen/Core>
+#include <memory>
 #include "element_factory.hpp"
+#include "logger.hpp"
 #include "material.hpp"
 #include "utils.hpp"
 #include "cross_section.hpp"
@@ -47,13 +49,7 @@ class InternalLoads{
         this->curvature.reset();
     }
 
-    void calculate_curvature(std::vector<BoundaryElement>& boundary_elements){
-        this->generate_mesh(boundary_elements);
-        this->curvature->generate_curvature_3D(this->boundary_mesh, this->line_bounds, this->phi_size, this->boundary_nodes.size());
-
-        this->curv = this->curvature->get_curvatures();
-        this->center = this->curvature->get_center();
-    }
+    void calculate_curvature(std::vector<BoundaryElement>& boundary_elements);
 
     void apply_load_2D(std::vector<double>& load_vector) const;
     void apply_load_3D(std::vector<double>& load_vector) const;
@@ -62,13 +58,14 @@ class InternalLoads{
     const double A;
     const double thickness;
     const Eigen::Matrix<double, 2, 2> rot2D;
+    const Eigen::Matrix<double, 3, 3> Lek_basis;
     const Eigen::Matrix<double, 3, 3> rot3D;
     const std::array<double, 3> F;
     const std::array<double, 3> M;
     const Material* mat;
     const gp_Dir normal;
     const MeshElementFactory* elem_info;
-    const BoundaryMeshElementFactory* boundary_elem_info;
+    BoundaryMeshElementFactory* boundary_elem_info;
     std::vector<const BoundaryElement*> submesh;
     std::unique_ptr<Curvature> curvature;
 
@@ -80,6 +77,7 @@ class InternalLoads{
     std::array<double, 2> curv;
     gp_Pnt center;
     size_t phi_size;
+    std::unique_ptr<BoundaryMeshElementFactory> bound_elem_higher_order = nullptr;
 
     std::vector<std::unique_ptr<MeshNode>> boundary_nodes;
     std::vector<std::unique_ptr<BoundaryMeshElement>> boundary_mesh;
@@ -87,8 +85,9 @@ class InternalLoads{
     std::vector<utils::LineBoundary> line_bounds;
     std::vector<const Node*> line_nodes;
 
-    void generate_mesh(std::vector<BoundaryElement>& boundary_elements);
+    void generate_mesh(const std::vector<BoundaryElement>& boundary_elements);
 
+    std::vector<BoundaryElement> increase_element_order(const std::vector<BoundaryElement>& boundary_elements);
     void generate_boundary();
 
     // Base it off Meshing::apply_springs

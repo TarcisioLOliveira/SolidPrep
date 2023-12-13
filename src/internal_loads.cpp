@@ -19,10 +19,16 @@
  */
 
 #include "internal_loads.hpp"
+#include "logger.hpp"
 #include "utils.hpp"
 #include "meshing.hpp"
+#include "boundary_element/BTRI6.hpp"
 #include <memory>
 #include <set>
+
+inline Eigen::Matrix<double, 3, 3> Lek_rot3D(Eigen::Matrix<double, 3, 3> L, Eigen::Matrix<double, 3, 3> R){
+    return L*R;
+}
 
 InternalLoads::InternalLoads(CrossSection cross_section, double thickness, gp_Dir normal, gp_Dir v, gp_Dir w, Material* mat, std::array<double, 3> F, std::array<double, 3> M, MeshElementFactory* elem, BoundaryMeshElementFactory* bound_elem, utils::ProblemType type):
     S(std::move(cross_section)), 
@@ -30,18 +36,44 @@ InternalLoads::InternalLoads(CrossSection cross_section, double thickness, gp_Di
     thickness(thickness),
     rot2D{{normal.X(), v.X()},
           {normal.Y(), v.Y()}},
-    rot3D{{normal.X(), v.X(), w.X()},
+    Lek_basis
+        {{0, 0, -1},
+         {0, 1, 0},
+         {1, 0, 0}},
+    rot3D(Lek_rot3D(Lek_basis,
+        Eigen::Matrix<double, 3, 3>
+        {{normal.X(), v.X(), w.X()},
          {normal.Y(), v.Y(), w.Y()},
-         {normal.Z(), v.Z(), w.Z()}},
+         {normal.Z(), v.Z(), w.Z()}})),
     F(F), M(M),
     mat(mat),
     normal(normal),
     elem_info(elem),
-    boundary_elem_info(bound_elem),
+    boundary_elem_info(),
     v(v), w(w),
     type(type){
 
+    if(bound_elem->get_element_order() >= 2){
+        this->boundary_elem_info = bound_elem;
+    } else if(elem_info->get_shape_type() == Element::Shape::TRI){
+        this->bound_elem_higher_order.reset(static_cast<BoundaryMeshElementFactory*>(
+                    new BoundaryMeshElementFactoryImpl<boundary_element::BTRI6>()
+                ));
+        this->boundary_elem_info = this->bound_elem_higher_order.get();
+    } else {
+        // TODO
+        logger::log_assert(false, logger::ERROR, "BQ8 not implemented");
+    }
+
     this->curvature = std::make_unique<Curvature>(mat, normal, v, w, rot2D, rot3D, this->boundary_elem_info, F[1], F[2], M[0], M[1], M[2]);
+}
+
+void InternalLoads::calculate_curvature(std::vector<BoundaryElement>& boundary_elements){
+    this->generate_mesh(boundary_elements);
+    this->curvature->generate_curvature_3D(this->boundary_nodes, this->boundary_mesh, this->line_bounds, this->phi_size, this->boundary_nodes.size());
+
+    this->curv = this->curvature->get_curvatures();
+    this->center = this->curvature->get_center();
 }
 
 void InternalLoads::apply_load_2D(std::vector<double>& load_vector) const{
@@ -140,7 +172,7 @@ void InternalLoads::apply_load_3D(std::vector<double>& load_vector) const{
                                   {0, 0, 0}};
     std::vector<double> Sn(N*N);
 
-    double t_uv = 0, t_uw = 0;
+    double t_yz = 0, t_xz = 0;
 
     std::vector<double> FF(3, 0);
     for(size_t j = 0; j < submesh.size(); ++j){
@@ -153,10 +185,10 @@ void InternalLoads::apply_load_3D(std::vector<double>& load_vector) const{
 
         const gp_Pnt c = e->get_centroid(bound_nodes_per_elem);
         const auto E = this->mat->beam_E_3D(e->parent, c, this->rot3D);
-        S(0,1) = E*this->curv[0];
-        S(0,2) = E*this->curv[1];
-        this->curvature->get_shear_in_3D(b.get(), t_uv, t_uw);
-        Eigen::Vector<double, N> F0{this->F[0]/A, t_uv, t_uw};
+        S(2,0) = E*this->curv[0];
+        S(2,1) = E*this->curv[1];
+        this->curvature->get_shear_in_3D(b.get(), t_xz, t_yz);
+        Eigen::Vector<double, N> F0{t_xz, t_yz, this->F[0]/A};
         Eigen::Vector<double, N> Fr = this->rot3D*F0;
         std::vector<double> F{Fr[0], Fr[1], Fr[2]};
         
@@ -208,8 +240,8 @@ struct NodeComp{
     const gp_Pnt p;
 };
 
-void InternalLoads::generate_mesh(std::vector<BoundaryElement>& boundary_elements){
-    const size_t bound_nodes_per_elem = this->elem_info->get_boundary_nodes_per_element();
+void InternalLoads::generate_mesh(const std::vector<BoundaryElement>& boundary_elements){
+    size_t bound_nodes_per_elem = this->elem_info->get_boundary_nodes_per_element();
 
     std::vector<bool> apply_spring(boundary_elements.size());
     size_t num_elems = 0;
@@ -250,19 +282,46 @@ void InternalLoads::generate_mesh(std::vector<BoundaryElement>& boundary_element
     this->boundary_mesh.resize(num_elems);
     size_t cur_elem = 0;
     ElementShape sh;
-    sh.nodes.resize(bound_nodes_per_elem);
-    for(size_t i = 0; i < boundary_elements.size(); ++i){
-        if(apply_spring[i]){
-            this->submesh[cur_elem] = &boundary_elements[i];
-            const auto& b = boundary_elements[i];
-            for(size_t j = 0; j < bound_nodes_per_elem; ++j){
-                const auto& n = b.nodes[j];
-                gp_Pnt p = utils::change_point(n->point, this->rot3D.transpose());
-                MeshNode* nn = std::find_if(this->boundary_nodes.begin(), this->boundary_nodes.end(), NodeComp(p))->get();
-                sh.nodes[j] = nn;
+    if(this->bound_elem_higher_order == nullptr){
+        sh.nodes.resize(bound_nodes_per_elem);
+        for(size_t i = 0; i < boundary_elements.size(); ++i){
+            if(apply_spring[i]){
+                this->submesh[cur_elem] = &boundary_elements[i];
+                const auto& b = boundary_elements[i];
+                for(size_t j = 0; j < bound_nodes_per_elem; ++j){
+                    const auto& n = b.nodes[j];
+                    gp_Pnt p = utils::change_point(n->point, this->rot3D.transpose());
+                    MeshNode* nn = std::find_if(this->boundary_nodes.begin(), this->boundary_nodes.end(), NodeComp(p))->get();
+                    sh.nodes[j] = nn;
+                }
+                this->boundary_mesh[cur_elem].reset(this->boundary_elem_info->make_element(sh, boundary_elements[i].parent));
+                ++cur_elem;
             }
-            this->boundary_mesh[cur_elem].reset(this->boundary_elem_info->make_element(sh, boundary_elements[i].parent));
-            ++cur_elem;
+        }
+    } else {
+        auto new_elems = this->increase_element_order(boundary_elements);
+        bound_nodes_per_elem = this->boundary_elem_info->get_nodes_per_element();
+        sh.nodes.resize(bound_nodes_per_elem);
+
+        for(size_t i = 0; i < boundary_elements.size(); ++i){
+            if(apply_spring[i]){
+                this->submesh[cur_elem] = &boundary_elements[i];
+                const auto& b = new_elems[i];
+                for(size_t j = 0; j < bound_nodes_per_elem/2; ++j){
+                    const auto& n = b.nodes[j];
+                    gp_Pnt p = utils::change_point(n->point, this->rot3D.transpose());
+                    MeshNode* nn = std::find_if(this->boundary_nodes.begin(), this->boundary_nodes.end(), NodeComp(p))->get();
+                    sh.nodes[j] = nn;
+                }
+                for(size_t j = bound_nodes_per_elem/2; j < bound_nodes_per_elem; ++j){
+                    const auto& n = b.nodes[j];
+                    gp_Pnt p = n->point;
+                    MeshNode* nn = std::find_if(this->boundary_nodes.begin(), this->boundary_nodes.end(), NodeComp(p))->get();
+                    sh.nodes[j] = nn;
+                }
+                this->boundary_mesh[cur_elem].reset(this->boundary_elem_info->make_element(sh, boundary_elements[i].parent));
+                ++cur_elem;
+            }
         }
     }
 
@@ -285,6 +344,77 @@ void InternalLoads::generate_mesh(std::vector<BoundaryElement>& boundary_element
     this->phi_size = npos;
 }
 
+class ElementEdge{
+    public:
+    std::array<const Node*, 2> vertices;
+    std::vector<const BoundaryElement*> parents;
+
+    bool is_connected_to(const ElementEdge& l) const{
+        return (this->vertices[0]->point.IsEqual(l.vertices[0]->point, Precision::Confusion()) || this->vertices[1]->point.IsEqual(l.vertices[1]->point, Precision::Confusion())) ||
+               (this->vertices[1]->point.IsEqual(l.vertices[0]->point, Precision::Confusion()) || this->vertices[0]->point.IsEqual(l.vertices[1]->point, Precision::Confusion()));
+    }
+
+    bool operator==(const ElementEdge& l) const{
+        return (this->vertices[0]->point.IsEqual(l.vertices[0]->point, Precision::Confusion()) && this->vertices[1]->point.IsEqual(l.vertices[1]->point, Precision::Confusion())) ||
+               (this->vertices[1]->point.IsEqual(l.vertices[0]->point, Precision::Confusion()) && this->vertices[0]->point.IsEqual(l.vertices[1]->point, Precision::Confusion()));
+    }
+};
+
+std::vector<BoundaryElement> InternalLoads::increase_element_order(const std::vector<BoundaryElement>& boundary_elements){
+    std::vector<BoundaryElement> new_elements;
+    new_elements.reserve(boundary_elements.size());
+    std::list<ElementEdge> edges;
+    const size_t N = (this->elem_info->get_shape_type() == Element::Shape::TRI) ? 3 : 4;
+
+    for(auto& e : boundary_elements){
+        for(size_t i = 0; i < N; ++i){
+            const size_t j = (i+1) % N;
+            const auto& n1 = e.nodes[i];
+            const auto& n2 = e.nodes[j];
+            // TODO: detect inner boundaries
+            ElementEdge d{{n1, n2}, {&e}};
+            auto it = std::find(edges.begin(), edges.end(), d);
+            if(it == edges.end()){
+                edges.push_back(d);
+            } else {
+                it->parents.push_back(&e);
+            }
+        }
+    }
+
+    std::vector<std::vector<const MeshNode*>> new_nodes(boundary_elements.size());
+    std::map<const BoundaryElement*, size_t> pointer_map;
+    for(size_t i = 0; i < boundary_elements.size(); ++i){
+        auto& vec = new_nodes[i];
+        vec.reserve(2*N);
+        pointer_map[&boundary_elements[i]] = i;
+        for(size_t j = 0; j < N; ++j){
+            vec.push_back(boundary_elements[i].nodes[j]);
+        }
+    }
+
+    const size_t prev_size = this->boundary_nodes.size();
+    this->boundary_nodes.resize(prev_size + edges.size());
+    auto it = edges.begin();
+    for(size_t i = 0; i < edges.size(); ++i){
+        gp_Pnt p(it->vertices[0]->point);
+        p.BaryCenter(1, it->vertices[1]->point, 1);
+        p = utils::change_point(p, this->rot3D.transpose());
+        std::unique_ptr<MeshNode> node(std::make_unique<MeshNode>(p, 0, 1));
+        this->boundary_nodes[prev_size + i] = std::move(node);
+        for(auto& p:it->parents){
+            new_nodes[pointer_map[p]].push_back(this->boundary_nodes[prev_size + i].get());
+        }
+        ++it;
+    }
+    for(size_t i = 0; i < boundary_elements.size(); ++i){
+        auto& b = boundary_elements[i];
+        new_elements.emplace_back(new_nodes[i], b.parent, b.normal);
+    }
+    
+    return new_elements;
+}
+
 void InternalLoads::generate_boundary() {
     std::list<utils::LineBoundary> bound_tmp;
     const size_t N = (this->elem_info->get_shape_type() == Element::Shape::TRI) ? 3 : 4;
@@ -296,7 +426,7 @@ void InternalLoads::generate_boundary() {
             const auto& n2 = e->nodes[j];
             // TODO: detect inner boundaries
             gp_Vec v(n1->point, n2->point);
-            gp_Dir n(0, v.Z(), -v.Y());
+            gp_Dir n(v.Y(), -v.X(), 0);
             utils::LineBoundary b{{n1, n2}, false, e.get(), n};
             auto it = std::find(bound_tmp.begin(), bound_tmp.end(), b);
             if(it == bound_tmp.end()){
@@ -309,6 +439,8 @@ void InternalLoads::generate_boundary() {
 
     this->line_bounds.resize(bound_tmp.size());
     std::move(bound_tmp.begin(), bound_tmp.end(), this->line_bounds.begin());
+    
+
     std::set<const Node*> nodes_tmp;
     for(const auto& l:this->line_bounds){
         nodes_tmp.insert(l.edges.begin(), l.edges.end());
