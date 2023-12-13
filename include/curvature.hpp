@@ -53,6 +53,7 @@ class Curvature{
     const Material* mat;
     const gp_Dir u, v, w;
     const Eigen::Matrix<double, 2, 2> rot2D;
+    const Eigen::Matrix<double, 3, 3> Lek_basis;
     const Eigen::Matrix<double, 3, 3> rot3D;
     const BoundaryMeshElementFactory* elem_info;
     const double V_v, V_w;
@@ -74,6 +75,11 @@ class Curvature{
     double theta;
     std::vector<double> phi_torsion;
     std::vector<double> psi_shear;
+
+    std::vector<double> permute_shear_3D;
+    std::vector<double> rotate_X_Z_3D;
+
+    std::vector<double> permute_and_rotate_3D;
 
     void calculate_torsion(const std::vector<std::unique_ptr<BoundaryMeshElement>>& boundary_mesh);
     void calculate_shear_3D(const std::vector<std::unique_ptr<BoundaryMeshElement>>& boundary_mesh, const std::vector<utils::LineBoundary>& line_bound);

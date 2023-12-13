@@ -24,10 +24,16 @@
 #include "logger.hpp"
 #include "utils/gauss_legendre.hpp"
 #include "utils/boundary_nullifier.hpp"
+#include "utils/basis_tensor.hpp"
 
 Curvature::Curvature(const Material* mat, gp_Dir u, gp_Dir v, gp_Dir w, Eigen::Matrix<double, 2, 2> rot2D, Eigen::Matrix<double, 3, 3> rot3D, const BoundaryMeshElementFactory* elem_info, double V_v, double V_w, double M_u, double M_v, double M_w):
     mat(mat), u(u), v(v), w(w),
-    rot2D(rot2D), rot3D(rot3D), 
+    rot2D(rot2D), 
+    Lek_basis
+        {{0, 0, -1},
+         {0, 1, 0},
+         {1, 0, 0}},
+    rot3D(Lek_basis.transpose()*rot3D*Lek_basis), 
     elem_info(elem_info),
     V_v(V_v), V_w(V_w), 
     M_u(M_u), 
@@ -35,6 +41,19 @@ Curvature::Curvature(const Material* mat, gp_Dir u, gp_Dir v, gp_Dir w, Eigen::M
     M_w(M_w)
 {
 
+    this->permute_shear_3D = std::vector<double>
+        {0, 0, 0, 0, 0, 0,
+         0, 0, 0, 0, 0, 0,
+         0, 0, 0, 0, 0, 0,
+         0, 0, 0, 0, 0, 1,
+         0, 0, 0, 0, 1, 0,
+         0, 0, 0, 1, 0, 0};
+
+    this->rotate_X_Z_3D = utils::basis_tensor_3D(Lek_basis);
+
+    this->permute_and_rotate_3D = std::vector<double>(36, 0);
+    const size_t N = 6;
+    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasTrans, N, N, N, 1, permute_shear_3D.data(), N, rotate_X_Z_3D.data(), N, 0, permute_and_rotate_3D.data(), N);
 }
 
 void Curvature::generate_curvature_3D(const std::vector<std::unique_ptr<BoundaryMeshElement>>& boundary_mesh, const std::vector<utils::LineBoundary>& line_bound, size_t phi_size, size_t psi_size){
