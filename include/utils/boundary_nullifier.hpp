@@ -35,6 +35,7 @@ class LineBoundary{
     std::array<const Node*, 2> edges;
     bool inner;
     BoundaryMeshElement* parent;
+    gp_Dir normal;
 
     bool is_connected_to(const LineBoundary& l) const{
         return (this->edges[0]->point.IsEqual(l.edges[0]->point, Precision::Confusion()) || this->edges[1]->point.IsEqual(l.edges[1]->point, Precision::Confusion())) ||
@@ -64,25 +65,21 @@ class BoundaryNullifier{
         return p.Coord(1+Z) - center.Coord(1+Z);
     }
 
-    inline double get_F(const gp_Pnt& p) const{
+    inline double get_a(const gp_Pnt& p) const{
         const double y = height(p);
-        const double z = width(p);
-
-        if(z >= 0){
-            return this->Fp.get(y);
-        } else {
-            return this->Fm.get(y);
-        }
+        return -this->Fm.get(y);
     }
-    inline double get_F_derivative(const gp_Pnt& p) const{
+    inline double get_b(const gp_Pnt& p) const{
         const double y = height(p);
-        const double z = width(p);
-
-        if(z >= 0){
-            return this->Fp.get_derivative(y);
-        } else {
-            return this->Fm.get_derivative(y);
-        }
+        return this->Fp.get(y);
+    }
+    inline double get_da(const gp_Pnt& p) const{
+        const double y = height(p);
+        return -this->Fm.get_dF(y);
+    }
+    inline double get_db(const gp_Pnt& p) const{
+        const double y = height(p);
+        return this->Fp.get_dF(y);
     }
 
     private:
@@ -93,7 +90,7 @@ class BoundaryNullifier{
         F(const std::vector<gp_Pnt>& points, double mesh_size);
 
         double get(double y) const;
-        double get_derivative(double y) const;
+        double get_dF(double y) const;
 
         private:
         double mesh_size;
@@ -187,7 +184,10 @@ BoundaryNullifier<Y, Z>::BoundaryNullifier(std::vector<LineBoundary> bounds, dou
     }
 
     std::sort(points_pos.begin(), points_pos.end(), Y_comp_pos);
-    std::sort(points_neg.begin(), points_neg.end(), Y_comp_neg);
+    for(auto& p:points_neg){
+        p.SetZ(-p.Z());
+    }
+    std::sort(points_neg.begin(), points_neg.end(), Y_comp_pos);
 
     this->Fp = F(points_pos, mesh_size);
     this->Fm = F(points_neg, mesh_size);
@@ -231,8 +231,8 @@ BoundaryNullifier<Y, Z>::F::F(const std::vector<gp_Pnt>& points, double mesh_siz
             if(equal(points[i0].Y(), y)){
                 while(equal(points[i0].Y(), y)){
                     const double z = points[i0].Z();
-                    if(z*z > z_sqr){
-                        z_sqr = z*z;
+                    if(z > z_sqr){
+                        z_sqr = z;
                     }
                     ++i0;
                 }
@@ -247,7 +247,7 @@ BoundaryNullifier<Y, Z>::F::F(const std::vector<gp_Pnt>& points, double mesh_siz
                         const double z1 = points[i0].Z();
                         const double z2 = points[i0+1].Z();
                         const double z = (z2 - z1)*x + z1;
-                        z_sqr = z*z;
+                        z_sqr = z;
                         break;
                     }
                 } 
@@ -256,7 +256,7 @@ BoundaryNullifier<Y, Z>::F::F(const std::vector<gp_Pnt>& points, double mesh_siz
         }
         if(y > points.back().Y() || equal(points.back().Y(), y)){
             const double z = points.back().Z();
-            z_sqr = z*z;
+            z_sqr = z;
         }
         return z_sqr;
     };
@@ -318,7 +318,7 @@ double BoundaryNullifier<Y,Z>::F::get(double y) const{
 }
 
 template<size_t Y, size_t Z>
-double BoundaryNullifier<Y,Z>::F::get_derivative(double y) const{
+double BoundaryNullifier<Y,Z>::F::get_dF(double y) const{
     double result = 0;
     int e_tmp = (y - miny)/mesh_size;
     size_t e = 0;

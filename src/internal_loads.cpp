@@ -142,7 +142,7 @@ void InternalLoads::apply_load_3D(std::vector<double>& load_vector) const{
 
     double t_uv = 0, t_uw = 0;
 
-    double FF = 0;
+    std::vector<double> FF(3, 0);
     for(size_t j = 0; j < submesh.size(); ++j){
         const auto& e = submesh[j];
         const auto& b = this->boundary_mesh[j];
@@ -169,8 +169,10 @@ void InternalLoads::apply_load_3D(std::vector<double>& load_vector) const{
 
         const auto Rf = e->parent->get_Rf(Sn, F, this->center, this->thickness, points);
         //logger::quick_log(fe);
-        for(auto& ff:Rf){
-            FF += ff;
+        for(size_t i = 0; i < nodes_per_elem; ++i){
+            for(size_t j = 0; j < dof; ++j){
+                FF[j] += Rf[i*dof + j];
+            }
         }
         for(size_t i = 0; i < nodes_per_elem; ++i){
             for(size_t j = 0; j < dof; ++j){
@@ -293,7 +295,9 @@ void InternalLoads::generate_boundary() {
             const auto& n1 = e->nodes[i];
             const auto& n2 = e->nodes[j];
             // TODO: detect inner boundaries
-            utils::LineBoundary b{{n1, n2}, false, e.get()};
+            gp_Vec v(n1->point, n2->point);
+            gp_Dir n(0, v.Z(), -v.Y());
+            utils::LineBoundary b{{n1, n2}, false, e.get(), n};
             auto it = std::find(bound_tmp.begin(), bound_tmp.end(), b);
             if(it == bound_tmp.end()){
                 bound_tmp.push_back(b);

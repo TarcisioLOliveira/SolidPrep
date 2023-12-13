@@ -45,7 +45,7 @@ class BTRI3 : public BoundaryMeshElement{
 
     //
     // USES TRANSFORMED COORDINATES
-    // (u, v, w) system used for applying Spring objects
+    // (u, v, w) system used for applying Spring/InternalLoads objects
     //
 
     BTRI3(ElementShape s, const MeshElement* const parent);
@@ -56,9 +56,13 @@ class BTRI3 : public BoundaryMeshElement{
     virtual Eigen::VectorXd source_1dof() const override;
     virtual Eigen::VectorXd source_1dof(const Eigen::Vector<double, 3>& v) const override;
     virtual Eigen::VectorXd source_grad_1dof(const Eigen::VectorXd& v) const override;
-    virtual std::array<Eigen::VectorXd, 2> source_1dof(const double S13, const double Gxy, const utils::BoundaryNullifier<1, 2>* b1, const double S12, const double Gxz, const utils::BoundaryNullifier<2, 1>* b2, const gp_Pnt& center) const override;
+    virtual std::array<Eigen::VectorXd, 2> source_1dof(const double S13, const double Gxy, const double S12, const double Gxz, const gp_Pnt& center) const override;
+    virtual Eigen::VectorXd source_1dof(double dcurv_v, double dcurv_w, const gp_Pnt& center) const override;
+    virtual Eigen::VectorXd flow_1dof(double dcurv_v, double dcurv_w, const gp_Pnt& center, const gp_Dir& n, const std::vector<gp_Pnt>& edges) const override;
 
-    virtual Eigen::VectorXd grad_1dof(const gp_Pnt& p, const std::vector<double>& phi) const override;
+    virtual Eigen::VectorXd grad_1dof_upos(const gp_Pnt& p, const std::vector<double>& phi) const override;
+    virtual Eigen::VectorXd grad_1dof_id(const gp_Pnt& p, const std::vector<double>& phi) const override;
+    virtual Eigen::MatrixXd int_grad_1dof() const override;
 
     virtual gp_Pnt get_centroid() const override{
         const size_t N = BTRI3::NODES_PER_ELEM;

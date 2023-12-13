@@ -69,11 +69,11 @@ class Curvature{
     double dcurv_v;
     double dcurv_w;
 
+    double K_uv, K_uw;
+
     double theta;
     std::vector<double> phi_torsion;
     std::vector<double> psi_shear;
-    utils::BoundaryNullifier<1, 2> bn1;
-    utils::BoundaryNullifier<2, 1> bn2;
 
     void calculate_torsion(const std::vector<std::unique_ptr<BoundaryMeshElement>>& boundary_mesh);
     void calculate_shear_3D(const std::vector<std::unique_ptr<BoundaryMeshElement>>& boundary_mesh, const std::vector<utils::LineBoundary>& line_bound);

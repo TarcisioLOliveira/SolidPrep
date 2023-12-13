@@ -20,6 +20,7 @@
 
 #include <lapacke.h>
 #include "boundary_element/BTRI3.hpp"
+#include "logger.hpp"
 #include "utils/gauss_legendre.hpp"
 #include "utils/boundary_nullifier.hpp"
 
@@ -60,7 +61,6 @@ BTRI3::BTRI3(ElementShape s, const MeshElement* const parent):
     gp_Vec v1(this->nodes[0]->point, this->nodes[1]->point);
     gp_Vec v2(this->nodes[0]->point, this->nodes[2]->point);
 
-
     this->delta = 0.5*(v1.Crossed(v2)).Magnitude();
 }
 
@@ -86,7 +86,7 @@ Eigen::MatrixXd BTRI3::absorption_1dof() const{
 Eigen::VectorXd BTRI3::source_1dof() const{
     return this->delta*this->N_mat_1dof(this->GS_point(1.0/3.0, 1.0/3.0, 1.0/3.0));
 }
-Eigen::VectorXd BTRI3::grad_1dof(const gp_Pnt& p, const std::vector<double>& phi) const{
+Eigen::VectorXd BTRI3::grad_1dof_upos(const gp_Pnt& p, const std::vector<double>& phi) const{
     (void)p;
     Eigen::Vector<double, 3> phiv{0, 0, 0};
     for(size_t i = 0; i < 3; ++i){
@@ -97,6 +97,19 @@ Eigen::VectorXd BTRI3::grad_1dof(const gp_Pnt& p, const std::vector<double>& phi
     }
     return this->dN_mat_1dof()*phiv;
 };
+Eigen::VectorXd BTRI3::grad_1dof_id(const gp_Pnt& p, const std::vector<double>& phi) const{
+    (void)p;
+    Eigen::Vector<double, 3> phiv{0, 0, 0};
+    for(size_t i = 0; i < 3; ++i){
+        const auto p = this->nodes[i]->id;
+        phiv[i] = phi[p];
+    }
+    return this->dN_mat_1dof()*phiv;
+};
+
+Eigen::MatrixXd BTRI3::int_grad_1dof() const{
+    return delta*this->dN_mat_1dof();
+}
 
 Eigen::VectorXd BTRI3::source_1dof(const Eigen::Vector<double, 3>& v) const{
     const auto& gsi = utils::GaussLegendreTri<2>::get();
@@ -112,7 +125,7 @@ Eigen::VectorXd BTRI3::source_1dof(const Eigen::Vector<double, 3>& v) const{
     return delta*result;
 }
 
-std::array<Eigen::VectorXd, 2> BTRI3::source_1dof(const double S13, const double Gxy, const utils::BoundaryNullifier<1, 2>* b1, const double S12, const double Gxz, const utils::BoundaryNullifier<2, 1>* b2, const gp_Pnt& center) const{
+std::array<Eigen::VectorXd, 2> BTRI3::source_1dof(const double S13, const double Gxy, const double S12, const double Gxz, const gp_Pnt& center) const{
     const auto& gsi = utils::GaussLegendreTri<4>::get();
     std::array<Eigen::VectorXd, 2>  result{
         Eigen::Vector<double, 3>{0,0,0}, 
@@ -122,13 +135,42 @@ std::array<Eigen::VectorXd, 2> BTRI3::source_1dof(const double S13, const double
         // CENTER
         Eigen::Vector<double, 3> X{p.X() - center.X(), p.Y() - center.Y(), p.Z() - center.Z()};
         const auto NN = this->N_mat_1dof(p);
-        result[0] -= it->w*NN*(-2*S13*X[1] - b1->get_F_derivative(p)/(2*Gxy));
-        result[1] += it->w*NN*(-2*S12*X[2] - b2->get_F_derivative(p)/(2*Gxz));
+        result[0] += it->w*NN*(-2*S13*X[1]);
+        result[1] += it->w*NN*(-2*S12*X[2]);
     }
     result[0] *= delta;
     result[1] *= delta;
 
     return result;
+}
+
+Eigen::VectorXd BTRI3::source_1dof(double dcurv_v, double dcurv_w, const gp_Pnt& center) const{
+    const auto& gsi = utils::GaussLegendreTri<4>::get();
+    Eigen::Vector<double, 3> result{0,0,0};
+    for(auto it = gsi.begin(); it < gsi.end(); ++it){
+        const gp_Pnt p = this->GS_point(it->a, it->b, it->c);
+        // CENTER
+        Eigen::Vector<double, 3> X{p.X() - center.X(), p.Y() - center.Y(), p.Z() - center.Z()};
+        const auto NN = this->N_mat_1dof(p);
+        result += it->w*NN*(dcurv_v*X[1] + dcurv_w*X[2]);
+    }
+    return result*delta;
+}
+
+Eigen::VectorXd BTRI3::flow_1dof(double dcurv_v, double dcurv_w, const gp_Pnt& center, const gp_Dir& n, const std::vector<gp_Pnt>& edges) const{
+    const auto& gsi = utils::GaussLegendre<5>::get();
+    Eigen::Vector<double, 3> result{0,0,0};
+    gp_Vec dist(edges[0], edges[1]);
+    const double rnorm = 0.5*dist.Magnitude();
+    for(auto it = gsi.begin(); it < gsi.end(); ++it){
+        const double s = (it->x + 1)/2;
+        const gp_Pnt p = edges[0].Translated(s*dist);
+        // CENTER
+        Eigen::Vector<double, 3> X{p.X() - center.X(), p.Y() - center.Y(), p.Z() - center.Z()};
+        const auto NN = this->N_mat_1dof(p);
+        result += it->w*NN*(-dcurv_w*X[2]*X[2]*n.Y() + dcurv_v*X[1]*X[1]*n.Z())/2;
+    }
+    return result*rnorm;
 }
 
 Eigen::VectorXd BTRI3::source_grad_1dof(const Eigen::VectorXd& v) const{
