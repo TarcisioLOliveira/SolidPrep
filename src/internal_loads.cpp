@@ -329,11 +329,11 @@ void InternalLoads::generate_mesh(const std::vector<BoundaryElement>& boundary_e
 
     long npos = 0;
     long id = 0;
+    for(auto& l:this->line_nodes){
+        l->u_pos[0] = -1;
+    }
     for(size_t i = 0; i < this->boundary_nodes.size(); ++i){
-        const auto it = std::find(this->line_nodes.begin(), this->line_nodes.end(), this->boundary_nodes[i].get());
-        if(it != this->line_nodes.end()){
-            this->boundary_nodes[i]->u_pos[0] = -1;
-        } else {
+        if(this->boundary_nodes[i]->u_pos[0] > -1){
             this->boundary_nodes[i]->u_pos[0] = npos;
             ++npos;
         }
@@ -416,8 +416,16 @@ std::vector<BoundaryElement> InternalLoads::increase_element_order(const std::ve
 }
 
 void InternalLoads::generate_boundary() {
+    const auto colinear =
+        [](const gp_Pnt& p1, const gp_Pnt& p2, const gp_Pnt& p3) -> bool{
+            gp_Mat(p1.XYZ(), p2.XYZ(), p3.XYZ());
+
+            return std::abs(gp_Mat().Determinant()) < Precision::Confusion();
+        };
+
     std::list<utils::LineBoundary> bound_tmp;
     const size_t N = (this->elem_info->get_shape_type() == Element::Shape::TRI) ? 3 : 4;
+    const size_t total_nodes_num = this->boundary_elem_info->get_nodes_per_element();
 
     for(const auto& e : this->boundary_mesh){
         for(size_t i = 0; i < N; ++i){
@@ -427,7 +435,14 @@ void InternalLoads::generate_boundary() {
             // TODO: detect inner boundaries
             gp_Vec v(n1->point, n2->point);
             gp_Dir n(v.Y(), -v.X(), 0);
-            utils::LineBoundary b{{n1, n2}, false, e.get(), n};
+            std::vector<const Node*> other_nodes;
+            for(size_t k = N; k < total_nodes_num; ++k){
+                const auto& n3 = e->nodes[k];
+                if(colinear(n1->point, n2->point, n3->point)){
+                    other_nodes.push_back(n3);
+                }
+            }
+            utils::LineBoundary b{{n1, n2}, false, e.get(), n, other_nodes};
             auto it = std::find(bound_tmp.begin(), bound_tmp.end(), b);
             if(it == bound_tmp.end()){
                 bound_tmp.push_back(b);
@@ -444,6 +459,7 @@ void InternalLoads::generate_boundary() {
     std::set<const Node*> nodes_tmp;
     for(const auto& l:this->line_bounds){
         nodes_tmp.insert(l.edges.begin(), l.edges.end());
+        nodes_tmp.insert(l.other_nodes.begin(), l.other_nodes.end());
     }
     this->line_nodes.resize(nodes_tmp.size());
     std::copy(nodes_tmp.begin(), nodes_tmp.end(), this->line_nodes.begin());
