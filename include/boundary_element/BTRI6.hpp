@@ -18,8 +18,8 @@
  *
  */
 
-#ifndef BTRI3_HPP
-#define BTRI3_HPP
+#ifndef BTRI6_HPP
+#define BTRI6_HPP
 
 #include <Eigen/Core>
 #include "element.hpp"
@@ -31,12 +31,12 @@
 
 namespace boundary_element{
 
-class BTRI3 : public BoundaryMeshElement{
+class BTRI6 : public BoundaryMeshElement{
     public:
-    static const size_t ORDER          = 1;
-    static const size_t GMSH_TYPE      = 2;
+    static const size_t ORDER          = 2;
+    static const size_t GMSH_TYPE      = 9;
     static const size_t NODE_DOF       = 2;
-    static const size_t NODES_PER_ELEM = 3;
+    static const size_t NODES_PER_ELEM = 6;
     static const size_t K_DIM          = NODE_DOF*NODES_PER_ELEM;
     static const size_t S_SIZE         = 3; // Size of the stress and strain vectors
     static const size_t DIM            = 2; // Number of dimensions
@@ -48,7 +48,7 @@ class BTRI3 : public BoundaryMeshElement{
     // (u, v, w) system used for applying Spring/InternalLoads objects
     //
 
-    BTRI3(ElementShape s, const MeshElement* const parent);
+    BTRI6(ElementShape s, const MeshElement* const parent);
 
     virtual Eigen::MatrixXd diffusion_1dof(const Eigen::MatrixXd& A) const override;
     virtual Eigen::MatrixXd advection_1dof(const Eigen::VectorXd& v) const override;
@@ -64,22 +64,12 @@ class BTRI3 : public BoundaryMeshElement{
     virtual Eigen::VectorXd grad_1dof_id(const gp_Pnt& p, const std::vector<double>& phi) const override;
     virtual Eigen::MatrixXd int_grad_1dof() const override;
 
-
-    virtual Eigen::MatrixXd L4(const Eigen::MatrixXd& B) const override{
-        (void)B;
-        return Eigen::MatrixXd();
-    }
-    virtual Eigen::MatrixXd L3(const Eigen::MatrixXd& B) const override{
-        (void)B;
-        return Eigen::MatrixXd();
-    }
-    virtual Eigen::MatrixXd L2(const Eigen::MatrixXd& B) const override{
-        (void)B;
-        return Eigen::MatrixXd();
-    }
+    virtual Eigen::MatrixXd L4(const Eigen::MatrixXd& B) const override;
+    virtual Eigen::MatrixXd L3(const Eigen::MatrixXd& B) const override;
+    virtual Eigen::MatrixXd L2(const Eigen::MatrixXd& B) const override;
 
     virtual gp_Pnt get_centroid() const override{
-        const size_t N = BTRI3::NODES_PER_ELEM;
+        const size_t N = BTRI6::NODES_PER_ELEM;
 
         double x = 0;
         double y = 0;
@@ -101,24 +91,36 @@ class BTRI3 : public BoundaryMeshElement{
     }
 
     private:
-    double a[3], b[3], c[3], delta;
+    double a[6], b[6], c[6], d[6], e[6], f[6], delta;
 
     inline gp_Pnt GS_point(double c1, double c2, double c3) const{
         return gp_Pnt(
             0,
-            c1*this->nodes[0]->point.Y() + c2*this->nodes[1]->point.Y() + c3*this->nodes[2]->point.Y(),
-            c1*this->nodes[0]->point.Z() + c2*this->nodes[1]->point.Z() + c3*this->nodes[2]->point.Z()
+            c1*this->nodes[0]->point.X() + c2*this->nodes[1]->point.X() + c3*this->nodes[2]->point.X(),
+            c1*this->nodes[0]->point.Y() + c2*this->nodes[1]->point.Y() + c3*this->nodes[2]->point.Y()
         );
     }
     inline double N(const gp_Pnt& p, size_t i) const{
-        return a[i] + b[i]*p.Y() + c[i]*p.Z();
+        return a[i] + b[i]*p.X() + c[i]*p.Y() + d[i]*p.X()*p.Y() + e[i]*p.X()*p.X() + f[i]*p.Y()*p.Y();
     }
-    inline Eigen::Vector<double, 3> N_mat_1dof(const gp_Pnt& p) const{
-        return Eigen::Vector<double, 3>(N(p, 0), N(p, 1), N(p, 2));
+    inline double dNdx(const gp_Pnt& p, size_t i) const{
+        return b[i] + d[i]*p.Y() + 2*e[i]*p.X();
     }
-    inline Eigen::Matrix<double, 2, 3> dN_mat_1dof() const{
-        return Eigen::Matrix<double, 2, 3>{{b[0], b[1], b[2]},
-                                           {c[0], c[1], c[2]}};
+    inline double dNdy(const gp_Pnt& p, size_t i) const{
+        return c[i] + d[i]*p.X() + 2*f[i]*p.Y();
+    }
+    inline Eigen::Vector<double, 6> N_mat_1dof(const gp_Pnt& p) const{
+        return Eigen::Vector<double, 6>(N(p, 0), N(p, 1), N(p, 2), N(p, 3), N(p, 4), N(p, 5));
+    }
+    inline Eigen::Matrix<double, 2, 6> dN_mat_1dof(const gp_Pnt& p) const{
+        return Eigen::Matrix<double, 2, 6>{{dNdx(p, 0), dNdx(p, 1), dNdx(p, 2), dNdx(p, 3), dNdx(p, 4), dNdx(p, 5)},
+                                           {dNdy(p, 0), dNdy(p, 1), dNdy(p, 2), dNdy(p, 3), dNdy(p, 4), dNdy(p, 5)}};
+    }
+
+    inline Eigen::Matrix<double, 3, 6> ddN_mat_1dof() const{
+        return Eigen::Matrix<double, 3, 6>{{2*e[0], 2*e[1], 2*e[2], 2*e[3], 2*e[4], 2*e[5]},
+                                           {2*f[0], 2*f[1], 2*f[2], 2*f[3], 2*f[4], 2*f[5]},
+                                           {d[0], d[1], d[2], d[3], d[4], d[5]}};
     }
 };
 
