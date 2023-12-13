@@ -36,6 +36,7 @@ class LineBoundary{
     bool inner;
     BoundaryMeshElement* parent;
     gp_Dir normal;
+    std::vector<const Node*> other_nodes;
 
     bool is_connected_to(const LineBoundary& l) const{
         return (this->edges[0]->point.IsEqual(l.edges[0]->point, Precision::Confusion()) || this->edges[1]->point.IsEqual(l.edges[1]->point, Precision::Confusion())) ||
