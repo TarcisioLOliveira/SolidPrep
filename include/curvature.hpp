@@ -39,36 +39,36 @@ class Curvature{
     void generate_curvature_3D(const std::vector<std::unique_ptr<BoundaryMeshElement>>& boundary_mesh, const std::vector<utils::LineBoundary>& line_bound, size_t phi_size, size_t psi_size);
 
     inline std::array<double, 2> get_curvatures() const{
-        return {curv_v, curv_w};
+        return {curv_v, -curv_u};
     }
     inline std::array<double, 2> get_curvatures_dx() const{
-        return {dcurv_v, dcurv_w};
+        return {dcurv_v, -dcurv_u};
     }
     inline gp_Pnt get_center() const{
-        return gp_Pnt(0, c_v, c_w);
+        return gp_Pnt(0, c_v, -c_u);
     }
     void get_shear_in_3D(const BoundaryMeshElement* e, double& t_uv, double& t_uw) const;
 
     private:
     const Material* mat;
-    const gp_Dir u, v, w;
     const Eigen::Matrix<double, 2, 2> rot2D;
     const Eigen::Matrix<double, 3, 3> Lek_basis;
     const Eigen::Matrix<double, 3, 3> rot3D;
     const BoundaryMeshElementFactory* elem_info;
-    const double V_v, V_w;
+    const gp_Dir u, v, w;
+    const double V_u, V_v;
     const double M_u, M_v, M_w;
     const double line_mesh_size = 0.5;
 
     double EA;
+    double EI_u;
     double EI_v;
-    double EI_w;
-    double EI_vw;
-    double c_v, c_w;
+    double EI_uv;
+    double c_u, c_v;
+    double curv_u;
     double curv_v;
-    double curv_w;
+    double dcurv_u;
     double dcurv_v;
-    double dcurv_w;
 
     double K_uv, K_uw;
 
@@ -91,24 +91,24 @@ class Curvature{
         (void)px;
         return this->mat->beam_E_3D(e, p, this->rot3D);
     }
+    inline double make_EA_u_base_3D(const MeshElement* const e, const gp_Pnt& p, const gp_Pnt& px) const{
+        return this->mat->beam_E_3D(e, p, this->rot3D)*px.X();
+    }
     inline double make_EA_v_base_3D(const MeshElement* const e, const gp_Pnt& p, const gp_Pnt& px) const{
         return this->mat->beam_E_3D(e, p, this->rot3D)*px.Y();
     }
-    inline double make_EA_w_base_3D(const MeshElement* const e, const gp_Pnt& p, const gp_Pnt& px) const{
-        return this->mat->beam_E_3D(e, p, this->rot3D)*px.Z();
-    }
-    inline double make_EI_v_base_3D(const MeshElement* const e, const gp_Pnt& p, const gp_Pnt& px) const{
-        const double dz = px.Z() - c_w;
-        return this->mat->beam_E_3D(e, p, this->rot3D)*dz*dz;
-    }
-    inline double make_EI_w_base_3D(const MeshElement* const e, const gp_Pnt& p, const gp_Pnt& px) const{
+    inline double make_EI_u_base_3D(const MeshElement* const e, const gp_Pnt& p, const gp_Pnt& px) const{
         const double dy = px.Y() - c_v;
         return this->mat->beam_E_3D(e, p, this->rot3D)*dy*dy;
     }
-    inline double make_EI_vw_base_3D(const MeshElement* const e, const gp_Pnt& p, const gp_Pnt& px) const{
+    inline double make_EI_v_base_3D(const MeshElement* const e, const gp_Pnt& p, const gp_Pnt& px) const{
+        const double dx = px.X() - c_u;
+        return this->mat->beam_E_3D(e, p, this->rot3D)*dx*dx;
+    }
+    inline double make_EI_uv_base_3D(const MeshElement* const e, const gp_Pnt& p, const gp_Pnt& px) const{
+        const double dx = px.X() - c_u;
         const double dy = px.Y() - c_v;
-        const double dz = px.Z() - c_w;
-        return this->mat->beam_E_3D(e, p, this->rot3D)*dy*dz;
+        return this->mat->beam_E_3D(e, p, this->rot3D)*dx*dy;
     }
 };
 
