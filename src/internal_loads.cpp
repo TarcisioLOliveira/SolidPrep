@@ -299,29 +299,43 @@ void InternalLoads::generate_mesh(const std::vector<BoundaryElement>& boundary_e
             }
         }
     } else {
-        auto new_elems = this->increase_element_order(boundary_elements);
+        std::vector<BoundaryElement> applied;
+        const size_t orig_bound_nodes = this->elem_info->get_boundary_nodes_per_element();
+        applied.reserve(num_elems);
+        std::vector<const MeshNode*> nodes(orig_bound_nodes);
+        for(size_t i = 0; i < boundary_elements.size(); ++i){
+            if(apply_spring[i]){
+                const auto& b = boundary_elements[i];
+                for(size_t j = 0; j < orig_bound_nodes; ++j){
+                    nodes[j] = b.nodes[j];
+                }
+                applied.emplace_back(nodes, b.parent, b.normal);
+                this->submesh[cur_elem] = &boundary_elements[i];
+                ++cur_elem;
+            }
+        }
+        cur_elem = 0;
+
+        auto new_elems = this->increase_element_order(applied);
         bound_nodes_per_elem = this->boundary_elem_info->get_nodes_per_element();
         sh.nodes.resize(bound_nodes_per_elem);
 
-        for(size_t i = 0; i < boundary_elements.size(); ++i){
-            if(apply_spring[i]){
-                this->submesh[cur_elem] = &boundary_elements[i];
-                const auto& b = new_elems[i];
-                for(size_t j = 0; j < bound_nodes_per_elem/2; ++j){
-                    const auto& n = b.nodes[j];
-                    gp_Pnt p = utils::change_point(n->point, this->rot3D.transpose());
-                    MeshNode* nn = std::find_if(this->boundary_nodes.begin(), this->boundary_nodes.end(), NodeComp(p))->get();
-                    sh.nodes[j] = nn;
-                }
-                for(size_t j = bound_nodes_per_elem/2; j < bound_nodes_per_elem; ++j){
-                    const auto& n = b.nodes[j];
-                    gp_Pnt p = n->point;
-                    MeshNode* nn = std::find_if(this->boundary_nodes.begin(), this->boundary_nodes.end(), NodeComp(p))->get();
-                    sh.nodes[j] = nn;
-                }
-                this->boundary_mesh[cur_elem].reset(this->boundary_elem_info->make_element(sh, boundary_elements[i].parent));
-                ++cur_elem;
+        for(size_t i = 0; i < new_elems.size(); ++i){
+            const auto& b = new_elems[i];
+            for(size_t j = 0; j < bound_nodes_per_elem/2; ++j){
+                const auto& n = b.nodes[j];
+                gp_Pnt p = utils::change_point(n->point, this->rot3D.transpose());
+                MeshNode* nn = std::find_if(this->boundary_nodes.begin(), this->boundary_nodes.end(), NodeComp(p))->get();
+                sh.nodes[j] = nn;
             }
+            for(size_t j = bound_nodes_per_elem/2; j < bound_nodes_per_elem; ++j){
+                const auto& n = b.nodes[j];
+                gp_Pnt p = n->point;
+                MeshNode* nn = std::find_if(this->boundary_nodes.begin(), this->boundary_nodes.end(), NodeComp(p))->get();
+                sh.nodes[j] = nn;
+            }
+            this->boundary_mesh[cur_elem].reset(this->boundary_elem_info->make_element(sh, boundary_elements[i].parent));
+            ++cur_elem;
         }
     }
 
