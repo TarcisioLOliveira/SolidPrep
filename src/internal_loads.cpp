@@ -430,11 +430,13 @@ std::vector<BoundaryElement> InternalLoads::increase_element_order(const std::ve
 }
 
 void InternalLoads::generate_boundary() {
-    const auto colinear =
+    const auto collinear =
         [](const gp_Pnt& p1, const gp_Pnt& p2, const gp_Pnt& p3) -> bool{
-            gp_Mat(p1.XYZ(), p2.XYZ(), p3.XYZ());
+            const double d1 = p1.Distance(p2);
+            const double d2 = p1.Distance(p3);
+            const double d3 = p3.Distance(p2);
 
-            return std::abs(gp_Mat().Determinant()) < Precision::Confusion();
+            return std::abs(d2 + d3 - d1) < Precision::Confusion();
         };
 
     std::list<utils::LineBoundary> bound_tmp;
@@ -452,7 +454,7 @@ void InternalLoads::generate_boundary() {
             std::vector<const Node*> other_nodes;
             for(size_t k = N; k < total_nodes_num; ++k){
                 const auto& n3 = e->nodes[k];
-                if(colinear(n1->point, n2->point, n3->point)){
+                if(collinear(n1->point, n2->point, n3->point)){
                     other_nodes.push_back(n3);
                 }
             }
@@ -468,7 +470,6 @@ void InternalLoads::generate_boundary() {
 
     this->line_bounds.resize(bound_tmp.size());
     std::move(bound_tmp.begin(), bound_tmp.end(), this->line_bounds.begin());
-    
 
     std::set<const Node*> nodes_tmp;
     for(const auto& l:this->line_bounds){
