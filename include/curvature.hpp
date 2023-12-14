@@ -36,13 +36,13 @@ class Curvature{
 
     Curvature(const Material* mat, gp_Dir u, gp_Dir v, gp_Dir w, Eigen::Matrix<double, 2, 2> rot2D, Eigen::Matrix<double, 3, 3> rot3D, const BoundaryMeshElementFactory* elem_info, double V_v, double V_w, double M_u, double M_v, double M_w);
 
-    void generate_curvature_3D(const std::vector<std::unique_ptr<BoundaryMeshElement>>& boundary_mesh, const std::vector<utils::LineBoundary>& line_bound, size_t phi_size, size_t psi_size);
+    void generate_curvature_3D(const std::vector<std::unique_ptr<MeshNode>>& boundary_nodes, const std::vector<std::unique_ptr<BoundaryMeshElement>>& boundary_mesh, const std::vector<utils::LineBoundary>& line_bound, size_t phi_size, size_t psi_size);
 
     inline std::array<double, 2> get_curvatures() const{
-        return {curv_v, -curv_u};
+        return {curv_u, curv_v};
     }
     inline std::array<double, 2> get_curvatures_dx() const{
-        return {dcurv_v, -dcurv_u};
+        return {dcurv_u, dcurv_v};
     }
     inline gp_Pnt get_center() const{
         return gp_Pnt(0, c_v, -c_u);
@@ -73,19 +73,29 @@ class Curvature{
     double K_uv, K_uw;
 
     double theta;
-    std::vector<double> phi_torsion;
+    size_t reduced_vec_len;
+    std::vector<double> F;
+    std::vector<double> phi;
     std::vector<double> psi_shear;
 
     std::vector<double> permute_shear_3D;
     std::vector<double> rotate_X_Z_3D;
+    std::vector<double> rotate_X_Z_3D_inv;
 
     std::vector<double> permute_and_rotate_3D;
+    std::vector<double> permute_and_rotate_3D_inv;
 
-    void calculate_torsion(const std::vector<std::unique_ptr<BoundaryMeshElement>>& boundary_mesh);
+    void calculate_torsion(const std::vector<std::unique_ptr<MeshNode>>& boundary_nodes, const std::vector<std::unique_ptr<BoundaryMeshElement>>& boundary_mesh);
     void calculate_shear_3D(const std::vector<std::unique_ptr<BoundaryMeshElement>>& boundary_mesh, const std::vector<utils::LineBoundary>& line_bound);
 
     double integrate_surface_3D(const std::vector<std::unique_ptr<BoundaryMeshElement>>& boundary_mesh, const std::function<double(const MeshElement* const, const gp_Pnt&, const gp_Pnt& px)>& fn) const;
     double GS_tri(const MeshElement* const e, const std::array<gp_Pnt, 3>& p, const std::array<gp_Pnt, 3>& px, const std::function<double(const MeshElement* const, const gp_Pnt&, const gp_Pnt& px)>& fn) const;
+    double GS_quad(const MeshElement* const e, const std::array<gp_Pnt, 3>& p, const std::array<gp_Pnt, 3>& px, const std::function<double(const MeshElement* const, const gp_Pnt&, const gp_Pnt& px)>& fn) const;
+
+    Eigen::Matrix<double, 6, 6> get_S_3D(const MeshElement* const e, const gp_Pnt& p) const;
+    Eigen::Matrix<double, 6, 6> get_B_3D(const MeshElement* const e, const gp_Pnt& p) const;
+
+    void get_B_tensors_3D(const MeshElement* const e, const gp_Pnt& p, Eigen::Matrix<double, 3, 3>& B4, Eigen::Matrix<double, 3, 2>& B3, Eigen::Matrix<double, 2, 2>& B2) const;
 
     inline double make_EA_base_3D(const MeshElement* const e, const gp_Pnt& p, const gp_Pnt& px) const{
         (void)px;
