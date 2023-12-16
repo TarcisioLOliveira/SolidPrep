@@ -107,7 +107,7 @@ void Curvature::generate_curvature_3D(const std::vector<std::unique_ptr<MeshNode
     logger::quick_log("EI_uv", EI_uv/180000);
 
     const Eigen::Vector<double, 2> Mv{M_u, M_v};
-    const Eigen::Vector<double, 2> Vv{V_v, V_u};
+    const Eigen::Vector<double, 2> Vv{-V_v, V_u};
     const Eigen::Matrix<double, 2, 2> EI{{ EI_uv,  EI_v},
                                          {-EI_u, -EI_uv}};
 
@@ -155,8 +155,8 @@ void Curvature::get_shear_in_3D(const BoundaryMeshElement* e, double& t_1, doubl
 void Curvature::calculate_torsion(const std::vector<std::unique_ptr<MeshNode>>& boundary_nodes, const std::vector<std::unique_ptr<BoundaryMeshElement>>& boundary_mesh){
     const size_t num_nodes = this->elem_info->get_nodes_per_element();
 
-    const size_t F_offset = this->reduced_vec_len;
-    const size_t phi_size = 2*this->reduced_vec_len;
+    const size_t F_offset = 2*this->reduced_vec_len;
+    const size_t phi_size = F_offset + this->reduced_vec_len;
     Eigen::SparseMatrix<double> M = Eigen::SparseMatrix<double>(phi_size, phi_size);
     //Eigen::SimplicialLLT<Eigen::SparseMatrix<double>, Eigen::Lower, Eigen::COLAMDOrdering<int>> solver;
     Eigen::SparseLU<Eigen::SparseMatrix<double>, Eigen::COLAMDOrdering<int>> solver;
@@ -189,8 +189,12 @@ void Curvature::calculate_torsion(const std::vector<std::unique_ptr<MeshNode>>& 
                 if(id2 < 0){
                     continue;
                 }
-                if(std::abs(L4(i,j)) > 1e-14*1e9){
-                    M.coeffRef(id1, id2) += L4(i, j);
+                for(size_t k = 0; k < 2; ++k){
+                    for(size_t l = 0; l < 2; ++l){
+                        if(std::abs(L4(2*i+k,2*j+l)) > 1e-14*1e9){
+                            M.coeffRef(2*id1+k, 2*id2+l) += L4(2*i+k, 2*j+l);
+                        }
+                    }
                 }
             }
         }
@@ -204,11 +208,11 @@ void Curvature::calculate_torsion(const std::vector<std::unique_ptr<MeshNode>>& 
                 if(id2 < 0){
                     continue;
                 }
-                if(std::abs(L3(i,j)) > 1e-14*1e9){
-                    M.coeffRef(id1, F_offset + id2) += L3(i, j);
-                }
-                if(std::abs(L3(j,i)) > 1e-14*1e9){
-                    M.coeffRef(F_offset + id2, id1) += L3(j, i);
+                for(size_t k = 0; k < 2; ++k){
+                    if(std::abs(L3(2*i+k,j)) > 1e-14*1e9){
+                        M.coeffRef(2*id1+k, F_offset + id2) += L3(2*i+k, j);
+                        M.coeffRef(F_offset + id2, 2*id1+k) += L3(2*i+k, j);
+                    }
                 }
             }
         }
@@ -247,6 +251,7 @@ void Curvature::calculate_torsion(const std::vector<std::unique_ptr<MeshNode>>& 
     Eigen::VectorXd phi_tmp = solver.solve(b);
 
     double phi_int = 0;
+    double F_int = 0;
     for(const auto& e:boundary_mesh){
         const auto N = e->source_1dof();
 
@@ -256,6 +261,7 @@ void Curvature::calculate_torsion(const std::vector<std::unique_ptr<MeshNode>>& 
                 continue;
             }
             phi_int += N[i]*phi_tmp[F_offset + id1];
+            F_int += N[i]*phi_tmp[id1];
         }
     }
     if(phi_int != 0){
@@ -269,6 +275,7 @@ void Curvature::calculate_torsion(const std::vector<std::unique_ptr<MeshNode>>& 
         }
         this->F[n->id] += phi_tmp[id1];
     }
+    logger::quick_log(F_int);
     for(const auto& n:boundary_nodes){
         const long id1 = n->u_pos[0];
         if(id1 < 0){
@@ -409,14 +416,14 @@ void Curvature::get_B_tensors_3D(const MeshElement* const e, const gp_Pnt& p, Ei
     const auto B = this->get_B_3D(e, p);
 
     B4 = Eigen::Matrix<double, 3, 3>
-         {{ B(1,1), -B(1,5),  B(0,1)},
-          {-B(1,5),  B(0,0), -B(0,5)},
-          { B(0,1), -B(0,5),  B(5,5)}};
+         {{ B(1,1)  , -B(1,5)  ,  B(0,1)/2},
+          {-B(1,5)  ,  B(0,0)  , -B(0,5)/2},
+          { B(0,1)/2, -B(0,5)/2,  B(5,5)/4}};
 
     B3 = Eigen::Matrix<double, 3, 2>
-         {{-B(1,3), -B(1,4)},
-          {-B(0,3),  B(0,4)},
-          { B(3,5), -B(4,5)}};
+         {{-B(1,3)  , -B(1,4)  },
+          {-B(0,3)  ,  B(0,4)  },
+          { B(3,5)/2, -B(4,5)/2}};
 
     B2 = Eigen::Matrix<double, 2, 2>
          {{ B(3,3), -B(3,4)},

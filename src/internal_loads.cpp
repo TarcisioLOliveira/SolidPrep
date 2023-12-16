@@ -53,17 +53,18 @@ InternalLoads::InternalLoads(CrossSection cross_section, double thickness, gp_Di
     v(v), w(w),
     type(type){
 
-    if(bound_elem->get_element_order() >= 2){
-        this->boundary_elem_info = bound_elem;
-    } else if(elem_info->get_shape_type() == Element::Shape::TRI){
-        this->bound_elem_higher_order.reset(static_cast<BoundaryMeshElementFactory*>(
-                    new BoundaryMeshElementFactoryImpl<boundary_element::BTRI6>()
-                ));
-        this->boundary_elem_info = this->bound_elem_higher_order.get();
-    } else {
-        // TODO
-        logger::log_assert(false, logger::ERROR, "BQ8 not implemented");
-    }
+    this->boundary_elem_info = bound_elem;
+    //if(bound_elem->get_element_order() >= 2){
+    //    this->boundary_elem_info = bound_elem;
+    //} else if(elem_info->get_shape_type() == Element::Shape::TRI){
+    //    this->bound_elem_higher_order.reset(static_cast<BoundaryMeshElementFactory*>(
+    //                new BoundaryMeshElementFactoryImpl<boundary_element::BTRI6>()
+    //            ));
+    //    this->boundary_elem_info = this->bound_elem_higher_order.get();
+    //} else {
+    //    // TODO
+    //    logger::log_assert(false, logger::ERROR, "BQ8 not implemented");
+    //}
 
     this->curvature = std::make_unique<Curvature>(mat, normal, v, w, rot2D, rot3D, this->boundary_elem_info, F[1], F[2], M[0], M[1], M[2]);
 }
