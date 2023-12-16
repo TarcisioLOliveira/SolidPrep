@@ -18,6 +18,7 @@
  *
  */
 
+#include <set>
 #include "field/orthotropic_flow.hpp"
 #include "utils/sparse_matrix.hpp"
 #include "logger.hpp"
