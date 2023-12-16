@@ -37,9 +37,9 @@ BTRI3::BTRI3(ElementShape s, const MeshElement* const parent):
         z[i] = this->nodes[i]->point.Z();
     }
     std::array<double, N*N> M = 
-        {1, y[0], z[0],
-         1, y[1], z[1],
-         1, y[2], z[2]};
+        {1, x[0], y[0],
+         1, x[1], y[1],
+         1, x[2], y[2]};
 
     std::array<int, N> ipiv;
 
@@ -177,6 +177,23 @@ Eigen::VectorXd BTRI3::source_grad_1dof(const Eigen::VectorXd& v) const{
     const auto B = this->dN_mat_1dof();
 
     return delta*B.transpose()*v;
+}
+
+Eigen::MatrixXd BTRI3::L4(const Eigen::MatrixXd& B) const{
+    const auto dF = this->dF_mat_2dof();
+
+    return delta*dF.transpose()*B*dF;
+}
+Eigen::MatrixXd BTRI3::L3(const Eigen::MatrixXd& B) const{
+    const auto dF = this->dF_mat_2dof();
+    const auto dN = this->dN_mat_1dof();
+
+    return delta*dF.transpose()*B*dN;
+}
+Eigen::MatrixXd BTRI3::L2(const Eigen::MatrixXd& B) const{
+    const auto dN = this->dN_mat_1dof();
+
+    return delta*dN.transpose()*B*dN;
 }
 
 }

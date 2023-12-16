@@ -65,18 +65,9 @@ class BTRI3 : public BoundaryMeshElement{
     virtual Eigen::MatrixXd int_grad_1dof() const override;
 
 
-    virtual Eigen::MatrixXd L4(const Eigen::MatrixXd& B) const override{
-        (void)B;
-        return Eigen::MatrixXd();
-    }
-    virtual Eigen::MatrixXd L3(const Eigen::MatrixXd& B) const override{
-        (void)B;
-        return Eigen::MatrixXd();
-    }
-    virtual Eigen::MatrixXd L2(const Eigen::MatrixXd& B) const override{
-        (void)B;
-        return Eigen::MatrixXd();
-    }
+    virtual Eigen::MatrixXd L4(const Eigen::MatrixXd& B) const override;
+    virtual Eigen::MatrixXd L3(const Eigen::MatrixXd& B) const override;
+    virtual Eigen::MatrixXd L2(const Eigen::MatrixXd& B) const override;
 
     virtual gp_Pnt get_centroid() const override{
         const size_t N = BTRI3::NODES_PER_ELEM;
@@ -105,13 +96,13 @@ class BTRI3 : public BoundaryMeshElement{
 
     inline gp_Pnt GS_point(double c1, double c2, double c3) const{
         return gp_Pnt(
-            0,
+            c1*this->nodes[0]->point.X() + c2*this->nodes[1]->point.X() + c3*this->nodes[2]->point.X(),
             c1*this->nodes[0]->point.Y() + c2*this->nodes[1]->point.Y() + c3*this->nodes[2]->point.Y(),
-            c1*this->nodes[0]->point.Z() + c2*this->nodes[1]->point.Z() + c3*this->nodes[2]->point.Z()
+            0
         );
     }
     inline double N(const gp_Pnt& p, size_t i) const{
-        return a[i] + b[i]*p.Y() + c[i]*p.Z();
+        return a[i] + b[i]*p.X() + c[i]*p.Y();
     }
     inline Eigen::Vector<double, 3> N_mat_1dof(const gp_Pnt& p) const{
         return Eigen::Vector<double, 3>(N(p, 0), N(p, 1), N(p, 2));
@@ -119,6 +110,11 @@ class BTRI3 : public BoundaryMeshElement{
     inline Eigen::Matrix<double, 2, 3> dN_mat_1dof() const{
         return Eigen::Matrix<double, 2, 3>{{b[0], b[1], b[2]},
                                            {c[0], c[1], c[2]}};
+    }
+    inline Eigen::Matrix<double, 3, 6> dF_mat_2dof() const{
+        return Eigen::Matrix<double, 3, 6>{{b[0],    0, b[1],    0, b[2],    0},
+                                           {   0, c[0],    0, c[1],    0, c[2]},
+                                           {c[0], b[0], c[1], b[1], c[2], b[2]}};
     }
 };
 

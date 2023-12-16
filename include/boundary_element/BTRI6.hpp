@@ -64,6 +64,9 @@ class BTRI6 : public BoundaryMeshElement{
     virtual Eigen::VectorXd grad_1dof_id(const gp_Pnt& p, const std::vector<double>& phi) const override;
     virtual Eigen::MatrixXd int_grad_1dof() const override;
 
+    // NEEDS TO BE ADAPTED TO BE MORE LIKE BTRI3
+    // CURRENT STATE IS A UNUSED EXPERIMENT
+
     virtual Eigen::MatrixXd L4(const Eigen::MatrixXd& B) const override;
     virtual Eigen::MatrixXd L3(const Eigen::MatrixXd& B) const override;
     virtual Eigen::MatrixXd L2(const Eigen::MatrixXd& B) const override;
