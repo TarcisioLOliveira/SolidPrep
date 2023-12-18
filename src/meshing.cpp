@@ -242,7 +242,6 @@ void Meshing::apply_supports(const std::vector<Support>& supports){
 
             for(auto& s : bound_s){
                 if(s.S.is_inside(n->point)){
-                    logger::quick_log("found2");
                     std::vector<bool> sup_pos = this->get_support_dof(s, this->elem_info);
                     for(size_t j = 0; j < dof; ++j){
                         if(sup_pos[j]){
