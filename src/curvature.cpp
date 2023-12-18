@@ -96,8 +96,8 @@ void Curvature::generate_curvature_3D(const std::vector<std::unique_ptr<MeshNode
         };
 
     this->EA = this->integrate_surface_3D(boundary_mesh, fn_EA);
-    const double EA_u = this->integrate_surface_3D(boundary_mesh, fn_EA_u);
-    const double EA_v = this->integrate_surface_3D(boundary_mesh, fn_EA_v);
+    this->EA_u = this->integrate_surface_3D(boundary_mesh, fn_EA_u);
+    this->EA_v = this->integrate_surface_3D(boundary_mesh, fn_EA_v);
     const double EA_w = this->integrate_surface_3D(boundary_mesh, fn_EA_w);
     this->c_u = EA_u/this->EA;
     this->c_v = EA_v/this->EA;
@@ -109,6 +109,8 @@ void Curvature::generate_curvature_3D(const std::vector<std::unique_ptr<MeshNode
     logger::quick_log("EA: ", EA);
     logger::quick_log("c_v: ", c_v);
     logger::quick_log("c_u: ", c_u);
+    logger::quick_log("EA_u", EA_u);
+    logger::quick_log("EA_v", EA_v);
     logger::quick_log("EI_u", EI_u);
     logger::quick_log("EI_v", EI_v);
     logger::quick_log("EI_uv", EI_uv);
@@ -130,7 +132,7 @@ void Curvature::generate_curvature_3D(const std::vector<std::unique_ptr<MeshNode
     this->phi.resize(psi_size,0);
     this->psi_shear.resize(psi_size,0);
 
-    this->C = -V_w/this->EA;
+    //this->C = -V_w/this->EA;
 
     if(this->M_u != 0 || this->M_v != 0 || this->M_w != 0){
         this->calculate_torsion(boundary_nodes, boundary_mesh);
@@ -223,7 +225,7 @@ void Curvature::calculate_torsion(const std::vector<std::unique_ptr<MeshNode>>& 
      * the zero-filled rectangles.
      */
     const size_t F_phi_offset = phi_size;
-    phi_size = phi_size + 3;
+    phi_size = phi_size + 4;
     solver.initialize_matrix(false, phi_size);
 
     this->base_matrix_upos(solver, boundary_mesh, num_nodes, F_offset);
@@ -236,10 +238,15 @@ void Curvature::calculate_torsion(const std::vector<std::unique_ptr<MeshNode>>& 
      * rectangles in the matrix.
      *
      */
-    double Cx1 = 0, Cy1 = 0, Ct1 = 0;
+    double C1, Cx1 = 0, Cy1 = 0, Ct1 = 0;
     for(const auto& e:boundary_mesh){
         const auto N = e->source_1dof();
-        const auto dN = e->int_grad_phi_1dof(center);
+        const auto dphi = e->int_grad_phi();
+        const auto dphix = e->int_grad_phi_x(center);
+        const auto dphiy = e->int_grad_phi_y(center);
+        const auto dF = e->int_grad_F();
+        const auto dFx = e->int_grad_F_x(center);
+        const auto dFy = e->int_grad_F_y(center);
         gp_Pnt c = utils::change_point(e->get_centroid(), this->rot3D);
         const auto S = this->get_S_3D(e->parent, c);
 
@@ -248,8 +255,21 @@ void Curvature::calculate_torsion(const std::vector<std::unique_ptr<MeshNode>>& 
             if(id1 < 0){
                 continue;
             }
-            Cx1 += MULT*S(2,3)*dN(0,i)*phi_tmp[F_offset + id1]/S(2,2);
-            Cy1 += MULT*S(2,4)*dN(1,i)*phi_tmp[F_offset + id1]/S(2,2);
+            Cx1 += MULT*(
+                    (S(1,2)*dFx(0,2*i+0)-0.5*S(2,5)*dFx(2,2*i+0))*phi_tmp[2*id1+0]+
+                    (S(0,2)*dFx(1,2*i+1)-0.5*S(2,5)*dFx(2,2*i+1))*phi_tmp[2*id1+1])
+                    /S(2,2);
+            Cy1 += MULT*(
+                    (S(1,2)*dFy(0,2*i+0)-0.5*S(2,5)*dFy(2,2*i+0))*phi_tmp[2*id1+0]+
+                    (S(0,2)*dFy(1,2*i+1)-0.5*S(2,5)*dFy(2,2*i+1))*phi_tmp[2*id1+1])
+                    /S(2,2);
+            C1  += MULT*(
+                    (S(1,2)*dF (0,2*i+0)-0.5*S(2,5)*dF (2,2*i+0))*phi_tmp[2*id1+0]+
+                    (S(0,2)*dF (1,2*i+1)-0.5*S(2,5)*dF (2,2*i+1))*phi_tmp[2*id1+1])
+                    /S(2,2);
+            Cx1 += MULT*(-S(2,3)*dphix(0,i)+S(2,4)*dphix(1,i))*phi_tmp[F_offset + id1]/S(2,2);
+            Cy1 += MULT*(-S(2,3)*dphiy(0,i)+S(2,4)*dphiy(1,i))*phi_tmp[F_offset + id1]/S(2,2);
+            C1  += MULT*(-S(2,3)*dphi (0,i)+S(2,4)*dphi (1,i))*phi_tmp[F_offset + id1]/S(2,2);
             Ct1 += MULT*2*N[i]*phi_tmp[F_offset + id1];
 
             // A coeffs (eq 2)
@@ -258,29 +278,47 @@ void Curvature::calculate_torsion(const std::vector<std::unique_ptr<MeshNode>>& 
             solver.add_value(F_offset + id1, F_phi_offset + 1, -(MULT*S(2,4)*N[i]/S(2,2)));
 
             // Cx0
-            solver.add_value(F_phi_offset + 0, F_offset + id1, MULT*S(2,3)*dN(0,i)/S(2,2));
+            solver.add_value(F_phi_offset + 0, 2*id1 + 0, -MULT*(S(1,2)*dFx(0,2*i+0)-0.5*S(2,5)*dFx(2,2*i+0))/S(2,2));
+            solver.add_value(F_phi_offset + 0, 2*id1 + 1, -MULT*(S(0,2)*dFx(1,2*i+1)-0.5*S(2,5)*dFx(2,2*i+1))/S(2,2));
+            solver.add_value(F_phi_offset + 0, F_offset + id1, -MULT*(-S(2,3)*dphix(0,i)+S(2,4)*dphix(1,i))/S(2,2));
             // Cy0
-            solver.add_value(F_phi_offset + 1, F_offset + id1,-MULT*S(2,4)*dN(1,i)/S(2,2));
+            solver.add_value(F_phi_offset + 1, 2*id1 + 0, -MULT*(S(1,2)*dFy(0,2*i+0)-0.5*S(2,5)*dFy(2,2*i+0))/S(2,2));
+            solver.add_value(F_phi_offset + 1, 2*id1 + 1, -MULT*(S(0,2)*dFy(1,2*i+1)-0.5*S(2,5)*dFy(2,2*i+1))/S(2,2));
+            solver.add_value(F_phi_offset + 1, F_offset + id1, -MULT*(-S(2,3)*dphiy(0,i)+S(2,4)*dphiy(1,i))/S(2,2));
+            // C0                                                    
+            solver.add_value(F_phi_offset + 2, 2*id1 + 0, -MULT*(S(1,2)*dF (0,2*i+0)-0.5*S(2,5)*dF (2,2*i+0))/S(2,2));
+            solver.add_value(F_phi_offset + 2, 2*id1 + 1, -MULT*(S(0,2)*dF (1,2*i+1)-0.5*S(2,5)*dF (2,2*i+1))/S(2,2));
+            solver.add_value(F_phi_offset + 2, F_offset + id1, -MULT*(-S(2,3)*dphi (0,i)+S(2,4)*dphi (1,i))/S(2,2));
             // Ct0
-            solver.add_value(F_phi_offset + 2, F_offset + id1, MULT*2*N[i]);
+            solver.add_value(F_phi_offset + 3, F_offset + id1, MULT*2*N[i]);
         }
     }
 
-    // A B square
+    // A B C square
     solver.add_value(F_phi_offset + 0, F_phi_offset + 0, MULT*EI_v);
     solver.add_value(F_phi_offset + 0, F_phi_offset + 1, MULT*EI_uv);
+    solver.add_value(F_phi_offset + 0, F_phi_offset + 2, MULT*EA_u);
+
     solver.add_value(F_phi_offset + 1, F_phi_offset + 0, MULT*EI_uv);
     solver.add_value(F_phi_offset + 1, F_phi_offset + 1, MULT*EI_u);
+    solver.add_value(F_phi_offset + 1, F_phi_offset + 2, MULT*EA_v);
+
+    solver.add_value(F_phi_offset + 2, F_phi_offset + 0, MULT*EA_u);
+    solver.add_value(F_phi_offset + 2, F_phi_offset + 1, MULT*EA_v);
+    solver.add_value(F_phi_offset + 2, F_phi_offset + 2, MULT*EA);
+
 
     // theta
-    solver.add_value(F_phi_offset + 0, F_phi_offset + 2,  MULT*Cx1);
-    solver.add_value(F_phi_offset + 1, F_phi_offset + 2, -MULT*Cy1);
-    solver.add_value(F_phi_offset + 2, F_phi_offset + 2,  MULT*Ct1);
+    solver.add_value(F_phi_offset + 0, F_phi_offset + 3, -MULT*Cx1);
+    solver.add_value(F_phi_offset + 1, F_phi_offset + 3, -MULT*Cy1);
+    solver.add_value(F_phi_offset + 2, F_phi_offset + 3, -MULT*C1 );
+    solver.add_value(F_phi_offset + 3, F_phi_offset + 3,  MULT*Ct1);
 
     // Moments
     b[F_phi_offset + 0] = -MULT*M_v;
     b[F_phi_offset + 1] = -MULT*M_u;
-    b[F_phi_offset + 2] = -MULT*M_w;
+    b[F_phi_offset + 2] = -MULT*V_w;
+    b[F_phi_offset + 3] = -MULT*M_w;
 
     /*
      * Save phi_1 and F_1 in the global vector.
@@ -309,10 +347,13 @@ void Curvature::calculate_torsion(const std::vector<std::unique_ptr<MeshNode>>& 
 
     this->A     = phi_tmp[F_phi_offset + 0];
     this->B     = phi_tmp[F_phi_offset + 1];
-    this->theta = phi_tmp[F_phi_offset + 2];
+    this->C     = phi_tmp[F_phi_offset + 2];
+    this->theta = phi_tmp[F_phi_offset + 3];
     logger::quick_log("A", A);
     logger::quick_log("B", B);
+    logger::quick_log("C", C);
     logger::quick_log("theta", theta);
+    logger::quick_log("");
 
     /*
      * Multiply phi_1 and F_1 by theta

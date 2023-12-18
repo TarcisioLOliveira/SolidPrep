@@ -64,6 +64,8 @@ class Curvature{
     double EA;
     double EI_u;
     double EI_v;
+    double EA_u;
+    double EA_v;
     double EI_uv;
     double c_u, c_v, c_w;
     double curv_u;

@@ -122,16 +122,57 @@ Eigen::MatrixXd BTRI3::int_grad_1dof() const{
     return delta*this->dN_mat_1dof();
 }
 
-Eigen::MatrixXd BTRI3::int_grad_phi_1dof(const gp_Pnt& center) const{
+Eigen::MatrixXd BTRI3::int_grad_phi() const{
+    return delta*this->dN_mat_1dof();
+};
+Eigen::MatrixXd BTRI3::int_grad_phi_x(const gp_Pnt& center) const{
     const auto p = this->GS_point(1.0/3.0, 1.0/3.0, 1.0/3.0);
-    const gp_Pnt px(p.X() - center.X(), p.Y() - center.Y(), p.Z() - center.Z());
+    const double dx = p.X() - center.X();
     auto dN = this->dN_mat_1dof();
     for(size_t i = 0; i < 3; ++i){
-        dN(0, i) *= delta*px.X();
-        dN(1, i) *= delta*px.Y();
+        dN(0, i) *= delta*dx;
+        dN(1, i) *= delta*dx;
     }
 
     return dN;
+};
+Eigen::MatrixXd BTRI3::int_grad_phi_y(const gp_Pnt& center) const{
+    const auto p = this->GS_point(1.0/3.0, 1.0/3.0, 1.0/3.0);
+    const double dy = p.Y() - center.Y();
+    auto dN = this->dN_mat_1dof();
+    for(size_t i = 0; i < 3; ++i){
+        dN(0, i) *= delta*dy;
+        dN(1, i) *= delta*dy;
+    }
+
+    return dN;
+};
+Eigen::MatrixXd BTRI3::int_grad_F() const{
+    return delta*this->dF_mat_2dof();
+};
+Eigen::MatrixXd BTRI3::int_grad_F_x(const gp_Pnt& center) const{
+    const auto p = this->GS_point(1.0/3.0, 1.0/3.0, 1.0/3.0);
+    const double dx = p.X() - center.X();
+    auto dF = this->dF_mat_2dof();
+    for(size_t i = 0; i < 3; ++i){
+        dF(0, i) *= delta*dx;
+        dF(1, i) *= delta*dx;
+        dF(2, i) *= delta*dx;
+    }
+
+    return dF;
+};
+Eigen::MatrixXd BTRI3::int_grad_F_y(const gp_Pnt& center) const{
+    const auto p = this->GS_point(1.0/3.0, 1.0/3.0, 1.0/3.0);
+    const double dy = p.Y() - center.Y();
+    auto dF = this->dF_mat_2dof();
+    for(size_t i = 0; i < 3; ++i){
+        dF(0, i) *= delta*dy;
+        dF(1, i) *= delta*dy;
+        dF(2, i) *= delta*dy;
+    }
+
+    return dF;
 };
 
 Eigen::VectorXd BTRI3::source_1dof(const Eigen::Vector<double, 3>& v) const{
