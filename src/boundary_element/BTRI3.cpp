@@ -107,9 +107,32 @@ Eigen::VectorXd BTRI3::grad_1dof_id(const gp_Pnt& p, const std::vector<double>& 
     return this->dN_mat_1dof()*phiv;
 };
 
+Eigen::VectorXd BTRI3::dF_2dof_id(const gp_Pnt& p, const std::vector<double>& phi) const{
+    (void)p;
+    Eigen::Vector<double, 6> phiv{0, 0, 0, 0, 0, 0};
+    for(size_t i = 0; i < 3; ++i){
+        const auto p = this->nodes[i]->id;
+        phiv[2*i+0] = phi[2*p+0];
+        phiv[2*i+1] = phi[2*p+1];
+    }
+    return this->dF_mat_2dof()*phiv;
+}
+
 Eigen::MatrixXd BTRI3::int_grad_1dof() const{
     return delta*this->dN_mat_1dof();
 }
+
+Eigen::MatrixXd BTRI3::int_grad_phi_1dof(const gp_Pnt& center) const{
+    const auto p = this->GS_point(1.0/3.0, 1.0/3.0, 1.0/3.0);
+    const gp_Pnt px(p.X() - center.X(), p.Y() - center.Y(), p.Z() - center.Z());
+    auto dN = this->dN_mat_1dof();
+    for(size_t i = 0; i < 3; ++i){
+        dN(0, i) *= delta*px.X();
+        dN(1, i) *= delta*px.Y();
+    }
+
+    return dN;
+};
 
 Eigen::VectorXd BTRI3::source_1dof(const Eigen::Vector<double, 3>& v) const{
     const auto& gsi = utils::GaussLegendreTri<2>::get();

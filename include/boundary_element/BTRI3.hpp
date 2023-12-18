@@ -62,12 +62,18 @@ class BTRI3 : public BoundaryMeshElement{
 
     virtual Eigen::VectorXd grad_1dof_upos(const gp_Pnt& p, const std::vector<double>& phi) const override;
     virtual Eigen::VectorXd grad_1dof_id(const gp_Pnt& p, const std::vector<double>& phi) const override;
+    virtual Eigen::VectorXd dF_2dof_id(const gp_Pnt& p, const std::vector<double>& phi) const override;
     virtual Eigen::MatrixXd int_grad_1dof() const override;
+    virtual Eigen::MatrixXd int_grad_phi_1dof(const gp_Pnt& center) const override;
 
 
     virtual Eigen::MatrixXd L4(const Eigen::MatrixXd& B) const override;
     virtual Eigen::MatrixXd L3(const Eigen::MatrixXd& B) const override;
     virtual Eigen::MatrixXd L2(const Eigen::MatrixXd& B) const override;
+
+    virtual double get_area() const override{
+        return this->delta;
+    }
 
     virtual gp_Pnt get_centroid() const override{
         const size_t N = BTRI3::NODES_PER_ELEM;
