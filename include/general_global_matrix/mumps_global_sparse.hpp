@@ -37,6 +37,7 @@ class MUMPSGlobalSparse{
     inline void reinitialize(bool spd, size_t L){
         this->spd = spd;
         this->L = L;
+        this->setted = false;
         this->M.clear();
     }
 

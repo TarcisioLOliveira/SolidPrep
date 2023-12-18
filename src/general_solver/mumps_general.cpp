@@ -35,6 +35,7 @@ void MUMPSGeneral::initialize_matrix(bool spd, size_t L){
     this->L = L;
     this->M.reinitialize(spd, L);
     this->setted = false;
+    this->factorized = false;
 
     if(spd){
         this->config.sym = 1; // Hermitian matrix
