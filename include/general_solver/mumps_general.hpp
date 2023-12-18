@@ -42,8 +42,11 @@ class MUMPSGeneral{
 
     void solve(std::vector<double>& x);
 
-    inline void add_element(const std::vector<double> matrix, const std::vector<long> pos){
+    inline void add_element(const std::vector<double>& matrix, const std::vector<long>& pos){
         this->M.add_element(matrix, pos);
+    }
+    inline void add_element(const std::vector<double>& matrix, const std::vector<long>& pos_i, const std::vector<long>& pos_j){
+        this->M.add_element(matrix, pos_i, pos_j);
     }
     inline void add_value(size_t i, size_t j, double val){
         this->M.add_value(i, j, val);
