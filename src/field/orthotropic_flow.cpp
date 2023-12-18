@@ -20,6 +20,7 @@
 
 #include <set>
 #include "field/orthotropic_flow.hpp"
+#include "general_solver/mumps_general.hpp"
 #include "utils/sparse_matrix.hpp"
 #include "logger.hpp"
 #include "utils.hpp"
@@ -166,15 +167,10 @@ void OrthotropicFlow::generate(){
     this->longitudinal.resize(phi_size);
     this->radial.resize(phi_size);
 
-    utils::SparseMatrix Mtmp;
-    Eigen::SparseMatrix<double> M = Eigen::SparseMatrix<double>(phi_size, phi_size);
-    Eigen::ConjugateGradient<Eigen::SparseMatrix<double>, Eigen::Lower|Eigen::Upper, Eigen::DiagonalPreconditioner<double>> solver;
-    //solver.setTolerance(1e-20);
-    //solver.setMaxIterations(phi_size*3);
+    general_solver::MUMPSGeneral solver;
+    solver.initialize_matrix(true, phi_size);
 
-    Eigen::VectorXd b;
-    b.resize(phi_size);
-    b.setZero();
+    std::vector<double> b(phi_size, 0);;
 
     std::vector<double> A{1, 0, 0,
                           0, 1, 0,
@@ -182,7 +178,7 @@ void OrthotropicFlow::generate(){
 
     for(const auto& g:this->geoms){
         for(const auto& e:g->mesh){
-            const auto M_e = e->diffusion_1dof(thickness, A);
+            const Eigen::MatrixXd M_e = e->diffusion_1dof(thickness, A);
             std::vector<double> M_ev(num_nodes*num_nodes, 0);
             std::copy(M_e.data(), M_e.data()+M_ev.size(), M_ev.begin());
             std::vector<long> pos(num_nodes);
@@ -192,18 +188,11 @@ void OrthotropicFlow::generate(){
                 pos[i] = id1;
             }
 
-            Mtmp.insert_matrix_general_mumps(M_ev, pos);
+            solver.add_element(M_ev, pos);
         }
     }
 
-    auto trips = Mtmp.get_eigen_triplets();
-    M.setFromTriplets(trips.begin(), trips.end());
-    trips.clear();
-    Mtmp.clear();
-
-    solver.compute(M);
-
-    logger::log_assert(solver.info() == Eigen::Success, logger::ERROR, "matrix decomposition failed");
+    solver.compute();
 
     size_t it = 0;
     for(const auto& g:this->geoms){
@@ -219,31 +208,30 @@ void OrthotropicFlow::generate(){
         }
     }
 
-    Eigen::VectorXd phi_tmp = solver.solve(b);
-    std::copy(phi_tmp.begin(), phi_tmp.end(), this->longitudinal.begin());
+    solver.solve(b);
+    std::copy(b.begin(), b.end(), this->longitudinal.begin());
 
-    M.setZero();
+    solver.make_zero();
     for(const auto& g:this->geoms){
         for(const auto& e:g->mesh){
-            const auto M_e = e->diffusion_1dof(thickness, A) + 1e-4*e->absorption_1dof(thickness);
+            const Eigen::MatrixXd M_e = e->diffusion_1dof(thickness, A) + 1e-4*e->absorption_1dof(thickness);
+
+            std::vector<double> M_ev(num_nodes*num_nodes, 0);
+            std::copy(M_e.data(), M_e.data()+M_ev.size(), M_ev.begin());
+            std::vector<long> pos(num_nodes);
 
             for(size_t i = 0; i < num_nodes; ++i){
                 const long id1 = id_pos_map.at(e->nodes[i]->id);
-                for(size_t j = 0; j < num_nodes; ++j){
-                    const long id2 = id_pos_map.at(e->nodes[j]->id);
-                    if(std::abs(M_e(i,j)) > 0){
-                        M.coeffRef(id1, id2) += M_e(i, j);
-                    }
-                }
+                pos[i] = id1;
             }
+
+            solver.add_element(M_ev, pos);
         }
     }
 
-    solver.compute(M);
+    solver.compute();
 
-    logger::log_assert(solver.info() == Eigen::Success, logger::ERROR, "matrix decomposition failed");
-
-    b.setZero();
+    std::fill(b.begin(), b.end(), 0);
     it = 0;
     for(const auto& g:this->geoms){
         for(const auto& e:g->boundary_mesh){
@@ -258,8 +246,8 @@ void OrthotropicFlow::generate(){
         }
     }
 
-    phi_tmp = solver.solve(b);
-    std::copy(phi_tmp.begin(), phi_tmp.end(), this->radial.begin());
+    solver.solve(b);
+    std::copy(b.begin(), b.end(), this->radial.begin());
 
     this->elem_mult_long.clear();
     this->elem_mult_rad.clear();
