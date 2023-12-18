@@ -50,6 +50,15 @@ class MUMPSGlobalSparse{
         return this->M.vals;
     }
 
+    inline void print_matrix() const{
+        for(size_t i = 0; i < L; ++i){
+            for(size_t j = 0; j < L; ++j){
+                std::cout << this->M.get(i,j) << " ";
+            }
+            std::cout << std::endl;
+        }
+    }
+
     inline void add_element(const std::vector<double>& matrix, const std::vector<long>& pos){
         if(spd){
             this->M.insert_matrix_symmetric(matrix, pos);

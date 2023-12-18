@@ -211,6 +211,17 @@ class COO{
             add_coo(i, j, v);
         }
     }
+    inline double get(const INT i, const INT j) const{
+        if(coo_first_time){
+            auto it = this->data.find(Point(i,j));
+            if(it != this->data.end()){
+                return it->second;
+            }
+        } else {
+            return get_coo(i, j);
+        }
+        return 0;
+    }
     void zero(){
         if(coo_first_time){
             for(auto &v:this->data){
@@ -257,6 +268,18 @@ class COO{
                 break;
             }
         }
+    }
+    inline double get_coo(const INT i, const INT j) const{
+        for(int c = cooRowPtr[i]; c < cooRowPtr[i+1]; ++c){
+            if(j + offset >= cooColInd[c]){
+                if(cooColInd[c] == j + offset){
+                    return cooVal[c];
+                } else {
+                    return 0;
+                }
+            }
+        }
+        return 0;
     }
 };
 

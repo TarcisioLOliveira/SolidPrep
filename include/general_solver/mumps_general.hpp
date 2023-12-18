@@ -42,6 +42,9 @@ class MUMPSGeneral{
 
     void solve(std::vector<double>& x);
 
+    inline void print_matrix() const{
+        this->M.print_matrix();
+    }
     inline void add_element(const std::vector<double>& matrix, const std::vector<long>& pos){
         this->M.add_element(matrix, pos);
     }
