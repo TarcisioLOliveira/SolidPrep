@@ -139,6 +139,28 @@ void Curvature::generate_curvature_3D(const std::vector<std::unique_ptr<MeshNode
     logger::quick_log("EI_uuv", EI_uuv);
     logger::quick_log("EI_uvv", EI_uvv);
 
+    for(const auto& b:line_bound){
+        double L_uu, L_uv, L_vv;
+        gp_Pnt c = b.edges[0]->point;
+        c.BaryCenter(1, b.edges[1]->point, 1);
+        this->get_L_xx(b.edges[0]->point, b.edges[1]->point, L_uu, L_uv, L_vv);
+        const auto S = this->get_S_3D(b.parent->parent, c);
+        const double nx = b.normal.X();
+        const double ny = b.normal.Y();
+        Lyz_uu += ny*L_uu/S(2,2);
+        Lyz_uv += ny*L_uv/S(2,2);
+        Lyz_vv += ny*L_vv/S(2,2);
+        Lxz_uu += nx*L_uu/S(2,2);
+        Lxz_uv += nx*L_uv/S(2,2);
+        Lxz_vv += nx*L_vv/S(2,2);
+    }
+    logger::quick_log("Lyz_uu", Lyz_uu);
+    logger::quick_log("Lyz_uv", Lyz_uv);
+    logger::quick_log("Lyz_vv", Lyz_vv);
+    logger::quick_log("Lxz_uu", Lxz_uu);
+    logger::quick_log("Lxz_uv", Lxz_uv);
+    logger::quick_log("Lxz_vv", Lxz_vv);
+
     const Eigen::Vector<double, 2> Mv{M_u, M_v};
     const Eigen::Vector<double, 2> Vv{-V_v, V_u};
     const Eigen::Matrix<double, 2, 2> EI{{ EI_uv,  EI_vv},
