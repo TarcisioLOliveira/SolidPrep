@@ -238,7 +238,7 @@ void Curvature::calculate_torsion(const std::vector<std::unique_ptr<MeshNode>>& 
     this->base_matrix_upos(solver, boundary_mesh, num_nodes, F_offset);
 
     for(const auto& e:boundary_mesh){
-        const Eigen::VectorXd N = MULT*2*e->source_1dof();
+        const Eigen::VectorXd N = 2*e->source_1dof();
 
         for(size_t i = 0; i < num_nodes; ++i){
             const long id1 = e->nodes[i]->u_pos[0];
@@ -312,85 +312,85 @@ void Curvature::calculate_torsion(const std::vector<std::unique_ptr<MeshNode>>& 
             if(id1 < 0){
                 continue;
             }
-            Cx1 += MULT*(
+            Cx1 += (
                     (S(1,2)*dFx(0,2*i+0)-0.5*S(2,5)*dFx(2,2*i+0))*phi_tmp[2*id1+0]+
                     (S(0,2)*dFx(1,2*i+1)-0.5*S(2,5)*dFx(2,2*i+1))*phi_tmp[2*id1+1])
                     /S(2,2);
-            Cy1 += MULT*(
+            Cy1 += (
                     (S(1,2)*dFy(0,2*i+0)-0.5*S(2,5)*dFy(2,2*i+0))*phi_tmp[2*id1+0]+
                     (S(0,2)*dFy(1,2*i+1)-0.5*S(2,5)*dFy(2,2*i+1))*phi_tmp[2*id1+1])
                     /S(2,2);
-            C1  += MULT*(
+            C1  += (
                     (S(1,2)*dF (0,2*i+0)-0.5*S(2,5)*dF (2,2*i+0))*phi_tmp[2*id1+0]+
                     (S(0,2)*dF (1,2*i+1)-0.5*S(2,5)*dF (2,2*i+1))*phi_tmp[2*id1+1])
                     /S(2,2);
-            Cx1 += MULT*(-S(2,3)*dphix(0,i)+S(2,4)*dphix(1,i))*phi_tmp[F_offset + id1]/S(2,2);
-            Cy1 += MULT*(-S(2,3)*dphiy(0,i)+S(2,4)*dphiy(1,i))*phi_tmp[F_offset + id1]/S(2,2);
-            C1  += MULT*(-S(2,3)*dphi (0,i)+S(2,4)*dphi (1,i))*phi_tmp[F_offset + id1]/S(2,2);
-            Ct1 += MULT*2*N[i]*phi_tmp[F_offset + id1];
+            Cx1 += (-S(2,3)*dphix(0,i)+S(2,4)*dphix(1,i))*phi_tmp[F_offset + id1]/S(2,2);
+            Cy1 += (-S(2,3)*dphiy(0,i)+S(2,4)*dphiy(1,i))*phi_tmp[F_offset + id1]/S(2,2);
+            C1  += (-S(2,3)*dphi (0,i)+S(2,4)*dphi (1,i))*phi_tmp[F_offset + id1]/S(2,2);
+            Ct1 += 2*N[i]*phi_tmp[F_offset + id1];
 
-            xC1 += MULT*(-dphi(0,i))*phi_tmp[F_offset + id1];
-            yC1 += MULT*( dphi(1,i))*phi_tmp[F_offset + id1];
+            xC1 += (-dphi(0,i))*phi_tmp[F_offset + id1];
+            yC1 += ( dphi(1,i))*phi_tmp[F_offset + id1];
 
             // A coeffs (eq 2)
-            solver.add_value(F_offset + id1, F_phi_offset + 0, -(-MULT*S(2,3)*N[i]/S(2,2)));
+            solver.add_value(F_offset + id1, F_phi_offset + 0, -(-S(2,3)*N[i]/S(2,2)));
             // B coeffs (eq 2)
-            solver.add_value(F_offset + id1, F_phi_offset + 1, -(MULT*S(2,4)*N[i]/S(2,2)));
+            solver.add_value(F_offset + id1, F_phi_offset + 1, -(S(2,4)*N[i]/S(2,2)));
 
             // Cx0
-            solver.add_value(F_phi_offset + 0, 2*id1 + 0, -MULT*(S(1,2)*dFx(0,2*i+0)-0.5*S(2,5)*dFx(2,2*i+0))/S(2,2));
-            solver.add_value(F_phi_offset + 0, 2*id1 + 1, -MULT*(S(0,2)*dFx(1,2*i+1)-0.5*S(2,5)*dFx(2,2*i+1))/S(2,2));
-            solver.add_value(F_phi_offset + 0, F_offset + id1, -MULT*(-S(2,3)*dphix(0,i)+S(2,4)*dphix(1,i))/S(2,2));
+            solver.add_value(F_phi_offset + 0, 2*id1 + 0, -(S(1,2)*dFx(0,2*i+0)-0.5*S(2,5)*dFx(2,2*i+0))/S(2,2));
+            solver.add_value(F_phi_offset + 0, 2*id1 + 1, -(S(0,2)*dFx(1,2*i+1)-0.5*S(2,5)*dFx(2,2*i+1))/S(2,2));
+            solver.add_value(F_phi_offset + 0, F_offset + id1, -(-S(2,3)*dphix(0,i)+S(2,4)*dphix(1,i))/S(2,2));
             // Cy0
-            solver.add_value(F_phi_offset + 1, 2*id1 + 0, -MULT*(S(1,2)*dFy(0,2*i+0)-0.5*S(2,5)*dFy(2,2*i+0))/S(2,2));
-            solver.add_value(F_phi_offset + 1, 2*id1 + 1, -MULT*(S(0,2)*dFy(1,2*i+1)-0.5*S(2,5)*dFy(2,2*i+1))/S(2,2));
-            solver.add_value(F_phi_offset + 1, F_offset + id1, -MULT*(-S(2,3)*dphiy(0,i)+S(2,4)*dphiy(1,i))/S(2,2));
+            solver.add_value(F_phi_offset + 1, 2*id1 + 0, -(S(1,2)*dFy(0,2*i+0)-0.5*S(2,5)*dFy(2,2*i+0))/S(2,2));
+            solver.add_value(F_phi_offset + 1, 2*id1 + 1, -(S(0,2)*dFy(1,2*i+1)-0.5*S(2,5)*dFy(2,2*i+1))/S(2,2));
+            solver.add_value(F_phi_offset + 1, F_offset + id1, -(-S(2,3)*dphiy(0,i)+S(2,4)*dphiy(1,i))/S(2,2));
             // C0                                                    
-            solver.add_value(F_phi_offset + 2, 2*id1 + 0, -MULT*(S(1,2)*dF (0,2*i+0)-0.5*S(2,5)*dF (2,2*i+0))/S(2,2));
-            solver.add_value(F_phi_offset + 2, 2*id1 + 1, -MULT*(S(0,2)*dF (1,2*i+1)-0.5*S(2,5)*dF (2,2*i+1))/S(2,2));
-            solver.add_value(F_phi_offset + 2, F_offset + id1, -MULT*(-S(2,3)*dphi (0,i)+S(2,4)*dphi (1,i))/S(2,2));
+            solver.add_value(F_phi_offset + 2, 2*id1 + 0, -(S(1,2)*dF (0,2*i+0)-0.5*S(2,5)*dF (2,2*i+0))/S(2,2));
+            solver.add_value(F_phi_offset + 2, 2*id1 + 1, -(S(0,2)*dF (1,2*i+1)-0.5*S(2,5)*dF (2,2*i+1))/S(2,2));
+            solver.add_value(F_phi_offset + 2, F_offset + id1, -(-S(2,3)*dphi (0,i)+S(2,4)*dphi (1,i))/S(2,2));
             // Ct0
-            solver.add_value(F_phi_offset + 3, F_offset + id1, MULT*2*N[i]);
+            solver.add_value(F_phi_offset + 3, F_offset + id1, 2*N[i]);
 
             // xC0
-            solver.add_value(F_phi_offset + 4, F_offset + id1, MULT*(-dphi(0,i))*phi_tmp[F_offset + id1]);
+            solver.add_value(F_phi_offset + 4, F_offset + id1, (-dphi(0,i))*phi_tmp[F_offset + id1]);
             // yC0
-            solver.add_value(F_phi_offset + 5, F_offset + id1, MULT*( dphi(1,i))*phi_tmp[F_offset + id1]);
+            solver.add_value(F_phi_offset + 5, F_offset + id1, ( dphi(1,i))*phi_tmp[F_offset + id1]);
         }
     }
 
     // A B square
-    solver.add_value(F_phi_offset + 0, F_phi_offset + 0, MULT*EI_vv);
-    solver.add_value(F_phi_offset + 0, F_phi_offset + 1, MULT*EI_uv);
-    solver.add_value(F_phi_offset + 1, F_phi_offset + 0, MULT*EI_uv);
-    solver.add_value(F_phi_offset + 1, F_phi_offset + 1, MULT*EI_uu);
+    solver.add_value(F_phi_offset + 0, F_phi_offset + 0, EI_vv);
+    solver.add_value(F_phi_offset + 0, F_phi_offset + 1, EI_uv);
+    solver.add_value(F_phi_offset + 1, F_phi_offset + 0, EI_uv);
+    solver.add_value(F_phi_offset + 1, F_phi_offset + 1, EI_uu);
 
     // C
-    solver.add_value(F_phi_offset + 2, F_phi_offset + 2, MULT*EA);
+    solver.add_value(F_phi_offset + 2, F_phi_offset + 2, EA);
 
     // theta
-    solver.add_value(F_phi_offset + 0, F_phi_offset + 3, -MULT*Cx1);
-    solver.add_value(F_phi_offset + 1, F_phi_offset + 3, -MULT*Cy1);
-    solver.add_value(F_phi_offset + 2, F_phi_offset + 3, -MULT*C1 );
-    solver.add_value(F_phi_offset + 3, F_phi_offset + 3,  MULT*Ct1);
-    solver.add_value(F_phi_offset + 3, F_phi_offset + 4 + 0,  MULT*EI_vvv);
-    solver.add_value(F_phi_offset + 3, F_phi_offset + 4 + 1, -MULT*EI_uuu);
+    solver.add_value(F_phi_offset + 0, F_phi_offset + 3, -Cx1);
+    solver.add_value(F_phi_offset + 1, F_phi_offset + 3, -Cy1);
+    solver.add_value(F_phi_offset + 2, F_phi_offset + 3, -C1 );
+    solver.add_value(F_phi_offset + 3, F_phi_offset + 3,  Ct1);
+    solver.add_value(F_phi_offset + 3, F_phi_offset + 4 + 0,  EI_vvv);
+    solver.add_value(F_phi_offset + 3, F_phi_offset + 4 + 1, -EI_uuu);
 
-    solver.add_value(F_phi_offset + 4, F_phi_offset + 3, -MULT*xC1);
-    solver.add_value(F_phi_offset + 5, F_phi_offset + 3,  MULT*yC1);
+    solver.add_value(F_phi_offset + 4, F_phi_offset + 3, -xC1);
+    solver.add_value(F_phi_offset + 5, F_phi_offset + 3,  yC1);
 
     // Moments
-    b[F_phi_offset + 0] = -MULT*M_v;
-    b[F_phi_offset + 1] = -MULT*M_u;
-    b[F_phi_offset + 2] = -MULT*V_w;
-    b[F_phi_offset + 3] = -MULT*M_w - Kyz_1*EI_uuv + Kxz_1*EI_uvv;
+    b[F_phi_offset + 0] = -M_v;
+    b[F_phi_offset + 1] = -M_u;
+    b[F_phi_offset + 2] = -V_w;
+    b[F_phi_offset + 3] = -M_w - Kyz_1*EI_uuv + Kxz_1*EI_uvv;
 
     // t_yz
-    solver.add_value(F_phi_offset + 4, F_phi_offset + 4 + 0,  MULT*EI_vv);
-    b[F_phi_offset + 4] = -MULT*V_v - Kyz_1*EI_uu;
+    solver.add_value(F_phi_offset + 4, F_phi_offset + 4 + 0,  EI_vv);
+    b[F_phi_offset + 4] = -V_v - Kyz_1*EI_uu;
     // t_xz
-    solver.add_value(F_phi_offset + 5, F_phi_offset + 4 + 1,  MULT*EI_uu);
-    b[F_phi_offset + 5] = -MULT*V_u - Kxz_1*EI_vv;
+    solver.add_value(F_phi_offset + 5, F_phi_offset + 4 + 1,  EI_uu);
+    b[F_phi_offset + 5] = -V_u - Kxz_1*EI_vv;
 
     /*
      * Save phi_1 and F_1 in the global vector.
@@ -481,9 +481,9 @@ void Curvature::base_matrix_upos(general_solver::MUMPSGeneral& M, const std::vec
     for(const auto& e:boundary_mesh){
         gp_Pnt c = utils::change_point(e->get_centroid(), this->rot3D);
         this->get_B_tensors_3D(e->parent, c, B4, B3, B2);
-        const Eigen::MatrixXd L4 = MULT*e->L4(B4);
-        const Eigen::MatrixXd L3 = MULT*e->L3(B3);
-        const Eigen::MatrixXd L2 = MULT*e->L2(B2);
+        const Eigen::MatrixXd L4 = e->L4(B4);
+        const Eigen::MatrixXd L3 = e->L3(B3);
+        const Eigen::MatrixXd L2 = e->L2(B2);
 
         for(size_t i = 0; i < 2*num_nodes; ++i){
             for(size_t j = 0; j < 2*num_nodes; ++j){
@@ -547,10 +547,10 @@ void Curvature::calculate_shear_3D(const std::vector<std::unique_ptr<BoundaryMes
         gp_Pnt c = utils::change_point(e->get_centroid(), this->rot3D);
         const auto EG = this->mat->beam_EG_3D(e->parent, c, this->rot3D);
         const auto S = this->mat->S12_S13_3D(e->parent, c, this->rot3D);
-        G(0,0) = MULT/EG[2]; // G_uw
-        G(1,1) = MULT/EG[1]; // G_uv
+        G(0,0) = 1.0/EG[2]; // G_uw
+        G(1,1) = 1.0/EG[1]; // G_uv
         const auto N12 = e->source_1dof(S[1], EG[1], S[0], EG[2], center);
-        const auto N = -MULT*EG[0]*(this->dcurv_u*N12[0] + this->dcurv_v*N12[1]);
+        const auto N = -EG[0]*(this->dcurv_u*N12[0] + this->dcurv_v*N12[1]);
 
         const auto M_e = e->diffusion_1dof(G);
 
@@ -572,7 +572,7 @@ void Curvature::calculate_shear_3D(const std::vector<std::unique_ptr<BoundaryMes
     for(const auto& e:line_bound){
         gp_Pnt pc = utils::change_point(e.parent->get_centroid(), this->rot3D);
         const auto EG = this->mat->beam_EG_3D(e.parent->parent, pc, this->rot3D);
-        Eigen::VectorXd N = MULT*EG[0]*e.parent->flow_1dof(dcurv_u, dcurv_v, center, e.normal, {e.edges[0]->point, e.edges[1]->point});
+        Eigen::VectorXd N = EG[0]*e.parent->flow_1dof(dcurv_u, dcurv_v, center, e.normal, {e.edges[0]->point, e.edges[1]->point});
 
         for(size_t i = 0; i < num_nodes; ++i){
             const long id1 = e.parent->nodes[i]->id;

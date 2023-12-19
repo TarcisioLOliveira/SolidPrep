@@ -94,9 +94,6 @@ class Curvature{
 
     typedef Eigen::SparseMatrix<double, Eigen::RowMajor> Mat;
 
-    // Prevent singularities (hopefully)
-    double MULT = 1;
-
     double K_uv, K_uw;
 
     double theta;
