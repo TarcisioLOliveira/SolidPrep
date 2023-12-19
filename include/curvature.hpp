@@ -85,12 +85,12 @@ class Curvature{
     double Kxz_2;
     double Kxz_3;
 
-    double Lyz_uu = 0;
     double Lyz_vv = 0;
-    double Lyz_uv = 0;
+    double Lyz_u  = 0;
+    double Lyz_uu = 0;
     double Lxz_uu = 0;
+    double Lxz_v  = 0;
     double Lxz_vv = 0;
-    double Lxz_uv = 0;
 
     typedef Eigen::SparseMatrix<double, Eigen::RowMajor> Mat;
 
@@ -182,7 +182,7 @@ class Curvature{
         return dx*dy*dy/S(2,2);
     }
 
-    inline void get_L_xx(const gp_Pnt& p0, const gp_Pnt& p1, double& L_uu, double& L_uv, double& L_vv) const{
+    inline void get_L_xx(const gp_Pnt& p0, const gp_Pnt& p1, double& L_uu, double& L_u, double& L_v, double& L_vv) const{
         const double x0 = p0.X();
         const double y0 = p0.Y();
         const double x1 = p1.X();
@@ -190,7 +190,8 @@ class Curvature{
         const double d = p0.Distance(p1);
 
         L_uu = d*(x0*x0 + x0*x1 + x1*x1)/3.0;
-        L_uv = d*(x0*(2*y0+y1) + x1*(y0+2*y1))/6.0;
+        L_u  = d*(x0+x1)/2.0;
+        L_v  = d*(y0+y1)/2.0;
         L_vv = d*(y0*y0 + y0*y1 + y1*y1)/3.0;
     }
 };

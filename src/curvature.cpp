@@ -140,25 +140,25 @@ void Curvature::generate_curvature_3D(const std::vector<std::unique_ptr<MeshNode
     logger::quick_log("EI_uvv", EI_uvv);
 
     for(const auto& b:line_bound){
-        double L_uu, L_uv, L_vv;
+        double L_uu, L_u, L_v, L_vv;
         gp_Pnt c = b.edges[0]->point;
         c.BaryCenter(1, b.edges[1]->point, 1);
-        this->get_L_xx(b.edges[0]->point, b.edges[1]->point, L_uu, L_uv, L_vv);
+        this->get_L_xx(b.edges[0]->point, b.edges[1]->point, L_uu, L_u, L_v, L_vv);
         const auto S = this->get_S_3D(b.parent->parent, c);
         const double nx = b.normal.X();
         const double ny = b.normal.Y();
-        Lyz_uu += ny*L_uu/S(2,2);
-        Lyz_uv += ny*L_uv/S(2,2);
         Lyz_vv += ny*L_vv/S(2,2);
+        Lyz_u  += ny*L_u /S(2,2);
+        Lyz_uu += ny*L_uu/S(2,2);
         Lxz_uu += nx*L_uu/S(2,2);
-        Lxz_uv += nx*L_uv/S(2,2);
+        Lxz_v  += nx*L_v /S(2,2);
         Lxz_vv += nx*L_vv/S(2,2);
     }
     logger::quick_log("Lyz_uu", Lyz_uu);
-    logger::quick_log("Lyz_uv", Lyz_uv);
+    logger::quick_log("Lyz_u ", Lyz_u );
     logger::quick_log("Lyz_vv", Lyz_vv);
     logger::quick_log("Lxz_uu", Lxz_uu);
-    logger::quick_log("Lxz_uv", Lxz_uv);
+    logger::quick_log("Lxz_v ", Lxz_v );
     logger::quick_log("Lxz_vv", Lxz_vv);
 
     const Eigen::Vector<double, 2> Mv{M_u, M_v};
@@ -204,8 +204,8 @@ void Curvature::get_shear_in_3D(const BoundaryMeshElement* e, double& s_w, doubl
     double t_uv = -grad_F[2];
     if(this->V_u != 0 || this->V_v != 0){
         Eigen::Vector<double, 2> grad = e->grad_1dof_id(c, this->psi_shear);
-        t_vw +=  grad[1] + (Kyz_1*y*y + Kyz_2*x*y + Kyz_3*x*x)/S(2,2);
-        t_uw += -grad[0] + (Kxz_1*x*x + Kxz_2*x*y + Kxz_3*y*y)/S(2,2);
+        t_vw +=  grad[1] + (Kyz_1*y*y + Kyz_2*x + Kyz_3*x*x)/S(2,2);
+        t_uw += -grad[0] + (Kxz_1*x*x + Kxz_2*y + Kxz_3*y*y)/S(2,2);
     }
 
     s_w = (A*x + B*y + C)/S(2,2) - (S(0,2)*s_u + S(1,2)*s_v + S(2,3)*t_vw + S(2,4)*t_uw + S(2,5)*t_uv)/S(2,2);
@@ -267,8 +267,8 @@ void Curvature::calculate_torsion(const std::vector<std::unique_ptr<MeshNode>>& 
      * the zero-filled rectangles.
      */
     const size_t F_phi_offset = phi_size;
-    // A B C theta Kyz_{1..3} Kxz{1..3}
-    phi_size = phi_size + 4 + 6;
+    // A B C theta Kyz_{2,3} Kxz{2,3}
+    phi_size = phi_size + 4 + 4;
     solver.initialize_matrix(false, phi_size);
 
     this->base_matrix_upos(solver, boundary_mesh, num_nodes, F_offset);
@@ -287,6 +287,8 @@ void Curvature::calculate_torsion(const std::vector<std::unique_ptr<MeshNode>>& 
 
     logger::quick_log("Az", Az);
     logger::quick_log("Bz", Bz);
+    this->Kxz_1 = -Az/2.0;
+    this->Kyz_1 = -Bz/2.0;
 
     /*
      * Generate the constants which multiply theta and fill the additional
@@ -350,13 +352,10 @@ void Curvature::calculate_torsion(const std::vector<std::unique_ptr<MeshNode>>& 
             // Ct0
             solver.add_value(F_phi_offset + 3, F_offset + id1, MULT*2*N[i]);
 
-            // Kyz_2 + 2Kxz_1 = -Az (F_phi_offset + 4)
-            // 2Kyz_1 + Kxz_2 = -Bz (F_phi_offset + 5)
-
             // xC0
-            solver.add_value(F_phi_offset + 6, F_offset + id1, MULT*(-dphi(0,i))*phi_tmp[F_offset + id1]);
+            solver.add_value(F_phi_offset + 4, F_offset + id1, MULT*(-dphi(0,i))*phi_tmp[F_offset + id1]);
             // yC0
-            solver.add_value(F_phi_offset + 7, F_offset + id1, MULT*( dphi(1,i))*phi_tmp[F_offset + id1]);
+            solver.add_value(F_phi_offset + 5, F_offset + id1, MULT*( dphi(1,i))*phi_tmp[F_offset + id1]);
         }
     }
 
@@ -375,49 +374,34 @@ void Curvature::calculate_torsion(const std::vector<std::unique_ptr<MeshNode>>& 
     solver.add_value(F_phi_offset + 2, F_phi_offset + 3, -MULT*C1 );
     solver.add_value(F_phi_offset + 3, F_phi_offset + 3,  MULT*Ct1);
 
-    solver.add_value(F_phi_offset + 6, F_phi_offset + 3,  MULT*xC1);
-    solver.add_value(F_phi_offset + 7, F_phi_offset + 3,  MULT*yC1);
+    solver.add_value(F_phi_offset + 4, F_phi_offset + 3, -MULT*xC1);
+    solver.add_value(F_phi_offset + 5, F_phi_offset + 3,  MULT*yC1);
 
-    solver.add_value(F_phi_offset + 3, F_phi_offset + 4,  MULT*EI_uuv);
-    solver.add_value(F_phi_offset + 3, F_phi_offset + 5,  MULT*EI_uvv);
-    solver.add_value(F_phi_offset + 3, F_phi_offset + 6,  MULT*EI_vvv);
-    solver.add_value(F_phi_offset + 3, F_phi_offset + 7, -MULT*EI_uvv);
-    solver.add_value(F_phi_offset + 3, F_phi_offset + 8, -MULT*EI_uuv);
-    solver.add_value(F_phi_offset + 3, F_phi_offset + 9, -MULT*EI_uuu);
+    solver.add_value(F_phi_offset + 3, F_phi_offset + 4,  MULT*EI_uvv);
+    solver.add_value(F_phi_offset + 3, F_phi_offset + 5,  MULT*EI_vvv);
+    solver.add_value(F_phi_offset + 3, F_phi_offset + 6, -MULT*EI_uuv);
+    solver.add_value(F_phi_offset + 3, F_phi_offset + 7, -MULT*EI_uuu);
 
     // Moments
     b[F_phi_offset + 0] = -MULT*M_v;
     b[F_phi_offset + 1] = -MULT*M_u;
     b[F_phi_offset + 2] = -MULT*V_w;
-    b[F_phi_offset + 3] = -MULT*M_w;
+    b[F_phi_offset + 3] = -MULT*M_w - Kyz_1*EI_uuv + Kxz_1*EI_uvv;
 
-    // K**_*
-    // Kyz_2 + 2Kxz_1 = -Az
-    solver.add_value(F_phi_offset + 4, F_phi_offset + 4 + 1,  MULT*1);
-    solver.add_value(F_phi_offset + 4, F_phi_offset + 4 + 3,  MULT*2);
-    b[F_phi_offset + 4] = -MULT*Az;
-    // 2Kyz_1 + Kxz_2 = -Bz
-    solver.add_value(F_phi_offset + 5, F_phi_offset + 4 + 0,  MULT*2);
-    solver.add_value(F_phi_offset + 5, F_phi_offset + 4 + 4,  MULT*1);
-    b[F_phi_offset + 5] = -MULT*Bz;
     // t_yz
-    solver.add_value(F_phi_offset + 6, F_phi_offset + 4 + 0,  MULT*EI_uu);
-    solver.add_value(F_phi_offset + 6, F_phi_offset + 4 + 1,  MULT*EI_uv);
-    solver.add_value(F_phi_offset + 6, F_phi_offset + 4 + 2,  MULT*EI_vv);
-    b[F_phi_offset + 6] = -MULT*V_v;
+    solver.add_value(F_phi_offset + 4, F_phi_offset + 4 + 1,  MULT*EI_vv);
+    b[F_phi_offset + 4] = -MULT*V_v - Kyz_1*EI_uu;
     // t_xz
-    solver.add_value(F_phi_offset + 7, F_phi_offset + 4 + 3,  MULT*EI_vv);
-    solver.add_value(F_phi_offset + 7, F_phi_offset + 4 + 4,  MULT*EI_uv);
-    solver.add_value(F_phi_offset + 7, F_phi_offset + 4 + 5,  MULT*EI_uu);
-    b[F_phi_offset + 7] = MULT*V_u;
+    solver.add_value(F_phi_offset + 5, F_phi_offset + 4 + 3,  MULT*EI_uu);
+    b[F_phi_offset + 5] = -MULT*V_u - Kxz_1*EI_vv;
     // t_yz*ny
-    solver.add_value(F_phi_offset + 8, F_phi_offset + 4 + 0,  MULT*Lyz_vv);
-    solver.add_value(F_phi_offset + 8, F_phi_offset + 4 + 1,  MULT*Lyz_uv);
-    solver.add_value(F_phi_offset + 8, F_phi_offset + 4 + 2,  MULT*Lyz_uu);
+    solver.add_value(F_phi_offset + 6, F_phi_offset + 4 + 0,  MULT*Lyz_u );
+    solver.add_value(F_phi_offset + 6, F_phi_offset + 4 + 1,  MULT*Lyz_uu);
+    b[F_phi_offset + 6] = -Kyz_1*Lyz_vv;
     // t_xz*nx
-    solver.add_value(F_phi_offset + 9, F_phi_offset + 4 + 0,  MULT*Lxz_uu);
-    solver.add_value(F_phi_offset + 9, F_phi_offset + 4 + 1,  MULT*Lxz_uv);
-    solver.add_value(F_phi_offset + 9, F_phi_offset + 4 + 2,  MULT*Lxz_vv);
+    solver.add_value(F_phi_offset + 7, F_phi_offset + 4 + 2,  MULT*Lxz_v );
+    solver.add_value(F_phi_offset + 7, F_phi_offset + 4 + 3,  MULT*Lxz_vv);
+    b[F_phi_offset + 7] = -Kxz_1*Lxz_uu;
 
     /*
      * Save phi_1 and F_1 in the global vector.
@@ -448,12 +432,10 @@ void Curvature::calculate_torsion(const std::vector<std::unique_ptr<MeshNode>>& 
     this->B     = phi_tmp[F_phi_offset + 1];
     this->C     = phi_tmp[F_phi_offset + 2];
     this->theta = phi_tmp[F_phi_offset + 3];
-    this->Kyz_1 = phi_tmp[F_phi_offset + 4];
-    this->Kyz_2 = phi_tmp[F_phi_offset + 5];
-    this->Kyz_3 = phi_tmp[F_phi_offset + 6];
-    this->Kxz_1 = phi_tmp[F_phi_offset + 7];
-    this->Kxz_2 = phi_tmp[F_phi_offset + 8];
-    this->Kxz_3 = phi_tmp[F_phi_offset + 9];
+    this->Kyz_2 = phi_tmp[F_phi_offset + 4];
+    this->Kyz_3 = phi_tmp[F_phi_offset + 5];
+    this->Kxz_2 = phi_tmp[F_phi_offset + 6];
+    this->Kxz_3 = phi_tmp[F_phi_offset + 7];
 
     logger::quick_log("A", A);
     logger::quick_log("B", B);
