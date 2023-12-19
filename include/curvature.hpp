@@ -62,17 +62,28 @@ class Curvature{
     const double line_mesh_size = 0.5;
 
     double EA;
-    double EI_u;
-    double EI_v;
     double EA_u;
     double EA_v;
+    double EI_uu;
+    double EI_vv;
     double EI_uv;
+    double EI_uuu;
+    double EI_vvv;
+    double EI_uvv;
+    double EI_uuv;
     double c_u, c_v, c_w;
     double curv_u;
     double curv_v;
     double dcurv_u;
     double dcurv_v;
     double A, B, C;
+
+    double Kyz_1;
+    double Kyz_2;
+    double Kyz_3;
+    double Kxz_1;
+    double Kxz_2;
+    double Kxz_3;
 
     typedef Eigen::SparseMatrix<double, Eigen::RowMajor> Mat;
 
@@ -125,12 +136,12 @@ class Curvature{
         const auto S = this->get_S_3D(e, p);
         return px.Z()/S(2,2);
     }
-    inline double make_EI_u_base_3D(const MeshElement* const e, const gp_Pnt& p, const gp_Pnt& px) const{
+    inline double make_EI_uu_base_3D(const MeshElement* const e, const gp_Pnt& p, const gp_Pnt& px) const{
         const auto S = this->get_S_3D(e, p);
         const double dy = px.Y() - c_v;
         return dy*dy/S(2,2);
     }
-    inline double make_EI_v_base_3D(const MeshElement* const e, const gp_Pnt& p, const gp_Pnt& px) const{
+    inline double make_EI_vv_base_3D(const MeshElement* const e, const gp_Pnt& p, const gp_Pnt& px) const{
         const auto S = this->get_S_3D(e, p);
         const double dx = px.X() - c_u;
         return dx*dx/S(2,2);
@@ -140,6 +151,28 @@ class Curvature{
         const double dx = px.X() - c_u;
         const double dy = px.Y() - c_v;
         return dx*dy/S(2,2);
+    }
+    inline double make_EI_uuu_base_3D(const MeshElement* const e, const gp_Pnt& p, const gp_Pnt& px) const{
+        const auto S = this->get_S_3D(e, p);
+        const double dy = px.Y() - c_v;
+        return dy*dy*dy/S(2,2);
+    }
+    inline double make_EI_vvv_base_3D(const MeshElement* const e, const gp_Pnt& p, const gp_Pnt& px) const{
+        const auto S = this->get_S_3D(e, p);
+        const double dx = px.X() - c_u;
+        return dx*dx*dx/S(2,2);
+    }
+    inline double make_EI_uvv_base_3D(const MeshElement* const e, const gp_Pnt& p, const gp_Pnt& px) const{
+        const auto S = this->get_S_3D(e, p);
+        const double dx = px.X() - c_u;
+        const double dy = px.Y() - c_v;
+        return dx*dx*dy/S(2,2);
+    }
+    inline double make_EI_uuv_base_3D(const MeshElement* const e, const gp_Pnt& p, const gp_Pnt& px) const{
+        const auto S = this->get_S_3D(e, p);
+        const double dx = px.X() - c_u;
+        const double dy = px.Y() - c_v;
+        return dx*dy*dy/S(2,2);
     }
 };
 

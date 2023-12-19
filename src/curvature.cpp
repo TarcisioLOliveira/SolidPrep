@@ -82,17 +82,33 @@ void Curvature::generate_curvature_3D(const std::vector<std::unique_ptr<MeshNode
         [this](const MeshElement* const e, const gp_Pnt& p, const gp_Pnt& px)->double{
             return this->make_EA_w_base_3D(e, p, px);
         };
-    const auto fn_EI_v =
+    const auto fn_EI_vv =
         [this](const MeshElement* const e, const gp_Pnt& p, const gp_Pnt& px)->double{
-            return this->make_EI_v_base_3D(e, p, px);
+            return this->make_EI_vv_base_3D(e, p, px);
         };
-    const auto fn_EI_u =
+    const auto fn_EI_uu =
         [this](const MeshElement* const e, const gp_Pnt& p, const gp_Pnt& px)->double{
-            return this->make_EI_u_base_3D(e, p, px);
+            return this->make_EI_uu_base_3D(e, p, px);
         };
     const auto fn_EI_uv =
         [this](const MeshElement* const e, const gp_Pnt& p, const gp_Pnt& px)->double{
             return this->make_EI_uv_base_3D(e, p, px);
+        };
+    const auto fn_EI_vvv =
+        [this](const MeshElement* const e, const gp_Pnt& p, const gp_Pnt& px)->double{
+            return this->make_EI_vvv_base_3D(e, p, px);
+        };
+    const auto fn_EI_uuu =
+        [this](const MeshElement* const e, const gp_Pnt& p, const gp_Pnt& px)->double{
+            return this->make_EI_uuu_base_3D(e, p, px);
+        };
+    const auto fn_EI_uuv =
+        [this](const MeshElement* const e, const gp_Pnt& p, const gp_Pnt& px)->double{
+            return this->make_EI_uuv_base_3D(e, p, px);
+        };
+    const auto fn_EI_uvv =
+        [this](const MeshElement* const e, const gp_Pnt& p, const gp_Pnt& px)->double{
+            return this->make_EI_uvv_base_3D(e, p, px);
         };
 
     this->EA = this->integrate_surface_3D(boundary_mesh, fn_EA);
@@ -102,23 +118,31 @@ void Curvature::generate_curvature_3D(const std::vector<std::unique_ptr<MeshNode
     this->c_u = EA_u/this->EA;
     this->c_v = EA_v/this->EA;
     this->c_w = EA_w/this->EA;
-    this->EI_u = this->integrate_surface_3D(boundary_mesh, fn_EI_u);
-    this->EI_v = this->integrate_surface_3D(boundary_mesh, fn_EI_v);
+    this->EI_uu = this->integrate_surface_3D(boundary_mesh, fn_EI_uu);
+    this->EI_vv = this->integrate_surface_3D(boundary_mesh, fn_EI_vv);
     this->EI_uv = this->integrate_surface_3D(boundary_mesh, fn_EI_uv);
+    this->EI_uuu = this->integrate_surface_3D(boundary_mesh, fn_EI_uuu);
+    this->EI_vvv = this->integrate_surface_3D(boundary_mesh, fn_EI_vvv);
+    this->EI_uuv = this->integrate_surface_3D(boundary_mesh, fn_EI_uuv);
+    this->EI_uvv = this->integrate_surface_3D(boundary_mesh, fn_EI_uvv);
     logger::quick_log("A: ", EA);
     logger::quick_log("EA: ", EA);
     logger::quick_log("c_v: ", c_v);
     logger::quick_log("c_u: ", c_u);
     logger::quick_log("EA_u", EA_u);
     logger::quick_log("EA_v", EA_v);
-    logger::quick_log("EI_u", EI_u);
-    logger::quick_log("EI_v", EI_v);
+    logger::quick_log("EI_uu", EI_uu);
+    logger::quick_log("EI_vv", EI_vv);
     logger::quick_log("EI_uv", EI_uv);
+    logger::quick_log("EI_uuu", EI_uuu);
+    logger::quick_log("EI_vvv", EI_vvv);
+    logger::quick_log("EI_uuv", EI_uuv);
+    logger::quick_log("EI_uvv", EI_uvv);
 
     const Eigen::Vector<double, 2> Mv{M_u, M_v};
     const Eigen::Vector<double, 2> Vv{-V_v, V_u};
-    const Eigen::Matrix<double, 2, 2> EI{{ EI_uv,  EI_v},
-                                         {-EI_u, -EI_uv}};
+    const Eigen::Matrix<double, 2, 2> EI{{ EI_uv,  EI_vv},
+                                         {-EI_uu, -EI_uv}};
 
     const Eigen::Vector<double, 2> cv = EI.fullPivLu().solve(Mv);
     this->curv_u = cv[0];
@@ -232,8 +256,8 @@ void Curvature::calculate_torsion(const std::vector<std::unique_ptr<MeshNode>>& 
     std::fill(b.begin(), b.end(), 0);
 
     // Az Bz
-    Eigen::Matrix<double, 2, 2> EIM{{EI_v , EI_uv},
-                                    {EI_uv, EI_u }};
+    Eigen::Matrix<double, 2, 2> EIM{{EI_vv, EI_uv},
+                                    {EI_uv, EI_uu}};
     Eigen::Vector<double, 2> VV{-V_u, V_v};
     Eigen::Vector<double, 2> Vz = EIM.fullPivLu().solve(VV);
 
@@ -305,14 +329,13 @@ void Curvature::calculate_torsion(const std::vector<std::unique_ptr<MeshNode>>& 
     }
 
     // A B square
-    solver.add_value(F_phi_offset + 0, F_phi_offset + 0, MULT*EI_v);
+    solver.add_value(F_phi_offset + 0, F_phi_offset + 0, MULT*EI_vv);
     solver.add_value(F_phi_offset + 0, F_phi_offset + 1, MULT*EI_uv);
     solver.add_value(F_phi_offset + 1, F_phi_offset + 0, MULT*EI_uv);
-    solver.add_value(F_phi_offset + 1, F_phi_offset + 1, MULT*EI_u);
+    solver.add_value(F_phi_offset + 1, F_phi_offset + 1, MULT*EI_uu);
 
     // C
     solver.add_value(F_phi_offset + 2, F_phi_offset + 2, MULT*EA);
-
 
     // theta
     solver.add_value(F_phi_offset + 0, F_phi_offset + 3, -MULT*Cx1);
@@ -525,8 +548,8 @@ void Curvature::calculate_shear_3D(const std::vector<std::unique_ptr<BoundaryMes
             }
         }
     }
-    this->K_uv = -(V_v + this->dcurv_u*this->EI_u/2)/psi_grad_int[1];
-    this->K_uw =  (V_u - this->dcurv_v*this->EI_v/2)/psi_grad_int[0];
+    this->K_uv = -(V_v + this->dcurv_u*this->EI_uu/2)/psi_grad_int[1];
+    this->K_uw =  (V_u - this->dcurv_v*this->EI_vv/2)/psi_grad_int[0];
 }
 
 double Curvature::integrate_surface_3D(const std::vector<std::unique_ptr<BoundaryMeshElement>>& boundary_mesh, const std::function<double(const MeshElement* const, const gp_Pnt&, const gp_Pnt&)>& fn) const{
