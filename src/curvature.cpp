@@ -238,7 +238,7 @@ void Curvature::calculate_torsion(const std::vector<std::unique_ptr<MeshNode>>& 
      * rectangles in the matrix.
      *
      */
-    double C1, Cx1 = 0, Cy1 = 0, Ct1 = 0;
+    double C1 = 0, Cx1 = 0, Cy1 = 0, Ct1 = 0;
     for(const auto& e:boundary_mesh){
         const auto N = e->source_1dof();
         const auto dphi = e->int_grad_phi();
@@ -294,17 +294,13 @@ void Curvature::calculate_torsion(const std::vector<std::unique_ptr<MeshNode>>& 
         }
     }
 
-    // A B C square
+    // A B square
     solver.add_value(F_phi_offset + 0, F_phi_offset + 0, MULT*EI_v);
     solver.add_value(F_phi_offset + 0, F_phi_offset + 1, MULT*EI_uv);
-    solver.add_value(F_phi_offset + 0, F_phi_offset + 2, MULT*EA_u);
-
     solver.add_value(F_phi_offset + 1, F_phi_offset + 0, MULT*EI_uv);
     solver.add_value(F_phi_offset + 1, F_phi_offset + 1, MULT*EI_u);
-    solver.add_value(F_phi_offset + 1, F_phi_offset + 2, MULT*EA_v);
 
-    solver.add_value(F_phi_offset + 2, F_phi_offset + 0, MULT*EA_u);
-    solver.add_value(F_phi_offset + 2, F_phi_offset + 1, MULT*EA_v);
+    // C
     solver.add_value(F_phi_offset + 2, F_phi_offset + 2, MULT*EA);
 
 
