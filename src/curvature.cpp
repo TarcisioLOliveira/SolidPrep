@@ -134,12 +134,10 @@ void Curvature::generate_curvature_3D(const std::vector<std::unique_ptr<MeshNode
 
     //this->C = -V_w/this->EA;
 
-    if(this->M_u != 0 || this->M_v != 0 || this->M_w != 0){
-        this->calculate_torsion(boundary_nodes, boundary_mesh);
-    }
-    if(this->V_u != 0 || this->V_v != 0){
-        this->calculate_shear_3D(boundary_mesh, line_bound);
-    }
+    this->calculate_torsion(boundary_nodes, boundary_mesh);
+    //if(this->V_u != 0 || this->V_v != 0){
+    //    this->calculate_shear_3D(boundary_mesh, line_bound);
+    //}
 }
 
 void Curvature::get_shear_in_3D(const BoundaryMeshElement* e, double& s_w, double& t_uw, double& t_vw) const{
@@ -232,6 +230,18 @@ void Curvature::calculate_torsion(const std::vector<std::unique_ptr<MeshNode>>& 
 
     b.resize(phi_size);
     std::fill(b.begin(), b.end(), 0);
+
+    // Az Bz
+    Eigen::Matrix<double, 2, 2> EIM{{EI_v , EI_uv},
+                                    {EI_uv, EI_u }};
+    Eigen::Vector<double, 2> VV{-V_u, V_v};
+    Eigen::Vector<double, 2> Vz = EIM.fullPivLu().solve(VV);
+
+    const double Az = Vz[0];
+    const double Bz = Vz[1];
+
+    logger::quick_log("Az", Az);
+    logger::quick_log("Bz", Bz);
 
     /*
      * Generate the constants which multiply theta and fill the additional
