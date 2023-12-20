@@ -70,6 +70,8 @@ class BTRI3 : public BoundaryMeshElement{
     virtual Eigen::MatrixXd int_grad_F() const override;
     virtual Eigen::MatrixXd int_grad_F_x(const gp_Pnt& center) const override;
     virtual Eigen::MatrixXd int_grad_F_y(const gp_Pnt& center) const override;
+    virtual Eigen::VectorXd int_N_x(const gp_Pnt& center) const override;
+    virtual Eigen::VectorXd int_N_y(const gp_Pnt& center) const override;
 
 
     virtual Eigen::MatrixXd L4(const Eigen::MatrixXd& B) const override;

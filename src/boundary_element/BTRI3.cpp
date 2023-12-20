@@ -175,6 +175,31 @@ Eigen::MatrixXd BTRI3::int_grad_F_y(const gp_Pnt& center) const{
     return dF;
 };
 
+Eigen::VectorXd BTRI3::int_N_x(const gp_Pnt& center) const{
+    const auto& gsi = utils::GaussLegendreTri<2>::get();
+    Eigen::Vector<double, 3>  result{0, 0, 0};
+    for(auto it = gsi.begin(); it < gsi.end(); ++it){
+        const gp_Pnt p = this->GS_point(it->a, it->b, it->c);
+        const double dx = p.X() - center.X();
+        const auto NN = this->N_mat_1dof(p);
+        result += it->w*NN*dx;
+    }
+
+    return delta*result;
+}
+Eigen::VectorXd BTRI3::int_N_y(const gp_Pnt& center) const{
+    const auto& gsi = utils::GaussLegendreTri<2>::get();
+    Eigen::Vector<double, 3>  result{0, 0, 0};
+    for(auto it = gsi.begin(); it < gsi.end(); ++it){
+        const gp_Pnt p = this->GS_point(it->a, it->b, it->c);
+        const double dy = p.Y() - center.Y();
+        const auto NN = this->N_mat_1dof(p);
+        result += it->w*NN*dy;
+    }
+
+    return delta*result;
+}
+
 Eigen::VectorXd BTRI3::source_1dof(const Eigen::Vector<double, 3>& v) const{
     const auto& gsi = utils::GaussLegendreTri<2>::get();
     Eigen::Vector<double, 3>  result{0, 0, 0};
