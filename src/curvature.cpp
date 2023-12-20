@@ -20,6 +20,7 @@
 
 #include "curvature.hpp"
 #include <Eigen/Dense>
+#include <Eigen/src/Core/Matrix.h>
 #include <vector>
 #include "general_solver/mumps_general.hpp"
 #include "logger.hpp"
@@ -139,27 +140,43 @@ void Curvature::generate_curvature_3D(const std::vector<std::unique_ptr<MeshNode
     logger::quick_log("EI_uuv", EI_uuv);
     logger::quick_log("EI_uvv", EI_uvv);
 
+    //for(const auto& b:line_bound){
+    //    double L_uu, L_u, L_v, L_vv;
+    //    gp_Pnt c = b.edges[0]->point;
+    //    c.BaryCenter(1, b.edges[1]->point, 1);
+    //    this->get_L_xx(b.edges[0]->point, b.edges[1]->point, L_uu, L_u, L_v, L_vv);
+    //    const auto S = this->get_S_3D(b.parent->parent, c);
+    //    const double nx = b.normal.X();
+    //    const double ny = b.normal.Y();
+    //    Lyz_vv += ny*L_vv/S(2,2);
+    //    Lyz_u  += ny*L_u /S(2,2);
+    //    Lyz_uu += ny*L_uu/S(2,2);
+    //    Lxz_uu += nx*L_uu/S(2,2);
+    //    Lxz_v  += nx*L_v /S(2,2);
+    //    Lxz_vv += nx*L_vv/S(2,2);
+    //}
+    //logger::quick_log("Lyz_uu", Lyz_uu);
+    //logger::quick_log("Lyz_u ", Lyz_u );
+    //logger::quick_log("Lyz_vv", Lyz_vv);
+    //logger::quick_log("Lxz_uu", Lxz_uu);
+    //logger::quick_log("Lxz_v ", Lxz_v );
+    //logger::quick_log("Lxz_vv", Lxz_vv);
     for(const auto& b:line_bound){
-        double L_uu, L_u, L_v, L_vv;
-        gp_Pnt c = b.edges[0]->point;
-        c.BaryCenter(1, b.edges[1]->point, 1);
-        this->get_L_xx(b.edges[0]->point, b.edges[1]->point, L_uu, L_u, L_v, L_vv);
+        double S_uudv, S_vvdv, S_uudu, S_vvdu;
+        gp_Pnt c = utils::change_point(b.parent->get_centroid(), this->rot3D);
+        this->get_S_xx(b.edges[0]->point, b.edges[1]->point, S_uudv, S_vvdv, S_vvdu, S_uudu);
         const auto S = this->get_S_3D(b.parent->parent, c);
         const double nx = b.normal.X();
         const double ny = b.normal.Y();
-        Lyz_vv += ny*L_vv/S(2,2);
-        Lyz_u  += ny*L_u /S(2,2);
-        Lyz_uu += ny*L_uu/S(2,2);
-        Lxz_uu += nx*L_uu/S(2,2);
-        Lxz_v  += nx*L_v /S(2,2);
-        Lxz_vv += nx*L_vv/S(2,2);
+        Syz_vv += ny*S_vvdu/S(2,2);
+        Syz_uu += ny*S_uudu/S(2,2);
+        Sxz_uu += nx*S_uudv/S(2,2);
+        Sxz_vv += nx*S_vvdv/S(2,2);
     }
-    logger::quick_log("Lyz_uu", Lyz_uu);
-    logger::quick_log("Lyz_u ", Lyz_u );
-    logger::quick_log("Lyz_vv", Lyz_vv);
-    logger::quick_log("Lxz_uu", Lxz_uu);
-    logger::quick_log("Lxz_v ", Lxz_v );
-    logger::quick_log("Lxz_vv", Lxz_vv);
+    logger::quick_log("Syz_vv", Syz_vv);
+    logger::quick_log("Syz_uu", Syz_uu);
+    logger::quick_log("Sxz_uu", Sxz_uu);
+    logger::quick_log("Sxz_vv", Sxz_vv);
 
     const Eigen::Vector<double, 2> Mv{M_u, M_v};
     const Eigen::Vector<double, 2> Vv{-V_v, V_u};
@@ -202,11 +219,8 @@ void Curvature::get_shear_in_3D(const BoundaryMeshElement* e, double& s_w, doubl
     double s_u = grad_F[1];
     double s_v = grad_F[0];
     double t_uv = -grad_F[2];
-    if(this->V_u != 0 || this->V_v != 0){
-        Eigen::Vector<double, 2> grad = e->grad_1dof_id(c, this->psi_shear);
-        t_vw +=  grad[1] + (Kyz_1*y*y + Kyz_2*x*x)/S(2,2);
-        t_uw += -grad[0] + (Kxz_1*x*x + Kxz_2*y*y)/S(2,2);
-    }
+    t_uw += (Kxz_1*x*x + Kxz_2*y*y)/S(2,2);
+    t_vw += (Kyz_1*y*y + Kyz_2*x*x)/S(2,2);
 
     s_w = (A*x + B*y + C)/S(2,2) - (S(0,2)*s_u + S(1,2)*s_v + S(2,3)*t_vw + S(2,4)*t_uw + S(2,5)*t_uv)/S(2,2);
 }
@@ -267,8 +281,8 @@ void Curvature::calculate_torsion(const std::vector<std::unique_ptr<MeshNode>>& 
      * the zero-filled rectangles.
      */
     const size_t F_phi_offset = phi_size;
-    // A B C theta Kyz_2 Kxz_2
-    phi_size = phi_size + 4 + 2;
+    // A B C theta Kyz_2 Kxz_2 L
+    phi_size = phi_size + 4 + 2 + 1;
     solver.initialize_matrix(false, phi_size);
 
     this->base_matrix_upos(solver, boundary_mesh, num_nodes, F_offset);
@@ -296,8 +310,13 @@ void Curvature::calculate_torsion(const std::vector<std::unique_ptr<MeshNode>>& 
      */
     double C1 = 0, Cx1 = 0, Cy1 = 0, Ct1 = 0;
     double xC1 = 0, yC1 = 0;
+    Eigen::Matrix<double, 2, 2> I{{1,0},
+                                  {0,1}};
     for(const auto& e:boundary_mesh){
         const auto N = e->source_1dof();
+        const auto Nx = e->int_N_x(center);
+        const auto Ny = e->int_N_y(center);
+        const auto M_e = e->diffusion_1dof(I);
         const auto dphi = e->int_grad_phi();
         const auto dphix = e->int_grad_phi_x(center);
         const auto dphiy = e->int_grad_phi_y(center);
@@ -306,11 +325,18 @@ void Curvature::calculate_torsion(const std::vector<std::unique_ptr<MeshNode>>& 
         const auto dFy = e->int_grad_F_y(center);
         gp_Pnt c = utils::change_point(e->get_centroid(), this->rot3D);
         const auto S = this->get_S_3D(e->parent, c);
+        const auto B = this->get_B_3D(e->parent, c);
 
         for(size_t i = 0; i < num_nodes; ++i){
             const long id1 = e->nodes[i]->u_pos[0];
             if(id1 < 0){
                 continue;
+            }
+            for(size_t j = 0; j < num_nodes; ++j){
+                const long id2 = e->nodes[j]->u_pos[0];
+                if(id2 < 0){
+                    solver.add_value(id1, F_phi_offset + 6, M_e(i,j));
+                }
             }
             Cx1 += (
                     (S(1,2)*dFx(0,2*i+0)-0.5*S(2,5)*dFx(2,2*i+0))*phi_tmp[2*id1+0]+
@@ -353,9 +379,22 @@ void Curvature::calculate_torsion(const std::vector<std::unique_ptr<MeshNode>>& 
             solver.add_value(F_phi_offset + 3, F_offset + id1, 2*N[i]);
 
             // xC0
-            solver.add_value(F_phi_offset + 4, F_offset + id1, (-dphi(0,i))*phi_tmp[F_offset + id1]);
+            solver.add_value(F_phi_offset + 4, F_offset + id1, (-dphi(0,i)));
             // yC0
-            solver.add_value(F_phi_offset + 5, F_offset + id1, ( dphi(1,i))*phi_tmp[F_offset + id1]);
+            solver.add_value(F_phi_offset + 5, F_offset + id1, ( dphi(1,i)));
+
+            // F source
+            solver.add_value(2*id1 + 0, F_phi_offset + 4 + 0, -2*B(0,4)*N[i]/S(2,2));
+            solver.add_value(2*id1 + 0, F_phi_offset + 4 + 1, -2*B(1,3)*N[i]/S(2,2));
+            solver.add_value(2*id1 + 1, F_phi_offset + 4 + 0, -2*B(0,4)*N[i]/S(2,2));
+            solver.add_value(2*id1 + 1, F_phi_offset + 4 + 1, -2*B(1,3)*N[i]/S(2,2));
+            b[2*id1 + 0] += 2*B(0,3)*N[i]*Kyz_1/S(2,2) + 2*B(1,4)*N[i]*Kxz_1/S(2,2);
+            b[2*id1 + 1] += 2*B(0,3)*N[i]*Kyz_1/S(2,2) + 2*B(1,4)*N[i]*Kxz_1/S(2,2);
+
+            // phi source
+            solver.add_value(F_offset + id1, F_phi_offset + 4 + 0,  2*B(3,3)*Nx[i]/S(2,2));
+            solver.add_value(F_offset + id1, F_phi_offset + 4 + 1, -2*B(4,4)*Ny[i]/S(2,2));
+            b[F_offset + id1] += 2*B(3,4)*Ny[i]*Kyz_1/S(2,2) + 2*B(3,4)*Nx[i]*Kxz_1/S(2,2);
         }
     }
 
@@ -391,6 +430,11 @@ void Curvature::calculate_torsion(const std::vector<std::unique_ptr<MeshNode>>& 
     // t_xz
     solver.add_value(F_phi_offset + 5, F_phi_offset + 4 + 1,  EI_uu);
     b[F_phi_offset + 5] = -V_u - Kxz_1*EI_vv;
+    // L
+    solver.add_value(F_phi_offset + 6, F_phi_offset + 4 + 0, -Syz_uu);
+    solver.add_value(F_phi_offset + 6, F_phi_offset + 4 + 1, -Sxz_vv);
+    solver.add_value(F_phi_offset + 6, F_phi_offset + 6    ,       1);
+    b[F_phi_offset + 6] = Syz_vv*Kyz_1 + Sxz_uu*Kxz_1;
 
     /*
      * Save phi_1 and F_1 in the global vector.
@@ -423,6 +467,7 @@ void Curvature::calculate_torsion(const std::vector<std::unique_ptr<MeshNode>>& 
     this->theta = phi_tmp[F_phi_offset + 3];
     this->Kyz_2 = phi_tmp[F_phi_offset + 4];
     this->Kxz_2 = phi_tmp[F_phi_offset + 5];
+    double    L = phi_tmp[F_phi_offset + 6];
 
     logger::quick_log("A", A);
     logger::quick_log("B", B);
@@ -432,6 +477,7 @@ void Curvature::calculate_torsion(const std::vector<std::unique_ptr<MeshNode>>& 
     logger::quick_log("Kyz_2", Kyz_2);
     logger::quick_log("Kxz_1", Kxz_1);
     logger::quick_log("Kxz_2", Kxz_2);
+    logger::quick_log("L", L);
     logger::quick_log("");
 
     /*
@@ -459,6 +505,7 @@ void Curvature::calculate_torsion(const std::vector<std::unique_ptr<MeshNode>>& 
     for(const auto& n:boundary_nodes){
         const long id1 = n->u_pos[0];
         if(id1 < 0){
+            this->phi[n->id] = L;
             continue;
         }
         this->phi[n->id] += phi_tmp[F_offset + id1];

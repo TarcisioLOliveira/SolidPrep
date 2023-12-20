@@ -26,6 +26,7 @@
 #include <Eigen/Sparse>
 #include <Eigen/SparseCholesky>
 #include <gp_Dir.hxx>
+#include "logger.hpp"
 #include "material.hpp"
 #include "element.hpp"
 #include "element_factory.hpp"
@@ -91,6 +92,11 @@ class Curvature{
     double Lxz_uu = 0;
     double Lxz_v  = 0;
     double Lxz_vv = 0;
+
+    double Syz_vv = 0;
+    double Syz_uu = 0;
+    double Sxz_uu = 0;
+    double Sxz_vv = 0;
 
     typedef Eigen::SparseMatrix<double, Eigen::RowMajor> Mat;
 
@@ -190,6 +196,39 @@ class Curvature{
         L_u  = d*(x0+x1)/2.0;
         L_v  = d*(y0+y1)/2.0;
         L_vv = d*(y0*y0 + y0*y1 + y1*y1)/3.0;
+    }
+
+    inline void get_S_xx(const gp_Pnt& p0, const gp_Pnt& p1, double& S_uudv, double& S_vvdv, double& S_vvdu, double& S_uudu) const{
+        const double x0 = p0.X();
+        const double y0 = p0.Y();
+        const double x1 = p1.X();
+        const double y1 = p1.Y();
+        if(std::abs(x1 - x0) > 1e-14){
+            const double a = (y1 - y0)/(x1 - x0);
+           
+            if(std::abs(a) > 1e-14){ 
+                S_vvdu = (y1*y1*y1 - y0*y0*y0)/(3*a);
+            } else {
+                S_vvdu = y0*y0*(x1 - x0);
+            }
+            S_uudu = (x1*x1*x1 - x0*x0*x0)/3.0;
+        } else {
+            S_vvdu = 0;
+            S_uudu = 0;
+        }
+        if(std::abs(y1 - y0) > 1e-14){
+            const double c = (x1 - x0)/(y1 - y0);
+            
+            if(std::abs(c) > 1e-14){
+                S_uudv = (x1*x1*x1 - x0*x0*x0)/(3*c);
+            } else {
+                S_uudv = x0*x0*(y1 - y0);
+            }
+            S_vvdv = (y1*y1*y1 - y0*y0*y0)/3.0;
+        } else {
+            S_uudv = 0;
+            S_vvdv = 0;
+        }
     }
 };
 
