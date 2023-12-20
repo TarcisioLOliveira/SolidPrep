@@ -38,18 +38,12 @@ class Curvature{
 
     Curvature(const Material* mat, gp_Dir u, gp_Dir v, gp_Dir w, Eigen::Matrix<double, 2, 2> rot2D, Eigen::Matrix<double, 3, 3> rot3D, const BoundaryMeshElementFactory* elem_info, double V_u, double V_v, double V_w, double M_u, double M_v, double M_w);
 
-    void generate_curvature_3D(const std::vector<std::unique_ptr<MeshNode>>& boundary_nodes, const std::vector<std::unique_ptr<BoundaryMeshElement>>& boundary_mesh, const std::vector<utils::LineBoundary>& line_bound, size_t phi_size, size_t psi_size);
+    void generate_curvature_3D(const std::vector<std::unique_ptr<MeshNode>>& boundary_nodes, const std::vector<std::unique_ptr<BoundaryMeshElement>>& boundary_mesh, size_t reduced_vector_size, size_t full_vector_size);
 
-    inline std::array<double, 2> get_curvatures() const{
-        return {curv_u, curv_v};
-    }
-    inline std::array<double, 2> get_curvatures_dx() const{
-        return {dcurv_u, dcurv_v};
-    }
     inline gp_Pnt get_center() const{
         return gp_Pnt(c_u, c_v, c_w);
     }
-    void get_shear_in_3D(const BoundaryMeshElement* e, double& s_w, double& t_uw, double& t_vw) const;
+    void get_stress_3D(const BoundaryMeshElement* e, double& s_w, double& t_uw, double& t_vw) const;
 
     private:
     const Material* mat;
@@ -60,7 +54,7 @@ class Curvature{
     const gp_Dir u, v, w;
     const double V_u, V_v, V_w;
     const double M_u, M_v, M_w;
-    const double line_mesh_size = 0.5;
+    size_t reduced_vec_len;
 
     double EA;
     double EA_u;
@@ -73,30 +67,13 @@ class Curvature{
     double EI_uvv;
     double EI_uuv;
     double c_u, c_v, c_w;
-    double curv_u;
-    double curv_v;
-    double dcurv_u;
-    double dcurv_v;
     double A, B, C;
+    double theta;
 
     double Kyz_1;
     double Kyz_2;
-    double Kyz_3;
     double Kxz_1;
     double Kxz_2;
-    double Kxz_3;
-
-    double Lyz_vv = 0;
-    double Lyz_u  = 0;
-    double Lyz_uu = 0;
-    double Lxz_uu = 0;
-    double Lxz_v  = 0;
-    double Lxz_vv = 0;
-
-    double Syz_vv = 0;
-    double Syz_uu = 0;
-    double Sxz_uu = 0;
-    double Sxz_vv = 0;
 
     double S34_uu;
     double S34_vv;
@@ -111,12 +88,6 @@ class Curvature{
     double S35_uvv;
     double S35_uuv;
 
-    typedef Eigen::SparseMatrix<double, Eigen::RowMajor> Mat;
-
-    double K_uv, K_uw;
-
-    double theta;
-    size_t reduced_vec_len;
     std::vector<double> F;
     std::vector<double> phi;
     std::vector<double> psi_shear;
@@ -128,8 +99,7 @@ class Curvature{
     std::vector<double> permute_and_rotate_3D;
     std::vector<double> permute_and_rotate_3D_inv;
 
-    void calculate_torsion(const std::vector<std::unique_ptr<MeshNode>>& boundary_nodes, const std::vector<std::unique_ptr<BoundaryMeshElement>>& boundary_mesh);
-    void calculate_shear_3D(const std::vector<std::unique_ptr<BoundaryMeshElement>>& boundary_mesh, const std::vector<utils::LineBoundary>& line_bound);
+    void calculate_stress_field_3D(const std::vector<std::unique_ptr<MeshNode>>& boundary_nodes, const std::vector<std::unique_ptr<BoundaryMeshElement>>& boundary_mesh);
 
     void base_matrix_upos(general_solver::MUMPSGeneral& M, const std::vector<std::unique_ptr<BoundaryMeshElement>>& boundary_mesh, const size_t num_nodes, const size_t F_offset) const;
     void base_matrix_id(general_solver::MUMPSGeneral& M, const std::vector<std::unique_ptr<BoundaryMeshElement>>& boundary_mesh, const size_t num_nodes, const size_t F_offset) const;
@@ -261,52 +231,6 @@ class Curvature{
         const auto S = this->get_S_3D(e, p);
         const double dx = px.X() - c_u;
         return S(2,4)*dx*dx*dx/(S(2,2)*S(2,2));
-    }
-
-    inline void get_L_xx(const gp_Pnt& p0, const gp_Pnt& p1, double& L_uu, double& L_u, double& L_v, double& L_vv) const{
-        const double x0 = p0.X();
-        const double y0 = p0.Y();
-        const double x1 = p1.X();
-        const double y1 = p1.Y();
-        const double d = p0.Distance(p1);
-
-        L_uu = d*(x0*x0 + x0*x1 + x1*x1)/3.0;
-        L_u  = d*(x0+x1)/2.0;
-        L_v  = d*(y0+y1)/2.0;
-        L_vv = d*(y0*y0 + y0*y1 + y1*y1)/3.0;
-    }
-
-    inline void get_S_xx(const gp_Pnt& p0, const gp_Pnt& p1, double& S_uudv, double& S_vvdv, double& S_vvdu, double& S_uudu) const{
-        const double x0 = p0.X();
-        const double y0 = p0.Y();
-        const double x1 = p1.X();
-        const double y1 = p1.Y();
-        if(std::abs(x1 - x0) > 1e-14){
-            const double a = (y1 - y0)/(x1 - x0);
-           
-            if(std::abs(a) > 1e-14){ 
-                S_vvdu = (y1*y1*y1 - y0*y0*y0)/(3*a);
-            } else {
-                S_vvdu = y0*y0*(x1 - x0);
-            }
-            S_uudu = (x1*x1*x1 - x0*x0*x0)/3.0;
-        } else {
-            S_vvdu = 0;
-            S_uudu = 0;
-        }
-        if(std::abs(y1 - y0) > 1e-14){
-            const double c = (x1 - x0)/(y1 - y0);
-            
-            if(std::abs(c) > 1e-14){
-                S_uudv = (x1*x1*x1 - x0*x0*x0)/(3*c);
-            } else {
-                S_uudv = x0*x0*(y1 - y0);
-            }
-            S_vvdv = (y1*y1*y1 - y0*y0*y0)/3.0;
-        } else {
-            S_uudv = 0;
-            S_vvdv = 0;
-        }
     }
 };
 

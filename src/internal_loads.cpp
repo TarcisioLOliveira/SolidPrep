@@ -71,10 +71,8 @@ InternalLoads::InternalLoads(CrossSection cross_section, double thickness, gp_Di
 
 void InternalLoads::calculate_curvature(std::vector<BoundaryElement>& boundary_elements){
     this->generate_mesh(boundary_elements);
-    this->curvature->generate_curvature_3D(this->boundary_nodes, this->boundary_mesh, this->line_bounds, this->phi_size, this->boundary_nodes.size());
+    this->curvature->generate_curvature_3D(this->boundary_nodes, this->boundary_mesh, this->phi_size, this->boundary_nodes.size());
 
-    this->curv = this->curvature->get_curvatures();
-    this->center = utils::change_point(this->curvature->get_center(), rot3D);
 }
 
 void InternalLoads::apply_load_2D(std::vector<double>& load_vector) const{
@@ -184,27 +182,16 @@ void InternalLoads::apply_load_3D(std::vector<double>& load_vector) const{
             points[i] = e->nodes[i]->point;
         }
 
-        //const gp_Pnt c = e->get_centroid(bound_nodes_per_elem);
-        //const auto E = this->mat->beam_E_3D(e->parent, c, this->rot3D);
-        //S(2,0) = E*this->curv[0];
-        //S(2,1) = E*this->curv[1];
-        this->curvature->get_shear_in_3D(b.get(), s_z, t_xz, t_yz);
+        this->curvature->get_stress_3D(b.get(), s_z, t_xz, t_yz);
         Eigen::Vector<double, N> F0{t_xz, t_yz, s_z};
         Eigen::Vector<double, N> Fr = this->rot3D*F0;
         std::vector<double> F{Fr[0], Fr[1], Fr[2]};
-        //
-        //Eigen::Matrix<double, N, N> Srot = this->rot3D*S*this->rot3D.transpose();
-        //for(size_t row = 0; row < N; ++row){
-        //    for(size_t col = 0; col < N; ++col){
-        //        Sn[row*N + col] = Srot(row,col);
-        //    }
-        //}
 
-        //const double norm = Fr.norm();
-        //gp_Dir vec(Fr[0], Fr[1], Fr[2]);
+        const double norm = Fr.norm();
+        gp_Dir vec(Fr[0], Fr[1], Fr[2]);
 
-        const auto Rf = e->parent->get_Rf(Sn, F, this->center, this->thickness, points);
-        //const auto Rf = e->parent->get_f(this->thickness, vec, norm, points);
+        //const auto Rf = e->parent->get_Rf(Sn, F, this->center, this->thickness, points);
+        const auto Rf = e->parent->get_f(this->thickness, vec, norm, points);
         //logger::quick_log(fe);
         for(size_t i = 0; i < nodes_per_elem; ++i){
             for(size_t j = 0; j < dof; ++j){
