@@ -320,7 +320,7 @@ Eigen::MatrixXd BTRI3::int_grad_F_D(const Eigen::MatrixXd& a, const gp_Pnt& cent
         const double dx = p.X() - center.X();
         const double dy = p.Y() - center.Y();
         const auto dF = this->dF_mat_2dof();
-        Eigen::Matrix<double, 2, 3> ABC
+        Eigen::Matrix<double, 3, 3> ABC
             {{dx, dy, 1},
              {dx, dy, 1},
              {dx, dy, 1}};
