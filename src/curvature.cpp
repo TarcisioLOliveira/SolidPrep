@@ -381,6 +381,10 @@ void Curvature::calculate_stress_field_3D(const std::vector<std::unique_ptr<Mesh
     Eigen::Matrix<double, 2, 2> I{{1,0},
                                   {0,1}};
     for(const auto& e:boundary_mesh){
+        Eigen::Matrix<double, 3, 3> B4;
+        Eigen::Matrix<double, 3, 2> B3;
+        Eigen::Matrix<double, 2, 2> B2;
+
         const auto N = e->source_1dof();
         const auto Nx = e->int_N_x(center);
         const auto Ny = e->int_N_y(center);
@@ -392,7 +396,20 @@ void Curvature::calculate_stress_field_3D(const std::vector<std::unique_ptr<Mesh
         const auto dFy = e->int_grad_F_y(center);
         gp_Pnt c = utils::change_point(e->get_centroid(), this->rot3D);
         const auto S = this->get_S_3D(e->parent, c);
-        const auto B = this->get_B_3D(e->parent, c);
+        this->get_B_tensors_3D(e->parent, c, B4, B3, B2);
+
+        const Eigen::Matrix<double, 3, 3> aF
+            {{S(1,2)/S(2,2), 0, 0},
+             {0, S(0,2)/S(2,2), 0},
+             {0, 0, S(2,5)/S(2,2)}};
+        const Eigen::Matrix<double, 2, 2> aphi
+            {{S(2,3)/S(2,2), 0},
+             {0, S(2,4)/S(2,2)}};
+
+        const Eigen::MatrixXd dFt = e->int_grad_F_t2_t1(B3, center);
+        const Eigen::MatrixXd dphit = e->int_grad_phi_t2_t1(B2, center);
+        const Eigen::MatrixXd dFD = e->int_grad_F_D(aF, center);
+        const Eigen::MatrixXd dphiD = e->int_grad_phi_D(aphi, center);
 
         for(size_t i = 0; i < num_nodes; ++i){
             // phi vector
@@ -424,13 +441,16 @@ void Curvature::calculate_stress_field_3D(const std::vector<std::unique_ptr<Mesh
             solver.add_value(F_phi_offset + 5, F_offset + id2, ( dphi(1,i)));
 
             // phi source
-            solver.add_value(F_offset + id2, F_phi_offset + 4 + 0,  2*B(3,3)*Nx[i]/S(2,2));
-            solver.add_value(F_offset + id2, F_phi_offset + 4 + 1, -2*B(4,4)*Ny[i]/S(2,2));
-            b[F_offset + id2] += 2*B(3,4)*Ny[i]*Kyz_1/S(2,2) - 2*B(3,4)*Nx[i]*Kxz_1/S(2,2);
+            // shear coeffs
+            solver.add_value(F_offset + id2, F_phi_offset + 4 + 0, dphit(i,1));
+            solver.add_value(F_offset + id2, F_phi_offset + 4 + 1, dphit(i,3));
+            b[F_offset + id2] += -dphit(i,0)*Kyz_1 - dphit(i,2)*Kxz_1;
             // A coeffs
-            solver.add_value(F_offset + id2, F_phi_offset + 0, -(-S(2,3)*N[i]/S(2,2)));
+            solver.add_value(F_offset + id2, F_phi_offset + 0, dphiD(i,0));
             // B coeffs
-            solver.add_value(F_offset + id2, F_phi_offset + 1, -(S(2,4)*N[i]/S(2,2)));
+            solver.add_value(F_offset + id2, F_phi_offset + 1, dphiD(i,1));
+            // C coeffs
+            solver.add_value(F_offset + id2, F_phi_offset + 2, dphiD(i,2));
 
             // F vector
             const long id1 = e->nodes[i]->u_pos[0];
@@ -461,12 +481,22 @@ void Curvature::calculate_stress_field_3D(const std::vector<std::unique_ptr<Mesh
             solver.add_value(F_phi_offset + 2, 2*id1 + 1, -(S(0,2)*dF (1,2*i+1)-0.5*S(2,5)*dF (2,2*i+1))/S(2,2));
 
             // F source
-            solver.add_value(2*id1 + 0, F_phi_offset + 4 + 0, -2*B(0,4)*N[i]/S(2,2));
-            solver.add_value(2*id1 + 0, F_phi_offset + 4 + 1, -2*B(1,3)*N[i]/S(2,2));
-            solver.add_value(2*id1 + 1, F_phi_offset + 4 + 0, -2*B(0,4)*N[i]/S(2,2));
-            solver.add_value(2*id1 + 1, F_phi_offset + 4 + 1, -2*B(1,3)*N[i]/S(2,2));
-            b[2*id1 + 0] += 2*B(0,3)*N[i]*Kyz_1/S(2,2) + 2*B(1,4)*N[i]*Kxz_1/S(2,2);
-            b[2*id1 + 1] += 2*B(0,3)*N[i]*Kyz_1/S(2,2) + 2*B(1,4)*N[i]*Kxz_1/S(2,2);
+            // shear coeffs
+            solver.add_value(2*id1 + 0, F_phi_offset + 4 + 0, dFt(2*i+0,1));
+            solver.add_value(2*id1 + 1, F_phi_offset + 4 + 0, dFt(2*i+1,1));
+            solver.add_value(2*id1 + 0, F_phi_offset + 4 + 1, dFt(2*i+0,3));
+            solver.add_value(2*id1 + 1, F_phi_offset + 4 + 1, dFt(2*i+1,3));
+            b[2*id1 + 0] += -dFt(2*i+0,0)*Kyz_1 - dFt(2*i+0,2)*Kxz_1;
+            b[2*id1 + 1] += -dFt(2*i+1,0)*Kyz_1 - dFt(2*i+1,2)*Kxz_1;
+            // A coeffs
+            solver.add_value(2*id1 + 0, F_phi_offset + 0, dFD(2*i+0,0));
+            solver.add_value(2*id1 + 1, F_phi_offset + 0, dFD(2*i+1,0));
+            // B coeffs
+            solver.add_value(2*id1 + 0, F_phi_offset + 1, dFD(2*i+0,1));
+            solver.add_value(2*id1 + 1, F_phi_offset + 1, dFD(2*i+1,1));
+            // C coeffs
+            solver.add_value(2*id1 + 0, F_phi_offset + 2, dFD(2*i+0,2));
+            solver.add_value(2*id1 + 1, F_phi_offset + 2, dFD(2*i+1,2));
         }
     }
 
