@@ -21,6 +21,7 @@
 #include "curvature.hpp"
 #include <Eigen/Dense>
 #include <Eigen/src/Core/Matrix.h>
+#include <type_traits>
 #include <vector>
 #include "general_solver/mumps_general.hpp"
 #include "logger.hpp"
@@ -67,126 +68,155 @@ Curvature::Curvature(const Material* mat, gp_Dir u, gp_Dir v, gp_Dir w, Eigen::M
 void Curvature::generate_curvature_3D(const std::vector<std::unique_ptr<MeshNode>>& boundary_nodes, const std::vector<std::unique_ptr<BoundaryMeshElement>>& boundary_mesh, size_t reduced_vector_size, size_t full_vector_size){
     std::array<gp_Pnt, 3> points;
 
+    const auto fn_A =
+        [this](const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px)->double{
+            return this->make_A_base_3D(S, px);
+        };
     const auto fn_EA =
-        [this](const MeshElement* const e, const gp_Pnt& p, const gp_Pnt& px)->double{
-            return this->make_EA_base_3D(e, p, px);
+        [this](const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px)->double{
+            return this->make_EA_base_3D(S, px);
         };
     const auto fn_EA_u =
-        [this](const MeshElement* const e, const gp_Pnt& p, const gp_Pnt& px)->double{
-            return this->make_EA_u_base_3D(e, p, px);
+        [this](const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px)->double{
+            return this->make_EA_u_base_3D(S, px);
         };
     const auto fn_EA_v =
-        [this](const MeshElement* const e, const gp_Pnt& p, const gp_Pnt& px)->double{
-            return this->make_EA_v_base_3D(e, p, px);
+        [this](const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px)->double{
+            return this->make_EA_v_base_3D(S, px);
         };
     const auto fn_EA_w =
-        [this](const MeshElement* const e, const gp_Pnt& p, const gp_Pnt& px)->double{
-            return this->make_EA_w_base_3D(e, p, px);
+        [this](const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px)->double{
+            return this->make_EA_w_base_3D(S, px);
         };
     const auto fn_EI_vv =
-        [this](const MeshElement* const e, const gp_Pnt& p, const gp_Pnt& px)->double{
-            return this->make_EI_vv_base_3D(e, p, px);
+        [this](const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px)->double{
+            return this->make_EI_vv_base_3D(S, px);
         };
     const auto fn_EI_uu =
-        [this](const MeshElement* const e, const gp_Pnt& p, const gp_Pnt& px)->double{
-            return this->make_EI_uu_base_3D(e, p, px);
+        [this](const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px)->double{
+            return this->make_EI_uu_base_3D(S, px);
         };
     const auto fn_EI_uv =
-        [this](const MeshElement* const e, const gp_Pnt& p, const gp_Pnt& px)->double{
-            return this->make_EI_uv_base_3D(e, p, px);
+        [this](const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px)->double{
+            return this->make_EI_uv_base_3D(S, px);
         };
     const auto fn_EI_vvv =
-        [this](const MeshElement* const e, const gp_Pnt& p, const gp_Pnt& px)->double{
-            return this->make_EI_vvv_base_3D(e, p, px);
+        [this](const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px)->double{
+            return this->make_EI_vvv_base_3D(S, px);
         };
     const auto fn_EI_uuu =
-        [this](const MeshElement* const e, const gp_Pnt& p, const gp_Pnt& px)->double{
-            return this->make_EI_uuu_base_3D(e, p, px);
+        [this](const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px)->double{
+            return this->make_EI_uuu_base_3D(S, px);
         };
     const auto fn_EI_uuv =
-        [this](const MeshElement* const e, const gp_Pnt& p, const gp_Pnt& px)->double{
-            return this->make_EI_uuv_base_3D(e, p, px);
+        [this](const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px)->double{
+            return this->make_EI_uuv_base_3D(S, px);
         };
     const auto fn_EI_uvv =
-        [this](const MeshElement* const e, const gp_Pnt& p, const gp_Pnt& px)->double{
-            return this->make_EI_uvv_base_3D(e, p, px);
+        [this](const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px)->double{
+            return this->make_EI_uvv_base_3D(S, px);
         };
     const auto fn_S34_vv =
-        [this](const MeshElement* const e, const gp_Pnt& p, const gp_Pnt& px)->double{
-            return this->make_S34_vv_base_3D(e, p, px);
+        [this](const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px)->double{
+            return this->make_S34_vv_base_3D(S, px);
         };
     const auto fn_S34_uu =
-        [this](const MeshElement* const e, const gp_Pnt& p, const gp_Pnt& px)->double{
-            return this->make_S34_uu_base_3D(e, p, px);
+        [this](const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px)->double{
+            return this->make_S34_uu_base_3D(S, px);
         };
     const auto fn_S34_vvv =
-        [this](const MeshElement* const e, const gp_Pnt& p, const gp_Pnt& px)->double{
-            return this->make_S34_vvv_base_3D(e, p, px);
+        [this](const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px)->double{
+            return this->make_S34_vvv_base_3D(S, px);
         };
     const auto fn_S34_uuu =
-        [this](const MeshElement* const e, const gp_Pnt& p, const gp_Pnt& px)->double{
-            return this->make_S34_uuu_base_3D(e, p, px);
+        [this](const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px)->double{
+            return this->make_S34_uuu_base_3D(S, px);
         };
     const auto fn_S34_uuv =
-        [this](const MeshElement* const e, const gp_Pnt& p, const gp_Pnt& px)->double{
-            return this->make_S34_uuv_base_3D(e, p, px);
+        [this](const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px)->double{
+            return this->make_S34_uuv_base_3D(S, px);
         };
     const auto fn_S34_uvv =
-        [this](const MeshElement* const e, const gp_Pnt& p, const gp_Pnt& px)->double{
-            return this->make_S34_uvv_base_3D(e, p, px);
+        [this](const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px)->double{
+            return this->make_S34_uvv_base_3D(S, px);
         };
     const auto fn_S35_vv =
-        [this](const MeshElement* const e, const gp_Pnt& p, const gp_Pnt& px)->double{
-            return this->make_S35_vv_base_3D(e, p, px);
+        [this](const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px)->double{
+            return this->make_S35_vv_base_3D(S, px);
         };
     const auto fn_S35_uu =
-        [this](const MeshElement* const e, const gp_Pnt& p, const gp_Pnt& px)->double{
-            return this->make_S35_uu_base_3D(e, p, px);
+        [this](const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px)->double{
+            return this->make_S35_uu_base_3D(S, px);
         };
     const auto fn_S35_vvv =
-        [this](const MeshElement* const e, const gp_Pnt& p, const gp_Pnt& px)->double{
-            return this->make_S35_vvv_base_3D(e, p, px);
+        [this](const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px)->double{
+            return this->make_S35_vvv_base_3D(S, px);
         };
     const auto fn_S35_uuu =
-        [this](const MeshElement* const e, const gp_Pnt& p, const gp_Pnt& px)->double{
-            return this->make_S35_uuu_base_3D(e, p, px);
+        [this](const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px)->double{
+            return this->make_S35_uuu_base_3D(S, px);
         };
     const auto fn_S35_uuv =
-        [this](const MeshElement* const e, const gp_Pnt& p, const gp_Pnt& px)->double{
-            return this->make_S35_uuv_base_3D(e, p, px);
+        [this](const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px)->double{
+            return this->make_S35_uuv_base_3D(S, px);
         };
     const auto fn_S35_uvv =
-        [this](const MeshElement* const e, const gp_Pnt& p, const gp_Pnt& px)->double{
-            return this->make_S35_uvv_base_3D(e, p, px);
+        [this](const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px)->double{
+            return this->make_S35_uvv_base_3D(S, px);
         };
 
-    this->EA = this->integrate_surface_3D(boundary_mesh, fn_EA);
-    this->EA_u = this->integrate_surface_3D(boundary_mesh, fn_EA_u);
-    this->EA_v = this->integrate_surface_3D(boundary_mesh, fn_EA_v);
-    const double EA_w = this->integrate_surface_3D(boundary_mesh, fn_EA_w);
+    const auto result1 = this->integrate_surface_3D(boundary_mesh, {fn_A, fn_EA, fn_EA_u, fn_EA_v, fn_EA_w});
+    this->Area = result1[0];
+    this->EA   = result1[1];
+    this->EA_u = result1[2];
+    this->EA_v = result1[3];
+    const double EA_w = result1[4];
     this->c_u = EA_u/this->EA;
     this->c_v = EA_v/this->EA;
     this->c_w = EA_w/this->EA;
-    this->EI_uu = this->integrate_surface_3D(boundary_mesh, fn_EI_uu);
-    this->EI_vv = this->integrate_surface_3D(boundary_mesh, fn_EI_vv);
-    this->EI_uv = this->integrate_surface_3D(boundary_mesh, fn_EI_uv);
-    this->EI_uuu = this->integrate_surface_3D(boundary_mesh, fn_EI_uuu);
-    this->EI_vvv = this->integrate_surface_3D(boundary_mesh, fn_EI_vvv);
-    this->EI_uuv = this->integrate_surface_3D(boundary_mesh, fn_EI_uuv);
-    this->EI_uvv = this->integrate_surface_3D(boundary_mesh, fn_EI_uvv);
-    this->S34_uu = this->integrate_surface_3D(boundary_mesh, fn_S34_uu);
-    this->S34_vv = this->integrate_surface_3D(boundary_mesh, fn_S34_vv);
-    this->S34_vvv = this->integrate_surface_3D(boundary_mesh, fn_S34_vvv);
-    this->S34_uuu = this->integrate_surface_3D(boundary_mesh, fn_S34_uuu);
-    this->S34_vvv = this->integrate_surface_3D(boundary_mesh, fn_S34_vvv);
-    this->S34_uuv = this->integrate_surface_3D(boundary_mesh, fn_S34_uuv);
-    this->S34_uvv = this->integrate_surface_3D(boundary_mesh, fn_S34_uvv);
-    this->S35_uu = this->integrate_surface_3D(boundary_mesh, fn_S35_uu);
-    this->S35_vv = this->integrate_surface_3D(boundary_mesh, fn_S35_vv);
-    this->S35_uuu = this->integrate_surface_3D(boundary_mesh, fn_S35_uuu);
-    this->S35_vvv = this->integrate_surface_3D(boundary_mesh, fn_S35_vvv);
-    this->S35_uuv = this->integrate_surface_3D(boundary_mesh, fn_S35_uuv);
-    this->S35_uvv = this->integrate_surface_3D(boundary_mesh, fn_S35_uvv);
+    const auto result2 =
+        this->integrate_surface_3D(boundary_mesh, 
+                {fn_EI_uu,
+                fn_EI_vv,
+                fn_EI_uv,
+                fn_EI_uuu,
+                fn_EI_vvv,
+                fn_EI_uuv,
+                fn_EI_uvv,
+                fn_S34_uu,
+                fn_S34_vv,
+                fn_S34_vvv,
+                fn_S34_uuu,
+                fn_S34_vvv,
+                fn_S34_uuv,
+                fn_S34_uvv,
+                fn_S35_uu,
+                fn_S35_vv,
+                fn_S35_uuu,
+                fn_S35_vvv,
+                fn_S35_uuv,
+                fn_S35_uvv});
+    this->EI_uu = result2[0];
+    this->EI_vv = result2[1];
+    this->EI_uv = result2[2];
+    this->EI_uuu = result2[3];
+    this->EI_vvv = result2[4];
+    this->EI_uuv = result2[5];
+    this->EI_uvv = result2[6];
+    this->S34_uu = result2[7];
+    this->S34_vv = result2[8];
+    this->S34_vvv = result2[9];
+    this->S34_uuu = result2[10];
+    this->S34_vvv = result2[11];
+    this->S34_uuv = result2[12];
+    this->S34_uvv = result2[13];
+    this->S35_uu = result2[14];
+    this->S35_vv = result2[15];
+    this->S35_uuu = result2[16];
+    this->S35_vvv = result2[17];
+    this->S35_uuv = result2[18];
+    this->S35_uvv = result2[19];
+    logger::quick_log("A: ", Area);
     logger::quick_log("EA: ", EA);
     logger::quick_log("c_v: ", c_v);
     logger::quick_log("c_u: ", c_u);
@@ -693,32 +723,57 @@ void Curvature::base_matrix_upos(general_solver::MUMPSGeneral& M, const std::vec
     }
 }
 
-double Curvature::integrate_surface_3D(const std::vector<std::unique_ptr<BoundaryMeshElement>>& boundary_mesh, const std::function<double(const MeshElement* const, const gp_Pnt&, const gp_Pnt&)>& fn) const{
-    double result = 0;
+class VectorWrapper{
+    public:
+    Eigen::VectorXd vec;
+    VectorWrapper() = default;
+    VectorWrapper(size_t s):vec(s){
+        vec.fill(0);
+    }
+
+    VectorWrapper& operator+=(const VectorWrapper& v){
+        if(this->vec.size() == 0){
+            this->vec.resize(v.vec.size());
+            this->vec.fill(0);
+        }
+        this->vec += v.vec;
+
+        return *this;
+    }
+};
+
+Eigen::VectorXd Curvature::integrate_surface_3D(const std::vector<std::unique_ptr<BoundaryMeshElement>>& boundary_mesh, const std::vector<std::function<double(const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px)>>& fn) const{
+    VectorWrapper result(fn.size());
+    #pragma omp declare reduction(vecsum : VectorWrapper : omp_out += omp_in) 
     if(this->elem_info->get_shape_type() == Element::Shape::TRI){
-        #pragma omp parallel for reduction(+:result)
-        for(size_t i = 0; i < boundary_mesh.size(); ++i){
-            Eigen::Matrix<double, 3, 3> points{{0,0,0},{0,0,0},{0,0,0}};
-            const auto& e = boundary_mesh[i];
-            std::array<gp_Pnt, 3> rel_points;
-            for(size_t x = 0; x < 3; ++x){
-                rel_points[x] = e->nodes[x]->point;
-                for(size_t y = 0; y < 3; ++y){
-                    points(y, x) = rel_points[x].Coord(y+1);
+        #pragma omp parallel
+        {
+            VectorWrapper result_tmp(fn.size());
+            #pragma omp for reduction(vecsum:result)
+            for(size_t i = 0; i < boundary_mesh.size(); ++i){
+                Eigen::Matrix<double, 3, 3> points{{0,0,0},{0,0,0},{0,0,0}};
+                const auto& e = boundary_mesh[i];
+                std::array<gp_Pnt, 3> rel_points;
+                for(size_t x = 0; x < 3; ++x){
+                    rel_points[x] = e->nodes[x]->point;
+                    for(size_t y = 0; y < 3; ++y){
+                        points(y, x) = rel_points[x].Coord(y+1);
+                    }
                 }
+                Eigen::Matrix<double, 3, 3> rotd_p = this->rot3D*points;
+                std::array<gp_Pnt, 3> abs_points{
+                    gp_Pnt(rotd_p(0, 0), rotd_p(1, 0), rotd_p(2, 0)),
+                    gp_Pnt(rotd_p(0, 1), rotd_p(1, 1), rotd_p(2, 1)),
+                    gp_Pnt(rotd_p(0, 2), rotd_p(1, 2), rotd_p(2, 2))
+                };
+                this->GS_tri(e->parent, abs_points, rel_points, fn, result_tmp.vec);
+                result += result_tmp;
             }
-            Eigen::Matrix<double, 3, 3> rotd_p = this->rot3D*points;
-            std::array<gp_Pnt, 3> abs_points{
-                gp_Pnt(rotd_p(0, 0), rotd_p(1, 0), rotd_p(2, 0)),
-                gp_Pnt(rotd_p(0, 1), rotd_p(1, 1), rotd_p(2, 1)),
-                gp_Pnt(rotd_p(0, 2), rotd_p(1, 2), rotd_p(2, 2))
-            };
-            result += this->GS_tri(e->parent, abs_points, rel_points, fn);
         }
     } else if(this->elem_info->get_shape_type() == Element::Shape::QUAD){
 
     }
-    return result;
+    return result.vec;
 }
 
 Eigen::Matrix<double, 6, 6> Curvature::get_S_3D(const MeshElement* const e, const gp_Pnt& p) const{
@@ -758,32 +813,35 @@ void Curvature::get_B_tensors_3D(const MeshElement* const e, const gp_Pnt& p, Ei
           {-B(3,4),  B(5,5)}};
 }
 
-double Curvature::GS_tri(const MeshElement* const e, const std::array<gp_Pnt, 3>& p, const std::array<gp_Pnt, 3>& px, const std::function<double(const MeshElement* const, const gp_Pnt&, const gp_Pnt&)>& fn) const{
-    double result = 0;
+void Curvature::GS_tri(const MeshElement* const e, const std::array<gp_Pnt, 3>& p, const std::array<gp_Pnt, 3>& px, const std::vector<std::function<double(const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px)>>& fn, Eigen::VectorXd& result) const{
     gp_Vec v1(p[1], p[0]);
     gp_Vec v2(p[2], p[0]);
+    result.fill(0);
     const double drnorm = (v1.Crossed(v2)).Magnitude()/2;
     const auto& gsi = utils::GaussLegendreTri<6>::get();
     for(auto it = gsi.begin(); it < gsi.end(); ++it){
-        gp_Pnt pi{
-            it->a*p[0].X() + it->b*p[1].X() + it->c*p[2].X(),
-            it->a*p[0].Y() + it->b*p[1].Y() + it->c*p[2].Y(),
-            it->a*p[0].Z() + it->b*p[1].Z() + it->c*p[2].Z()
-        };
-        gp_Pnt pxi{
-            it->a*px[0].X() + it->b*px[1].X() + it->c*px[2].X(),
-            it->a*px[0].Y() + it->b*px[1].Y() + it->c*px[2].Y(),
-            it->a*px[0].Z() + it->b*px[1].Z() + it->c*px[2].Z()
-        };
-        result += it->w*fn(e, pi, pxi);
+        for(size_t i = 0; i < fn.size(); ++i){
+            gp_Pnt pi{
+                it->a*p[0].X() + it->b*p[1].X() + it->c*p[2].X(),
+                it->a*p[0].Y() + it->b*p[1].Y() + it->c*p[2].Y(),
+                it->a*p[0].Z() + it->b*p[1].Z() + it->c*p[2].Z()
+            };
+            gp_Pnt pxi{
+                it->a*px[0].X() + it->b*px[1].X() + it->c*px[2].X(),
+                it->a*px[0].Y() + it->b*px[1].Y() + it->c*px[2].Y(),
+                it->a*px[0].Z() + it->b*px[1].Z() + it->c*px[2].Z()
+            };
+            const auto S = this->get_S_3D(e, pi);
+            result[i] += it->w*fn[i](S, pxi);
+        }
     }
     result *= drnorm;
-
-    return result;
 }
 
-double Curvature::GS_quad(const MeshElement* const e, const std::array<gp_Pnt, 3>& p, const std::array<gp_Pnt, 3>& px, const std::function<double(const MeshElement* const, const gp_Pnt&, const gp_Pnt&)>& fn) const{
-    double result = 0;
-
-    return result;
+void Curvature::GS_quad(const MeshElement* const e, const std::array<gp_Pnt, 3>& p, const std::array<gp_Pnt, 3>& px, const std::vector<std::function<double(const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px)>>& fn, Eigen::VectorXd& result) const{
+    (void)e;
+    (void)p;
+    (void)px;
+    (void)fn;
+    (void)result;
 }

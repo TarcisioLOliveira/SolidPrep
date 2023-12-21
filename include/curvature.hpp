@@ -56,16 +56,17 @@ class Curvature{
     const double M_u, M_v, M_w;
     size_t reduced_vec_len;
 
-    double EA;
-    double EA_u;
-    double EA_v;
-    double EI_uu;
-    double EI_vv;
-    double EI_uv;
-    double EI_uuu;
-    double EI_vvv;
-    double EI_uvv;
-    double EI_uuv;
+    double Area   = 0;
+    double EA     = 0;
+    double EA_u   = 0;
+    double EA_v   = 0;
+    double EI_uu  = 0;
+    double EI_vv  = 0;
+    double EI_uv  = 0;
+    double EI_uuu = 0;
+    double EI_vvv = 0;
+    double EI_uvv = 0;
+    double EI_uuv = 0;
     double c_u, c_v, c_w;
     double A, B, C;
     double theta;
@@ -75,18 +76,18 @@ class Curvature{
     double Kxz_1;
     double Kxz_2;
 
-    double S34_uu;
-    double S34_vv;
-    double S34_uuu;
-    double S34_vvv;
-    double S34_uvv;
-    double S34_uuv;
-    double S35_uu;
-    double S35_vv;
-    double S35_uuu;
-    double S35_vvv;
-    double S35_uvv;
-    double S35_uuv;
+    double S34_uu  = 0;
+    double S34_vv  = 0;
+    double S34_uuu = 0;
+    double S34_vvv = 0;
+    double S34_uvv = 0;
+    double S34_uuv = 0;
+    double S35_uu  = 0;
+    double S35_vv  = 0;
+    double S35_uuu = 0;
+    double S35_vvv = 0;
+    double S35_uvv = 0;
+    double S35_uuv = 0;
 
     std::vector<double> F;
     std::vector<double> phi;
@@ -104,131 +105,113 @@ class Curvature{
     void base_matrix_upos(general_solver::MUMPSGeneral& M, const std::vector<std::unique_ptr<BoundaryMeshElement>>& boundary_mesh, const size_t num_nodes, const size_t F_offset) const;
     void base_matrix_id(general_solver::MUMPSGeneral& M, const std::vector<std::unique_ptr<BoundaryMeshElement>>& boundary_mesh, const size_t num_nodes, const size_t F_offset) const;
 
-    double integrate_surface_3D(const std::vector<std::unique_ptr<BoundaryMeshElement>>& boundary_mesh, const std::function<double(const MeshElement* const, const gp_Pnt&, const gp_Pnt& px)>& fn) const;
-    double GS_tri(const MeshElement* const e, const std::array<gp_Pnt, 3>& p, const std::array<gp_Pnt, 3>& px, const std::function<double(const MeshElement* const, const gp_Pnt&, const gp_Pnt& px)>& fn) const;
-    double GS_quad(const MeshElement* const e, const std::array<gp_Pnt, 3>& p, const std::array<gp_Pnt, 3>& px, const std::function<double(const MeshElement* const, const gp_Pnt&, const gp_Pnt& px)>& fn) const;
+    Eigen::VectorXd integrate_surface_3D(const std::vector<std::unique_ptr<BoundaryMeshElement>>& boundary_mesh, const std::vector<std::function<double(const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px)>>& fn) const;
+    void GS_tri(const MeshElement* const e, const std::array<gp_Pnt, 3>& p, const std::array<gp_Pnt, 3>& px, const std::vector<std::function<double(const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px)>>& fn, Eigen::VectorXd& result) const;
+    void GS_quad(const MeshElement* const e, const std::array<gp_Pnt, 3>& p, const std::array<gp_Pnt, 3>& px, const std::vector<std::function<double(const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px)>>& fn, Eigen::VectorXd& result) const;
 
     Eigen::Matrix<double, 6, 6> get_S_3D(const MeshElement* const e, const gp_Pnt& p) const;
     Eigen::Matrix<double, 6, 6> get_B_3D(const MeshElement* const e, const gp_Pnt& p) const;
 
     void get_B_tensors_3D(const MeshElement* const e, const gp_Pnt& p, Eigen::Matrix<double, 3, 3>& B4, Eigen::Matrix<double, 3, 2>& B3, Eigen::Matrix<double, 2, 2>& B2) const;
 
-    inline double make_EA_base_3D(const MeshElement* const e, const gp_Pnt& p, const gp_Pnt& px) const{
+    inline double make_A_base_3D(const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px) const{
+        (void)S;
         (void)px;
-        const auto S = this->get_S_3D(e, p);
-        return 1/S(2,2);
+        return 1;
     }
-    inline double make_EA_u_base_3D(const MeshElement* const e, const gp_Pnt& p, const gp_Pnt& px) const{
-        const auto S = this->get_S_3D(e, p);
+    inline double make_EA_base_3D(const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px) const{
+        (void)px;
+        return 1.0/S(2,2);
+    }
+    inline double make_EA_u_base_3D(const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px) const{
         return px.X()/S(2,2);
     }
-    inline double make_EA_v_base_3D(const MeshElement* const e, const gp_Pnt& p, const gp_Pnt& px) const{
-        const auto S = this->get_S_3D(e, p);
+    inline double make_EA_v_base_3D(const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px) const{
         return px.Y()/S(2,2);
     }
-    inline double make_EA_w_base_3D(const MeshElement* const e, const gp_Pnt& p, const gp_Pnt& px) const{
-        const auto S = this->get_S_3D(e, p);
+    inline double make_EA_w_base_3D(const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px) const{
         return px.Z()/S(2,2);
     }
-    inline double make_EI_uu_base_3D(const MeshElement* const e, const gp_Pnt& p, const gp_Pnt& px) const{
-        const auto S = this->get_S_3D(e, p);
+    inline double make_EI_uu_base_3D(const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px) const{
         const double dy = px.Y() - c_v;
         return dy*dy/S(2,2);
     }
-    inline double make_EI_vv_base_3D(const MeshElement* const e, const gp_Pnt& p, const gp_Pnt& px) const{
-        const auto S = this->get_S_3D(e, p);
+    inline double make_EI_vv_base_3D(const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px) const{
         const double dx = px.X() - c_u;
         return dx*dx/S(2,2);
     }
-    inline double make_EI_uv_base_3D(const MeshElement* const e, const gp_Pnt& p, const gp_Pnt& px) const{
-        const auto S = this->get_S_3D(e, p);
+    inline double make_EI_uv_base_3D(const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px) const{
         const double dx = px.X() - c_u;
         const double dy = px.Y() - c_v;
         return dx*dy/S(2,2);
     }
-    inline double make_EI_uuu_base_3D(const MeshElement* const e, const gp_Pnt& p, const gp_Pnt& px) const{
-        const auto S = this->get_S_3D(e, p);
+    inline double make_EI_uuu_base_3D(const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px) const{
         const double dy = px.Y() - c_v;
         return dy*dy*dy/S(2,2);
     }
-    inline double make_EI_vvv_base_3D(const MeshElement* const e, const gp_Pnt& p, const gp_Pnt& px) const{
-        const auto S = this->get_S_3D(e, p);
+    inline double make_EI_vvv_base_3D(const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px) const{
         const double dx = px.X() - c_u;
         return dx*dx*dx/S(2,2);
     }
-    inline double make_EI_uvv_base_3D(const MeshElement* const e, const gp_Pnt& p, const gp_Pnt& px) const{
-        const auto S = this->get_S_3D(e, p);
+    inline double make_EI_uvv_base_3D(const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px) const{
         const double dx = px.X() - c_u;
         const double dy = px.Y() - c_v;
         return dx*dx*dy/S(2,2);
     }
-    inline double make_EI_uuv_base_3D(const MeshElement* const e, const gp_Pnt& p, const gp_Pnt& px) const{
-        const auto S = this->get_S_3D(e, p);
+    inline double make_EI_uuv_base_3D(const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px) const{
         const double dx = px.X() - c_u;
         const double dy = px.Y() - c_v;
         return dx*dy*dy/S(2,2);
     }
-    inline double make_S34_uu_base_3D(const MeshElement* const e, const gp_Pnt& p, const gp_Pnt& px) const{
-        const auto S = this->get_S_3D(e, p);
+    inline double make_S34_uu_base_3D(const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px) const{
         const double dy = px.Y() - c_v;
         return S(2,3)*dy*dy/(S(2,2)*S(2,2));
     }
-    inline double make_S34_vv_base_3D(const MeshElement* const e, const gp_Pnt& p, const gp_Pnt& px) const{
-        const auto S = this->get_S_3D(e, p);
+    inline double make_S34_vv_base_3D(const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px) const{
         const double dx = px.X() - c_u;
         return S(2,3)*dx*dx/(S(2,2)*S(2,2));
     }
-    inline double make_S35_uu_base_3D(const MeshElement* const e, const gp_Pnt& p, const gp_Pnt& px) const{
-        const auto S = this->get_S_3D(e, p);
+    inline double make_S35_uu_base_3D(const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px) const{
         const double dy = px.Y() - c_v;
         return S(2,4)*dy*dy/(S(2,2)*S(2,2));
     }
-    inline double make_S35_vv_base_3D(const MeshElement* const e, const gp_Pnt& p, const gp_Pnt& px) const{
-        const auto S = this->get_S_3D(e, p);
+    inline double make_S35_vv_base_3D(const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px) const{
         const double dx = px.X() - c_u;
         return S(2,4)*dx*dx/(S(2,2)*S(2,2));
     }
-    inline double make_S34_uuu_base_3D(const MeshElement* const e, const gp_Pnt& p, const gp_Pnt& px) const{
-        const auto S = this->get_S_3D(e, p);
+    inline double make_S34_uuu_base_3D(const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px) const{
         const double dy = px.Y() - c_v;
         return S(2,3)*dy*dy*dy/(S(2,2)*S(2,2));
     }
-    inline double make_S34_uuv_base_3D(const MeshElement* const e, const gp_Pnt& p, const gp_Pnt& px) const{
-        const auto S = this->get_S_3D(e, p);
+    inline double make_S34_uuv_base_3D(const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px) const{
         const double dx = px.X() - c_u;
         const double dy = px.Y() - c_v;
         return S(2,3)*dx*dy*dy/(S(2,2)*S(2,2));
     }
-    inline double make_S34_uvv_base_3D(const MeshElement* const e, const gp_Pnt& p, const gp_Pnt& px) const{
-        const auto S = this->get_S_3D(e, p);
+    inline double make_S34_uvv_base_3D(const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px) const{
         const double dx = px.X() - c_u;
         const double dy = px.Y() - c_v;
         return S(2,3)*dx*dx*dy/(S(2,2)*S(2,2));
     }
-    inline double make_S34_vvv_base_3D(const MeshElement* const e, const gp_Pnt& p, const gp_Pnt& px) const{
-        const auto S = this->get_S_3D(e, p);
+    inline double make_S34_vvv_base_3D(const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px) const{
         const double dx = px.X() - c_u;
         return S(2,3)*dx*dx*dx/(S(2,2)*S(2,2));
     }
-    inline double make_S35_uuu_base_3D(const MeshElement* const e, const gp_Pnt& p, const gp_Pnt& px) const{
-        const auto S = this->get_S_3D(e, p);
+    inline double make_S35_uuu_base_3D(const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px) const{
         const double dy = px.Y() - c_v;
         return S(2,4)*dy*dy*dy/(S(2,2)*S(2,2));
     }
-    inline double make_S35_uuv_base_3D(const MeshElement* const e, const gp_Pnt& p, const gp_Pnt& px) const{
-        const auto S = this->get_S_3D(e, p);
+    inline double make_S35_uuv_base_3D(const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px) const{
         const double dx = px.X() - c_u;
         const double dy = px.Y() - c_v;
         return S(2,4)*dx*dy*dy/(S(2,2)*S(2,2));
     }
-    inline double make_S35_uvv_base_3D(const MeshElement* const e, const gp_Pnt& p, const gp_Pnt& px) const{
-        const auto S = this->get_S_3D(e, p);
+    inline double make_S35_uvv_base_3D(const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px) const{
         const double dx = px.X() - c_u;
         const double dy = px.Y() - c_v;
         return S(2,4)*dx*dx*dy/(S(2,2)*S(2,2));
     }
-    inline double make_S35_vvv_base_3D(const MeshElement* const e, const gp_Pnt& p, const gp_Pnt& px) const{
-        const auto S = this->get_S_3D(e, p);
+    inline double make_S35_vvv_base_3D(const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px) const{
         const double dx = px.X() - c_u;
         return S(2,4)*dx*dx*dx/(S(2,2)*S(2,2));
     }
