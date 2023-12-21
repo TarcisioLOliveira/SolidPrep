@@ -799,9 +799,9 @@ void Curvature::get_B_tensors_3D(const MeshElement* const e, const gp_Pnt& p, Ei
     const auto B = this->get_B_3D(e, p);
 
     B4 = Eigen::Matrix<double, 3, 3>
-         {{ B(1,1)  , -B(1,5)  ,  B(0,1)/2},
-          {-B(1,5)  ,  B(0,0)  , -B(0,5)/2},
-          { B(0,1)/2, -B(0,5)/2,  B(5,5)/4}};
+         {{ B(1,1),  B(0,1), -B(1,5)/2},
+          { B(0,1),  B(0,0), -B(0,5)/2},
+          {-B(1,5), -B(0,5),  B(5,5)/2}};
 
     B3 = Eigen::Matrix<double, 3, 2>
          {{-B(1,3)  ,  B(1,4)  },
@@ -810,7 +810,7 @@ void Curvature::get_B_tensors_3D(const MeshElement* const e, const gp_Pnt& p, Ei
 
     B2 = Eigen::Matrix<double, 2, 2>
          {{ B(3,3), -B(3,4)},
-          {-B(3,4),  B(5,5)}};
+          {-B(3,4),  B(4,4)}};
 }
 
 void Curvature::GS_tri(const MeshElement* const e, const std::array<gp_Pnt, 3>& p, const std::array<gp_Pnt, 3>& px, const std::vector<std::function<double(const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px)>>& fn, Eigen::VectorXd& result) const{
