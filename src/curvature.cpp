@@ -749,7 +749,7 @@ void Curvature::get_B_tensors_3D(const MeshElement* const e, const gp_Pnt& p, Ei
           { B(0,1)/2, -B(0,5)/2,  B(5,5)/4}};
 
     B3 = Eigen::Matrix<double, 3, 2>
-         {{-B(1,3)  , -B(1,4)  },
+         {{-B(1,3)  ,  B(1,4)  },
           {-B(0,3)  ,  B(0,4)  },
           { B(3,5)/2, -B(4,5)/2}};
 
