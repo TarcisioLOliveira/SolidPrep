@@ -21,6 +21,7 @@
 #include <lapacke.h>
 #include "logger.hpp"
 #include "utils/basis_tensor.hpp"
+#include "utils/D_operations.hpp"
 #include "material/linear_elastic_orthotropic_field.hpp"
 
 namespace material{
@@ -36,11 +37,7 @@ LinearElasticOrthotropicField::LinearElasticOrthotropicField(const std::string& 
     S_2D[3] = -nu[0]/E[1];
     S_2D[4] = 1/E[1];
     S_2D[8] = 1/G[0];
-    std::vector<int> ipiv(9);
-    std::vector<double> S_2D_tmp = S_2D;
-    LAPACKE_dgetrf(LAPACK_ROW_MAJOR, 3, 3, S_2D_tmp.data(), 3, ipiv.data());
-    LAPACKE_dgetri(LAPACK_ROW_MAJOR, 3, S_2D_tmp.data(), 3, ipiv.data());
-    this->D_2D = std::move(S_2D_tmp);
+    this->D_2D = utils::D_op::invert_2D(S_2D);
 
     this->S_3D.resize(36);
     S_3D[ 0] = 1/E[0];
@@ -55,11 +52,7 @@ LinearElasticOrthotropicField::LinearElasticOrthotropicField(const std::string& 
     S_3D[21] = 1/G[0];
     S_3D[28] = 1/G[1];
     S_3D[35] = 1/G[2];
-    ipiv.resize(36);
-    std::vector<double> S_3D_tmp = S_3D;
-    LAPACKE_dgetrf(LAPACK_ROW_MAJOR, 6, 6, S_3D_tmp.data(), 6, ipiv.data());
-    LAPACKE_dgetri(LAPACK_ROW_MAJOR, 6, S_3D_tmp.data(), 6, ipiv.data());
-    this->D_3D = std::move(S_3D_tmp);
+    this->D_3D = utils::D_op::invert_3D(S_3D);
 }
 
 std::vector<double> LinearElasticOrthotropicField::stiffness_2D(const MeshElement* const e, const gp_Pnt& p) const{
@@ -88,7 +81,7 @@ std::vector<double> LinearElasticOrthotropicField::stiffness_inverse_2D(const Me
 }
 std::vector<double> LinearElasticOrthotropicField::stiffness_inverse_3D(const MeshElement* const e, const gp_Pnt& p) const{
     const auto M = this->field->get_matrix(e, p);
-    const auto R = utils::basis_tensor_3D(M.transpose());
+    const auto R = utils::basis_tensor_3D_inv_T(M);
     auto S = this->S_3D;
     this->rotate_S_3D(S, R);
 
@@ -152,7 +145,7 @@ std::array<double, 2> LinearElasticOrthotropicField::S12_S13_3D(const MeshElemen
 
     auto s = this->stiffness_inverse_3D(e, p);
 
-    const auto Rt = utils::basis_tensor_3D(R.transpose());
+    const auto Rt = utils::basis_tensor_3D_inv_T(R);
     this->rotate_S_3D(s, Rt);
 
     return {s[1], s[2]};

@@ -22,6 +22,7 @@
 #include <Eigen/Core>
 #include <Eigen/Dense>
 #include <Eigen/Eigenvalues>
+#include "logger.hpp"
 #include "utils/D_operations.hpp"
 #include <lapacke.h>
 #include <cblas.h>
@@ -30,18 +31,26 @@ namespace utils::D_op{
 
 std::vector<double> invert_2D(const std::vector<double>& d){
     constexpr size_t N = 3;
-    std::vector<int> ipiv(N*N);
     std::vector<double> D = d;
-    LAPACKE_dgetrf(LAPACK_ROW_MAJOR, N, N, D.data(), N, ipiv.data());
-    LAPACKE_dgetri(LAPACK_ROW_MAJOR, N, D.data(), N, ipiv.data());
+    LAPACKE_dpotrf(LAPACK_ROW_MAJOR, 'L', N, D.data(), N);
+    LAPACKE_dpotri(LAPACK_ROW_MAJOR, 'L', N, D.data(), N);
+    for(size_t i = 0; i < 3; ++i){
+        for(size_t j = i+1; j < 3; ++j){
+            D[i*3 + j] = D[j*3 + i];
+        }
+    }
     return D;
 }
 std::vector<double> invert_3D(const std::vector<double>& d){
     constexpr size_t N = 6;
-    std::vector<int> ipiv(N*N);
     std::vector<double> D = d;
-    LAPACKE_dgetrf(LAPACK_ROW_MAJOR, N, N, D.data(), N, ipiv.data());
-    LAPACKE_dgetri(LAPACK_ROW_MAJOR, N, D.data(), N, ipiv.data());
+    LAPACKE_dpotrf(LAPACK_ROW_MAJOR, 'L', N, D.data(), N);
+    LAPACKE_dpotri(LAPACK_ROW_MAJOR, 'L', N, D.data(), N);
+    for(size_t i = 0; i < 6; ++i){
+        for(size_t j = i+1; j < 6; ++j){
+            D[i*6 + j] = D[j*6 + i];
+        }
+    }
     return D;
 }
 std::vector<double> square_2D(const std::vector<double>& d){
