@@ -59,8 +59,8 @@ class MultiMaterial{
     utils::ProblemType problem_type;
     bool has_void;
 
-    void get_D_internal(std::vector<double>::const_iterator& rho, const double* pos, const size_t posN, const double mix, const MeshElement* e, const gp_Pnt& p, std::vector<double>& D) const;
-    void get_gradD_internal(std::vector<double>::const_iterator& rho, const double* pos, const size_t posN, const double mix, const MeshElement* e, const gp_Pnt& p, std::vector<std::vector<double>>& gradD) const;
+    void get_D_internal(std::vector<double>::const_iterator& rho, const double mix, const MeshElement* e, const gp_Pnt& p, std::vector<double>& D) const;
+    void get_gradD_internal(std::vector<double>::const_iterator& rho, const double mix, const MeshElement* e, const gp_Pnt& p, std::vector<std::vector<double>>& gradD) const;
 };
 
 #endif
