@@ -847,21 +847,20 @@ void Curvature::GS_tri(const MeshElement* const e, const std::array<gp_Pnt, 3>& 
     gp_Vec v1(p[1], p[0]);
     gp_Vec v2(p[2], p[0]);
     result.fill(0);
+    const gp_Pnt centroid(
+            (p[0].X() + p[1].X() + p[2].X())/3.0,
+            (p[0].Y() + p[1].Y() + p[2].Y())/3.0,
+            (p[0].Z() + p[1].Z() + p[2].Z())/3.0);
+    const auto S = this->get_S_3D(e, centroid);
     const double drnorm = (v1.Crossed(v2)).Magnitude()/2;
     const auto& gsi = utils::GaussLegendreTri<6>::get();
     for(auto it = gsi.begin(); it < gsi.end(); ++it){
         for(size_t i = 0; i < fn.size(); ++i){
-            gp_Pnt pi{
-                it->a*p[0].X() + it->b*p[1].X() + it->c*p[2].X(),
-                it->a*p[0].Y() + it->b*p[1].Y() + it->c*p[2].Y(),
-                it->a*p[0].Z() + it->b*p[1].Z() + it->c*p[2].Z()
-            };
             gp_Pnt pxi{
                 it->a*px[0].X() + it->b*px[1].X() + it->c*px[2].X(),
                 it->a*px[0].Y() + it->b*px[1].Y() + it->c*px[2].Y(),
                 it->a*px[0].Z() + it->b*px[1].Z() + it->c*px[2].Z()
             };
-            const auto S = this->get_S_3D(e, pi);
             result[i] += it->w*fn[i](S, pxi);
         }
     }
