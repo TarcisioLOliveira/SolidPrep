@@ -172,7 +172,7 @@ double LinearElasticOrthotropic::S12_2D(const MeshElement* const e, const gp_Pnt
     (void)p;
     (void)e;
 
-    const auto Rt = utils::basis_tensor_2D(R.transpose());
+    const auto Rt = utils::basis_tensor_2D_inv_T(R.transpose());
     auto s = this->S_2D;
     this->rotate_S_2D(s, Rt);
 
@@ -183,7 +183,7 @@ std::array<double, 2> LinearElasticOrthotropic::S12_S13_3D(const MeshElement* co
     (void)p;
     (void)e;
 
-    const auto Rt = utils::basis_tensor_3D(R.transpose());
+    const auto Rt = utils::basis_tensor_3D_inv_T(R);
     auto s = this->S_3D;
     this->rotate_S_3D(s, Rt);
 

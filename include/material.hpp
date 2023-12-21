@@ -95,8 +95,8 @@ class Material{
 
     inline void rotate_S_base(std::vector<double>& S, const std::vector<double>& R, const size_t N) const{
         std::vector<double> Stmp(N*N, 0);
-        cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, N, N, N, 1, S.data(), N, R.data(), N, 0, Stmp.data(), N);
-        cblas_dgemm(CblasRowMajor, CblasTrans, CblasNoTrans, N, N, N, 1, R.data(), N, Stmp.data(), N, 0, S.data(), N);
+        cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasTrans, N, N, N, 1, S.data(), N, R.data(), N, 0, Stmp.data(), N);
+        cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, N, N, N, 1, R.data(), N, Stmp.data(), N, 0, S.data(), N);
     }
     inline void rotate_S_2D(std::vector<double>& S, const std::vector<double>& R) const{
         return rotate_S_base(S, R, 3);

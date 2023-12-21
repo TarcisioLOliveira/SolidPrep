@@ -73,7 +73,7 @@ std::vector<double> LinearElasticOrthotropicField::stiffness_3D(const MeshElemen
 }
 std::vector<double> LinearElasticOrthotropicField::stiffness_inverse_2D(const MeshElement* const e, const gp_Pnt& p) const{
     const auto M = this->field->get_matrix(e, p);
-    const auto R = utils::basis_tensor_2D(M({0,1},{0,1}).transpose());
+    const auto R = utils::basis_tensor_2D_inv_T(M({0,1},{0,1}));
     auto S = this->S_2D;
     this->rotate_S_2D(S, R);
 
@@ -135,7 +135,7 @@ std::array<double, 4> LinearElasticOrthotropicField::beam_EG_3D(const MeshElemen
 double LinearElasticOrthotropicField::S12_2D(const MeshElement* const e, const gp_Pnt& p, const Eigen::Matrix<double, 2, 2>& R) const{
     auto s = this->stiffness_inverse_2D(e, p);
 
-    const auto Rt = utils::basis_tensor_2D(R.transpose());
+    const auto Rt = utils::basis_tensor_2D_inv_T(R);
     this->rotate_S_2D(s, Rt);
 
     return s[1];

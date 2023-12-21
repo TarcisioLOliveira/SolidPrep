@@ -56,13 +56,13 @@ Curvature::Curvature(const Material* mat, gp_Dir u, gp_Dir v, gp_Dir w, Eigen::M
          0, 0, 0, 1, 0, 0};
 
     this->rotate_X_Z_3D = utils::basis_tensor_3D(Lek_basis);
-    this->rotate_X_Z_3D_inv = utils::basis_tensor_3D(Lek_basis.transpose());
+    this->rotate_X_Z_3D_inv = utils::basis_tensor_3D_inv_T(Lek_basis);
 
     this->permute_and_rotate_3D = std::vector<double>(36, 0);
     this->permute_and_rotate_3D_inv = std::vector<double>(36, 0);
     const size_t N = 6;
-    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasTrans, N, N, N, 1, permute_shear_3D.data(), N, rotate_X_Z_3D.data(), N, 0, permute_and_rotate_3D.data(), N);
-    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasTrans, N, N, N, 1, permute_shear_3D.data(), N, rotate_X_Z_3D_inv.data(), N, 0, permute_and_rotate_3D_inv.data(), N);
+    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, N, N, N, 1, permute_shear_3D.data(), N, rotate_X_Z_3D.data(), N, 0, permute_and_rotate_3D.data(), N);
+    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, N, N, N, 1, rotate_X_Z_3D_inv.data(), N, permute_shear_3D.data(), N, 0, permute_and_rotate_3D_inv.data(), N);
 }
 
 void Curvature::generate_curvature_3D(const std::vector<std::unique_ptr<MeshNode>>& boundary_nodes, const std::vector<std::unique_ptr<BoundaryMeshElement>>& boundary_mesh, size_t reduced_vector_size, size_t full_vector_size){
@@ -808,7 +808,7 @@ Eigen::VectorXd Curvature::integrate_surface_3D(const std::vector<std::unique_pt
 
 Eigen::Matrix<double, 6, 6> Curvature::get_S_3D(const MeshElement* const e, const gp_Pnt& p) const{
     auto S = this->mat->stiffness_inverse_3D(e, p);
-    this->mat->rotate_S_3D(S, this->permute_shear_3D);
+    this->mat->rotate_S_3D(S, this->permute_and_rotate_3D_inv);
 
     return Eigen::Map<Eigen::Matrix<double, 6, 6>>(S.data(), 6, 6);
 }

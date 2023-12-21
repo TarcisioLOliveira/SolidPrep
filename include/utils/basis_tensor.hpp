@@ -27,9 +27,10 @@
 namespace utils{
 
 std::vector<double> basis_tensor_2D(const Eigen::Matrix<double, 2, 2>& R);
+std::vector<double> basis_tensor_2D_inv_T(const Eigen::Matrix<double, 2, 2>& R);
 
-// For inverse, use R transpose
 std::vector<double> basis_tensor_3D(const Eigen::Matrix<double, 3, 3>& R);
+std::vector<double> basis_tensor_3D_inv_T(const Eigen::Matrix<double, 3, 3>& R);
 
 }
 
