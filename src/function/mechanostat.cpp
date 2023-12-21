@@ -82,7 +82,7 @@ double Mechanostat::calculate_with_gradient(const Optimizer* const op, const std
                                     (dHp(eps_lhs2)*eps_lhs2 + H2)*deps_lhs2;
 
                     H_e = Hr;
-                    StrainVector2D dHB{0,0,0};
+                    std::vector<double> dHB(k_size, 0);
                     for(size_t i = 0; i < s_size; ++i){
                         for(size_t j = 0; j < k_size; ++j){
                             dHB[i] += dH[i]*B[i*k_size + j];
@@ -109,7 +109,7 @@ double Mechanostat::calculate_with_gradient(const Optimizer* const op, const std
                                     (dHp(eps_lhs2)*eps_lhs2 + H2)*deps_lhs2;
 
                     H_e = Hr;
-                    StrainVector3D dHB{0,0,0,0,0,0};
+                    std::vector<double> dHB(k_size, 0);
                     for(size_t i = 0; i < s_size; ++i){
                         for(size_t j = 0; j < k_size; ++j){
                             dHB[i] += dH[i]*B[i*k_size + j];
@@ -136,7 +136,7 @@ double Mechanostat::calculate_with_gradient(const Optimizer* const op, const std
     if(mpi_id == 0){
         logger::quick_log("} Done.");
 
-        logger::quick_log("Calculating stress gradient...");
+        logger::quick_log("Calculating strain gradient...");
 
         x_it = x.cbegin();
         auto grad_it = grad.begin();
