@@ -514,33 +514,6 @@ void Curvature::calculate_stress_field_3D(const std::vector<std::unique_ptr<Mesh
     solver.solve(b);
     phi_tmp = b;
 
-    /*
-     * Multiply phi_1 and F_1 by theta
-     */
-    for(auto& f : this->F){
-        f *= 0;//theta;
-    }
-    for(auto& f : this->phi){
-        f *= 0;//theta;
-    }
-
-    /*
-     * Save phi_0 and F_0 in the global vector.
-     *
-     */
-    for(const auto& n:boundary_nodes){
-        const long id1 = n->u_pos[0];
-        if(id1 < 0){
-            continue;
-        }
-        this->F[2*n->id] += phi_tmp[2*id1];
-        this->F[2*n->id+1] += phi_tmp[2*id1+1];
-    }
-    for(const auto& n:boundary_nodes){
-        const long id1 = n->id;
-        this->phi[n->id] += phi_tmp[F_offset + id1];
-    }
-
     double C0 = 0, Cx0 = 0, Cy0 = 0, Ct0 = 0;
     double xC0 = 0, yC0 = 0;
     for(const auto& e:boundary_mesh){
@@ -577,6 +550,33 @@ void Curvature::calculate_stress_field_3D(const std::vector<std::unique_ptr<Mesh
     this->theta = phi_tmp[F_phi_offset + 3];
     this->Kyz_2 = phi_tmp[F_phi_offset + 4];
     this->Kxz_2 = phi_tmp[F_phi_offset + 5];
+
+    /*
+     * Multiply phi_1 and F_1 by theta
+     */
+    for(auto& f : this->F){
+        f *= theta;
+    }
+    for(auto& f : this->phi){
+        f *= theta;
+    }
+
+    /*
+     * Save phi_0 and F_0 in the global vector.
+     *
+     */
+    for(const auto& n:boundary_nodes){
+        const long id1 = n->u_pos[0];
+        if(id1 < 0){
+            continue;
+        }
+        this->F[2*n->id] += phi_tmp[2*id1];
+        this->F[2*n->id+1] += phi_tmp[2*id1+1];
+    }
+    for(const auto& n:boundary_nodes){
+        const long id1 = n->id;
+        this->phi[n->id] += phi_tmp[F_offset + id1];
+    }
 
     logger::quick_log("A", A);
     logger::quick_log("B", B);
