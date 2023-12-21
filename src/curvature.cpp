@@ -408,9 +408,9 @@ void Curvature::calculate_stress_field_3D(const std::vector<std::unique_ptr<Mesh
             yC1 += ( dphi(1,i))*phi[id2];
 
             // Cx0
-            solver.add_value(F_phi_offset + 0, F_offset + id2,  (-S(2,3)*dphix(0,i)+S(2,4)*dphix(1,i))/S(2,2));
+            solver.add_value(F_phi_offset + 0, F_offset + id2, -(-S(2,3)*dphix(0,i)+S(2,4)*dphix(1,i))/S(2,2));
             // Cy0
-            solver.add_value(F_phi_offset + 1, F_offset + id2,  (-S(2,3)*dphiy(0,i)+S(2,4)*dphiy(1,i))/S(2,2));
+            solver.add_value(F_phi_offset + 1, F_offset + id2, -(-S(2,3)*dphiy(0,i)+S(2,4)*dphiy(1,i))/S(2,2));
             // C0                                                    
             solver.add_value(F_phi_offset + 2, F_offset + id2, -(-S(2,3)*dphi (0,i)+S(2,4)*dphi (1,i))/S(2,2));
             // Ct0
@@ -476,18 +476,18 @@ void Curvature::calculate_stress_field_3D(const std::vector<std::unique_ptr<Mesh
     solver.add_value(F_phi_offset + 1, F_phi_offset + 0, EI_uv);
     solver.add_value(F_phi_offset + 1, F_phi_offset + 1, EI_uu);
 
-    solver.add_value(F_phi_offset + 0, F_phi_offset + 4 + 0, S34_uvv);
-    solver.add_value(F_phi_offset + 0, F_phi_offset + 4 + 1, S35_uuu);
-    b[F_phi_offset + 0] = -M_v - Kyz_1*S34_uuu - Kxz_1*S35_uvv;
-    solver.add_value(F_phi_offset + 1, F_phi_offset + 4 + 0, S34_vvv);
-    solver.add_value(F_phi_offset + 1, F_phi_offset + 4 + 1, S35_uuv);
-    b[F_phi_offset + 1] = -M_u - Kyz_1*S34_uuv - Kxz_1*S35_vvv;
+    solver.add_value(F_phi_offset + 0, F_phi_offset + 4 + 0, -S34_uvv);
+    solver.add_value(F_phi_offset + 0, F_phi_offset + 4 + 1, -S35_uuu);
+    b[F_phi_offset + 0] = -M_v + Kyz_1*S34_uuu + Kxz_1*S35_uvv;
+    solver.add_value(F_phi_offset + 1, F_phi_offset + 4 + 0, -S34_vvv);
+    solver.add_value(F_phi_offset + 1, F_phi_offset + 4 + 1, -S35_uuv);
+    b[F_phi_offset + 1] = -M_u + Kyz_1*S34_uuv + Kxz_1*S35_vvv;
 
     // C
     solver.add_value(F_phi_offset + 2, F_phi_offset + 2, EA);
-    solver.add_value(F_phi_offset + 2, F_phi_offset + 4 + 0, S34_vv);
-    solver.add_value(F_phi_offset + 2, F_phi_offset + 4 + 1, S35_uu);
-    b[F_phi_offset + 2] = -V_w - Kyz_1*S34_uu - Kxz_1*S35_vv;
+    solver.add_value(F_phi_offset + 2, F_phi_offset + 4 + 0, -S34_vv);
+    solver.add_value(F_phi_offset + 2, F_phi_offset + 4 + 1, -S35_uu);
+    b[F_phi_offset + 2] = -V_w + Kyz_1*S34_uu + Kxz_1*S35_vv;
 
     // theta
     solver.add_value(F_phi_offset + 0, F_phi_offset + 3, -Cx1);
