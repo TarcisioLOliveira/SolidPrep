@@ -75,6 +75,7 @@ if(NOT NO_OPENMP)
     add_compile_definitions(MMA_WITH_OPENMP)
 else()
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unknown-pragmas")
+    add_compile_definitions(NO_OPENMP)
 endif()
 
 if(WIN32 OR CYGWIN)

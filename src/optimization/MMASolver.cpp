@@ -20,10 +20,6 @@
 // SOFTWARE.
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef MMA_WITH_OPENMP
-#define MMA_WITH_OPENMP 1
-#endif
-
 #include "optimization/MMASolver.hpp"
 #include <algorithm>
 #include <cmath>
