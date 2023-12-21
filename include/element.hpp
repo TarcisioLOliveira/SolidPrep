@@ -645,6 +645,11 @@ class BoundaryMeshElement : public Element{
     virtual Eigen::VectorXd int_N_x(const gp_Pnt& center) const = 0;
     virtual Eigen::VectorXd int_N_y(const gp_Pnt& center) const = 0;
 
+    virtual Eigen::MatrixXd int_grad_F_t2_t1(const Eigen::MatrixXd& B3, const gp_Pnt& center) const = 0;
+    virtual Eigen::MatrixXd int_grad_phi_t2_t1(const Eigen::MatrixXd& B2, const gp_Pnt& center) const = 0;
+    virtual Eigen::MatrixXd int_grad_F_D(const Eigen::MatrixXd& a, const gp_Pnt& center) const = 0;
+    virtual Eigen::MatrixXd int_grad_phi_D(const Eigen::MatrixXd& a, const gp_Pnt& center) const = 0;
+
     virtual Eigen::MatrixXd L4(const Eigen::MatrixXd& B) const = 0;
     virtual Eigen::MatrixXd L3(const Eigen::MatrixXd& B) const = 0;
     virtual Eigen::MatrixXd L2(const Eigen::MatrixXd& B) const = 0;

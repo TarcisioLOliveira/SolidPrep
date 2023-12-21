@@ -262,6 +262,91 @@ Eigen::VectorXd BTRI3::flow_1dof(double dcurv_v, double dcurv_w, const gp_Pnt& c
     return result*rnorm;
 }
 
+
+Eigen::MatrixXd BTRI3::int_grad_F_t2_t1(const Eigen::MatrixXd& B3, const gp_Pnt& center) const{
+    Eigen::Matrix<double, 6, 4> result
+        {{0, 0, 0, 0},
+         {0, 0, 0, 0},
+         {0, 0, 0, 0},
+         {0, 0, 0, 0},
+         {0, 0, 0, 0},
+         {0, 0, 0, 0}};
+    const auto& gsi = utils::GaussLegendreTri<3>::get();
+    for(auto it = gsi.begin(); it < gsi.end(); ++it){
+        const gp_Pnt p = this->GS_point(it->a, it->b, it->c);
+        const double dx = p.X() - center.X();
+        const double dy = p.Y() - center.Y();
+        const double dx2 = dx*dx;
+        const double dy2 = dy*dy;
+        const auto dF = this->dF_mat_2dof();
+        Eigen::Matrix<double, 2, 4> T
+            {{dy2, dx2, dx2, dy2},
+             {dy2, dx2, dx2, dy2}};
+        result += it->w*dF.transpose()*B3*T;
+    }
+    return delta*result;
+}
+Eigen::MatrixXd BTRI3::int_grad_phi_t2_t1(const Eigen::MatrixXd& B2, const gp_Pnt& center) const{
+    Eigen::Matrix<double, 3, 4> result
+        {{0, 0, 0, 0},
+         {0, 0, 0, 0},
+         {0, 0, 0, 0}};
+    const auto& gsi = utils::GaussLegendreTri<3>::get();
+    for(auto it = gsi.begin(); it < gsi.end(); ++it){
+        const gp_Pnt p = this->GS_point(it->a, it->b, it->c);
+        const double dx = p.X() - center.X();
+        const double dy = p.Y() - center.Y();
+        const double dx2 = dx*dx;
+        const double dy2 = dy*dy;
+        const auto dphi = this->dN_mat_1dof();
+        Eigen::Matrix<double, 2, 4> T
+            {{dy2, dx2, dx2, dy2},
+             {dy2, dx2, dx2, dy2}};
+        result += it->w*dphi.transpose()*B2*T;
+    }
+    return delta*result;
+}
+Eigen::MatrixXd BTRI3::int_grad_F_D(const Eigen::MatrixXd& a, const gp_Pnt& center) const{
+    Eigen::Matrix<double, 6, 3> result
+        {{0, 0, 0},
+         {0, 0, 0},
+         {0, 0, 0},
+         {0, 0, 0},
+         {0, 0, 0},
+         {0, 0, 0}};
+    const auto& gsi = utils::GaussLegendreTri<2>::get();
+    for(auto it = gsi.begin(); it < gsi.end(); ++it){
+        const gp_Pnt p = this->GS_point(it->a, it->b, it->c);
+        const double dx = p.X() - center.X();
+        const double dy = p.Y() - center.Y();
+        const auto dF = this->dF_mat_2dof();
+        Eigen::Matrix<double, 2, 3> ABC
+            {{dx, dy, 1},
+             {dx, dy, 1},
+             {dx, dy, 1}};
+        result += it->w*dF.transpose()*a*ABC;
+    }
+    return delta*result;
+}
+Eigen::MatrixXd BTRI3::int_grad_phi_D(const Eigen::MatrixXd& a, const gp_Pnt& center) const{
+    Eigen::Matrix<double, 3, 3> result
+        {{0, 0, 0},
+         {0, 0, 0},
+         {0, 0, 0}};
+    const auto& gsi = utils::GaussLegendreTri<2>::get();
+    for(auto it = gsi.begin(); it < gsi.end(); ++it){
+        const gp_Pnt p = this->GS_point(it->a, it->b, it->c);
+        const double dx = p.X() - center.X();
+        const double dy = p.Y() - center.Y();
+        const auto dphi = this->dN_mat_1dof();
+        Eigen::Matrix<double, 2, 3> ABC
+            {{dx, dy, 1},
+             {dx, dy, 1}};
+        result += it->w*dphi.transpose()*a*ABC;
+    }
+    return delta*result;
+}
+
 Eigen::VectorXd BTRI3::source_grad_1dof(const Eigen::VectorXd& v) const{
     const auto B = this->dN_mat_1dof();
 
