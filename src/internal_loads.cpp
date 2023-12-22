@@ -173,7 +173,7 @@ void InternalLoads::apply_load_3D(std::vector<double>& load_vector) const{
 
     double s_z = 0, t_yz = 0, t_xz = 0;
 
-    std::vector<double> FF(3, 0);
+    Eigen::Vector<double, 3> FF{0, 0, 0};
     for(size_t j = 0; j < submesh.size(); ++j){
         const auto& e = submesh[j];
         const auto& b = this->boundary_mesh[j];
@@ -207,7 +207,37 @@ void InternalLoads::apply_load_3D(std::vector<double>& load_vector) const{
             }
         }
     }
-    logger::quick_log(FF);
+    // Correct force values if necessary
+    FF = this->Lek_basis.transpose()*this->rot3D*FF;
+    FF[0] -= this->F[0];
+    FF[1] -= this->F[1];
+    FF[2] -= this->F[2];
+    if(std::abs(FF[0]) > 1e-14 ||
+       std::abs(FF[1]) > 1e-14 ||
+       std::abs(FF[2]) > 1e-14){
+        std::set<const Node*> nodes;
+        for(const auto& e:this->submesh){
+            for(size_t i = 0; i < nodes_per_elem; ++i){
+                for(size_t j = 0; j < dof; ++j){
+                    const auto n = e->parent->nodes[i];
+                    nodes.insert(n);
+                }
+            }
+        }
+        const size_t N = nodes.size();
+        Eigen::Vector<double, 3> dF{-FF[0]/N, -FF[1]/N, -FF[2]/N};
+        dF = this->rot3D.transpose()*this->Lek_basis*dF;
+        FF.fill(0);
+        for(const auto& n:nodes){
+            for(size_t j = 0; j < dof; ++j){
+                if(n->u_pos[j] >= 0){
+                    load_vector[n->u_pos[j]] += dF[j];
+                    FF[j] += load_vector[n->u_pos[j]];
+                }
+            }
+        }
+    }
+    logger::quick_log(FF[0], FF[1], FF[2]);
 }
 
 class PointSort{
