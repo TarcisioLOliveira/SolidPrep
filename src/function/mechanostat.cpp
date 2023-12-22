@@ -145,11 +145,10 @@ double Mechanostat::calculate_with_gradient(const Optimizer* const op, const std
                 const size_t num_den = g->number_of_densities_needed();
                 std::vector<std::vector<double>> gradD_K(num_den, std::vector<double>(s_size*s_size, 0));
                 std::vector<double> D_S(std::vector<double>(s_size*s_size, 0));
-                for(const auto& e:g->mesh){
-                    const auto c = e->get_centroid();
-                    g->materials.get_gradD(x_it, psiK, e.get(), c, gradD_K);
-
-                    if(g->with_void){
+                if(g->with_void){
+                    for(const auto& e:g->mesh){
+                        const auto c = e->get_centroid();
+                        g->materials.get_gradD(x_it, psiK, e.get(), c, gradD_K);
                         double lKu = pc*std::pow(*x_it, pc-1)*e->get_compliance(gradD_K[0], this->mesh->thickness, u, l);
                         const auto eps_vec = e->get_strain_vector(c, u);
 
@@ -194,7 +193,11 @@ double Mechanostat::calculate_with_gradient(const Optimizer* const op, const std
                             ++x_it;
                             ++grad_it;
                         }
-                    } else {
+                    }
+                } else {
+                    for(const auto& e:g->mesh){
+                        const auto c = e->get_centroid();
+                        g->materials.get_gradD(x_it, psiK, e.get(), c, gradD_K);
                         for(size_t i = 0; i < num_den; ++i){
                             double lKu = e->get_compliance(gradD_K[i], this->mesh->thickness, u, l);
 
