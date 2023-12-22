@@ -57,7 +57,8 @@ void GlobalStiffnessMatrix::add_geometry(const Meshing* const mesh, const Geomet
         for(size_t i = 0; i < node_num; ++i){
             const auto& n = e->nodes[i];
             for(size_t j = 0; j < dof; ++j){
-                u_pos[i*dof + j] = n->u_pos[j];
+                const size_t p = n->id*dof + j;
+                u_pos[i*dof + j] = mesh->node_positions[p];
             }
         }
         const std::vector<double> k = e->get_k(D, t);
@@ -85,7 +86,8 @@ void GlobalStiffnessMatrix::add_springs(const Meshing * const mesh){
             for(size_t i = 0; i < node_num; ++i){
                 const auto& n = e->nodes[i];
                 for(size_t j = 0; j < dof; ++j){
-                    u_pos[i*dof + j] = n->u_pos[j];
+                    const size_t p = n->id*dof + j;
+                    u_pos[i*dof + j] = mesh->node_positions[p];
                 }
             }
             const std::vector<double> R = e->get_R(K, t, points);
@@ -110,7 +112,8 @@ void GlobalStiffnessMatrix::add_geometry(const Meshing* const mesh, const Geomet
                 for(size_t i = 0; i < node_num; ++i){
                     const auto& n = e->nodes[i];
                     for(size_t j = 0; j < dof; ++j){
-                        u_pos[i*dof + j] = n->u_pos[j];
+                        const size_t p = n->id*dof + j;
+                        u_pos[i*dof + j] = mesh->node_positions[p];
                     }
                 }
                 const gp_Pnt c = e->get_centroid();
@@ -127,7 +130,8 @@ void GlobalStiffnessMatrix::add_geometry(const Meshing* const mesh, const Geomet
             for(size_t i = 0; i < node_num; ++i){
                 const auto& n = e->nodes[i];
                 for(size_t j = 0; j < dof; ++j){
-                    u_pos[i*dof + j] = n->u_pos[j];
+                    const size_t p = n->id*dof + j;
+                    u_pos[i*dof + j] = mesh->node_positions[p];
                 }
             }
             const gp_Pnt c = e->get_centroid();
@@ -159,7 +163,8 @@ void GlobalStiffnessMatrix::calculate_dimensions(const Meshing* const mesh, cons
             for(size_t i = 0; i < node_num; ++i){
                 const auto& n = e->nodes[i];
                 for(size_t j = 0; j < dof; ++j){
-                    pos.push_back(n->u_pos[j]);
+                    const size_t p = n->id*dof + j;
+                    pos.push_back(mesh->node_positions[p]);
                 }
             }
             for(size_t i = 0; i < pos.size(); ++i){

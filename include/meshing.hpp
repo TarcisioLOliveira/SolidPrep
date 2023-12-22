@@ -139,6 +139,7 @@ class Meshing{
     std::vector<MeshNode*> boundary_node_list;
     std::vector<Spring>* springs;
     std::vector<InternalLoads>* internal_loads;
+    std::vector<long> node_positions;
 
     protected:
     TopoDS_Shape orig_shape;

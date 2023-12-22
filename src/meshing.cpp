@@ -79,36 +79,29 @@ void Meshing::apply_boundary_conditions(const std::vector<Force>& forces,
                                         std::vector<Spring>& springs,
                                         std::vector<InternalLoads>& internal_loads){
 
-    const size_t dof = this->elem_info->get_dof_per_node();
     logger::quick_log("Applying boundary conditions...");
+    const size_t dof = this->elem_info->get_dof_per_node();
+    const size_t vec_size = this->node_list.size()*dof;
 
-    // Zero positioning
+    this->node_positions.resize(vec_size);
+
+    // Number positioning
     #pragma omp parallel for
     for(size_t i = 0; i < this->node_list.size(); ++i){
         auto& n = this->node_list[i];
         for(size_t j = 0; j < dof; ++j){
-            n->u_pos[j] = 0;
+            n->u_pos[j] = n->id*dof + j;
+            this->node_positions[n->id*dof + j] = n->id*dof + j;
         }
     }
+
     if(supports.size() > 0){
         logger::quick_log("supports");
         this->apply_supports(supports);
     }
 
-    // Number positioning
-    size_t current = 0;
-    for(size_t i = 0; i < this->node_list.size(); ++i){
-        auto& n = this->node_list[i];
-        for(size_t j = 0; j < dof; ++j){
-            if(n->u_pos[j] > -1){
-                n->u_pos[j] = current;
-                ++current;
-            }
-        }
-    }
-
     this->load_vector.clear();
-    this->load_vector.resize(current, 0);
+    this->load_vector.resize(vec_size, 0);
 
     logger::quick_log("loads");
     this->generate_load_vector(this->orig_shape, forces);
@@ -236,16 +229,17 @@ void Meshing::apply_supports(const std::vector<Support>& supports){
     }
 
     if(bound_s.size() > 0){
-        #pragma omp parallel for
-        for(size_t i = 0; i < this->boundary_node_list.size(); ++i){
-            const auto& n = this->boundary_node_list[i];
+        for(auto& s : bound_s){
+            #pragma omp parallel for
+            for(size_t i = 0; i < this->boundary_node_list.size(); ++i){
+                const auto& n = this->boundary_node_list[i];
 
-            for(auto& s : bound_s){
                 if(s.S.is_inside(n->point)){
                     std::vector<bool> sup_pos = this->get_support_dof(s, this->elem_info);
                     for(size_t j = 0; j < dof; ++j){
                         if(sup_pos[j]){
-                            n->u_pos[j] = -1;
+                            const size_t p = n->id*dof + j;
+                            this->node_positions[p] = -1;
                         }
                     }
                 }
@@ -269,7 +263,8 @@ void Meshing::apply_supports(const std::vector<Support>& supports){
             std::vector<bool> sup_pos = this->get_support_dof(s, this->elem_info);
             for(size_t j = 0; j < dof; ++j){
                 if(sup_pos[j]){
-                    curr->u_pos[j] = -1;
+                    const size_t p = curr->id*dof + j;
+                    this->node_positions[p] = -1;
                 }
             }
         }
@@ -459,9 +454,8 @@ void Meshing::generate_load_vector(const TopoDS_Shape& shape,
                     for(size_t i = 0; i < N; ++i){
                         for(size_t j = 0; j < dof; ++j){
                             auto n = e.parent->nodes[i];
-                            if(n->u_pos[j] >= 0){
-                                this->load_vector[n->u_pos[j]] += fe[i*dof+j];
-                            }
+                            const size_t p = n->id*dof + j;
+                            this->load_vector[p] += fe[i*dof+j];
                         }
                     }
                 }
@@ -530,9 +524,8 @@ void Meshing::generate_load_vector(const TopoDS_Shape& shape,
                     for(size_t i = 0; i < N; ++i){
                         for(size_t j = 0; j < dof; ++j){
                             const auto n = e.parent->nodes[i];
-                            if(n->u_pos[j] >= 0){
-                                this->load_vector[n->u_pos[j]] += fe[i*dof+j];
-                            }
+                            const size_t p = n->id*dof + j;
+                            this->load_vector[p] += fe[i*dof+j];
                         }
                     }
                 }
