@@ -197,7 +197,7 @@ void OrthotropicFlow::generate(){
     size_t it = 0;
     for(const auto& g:this->geoms){
         for(const auto& e:g->boundary_mesh){
-            const auto N = this->elem_mult_long[it]*e->parent->flow_1dof(thickness, e->nodes);
+            const Eigen::VectorXd N = this->elem_mult_long[it]*e->parent->flow_1dof(thickness, e->nodes);
 
             for(size_t i = 0; i < num_nodes; ++i){
                 const long id1 = id_pos_map.at(e->parent->nodes[i]->id);
@@ -235,7 +235,7 @@ void OrthotropicFlow::generate(){
     it = 0;
     for(const auto& g:this->geoms){
         for(const auto& e:g->boundary_mesh){
-            const auto N = this->elem_mult_rad[it]*e->parent->flow_1dof(thickness, e->nodes);
+            const Eigen::VectorXd N = this->elem_mult_rad[it]*e->parent->flow_1dof(thickness, e->nodes);
 
             for(size_t i = 0; i < num_nodes; ++i){
                 const long id1 = id_pos_map.at(e->parent->nodes[i]->id);

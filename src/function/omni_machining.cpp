@@ -135,10 +135,10 @@ double OmniMachining::calculate(const Optimizer* const op, const std::vector<dou
                                             0.0, std::sqrt(v[1]*v[1] + 1e-14), 0.0,
                                             0.0, 0.0, std::sqrt(v[2]*v[2] + 1e-14)};
 
-                const auto N = Hx*beta2*e->source_1dof(this->mesh->thickness);
-                const auto phi_e = (beta1*(1.0-Hx) + beta2*Hx)*e->absorption_1dof(this->mesh->thickness) +
-                                   L*L*e->diffusion_1dof(this->mesh->thickness, a) +
-                                   v_norm*L*e->advection_1dof(this->mesh->thickness, v).transpose();
+                const Eigen::VectorXd N = Hx*beta2*e->source_1dof(this->mesh->thickness);
+                const Eigen::MatrixXd phi_e = (beta1*(1.0-Hx) + beta2*Hx)*e->absorption_1dof(this->mesh->thickness) +
+                                              L*L*e->diffusion_1dof(this->mesh->thickness, a) +
+                                              v_norm*L*e->advection_1dof(this->mesh->thickness, v).transpose();
                 for(size_t i = 0; i < num_nodes; ++i){
                     const long id1 = *(id_it + i);
                     if(id1 < 0){
@@ -245,10 +245,10 @@ double OmniMachining::calculate_with_gradient(const Optimizer* const op, const s
                                             0.0, std::sqrt(v[1]*v[1] + 1e-14), 0.0,
                                             0.0, 0.0, std::sqrt(v[2]*v[2] + 1e-14)};
 
-                const auto N = Hx*beta2*e->source_1dof(this->mesh->thickness);
-                const auto phi_e = (beta1*(1.0-Hx) + beta2*Hx)*e->absorption_1dof(this->mesh->thickness) +
-                                   L*L*e->diffusion_1dof(this->mesh->thickness, a) +
-                                   v_norm*L*e->advection_1dof(this->mesh->thickness, v).transpose();
+                const Eigen::VectorXd N = Hx*beta2*e->source_1dof(this->mesh->thickness);
+                const Eigen::MatrixXd phi_e = (beta1*(1.0-Hx) + beta2*Hx)*e->absorption_1dof(this->mesh->thickness) +
+                                              L*L*e->diffusion_1dof(this->mesh->thickness, a) +
+                                              v_norm*L*e->advection_1dof(this->mesh->thickness, v).transpose();
                 for(size_t i = 0; i < num_nodes; ++i){
                     const long id1 = *(id_it + i);
                     if(id1 < 0){
@@ -350,8 +350,8 @@ double OmniMachining::calculate_with_gradient(const Optimizer* const op, const s
             const size_t num_den = g->number_of_densities_needed();
             for(const auto& e:g->mesh){
                 const double dHx = this->heaviside_grad(*x_it, BETA_RHO, HX_ETA);
-                const auto b_e = dHx*beta2*e->source_1dof(this->mesh->thickness);
-                const auto phi_e = ((beta1*(1.0-dHx)/10 + beta2*dHx)*e->absorption_1dof(this->mesh->thickness));
+                const Eigen::VectorXd  b_e = dHx*beta2*e->source_1dof(this->mesh->thickness);
+                const Eigen::MatrixXd phi_e = ((beta1*(1.0-dHx)/10 + beta2*dHx)*e->absorption_1dof(this->mesh->thickness));
                 *g_it = 0;
                 double psi_tmp = 0;
                 for(size_t i = 0; i < num_nodes; ++i){
