@@ -208,6 +208,7 @@ void InternalLoads::apply_load_3D(std::vector<double>& load_vector) const{
         }
     }
     // Correct force values if necessary
+    logger::quick_log("Calculated:", FF[0], FF[1], FF[2]);
     FF = this->Lek_basis.transpose()*this->rot3D*FF;
     FF[0] -= this->F[0];
     FF[1] -= this->F[1];
@@ -236,8 +237,8 @@ void InternalLoads::apply_load_3D(std::vector<double>& load_vector) const{
                 }
             }
         }
+        logger::quick_log("Corrected:", FF[0], FF[1], FF[2]);
     }
-    logger::quick_log(FF[0], FF[1], FF[2]);
 }
 
 class PointSort{
