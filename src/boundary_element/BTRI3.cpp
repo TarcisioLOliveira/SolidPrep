@@ -280,8 +280,8 @@ Eigen::MatrixXd BTRI3::int_grad_F_t2_t1(const Eigen::MatrixXd& B3, const gp_Pnt&
         const double dy2 = dy*dy;
         const auto dF = this->dF_mat_2dof();
         Eigen::Matrix<double, 2, 4> T
-            {{dy2, dx2, dx2, dy2},
-             {dy2, dx2, dx2, dy2}};
+            {{dy2, dx2,   0,   0},
+             {  0,   0, dx2, dy2}};
         result += it->w*dF.transpose()*B3*T;
     }
     return delta*result;
@@ -300,8 +300,8 @@ Eigen::MatrixXd BTRI3::int_grad_phi_t2_t1(const Eigen::MatrixXd& B2, const gp_Pn
         const double dy2 = dy*dy;
         const auto dphi = this->dN_mat_1dof();
         Eigen::Matrix<double, 2, 4> T
-            {{dy2, dx2, dx2, dy2},
-             {dy2, dx2, dx2, dy2}};
+            {{dy2, dx2,   0,   0},
+             {  0,   0, dx2, dy2}};
         result += it->w*dphi.transpose()*B2*T;
     }
     return delta*result;
