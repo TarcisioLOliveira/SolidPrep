@@ -29,7 +29,7 @@ namespace function{
 
 class GlobalStressHeaviside : public DensityBasedFunction{
     public:
-    GlobalStressHeaviside(const Meshing* const mesh, FiniteElement* fem, double max_stress, double C, double pc, double pt, double psiK, double psiS);
+    GlobalStressHeaviside(const Meshing* const mesh, SolverManager* fem, double max_stress, double C, double pc, double pt, double psiK, double psiS);
 
     virtual ~GlobalStressHeaviside() = default;
 
@@ -41,7 +41,7 @@ class GlobalStressHeaviside : public DensityBasedFunction{
 
     private:
     const Meshing* const mesh;
-    FiniteElement* fem;
+    SolverManager* fem;
     const double max_stress;
     const double C;
     const double pc;

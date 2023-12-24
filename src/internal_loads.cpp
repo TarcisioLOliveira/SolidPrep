@@ -75,7 +75,7 @@ void InternalLoads::calculate_curvature(std::vector<BoundaryElement>& boundary_e
 
 }
 
-void InternalLoads::apply_load_2D(std::vector<double>& load_vector) const{
+void InternalLoads::apply_load_2D(const std::vector<long>& node_positions, std::vector<double>& load_vector) const{
     auto is_between_points = [](gp_Pnt p1, gp_Pnt p2, gp_Pnt p)->bool{
         gp_Mat M(1, p1.X(), p1.Y(), 1, p2.X(), p2.Y(), 1, p.X(), p.Y());
         bool in_line = std::abs(M.Determinant()) < Precision::Confusion();
@@ -151,16 +151,17 @@ void InternalLoads::apply_load_2D(std::vector<double>& load_vector) const{
             //}
             for(size_t i = 0; i < nodes_per_elem; ++i){
                 for(size_t j = 0; j < dof; ++j){
-                    auto n = e->parent->nodes[i];
-                    if(n->u_pos[j] >= 0){
-                        load_vector[n->u_pos[j]] += Rf[i*dof+j];
+                    auto& n = e->parent->nodes[i];
+                    const auto p = node_positions[n->u_pos[j]];
+                    if(p >= 0){
+                        load_vector[p] += Rf[i*dof+j];
                     }
                 }
             }
         }
     }
 }
-void InternalLoads::apply_load_3D(std::vector<double>& load_vector) const{
+void InternalLoads::apply_load_3D(const std::vector<long>& node_positions, std::vector<double>& load_vector) const{
     const size_t bound_nodes_per_elem = this->elem_info->get_boundary_nodes_per_element();
     const size_t nodes_per_elem = this->elem_info->get_nodes_per_element();
     const size_t dof = this->elem_info->get_dof_per_node();
@@ -201,8 +202,9 @@ void InternalLoads::apply_load_3D(std::vector<double>& load_vector) const{
         for(size_t i = 0; i < nodes_per_elem; ++i){
             for(size_t j = 0; j < dof; ++j){
                 const auto n = e->parent->nodes[i];
-                if(n->u_pos[j] >= 0){
-                    load_vector[n->u_pos[j]] += Rf[i*dof+j];
+                const auto p = node_positions[n->u_pos[j]];
+                if(p >= 0){
+                    load_vector[p] += Rf[i*dof+j];
                 }
             }
         }
@@ -232,8 +234,11 @@ void InternalLoads::apply_load_3D(std::vector<double>& load_vector) const{
         for(const auto& n:nodes){
             for(size_t j = 0; j < dof; ++j){
                 if(n->u_pos[j] >= 0){
-                    load_vector[n->u_pos[j]] += dF[j];
-                    FF[j] += load_vector[n->u_pos[j]];
+                    const auto p = node_positions[n->u_pos[j]];
+                    if(p >= 0){
+                        load_vector[p] += dF[j];
+                        FF[j] += load_vector[p];
+                    }
                 }
             }
         }
@@ -288,6 +293,7 @@ void InternalLoads::generate_mesh(const std::vector<BoundaryElement>& boundary_e
                 const auto& n = b.nodes[j];
                 gp_Pnt p = utils::change_point(n->point, this->rot3D.transpose());
                 std::unique_ptr<MeshNode> node(std::make_unique<MeshNode>(p, 0, 1));
+                node->u_pos[0] = 0;
                 nodes.insert(std::move(node));
             }
         }
@@ -377,8 +383,9 @@ void InternalLoads::generate_mesh(const std::vector<BoundaryElement>& boundary_e
         this->boundary_nodes[i]->id = id;
         ++id;
     }
-    nodes.clear();
     this->phi_size = npos;
+    logger::quick_log("PHI SIZE", line_nodes.size(), boundary_nodes.size(),  phi_size, npos, id);
+    nodes.clear();
 }
 
 class ElementEdge{

@@ -77,13 +77,29 @@ void Meshing::generate_elements(const TopoDS_Shape& shape,
 void Meshing::apply_boundary_conditions(const std::vector<Force>& forces, 
                                         const std::vector<Support>& supports,
                                         std::vector<Spring>& springs,
-                                        std::vector<InternalLoads>& internal_loads){
+                                        std::vector<InternalLoads>& internal_loads,
+                                        std::vector<SubProblem>& sub_problems){
 
     logger::quick_log("Applying boundary conditions...");
     const size_t dof = this->elem_info->get_dof_per_node();
     const size_t vec_size = this->node_list.size()*dof;
+    this->max_dofs = vec_size;
 
-    this->node_positions.resize(vec_size);
+    this->sub_problems = &sub_problems;
+
+    this->node_positions.clear();
+    this->node_positions.resize(sub_problems.size());
+    this->dofs_per_subproblem.clear();
+    this->dofs_per_subproblem.resize(sub_problems.size());
+    this->load_vector.clear();
+    this->load_vector.resize(sub_problems.size());
+    for(auto& v:this->node_positions){
+        v.resize(vec_size, 0);
+    }
+    this->global_load_vector.resize(vec_size);
+    // TODO: revert back to old way of removing nodes?
+    // Factorization is faster and uses less memory, but it would require
+    // passing `node_positions` and handle used instances of node->u_pos
 
     // Number positioning
     #pragma omp parallel for
@@ -91,20 +107,32 @@ void Meshing::apply_boundary_conditions(const std::vector<Force>& forces,
         auto& n = this->node_list[i];
         for(size_t j = 0; j < dof; ++j){
             n->u_pos[j] = n->id*dof + j;
-            this->node_positions[n->id*dof + j] = n->id*dof + j;
+            for(auto& v:this->node_positions){
+                v[n->id*dof + j] = 0;//n->id*dof + j;
+            }
         }
     }
 
     if(supports.size() > 0){
         logger::quick_log("supports");
-        this->apply_supports(supports);
+        this->apply_supports();
     }
 
-    this->load_vector.clear();
-    this->load_vector.resize(vec_size, 0);
+    for(size_t it = 0; it < this->node_positions.size(); ++it){
+        auto& v = this->node_positions[it];
+        long current = 0;
+        for(auto& i:v){
+            if(i >= 0){
+                i = current;
+                ++current;
+            }
+        }
+        this->dofs_per_subproblem[it] = current;
+        this->load_vector[it].resize(current, 0);
+    }
 
     logger::quick_log("loads");
-    this->generate_load_vector(this->orig_shape, forces);
+    this->generate_load_vector(this->orig_shape);
 
     if(springs.size() > 0){
         logger::quick_log("springs");
@@ -117,6 +145,16 @@ void Meshing::apply_boundary_conditions(const std::vector<Force>& forces,
         this->apply_internal_loads(internal_loads);
     }
     this->internal_loads = &internal_loads;
+
+    for(size_t i = 0; i < this->node_positions.size(); ++i){
+        const auto& n = this->node_positions[i];
+        const auto& l = this->load_vector[i];
+        for(size_t j = 0; j < n.size(); ++j){
+            if(n[j] >= 0){
+                this->global_load_vector[j] += l[n[j]];
+            }
+        }
+    }
 
     logger::quick_log("Done.");
 }
@@ -211,60 +249,48 @@ void Meshing::populate_boundary_elements(const std::vector<ElementShape>& bounda
     }
 }
 
-void Meshing::apply_supports(const std::vector<Support>& supports){
-    if(supports.size() == 0){
-        return;
-    }
+void Meshing::apply_supports(){
     const size_t dof = this->elem_info->get_dof_per_node();
 
-    std::vector<Support> bound_s, dom_s;
-    bound_s.reserve(supports.size());
-    dom_s.reserve(supports.size());
-    for(auto& s : supports){
-        if(s.S.get_area() > 0){
-            bound_s.push_back(s);
-        } else {
-            dom_s.push_back(s);
-        }
-    }
+    for(size_t spid = 0; spid < this->sub_problems->size(); ++spid){
+        const auto& p = this->sub_problems->at(spid);
+        auto& node_pos = this->node_positions[spid];
+        for(auto& s:p.supports){
+            if(s->S.get_area() > 0){
+                #pragma omp parallel for
+                for(size_t i = 0; i < this->boundary_node_list.size(); ++i){
+                    const auto& n = this->boundary_node_list[i];
 
-    if(bound_s.size() > 0){
-        for(auto& s : bound_s){
-            #pragma omp parallel for
-            for(size_t i = 0; i < this->boundary_node_list.size(); ++i){
-                const auto& n = this->boundary_node_list[i];
-
-                if(s.S.is_inside(n->point)){
-                    std::vector<bool> sup_pos = this->get_support_dof(s, this->elem_info);
-                    for(size_t j = 0; j < dof; ++j){
-                        if(sup_pos[j]){
-                            const size_t p = n->id*dof + j;
-                            this->node_positions[p] = -1;
+                    if(s->S.is_inside(n->point)){
+                        std::vector<bool> sup_pos = this->get_support_dof(*s, this->elem_info);
+                        for(size_t j = 0; j < dof; ++j){
+                            if(sup_pos[j]){
+                                const size_t p = n->id*dof + j;
+                                node_pos[p] = -1;
+                            }
                         }
                     }
                 }
-            }
-        }
-    } else if(dom_s.size() > 0){
-        for(auto& s : dom_s){
-            const gp_Pnt c = s.S.get_centroid();
-            const MeshNode* curr = nullptr;
-            double dist = 1e100;
-            for(size_t i = 0; i < this->node_list.size(); ++i){
-                const auto& n = this->node_list[i];
+            } else {
+                const gp_Pnt c = s->S.get_centroid();
+                const MeshNode* curr = nullptr;
+                double dist = 1e100;
+                for(size_t i = 0; i < this->node_list.size(); ++i){
+                    const auto& n = this->node_list[i];
 
-                double d = c.Distance(n->point);
-                if(d < dist){
-                    dist = d;
-                    curr = n.get();
+                    double d = c.Distance(n->point);
+                    if(d < dist){
+                        dist = d;
+                        curr = n.get();
+                    }
                 }
-            }
-            logger::quick_log(curr->point.X(), curr->point.Y(), curr->point.Z());
-            std::vector<bool> sup_pos = this->get_support_dof(s, this->elem_info);
-            for(size_t j = 0; j < dof; ++j){
-                if(sup_pos[j]){
-                    const size_t p = curr->id*dof + j;
-                    this->node_positions[p] = -1;
+                logger::quick_log(curr->point.X(), curr->point.Y(), curr->point.Z());
+                std::vector<bool> sup_pos = this->get_support_dof(*s, this->elem_info);
+                for(size_t j = 0; j < dof; ++j){
+                    if(sup_pos[j]){
+                        const size_t p = curr->id*dof + j;
+                        node_pos[p] = -1;
+                    }
                 }
             }
         }
@@ -282,16 +308,22 @@ void Meshing::apply_internal_loads(std::vector<InternalLoads>& loads){
     for(auto& s:loads){
         s.calculate_curvature(this->boundary_elements);
     }
-    if(problem_type == utils::PROBLEM_TYPE_2D){
-        for(auto& s:loads){
-            s.apply_load_2D(this->load_vector);
-            s.clear_curvature_data();
+    for(size_t spid = 0; spid < this->sub_problems->size(); ++spid){
+        const auto& p = this->sub_problems->at(spid);
+        const auto& n = this->node_positions[spid];
+        auto& load_vec = this->load_vector[spid];
+        if(problem_type == utils::PROBLEM_TYPE_2D){
+            for(auto& s:p.internal_loads){
+                s->apply_load_2D(n, load_vec);
+            }
+        } else if(problem_type == utils::PROBLEM_TYPE_3D){
+            for(auto& s:p.internal_loads){
+                s->apply_load_3D(n, load_vec);
+            }
         }
-    } else if(problem_type == utils::PROBLEM_TYPE_3D){
-        for(auto& s:loads){
-            s.apply_load_3D(this->load_vector);
-            s.clear_curvature_data();
-        }
+    }
+    for(auto& s:loads){
+        s.clear_curvature_data();
     }
 }
 
@@ -363,8 +395,7 @@ void Meshing::distribute_boundary_elements(){
     }
 }
 
-void Meshing::generate_load_vector(const TopoDS_Shape& shape,
-                                   const std::vector<Force>& forces){
+void Meshing::generate_load_vector(const TopoDS_Shape& shape){
     const size_t N = this->elem_info->get_nodes_per_element();
     const size_t Nb = this->elem_info->get_boundary_nodes_per_element();
     size_t dof = this->elem_info->get_dof_per_node();
@@ -398,69 +429,73 @@ void Meshing::generate_load_vector(const TopoDS_Shape& shape,
          * 5. Otherwise, just proceed to the next element
          * 6. Do so for every load applied
          */
-        for(auto& f : forces){
-            double norm = f.vec.Magnitude()/(thickness*f.S.get_dimension());
-            gp_Dir dir(f.vec);
+        for(size_t spid = 0; spid < this->sub_problems->size(); ++spid){
+            const auto& p = this->sub_problems->at(spid);
+            auto& load_vec = this->load_vector[spid];
+            for(auto& f : p.forces){
+                double norm = f->vec.Magnitude()/(thickness*f->S.get_dimension());
+                gp_Dir dir(f->vec);
 
-            if(this->is_strictly_inside2D(f.S.get_centroid(), shape)){
-                norm = norm/2;
-            }
-
-            gp_Dir Snormal = f.S.get_normal();
-            double Ssize = f.S.get_dimension();
-            gp_Pnt center = f.S.get_centroid();
-            gp_Dir line_dir = Snormal.Rotated(gp_Ax1(center, gp_Dir(0,0,1)), M_PI/2);
-            gp_Pnt p1 = center.Translated( 0.5*Ssize*line_dir);
-            gp_Pnt p2 = center.Translated(-0.5*Ssize*line_dir);
-
-            TopoDS_Edge line = BRepBuilderAPI_MakeEdge(p1, p2);
-
-            for(const auto& e : this->boundary_elements){
-                std::vector<gp_Pnt> list;
-                list.reserve(Nb);
-                for(size_t i = 0; i < Nb; ++i){
-                    auto n = e.nodes[i];
-                    if(is_between_points(p1, p2, n->point)){
-                        list.push_back(n->point);
-                    }
+                if(this->is_strictly_inside2D(f->S.get_centroid(), shape)){
+                    norm = norm/2;
                 }
-                std::vector<double> fe;
-                if(list.size() >= 2){
-                    fe = e.parent->get_f(thickness, dir, norm, list);
-                } else if(list.size() > 1) {
+
+                gp_Dir Snormal = f->S.get_normal();
+                double Ssize = f->S.get_dimension();
+                gp_Pnt center = f->S.get_centroid();
+                gp_Dir line_dir = Snormal.Rotated(gp_Ax1(center, gp_Dir(0,0,1)), M_PI/2);
+                gp_Pnt p1 = center.Translated( 0.5*Ssize*line_dir);
+                gp_Pnt p2 = center.Translated(-0.5*Ssize*line_dir);
+
+                TopoDS_Edge line = BRepBuilderAPI_MakeEdge(p1, p2);
+
+                for(const auto& e : this->boundary_elements){
+                    std::vector<gp_Pnt> list;
+                    list.reserve(Nb);
                     for(size_t i = 0; i < Nb; ++i){
-                        size_t j = (i+1)%Nb;
-                        auto n1 = e.nodes[i]->point;
-                        auto n2 = e.nodes[j]->point;
-                        if(p1.IsEqual(n1, Precision::Confusion()) || p1.IsEqual(n2, Precision::Confusion()) ||
-                           p2.IsEqual(n1, Precision::Confusion()) || p2.IsEqual(n2, Precision::Confusion())){
-                            continue;
-                        }
-                        if(is_between_points(n1, n2, p1)){
-                            list.push_back(p1);
-                            break;
-                        } else if(is_between_points(n1, n2, p2)){
-                            list.push_back(p2);
-                            break;
+                        auto n = e.nodes[i];
+                        if(is_between_points(p1, p2, n->point)){
+                            list.push_back(n->point);
                         }
                     }
-                    fe = e.parent->get_f(thickness, dir, norm, list);
+                    std::vector<double> fe;
+                    if(list.size() >= 2){
+                        fe = e.parent->get_f(thickness, dir, norm, list);
+                    } else if(list.size() > 1) {
+                        for(size_t i = 0; i < Nb; ++i){
+                            size_t j = (i+1)%Nb;
+                            auto n1 = e.nodes[i]->point;
+                            auto n2 = e.nodes[j]->point;
+                            if(p1.IsEqual(n1, Precision::Confusion()) || p1.IsEqual(n2, Precision::Confusion()) ||
+                               p2.IsEqual(n1, Precision::Confusion()) || p2.IsEqual(n2, Precision::Confusion())){
+                                continue;
+                            }
+                            if(is_between_points(n1, n2, p1)){
+                                list.push_back(p1);
+                                break;
+                            } else if(is_between_points(n1, n2, p2)){
+                                list.push_back(p2);
+                                break;
+                            }
+                        }
+                        fe = e.parent->get_f(thickness, dir, norm, list);
+                    }
+                    if(fe.size() > 0){
+                        logger::quick_log(fe);
+                        for(auto& ff:fe){
+                            F += ff;
+                        }
+                        for(size_t i = 0; i < N; ++i){
+                            for(size_t j = 0; j < dof; ++j){
+                                auto n = e.parent->nodes[i];
+                                const size_t p = n->id*dof + j;
+                                load_vec[p] += fe[i*dof+j];
+                            }
+                        }
+                    }
                 }
-                if(fe.size() > 0){
-                    logger::quick_log(fe);
-                    for(auto& ff:fe){
-                        F += ff;
-                    }
-                    for(size_t i = 0; i < N; ++i){
-                        for(size_t j = 0; j < dof; ++j){
-                            auto n = e.parent->nodes[i];
-                            const size_t p = n->id*dof + j;
-                            this->load_vector[p] += fe[i*dof+j];
-                        }
-                    }
-                }
+                logger::quick_log(F);
             }
-            logger::quick_log(F);
         }
     } else if(this->elem_info->get_problem_type() == utils::PROBLEM_TYPE_3D){
         const auto A_tri = [](const MeshNode** const nodes)->double{
@@ -479,61 +514,64 @@ void Meshing::generate_load_vector(const TopoDS_Shape& shape,
             return 0.5*(v1.Crossed(v2).Magnitude() + v3.Crossed(v4).Magnitude());
         };
         double F = 0;
-        for(auto& f : forces){
-            if(f.vec.Magnitude() < Precision::Confusion()){
-                continue;
-            }
+        for(size_t spid = 0; spid < this->sub_problems->size(); ++spid){
+            const auto& p = this->sub_problems->at(spid);
+            auto& load_vec = this->load_vector[spid];
+            for(auto& f : p.forces){
+                if(f->vec.Magnitude() < Precision::Confusion()){
+                    continue;
+                }
 
-            std::vector<bool> apply_force(this->boundary_elements.size());
-            double A = 0;
-            if(this->elem_info->get_shape_type() == Element::Shape::TRI){
-                #pragma omp parallel for reduction(+:A)
-                for(size_t i = 0; i < apply_force.size(); ++i){
-                    const auto& e = this->boundary_elements[i];
-                    apply_force[i] = f.S.is_inside(e.get_centroid(Nb));
-                    if(apply_force[i]){
-                        A += A_tri(e.nodes);
+                std::vector<bool> apply_force(this->boundary_elements.size());
+                double A = 0;
+                if(this->elem_info->get_shape_type() == Element::Shape::TRI){
+                    #pragma omp parallel for reduction(+:A)
+                    for(size_t i = 0; i < apply_force.size(); ++i){
+                        const auto& e = this->boundary_elements[i];
+                        apply_force[i] = f->S.is_inside(e.get_centroid(Nb));
+                        if(apply_force[i]){
+                            A += A_tri(e.nodes);
+                        }
+                    }
+                } else if(this->elem_info->get_shape_type() == Element::Shape::QUAD){
+                    #pragma omp parallel for reduction(+:A)
+                    for(size_t i = 0; i < apply_force.size(); ++i){
+                        const auto& e = this->boundary_elements[i];
+                        apply_force[i] = f->S.is_inside(e.get_centroid(Nb));
+                        if(apply_force[i]){
+                            A += A_quad(e.nodes);
+                        }
                     }
                 }
-            } else if(this->elem_info->get_shape_type() == Element::Shape::QUAD){
-                #pragma omp parallel for reduction(+:A)
+
+                double norm = f->vec.Magnitude()/A;
+                gp_Dir dir(f->vec);
+
                 for(size_t i = 0; i < apply_force.size(); ++i){
-                    const auto& e = this->boundary_elements[i];
-                    apply_force[i] = f.S.is_inside(e.get_centroid(Nb));
                     if(apply_force[i]){
-                        A += A_quad(e.nodes);
-                    }
-                }
-            }
-
-            double norm = f.vec.Magnitude()/A;
-            gp_Dir dir(f.vec);
-
-            for(size_t i = 0; i < apply_force.size(); ++i){
-                if(apply_force[i]){
-                    const auto& e = this->boundary_elements[i];
-                    std::vector<gp_Pnt> points(Nb);
-                    for(size_t i = 0; i < Nb; ++i){
-                        points[i] = e.nodes[i]->point;
-                    }
-                    const auto fe = e.parent->get_f(1, dir, norm, points);
-                    logger::quick_log(fe);
-                    for(auto& ff:fe){
-                        F += ff;
-                    }
-                    for(size_t i = 0; i < N; ++i){
-                        for(size_t j = 0; j < dof; ++j){
-                            const auto n = e.parent->nodes[i];
-                            const size_t p = n->id*dof + j;
-                            this->load_vector[p] += fe[i*dof+j];
+                        const auto& e = this->boundary_elements[i];
+                        std::vector<gp_Pnt> points(Nb);
+                        for(size_t i = 0; i < Nb; ++i){
+                            points[i] = e.nodes[i]->point;
+                        }
+                        const auto fe = e.parent->get_f(1, dir, norm, points);
+                        logger::quick_log(fe);
+                        for(auto& ff:fe){
+                            F += ff;
+                        }
+                        for(size_t i = 0; i < N; ++i){
+                            for(size_t j = 0; j < dof; ++j){
+                                const auto n = e.parent->nodes[i];
+                                const size_t p = n->id*dof + j;
+                                load_vec[p] += fe[i*dof+j];
+                            }
                         }
                     }
                 }
             }
+            logger::quick_log(F);
         }
-        logger::quick_log(F);
     }
-
 }
 
 void Meshing::prepare_for_FEM(const TopoDS_Shape& shape,
@@ -685,7 +723,7 @@ void Meshing::prepare_for_FEM(const TopoDS_Shape& shape,
                         for(size_t j = 0; j < dof; ++j){
                             auto n = e->nodes[i];
                             if(n->u_pos[j] >= 0){
-                                this->load_vector[n->u_pos[j]] += fe[i*dof+j];
+                                this->load_vector[0][n->u_pos[j]] += fe[i*dof+j];
                             }
                         }
                     }
@@ -714,7 +752,7 @@ void Meshing::prepare_for_FEM(const TopoDS_Shape& shape,
                         for(size_t j = 0; j < dof; ++j){
                             auto n = e->nodes[i];
                             if(n->u_pos[j] >= 0){
-                                this->load_vector[n->u_pos[j]] += fe[i*dof+j];
+                                this->load_vector[0][n->u_pos[j]] += fe[i*dof+j];
                             }
                         }
                     }

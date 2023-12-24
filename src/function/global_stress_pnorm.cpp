@@ -22,10 +22,11 @@
 #include "logger.hpp"
 #include <algorithm>
 #include <mpich-x86_64/mpi.h>
+#include <vector>
 
 namespace function{
 
-GlobalStressPnorm::GlobalStressPnorm(const Meshing* const mesh, FiniteElement* fem, double pc, double P, double pt, double psiK, double psiS):
+GlobalStressPnorm::GlobalStressPnorm(const Meshing* const mesh, SolverManager* fem, double pc, double P, double pt, double psiK, double psiS):
     mesh(mesh), fem(fem), pc(pc), P(P), pt(pt), psiK(psiK), psiS(psiS){}
 
 double GlobalStressPnorm::calculate(const Optimizer* const op, const std::vector<double>& u, const std::vector<double>& x){
@@ -64,16 +65,19 @@ double GlobalStressPnorm::calculate_with_gradient(const Optimizer* const op, con
     int mpi_id = 0;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi_id);
     // Calculating stresses
-    std::vector<double> fl(u.size(), 0);
-
+    std::vector<std::vector<double>> fl(this->mesh->sub_problems->size());
     auto grad_V = op->get_volumes();
-    //auto stresses = op->get_stresses();
     std::vector<double> stresses(grad_V.size());
     auto s_it = stresses.begin();
     auto x_it0 = x.begin();
     for(const auto& g:this->mesh->geometries){
         g->get_stresses(u, 0.0, this->psiS, x_it0, s_it);
     }
+    for(size_t i = 0; i < fl.size(); ++i){
+        fl[i].resize(mesh->max_dofs);
+    }
+
+    //auto stresses = op->get_stresses();
 
     // Calculating global stress
     double Spn = 0;
@@ -82,9 +86,9 @@ double GlobalStressPnorm::calculate_with_gradient(const Optimizer* const op, con
     double Sg = 0;
 
     const size_t s_size = this->mesh->elem_info->get_D_dimension();
-    auto stress_it = stresses.cbegin();
     auto x_it = x.cbegin();
     auto v_it = grad_V.cbegin();
+    auto stress_it = stresses.begin();
     if(mpi_id == 0){
         for(const auto& g:this->mesh->geometries){
             if(g->do_topopt){
@@ -100,8 +104,11 @@ double GlobalStressPnorm::calculate_with_gradient(const Optimizer* const op, con
                             Smax = Se;
                         }
                         const double v = *v_it;
-                        e->get_virtual_load(D, v*std::pow(*x_it, pt*P)*std::pow(S, P-2), c, u, fl);
                         Spn += v*std::pow(Se, P);
+                        for(size_t i = 0; i < fl.size(); ++i){
+                            const auto& ui = fem->sub_u[i];
+                            e->get_virtual_load(D, v*std::pow(*x_it, pt*P)*std::pow(S, P-2), c, ui, fl[i]);
+                        }
 
                         x_it += num_den;
                         ++v_it;
@@ -116,9 +123,11 @@ double GlobalStressPnorm::calculate_with_gradient(const Optimizer* const op, con
                             Smax = Se;
                         }
                         const double v = *v_it;
-                        e->get_virtual_load(D, v*std::pow(Se, P-2), c, u, fl);
                         Spn += v*std::pow(Se, P);
-
+                        for(size_t i = 0; i < fl.size(); ++i){
+                            const auto& ui = fem->sub_u[i];
+                            e->get_virtual_load(D, v*std::pow(Se, P-2), c, ui, fl[i]);
+                        }
                         x_it += num_den;
                         ++v_it;
                         ++stress_it;
@@ -128,14 +137,16 @@ double GlobalStressPnorm::calculate_with_gradient(const Optimizer* const op, con
                 for(const auto& e:g->mesh){
                     const auto c = e->get_centroid();
                     const auto D = g->materials.get_D(e.get(), c);
-                    const double S = *stress_it;
-                    const double Se = S;
+                    const double Se = *stress_it;
                     if(Se > Smax){
                         Smax = Se;
                     }
                     const double v = *v_it;
-                    e->get_virtual_load(D, v*std::pow(Se, P-2), c, u, fl);
                     Spn += v*std::pow(Se, P);
+                    for(size_t i = 0; i < fl.size(); ++i){
+                        const auto& ui = fem->sub_u[i];
+                        e->get_virtual_load(D, v*std::pow(Se, P-2), c, ui, fl[i]);
+                    }
 
                     ++v_it;
                     ++stress_it;
@@ -159,7 +170,7 @@ double GlobalStressPnorm::calculate_with_gradient(const Optimizer* const op, con
 
         x_it = x.cbegin();
         v_it = grad_V.cbegin();
-        stress_it = stresses.cbegin();
+        stress_it = stresses.begin();
         auto grad_it = grad.begin();
         for(const auto& g:this->mesh->geometries){
             const size_t num_den = g->number_of_densities_needed();

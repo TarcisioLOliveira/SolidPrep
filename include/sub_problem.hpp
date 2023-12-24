@@ -1,5 +1,5 @@
 /*
- *   Copyright (C) 2021 Tarcísio Ladeia de Oliveira.
+ *   Copyright (C) 2023 Tarcísio Ladeia de Oliveira.
  *
  *   This file is part of SolidPrep
  *
@@ -18,22 +18,21 @@
  *
  */
 
-#ifndef DIRECT_SOLVER_HPP
-#define DIRECT_SOLVER_HPP
 
-#include "finite_element.hpp"
-#include "global_stiffness_matrix/lapack_dense_symmetric_banded.hpp"
+#ifndef SUB_PROBLEM_HPP
+#define SUB_PROBLEM_HPP
 
-namespace finite_element{
+#include "support.hpp"
+#include "force.hpp"
+#include "spring.hpp"
+#include "internal_loads.hpp"
 
-class DirectSolver : public FiniteElement{
+class SubProblem{
     public:
-    virtual std::vector<double> calculate_displacements(const Meshing* const mesh, const std::vector<long>& node_positions, std::vector<double> load, const std::vector<double>& density = std::vector<double>(), double pc = 3, double psi = 0.1) override;
-
-    private:
-    global_stiffness_matrix::LAPACKDenseSymmetricBanded gsm;
+    std::vector<Support*> supports;
+    std::vector<Force*> forces;
+    std::vector<Spring*> springs;
+    std::vector<InternalLoads*> internal_loads;
 };
-
-}
 
 #endif

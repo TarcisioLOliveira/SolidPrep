@@ -25,7 +25,7 @@
 
 namespace function{
 
-Mechanostat::Mechanostat(const Meshing* const mesh, FiniteElement* fem, double pc, double psiK, double beta, Range traction, Range compression, Range shear, utils::ProblemType type):
+Mechanostat::Mechanostat(const Meshing* const mesh, SolverManager* fem, double pc, double psiK, double beta, Range traction, Range compression, Range shear, utils::ProblemType type):
     mesh(mesh), fem(fem), beta(beta), pc(pc), psiK(psiK),
     t(traction), c(compression), s(shear),
     K_e1({0.5*std::pow((t[0]+c[0])/(2*t[0]*c[0]), 2), 
@@ -39,12 +39,18 @@ Mechanostat::Mechanostat(const Meshing* const mesh, FiniteElement* fem, double p
 }
 
 double Mechanostat::calculate(const Optimizer* const op, const std::vector<double>& u, const std::vector<double>& x){
-
+    (void)op;
+    (void)u;
+    (void)x;
 }
 double Mechanostat::calculate_with_gradient(const Optimizer* const op, const std::vector<double>& u, const std::vector<double>& x, std::vector<double>& grad){
+    (void)op;
     int mpi_id = 0;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi_id);
-    std::vector<double> fl(u.size(), 0);
+    std::vector<std::vector<double>> fl(this->mesh->sub_problems->size());
+    for(size_t i = 0; i < fl.size(); ++i){
+        fl[i].resize(mesh->max_dofs);
+    }
 
     double result = 0;
 
@@ -59,7 +65,6 @@ double Mechanostat::calculate_with_gradient(const Optimizer* const op, const std
             const size_t num_den = g->number_of_densities_needed();
             for(const auto& e:g->mesh){
                 const auto c = e->get_centroid();
-                const auto eps_vec = e->get_strain_vector(c, u);
 
                 double rho = 1.0;
                 if(g->do_topopt && g->with_void){
@@ -69,57 +74,61 @@ double Mechanostat::calculate_with_gradient(const Optimizer* const op, const std
                 const auto B = e->get_B(c);
 
                 double H_e = 0;
-                if(this->problem_type == utils::PROBLEM_TYPE_2D){
-                    const StrainVector2D eps = Eigen::Map<const StrainVector2D>(eps_vec.data(), 3);
-                    const double eps_lhs1 = rho*this->LHS_2D(0, eps);
-                    const double eps_lhs2 = rho*this->LHS_2D(1, eps);
-                    const auto deps_lhs1 = rho*this->dLHS_2D(0, eps);
-                    const auto deps_lhs2 = rho*this->dLHS_2D(1, eps);
-                    const double H1 = Hm(eps_lhs1);
-                    const double H2 = Hp(eps_lhs2);
-                    const double Hr = H1*eps_lhs1 + H2*eps_lhs2;
-                    const auto dH = (dHm(eps_lhs1)*eps_lhs1 + H1)*deps_lhs1 +
-                                    (dHp(eps_lhs2)*eps_lhs2 + H2)*deps_lhs2;
+                for(size_t it = 0; it < fl.size(); ++it){
+                    const auto& ui = fem->sub_u[it];
+                    const auto eps_vec = e->get_strain_vector(c, ui);
+                    if(this->problem_type == utils::PROBLEM_TYPE_2D){
+                        const StrainVector2D eps = Eigen::Map<const StrainVector2D>(eps_vec.data(), 3);
+                        const double eps_lhs1 = rho*this->LHS_2D(0, eps);
+                        const double eps_lhs2 = rho*this->LHS_2D(1, eps);
+                        const auto deps_lhs1 = rho*this->dLHS_2D(0, eps);
+                        const auto deps_lhs2 = rho*this->dLHS_2D(1, eps);
+                        const double H1 = Hm(eps_lhs1);
+                        const double H2 = Hp(eps_lhs2);
+                        const double Hr = H1*eps_lhs1 + H2*eps_lhs2;
+                        const auto dH = (dHm(eps_lhs1)*eps_lhs1 + H1)*deps_lhs1 +
+                                        (dHp(eps_lhs2)*eps_lhs2 + H2)*deps_lhs2;
 
-                    H_e = Hr;
-                    std::vector<double> dHB(k_size, 0);
-                    for(size_t i = 0; i < s_size; ++i){
-                        for(size_t j = 0; j < k_size; ++j){
-                            dHB[i] += dH[i]*B[i*k_size + j];
-                        }
-                    }
-                    for(size_t i = 0; i < num_nodes; ++i){
-                        for(size_t j = 0; j < dof; ++j){
-                            const long pos = e->nodes[i]->u_pos[j];
-                            if(pos > -1){
-                                fl[pos] += dHB[i*dof + j];
+                        H_e = Hr;
+                        std::vector<double> dHB(k_size, 0);
+                        for(size_t i = 0; i < s_size; ++i){
+                            for(size_t j = 0; j < k_size; ++j){
+                                dHB[i] += dH[i]*B[i*k_size + j];
                             }
                         }
-                    }
-                } else if(this->problem_type == utils::PROBLEM_TYPE_3D){
-                    const StrainVector3D eps = Eigen::Map<const StrainVector3D>(eps_vec.data(), 6);
-                    const double eps_lhs1 = rho*this->LHS_3D(0, eps);
-                    const double eps_lhs2 = rho*this->LHS_3D(1, eps);
-                    const auto deps_lhs1 = rho*this->dLHS_3D(0, eps);
-                    const auto deps_lhs2 = rho*this->dLHS_3D(1, eps);
-                    const double H1 = Hm(eps_lhs1);
-                    const double H2 = Hp(eps_lhs2);
-                    const double Hr = H1*eps_lhs1 + H2*eps_lhs2;
-                    const auto dH = (dHm(eps_lhs1)*eps_lhs1 + H1)*deps_lhs1 +
-                                    (dHp(eps_lhs2)*eps_lhs2 + H2)*deps_lhs2;
-
-                    H_e = Hr;
-                    std::vector<double> dHB(k_size, 0);
-                    for(size_t i = 0; i < s_size; ++i){
-                        for(size_t j = 0; j < k_size; ++j){
-                            dHB[i] += dH[i]*B[i*k_size + j];
+                        for(size_t i = 0; i < num_nodes; ++i){
+                            for(size_t j = 0; j < dof; ++j){
+                                const long pos = e->nodes[i]->u_pos[j];
+                                if(pos > -1){
+                                    fl[it][pos] += dHB[i*dof + j];
+                                }
+                            }
                         }
-                    }
-                    for(size_t i = 0; i < num_nodes; ++i){
-                        for(size_t j = 0; j < dof; ++j){
-                            const long pos = e->nodes[i]->u_pos[j];
-                            if(pos > -1){
-                                fl[pos] += dHB[i*dof + j];
+                    } else if(this->problem_type == utils::PROBLEM_TYPE_3D){
+                        const StrainVector3D eps = Eigen::Map<const StrainVector3D>(eps_vec.data(), 6);
+                        const double eps_lhs1 = rho*this->LHS_3D(0, eps);
+                        const double eps_lhs2 = rho*this->LHS_3D(1, eps);
+                        const auto deps_lhs1 = rho*this->dLHS_3D(0, eps);
+                        const auto deps_lhs2 = rho*this->dLHS_3D(1, eps);
+                        const double H1 = Hm(eps_lhs1);
+                        const double H2 = Hp(eps_lhs2);
+                        const double Hr = H1*eps_lhs1 + H2*eps_lhs2;
+                        const auto dH = (dHm(eps_lhs1)*eps_lhs1 + H1)*deps_lhs1 +
+                                        (dHp(eps_lhs2)*eps_lhs2 + H2)*deps_lhs2;
+
+                        H_e = Hr;
+                        std::vector<double> dHB(k_size, 0);
+                        for(size_t i = 0; i < s_size; ++i){
+                            for(size_t j = 0; j < k_size; ++j){
+                                dHB[i] += dH[i]*B[i*k_size + j];
+                            }
+                        }
+                        for(size_t i = 0; i < num_nodes; ++i){
+                            for(size_t j = 0; j < dof; ++j){
+                                const long pos = e->nodes[i]->u_pos[j];
+                                if(pos > -1){
+                                    fl[it][pos] += dHB[i*dof + j];
+                                }
                             }
                         }
                     }

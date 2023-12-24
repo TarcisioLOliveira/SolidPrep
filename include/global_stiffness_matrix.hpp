@@ -27,20 +27,20 @@ class GlobalStiffnessMatrix{
     public:
     virtual ~GlobalStiffnessMatrix() = default;
     const double K_MIN = 1e-14;
-    virtual void generate(const Meshing * const mesh, const std::vector<double>& density, const double pc, const double psi) = 0;
+    virtual void generate(const Meshing * const mesh, const std::vector<long>& node_positions, const size_t matrix_width, const std::vector<double>& density, const double pc, const double psi) = 0;
 
     protected:
     size_t W, N;
 
-    virtual void generate_base(const Meshing * const mesh, const std::vector<double>& density, const double pc, const double psi);
+    virtual void generate_base(const Meshing * const mesh, const std::vector<long>& node_positions, const std::vector<double>& density, const double pc, const double psi);
 
-    virtual void calculate_dimensions(const Meshing * const mesh, const std::vector<double>& load);
+    virtual void calculate_dimensions(const Meshing * const mesh, const std::vector<long>& node_positions, const size_t matrix_width);
 
-    virtual void add_geometry(const Meshing * const mesh, const Geometry * const g);
+    virtual void add_geometry(const Meshing * const mesh, const std::vector<long>& node_positions, const Geometry * const g);
 
-    virtual void add_geometry(const Meshing * const mesh, const Geometry * const g, std::vector<double>::const_iterator& rho, const double pc, const double psi);
+    virtual void add_geometry(const Meshing * const mesh, const std::vector<long>& node_positions, const Geometry * const g, std::vector<double>::const_iterator& rho, const double pc, const double psi);
 
-    virtual void add_springs(const Meshing * const mesh);
+    virtual void add_springs(const Meshing * const mesh, const std::vector<long>& node_positions);
 
     virtual void insert_element_matrix(const std::vector<double>& k, const std::vector<long>& pos) = 0;
 

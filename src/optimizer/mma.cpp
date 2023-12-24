@@ -46,7 +46,7 @@ void MMA::initialize_views(Visualization* viz){
     }
 }
 
-TopoDS_Shape MMA::optimize(FiniteElement* fem, Meshing* mesh){
+TopoDS_Shape MMA::optimize(SolverManager* fem, Meshing* mesh){
     int mpi_id = 0;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi_id);
 

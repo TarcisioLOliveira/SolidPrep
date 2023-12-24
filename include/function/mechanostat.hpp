@@ -33,7 +33,7 @@ namespace function{
 class Mechanostat : public DensityBasedFunction{
     public:
     typedef std::array<double, 2> Range;
-    Mechanostat(const Meshing* const mesh, FiniteElement* fem, double pc, double psiK, double beta, Range traction, Range compression, Range shear, utils::ProblemType type);
+    Mechanostat(const Meshing* const mesh, SolverManager* fem, double pc, double psiK, double beta, Range traction, Range compression, Range shear, utils::ProblemType type);
 
     virtual ~Mechanostat() = default;
 
@@ -45,7 +45,7 @@ class Mechanostat : public DensityBasedFunction{
 
     private:
     const Meshing* const mesh;
-    FiniteElement* fem;
+    SolverManager* fem;
     const double beta;
     const double pc, psiK;
     const Range t, c, s;

@@ -31,7 +31,7 @@ class GlobalStressPnormNormalized : public DensityBasedFunction{
     public:
     const double K_MIN = 1e-6;
 
-    GlobalStressPnormNormalized(const Meshing* const mesh, FiniteElement* fem, double pc, double P, double pt, double psiK, double psiS);
+    GlobalStressPnormNormalized(const Meshing* const mesh, SolverManager* fem, double pc, double P, double pt, double psiK, double psiS);
 
     virtual ~GlobalStressPnormNormalized() = default;
 
@@ -44,7 +44,7 @@ class GlobalStressPnormNormalized : public DensityBasedFunction{
 
     private:
     const Meshing* const mesh;
-    FiniteElement* fem;
+    SolverManager* fem;
     const double pc;
     const double P;
     const double pt;

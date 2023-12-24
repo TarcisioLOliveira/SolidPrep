@@ -30,7 +30,7 @@ Compliance::Compliance(const Meshing* const mesh, double pc, double psi):
 double Compliance::calculate(const Optimizer* const op, const std::vector<double>& u, const std::vector<double>& x){
     (void)x;
     (void)op;
-    const double c = cblas_ddot(u.size(), this->mesh->load_vector.data(), 1, u.data(), 1);
+    const double c = cblas_ddot(u.size(), this->mesh->global_load_vector.data(), 1, u.data(), 1);
 
     return c;
 }
@@ -83,7 +83,7 @@ double Compliance::calculate_with_gradient(const Optimizer* const op, const std:
             }
         }
     }
-    const double c = cblas_ddot(u.size(), this->mesh->load_vector.data(), 1, u.data(), 1);
+    const double c = cblas_ddot(u.size(), this->mesh->global_load_vector.data(), 1, u.data(), 1);
 
     return c;
 }

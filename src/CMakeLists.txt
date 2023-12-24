@@ -22,6 +22,7 @@ set(SOURCES
     spring.cpp
     curvature.cpp
     internal_loads.cpp
+    solver_manager.cpp
 )
 
 add_subdirectory(pathfinding)

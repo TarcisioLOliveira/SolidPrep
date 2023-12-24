@@ -51,8 +51,8 @@ class InternalLoads{
 
     void calculate_curvature(std::vector<BoundaryElement>& boundary_elements);
 
-    void apply_load_2D(std::vector<double>& load_vector) const;
-    void apply_load_3D(std::vector<double>& load_vector) const;
+    void apply_load_2D(const std::vector<long>& node_positions, std::vector<double>& load_vector) const;
+    void apply_load_3D(const std::vector<long>& node_positions, std::vector<double>& load_vector) const;
 
     const CrossSection S;
     const double A;

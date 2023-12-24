@@ -77,14 +77,14 @@ MUMPSSolver::~MUMPSSolver(){
     dmumps_c(&this->config);
 }
 
-std::vector<double> MUMPSSolver::calculate_displacements(const Meshing* const mesh, std::vector<double> load, const std::vector<double>& density, double pc, double psi){
+std::vector<double> MUMPSSolver::calculate_displacements(const Meshing* const mesh, const std::vector<long>& node_positions, std::vector<double> load, const std::vector<double>& density, double pc, double psi){
     int mpi_id = 0;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi_id);
 
     if(this->current_step == 0){
 
         if(mpi_id == 0){
-            this->gsm.generate(mesh, density, pc, psi);
+            this->gsm.generate(mesh, node_positions, load.size(), density, pc, psi);
 
             std::vector<int>& rows = this->gsm.get_rows();
             std::vector<int>& cols = this->gsm.get_cols();

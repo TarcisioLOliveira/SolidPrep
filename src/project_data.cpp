@@ -137,9 +137,6 @@ ProjectData::ProjectData(std::string project_file){
             this->thickness = doc["thickness"].GetDouble();
         }
     }
-    if(this->log_data(doc, "finite_element", TYPE_OBJECT, false)){
-        this->topopt_fea = this->load_fea(doc);
-    }
     if(this->log_data(doc, "loads", TYPE_ARRAY, true)){
         this->forces = this->get_loads(doc["loads"]);
     }
@@ -168,6 +165,32 @@ ProjectData::ProjectData(std::string project_file){
                        "a support or spring must be specified to prevent matrix singularity.");
     if(this->log_data(doc, "internal_loads", TYPE_ARRAY, false)){
         this->internal_loads = this->get_internal_loads(doc["internal_loads"]);
+    }
+    if(this->log_data(doc, "sub_problems", TYPE_OBJECT, false)){
+        this->sub_problems = this->load_sub_problems(doc);
+    } else {
+        this->sub_problems.emplace_back();
+        for(auto& i:this->supports){
+            this->sub_problems[0].supports.push_back(&i);
+        }
+        for(auto& i:this->forces){
+            this->sub_problems[0].forces.push_back(&i);
+        }
+        for(auto& i:this->springs){
+            this->sub_problems[0].springs.push_back(&i);
+        }
+        for(auto& i:this->internal_loads){
+            this->sub_problems[0].internal_loads.push_back(&i);
+        }
+    }
+    if(this->log_data(doc, "finite_element", TYPE_OBJECT, true)){
+        std::vector<std::unique_ptr<FiniteElement>> solvers(this->sub_problems.size());
+        // Dirty, but quicker to implement and I don't have to mess with
+        // `sizer_fea`down there.
+        for(size_t i = 0; i < this->sub_problems.size(); ++i){
+            solvers[i] = this->load_fea(doc);
+        }
+        this->topopt_fea = std::make_unique<SolverManager>(std::move(solvers));
     }
     if(this->log_data(doc, "sizing", TYPE_OBJECT, needs_sizing)){
         if(this->log_data(doc["sizing"], "pathfinding", TYPE_OBJECT, false)){
@@ -1226,4 +1249,9 @@ CrossSection ProjectData::get_cross_section(const rapidjson::GenericValue<rapidj
     }
     logger::log_assert(false, logger::ERROR, "unknown problem type detected in get_cross_section(), this shouldn't have happened.");
     return CrossSection(gp_Pnt(0,0,0));
+}
+
+
+std::vector<SubProblem> ProjectData::load_sub_problems(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc){
+    // TODO
 }

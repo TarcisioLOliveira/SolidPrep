@@ -30,7 +30,7 @@ class LAPACKDenseSymmetricBanded : public GlobalStiffnessMatrix{
     public:
     virtual ~LAPACKDenseSymmetricBanded() = default;
 
-    virtual void generate(const Meshing * const mesh, const std::vector<double>& density, const double pc, const double psi) override;
+    virtual void generate(const Meshing * const mesh, const std::vector<long>& node_positions, const size_t matrix_width, const std::vector<double>& density, const double pc, const double psi) override;
 
     inline std::vector<double>& get_K(){
         return K;

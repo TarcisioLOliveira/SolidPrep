@@ -95,7 +95,7 @@ int main(int argc, char* argv[]){
         for(auto& f:proj->fields){
             f->generate();
         }
-        proj->topopt_mesher->apply_boundary_conditions(proj->forces, proj->supports, proj->springs, proj->internal_loads);
+        proj->topopt_mesher->apply_boundary_conditions(proj->forces, proj->supports, proj->springs, proj->internal_loads, proj->sub_problems);
     }
     std::vector<MeshElement*> elems;
     std::vector<double> loads;
@@ -155,7 +155,7 @@ int main(int argc, char* argv[]){
                 logger::quick_log("");
                 logger::quick_log("FEA time: ", fea_duration, " minutes");
                 logger::quick_log("");
-                logger::quick_log("Compliance: ", cblas_ddot(u.size(), u.data(), 1, proj->topopt_mesher.get()->load_vector.data(), 1));
+                logger::quick_log("Compliance: ", cblas_ddot(u.size(), u.data(), 1, proj->topopt_mesher->global_load_vector.data(), 1));
                 logger::quick_log("");
 
                 // Display results
@@ -183,7 +183,7 @@ int main(int argc, char* argv[]){
                 strainview_Y ->update_view(strainY);
                 strainview_XY->update_view(strainXY);
                 displ->update_view(u);
-                force->update_view(proj->topopt_mesher->load_vector);
+                force->update_view(proj->topopt_mesher->global_load_vector);
 
                 for(auto& f:proj->fields){
                     f->display_views();
@@ -222,11 +222,17 @@ int main(int argc, char* argv[]){
                 strainXY.reserve(s_size);
                 strainXZ.reserve(s_size);
                 strainYZ.reserve(s_size);
+                double max_stress = 0;
+                gp_Pnt max_point(0,0,0);
                 for(auto& g:proj->geometries){
                     for(auto& e:g->mesh){
                         const gp_Pnt c = e->get_centroid();
                         const auto D = g->materials.get_D(e.get(), c);
                         stresses.push_back(e->get_stress_at(D, e->get_centroid(), u));
+                        if(stresses.back() > max_stress){
+                            max_stress = stresses.back();
+                            max_point = c;
+                        }
                         auto tensor = e->get_stress_tensor(D, e->get_centroid(), u);
                         stressesX.push_back(tensor[0]);
                         stressesY.push_back(tensor[4]);
@@ -244,6 +250,7 @@ int main(int argc, char* argv[]){
                     }
                 }
 
+                logger::quick_log("Max stress: ", max_stress, " at ", max_point.X(), max_point.Y(), max_point.Z());
                 if(proj->analysis == ProjectData::BEAMS_ONLY){
                     logger::quick_log("");
                     logger::quick_log("Sizing time: ", size_time, " minutes");
@@ -252,7 +259,7 @@ int main(int argc, char* argv[]){
                 logger::quick_log("");
                 logger::quick_log("FEA time: ", fea_duration, " minutes");
                 logger::quick_log("");
-                logger::quick_log("Compliance: ", cblas_ddot(u.size(), u.data(), 1, proj->topopt_mesher.get()->load_vector.data(), 1));
+                logger::quick_log("Compliance: ", cblas_ddot(u.size(), u.data(), 1, proj->topopt_mesher->global_load_vector.data(), 1));
                 logger::quick_log("");
 
                 // Display results
@@ -292,7 +299,7 @@ int main(int argc, char* argv[]){
                 strainview_XZ->update_view(strainXZ);
                 strainview_YZ->update_view(strainYZ);
                 displ->update_view(u);
-                force->update_view(proj->topopt_mesher->load_vector);
+                force->update_view(proj->topopt_mesher->global_load_vector);
 
                 for(auto& f:proj->fields){
                     f->display_views();

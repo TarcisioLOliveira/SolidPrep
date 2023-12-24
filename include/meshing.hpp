@@ -29,6 +29,7 @@
 #include "force.hpp"
 #include "spring.hpp"
 #include "internal_loads.hpp"
+#include "sub_problem.hpp"
 #include "element_factory.hpp"
 #include "geometry.hpp"
 
@@ -111,11 +112,13 @@ class Meshing{
      * @param supports Supports to be used
      * @param springs Springs to be used
      * @param internal_loads Internal loads to be used
+     * @param sub_problems Subproblems to be analyzed
      */
     virtual void apply_boundary_conditions(const std::vector<Force>& forces, 
                                            const std::vector<Support>& supports,
                                            std::vector<Spring>& springs,
-                                           std::vector<InternalLoads>& internal_loads);
+                                           std::vector<InternalLoads>& internal_loads,
+                                           std::vector<SubProblem>& sub_problems);
 
     /**
      * Removes elements below a certain density threshold. Useful for
@@ -131,15 +134,21 @@ class Meshing{
     const MeshElementFactory * const elem_info;
     const std::vector<Geometry*> geometries;
     const double thickness;
+    size_t max_dofs;
 
     std::vector<std::unique_ptr<MeshNode>> node_list;
-    std::vector<double> load_vector;
     std::unordered_multimap<size_t, MeshElement*> inverse_mesh;
     std::vector<BoundaryElement> boundary_elements;
     std::vector<MeshNode*> boundary_node_list;
     std::vector<Spring>* springs;
     std::vector<InternalLoads>* internal_loads;
-    std::vector<long> node_positions;
+    std::vector<SubProblem>* sub_problems;
+
+    std::vector<double> global_load_vector;
+    // Subproblems
+    std::vector<std::vector<double>> load_vector;
+    std::vector<std::vector<long>> node_positions;
+    std::vector<size_t> dofs_per_subproblem;
 
     protected:
     TopoDS_Shape orig_shape;
@@ -202,10 +211,8 @@ class Meshing{
     /**
      * Generate positioning information for node degrees of freedom, including
      * which DOFs should be removed.
-     *
-     * @param supports List of supports to be applied.
      */
-    void apply_supports(const std::vector<Support>& supports);
+    void apply_supports();
 
     /**
      * Generate positioning information for spring boundary condition.
@@ -226,10 +233,8 @@ class Meshing{
      * loads applied.
      *
      * @param shape Shape being meshed
-     * @param forces Loads being applied
      */
-    void generate_load_vector(const TopoDS_Shape& shape,
-                              const std::vector<Force>& forces);
+    void generate_load_vector(const TopoDS_Shape& shape);
 
 
     /**

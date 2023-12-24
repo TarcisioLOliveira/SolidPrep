@@ -26,6 +26,7 @@
 #include "finite_element.hpp"
 #include "utils.hpp"
 #include "visualization.hpp"
+#include "solver_manager.hpp"
 
 class DensityBasedFunction;
 
@@ -51,7 +52,7 @@ class Optimizer{
     virtual ~Optimizer() = default;
 
     virtual void initialize_views(Visualization* viz) = 0;
-    virtual TopoDS_Shape optimize(FiniteElement* fem, Meshing* mesh) = 0;
+    virtual TopoDS_Shape optimize(SolverManager* fem, Meshing* mesh) = 0;
 
     inline size_t get_number_of_elements() const{
         return this->number_of_elements;

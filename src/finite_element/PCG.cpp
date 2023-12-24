@@ -30,7 +30,7 @@ namespace finite_element{
 PCG::PCG(const double eps, const Preconditioner precond):
     eps(eps), precond(precond), displacement(1), P(){}
 
-std::vector<double> PCG::calculate_displacements(const Meshing* const mesh, std::vector<double> load, const std::vector<double>& density, double pc, double psi){
+std::vector<double> PCG::calculate_displacements(const Meshing* const mesh, const std::vector<long>& node_positions, std::vector<double> load, const std::vector<double>& density, double pc, double psi){
     int mpi_id = 0;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi_id);
 
@@ -43,7 +43,7 @@ std::vector<double> PCG::calculate_displacements(const Meshing* const mesh, std:
     std::vector<double>& K = this->gsm.get_K();
 
     if(this->current_step == 0){
-        this->gsm.generate(mesh, density, pc, psi);
+        this->gsm.generate(mesh, node_positions, load.size(), density, pc, psi);
         if(this->first_time){
             for(auto& u:this->displacement){
                 u.resize(W,0);

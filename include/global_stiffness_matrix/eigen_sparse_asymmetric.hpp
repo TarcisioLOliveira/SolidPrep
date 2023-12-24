@@ -34,7 +34,7 @@ class EigenSparseAsymmetric : public GlobalStiffnessMatrix{
 
     virtual ~EigenSparseAsymmetric() = default;
 
-    virtual void generate(const Meshing * const mesh, const std::vector<double>& density, const double pc, const double psi) override;
+    virtual void generate(const Meshing * const mesh, const std::vector<long>& node_positions, const size_t matrix_width, const std::vector<double>& density, const double pc, const double psi) override;
 
     Mat& get_K() {
         return K;

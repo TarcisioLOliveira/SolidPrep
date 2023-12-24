@@ -42,6 +42,8 @@
 #include "spring.hpp"
 #include "internal_loads.hpp"
 #include "field.hpp"
+#include "solver_manager.hpp"
+#include "sub_problem.hpp"
 
 /**
  * Reads and stores project data.
@@ -83,7 +85,8 @@ class ProjectData {
     std::vector<InternalLoads> internal_loads;
     std::unique_ptr<FiniteElement> sizer_fea;
     std::unique_ptr<TopologyOptimization> topopt;
-    std::unique_ptr<FiniteElement> topopt_fea;
+    //std::unique_ptr<FiniteElement> topopt_fea;
+    std::unique_ptr<SolverManager> topopt_fea;
     std::unique_ptr<Meshing> topopt_mesher;
     std::unique_ptr<MeshElementFactory> topopt_element;
     std::unique_ptr<BoundaryMeshElementFactory> topopt_boundary_element;
@@ -91,6 +94,7 @@ class ProjectData {
     std::unique_ptr<Projection> projection;
     std::unique_ptr<Optimizer> optimizer;
     std::vector<std::unique_ptr<Field>> fields;
+    std::vector<SubProblem> sub_problems;
     AnalysisType analysis;
     std::string folder_path;
     
@@ -120,6 +124,8 @@ class ProjectData {
     std::unique_ptr<Sizing> load_sizer(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc);
 
     std::unique_ptr<FiniteElement> load_fea(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc);
+
+    std::vector<SubProblem> load_sub_problems(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc);
 
     std::unique_ptr<Meshing> load_mesher(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc);
 

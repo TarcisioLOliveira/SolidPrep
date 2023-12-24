@@ -35,7 +35,7 @@ class FiniteElement{
 
     virtual ~FiniteElement() = default;
 
-    virtual std::vector<double> calculate_displacements(const Meshing* const mesh, std::vector<double> load, const std::vector<double>& density = std::vector<double>(), double pc = 3, double psi = 0.1) = 0;
+    virtual std::vector<double> calculate_displacements(const Meshing* const mesh, const std::vector<long>& node_positions, std::vector<double> load, const std::vector<double>& density = std::vector<double>(), double pc = 3, double psi = 0.1) = 0;
 
     inline virtual void set_steps(size_t s){
         this->steps = s;

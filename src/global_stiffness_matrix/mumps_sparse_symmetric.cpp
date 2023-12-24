@@ -23,12 +23,12 @@
 
 namespace global_stiffness_matrix{
 
-void MUMPSSparseSymmetric::generate(const Meshing* const mesh, const std::vector<double>& density, const double pc, const double psi){
+void MUMPSSparseSymmetric::generate(const Meshing* const mesh, const std::vector<long>& node_positions, const size_t matrix_width, const std::vector<double>& density, const double pc, const double psi){
     logger::quick_log("Generating stiffness matrix...");
     this->sK.zero();
-    this->generate_base(mesh, density, pc, psi);
+    this->generate_base(mesh, node_positions, density, pc, psi);
     if(this->first_time){
-        this->sK.generate_coo(mesh->load_vector.size());
+        this->sK.generate_coo(matrix_width);
         this->first_time = false;
     }
     logger::quick_log("Done.");

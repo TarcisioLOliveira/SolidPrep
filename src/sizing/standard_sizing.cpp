@@ -90,7 +90,7 @@ TopoDS_Shape StandardSizing::boundary_expansion_approach(){
     ggeom.push_back(std::move(geom));
     meshing::StandardBeamMesher mesh(ggeom, gt9_maker.get(), this->element_size, this->data->thickness);
     mesh.mesh(this->data->forces, this->data->supports, this->data->springs);
-    auto u = this->solver->calculate_displacements(&mesh, mesh.load_vector);
+    auto u = this->solver->calculate_displacements(&mesh, mesh.node_positions[0], mesh.load_vector[0]);
 
     if(this->data->type == utils::PROBLEM_TYPE_2D){
         return this->expansion_2D(mesh, u, beams);

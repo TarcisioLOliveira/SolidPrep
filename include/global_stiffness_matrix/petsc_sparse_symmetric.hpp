@@ -37,7 +37,7 @@ class PETScSparseSymmetric : public GlobalStiffnessMatrix{
     };
     virtual ~PETScSparseSymmetric();
 
-    virtual void generate(const Meshing * const mesh, const std::vector<double>& density, const double pc, const double psi) override;
+    virtual void generate(const Meshing * const mesh, const std::vector<long>& node_positions, const size_t matrix_width, const std::vector<double>& density, const double pc, const double psi) override;
 
     Mat get_K() const{
         return this->K;
@@ -47,8 +47,8 @@ class PETScSparseSymmetric : public GlobalStiffnessMatrix{
     Mat K = 0;
     bool first_time = true;
 
-    virtual void preallocate(const Meshing * const mesh, const std::vector<double>& density, const double pc, const double psi, const size_t mpi_id) = 0;
-    virtual void assemble_matrix(const Meshing * const mesh, const std::vector<double>& density, const double pc, const double psi, const size_t mpi_id) = 0;
+    virtual void preallocate(const Meshing * const mesh, const std::vector<long>& node_positions, const size_t matrix_width, const std::vector<double>& density, const double pc, const double psi, const size_t mpi_id) = 0;
+    virtual void assemble_matrix(const Meshing * const mesh, const std::vector<long>& node_positions, const std::vector<double>& density, const double pc, const double psi, const size_t mpi_id) = 0;
     virtual void zero() = 0;
 };
 
@@ -58,8 +58,8 @@ class PETScSparseSymmetricCPU : public PETScSparseSymmetric {
     virtual ~PETScSparseSymmetricCPU() = default;
 
     protected:
-    virtual void preallocate(const Meshing * const mesh, const std::vector<double>& density, const double pc, const double psi, const size_t mpi_id) override;
-    virtual void assemble_matrix(const Meshing * const mesh, const std::vector<double>& density, const double pc, const double psi, const size_t mpi_id) override;
+    virtual void preallocate(const Meshing * const mesh, const std::vector<long>& node_positions, const size_t matrix_width, const std::vector<double>& density, const double pc, const double psi, const size_t mpi_id) override;
+    virtual void assemble_matrix(const Meshing * const mesh, const std::vector<long>& node_positions, const std::vector<double>& density, const double pc, const double psi, const size_t mpi_id) override;
     inline virtual void zero() override{
         MatZeroEntries(this->K);
     }
@@ -83,8 +83,8 @@ class PETScSparseSymmetricCUDA : public PETScSparseSymmetric {
     protected:
     utils::COO<PetscInt> K_coo;
 
-    virtual void preallocate(const Meshing * const mesh, const std::vector<double>& density, const double pc, const double psi, const size_t mpi_id) override;
-    virtual void assemble_matrix(const Meshing * const mesh, const std::vector<double>& density, const double pc, const double psi, const size_t mpi_id) override;
+    virtual void preallocate(const Meshing * const mesh, const std::vector<long>& node_positions, const size_t matrix_width, const std::vector<double>& density, const double pc, const double psi, const size_t mpi_id) override;
+    virtual void assemble_matrix(const Meshing * const mesh, const std::vector<long>& node_positions, const std::vector<double>& density, const double pc, const double psi, const size_t mpi_id) override;
     inline virtual void zero() override{
         this->K_coo.zero();
     }
