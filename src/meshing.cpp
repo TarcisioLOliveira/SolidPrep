@@ -513,8 +513,8 @@ void Meshing::generate_load_vector(const TopoDS_Shape& shape){
 
             return 0.5*(v1.Crossed(v2).Magnitude() + v3.Crossed(v4).Magnitude());
         };
-        double F = 0;
         for(size_t spid = 0; spid < this->sub_problems->size(); ++spid){
+            double F = 0;
             const auto& p = this->sub_problems->at(spid);
             auto& load_vec = this->load_vector[spid];
             for(auto& f : p.forces){

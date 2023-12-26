@@ -196,13 +196,9 @@ void InternalLoads::apply_load_3D(const std::vector<long>& node_positions, std::
         //logger::quick_log(fe);
         for(size_t i = 0; i < nodes_per_elem; ++i){
             for(size_t j = 0; j < dof; ++j){
-                FF[j] += Rf[i*dof + j];
-            }
-        }
-        for(size_t i = 0; i < nodes_per_elem; ++i){
-            for(size_t j = 0; j < dof; ++j){
                 const auto n = e->parent->nodes[i];
                 const auto p = node_positions[n->u_pos[j]];
+                FF[j] += Rf[i*dof + j];
                 if(p >= 0){
                     load_vector[p] += Rf[i*dof+j];
                 }
@@ -220,11 +216,9 @@ void InternalLoads::apply_load_3D(const std::vector<long>& node_positions, std::
        std::abs(FF[2]) > 1e-14){
         std::set<const Node*> nodes;
         for(const auto& e:this->submesh){
-            for(size_t i = 0; i < nodes_per_elem; ++i){
-                for(size_t j = 0; j < dof; ++j){
-                    const auto n = e->parent->nodes[i];
-                    nodes.insert(n);
-                }
+            for(size_t i = 0; i < bound_nodes_per_elem; ++i){
+                const auto n = e->nodes[i];
+                nodes.insert(n);
             }
         }
         const size_t N = nodes.size();

@@ -166,7 +166,7 @@ ProjectData::ProjectData(std::string project_file){
     if(this->log_data(doc, "internal_loads", TYPE_ARRAY, false)){
         this->internal_loads = this->get_internal_loads(doc["internal_loads"]);
     }
-    if(this->log_data(doc, "sub_problems", TYPE_OBJECT, false)){
+    if(this->log_data(doc, "sub_problems", TYPE_ARRAY, false)){
         this->sub_problems = this->load_sub_problems(doc);
     } else {
         this->sub_problems.emplace_back();
@@ -1253,5 +1253,33 @@ CrossSection ProjectData::get_cross_section(const rapidjson::GenericValue<rapidj
 
 
 std::vector<SubProblem> ProjectData::load_sub_problems(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc){
-    // TODO
+    const auto& sub_problem_array = doc["sub_problems"].GetArray();
+    std::vector<SubProblem> sub_problems;
+    for(const auto& sp:sub_problem_array){
+        logger::log_assert(sp.IsObject(), logger::ERROR, "\"sub_problems\" must be an array of objects");
+        SubProblem curr_sp;
+        if(this->log_data(sp, "loads", TYPE_ARRAY, false)){
+            for(auto& f:sp["loads"].GetArray()){
+                curr_sp.forces.push_back(&this->forces[f.GetInt()]);
+            }
+        }
+        if(this->log_data(sp, "supports", TYPE_ARRAY, false)){
+            for(auto& f:sp["supports"].GetArray()){
+                curr_sp.supports.push_back(&this->supports[f.GetInt()]);
+            }
+        }
+        if(this->log_data(sp, "springs", TYPE_ARRAY, false)){
+            for(auto& f:sp["springs"].GetArray()){
+                curr_sp.springs.push_back(&this->springs[f.GetInt()]);
+            }
+        }
+        if(this->log_data(sp, "internal_loads", TYPE_ARRAY, false)){
+            for(auto& f:sp["internal_loads"].GetArray()){
+                curr_sp.internal_loads.push_back(&this->internal_loads[f.GetInt()]);
+            }
+        }
+        sub_problems.push_back(std::move(curr_sp));
+    }
+
+    return sub_problems;
 }

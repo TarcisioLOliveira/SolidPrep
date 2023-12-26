@@ -168,8 +168,8 @@ int main(int argc, char* argv[]){
                 auto strainview_X  = v->add_view("Normal Strain (X axis)", spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::STRESS);
                 auto strainview_Y  = v->add_view("Normal Strain (Y axis)", spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::STRESS);
                 auto strainview_XY = v->add_view("Shear Strain",           spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::STRESS);
-                auto displ = v->add_view("Displacement",           spview::defs::ViewType::VECTOR, spview::defs::DataType::DISPLACEMENT);
-                auto force = v->add_view("Force",           spview::defs::ViewType::VECTOR, spview::defs::DataType::DISPLACEMENT);
+                auto displ = v->add_view("Displacement",           spview::defs::ViewType::VECTOR, spview::defs::DataType::OTHER);
+                auto force = v->add_view("Force",           spview::defs::ViewType::VECTOR, spview::defs::DataType::OTHER);
 
                 for(auto& f:proj->fields){
                     f->initialize_views(v.get());
@@ -278,8 +278,8 @@ int main(int argc, char* argv[]){
                 auto strainview_XY = v->add_view("Shear Strain (XY plane)", spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::STRESS);
                 auto strainview_XZ = v->add_view("Shear Strain (XZ plane)", spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::STRESS);
                 auto strainview_YZ = v->add_view("Shear Strain (YZ plane)", spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::STRESS);
-                auto displ = v->add_view("Displacement",           spview::defs::ViewType::VECTOR, spview::defs::DataType::DISPLACEMENT);
-                auto force = v->add_view("Force",           spview::defs::ViewType::VECTOR, spview::defs::DataType::DISPLACEMENT);
+                auto displ = v->add_view("Displacement",           spview::defs::ViewType::VECTOR, spview::defs::DataType::OTHER);
+                auto force = v->add_view("Force",           spview::defs::ViewType::VECTOR, spview::defs::DataType::OTHER);
 
                 for(auto& f:proj->fields){
                     f->initialize_views(v.get());
