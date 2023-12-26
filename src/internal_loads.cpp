@@ -384,7 +384,6 @@ void InternalLoads::generate_mesh(const std::vector<BoundaryElement>& boundary_e
         ++id;
     }
     this->phi_size = npos;
-    logger::quick_log("PHI SIZE", line_nodes.size(), boundary_nodes.size(),  phi_size, npos, id);
     nodes.clear();
 }
 
