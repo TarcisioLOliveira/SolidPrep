@@ -489,7 +489,7 @@ void Meshing::generate_load_vector(const TopoDS_Shape& shape){
                         for(size_t i = 0; i < N; ++i){
                             for(size_t j = 0; j < dof; ++j){
                                 auto n = e.parent->nodes[i];
-                                const size_t p = node_pos[n->id*dof + j];
+                                const long p = node_pos[n->id*dof + j];
                                 if(p >= 0){
                                     load_vec[p] += fe[i*dof+j];
                                 }
@@ -566,7 +566,7 @@ void Meshing::generate_load_vector(const TopoDS_Shape& shape){
                         for(size_t i = 0; i < N; ++i){
                             for(size_t j = 0; j < dof; ++j){
                                 const auto n = e.parent->nodes[i];
-                                const size_t p = node_pos[n->id*dof + j];
+                                const long p = node_pos[n->id*dof + j];
                                 if(p >= 0){
                                     load_vec[p] += fe[i*dof+j];
                                 }
