@@ -431,6 +431,7 @@ void Meshing::generate_load_vector(const TopoDS_Shape& shape){
          */
         for(size_t spid = 0; spid < this->sub_problems->size(); ++spid){
             const auto& p = this->sub_problems->at(spid);
+            const auto& node_pos = this->node_positions[spid];
             auto& load_vec = this->load_vector[spid];
             for(auto& f : p.forces){
                 double norm = f->vec.Magnitude()/(thickness*f->S.get_dimension());
@@ -488,8 +489,10 @@ void Meshing::generate_load_vector(const TopoDS_Shape& shape){
                         for(size_t i = 0; i < N; ++i){
                             for(size_t j = 0; j < dof; ++j){
                                 auto n = e.parent->nodes[i];
-                                const size_t p = n->id*dof + j;
-                                load_vec[p] += fe[i*dof+j];
+                                const size_t p = node_pos[n->id*dof + j];
+                                if(p >= 0){
+                                    load_vec[p] += fe[i*dof+j];
+                                }
                             }
                         }
                     }
@@ -516,6 +519,7 @@ void Meshing::generate_load_vector(const TopoDS_Shape& shape){
         for(size_t spid = 0; spid < this->sub_problems->size(); ++spid){
             double F = 0;
             const auto& p = this->sub_problems->at(spid);
+            const auto& node_pos = this->node_positions[spid];
             auto& load_vec = this->load_vector[spid];
             for(auto& f : p.forces){
                 if(f->vec.Magnitude() < Precision::Confusion()){
@@ -562,8 +566,10 @@ void Meshing::generate_load_vector(const TopoDS_Shape& shape){
                         for(size_t i = 0; i < N; ++i){
                             for(size_t j = 0; j < dof; ++j){
                                 const auto n = e.parent->nodes[i];
-                                const size_t p = n->id*dof + j;
-                                load_vec[p] += fe[i*dof+j];
+                                const size_t p = node_pos[n->id*dof + j];
+                                if(p >= 0){
+                                    load_vec[p] += fe[i*dof+j];
+                                }
                             }
                         }
                     }
