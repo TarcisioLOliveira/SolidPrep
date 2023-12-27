@@ -178,7 +178,7 @@ void OrthotropicFlow::generate(){
 
     for(const auto& g:this->geoms){
         for(const auto& e:g->mesh){
-            const Eigen::MatrixXd M_e = e->diffusion_1dof(thickness, A);
+            const Eigen::MatrixXd M_e = e->diffusion_1dof(thickness, A) + 1e-4*e->absorption_1dof(thickness);
             std::vector<double> M_ev(num_nodes*num_nodes, 0);
             std::copy(M_e.data(), M_e.data()+M_ev.size(), M_ev.begin());
             std::vector<long> pos(num_nodes);
@@ -210,26 +210,6 @@ void OrthotropicFlow::generate(){
 
     solver.solve(b);
     std::copy(b.begin(), b.end(), this->longitudinal.begin());
-
-    solver.make_zero();
-    for(const auto& g:this->geoms){
-        for(const auto& e:g->mesh){
-            const Eigen::MatrixXd M_e = e->diffusion_1dof(thickness, A) + 1e-4*e->absorption_1dof(thickness);
-
-            std::vector<double> M_ev(num_nodes*num_nodes, 0);
-            std::copy(M_e.data(), M_e.data()+M_ev.size(), M_ev.begin());
-            std::vector<long> pos(num_nodes);
-
-            for(size_t i = 0; i < num_nodes; ++i){
-                const long id1 = id_pos_map.at(e->nodes[i]->id);
-                pos[i] = id1;
-            }
-
-            solver.add_element(M_ev, pos);
-        }
-    }
-
-    solver.compute();
 
     std::fill(b.begin(), b.end(), 0);
     it = 0;
