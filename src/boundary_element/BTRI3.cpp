@@ -75,10 +75,10 @@ Eigen::MatrixXd BTRI3::advection_1dof(const Eigen::VectorXd& v) const{
 }
 Eigen::MatrixXd BTRI3::absorption_1dof() const{
     const auto& gsi = utils::GaussLegendreTri<2>::get();
-    Eigen::MatrixXd result{{0, 0, 0},{0, 0, 0},{0, 0, 0}};
+    Eigen::Matrix<double, 3, 3> result{{0, 0, 0},{0, 0, 0},{0, 0, 0}};
     for(auto it = gsi.begin(); it < gsi.end(); ++it){
         const auto NN = this->N_mat_1dof(this->GS_point(it->a, it->b, it->c));
-        result += it->w*NN.transpose()*NN;
+        result += it->w*NN*NN.transpose();
     }
 
     return delta*result;
