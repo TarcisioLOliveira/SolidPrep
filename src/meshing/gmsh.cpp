@@ -140,11 +140,11 @@ std::unordered_map<size_t, MeshNode*> Gmsh::gmsh_meshing(bool has_condition_insi
     }
     gmsh::option::setNumber("Mesh.OptimizeThreshold", 0.5);
     gmsh::option::setNumber("Geometry.Tolerance", 1e-2);
-    gmsh::option::setNumber("Mesh.Smoothing", 150);
+    gmsh::option::setNumber("Mesh.Smoothing", 200);
     gmsh::option::setNumber("Mesh.AnisoMax", 1e1);
     gmsh::option::setNumber("Mesh.AllowSwapAngle", 90);
     gmsh::option::setNumber("Mesh.RandomFactor", 1e-7);
-    gmsh::option::setNumber("Mesh.RefineSteps", 50);
+    gmsh::option::setNumber("Mesh.RefineSteps", 100);
 
     gmsh::option::setNumber("Mesh.AngleToleranceFacetOverlap", 1);
     gmsh::option::setNumber("Mesh.MeshSizeExtendFromBoundary", 0);
