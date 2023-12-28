@@ -8,6 +8,7 @@ set(SOURCES_ELEMENT
     Q4S.cpp
     TET4.cpp
     H8.cpp
+    TET10.cpp
 )
 
 add_library(element ${SOURCES_ELEMENT})
