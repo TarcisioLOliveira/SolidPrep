@@ -32,8 +32,6 @@
 
 namespace element{
 
-class TRI3;
-
 class TET4 : public MeshElementCommon3DTet<TET4>{
     public:
     static const size_t ORDER          = 1;
