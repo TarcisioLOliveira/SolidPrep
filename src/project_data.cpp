@@ -138,7 +138,7 @@ ProjectData::ProjectData(std::string project_file){
             this->thickness = doc["thickness"].GetDouble();
         }
     }
-    if(this->log_data(doc, "loads", TYPE_ARRAY, true)){
+    if(this->log_data(doc, "loads", TYPE_ARRAY, false)){
         this->forces = this->get_loads(doc["loads"]);
     }
     if(this->log_data(doc, "supports", TYPE_ARRAY, false)){
