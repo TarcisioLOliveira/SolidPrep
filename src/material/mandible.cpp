@@ -18,6 +18,8 @@
  *
  */
 
+#include <cmath>
+#include <complex>
 #include <fstream>
 #include <algorithm>
 #include <gp_Ax1.hxx>
@@ -157,7 +159,7 @@ void Mandible::Ring::initialize_points(const std::vector<gp_Pnt>& init){
     std::sort(this->points.begin(), this->points.end());
 }
 
-Mandible::RingPoint Mandible::Ring::get_r_max(const double theta) const{
+Mandible::RingPoint Mandible::Ring::get_r_max(double theta) const{
     auto pos = std::find_if(this->points.begin(), this->points.end(), 
             [theta](const RingPointCartesian& p){return p.theta > theta;});
 
@@ -168,8 +170,11 @@ Mandible::RingPoint Mandible::Ring::get_r_max(const double theta) const{
     auto p2 = this->points[top];
     double theta1 = p1.theta;
     double theta2 = p2.theta;
-    if(top == 0){
+    if(theta1 > theta2){
         theta1 -= 2*M_PI;
+    }
+    if(theta > theta2){
+        theta -= 2*M_PI;
     }
 
     double coeff = (theta - theta1)/(theta2 - theta1);

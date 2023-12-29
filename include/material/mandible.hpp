@@ -77,7 +77,7 @@ class Mandible : public Material{
 
         void initialize_center(const std::vector<gp_Pnt>& init);
         void initialize_points(const std::vector<gp_Pnt>& init);
-        RingPoint get_r_max(const double theta) const;
+        RingPoint get_r_max(double theta) const;
     };
     struct ImplantRegion{
         double implant_strength;
