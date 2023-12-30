@@ -214,40 +214,16 @@ std::unordered_map<size_t, MeshNode*> Gmsh::gmsh_meshing(bool has_condition_insi
         // I'm assuming here that the geometry's id and the internal model id
         // in Gmsh/OCCT are the same.
         size_t end = gmsh::model::occ::getMaxTag(dim);
-        if(end == geometries.size()){
-            for(size_t i = 1; i <= end; ++i){
-                std::vector<size_t> elem_tags_tmp;
-                std::vector<size_t> elem_node_tags_tmp;
-                gmsh::model::mesh::getElementsByType(type, elem_tags_tmp, elem_node_tags_tmp, i);
-                elem_node_tags.insert(elem_node_tags.end(), elem_node_tags_tmp.begin(), elem_node_tags_tmp.end());
-                geom_elem_mapping[i-1] = elem_tags_tmp.size();
-            }
-            for(size_t j = 1; j < geom_elem_mapping.size(); ++j){
-                geom_elem_mapping[j] += geom_elem_mapping[j-1];
-            }
-        } else {
-            const size_t nodes_per_elem = elem_type->get_nodes_per_element();
-            // Sometimes Gmsh finds more volumes than there are input geometries,
-            // so this is used in that case
-            for(size_t i = 1; i <= end; ++i){
-                std::vector<size_t> elem_tags_tmp;
-                std::vector<size_t> elem_node_tags_tmp;
-                double x, y, z;
-                gmsh::model::occ::getCenterOfMass(dim, i, x, y, z);
-                gp_Pnt p(x, y, z);
-                for(size_t j = 0; j < geometries.size(); ++j){
-                    const auto& g = geometries[j];
-                    if(g->is_inside(p)){
-                        gmsh::model::mesh::getElementsByType(type, elem_tags_tmp, elem_node_tags_tmp, i);
-                        elem_node_tags.insert(elem_node_tags.begin()+geom_elem_mapping[j]*nodes_per_elem, elem_node_tags_tmp.begin(), elem_node_tags_tmp.end());
-                        geom_elem_mapping[j] += elem_tags_tmp.size();
-                        break;
-                    }
-                }
-            }
-            for(size_t j = 1; j < geom_elem_mapping.size(); ++j){
-                geom_elem_mapping[j] += geom_elem_mapping[j-1];
-            }
+        logger::log_assert(end == geometries.size(), logger::ERROR, "gmsh found more volumes than there are geometries. Please ensure that the loaded geometries are not compounds.");
+        for(size_t i = 1; i <= end; ++i){
+            std::vector<size_t> elem_tags_tmp;
+            std::vector<size_t> elem_node_tags_tmp;
+            gmsh::model::mesh::getElementsByType(type, elem_tags_tmp, elem_node_tags_tmp, i);
+            elem_node_tags.insert(elem_node_tags.end(), elem_node_tags_tmp.begin(), elem_node_tags_tmp.end());
+            geom_elem_mapping[i-1] = elem_tags_tmp.size();
+        }
+        for(size_t j = 1; j < geom_elem_mapping.size(); ++j){
+            geom_elem_mapping[j] += geom_elem_mapping[j-1];
         }
     }
 
