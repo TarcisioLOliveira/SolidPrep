@@ -40,6 +40,7 @@
 #include "logger.hpp"
 #include "utils.hpp"
 #include "spview.hpp"
+#include <lapacke.h>
 
 template<class T>
 class MeshElementCommon : public MeshElement{
@@ -321,6 +322,11 @@ class MeshElementCommon2D : public MeshElementCommon<T>{
 
         return std::sqrt(results[0]*results[0] - results[0]*results[1] + results[1]*results[1] + 3*results[2]*results[2] + eps);
     }
+    virtual double get_strain_VM(const gp_Pnt& p, const std::vector<double>& u, const double eps = 0) const override{
+        auto results = this->_get_strain_vector(p, u, S_SIZE);
+
+        return std::sqrt(results[0]*results[0] - results[0]*results[1] + results[1]*results[1] + 3*results[2]*results[2] + eps);
+    }
 
     virtual std::vector<double> get_stress_tensor(const std::vector<double>& D, const gp_Pnt& p, const std::vector<double>& u) const override{
         const std::vector<size_t> indices{0, 2, 2, 1};
@@ -330,6 +336,14 @@ class MeshElementCommon2D : public MeshElementCommon<T>{
     virtual std::vector<double> get_strain_tensor(const gp_Pnt& p, const std::vector<double>& u) const override{
         const std::vector<size_t> indices{0, 2, 2, 1};
         return this->_get_strain_tensor(p, u, indices, S_SIZE);
+    }
+    virtual std::vector<double> get_principal_strains(const gp_Pnt& p, const std::vector<double>& u) const override{
+        auto s = this->get_strain_tensor(p, u);
+        constexpr size_t N = 2;
+        std::vector<double> Nv(N, 0);
+        LAPACKE_dsyev(LAPACK_COL_MAJOR, 'N', 'L', N, s.data(), N, Nv.data());
+
+        return Nv;
     }
 
     virtual std::vector<double> get_strain_vector(const gp_Pnt& p, const std::vector<double>& u) const override{
@@ -543,6 +557,23 @@ class MeshElementCommon3D : public MeshElementCommon<T>{
         const double ds3 = s[2] - s[0];
 
         return std::sqrt(0.5*(ds1*ds1 + ds2*ds2 + ds3*ds3 + 6*(s[3]*s[3] + s[4]*s[4] + s[5]*s[5])) + eps);
+    }
+    virtual double get_strain_VM(const gp_Pnt& p, const std::vector<double>& u, const double eps = 0) const override{
+        auto s = this->_get_strain_vector(p, u, S_SIZE);
+
+        const double ds1 = s[0] - s[1];
+        const double ds2 = s[1] - s[2];
+        const double ds3 = s[2] - s[0];
+
+        return std::sqrt(0.5*(ds1*ds1 + ds2*ds2 + ds3*ds3 + 6*(s[3]*s[3] + s[4]*s[4] + s[5]*s[5])) + eps);
+    }
+    virtual std::vector<double> get_principal_strains(const gp_Pnt& p, const std::vector<double>& u) const override{
+        auto s = this->get_strain_tensor(p, u);
+        constexpr size_t N = 3;
+        std::vector<double> Nv(N, 0);
+        LAPACKE_dsyev(LAPACK_COL_MAJOR, 'N', 'L', N, s.data(), N, Nv.data());
+
+        return Nv;
     }
 
     virtual std::vector<double> get_stress_tensor(const std::vector<double>& D, const gp_Pnt& p, const std::vector<double>& u) const override{

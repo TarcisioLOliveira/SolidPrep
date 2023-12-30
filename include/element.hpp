@@ -302,6 +302,16 @@ class MeshElement : public Element{
      * @return Von Mises stress at point p.
      */
     virtual double get_stress_at(const std::vector<double>& D, const gp_Pnt& p, const std::vector<double>& u, const double eps = 0) const = 0;
+    /** 
+     * Calculates the Von Mises strain at a point within the element.
+     *
+     * @param p The point.
+     * @param u Displacement vector.
+     *
+     * @return Von Mises stress at point p.
+     */
+    virtual double get_strain_VM(const gp_Pnt& p, const std::vector<double>& u, const double eps = 0) const = 0;
+    virtual std::vector<double> get_principal_strains(const gp_Pnt& p, const std::vector<double>& u) const = 0;
     /**
      * Calculates the derivative of von Mises stress with D(rho).
      *
