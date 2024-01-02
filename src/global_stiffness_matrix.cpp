@@ -66,36 +66,6 @@ void GlobalStiffnessMatrix::add_geometry(const Meshing* const mesh, const std::v
     }
 }
 
-void GlobalStiffnessMatrix::add_springs(const Meshing * const mesh, const std::vector<long>& node_positions){
-    const double t = mesh->thickness;
-    const size_t dof      = mesh->elem_info->get_dof_per_node();
-    const size_t node_num = mesh->elem_info->get_nodes_per_element();
-    const size_t bnode_num = mesh->elem_info->get_boundary_nodes_per_element();
-
-    std::vector<gp_Pnt> points(bnode_num);
-
-    std::vector<long> u_pos(dof*node_num);
-    for(size_t it = 0; it < mesh->springs->size(); ++it){
-        for(const auto& b : mesh->springs->at(it).submesh){
-            const auto c = b->get_centroid(bnode_num);
-            const auto& K = mesh->springs->at(it).get_K(b->parent, c);
-            const auto& e = b->parent;
-            for(size_t i = 0; i < bnode_num; ++i){
-                points[i] = b->nodes[i]->point;
-            }
-            for(size_t i = 0; i < node_num; ++i){
-                const auto& n = e->nodes[i];
-                for(size_t j = 0; j < dof; ++j){
-                    const size_t p = n->id*dof + j;
-                    u_pos[i*dof + j] = node_positions[p];
-                }
-            }
-            const std::vector<double> R = e->get_R(K, t, points);
-            this->insert_element_matrix(R, u_pos);
-        }
-    }
-}
-
 void GlobalStiffnessMatrix::add_geometry(const Meshing* const mesh, const std::vector<long>& node_positions, const Geometry* const g, std::vector<double>::const_iterator& rho, const double pc, const double psi){
     const double t = mesh->thickness;
     const size_t dof      = mesh->elem_info->get_dof_per_node();
@@ -140,6 +110,36 @@ void GlobalStiffnessMatrix::add_geometry(const Meshing* const mesh, const std::v
             this->insert_element_matrix(k, u_pos);
 
             rho += num_den;
+        }
+    }
+}
+
+void GlobalStiffnessMatrix::add_springs(const Meshing * const mesh, const std::vector<long>& node_positions){
+    const double t = mesh->thickness;
+    const size_t dof      = mesh->elem_info->get_dof_per_node();
+    const size_t node_num = mesh->elem_info->get_nodes_per_element();
+    const size_t bnode_num = mesh->elem_info->get_boundary_nodes_per_element();
+
+    std::vector<gp_Pnt> points(bnode_num);
+
+    std::vector<long> u_pos(dof*node_num);
+    for(size_t it = 0; it < mesh->springs->size(); ++it){
+        for(const auto& b : mesh->springs->at(it).submesh){
+            const auto c = b->get_centroid(bnode_num);
+            const auto& K = mesh->springs->at(it).get_K(b->parent, c);
+            const auto& e = b->parent;
+            for(size_t i = 0; i < bnode_num; ++i){
+                points[i] = b->nodes[i]->point;
+            }
+            for(size_t i = 0; i < node_num; ++i){
+                const auto& n = e->nodes[i];
+                for(size_t j = 0; j < dof; ++j){
+                    const size_t p = n->id*dof + j;
+                    u_pos[i*dof + j] = node_positions[p];
+                }
+            }
+            const std::vector<double> R = e->get_R(K, t, points);
+            this->insert_element_matrix(R, u_pos);
         }
     }
 }
