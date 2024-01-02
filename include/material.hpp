@@ -66,6 +66,7 @@ class Material{
     virtual std::array<double, 2> S12_S13_3D(const MeshElement* const e, const gp_Pnt& p, const Eigen::Matrix<double, 3, 3>& R) const = 0;
 
     virtual Type get_type() const{ return this->NONE; }
+    virtual bool is_homogeneous() const{ return true; }
 
     /**
      * Considers each beam node as representing maximum stresses at its cross
