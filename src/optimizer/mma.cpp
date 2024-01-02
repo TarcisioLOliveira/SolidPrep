@@ -54,16 +54,6 @@ TopoDS_Shape MMA::optimize(SolverManager* fem, Meshing* mesh){
         logger::quick_log("Preparing for optimization...");
     }
 
-    size_t fem_steps = 1;
-    for(auto& f:this->objective){
-        fem_steps += f->additional_steps();
-    }
-    for(auto& f:this->constraints){
-        fem_steps += f.fun->additional_steps();
-    }
-
-    fem->set_steps(fem_steps);
-
     if(mpi_id == 0){
         this->initialize_optimizer(mesh);
     }
@@ -144,7 +134,10 @@ TopoDS_Shape MMA::optimize(SolverManager* fem, Meshing* mesh){
     if(mpi_id == 0){
         this->projection->project_densities(new_x);
     }
-    auto u = fem->calculate_displacements(mesh, mesh->load_vector, new_x, this->pc);
+    fem->generate_matrix(mesh, new_x, pc, this->psi);
+    auto loads = mesh->load_vector;
+    std::vector<double> u(mesh->max_dofs, 0);
+    fem->calculate_displacements_global(mesh, loads, u);
     if(mpi_id == 0){
         this->get_stresses(mesh->geometries, u, new_x, this->stresses, this->pc, this->psi);
         std::copy(stresses.begin(), stresses.end(), stress_render.begin());
@@ -369,7 +362,13 @@ TopoDS_Shape MMA::optimize(SolverManager* fem, Meshing* mesh){
         }
         MPI_Bcast(&ch, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
-        u = fem->calculate_displacements(mesh, mesh->load_vector, new_x, this->pc);
+        fem->generate_matrix(mesh, new_x, pc, this->psi);
+        for(size_t i = 0; i < mesh->node_positions.size(); ++i){
+            auto& lv = mesh->load_vector[i];
+            auto& l = loads[i];
+            std::copy(lv.begin(), lv.end(), l.begin());
+        }
+        fem->calculate_displacements_global(mesh, loads, u);
         if(mpi_id == 0){
             this->get_stresses(mesh->geometries, u, new_x, this->stresses, this->pc, this->psi);
             std::copy(stresses.begin(), stresses.end(), stress_render.begin());

@@ -36,17 +36,13 @@ class GradientDescent : public FiniteElement{
 
     GradientDescent(const double eps, Solver solver);
 
-    inline virtual void set_steps(size_t s) override{
-        this->steps = s;
-        this->displacement.resize(s);
-    }
+    virtual void generate_matrix(const Meshing* const mesh, const size_t L, const std::vector<long>& node_positions, const std::vector<double>& density = std::vector<double>(), double pc = 3, double psi = 0.1) override;
 
-    virtual std::vector<double> calculate_displacements(const Meshing* const mesh, const std::vector<long>& node_positions, std::vector<double> load, const std::vector<double>& density = std::vector<double>(), double pc = 3, double psi = 0.1) override;
+    virtual void calculate_displacements(std::vector<double>& load) override;
 
     private:
     bool first_time = true;
     const double eps;
-    std::vector<std::vector<double>> displacement;
     Solver solver;
     global_stiffness_matrix::LAPACKDenseSymmetricBanded gsm;
 

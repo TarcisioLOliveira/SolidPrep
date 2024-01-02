@@ -28,49 +28,48 @@
 namespace finite_element{
 
 PCG::PCG(const double eps, const Preconditioner precond):
-    eps(eps), precond(precond), displacement(1), P(){}
+    eps(eps), precond(precond), P(){}
 
-std::vector<double> PCG::calculate_displacements(const Meshing* const mesh, const std::vector<long>& node_positions, std::vector<double> load, const std::vector<double>& density, double pc, double psi){
+void PCG::generate_matrix(const Meshing* const mesh, const size_t L, const std::vector<long>& node_positions, const std::vector<double>& density, double pc, double psi){
+    this->gsm.generate(mesh, node_positions, L, density, pc, psi);
+    this->setup = false;
+}
+
+void PCG::calculate_displacements(std::vector<double>& load){
     int mpi_id = 0;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi_id);
 
     if(mpi_id != 0){
-        return std::vector<double>();
+        return;
     }
 
     const size_t& W = this->gsm.get_W();
     const size_t& N = this->gsm.get_N();
     std::vector<double>& K = this->gsm.get_K();
 
-    if(this->current_step == 0){
-        this->gsm.generate(mesh, node_positions, load.size(), density, pc, psi);
+    std::vector<double> u(load.size(), 0);
+    auto r = load;
+    auto z = r;
+    auto z2 = z;
+    if(!this->setup){
         if(this->first_time){
-            for(auto& u:this->displacement){
-                u.resize(W,0);
-            }
             this->P.resize(W, 0);
             this->first_time = false;
         }
         this->generate_P();
+        if(this->precond == Preconditioner::JACOBI){
+            cblas_dsbmv(CblasColMajor, CblasLower, W, 0, 1.0, this->P.data(), 1, r.data(), 1, 0.0, z.data(), 1);
+        } else if(this->precond == Preconditioner::SSOR){
+            LAPACKE_dtbtrs_work(LAPACK_COL_MAJOR, 'L', 'N', 'N', W, N-1, 1, K.data(), N, z.data(), W);
+            cblas_dsbmv(CblasColMajor, CblasLower, W, 0, 1.0, this->P.data(), 1, z2.data(), 1, 0.0, z.data(), 1);
+            LAPACKE_dtbtrs_work(LAPACK_COL_MAJOR, 'L', 'T', 'N', W, N-1, 1, K.data(), N, z.data(), W);
+        }
     }
     logger::quick_log("Done.");
     logger::quick_log("Calculating displacements...");
     logger::quick_log("W: ",W," N: ", N);
 
-    auto& u = this->displacement[this->current_step];
-
-
-    auto r = load;
-    auto z = r;
     cblas_dsbmv(CblasColMajor, CblasLower, W, N-1, -1.0, K.data(), N, u.data(), 1, 1.0, r.data(), 1);
-    if(this->precond == Preconditioner::JACOBI){
-        cblas_dsbmv(CblasColMajor, CblasLower, W, 0, 1.0, this->P.data(), 1, r.data(), 1, 0.0, z.data(), 1);
-    } else if(this->precond == Preconditioner::SSOR){
-        LAPACKE_dtbtrs_work(LAPACK_COL_MAJOR, 'L', 'N', 'N', W, N-1, 1, K.data(), N, z.data(), W);
-        auto z2 = z;
-        cblas_dsbmv(CblasColMajor, CblasLower, W, 0, 1.0, this->P.data(), 1, z2.data(), 1, 0.0, z.data(), 1);
-        LAPACKE_dtbtrs_work(LAPACK_COL_MAJOR, 'L', 'T', 'N', W, N-1, 1, K.data(), N, z.data(), W);
-    }
     double rho1 = cblas_ddot(W, z.data(), 1, r.data(), 1);
     double rho2 = 0;
     auto p = z;
@@ -91,7 +90,7 @@ std::vector<double> PCG::calculate_displacements(const Meshing* const mesh, cons
         } else if(this->precond == Preconditioner::SSOR){
             cblas_dcopy(W, r.data(), 1, z.data(), 1);
             LAPACKE_dtbtrs_work(LAPACK_COL_MAJOR, 'L', 'N', 'N', W, N-1, 1, K.data(), N, z.data(), W);
-            auto z2 = z;
+            cblas_dcopy(W, z.data(), 1, z2.data(), 1);
             cblas_dsbmv(CblasColMajor, CblasLower, W, 0, 1.0, this->P.data(), 1, z2.data(), 1, 0.0, z.data(), 1);
             LAPACKE_dtbtrs_work(LAPACK_COL_MAJOR, 'L', 'T', 'N', W, N-1, 1, K.data(), N, z.data(), W);
         }
@@ -112,10 +111,8 @@ std::vector<double> PCG::calculate_displacements(const Meshing* const mesh, cons
     logger::quick_log("Required iterations: ", it);
     logger::quick_log("");
     logger::quick_log("Done.");
-
-    this->current_step = (this->current_step + 1) % this->steps;
-   
-    return u;
+    
+    cblas_dcopy(load.size(), u.data(), 1, load.data(), 1);
 }
 
 

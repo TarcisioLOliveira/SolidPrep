@@ -104,7 +104,10 @@ int main(int argc, char* argv[]){
 
         // Finite element analysis
         auto start_fea = std::chrono::high_resolution_clock::now();
-        auto u = proj->topopt_fea->calculate_displacements(proj->topopt_mesher.get(), proj->topopt_mesher->load_vector);
+        auto l = proj->topopt_mesher->load_vector;
+        std::vector<double> u(proj->topopt_mesher->max_dofs, 0);
+        proj->topopt_fea->generate_matrix(proj->topopt_mesher.get());
+        proj->topopt_fea->calculate_displacements_global(proj->topopt_mesher.get(), l, u);
         auto stop_fea = std::chrono::high_resolution_clock::now();
 
         if(mpi_id == 0){

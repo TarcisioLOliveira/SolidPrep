@@ -28,34 +28,28 @@
 namespace finite_element{
 
 GradientDescent::GradientDescent(const double eps, Solver solver):
-    eps(eps), displacement(1), solver(solver){}
+    eps(eps), solver(solver){}
 
-std::vector<double> GradientDescent::calculate_displacements(const Meshing* const mesh, const std::vector<long>& node_positions, std::vector<double> load, const std::vector<double>& density, double pc, double psi){
+void GradientDescent::generate_matrix(const Meshing* const mesh, const size_t L, const std::vector<long>& node_positions, const std::vector<double>& density, double pc, double psi){
+    this->gsm.generate(mesh, node_positions, L, density, pc, psi);
+}
+void GradientDescent::calculate_displacements(std::vector<double>& load){
     int mpi_id = 0;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi_id);
 
     if(mpi_id != 0){
-        return std::vector<double>();
+        return;
     }
 
     const size_t& W = this->gsm.get_W();
     const size_t& N = this->gsm.get_N();
     std::vector<double>& K = this->gsm.get_K();
 
-    if(this->current_step == 0){
-        this->gsm.generate(mesh, node_positions, load.size(), density, pc, psi);
-        if(this->first_time){
-            for(auto& u:this->displacement){
-                u.resize(W,0);
-            }
-            this->first_time = false;
-        }
-    }
     logger::quick_log("Done.");
     logger::quick_log("Calculating displacements...");
     logger::quick_log("W: ",W," N: ", N);
 
-    auto& u = this->displacement[this->current_step];
+    std::vector<double> u(load.size(), 0);
     auto d = load;
     size_t it = 0;
     auto comp_abs = [](const double a, const double b){
@@ -139,14 +133,11 @@ std::vector<double> GradientDescent::calculate_displacements(const Meshing* cons
             ++it;
         }
     }
+    cblas_dcopy(load.size(), u.data(), 1, load.data(), 1);
 
     logger::quick_log("Required iterations: ", it);
     logger::quick_log("");
     logger::quick_log("Done.");
-
-    this->current_step = (this->current_step + 1) % this->steps;
-   
-    return u;
 }
 
 }

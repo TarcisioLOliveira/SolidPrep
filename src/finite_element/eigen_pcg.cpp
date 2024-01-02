@@ -26,33 +26,26 @@
 
 namespace finite_element{
 
-EigenPCG::EigenPCG():gsm(), u(1){}
+EigenPCG::EigenPCG():gsm(){}
 
-std::vector<double> EigenPCG::calculate_displacements(const Meshing* const mesh, const std::vector<long>& node_positions, std::vector<double> load, const std::vector<double>& density, double pc, double psi){
+void EigenPCG::generate_matrix(const Meshing* const mesh, const size_t L, const std::vector<long>& node_positions, const std::vector<double>& density, double pc, double psi){
+    this->gsm.generate(mesh, node_positions, L, density, pc, psi);
+    auto& K = this->gsm.get_K();
+    this->cg.compute(K);
+}
+
+void EigenPCG::calculate_displacements(std::vector<double>& load){
     int mpi_id = 0;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi_id);
 
     if(mpi_id != 0){
-        return std::vector<double>();
-    }
-
-    if(this->current_step == 0){
-        this->gsm.generate(mesh, node_positions, load.size(), density, pc, psi);
-        auto& K = this->gsm.get_K();
-        this->cg.compute(K);
+        return;
     }
 
     Eigen::VectorXd f = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(load.data(), load.size());
-    if(u[current_step].size() == 0){
-        u[current_step] = f;
-    }
-    u[current_step] = cg.solveWithGuess(f, u[current_step]);
+    Eigen::VectorXd u = cg.solve(f);
 
-    std::copy(u[current_step].cbegin(), u[current_step].cend(), load.begin());
-
-    this->current_step = (this->current_step + 1) % this->steps;
-   
-    return load; 
+    std::copy(u.cbegin(), u.cend(), load.begin());
 }
 
 }

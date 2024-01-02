@@ -48,6 +48,7 @@ double Mechanostat::calculate_with_gradient(const Optimizer* const op, const std
     int mpi_id = 0;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi_id);
     std::vector<std::vector<double>> fl(this->mesh->sub_problems->size());
+    std::vector<double> l(mesh->max_dofs,0);
     for(size_t i = 0; i < fl.size(); ++i){
         fl[i].resize(mesh->max_dofs);
     }
@@ -141,7 +142,7 @@ double Mechanostat::calculate_with_gradient(const Optimizer* const op, const std
         }
         logger::quick_log("Calculating adjoint problem...{");
     }
-    auto l = this->fem->calculate_displacements(this->mesh, fl, x, pc);
+    this->fem->calculate_displacements_adjoint(this->mesh, fl, l);
     if(mpi_id == 0){
         logger::quick_log("} Done.");
 
@@ -153,7 +154,7 @@ double Mechanostat::calculate_with_gradient(const Optimizer* const op, const std
             if(g->do_topopt){
                 const size_t num_den = g->number_of_densities_needed();
                 std::vector<std::vector<double>> gradD_K(num_den, std::vector<double>(s_size*s_size, 0));
-                std::vector<double> D_S(std::vector<double>(s_size*s_size, 0));
+                std::vector<double> D_S(s_size*s_size, 0);
                 if(g->with_void){
                     for(const auto& e:g->mesh){
                         const auto c = e->get_centroid();

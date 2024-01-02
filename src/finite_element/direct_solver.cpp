@@ -30,25 +30,30 @@
 
 namespace finite_element{
 
-std::vector<double> DirectSolver::calculate_displacements(const Meshing* const mesh, const std::vector<long>& node_positions, std::vector<double> load, const std::vector<double>& density, double pc, double psi){
+void DirectSolver::generate_matrix(const Meshing* const mesh, const size_t L, const std::vector<long>& node_positions, const std::vector<double>& density, double pc, double psi){
+    this->gsm.generate(mesh, node_positions, L, density, pc, psi);
+    this->factorized = false;
+}
+
+void DirectSolver::calculate_displacements(std::vector<double>& load){
     int mpi_id = 0;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi_id);
 
     if(mpi_id != 0){
-        return std::vector<double>();
+        return;
     }
 
     const size_t& W = this->gsm.get_W();
     const size_t& N = this->gsm.get_N();
     std::vector<double>& K = this->gsm.get_K();
 
-    if(this->current_step == 0){
-        this->gsm.generate(mesh, node_positions, load.size(), density, pc, psi);
+    if(!this->factorized){
 
         logger::quick_log("Decomposing...");
         int info = LAPACKE_dpbtrf_work(LAPACK_COL_MAJOR, 'L', W, N-1, K.data(), N);
         logger::log_assert(info == 0, logger::ERROR, "LAPACKE returned {} while factoring stiffness matrix.", info);
         logger::quick_log("Done.");
+        factorized = true;
     }
     logger::quick_log("Calculating displacements...");
     logger::quick_log("W: ",W," N: ", N);
@@ -59,10 +64,6 @@ std::vector<double> DirectSolver::calculate_displacements(const Meshing* const m
     // logger::log_assert(info == 0, logger::ERROR, "LAPACKE returned {} while calculating displacements.", info);
 
     logger::quick_log("Done.");
-
-    this->current_step = (this->current_step + 1) % this->steps;
-   
-    return load; 
 }
 
 }

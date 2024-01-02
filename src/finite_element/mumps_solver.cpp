@@ -77,54 +77,60 @@ MUMPSSolver::~MUMPSSolver(){
     dmumps_c(&this->config);
 }
 
-std::vector<double> MUMPSSolver::calculate_displacements(const Meshing* const mesh, const std::vector<long>& node_positions, std::vector<double> load, const std::vector<double>& density, double pc, double psi){
+void MUMPSSolver::generate_matrix(const Meshing* const mesh, const size_t L, const std::vector<long>& node_positions, const std::vector<double>& density, double pc, double psi){
     int mpi_id = 0;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi_id);
 
-    if(this->current_step == 0){
+    if(mpi_id == 0){
+        this->gsm.generate(mesh, node_positions, L, density, pc, psi);
 
-        if(mpi_id == 0){
-            this->gsm.generate(mesh, node_positions, load.size(), density, pc, psi);
-
-            std::vector<int>& rows = this->gsm.get_rows();
-            std::vector<int>& cols = this->gsm.get_cols();
-            std::vector<double>& vals = this->gsm.get_vals();
-            // Insert matrix data
-            // Do this after every regeneration as the vectors may expand, which
-            // will change their address.
-            this->config.n   = load.size();
-            this->config.nnz = vals.size();
-            this->config.a   = vals.data();
-            this->config.irn = rows.data();
-            this->config.jcn = cols.data();
-        }
-        if(this->first_time){
-            this->config.job = 1; // Perform analysis
-            dmumps_c(&this->config);
-            int size = this->config.INFO(8);
-            if(size > 0){
-                this->buffer.resize(size*1.35);
-                if(this->buffer.size() < 1e6){
-                    this->config.lwk_user = buffer.size();
-                } else {
-                    this->config.lwk_user = -double(buffer.size())/1e6;
-                }
-            } else {
-                this->buffer.resize(-double(size)*1e6*1.35);
-                this->config.lwk_user = -double(this->buffer.size())/1e6;
-            }
-            this->config.ICNTL(14) = 35;
-            this->config.ICNTL(23) = this->config.INFO(15)*1.2 - double(this->buffer.size())/1e6;;
-            this->config.wk_user = this->buffer.data();
-            this->first_time = false;
-        }
-
-        if(mpi_id == 0){
-            logger::quick_log("Decomposing...");
-        }
-
-        this->config.job = 2; // Decompose
+        std::vector<int>& rows = this->gsm.get_rows();
+        std::vector<int>& cols = this->gsm.get_cols();
+        std::vector<double>& vals = this->gsm.get_vals();
+        // Insert matrix data
+        // Do this after every regeneration as the vectors may expand, which
+        // will change their address.
+        this->config.n   = L;
+        this->config.nnz = vals.size();
+        this->config.a   = vals.data();
+        this->config.irn = rows.data();
+        this->config.jcn = cols.data();
+        this->factorized = false;
+    }
+    if(this->first_time){
+        this->config.job = 1; // Perform analysis
         dmumps_c(&this->config);
+        int size = this->config.INFO(8);
+        if(size > 0){
+            this->buffer.resize(size*1.35);
+            if(this->buffer.size() < 1e6){
+                this->config.lwk_user = buffer.size();
+            } else {
+                this->config.lwk_user = -double(buffer.size())/1e6;
+            }
+        } else {
+            this->buffer.resize(-double(size)*1e6*1.35);
+            this->config.lwk_user = -double(this->buffer.size())/1e6;
+        }
+        this->config.ICNTL(14) = 35;
+        this->config.ICNTL(23) = this->config.INFO(15)*1.2 - double(this->buffer.size())/1e6;;
+        this->config.wk_user = this->buffer.data();
+        this->first_time = false;
+    }
+}
+
+void MUMPSSolver::calculate_displacements(std::vector<double>& load){
+    int mpi_id = 0;
+    MPI_Comm_rank(MPI_COMM_WORLD, &mpi_id);
+
+    if(!this->factorized){
+        if(mpi_id == 0){
+            logger::quick_log("Factorizing...");
+        }
+
+        this->config.job = 2; // Factorize
+        dmumps_c(&this->config);
+        this->factorized = true;
 
         if(mpi_id == 0){
             logger::quick_log("Done.");
@@ -142,10 +148,6 @@ std::vector<double> MUMPSSolver::calculate_displacements(const Meshing* const me
     if(mpi_id == 0){
         logger::quick_log("Done.");
     }
-
-    this->current_step = (this->current_step + 1) % this->steps;
-   
-    return load; 
 }
 
 }

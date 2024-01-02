@@ -66,6 +66,7 @@ double GlobalStressPnorm::calculate_with_gradient(const Optimizer* const op, con
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi_id);
     // Calculating stresses
     std::vector<std::vector<double>> fl(this->mesh->sub_problems->size());
+    std::vector<double> l(mesh->max_dofs,0);
     auto grad_V = op->get_volumes();
     std::vector<double> stresses(grad_V.size());
     auto s_it = stresses.begin();
@@ -162,7 +163,7 @@ double GlobalStressPnorm::calculate_with_gradient(const Optimizer* const op, con
 
         logger::quick_log("Calculating adjoint problem...{");
     }
-    auto l = this->fem->calculate_displacements(this->mesh, fl, x, pc);
+    this->fem->calculate_displacements_adjoint(this->mesh, fl, l);
     if(mpi_id == 0){
         logger::quick_log("} Done.");
 

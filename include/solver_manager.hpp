@@ -28,21 +28,20 @@ class SolverManager{
     SolverManager(std::vector<std::unique_ptr<FiniteElement>> solvers):
         solvers(std::move(solvers)){}
 
-    std::vector<double> calculate_displacements(const Meshing* const mesh, const std::vector<double>& density = std::vector<double>(), double pc = 3, double psi = 0.1);
+    void generate_matrix(const Meshing* const mesh, const std::vector<double>& density = std::vector<double>(), double pc = 3, double psi = 0.1);
 
-    std::vector<double> calculate_displacements(const Meshing* const mesh, const std::vector<std::vector<double>>& load, const std::vector<double>& density = std::vector<double>(), double pc = 3, double psi = 0.1);
-
-    inline void set_steps(size_t s){
-        for(auto& solv:solvers){
-            solv->set_steps(s);
-        }
-    }
+    void calculate_displacements_global(const Meshing* const mesh, std::vector<std::vector<double>>& load, std::vector<double>& u);
+    void calculate_displacements_adjoint(const Meshing* const mesh, std::vector<std::vector<double>>& load, std::vector<double>& u);
 
     const std::vector<std::vector<double>>& sub_u = this->split_u;
+    const std::vector<std::vector<double>>& D_vec = this->D_matrices;
 
     private:
     std::vector<std::vector<double>> split_u;
     std::vector<std::unique_ptr<FiniteElement>> solvers;
+    std::vector<std::vector<double>> D_matrices;
+
+    void update_D_matrices(const Meshing* const mesh, const std::vector<double>& density = std::vector<double>());
 };
 
 #endif

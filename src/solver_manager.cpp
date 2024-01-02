@@ -21,18 +21,40 @@
 #include "solver_manager.hpp"
 #include "logger.hpp"
 
-std::vector<double> SolverManager::calculate_displacements(const Meshing* const mesh, const std::vector<double>& density, double pc, double psi){
-    return this->calculate_displacements(mesh, mesh->load_vector, density, pc, psi);
+void SolverManager::generate_matrix(const Meshing* const mesh, const std::vector<double>& density, double pc, double psi){
+    for(size_t i = 0; i < mesh->sub_problems->size(); ++i){
+        auto& n = mesh->node_positions[i];
+        auto& l = mesh->load_vector[i];
+        this->solvers[i]->generate_matrix(mesh, l.size(), n, density, pc, psi);
+    }
 }
 
-std::vector<double> SolverManager::calculate_displacements(const Meshing* const mesh, const std::vector<std::vector<double>>& load, const std::vector<double>& density, double pc, double psi){
-    std::vector<double> u(mesh->max_dofs, 0);
+void SolverManager::calculate_displacements_global(const Meshing* const mesh, std::vector<std::vector<double>>& load, std::vector<double>& u){
+    u.resize(mesh->max_dofs, 0);
+    std::fill(u.begin(), u.end(), 0);
     this->split_u.resize(mesh->sub_problems->size());
     for(size_t i = 0; i < mesh->sub_problems->size(); ++i){
         auto& l = load[i];
         auto& n = mesh->node_positions[i];
         this->split_u[i].resize(mesh->max_dofs, 0);
         auto& ui = this->split_u[i];
+        this->solvers[i]->calculate_displacements(l);
+        #pragma omp parallel for
+        for(size_t j = 0; j < n.size(); ++j){
+            const long p_new = n[j];
+            if(p_new >= 0){
+                u[j] += l[p_new];
+                ui[j] = l[p_new];
+            }
+        }
+    }
+}
+
+void SolverManager::calculate_displacements_adjoint(const Meshing* const mesh, std::vector<std::vector<double>>& load, std::vector<double>& u){
+    for(size_t i = 0; i < mesh->sub_problems->size(); ++i){
+        auto& l = load[i];
+        auto& n = mesh->node_positions[i];
+        this->split_u[i].resize(mesh->max_dofs, 0);
         if(l.size() == mesh->max_dofs){
             std::vector<double> load_pos(mesh->dofs_per_subproblem[i]);
             #pragma omp parallel for
@@ -42,29 +64,27 @@ std::vector<double> SolverManager::calculate_displacements(const Meshing* const 
                     load_pos[p_new] = l[j];
                 }
             }
-            auto u_tmp = this->solvers[i]->calculate_displacements(mesh, n, load_pos, density, pc, psi);
+            this->solvers[i]->calculate_displacements(load_pos);
             #pragma omp parallel for
             for(size_t j = 0; j < n.size(); ++j){
                 const long p_new = n[j];
                 if(p_new >= 0){
-                    u[j] += u_tmp[p_new];
-                    ui[j] = u_tmp[p_new];
+                    u[j] += load_pos[p_new];
+                    l[p_new] = load_pos[p_new];
                 }
             }
         } else if(l.size() == mesh->dofs_per_subproblem[i]){
-            auto u_tmp = this->solvers[i]->calculate_displacements(mesh, n, l, density, pc, psi);
+            this->solvers[i]->calculate_displacements(l);
             #pragma omp parallel for
             for(size_t j = 0; j < n.size(); ++j){
                 const long p_new = n[j];
                 if(p_new >= 0){
-                    u[j] += u_tmp[p_new];
-                    ui[j] = u_tmp[p_new];
+                    u[j] += l[p_new];
                 }
             }
         } else {
             logger::log_assert(false, logger::ERROR, "incorrect load vector size, must be equal to mesh->max_dofs OR mesh->dofs_per_subproblem[i]");
         }
     }
-    return u;
 }
 

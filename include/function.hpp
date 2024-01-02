@@ -47,7 +47,6 @@ class DensityBasedFunction{
         (void)grad;
         return 0;
     }
-    virtual size_t additional_steps() const = 0;
 
     virtual DensityFilter::FilterGradient filter_gradient_type() const{
         return DensityFilter::FilterGradient::ELEMENTAL;

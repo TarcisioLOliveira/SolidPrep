@@ -39,9 +39,6 @@ class Mechanostat : public DensityBasedFunction{
 
     virtual double calculate(const Optimizer* const op, const std::vector<double>& u, const std::vector<double>& x) override;
     virtual double calculate_with_gradient(const Optimizer* const op, const std::vector<double>& u, const std::vector<double>& x, std::vector<double>& grad) override;
-    virtual size_t additional_steps() const override{
-        return 1;
-    }
 
     private:
     const Meshing* const mesh;

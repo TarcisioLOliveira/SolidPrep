@@ -34,20 +34,18 @@ class PETScPCG : public FiniteElement{
 
     virtual ~PETScPCG();
 
-    virtual std::vector<double> calculate_displacements(const Meshing* const mesh, const std::vector<long>& node_positions, std::vector<double> load, const std::vector<double>& density = std::vector<double>(), double pc = 3, double psi = 0.1) override;
+    virtual void generate_matrix(const Meshing* const mesh, const size_t L, const std::vector<long>& node_positions, const std::vector<double>& density = std::vector<double>(), double pc = 3, double psi = 0.1) override;
 
-    inline virtual void set_steps(size_t s) override{
-        this->steps = s;
-        this->u.resize(steps);
-    }
+    virtual void calculate_displacements(std::vector<double>& load) override;
 
     private:
     std::unique_ptr<global_stiffness_matrix::PETScSparseSymmetric> gsm;
-    std::vector<Vec> u;
+    Vec u;
     Vec f = 0;
     PC pc = 0;
     KSP ksp = 0;
     bool first_time = true;
+    bool setup = false;
     std::string vec_type = VECSTANDARD;
 };
 
