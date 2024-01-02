@@ -58,6 +58,7 @@ class MultiMaterial{
     std::vector<Material*> materials;
     utils::ProblemType problem_type;
     bool has_void;
+    bool is_homogeneous = true;
 
     void get_D_internal(std::vector<double>::const_iterator& rho, const double mix, const MeshElement* e, const gp_Pnt& p, std::vector<double>& D) const;
     void get_gradD_internal(std::vector<double>::const_iterator& rho, const double mix, const MeshElement* e, const gp_Pnt& p, std::vector<std::vector<double>>& gradD) const;
