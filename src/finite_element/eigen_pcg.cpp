@@ -28,8 +28,8 @@ namespace finite_element{
 
 EigenPCG::EigenPCG():gsm(){}
 
-void EigenPCG::generate_matrix(const Meshing* const mesh, const size_t L, const std::vector<long>& node_positions, const std::vector<double>& density, double pc, double psi){
-    this->gsm.generate(mesh, node_positions, L, density, pc, psi);
+void EigenPCG::generate_matrix(const Meshing* const mesh, const size_t L, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache){
+    this->gsm.generate(mesh, node_positions, L, topopt, D_cache);
     auto& K = this->gsm.get_K();
     this->cg.compute(K);
 }

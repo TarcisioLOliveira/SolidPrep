@@ -22,26 +22,23 @@
 #include "cblas.h"
 #include "logger.hpp"
 
-void GlobalStiffnessMatrix::generate_base(const Meshing * const mesh, const std::vector<long>& node_positions, const std::vector<double>& density, const double pc, const double psi){
-    if(density.size() == 0){
-        for(auto& g : mesh->geometries){
+void GlobalStiffnessMatrix::generate_base(const Meshing * const mesh, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache){
+    size_t D_offset = 0;
+    for(auto& g : mesh->geometries){
+        if((topopt && g->do_topopt) || !g->materials.get_materials()[0]->is_homogeneous()){
+            this->add_geometry(mesh, node_positions, g, D_offset, D_cache);
+            D_offset += g->mesh.size();
+        } else {
             this->add_geometry(mesh, node_positions, g);
-        }
-    } else {
-        auto rho = density.begin();
-        for(auto& g : mesh->geometries){
-            if(g->do_topopt){
-                this->add_geometry(mesh, node_positions, g, rho, pc, psi);
-            } else {
-                this->add_geometry(mesh, node_positions, g);
-            }
-        }
-        for(size_t i = 0; i < mesh->load_vector.size(); ++i){
-            this->add_to_matrix(i, i, this->K_MIN);
         }
     }
     if(mesh->springs->size() > 0){
         this->add_springs(mesh, node_positions);
+    }
+    if(topopt){
+        for(size_t i = 0; i < mesh->load_vector.size(); ++i){
+            this->add_to_matrix(i, i, this->K_MIN);
+        }
     }
 }
 
@@ -51,9 +48,8 @@ void GlobalStiffnessMatrix::add_geometry(const Meshing* const mesh, const std::v
     const size_t node_num = mesh->elem_info->get_nodes_per_element();
 
     std::vector<long> u_pos(dof*node_num);
+    const auto D = g->materials.get_D(g->mesh.front().get(), g->mesh.front()->get_centroid());
     for(auto& e : g->mesh){
-        const gp_Pnt c = e->get_centroid();
-        const auto D = g->materials.get_D(e.get(), c);
         for(size_t i = 0; i < node_num; ++i){
             const auto& n = e->nodes[i];
             for(size_t j = 0; j < dof; ++j){
@@ -66,51 +62,25 @@ void GlobalStiffnessMatrix::add_geometry(const Meshing* const mesh, const std::v
     }
 }
 
-void GlobalStiffnessMatrix::add_geometry(const Meshing* const mesh, const std::vector<long>& node_positions, const Geometry* const g, std::vector<double>::const_iterator& rho, const double pc, const double psi){
+void GlobalStiffnessMatrix::add_geometry(const Meshing* const mesh, const std::vector<long>& node_positions, const Geometry* const g, const size_t D_offset, const std::vector<std::vector<double>>& D_cache){
     const double t = mesh->thickness;
     const size_t dof      = mesh->elem_info->get_dof_per_node();
     const size_t node_num = mesh->elem_info->get_nodes_per_element();
 
     std::vector<long> u_pos(dof*node_num);
-    const size_t num_den = g->number_of_densities_needed();
-    const size_t k_size = mesh->elem_info->get_k_dimension();
-    const size_t s_size = mesh->elem_info->get_D_dimension();
-    auto D = std::vector<double>(s_size*s_size, 0);
-    if(g->with_void){
-        for(const auto& e:g->mesh){
-            if(*rho > 0){
-                for(size_t i = 0; i < node_num; ++i){
-                    const auto& n = e->nodes[i];
-                    for(size_t j = 0; j < dof; ++j){
-                        const size_t p = n->id*dof + j;
-                        u_pos[i*dof + j] = node_positions[p];
-                    }
-                }
-                const gp_Pnt c = e->get_centroid();
-                g->materials.get_D(rho, psi, e.get(), c, D);
-                std::vector<double> k = e->get_k(D, t);
-                cblas_dscal(k_size*k_size, std::pow(*rho, pc), k.data(), 1);
-                this->insert_element_matrix(k, u_pos);
+    size_t it = 0;
+    for(const auto& e:g->mesh){
+        for(size_t i = 0; i < node_num; ++i){
+            const auto& n = e->nodes[i];
+            for(size_t j = 0; j < dof; ++j){
+                const size_t p = n->id*dof + j;
+                u_pos[i*dof + j] = node_positions[p];
             }
-
-            rho += num_den;
         }
-    } else {
-        for(const auto& e:g->mesh){
-            for(size_t i = 0; i < node_num; ++i){
-                const auto& n = e->nodes[i];
-                for(size_t j = 0; j < dof; ++j){
-                    const size_t p = n->id*dof + j;
-                    u_pos[i*dof + j] = node_positions[p];
-                }
-            }
-            const gp_Pnt c = e->get_centroid();
-            g->materials.get_D(rho, psi, e.get(), c, D);
-            const std::vector<double> k = e->get_k(D, t);
-            this->insert_element_matrix(k, u_pos);
-
-            rho += num_den;
-        }
+        const auto& D = D_cache[D_offset + it];
+        std::vector<double> k = e->get_k(D, t);
+        this->insert_element_matrix(k, u_pos);
+        ++it;
     }
 }
 

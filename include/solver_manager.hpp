@@ -28,7 +28,7 @@ class SolverManager{
     SolverManager(std::vector<std::unique_ptr<FiniteElement>> solvers):
         solvers(std::move(solvers)){}
 
-    void generate_matrix(const Meshing* const mesh, const std::vector<double>& density = std::vector<double>(), double pc = 3, double psi = 0.1);
+    void generate_matrix(const Meshing* const mesh, const std::vector<double>& density = std::vector<double>(), double pc = 3, double psi = 0.5);
 
     void calculate_displacements_global(const Meshing* const mesh, std::vector<std::vector<double>>& load, std::vector<double>& u);
     void calculate_displacements_adjoint(const Meshing* const mesh, std::vector<std::vector<double>>& load, std::vector<double>& u);
@@ -39,9 +39,30 @@ class SolverManager{
     private:
     std::vector<std::vector<double>> split_u;
     std::vector<std::unique_ptr<FiniteElement>> solvers;
+    std::vector<double> old_densities;
     std::vector<std::vector<double>> D_matrices;
 
-    void update_D_matrices(const Meshing* const mesh, const std::vector<double>& density = std::vector<double>());
+    void update_D_matrices(const Meshing* const mesh, const std::vector<double>& density = std::vector<double>(), double pc = 3, double psi = 0.5);
+
+    inline bool modified_densities(const std::vector<double>& density, size_t start, size_t range){
+        // Using equality to compare densities because the tolerance would
+        // have to be below the optimizer's xtol_abs, otherwise it could
+        // prematurely stop optimization.
+        bool modified = false;
+        for(size_t i = 0; i < range; ++i){
+            if(old_densities[start + i] != density[start + i]){
+                modified = true;
+                break;
+            }
+        }
+
+        return modified;
+    }
+    inline void update_densities(const std::vector<double>& density, size_t start, size_t range){
+        for(size_t i = 0; i < range; ++i){
+            old_densities[start + i] = density[start + i];
+        }
+    }
 };
 
 #endif

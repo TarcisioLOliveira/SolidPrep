@@ -29,7 +29,7 @@ PETScSparseSymmetric::~PETScSparseSymmetric(){
     MatDestroy(&this->K);
 }
 
-void PETScSparseSymmetric::generate(const Meshing* const mesh, const std::vector<long>& node_positions, const size_t matrix_width, const std::vector<double>& density, const double pc, const double psi){
+void PETScSparseSymmetric::generate(const Meshing* const mesh, const std::vector<long>& node_positions, const size_t matrix_width, bool topopt, const std::vector<std::vector<double>>& D_cache){
     int mpi_id = 0;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi_id);
 
@@ -38,12 +38,12 @@ void PETScSparseSymmetric::generate(const Meshing* const mesh, const std::vector
     }
 
     if(first_time){
-        this->preallocate(mesh, node_positions, matrix_width, density, pc, psi, mpi_id);
+        this->preallocate(mesh, node_positions, matrix_width, topopt, D_cache, mpi_id);
     } else {
         this->zero();
     }
 
-    this->assemble_matrix(mesh, node_positions, density, pc, psi, mpi_id);
+    this->assemble_matrix(mesh, node_positions, topopt, D_cache, mpi_id);
 
     this->first_time = false;
     if(mpi_id == 0){
@@ -51,7 +51,7 @@ void PETScSparseSymmetric::generate(const Meshing* const mesh, const std::vector
     }
 }
 
-void PETScSparseSymmetricCPU::preallocate(const Meshing * const mesh, const std::vector<long>& node_positions, const size_t matrix_width, const std::vector<double>& density, const double pc, const double psi, const size_t mpi_id){
+void PETScSparseSymmetricCPU::preallocate(const Meshing * const mesh, const std::vector<long>& node_positions, const size_t matrix_width, bool topopt, const std::vector<std::vector<double>>& D_cache, const size_t mpi_id){
     MatCreate(PETSC_COMM_WORLD, &this->K);
     MatSetType(this->K, MATAIJ);
 
@@ -76,7 +76,7 @@ void PETScSparseSymmetricCPU::preallocate(const Meshing * const mesh, const std:
 
     if(mpi_id == 0){
         std::swap(tmp, K);
-        this->generate_base(mesh, node_positions, density, pc, psi);
+        this->generate_base(mesh, node_positions, topopt, D_cache);
         std::swap(tmp, K);
     }
 
@@ -92,15 +92,15 @@ void PETScSparseSymmetricCPU::preallocate(const Meshing * const mesh, const std:
     //MatSetUp(this->K);
 }
 
-void PETScSparseSymmetricCPU::assemble_matrix(const Meshing * const mesh, const std::vector<long>& node_positions, const std::vector<double>& density, const double pc, const double psi, const size_t mpi_id){
+void PETScSparseSymmetricCPU::assemble_matrix(const Meshing * const mesh, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const size_t mpi_id){
     if(mpi_id == 0){
-        this->generate_base(mesh, node_positions, density, pc, psi);
+        this->generate_base(mesh, node_positions, topopt, D_cache);
     }
 
     MatAssemblyBegin(this->K, MAT_FINAL_ASSEMBLY);
     MatAssemblyEnd(this->K, MAT_FINAL_ASSEMBLY);
 }
-void PETScSparseSymmetricCUDA::preallocate(const Meshing * const mesh, const std::vector<long>& node_positions, const size_t matrix_width, const std::vector<double>& density, const double pc, const double psi, const size_t mpi_id){
+void PETScSparseSymmetricCUDA::preallocate(const Meshing * const mesh, const std::vector<long>& node_positions, const size_t matrix_width, bool topopt, const std::vector<std::vector<double>>& D_cache, const size_t mpi_id){
     MatCreate(PETSC_COMM_WORLD, &this->K);
     MatSetType(this->K, MATAIJCUSPARSE);
 
@@ -113,7 +113,7 @@ void PETScSparseSymmetricCUDA::preallocate(const Meshing * const mesh, const std
     MatSetOption(this->K, MAT_KEEP_NONZERO_PATTERN, PETSC_TRUE);
 
     if(mpi_id == 0){
-        this->generate_base(mesh, node_positions, density, pc, psi);
+        this->generate_base(mesh, node_positions, topopt, D_cache);
     }
 
     this->K_coo.generate_coo(M);
@@ -122,11 +122,11 @@ void PETScSparseSymmetricCUDA::preallocate(const Meshing * const mesh, const std
 
     MatSetUp(this->K);
 }
-void PETScSparseSymmetricCUDA::assemble_matrix(const Meshing * const mesh, const std::vector<long>& node_positions, const std::vector<double>& density, const double pc, const double psi, const size_t mpi_id){
+void PETScSparseSymmetricCUDA::assemble_matrix(const Meshing * const mesh, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const size_t mpi_id){
 
     if(mpi_id == 0){
         if(!this->first_time){
-            this->generate_base(mesh, node_positions, density, pc, psi);
+            this->generate_base(mesh, node_positions, topopt, D_cache);
         }
         MatSetValuesCOO(this->K, this->K_coo.vals.data(), INSERT_VALUES);
     }

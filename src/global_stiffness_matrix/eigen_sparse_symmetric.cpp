@@ -33,7 +33,7 @@ class EigenSparseSymmetricTriplets : public GlobalStiffnessMatrix{
 
     virtual ~EigenSparseSymmetricTriplets() = default;
 
-    virtual void generate(const Meshing * const mesh, const std::vector<long>& node_positions, const size_t matrix_width, const std::vector<double>& density, const double pc, const double psi) override;
+    virtual void generate(const Meshing * const mesh, const std::vector<long>& node_positions, const size_t matrix_width, bool topopt, const std::vector<std::vector<double>>& D_cache) override;
 
     std::vector<T> triplets;
 
@@ -49,26 +49,26 @@ class EigenSparseSymmetricTriplets : public GlobalStiffnessMatrix{
     }
 };
 
-void EigenSparseSymmetricTriplets::generate(const Meshing * const mesh, const std::vector<long>& node_positions, const size_t matrix_width, const std::vector<double>& density, const double pc, const double psi){
+void EigenSparseSymmetricTriplets::generate(const Meshing * const mesh, const std::vector<long>& node_positions, const size_t matrix_width, bool topopt, const std::vector<std::vector<double>>& D_cache){
     (void) matrix_width;
-    this->generate_base(mesh, node_positions, density, pc, psi);
+    this->generate_base(mesh, node_positions, topopt, D_cache);
     this->triplets = K.get_eigen_triplets();
     this->K.clear();
 }
 
 }
 
-void EigenSparseSymmetric::generate(const Meshing* const mesh, const std::vector<long>& node_positions, const size_t matrix_width, const std::vector<double>& density, const double pc, const double psi){
+void EigenSparseSymmetric::generate(const Meshing* const mesh, const std::vector<long>& node_positions, const size_t matrix_width, bool topopt, const std::vector<std::vector<double>>& D_cache){
     logger::quick_log("Generating stiffness matrix...");
     if(this->first_time){
         this->K = Mat(matrix_width, matrix_width);
         internal::EigenSparseSymmetricTriplets trigen;
-        trigen.generate(mesh, node_positions, matrix_width, density, pc, psi);
+        trigen.generate(mesh, node_positions, matrix_width, topopt, D_cache);
         this->K.setFromTriplets(trigen.triplets.begin(), trigen.triplets.end());
         this->first_time = false;
     } else {
         std::fill(this->K.valuePtr(), this->K.valuePtr() + this->K.nonZeros(), 0);
-        this->generate_base(mesh, node_positions, density, pc, psi);
+        this->generate_base(mesh, node_positions, topopt, D_cache);
     }
     logger::quick_log("Done.");
 }

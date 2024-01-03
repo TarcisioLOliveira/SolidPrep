@@ -23,7 +23,7 @@
 
 namespace global_stiffness_matrix{
 
-void LAPACKDenseSymmetricBanded::generate(const Meshing* const mesh, const std::vector<long>& node_positions, const size_t matrix_width, const std::vector<double>& density, const double pc, const double psi){
+void LAPACKDenseSymmetricBanded::generate(const Meshing* const mesh, const std::vector<long>& node_positions, const size_t matrix_width, bool topopt, const std::vector<std::vector<double>>& D_cache){
     if(this->first_time){
         this->K.clear();
         this->calculate_dimensions(mesh, node_positions, matrix_width);
@@ -33,7 +33,7 @@ void LAPACKDenseSymmetricBanded::generate(const Meshing* const mesh, const std::
         std::fill(this->K.begin(), this->K.end(), 0);
     }
     logger::quick_log("Generating stiffness matrix...");
-    this->generate_base(mesh, node_positions, density, pc, psi);
+    this->generate_base(mesh, node_positions, topopt, D_cache);
     logger::quick_log("Done.");
 }
 

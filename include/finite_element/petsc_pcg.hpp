@@ -34,7 +34,7 @@ class PETScPCG : public FiniteElement{
 
     virtual ~PETScPCG();
 
-    virtual void generate_matrix(const Meshing* const mesh, const size_t L, const std::vector<long>& node_positions, const std::vector<double>& density = std::vector<double>(), double pc = 3, double psi = 0.1) override;
+    virtual void generate_matrix(const Meshing* const mesh, const size_t L, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache) override;
 
     virtual void calculate_displacements(std::vector<double>& load) override;
 

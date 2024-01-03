@@ -77,12 +77,12 @@ MUMPSSolver::~MUMPSSolver(){
     dmumps_c(&this->config);
 }
 
-void MUMPSSolver::generate_matrix(const Meshing* const mesh, const size_t L, const std::vector<long>& node_positions, const std::vector<double>& density, double pc, double psi){
+void MUMPSSolver::generate_matrix(const Meshing* const mesh, const size_t L, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache){
     int mpi_id = 0;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi_id);
 
     if(mpi_id == 0){
-        this->gsm.generate(mesh, node_positions, L, density, pc, psi);
+        this->gsm.generate(mesh, node_positions, L, topopt, D_cache);
 
         std::vector<int>& rows = this->gsm.get_rows();
         std::vector<int>& cols = this->gsm.get_cols();

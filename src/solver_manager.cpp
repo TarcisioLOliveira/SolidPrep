@@ -22,10 +22,11 @@
 #include "logger.hpp"
 
 void SolverManager::generate_matrix(const Meshing* const mesh, const std::vector<double>& density, double pc, double psi){
+    this->update_D_matrices(mesh, density, pc, psi);
     for(size_t i = 0; i < mesh->sub_problems->size(); ++i){
         auto& n = mesh->node_positions[i];
         auto& l = mesh->load_vector[i];
-        this->solvers[i]->generate_matrix(mesh, l.size(), n, density, pc, psi);
+        this->solvers[i]->generate_matrix(mesh, l.size(), n, density.size() > 0, this->D_matrices);
     }
 }
 
@@ -88,3 +89,131 @@ void SolverManager::calculate_displacements_adjoint(const Meshing* const mesh, s
     }
 }
 
+void SolverManager::update_D_matrices(const Meshing* const mesh, const std::vector<double>& density, double pc, double psi){
+    logger::quick_log("Generating constitutive matrices...");
+    if(density.size() == 0 && this->D_matrices.size() > 0){
+        return;
+    } else if(density.size() == 0){
+        // Cache non-homogeneous matrices only
+        // Makes it faster to generate K when using non-homogeneous matrices,
+        // especially when using multiple subproblems
+        size_t cache_size = 0;
+        for(const auto& g:mesh->geometries){
+            const auto& mat = g->materials.get_materials()[0];
+            if(!mat->is_homogeneous()){
+                cache_size += g->mesh.size();
+            }
+        }
+        this->D_matrices.resize(cache_size);
+        size_t offset = 0;
+        for(const auto& g:mesh->geometries){
+            const auto& mat = g->materials.get_materials()[0];
+            if(!mat->is_homogeneous()){
+                #pragma omp parallel for
+                for(size_t i = 0; i < g->mesh.size(); ++i){
+                    const auto& e = g->mesh[i];
+                    const auto c = e->get_centroid();
+                    this->D_matrices[offset+i] = g->materials.get_D(e.get(), c);
+                }
+                offset += g->mesh.size();
+            }
+        }
+    } else if(this->old_densities.size() == 0){
+        // Cache non-homogeneous materials and multimaterial elements 
+        const size_t s_size = mesh->elem_info->get_D_dimension();
+        const size_t DN = s_size*s_size;
+        size_t cache_size = 0;
+        for(const auto& g:mesh->geometries){
+            const auto& mat = g->materials.get_materials()[0];
+            if(g->do_topopt || !mat->is_homogeneous()){
+                cache_size += g->mesh.size();
+            }
+        }
+        this->D_matrices.resize(cache_size);
+        size_t D_offset = 0;
+        size_t x_offset = 0;
+        for(const auto& g:mesh->geometries){
+            const size_t num_den = g->number_of_densities_needed();
+            const auto& mat = g->materials.get_materials()[0];
+            if(g->do_topopt || !mat->is_homogeneous()){
+                if(g->do_topopt){
+                    if(g->with_void){
+                        #pragma omp parallel for
+                        for(size_t i = 0; i < g->mesh.size(); ++i){
+                            const auto& e = g->mesh[i];
+                            const auto c = e->get_centroid();
+                            this->D_matrices[D_offset+i].resize(DN);
+                            auto xv = density[x_offset+i];
+                            auto rho = density.cbegin() + x_offset + i;
+                            g->materials.get_D(rho, psi, e.get(), c, this->D_matrices[D_offset+i]);
+                            cblas_dscal(DN, std::pow(xv, pc), this->D_matrices[D_offset+i].data(), 1);
+                        }
+                    } else {
+                        #pragma omp parallel for
+                        for(size_t i = 0; i < g->mesh.size(); ++i){
+                            const auto& e = g->mesh[i];
+                            const auto c = e->get_centroid();
+                            this->D_matrices[D_offset+i].resize(DN);
+                            auto rho = density.cbegin() + x_offset + i;
+                            g->materials.get_D(rho, psi, e.get(), c, this->D_matrices[D_offset+i]);
+                        }
+                    }
+                    x_offset += g->mesh.size()*num_den;
+                } else {
+                    #pragma omp parallel for
+                    for(size_t i = 0; i < g->mesh.size(); ++i){
+                        const auto& e = g->mesh[i];
+                        const auto c = e->get_centroid();
+                        this->D_matrices[D_offset+i] = g->materials.get_D(e.get(), c);
+                    }
+                }
+                D_offset += g->mesh.size();
+            }
+        }
+        this->old_densities = density;
+    } else {
+        // Only update elements whose densities were modified.
+        const size_t s_size = mesh->elem_info->get_D_dimension();
+        const size_t DN = s_size*s_size;
+        size_t D_offset = 0;
+        size_t x_offset = 0;
+        for(const auto& g:mesh->geometries){
+            const size_t num_den = g->number_of_densities_needed();
+            const auto& mat = g->materials.get_materials()[0];
+            if(g->do_topopt || !mat->is_homogeneous()){
+                if(g->do_topopt){
+                    if(g->with_void){
+                        #pragma omp parallel for
+                        for(size_t i = 0; i < g->mesh.size(); ++i){
+                            if(modified_densities(density, x_offset+i, num_den)){
+                                const auto& e = g->mesh[i];
+                                const auto c = e->get_centroid();
+                                this->D_matrices[D_offset+i].resize(DN);
+                                auto xv = density[x_offset+i];
+                                auto rho = density.cbegin() + x_offset + i;
+                                g->materials.get_D(rho, psi, e.get(), c, this->D_matrices[D_offset+i]);
+                                cblas_dscal(DN, std::pow(xv, pc), this->D_matrices[D_offset+i].data(), 1);
+                                this->update_densities(density, x_offset+i, num_den);
+                            }
+                        }
+                    } else {
+                        #pragma omp parallel for
+                        for(size_t i = 0; i < g->mesh.size(); ++i){
+                            if(modified_densities(density, x_offset+i, num_den)){
+                                const auto& e = g->mesh[i];
+                                const auto c = e->get_centroid();
+                                this->D_matrices[D_offset+i].resize(DN);
+                                auto rho = density.cbegin() + x_offset + i;
+                                g->materials.get_D(rho, psi, e.get(), c, this->D_matrices[D_offset+i]);
+                                this->update_densities(density, x_offset+i, num_den);
+                            }
+                        }
+                    }
+                    x_offset += g->mesh.size()*num_den;
+                }
+                D_offset += g->mesh.size();
+            }
+        }
+    }
+    logger::quick_log("Done.");
+}
