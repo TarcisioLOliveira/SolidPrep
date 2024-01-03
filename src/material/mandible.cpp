@@ -70,10 +70,26 @@ std::vector<double> Mandible::stiffness_3D(const MeshElement* const e, const gp_
     return Do;
 }
 std::vector<double> Mandible::stiffness_inverse_2D(const MeshElement* const e, const gp_Pnt& p) const{
-    return utils::D_op::invert_2D(this->stiffness_2D(e, p));
+    auto coeff = this->get_multiplier(p);
+    constexpr double TOL = 1e-7;
+    if(coeff < TOL){
+        return this->outer->stiffness_inverse_2D(e, p);
+    } else if(coeff > 1 - TOL){
+        return this->inner->stiffness_inverse_2D(e, p);
+    } else {
+        return utils::D_op::invert_2D(this->stiffness_2D(e, p));
+    }
 }
 std::vector<double> Mandible::stiffness_inverse_3D(const MeshElement* const e, const gp_Pnt& p) const{
-    return utils::D_op::invert_3D(this->stiffness_3D(e, p));
+    auto coeff = this->get_multiplier(p);
+    constexpr double TOL = 1e-7;
+    if(coeff < TOL){
+        return this->outer->stiffness_inverse_3D(e, p);
+    } else if(coeff > 1 - TOL){
+        return this->inner->stiffness_inverse_3D(e, p);
+    } else {
+        return utils::D_op::invert_3D(this->stiffness_3D(e, p));
+    }
 }
 double Mandible::get_density(const MeshElement* const e, const gp_Pnt& p) const{
     double d_o = this->outer->get_density(e, p);
