@@ -70,3 +70,28 @@ void Geometry::get_stresses(const std::vector<double>& u, const double pc, const
         }
     }
 }
+
+void Geometry::get_stresses(const std::vector<double>& u, bool topopt, size_t& D_offset, const std::vector<std::vector<double>>& D_cache, std::vector<double>::iterator& stress_it) const{
+
+    if((topopt && this->do_topopt) || !this->materials.get_materials()[0]->is_homogeneous()){
+        #pragma omp parallel for
+        for(size_t i = 0; i < this->mesh.size(); ++i){
+            const auto& e = this->mesh[i];
+            const gp_Pnt c = e->get_centroid();
+            const auto& D = D_cache[D_offset + i];
+            double S = e->get_stress_at(D, c, u);
+            *(stress_it + i) = S;
+        }
+        D_offset += this->mesh.size();
+    } else {
+        const auto D = this->materials.get_D(this->mesh.front().get(), this->mesh.front()->get_centroid());
+        #pragma omp parallel for
+        for(size_t i = 0; i < this->mesh.size(); ++i){
+            const auto& e = this->mesh[i];
+            const gp_Pnt c = e->get_centroid();
+            double S = e->get_stress_at(D, c, u);
+            *(stress_it + i) = S;
+        }
+    }
+    stress_it += this->mesh.size();
+}
