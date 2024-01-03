@@ -59,9 +59,9 @@ double Mechanostat::calculate_with_gradient(const Optimizer* const op, const std
     const size_t k_size = this->mesh->elem_info->get_k_dimension();
     const size_t dof = this->mesh->elem_info->get_dof_per_node();
     const size_t num_nodes = this->mesh->elem_info->get_nodes_per_element();
-    auto x_it = x.cbegin();
 
     if(mpi_id == 0){
+        auto x_it = x.cbegin();
         for(const auto& g:this->mesh->geometries){
             const size_t num_den = g->number_of_densities_needed();
             for(const auto& e:g->mesh){
@@ -148,16 +148,21 @@ double Mechanostat::calculate_with_gradient(const Optimizer* const op, const std
 
         logger::quick_log("Calculating strain gradient...");
 
-        x_it = x.cbegin();
-        auto grad_it = grad.begin();
+        size_t xi = 0;
+        size_t gi = 0;
         for(const auto& g:this->mesh->geometries){
             if(g->do_topopt){
                 const size_t num_den = g->number_of_densities_needed();
                 std::vector<std::vector<double>> gradD_K(num_den, std::vector<double>(s_size*s_size, 0));
-                std::vector<double> D_S(s_size*s_size, 0);
                 if(g->with_void){
-                    for(const auto& e:g->mesh){
+                    #pragma omp parallel for
+                    for(size_t i = 0; i < g->mesh.size(); ++i){
+                        const auto& e = g->mesh[i];
                         const auto c = e->get_centroid();
+
+                        auto x_it = x.cbegin() + xi + i*num_den;
+                        auto grad_it = grad.begin() + gi + i*num_den;
+
                         g->materials.get_gradD(x_it, psiK, e.get(), c, gradD_K);
                         double lKu = pc*std::pow(*x_it, pc-1)*e->get_compliance(gradD_K[0], this->mesh->thickness, u, l);
                         const auto eps_vec = e->get_strain_vector(c, u);
@@ -195,8 +200,8 @@ double Mechanostat::calculate_with_gradient(const Optimizer* const op, const std
 
                         ++x_it;
                         ++grad_it;
-                        for(size_t i = 1; i < num_den; ++i){
-                            double lKu = rho_lKu*e->get_compliance(gradD_K[i], this->mesh->thickness, u, l);
+                        for(size_t j = 1; j < num_den; ++j){
+                            double lKu = rho_lKu*e->get_compliance(gradD_K[j], this->mesh->thickness, u, l);
 
                             *grad_it = -lKu;
 
@@ -205,11 +210,17 @@ double Mechanostat::calculate_with_gradient(const Optimizer* const op, const std
                         }
                     }
                 } else {
-                    for(const auto& e:g->mesh){
+                    #pragma omp parallel for
+                    for(size_t i = 0; i < g->mesh.size(); ++i){
+                        const auto& e = g->mesh[i];
                         const auto c = e->get_centroid();
+
+                        auto x_it = x.cbegin() + xi + i*num_den;
+                        auto grad_it = grad.begin() + gi + i*num_den;
+
                         g->materials.get_gradD(x_it, psiK, e.get(), c, gradD_K);
-                        for(size_t i = 0; i < num_den; ++i){
-                            double lKu = e->get_compliance(gradD_K[i], this->mesh->thickness, u, l);
+                        for(size_t j = 0; j < num_den; ++j){
+                            double lKu = e->get_compliance(gradD_K[j], this->mesh->thickness, u, l);
 
                             *grad_it = -lKu;
 
@@ -218,6 +229,8 @@ double Mechanostat::calculate_with_gradient(const Optimizer* const op, const std
                         }
                     }
                 }
+                xi += g->mesh.size()*num_den;
+                gi += g->mesh.size()*num_den;
             }
         }
         logger::quick_log("Done.");
