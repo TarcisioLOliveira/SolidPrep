@@ -37,6 +37,8 @@ class Mechanostat : public DensityBasedFunction{
 
     virtual ~Mechanostat() = default;
 
+    virtual void initialize_views(Visualization* viz) override;
+    virtual void initialize(const Optimizer* const op) override;
     virtual double calculate(const Optimizer* const op, const std::vector<double>& u, const std::vector<double>& x) override;
     virtual double calculate_with_gradient(const Optimizer* const op, const std::vector<double>& u, const std::vector<double>& x, std::vector<double>& grad) override;
 
@@ -50,6 +52,10 @@ class Mechanostat : public DensityBasedFunction{
     const double lhs_eps = 1e-14;
     const Range K_e1, K_g, K_e2;
     const utils::ProblemType problem_type;
+    std::vector<double> He;
+    std::vector<double> gradHe;
+    ViewHandler* shadow_view = nullptr;
+    ViewHandler* gradient_view = nullptr;
 
     typedef Eigen::Vector<double, 3> StrainVector2D;
     typedef Eigen::Vector<double, 6> StrainVector3D;
