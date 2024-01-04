@@ -333,7 +333,7 @@ TopoDS_Shape MMA::optimize(SolverManager* fem, Meshing* mesh){
     // int max_innerit = 30;
     double ch = 1.0;
     int iter;
-	for (iter = 0; (ch > this->xtol_abs && std::abs(ff-fnew)/ff > this->ftol_rel); ++iter){
+	for (iter = 0; (ch > this->xtol_abs && (this->objective_weights.front() == 0 || std::abs((ff-fnew)/ff) > this->ftol_rel)); ++iter){
 
         if(mpi_id == 0){
             for(auto& f:this->objective){
@@ -565,7 +565,7 @@ TopoDS_Shape MMA::optimize(SolverManager* fem, Meshing* mesh){
             logger::quick_log(g);
             logger::quick_log("");
             logger::quick_log("Design var change: ", ch);
-            logger::quick_log("fobj change: ", std::abs(ff-fnew)/ff);
+            logger::quick_log("fobj change: ", std::abs((ff-fnew)/ff));
             logger::quick_log("");
         }
 	}
