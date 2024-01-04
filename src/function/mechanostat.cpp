@@ -50,7 +50,7 @@ double Mechanostat::calculate_with_gradient(const Optimizer* const op, const std
     std::vector<std::vector<double>> fl(this->mesh->sub_problems->size());
     std::vector<double> l(mesh->max_dofs,0);
     for(size_t i = 0; i < fl.size(); ++i){
-        fl[i].resize(mesh->max_dofs);
+        fl[i].resize(mesh->max_dofs,0);
     }
 
     double result = 0;
@@ -82,19 +82,19 @@ double Mechanostat::calculate_with_gradient(const Optimizer* const op, const std
                         const StrainVector2D eps = Eigen::Map<const StrainVector2D>(eps_vec.data(), 3);
                         const double eps_lhs1 = rho*this->LHS_2D(0, eps);
                         const double eps_lhs2 = rho*this->LHS_2D(1, eps);
-                        const auto deps_lhs1 = rho*this->dLHS_2D(0, eps);
-                        const auto deps_lhs2 = rho*this->dLHS_2D(1, eps);
+                        const StrainVector2D deps_lhs1 = rho*this->dLHS_2D(0, eps);
+                        const StrainVector2D deps_lhs2 = rho*this->dLHS_2D(1, eps);
                         const double H1 = Hm(eps_lhs1);
                         const double H2 = Hp(eps_lhs2);
                         const double Hr = H1*eps_lhs1 + H2*eps_lhs2;
-                        const auto dH = (dHm(eps_lhs1)*eps_lhs1 + H1)*deps_lhs1 +
-                                        (dHp(eps_lhs2)*eps_lhs2 + H2)*deps_lhs2;
+                        const StrainVector2D dH = (dHm(eps_lhs1)*eps_lhs1 + H1)*deps_lhs1 +
+                                                  (dHp(eps_lhs2)*eps_lhs2 + H2)*deps_lhs2;
 
                         H_e = Hr;
                         std::vector<double> dHB(k_size, 0);
                         for(size_t i = 0; i < s_size; ++i){
                             for(size_t j = 0; j < k_size; ++j){
-                                dHB[i] += dH[i]*B[i*k_size + j];
+                                dHB[j] += dH[i]*B[i*k_size + j];
                             }
                         }
                         for(size_t i = 0; i < num_nodes; ++i){
@@ -109,19 +109,19 @@ double Mechanostat::calculate_with_gradient(const Optimizer* const op, const std
                         const StrainVector3D eps = Eigen::Map<const StrainVector3D>(eps_vec.data(), 6);
                         const double eps_lhs1 = rho*this->LHS_3D(0, eps);
                         const double eps_lhs2 = rho*this->LHS_3D(1, eps);
-                        const auto deps_lhs1 = rho*this->dLHS_3D(0, eps);
-                        const auto deps_lhs2 = rho*this->dLHS_3D(1, eps);
+                        const StrainVector3D deps_lhs1 = rho*this->dLHS_3D(0, eps);
+                        const StrainVector3D deps_lhs2 = rho*this->dLHS_3D(1, eps);
                         const double H1 = Hm(eps_lhs1);
                         const double H2 = Hp(eps_lhs2);
                         const double Hr = H1*eps_lhs1 + H2*eps_lhs2;
-                        const auto dH = (dHm(eps_lhs1)*eps_lhs1 + H1)*deps_lhs1 +
-                                        (dHp(eps_lhs2)*eps_lhs2 + H2)*deps_lhs2;
+                        const StrainVector3D dH = (dHm(eps_lhs1)*eps_lhs1 + H1)*deps_lhs1 +
+                                                  (dHp(eps_lhs2)*eps_lhs2 + H2)*deps_lhs2;
 
                         H_e = Hr;
                         std::vector<double> dHB(k_size, 0);
                         for(size_t i = 0; i < s_size; ++i){
                             for(size_t j = 0; j < k_size; ++j){
-                                dHB[i] += dH[i]*B[i*k_size + j];
+                                dHB[j] += dH[i]*B[i*k_size + j];
                             }
                         }
                         for(size_t i = 0; i < num_nodes; ++i){
