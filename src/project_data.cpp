@@ -788,7 +788,8 @@ std::unique_ptr<Optimizer> ProjectData::load_optimizer(const rapidjson::GenericV
         this->log_data(to, "save_result", TYPE_BOOL, true);
         this->log_data(to, "pc", TYPE_INT, true);
         this->log_data(to, "psi", TYPE_DOUBLE, true);
-        this->log_data(to, "functions", TYPE_ARRAY, true);
+        this->log_data(to, "objective", TYPE_ARRAY, true);
+        this->log_data(to, "constraints", TYPE_ARRAY, true);
 
         this->density_filter = this->load_density_filter(to);
         this->projection = this->load_projection(to);
@@ -801,10 +802,14 @@ std::unique_ptr<Optimizer> ProjectData::load_optimizer(const rapidjson::GenericV
         int pc = to["pc"].GetInt();
         double psi = to["psi"].GetDouble();
 
-        std::vector<Constraint> functions;
-        this->get_constraints(to["functions"], pc, psi, functions);
+        std::vector<std::unique_ptr<DensityBasedFunction>> objective;
+        std::vector<double> weights;
+        this->get_objective_functions(to["objective"], pc, psi, objective, weights);
 
-        return std::make_unique<optimizer::Newton>(this->density_filter.get(), this->projection.get(), this, std::move(functions), pc, psi, rho_init, xtol_abs, ftol_rel, result_threshold, save_result);
+        std::vector<Constraint> constraints;
+        this->get_constraints(to["constraints"], pc, psi, constraints);
+
+        return std::make_unique<optimizer::Newton>(this->density_filter.get(), this->projection.get(), this, std::move(objective), std::move(weights), std::move(constraints), pc, psi, rho_init, xtol_abs, ftol_rel, result_threshold, save_result);
     }
 
     return nullptr;

@@ -28,8 +28,8 @@
 
 namespace optimizer{
 
-Newton::Newton(DensityFilter* filter, Projection* projection, ProjectData* data, std::vector<Constraint> functions, double pc, double psi, double rho_init, double xtol_abs, double ftol_rel, double result_threshold, bool save):
-    data(data), rho_init(rho_init), xtol_abs(xtol_abs), ftol_rel(ftol_rel), pc(pc), psi(psi), result_threshold(result_threshold), save_result(save), functions(std::move(functions)), filter(filter), projection(projection), viz(nullptr)
+Newton::Newton(DensityFilter* filter, Projection* projection, ProjectData* data, std::vector<std::unique_ptr<DensityBasedFunction>> objective, std::vector<double> weights, std::vector<Constraint> constraints, double pc, double psi, double rho_init, double xtol_abs, double ftol_rel, double result_threshold, bool save):
+    data(data), rho_init(rho_init), xtol_abs(xtol_abs), ftol_rel(ftol_rel), pc(pc), psi(psi), result_threshold(result_threshold), save_result(save), objective(std::move(objective)), objective_weights(std::move(weights)), constraints(std::move(constraints)), filter(filter), projection(projection), viz(nullptr)
     {}
 
 void Newton::initialize_views(Visualization* viz){
@@ -38,7 +38,10 @@ void Newton::initialize_views(Visualization* viz){
     this->stress_view = viz->add_view("Von Mises Stress", spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::STRESS);
     this->density_view = viz->add_view("Elemental Density", spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::DENSITY);
 
-    for(auto& f:this->functions){
+    for(auto& f:this->objective){
+        f->initialize_views(viz);
+    }
+    for(auto& f:this->constraints){
         f.fun->initialize_views(viz);
     }
 }
@@ -59,7 +62,10 @@ TopoDS_Shape Newton::optimize(SolverManager* fem, Meshing* mesh){
     size_t x_size = 0;
     size_t x_size_view = 0;
     if(mpi_id == 0){
-        for(auto& f:this->functions){
+        for(auto& f:this->objective){
+            f->initialize(this);
+        }
+        for(auto& f:this->constraints){
             f.fun->initialize(this);
         }
 
@@ -85,13 +91,17 @@ TopoDS_Shape Newton::optimize(SolverManager* fem, Meshing* mesh){
         this->filter->initialize(mesh, x_size);
     }
 
-    size_t M = 2*this->functions.size();
+    size_t M = 2*this->constraints.size();
 
+    double ff = 0;
+    double fnew = 0;
+    std::vector<double> dftmp(x.size());
+    std::vector<double> dftmp_nodal(this->filter->get_nodal_density_size());
     std::vector<double> dgtmp1(x.size());
     std::vector<double> dgtmp2(x.size());
     std::vector<double> dgtmp1_nodal(this->filter->get_nodal_density_size());
+    std::vector<double> df(x.size());
     std::vector<double> dg(x.size()*M);
-    std::vector<double> df(x.size(),0);
     std::vector<double> g(M);
 
     // std::vector<double> xnew(x);
@@ -123,6 +133,8 @@ TopoDS_Shape Newton::optimize(SolverManager* fem, Meshing* mesh){
     int iter;
 	for (iter = 0; (ch > this->xtol_abs); ++iter){
 
+        fnew = ff;
+
         fem->generate_matrix(mesh, new_x, pc, this->psi);
         for(size_t i = 0; i < mesh->node_positions.size(); ++i){
             auto& lv = mesh->load_vector[i];
@@ -151,9 +163,36 @@ TopoDS_Shape Newton::optimize(SolverManager* fem, Meshing* mesh){
             this->density_view->update_view(x_view);
             this->stress_view->update_view(stress_render);
         }
+        ff = 0;
+        std::fill(df.begin(), df.end(), 0);
+        for(size_t i = 0; i < this->objective.size(); ++i){
+            if(this->objective[i]->filter_gradient_type() == DensityFilter::FilterGradient::ELEMENTAL){
+                ff += this->objective_weights[i]*this->objective[i]->calculate_with_gradient(this, u, new_x, dftmp);
+                if(mpi_id == 0){
+                    this->projection->project_gradient(dftmp, x_fil);
+                    this->filter->filter_gradient(dftmp, df);
+                    for(size_t j = 0; j < dftmp.size(); ++j){
+                        df[j] += this->objective_weights[i]*dftmp[j];
+                    }
+                }
+            } else {
+                ff += this->objective_weights[i]*this->objective[i]->calculate_with_gradient_nodal(this, u, new_x, dftmp_nodal);
+                if(mpi_id == 0){
+                    this->filter->filter_gradient_nodal(dftmp_nodal, dftmp);
+                    for(size_t j = 0; j < dftmp.size(); ++j){
+                        df[j] += this->objective_weights[i]*dftmp[j];
+                    }
+                }
+            }
+        }
+        MPI_Bcast(&ff, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+        if(mpi_id == 0){
+            this->projection->project_gradient(dftmp, x_fil);
+            this->filter->filter_gradient(dftmp, df);
+        }
         size_t g_id = 0;
-        for(size_t i = 0; i < this->functions.size(); ++i){
-            auto& c = this->functions[i];
+        for(size_t i = 0; i < this->constraints.size(); ++i){
+            auto& c = this->constraints[i];
             if(c.fun->filter_gradient_type() == DensityFilter::FilterGradient::ELEMENTAL){
                 double val = c.fun->calculate_with_gradient(this, u, new_x, dgtmp1);
                 for(size_t k = 0; k < c.types.size(); ++k){
@@ -306,7 +345,7 @@ TopoDS_Shape Newton::optimize(SolverManager* fem, Meshing* mesh){
                     }
                     dxold[i] = dx[i];
                 }
-                logger::quick_log(max_diff);
+                //logger::quick_log(max_diff);
             }
             #pragma omp parallel for
             for(size_t i = 0; i < x.size(); ++i){
@@ -314,8 +353,11 @@ TopoDS_Shape Newton::optimize(SolverManager* fem, Meshing* mesh){
             }
             logger::quick_log("Done");
 
-            // Update functions
-            for(auto& f:this->functions){
+            // Update constraints
+            for(auto& f:this->objective){
+                f->update();
+            }
+            for(auto& f:this->constraints){
                 f.fun->update();
             }
             this->projection->update(iter);
@@ -337,10 +379,11 @@ TopoDS_Shape Newton::optimize(SolverManager* fem, Meshing* mesh){
             logger::quick_log("");
             logger::quick_log("");
             logger::quick_log("Iteration: ", iter);
-            logger::quick_log("Results: ");
+            logger::quick_log("Results: ", ff);
             logger::quick_log(g);
             logger::quick_log("");
             logger::quick_log("Design var change: ", ch);
+            logger::quick_log("fobj change: ", std::abs((ff-fnew)/ff));
             logger::quick_log("");
         }
 	}
@@ -348,7 +391,7 @@ TopoDS_Shape Newton::optimize(SolverManager* fem, Meshing* mesh){
     if(mpi_id == 0){
         logger::quick_log("");
         auto stop_to = std::chrono::high_resolution_clock::now();
-        logger::quick_log("Final result: ");
+        logger::quick_log("Final result: ", ff);
         logger::quick_log(g);
         auto to_duration = std::chrono::duration_cast<std::chrono::seconds>(stop_to-start_to);
         double to_time = to_duration.count();
