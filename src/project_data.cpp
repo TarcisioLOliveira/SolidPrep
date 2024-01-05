@@ -70,6 +70,7 @@
 #include "projection/threshold.hpp"
 #include "projection/heaviside.hpp"
 #include "optimizer/mma.hpp"
+#include "optimizer/newton.hpp"
 #include "function/compliance.hpp"
 #include "function/volume.hpp"
 #include "function/global_stress_pnorm_normalized.hpp"
@@ -779,6 +780,31 @@ std::unique_ptr<Optimizer> ProjectData::load_optimizer(const rapidjson::GenericV
         this->get_constraints(to["constraints"], pc, psi, constraints);
 
         return std::make_unique<optimizer::MMA>(this->density_filter.get(), this->projection.get(), this, std::move(objective), std::move(weights), std::move(constraints), asyminit, asymdec, asyminc, minfac, maxfac, c, pc, psi, rho_init, xtol_abs, ftol_rel, result_threshold, save_result);
+    } else if(to["type"] == "newton"){
+        this->log_data(to, "rho_init", TYPE_DOUBLE, true);
+        this->log_data(to, "xtol_abs", TYPE_DOUBLE, true);
+        this->log_data(to, "ftol_rel", TYPE_DOUBLE, true);
+        this->log_data(to, "result_threshold", TYPE_DOUBLE, true);
+        this->log_data(to, "save_result", TYPE_BOOL, true);
+        this->log_data(to, "pc", TYPE_INT, true);
+        this->log_data(to, "psi", TYPE_DOUBLE, true);
+        this->log_data(to, "functions", TYPE_ARRAY, true);
+
+        this->density_filter = this->load_density_filter(to);
+        this->projection = this->load_projection(to);
+
+        double rho_init = to["rho_init"].GetDouble();
+        double xtol_abs = to["xtol_abs"].GetDouble();
+        double ftol_rel = to["ftol_rel"].GetDouble();
+        double result_threshold = to["result_threshold"].GetDouble();
+        bool save_result = to["save_result"].GetBool();
+        int pc = to["pc"].GetInt();
+        double psi = to["psi"].GetDouble();
+
+        std::vector<Constraint> functions;
+        this->get_constraints(to["functions"], pc, psi, functions);
+
+        return std::make_unique<optimizer::Newton>(this->density_filter.get(), this->projection.get(), this, std::move(functions), pc, psi, rho_init, xtol_abs, ftol_rel, result_threshold, save_result);
     }
 
     return nullptr;
