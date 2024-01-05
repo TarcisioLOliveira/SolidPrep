@@ -49,7 +49,7 @@ class Mechanostat : public DensityBasedFunction{
     const double pc, psiK;
     const Range t, c, s;
     const double rho_eps = 0.2;
-    const double lhs_eps = 1e-14;
+    const double lhs_eps = 1e-30;
     const Range K_e1, K_g, K_e2;
     const utils::ProblemType problem_type;
     std::vector<double> He;
@@ -95,11 +95,14 @@ class Mechanostat : public DensityBasedFunction{
                 + K_e2[i]*(ex + ey);
     }
     inline StrainVector2D dLHS_2D(const size_t i, const StrainVector2D& e) const{
+        const double dexy = e[0] - e[1];
+        const double deyz = e[1];
+        const double dezx = e[0];
         const double ex = e[0];
         const double ey = e[1];
         const double gxy = e[2];
 
-        const double eVe = this->LHS_2D(i, e);
+        const double eVe = std::sqrt(K_e1[i]*(dexy*dexy + deyz*deyz + dezx*dezx) + 2*K_g[i]*(gxy*gxy) + lhs_eps);
 
         return {K_e1[i]*(2*ex - ey)/eVe + K_e2[i], 
                 K_e1[i]*(-ex + 2*ey)/eVe + K_e2[i], 
@@ -120,6 +123,9 @@ class Mechanostat : public DensityBasedFunction{
                 + K_e2[i]*(ex + ey + ez);
     }
     inline StrainVector3D dLHS_3D(const size_t i, const StrainVector3D& e) const{
+        const double dexy = e[0] - e[1];
+        const double deyz = e[1] - e[2];
+        const double dezx = e[2] - e[0];
         const double ex = e[0];
         const double ey = e[1];
         const double ez = e[2];
@@ -127,7 +133,7 @@ class Mechanostat : public DensityBasedFunction{
         const double gyz = e[4];
         const double gxz = e[5];
 
-        const double eVe = this->LHS_3D(i, e);
+        const double eVe = std::sqrt(K_e1[i]*(dexy*dexy + deyz*deyz + dezx*dezx) + 2*K_g[i]*(gxy*gxy + gyz*gyz + gxz*gxz) + lhs_eps);
 
         return {K_e1[i]*(2*ex - ey - ez)/eVe + K_e2[i], 
                 K_e1[i]*(-ex + 2*ey - ez)/eVe + K_e2[i], 
