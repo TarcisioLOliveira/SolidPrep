@@ -188,7 +188,6 @@ void SolverManager::update_D_matrices(const Meshing* const mesh, const std::vect
                             if(modified_densities(density, x_offset+i, num_den)){
                                 const auto& e = g->mesh[i];
                                 const auto c = e->get_centroid();
-                                this->D_matrices[D_offset+i].resize(DN);
                                 auto xv = density[x_offset+i];
                                 auto rho = density.cbegin() + x_offset + i;
                                 g->materials.get_D(rho, psi, e.get(), c, this->D_matrices[D_offset+i]);
@@ -202,7 +201,6 @@ void SolverManager::update_D_matrices(const Meshing* const mesh, const std::vect
                             if(modified_densities(density, x_offset+i, num_den)){
                                 const auto& e = g->mesh[i];
                                 const auto c = e->get_centroid();
-                                this->D_matrices[D_offset+i].resize(DN);
                                 auto rho = density.cbegin() + x_offset + i;
                                 g->materials.get_D(rho, psi, e.get(), c, this->D_matrices[D_offset+i]);
                                 this->update_densities(density, x_offset+i, num_den);
