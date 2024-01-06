@@ -224,34 +224,35 @@ void MultiMaterial::get_gradD_internal(std::vector<double>::const_iterator& rho,
                 }
             }
             if(this->problem_type == utils::PROBLEM_TYPE_2D){
-                rD_mult = utils::D_op::square_2D(utils::D_op::invert_2D(rD));
-                for(size_t i = 0; i < 9; ++i){
-                    rD_mult[i] *= -1.0;
-                }
-                rD_last = utils::D_op::mult_2D(rD_mult, rD_last);
+                rD_mult = utils::D_op::invert_2D(rD);
             } else if(this->problem_type == utils::PROBLEM_TYPE_3D){
-                rD_mult = utils::D_op::square_3D(utils::D_op::invert_3D(rD));
-                for(size_t i = 0; i < 36; ++i){
-                    rD_mult[i] *= -1.0;
-                }
-                rD_last = utils::D_op::mult_3D(rD_mult, rD_last);
+                rD_mult = utils::D_op::invert_3D(rD);
             }
         }
         // Generate gradients
+        std::vector<double> D_tmp(D_size, 0);
         for(size_t j = 0; j < v.size()-1; ++j){
             if(this->problem_type == utils::PROBLEM_TYPE_2D){
                 const auto MD = this->materials[j]->stiffness_2D(e, p);
                 const auto MS = this->materials[j]->stiffness_inverse_2D(e, p);
-                rD = utils::D_op::mult_2D(rD_mult, MS);
                 for(size_t i = 0; i < 9; ++i){
-                    gradD[j+offset][i] = psi_v*(MD[i] - MDl[i]) + psi_r*(rD[i] - rD_last[i]);
+                    D_tmp[i] = -(MS[i] - rD_last[i]);
+                }
+                rD = utils::D_op::mult_2D(rD_mult, D_tmp);
+                rD = utils::D_op::mult_2D(rD, rD_mult);
+                for(size_t i = 0; i < 9; ++i){
+                    gradD[j+offset][i] = psi_v*(MD[i] - MDl[i]) + psi_r*rD[i];
                 }
             } else if(this->problem_type == utils::PROBLEM_TYPE_3D){
                 const auto MD = this->materials[j]->stiffness_3D(e, p);
                 const auto MS = this->materials[j]->stiffness_inverse_3D(e, p);
-                rD = utils::D_op::mult_3D(rD_mult, MS);
                 for(size_t i = 0; i < 36; ++i){
-                    gradD[j+offset][i] = psi_v*(MD[i] - MDl[i]) + psi_r*(rD[i] - rD_last[i]);
+                    D_tmp[i] = -(MS[i] - rD_last[i]);
+                }
+                rD = utils::D_op::mult_3D(rD_mult, D_tmp);
+                rD = utils::D_op::mult_3D(rD, rD_mult);
+                for(size_t i = 0; i < 36; ++i){
+                    gradD[j+offset][i] = psi_v*(MD[i] - MDl[i]) + psi_r*rD[i];
                 }
             }
         }
