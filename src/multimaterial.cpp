@@ -208,16 +208,19 @@ void MultiMaterial::get_gradD_internal(std::vector<double>::const_iterator& rho,
             rD_last = this->materials.back()->stiffness_inverse_3D(e, p);
         }
         // Full Reuss matrix, necessary due to derivative chain rule
+        std::vector<std::vector<double>> S_cache(v.size());
         {
             std::fill(rD.begin(), rD.end(), 0);
             for(size_t j = 0; j < v.size(); ++j){
                 if(this->problem_type == utils::PROBLEM_TYPE_2D){
                     const auto MS = this->materials[j]->stiffness_inverse_2D(e, p);
+                    S_cache[j] = MS;
                     for(size_t i = 0; i < 9; ++i){
                         rD[i] += v[j]*MS[i];
                     }
                 } else if(this->problem_type == utils::PROBLEM_TYPE_3D){
                     const auto MS = this->materials[j]->stiffness_inverse_3D(e, p);
+                    S_cache[j] = MS;
                     for(size_t i = 0; i < 36; ++i){
                         rD[i] += v[j]*MS[i];
                     }
@@ -234,7 +237,7 @@ void MultiMaterial::get_gradD_internal(std::vector<double>::const_iterator& rho,
         for(size_t j = 0; j < v.size()-1; ++j){
             if(this->problem_type == utils::PROBLEM_TYPE_2D){
                 const auto MD = this->materials[j]->stiffness_2D(e, p);
-                const auto MS = this->materials[j]->stiffness_inverse_2D(e, p);
+                const auto MS = S_cache[j];
                 for(size_t i = 0; i < 9; ++i){
                     D_tmp[i] = -(MS[i] - rD_last[i]);
                 }
@@ -245,7 +248,7 @@ void MultiMaterial::get_gradD_internal(std::vector<double>::const_iterator& rho,
                 }
             } else if(this->problem_type == utils::PROBLEM_TYPE_3D){
                 const auto MD = this->materials[j]->stiffness_3D(e, p);
-                const auto MS = this->materials[j]->stiffness_inverse_3D(e, p);
+                const auto MS = S_cache[j];
                 for(size_t i = 0; i < 36; ++i){
                     D_tmp[i] = -(MS[i] - rD_last[i]);
                 }
