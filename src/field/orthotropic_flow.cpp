@@ -108,6 +108,21 @@ void OrthotropicFlow::generate(){
     logger::quick_log("Generating orthotropic flow...");
     const size_t num_nodes = this->elem_info->get_nodes_per_element();
     const size_t bound_num = elem_info->get_boundary_nodes_per_element();
+    const auto A_tri = [](const MeshNode** const nodes)->double{
+        const gp_Vec v1(nodes[0]->point, nodes[1]->point);
+        const gp_Vec v2(nodes[0]->point, nodes[2]->point);
+
+        return 0.5*v1.Crossed(v2).Magnitude();
+    };
+    const auto A_quad = [](const MeshNode** const nodes)->double{
+        const gp_Vec v1(nodes[0]->point, nodes[1]->point);
+        const gp_Vec v2(nodes[0]->point, nodes[3]->point);
+
+        const gp_Vec v3(nodes[2]->point, nodes[1]->point);
+        const gp_Vec v4(nodes[2]->point, nodes[3]->point);
+
+        return 0.5*(v1.Crossed(v2).Magnitude() + v3.Crossed(v4).Magnitude());
+    };
 
     size_t elem_num = 0;
     for(const auto& g:this->geoms){
@@ -115,22 +130,43 @@ void OrthotropicFlow::generate(){
     }
     this->elem_mult_long.resize(elem_num, 0);
     this->elem_mult_rad.resize(elem_num, -1);
+    std::vector<bool> apply_bc(elem_num);
 
-    size_t mult_offset = 0;
-    for(const auto& g:this->geoms){
-        #pragma omp parallel for
-        for(size_t i = 0; i < g->boundary_mesh.size(); ++i){
-            const auto c = g->boundary_mesh[i]->get_centroid(bound_num);
-            for(size_t j = 0; j < this->entries.size(); ++j){
-                if(this->entries[j].is_inside(c)){
-                    this->elem_mult_long[mult_offset + i] = this->coeffs[j];
-                    elem_mult_rad[mult_offset+i] = 0;
-                    break;
+    for(size_t j = 0; j < this->entries.size(); ++j){
+        size_t mult_offset = 0;
+        std::fill(apply_bc.begin(), apply_bc.end(), false);
+        double A = 0;
+        for(const auto& g:this->geoms){
+            if(this->elem_info->get_shape_type() == Element::Shape::TRI){
+                #pragma omp parallel for reduction(+:A)
+                for(size_t i = 0; i < g->boundary_mesh.size(); ++i){
+                    const auto c = g->boundary_mesh[i]->get_centroid(bound_num);
+                    if(this->entries[j].is_inside(c)){
+                        apply_bc[mult_offset + i] = true;
+                        A += A_tri(g->boundary_mesh[i]->nodes);
+                        elem_mult_rad[mult_offset+i] = 0;
+                    }
+                }
+            } else if(this->elem_info->get_shape_type() == Element::Shape::QUAD){
+                #pragma omp parallel for reduction(+:A)
+                for(size_t i = 0; i < g->boundary_mesh.size(); ++i){
+                    const auto c = g->boundary_mesh[i]->get_centroid(bound_num);
+                    if(this->entries[j].is_inside(c)){
+                        apply_bc[mult_offset + i] = true;
+                        A += A_quad(g->boundary_mesh[i]->nodes);
+                        elem_mult_rad[mult_offset+i] = 0;
+                    }
                 }
             }
+            mult_offset += g->boundary_mesh.size();
         }
-
-        mult_offset += g->boundary_mesh.size();
+        this->coeffs[j] /= A;
+        #pragma omp parallel for
+        for(size_t i = 0; i < elem_num; ++i){
+            if(apply_bc[i]){
+                this->elem_mult_long[i] = this->coeffs[j];
+            }
+        }
     }
 
     if(this->show){
