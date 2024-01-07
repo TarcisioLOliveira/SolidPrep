@@ -96,7 +96,10 @@ double Mechanostat::calculate_with_gradient(const Optimizer* const op, const std
                     double H_e = 0;
                     for(size_t it = 0; it < fl.size(); ++it){
                         const auto& ui = fem->sub_u[it];
-                        const auto eps_vec = e->get_strain_vector(c, ui);
+                        auto eps_vec = e->get_strain_vector(c, ui);
+                        for(auto& e:eps_vec){
+                            e *= 1e6;
+                        }
                         if(this->problem_type == utils::PROBLEM_TYPE_2D){
                             const StrainVector2D eps = Eigen::Map<const StrainVector2D>(eps_vec.data(), 3);
                             const double eps_lhs1 = rho*this->LHS_2D(0, eps);
@@ -111,8 +114,8 @@ double Mechanostat::calculate_with_gradient(const Optimizer* const op, const std
 
                             H_e = Hr;
                             std::vector<double> dHB(k_size, 0);
-                            for(size_t i = 0; i < s_size; ++i){
-                                for(size_t j = 0; j < k_size; ++j){
+                            for(size_t j = 0; j < k_size; ++j){
+                                for(size_t i = 0; i < s_size; ++i){
                                     dHB[j] += dH[i]*B[i*k_size + j];
                                 }
                             }
@@ -138,8 +141,8 @@ double Mechanostat::calculate_with_gradient(const Optimizer* const op, const std
 
                             H_e = Hr;
                             std::vector<double> dHB(k_size, 0);
-                            for(size_t i = 0; i < s_size; ++i){
-                                for(size_t j = 0; j < k_size; ++j){
+                            for(size_t j = 0; j < k_size; ++j){
+                                for(size_t i = 0; i < s_size; ++i){
                                     dHB[j] += dH[i]*B[i*k_size + j];
                                 }
                             }
@@ -192,7 +195,10 @@ double Mechanostat::calculate_with_gradient(const Optimizer* const op, const std
 
                         g->materials.get_gradD(x_it, psiK, e.get(), c, gradD_K);
                         double lKu = pc*std::pow(*x_it, pc-1)*e->get_compliance(gradD_K[0], this->mesh->thickness, u, l);
-                        const auto eps_vec = e->get_strain_vector(c, u);
+                        auto eps_vec = e->get_strain_vector(c, u);
+                        for(auto& e:eps_vec){
+                            e *= 1e6;
+                        }
 
                         const double rho = this->relaxed_rho(*x_it);
                         const double drho = this->relaxed_rho_grad(*x_it);
@@ -222,7 +228,6 @@ double Mechanostat::calculate_with_gradient(const Optimizer* const op, const std
 
                         *grad_it = dH_e - lKu;
                         *gradHe_it = *grad_it;
-                        //*grad_it = - lKu;
 
                         const double rho_lKu = std::pow(*x_it, pc);
 

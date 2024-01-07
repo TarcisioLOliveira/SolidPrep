@@ -897,9 +897,9 @@ std::unique_ptr<DensityBasedFunction> ProjectData::get_function(const rapidjson:
         logger::log_assert(traction.Size() == 2, logger::ERROR, "\"traction\" item must have size 2.");
         logger::log_assert(compression.Size() == 2, logger::ERROR, "\"compression\" item must have size 2.");
         logger::log_assert(shear.Size() == 2, logger::ERROR, "\"shear\" item must have size 2.");
-        function::Mechanostat::Range t{traction[0].GetDouble()*1e-6, traction[1].GetDouble()*1e-6};
-        function::Mechanostat::Range c{compression[0].GetDouble()*1e-6, compression[1].GetDouble()*1e-6};
-        function::Mechanostat::Range s{shear[0].GetDouble()*1e-6, shear[1].GetDouble()*1e-6};
+        function::Mechanostat::Range t{traction[0].GetDouble(), traction[1].GetDouble()};
+        function::Mechanostat::Range c{compression[0].GetDouble(), compression[1].GetDouble()};
+        function::Mechanostat::Range s{shear[0].GetDouble(), shear[1].GetDouble()};
         return std::make_unique<function::Mechanostat>(this->topopt_mesher.get(), this->topopt_fea.get(), pc, psiK, beta, t, c, s, this->type);
     }
     logger::log_assert(false, logger::ERROR, "function \"{}\" not found.", type);
