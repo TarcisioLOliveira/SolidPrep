@@ -27,7 +27,30 @@ namespace material{
 
 class Mandible : public Material{
     public:
-    Mandible(const std::string& name, Material* outer, Material* inner, const std::string& path_points1, const std::string& path_points2, double C, bool with_implant = false, double implant_strength = 0, gp_Dir implant_normal = gp_Dir(1,0,0), gp_Pnt implant_center_1 = gp_Pnt(0,0,0), gp_Pnt implant_center_2 = gp_Pnt(0,0,0), double implant_r1 = 0, double implant_r2 = 0);
+    class ImplantRegion{
+        public:
+        gp_Pnt center_1;
+        gp_Pnt center_2;
+        double r1;
+        double r2;
+
+        void initialize(double decay_distance, double str_pnt, double str_pnt_dist);
+        double get_implant_multiplier(const gp_Pnt& p) const;
+
+        private:
+        inline double f(const double x) const{
+            return a*x*x*x + b*x*x + c*x + d;
+        }
+
+        gp_Dir normal;
+        double decay_distance;
+        double min_str;
+        double a, b, c, d;
+        double max_l;
+
+    };
+
+    Mandible(const std::string& name, Material* outer, Material* inner, const std::string& path_points1, const std::string& path_points2, double C, bool with_implant = false, ImplantRegion imp = ImplantRegion());
 
     virtual std::vector<double> stiffness_2D(const MeshElement* const e, const gp_Pnt& p) const override;
     virtual std::vector<double> stiffness_3D(const MeshElement* const e, const gp_Pnt& p) const override;
@@ -79,16 +102,6 @@ class Mandible : public Material{
         void initialize_center(const std::vector<gp_Pnt>& init);
         void initialize_points(const std::vector<gp_Pnt>& init);
         RingPoint get_r_max(double theta) const;
-    };
-    struct ImplantRegion{
-        double implant_strength;
-        gp_Dir implant_normal;
-        gp_Pnt implant_center_1;
-        gp_Pnt implant_center_2;
-        double implant_r1;
-        double implant_r2;
-
-        double get_implant_multiplier(const gp_Pnt& p) const;
     };
 
     inline double heaviside(const double r, const double r_max) const{

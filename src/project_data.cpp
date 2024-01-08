@@ -393,8 +393,33 @@ std::vector<std::unique_ptr<Material>> ProjectData::load_materials(const rapidjs
             it = std::find_if(material.begin(), material.end(), equal_name_outer);
             logger::log_assert(it != material.end(), logger::ERROR, "material with name '{}' not found", outer);
             Material* o = it->get();
+            bool has_implant = this->log_data(mat, "implant", TYPE_OBJECT, false);
+            material::Mandible::ImplantRegion imp;
+            if(has_implant){
+                const auto& impdata = mat["implant"];
+                this->log_data(impdata, "center1", TYPE_ARRAY, true);
+                this->log_data(impdata, "center2", TYPE_ARRAY, true);
+                this->log_data(impdata, "r1", TYPE_DOUBLE, true);
+                this->log_data(impdata, "r2", TYPE_DOUBLE, true);
 
-            material.emplace_back(new material::Mandible(name, o, i, path_points1, path_points2, C));
+                this->log_data(impdata, "decay_distance", TYPE_DOUBLE, true);
+                this->log_data(impdata, "str_pnt", TYPE_DOUBLE, true);
+                this->log_data(impdata, "str_pnt_dist", TYPE_DOUBLE, true);
+
+                const auto a1 = impdata["center1"].GetArray();
+                const auto a2 = impdata["center2"].GetArray();
+                imp.center_1 = gp_Pnt(a1[0].GetDouble(), a1[1].GetDouble(), a1[2].GetDouble());
+                imp.center_2 = gp_Pnt(a2[0].GetDouble(), a2[1].GetDouble(), a2[2].GetDouble());
+                imp.r1 = impdata["r1"].GetDouble();
+                imp.r2 = impdata["r2"].GetDouble();
+
+                const double decay_distance = impdata["decay_distance"].GetDouble();
+                const double str_pnt = impdata["str_pnt"].GetDouble();
+                const double str_pnt_dist = impdata["str_pnt_dist"].GetDouble();
+                imp.initialize(decay_distance, str_pnt, str_pnt_dist);
+            }
+
+            material.emplace_back(new material::Mandible(name, o, i, path_points1, path_points2, C, has_implant, imp));
         }
     }
 

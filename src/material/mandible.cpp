@@ -18,6 +18,8 @@
  *
  */
 
+#include <Eigen/Core>
+#include <Eigen/Dense>
 #include <cmath>
 #include <complex>
 #include <fstream>
@@ -29,11 +31,9 @@
 
 namespace material{
 
-Mandible::Mandible(const std::string& name, Material* outer, Material* inner, const std::string& path_points1, const std::string& path_points2, double C, bool with_implant, double implant_strength, gp_Dir implant_normal, gp_Pnt implant_center_1, gp_Pnt implant_center_2, double implant_r1, double implant_r2):
+Mandible::Mandible(const std::string& name, Material* outer, Material* inner, const std::string& path_points1, const std::string& path_points2, double C, bool with_implant, ImplantRegion imp):
     Material(name, std::vector<double>(1), std::vector<double>(1)),
-    outer(outer), inner(inner), C(C), ring1(this), ring2(this), with_implant(with_implant){
-
-    this->implant = {implant_strength, implant_normal, implant_center_1, implant_center_2, implant_r1, implant_r2};
+    outer(outer), inner(inner), C(C), ring1(this), ring2(this), with_implant(with_implant), implant(imp){
 
     {
         auto p1 = this->load_points(path_points1);
@@ -54,8 +54,15 @@ std::vector<double> Mandible::stiffness_2D(const MeshElement* const e, const gp_
     auto Di = this->inner->stiffness_2D(e, p);
     auto coeff = this->get_multiplier(p);
 
-    for(size_t i = 0; i < 9; ++i){
-        Do[i] = (1 - coeff)*Do[i] + coeff*Di[i];
+    if(!this->with_implant){
+        for(size_t i = 0; i < 9; ++i){
+            Do[i] = (1 - coeff)*Do[i] + coeff*Di[i];
+        }
+    } else {
+        const auto m = this->implant.get_implant_multiplier(p);
+        for(size_t i = 0; i < 9; ++i){
+            Do[i] = m*((1 - coeff)*Do[i] + coeff*Di[i]);
+        }
     }
     return Do;
 }
@@ -64,8 +71,15 @@ std::vector<double> Mandible::stiffness_3D(const MeshElement* const e, const gp_
     auto Di = this->inner->stiffness_3D(e, p);
     auto coeff = this->get_multiplier(p);
 
-    for(size_t i = 0; i < 36; ++i){
-        Do[i] = (1 - coeff)*Do[i] + coeff*Di[i];
+    if(!this->with_implant){
+        for(size_t i = 0; i < 36; ++i){
+            Do[i] = (1 - coeff)*Do[i] + coeff*Di[i];
+        }
+    } else {
+        const auto m = this->implant.get_implant_multiplier(p);
+        for(size_t i = 0; i < 36; ++i){
+            Do[i] = m*((1 - coeff)*Do[i] + coeff*Di[i]);
+        }
     }
     return Do;
 }
@@ -73,9 +87,27 @@ std::vector<double> Mandible::stiffness_inverse_2D(const MeshElement* const e, c
     auto coeff = this->get_multiplier(p);
     constexpr double TOL = 1e-7;
     if(coeff < TOL){
-        return this->outer->stiffness_inverse_2D(e, p);
+        if(!this->with_implant){
+            return this->outer->stiffness_inverse_2D(e, p);
+        } else {
+            auto S = this->outer->stiffness_inverse_2D(e, p);
+            const auto m = this->implant.get_implant_multiplier(p);
+            for(size_t i = 0; i < 9; ++i){
+                S[i] /= m;
+            }
+            return S;
+        }
     } else if(coeff > 1 - TOL){
-        return this->inner->stiffness_inverse_2D(e, p);
+        if(!this->with_implant){
+            return this->inner->stiffness_inverse_2D(e, p);
+        } else {
+            auto S = this->inner->stiffness_inverse_2D(e, p);
+            const auto m = this->implant.get_implant_multiplier(p);
+            for(size_t i = 0; i < 9; ++i){
+                S[i] /= m;
+            }
+            return S;
+        }
     } else {
         return utils::D_op::invert_2D(this->stiffness_2D(e, p));
     }
@@ -84,9 +116,27 @@ std::vector<double> Mandible::stiffness_inverse_3D(const MeshElement* const e, c
     auto coeff = this->get_multiplier(p);
     constexpr double TOL = 1e-7;
     if(coeff < TOL){
-        return this->outer->stiffness_inverse_3D(e, p);
+        if(!this->with_implant){
+            return this->outer->stiffness_inverse_3D(e, p);
+        } else {
+            auto S = this->outer->stiffness_inverse_3D(e, p);
+            const auto m = this->implant.get_implant_multiplier(p);
+            for(size_t i = 0; i < 36; ++i){
+                S[i] /= m;
+            }
+            return S;
+        }
     } else if(coeff > 1 - TOL){
-        return this->inner->stiffness_inverse_3D(e, p);
+        if(!this->with_implant){
+            return this->inner->stiffness_inverse_3D(e, p);
+        } else {
+            auto S = this->inner->stiffness_inverse_3D(e, p);
+            const auto m = this->implant.get_implant_multiplier(p);
+            for(size_t i = 0; i < 36; ++i){
+                S[i] /= m;
+            }
+            return S;
+        }
     } else {
         return utils::D_op::invert_3D(this->stiffness_3D(e, p));
     }
@@ -96,29 +146,51 @@ double Mandible::get_density(const MeshElement* const e, const gp_Pnt& p) const{
     double d_i = this->inner->get_density(e, p);
     auto coeff = this->get_multiplier(p);
 
-    return (1 - coeff)*d_o + coeff*d_i;
+    if(!this->with_implant){
+        return (1 - coeff)*d_o + coeff*d_i;
+    } else {
+        const auto m = this->implant.get_implant_multiplier(p);
+        return m*((1 - coeff)*d_o + coeff*d_i);
+    }
 }
 double Mandible::beam_E_2D(const MeshElement* const e, const gp_Pnt& p, const Eigen::Matrix<double, 2, 2>& R) const{
     double E_o = this->outer->beam_E_2D(e, p, R);
     double E_i = this->inner->beam_E_2D(e, p, R);
     auto coeff = this->get_multiplier(p);
 
-    return (1 - coeff)*E_o + coeff*E_i;
+    if(!this->with_implant){
+        return (1 - coeff)*E_o + coeff*E_i;
+    } else {
+        const auto m = this->implant.get_implant_multiplier(p);
+        return m*((1 - coeff)*E_o + coeff*E_i);
+    }
 }
 double Mandible::beam_E_3D(const MeshElement* const e, const gp_Pnt& p, const Eigen::Matrix<double, 3, 3>& R) const{
     double E_o = this->outer->beam_E_3D(e, p, R);
     double E_i = this->inner->beam_E_3D(e, p, R);
     auto coeff = this->get_multiplier(p);
 
-    return (1 - coeff)*E_o + coeff*E_i;
+    if(!this->with_implant){
+        return (1 - coeff)*E_o + coeff*E_i;
+    } else {
+        const auto m = this->implant.get_implant_multiplier(p);
+        return m*((1 - coeff)*E_o + coeff*E_i);
+    }
 }
 std::array<double, 2> Mandible::beam_EG_2D(const MeshElement* const e, const gp_Pnt& p, const Eigen::Matrix<double, 2, 2>& R) const{
     auto EG_o = this->outer->beam_EG_2D(e, p, R);
     auto EG_i = this->inner->beam_EG_2D(e, p, R);
     auto coeff = this->get_multiplier(p);
 
-    for(size_t i = 0; i < 2; ++i){
-        EG_o[i] = (1 - coeff)*EG_o[i] + coeff*EG_i[i];
+    if(!this->with_implant){
+        for(size_t i = 0; i < 2; ++i){
+            EG_o[i] = (1 - coeff)*EG_o[i] + coeff*EG_i[i];
+        }
+    } else {
+        const auto m = this->implant.get_implant_multiplier(p);
+        for(size_t i = 0; i < 2; ++i){
+            EG_o[i] = m*((1 - coeff)*EG_o[i] + coeff*EG_i[i]);
+        }
     }
     return EG_o;
 }
@@ -127,8 +199,15 @@ std::array<double, 4> Mandible::beam_EG_3D(const MeshElement* const e, const gp_
     auto EG_i = this->inner->beam_EG_3D(e, p, R);
     auto coeff = this->get_multiplier(p);
 
-    for(size_t i = 0; i < 4; ++i){
-        EG_o[i] = (1 - coeff)*EG_o[i] + coeff*EG_i[i];
+    if(!this->with_implant){
+        for(size_t i = 0; i < 4; ++i){
+            EG_o[i] = (1 - coeff)*EG_o[i] + coeff*EG_i[i];
+        }
+    } else {
+        const auto m = this->implant.get_implant_multiplier(p);
+        for(size_t i = 0; i < 4; ++i){
+            EG_o[i] = m*((1 - coeff)*EG_o[i] + coeff*EG_i[i]);
+        }
     }
     return EG_o;
 }
@@ -137,16 +216,27 @@ double Mandible::S12_2D(const MeshElement* const e, const gp_Pnt& p, const Eigen
     auto EG_i = this->inner->S12_2D(e, p, R);
     auto coeff = this->get_multiplier(p);
 
-    EG_o = (1 - coeff)*EG_o + coeff*EG_i;
-    return EG_o;
+    if(!this->with_implant){
+        return (1 - coeff)*EG_o + coeff*EG_i;
+    } else {
+        const auto m = this->implant.get_implant_multiplier(p);
+        return m*((1 - coeff)*EG_o + coeff*EG_i);
+    }
 }
 std::array<double, 2> Mandible::S12_S13_3D(const MeshElement* const e, const gp_Pnt& p, const Eigen::Matrix<double, 3, 3>& R) const{
     auto EG_o = this->outer->S12_S13_3D(e, p, R);
     auto EG_i = this->inner->S12_S13_3D(e, p, R);
     auto coeff = this->get_multiplier(p);
 
-    for(size_t i = 0; i < 2; ++i){
-        EG_o[i] = (1 - coeff)*EG_o[i] + coeff*EG_i[i];
+    if(!this->with_implant){
+        for(size_t i = 0; i < 2; ++i){
+            EG_o[i] = (1 - coeff)*EG_o[i] + coeff*EG_i[i];
+        }
+    } else {
+        const auto m = this->implant.get_implant_multiplier(p);
+        for(size_t i = 0; i < 2; ++i){
+            EG_o[i] = m*((1 - coeff)*EG_o[i] + coeff*EG_i[i]);
+        }
     }
     return EG_o;
 }
@@ -217,18 +307,6 @@ double Mandible::get_multiplier(const gp_Pnt& p) const{
     return this->heaviside(rp.r, r_max);
 }
 
-// gp_Pnt Mandible::Ring::project_to_plane(const gp_Pnt& p) const{
-//     gp_Vec po(gp_Pnt(0,0,0), p);
-//     gp_Vec pc(this->center, p);
-//     gp_Vec n(this->normal);
-// 
-//     gp_Vec pp = po - (pc.Dot(n)*n);
-// 
-//     gp_Pnt ppp(pp.X(), pp.Y(), pp.Z());
-// 
-//     return ppp;
-// }
-
 std::vector<gp_Pnt> Mandible::load_points(const std::string& path) const{
     std::vector<gp_Pnt> points;
 
@@ -273,6 +351,81 @@ Mandible::RingPointCartesian Mandible::to_ring_point_cartesian(const gp_Pnt& p) 
     rp.theta = distv.AngleWithRef(this->center_ref, this->center_normal) + M_PI;
 
     return rp;
+}
+
+void Mandible::ImplantRegion::initialize(double decay_distance, double str_pnt, double str_pnt_dist){
+    this->decay_distance = decay_distance;
+    const double xl = decay_distance;
+    const double fm = str_pnt;
+    const double xm = str_pnt_dist;
+    Eigen::Matrix<double, 4, 4> M
+        {{xl*xl*xl, xl*xl, xl, 1},
+         {3*xl*xl, 2*xl, 1, 0},
+         {0, 0, 1, 0},
+         {xm*xm*xm, xm*xm, xm, 1}};
+    Eigen::Vector<double, 4> V{1, 0, 0, fm};
+
+    Eigen::Vector<double, 4> R = M.fullPivLu().solve(V);
+    this->a = R[0];
+    this->b = R[1];
+    this->c = R[2];
+    this->d = R[3];
+    this->min_str = d;
+    this->max_l = this->center_1.Distance(this->center_2);
+    this->normal = gp_Vec(center_1, center_2);
+}
+
+double Mandible::ImplantRegion::get_implant_multiplier(const gp_Pnt& p) const{
+    const gp_Vec v1(this->center_1, p);
+
+    const double l = v1.Dot(this->normal);
+    const gp_Vec v2 = v1 - l*this->normal;
+    const double dist = v2.Magnitude();
+    if(l >= 0 && l <= max_l){
+        const double r = (r1 - r2)*l/max_l + r1;
+        if(dist < r){
+            return min_str;
+        } else if(dist > r + decay_distance){
+            return 1;
+        } else {
+            const double x = dist - r;
+            return this->f(x);
+        }
+    } else if(l < 0){
+        if(dist <= r1){
+            if(-l > decay_distance){
+                return 1;
+            } else {
+                return this->f(-l);
+            }
+        } else {
+            const double dr = dist - r1;
+            const double dc = std::sqrt(l*l + dr*dr);
+            if(dc > decay_distance){
+                return 1;
+            } else {
+                return this->f(dc);
+            }
+        }
+    } else if(l > max_l){
+        const double dl = l - max_l;
+        if(dist <= r2){
+            if(dl > decay_distance){
+                return 1;
+            } else {
+                return this->f(dl);
+            }
+        } else {
+            const double dr = dist - r2;
+            const double dc = std::sqrt(dl*dl + dr*dr);
+            if(dc > decay_distance){
+                return 1;
+            } else {
+                return this->f(dc);
+            }
+        }
+    }
+    return 1;
 }
 
 }
