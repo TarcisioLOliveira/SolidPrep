@@ -34,8 +34,8 @@ Mechanostat::Mechanostat(const Meshing* const mesh, SolverManager* fem, double p
           0.5*std::pow((t[1]+c[1])/(2*t[1]*c[1]), 2)}),
     K_g({1.0/(2*s[0]*s[0]),
          1.0/(2*s[1]*s[1])}),
-    K_e2({(t[0]-c[0])/(2*t[0]*c[0]), 
-          (t[1]-c[1])/(2*t[1]*c[1])}),
+    K_e2({-(t[0]-c[0])/(2*t[0]*c[0]), 
+          -(t[1]-c[1])/(2*t[1]*c[1])}),
    problem_type(type){
 
 }
