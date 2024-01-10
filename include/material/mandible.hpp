@@ -112,6 +112,7 @@ class Mandible : public Material{
     RingPoint to_ring_point(const gp_Pnt& p) const;
     RingPointCartesian to_ring_point_cartesian(const gp_Pnt& p) const;
     double get_multiplier(const gp_Pnt& p) const;
+    double angle_with_ref(const gp_Vec& dist) const;
 
     const Material* const outer;
     const Material* const inner;

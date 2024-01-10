@@ -336,7 +336,7 @@ Mandible::RingPoint Mandible::to_ring_point(const gp_Pnt& p) const{
     gp_Pnt p2 = this->ring1.center.Translated(rp.lambda*this->center_normal);
     rp.r = p.Distance(p2);
     gp_Vec distv(p, p2);
-    rp.theta = distv.AngleWithRef(this->center_ref, this->center_normal) + M_PI;
+    rp.theta = this->angle_with_ref(distv);
 
     return rp;
 }
@@ -348,9 +348,18 @@ Mandible::RingPointCartesian Mandible::to_ring_point_cartesian(const gp_Pnt& p) 
     gp_Pnt p2 = this->ring1.center.Translated(rp.lambda*this->center_normal);
     rp.p = p;
     gp_Vec distv(p, p2);
-    rp.theta = distv.AngleWithRef(this->center_ref, this->center_normal) + M_PI;
+    rp.theta = this->angle_with_ref(distv);
 
     return rp;
+}
+
+double Mandible::angle_with_ref(const gp_Vec& dist) const{
+    const gp_Vec v(dist.Normalized());
+    const gp_Vec n = (v - (v.Dot(this->center_normal)*this->center_normal)).Normalized();
+    const gp_Vec cv = n.Crossed(this->center_ref);
+    const double mult = cv.Dot(this->center_normal);
+
+    return std::acos(n.Dot(this->center_ref))*mult/std::abs(mult) + M_PI;
 }
 
 void Mandible::ImplantRegion::initialize(double decay_distance, double str_pnt, double str_pnt_dist){
