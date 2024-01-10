@@ -214,7 +214,7 @@ void OrthotropicFlow::generate(){
 
     for(const auto& g:this->geoms){
         for(const auto& e:g->mesh){
-            const Eigen::MatrixXd M_e = e->diffusion_1dof(thickness, A) + 1e-4*e->absorption_1dof(thickness);
+            const Eigen::MatrixXd M_e = e->diffusion_1dof(thickness, A) + e->absorption_1dof(thickness);
             std::vector<double> M_ev(num_nodes*num_nodes, 0);
             std::copy(M_e.data(), M_e.data()+M_ev.size(), M_ev.begin());
             std::vector<long> pos(num_nodes);
