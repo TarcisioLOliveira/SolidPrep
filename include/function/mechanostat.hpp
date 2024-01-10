@@ -69,10 +69,12 @@ class Mechanostat : public DensityBasedFunction{
         return beta*datan/M_PI;
     }
     inline double Hm(const double x, const double eta = 1.0) const{
-        return Hp(-x, -eta);
+        return 0;
+        //return Hp(-x, -eta);
     }
     inline double dHm(const double x, const double eta = 1.0) const{
-        return -dHp(-x, -eta);
+        return 0;
+        //return -dHp(-x, -eta);
     }
 
     inline double relaxed_rho(const double x) const{

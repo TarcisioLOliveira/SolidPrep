@@ -86,11 +86,6 @@ double Mechanostat::calculate_with_gradient(const Optimizer* const op, const std
                 for(const auto& e:g->mesh){
                     const auto c = e->get_centroid();
 
-                    double rho = 1.0;
-                    if(g->with_void){
-                        rho = this->relaxed_rho(*x_it);
-                    }
-
                     const auto B = e->get_B(c);
 
                     double H_e = 0;
@@ -102,10 +97,10 @@ double Mechanostat::calculate_with_gradient(const Optimizer* const op, const std
                         }
                         if(this->problem_type == utils::PROBLEM_TYPE_2D){
                             const StrainVector2D eps = Eigen::Map<const StrainVector2D>(eps_vec.data(), 3);
-                            const double eps_lhs1 = rho*this->LHS_2D(0, eps);
-                            const double eps_lhs2 = rho*this->LHS_2D(1, eps);
-                            const StrainVector2D deps_lhs1 = rho*this->dLHS_2D(0, eps);
-                            const StrainVector2D deps_lhs2 = rho*this->dLHS_2D(1, eps);
+                            const double eps_lhs1 = this->LHS_2D(0, eps);
+                            const double eps_lhs2 = this->LHS_2D(1, eps);
+                            const StrainVector2D deps_lhs1 = this->dLHS_2D(0, eps);
+                            const StrainVector2D deps_lhs2 = this->dLHS_2D(1, eps);
                             const double H1 = Hm(eps_lhs1);
                             const double H2 = Hp(eps_lhs2);
                             const double Hr = H1*eps_lhs1 + H2*eps_lhs2;
@@ -129,10 +124,10 @@ double Mechanostat::calculate_with_gradient(const Optimizer* const op, const std
                             }
                         } else if(this->problem_type == utils::PROBLEM_TYPE_3D){
                             const StrainVector3D eps = Eigen::Map<const StrainVector3D>(eps_vec.data(), 6);
-                            const double eps_lhs1 = rho*this->LHS_3D(0, eps);
-                            const double eps_lhs2 = rho*this->LHS_3D(1, eps);
-                            const StrainVector3D deps_lhs1 = rho*this->dLHS_3D(0, eps);
-                            const StrainVector3D deps_lhs2 = rho*this->dLHS_3D(1, eps);
+                            const double eps_lhs1 = this->LHS_3D(0, eps);
+                            const double eps_lhs2 = this->LHS_3D(1, eps);
+                            const StrainVector3D deps_lhs1 = this->dLHS_3D(0, eps);
+                            const StrainVector3D deps_lhs2 = this->dLHS_3D(1, eps);
                             const double H1 = Hm(eps_lhs1);
                             const double H2 = Hp(eps_lhs2);
                             const double Hr = H1*eps_lhs1 + H2*eps_lhs2;
@@ -195,38 +190,8 @@ double Mechanostat::calculate_with_gradient(const Optimizer* const op, const std
 
                         g->materials.get_gradD(x_it, psiK, e.get(), c, gradD_K);
                         double lKu = pc*std::pow(*x_it, pc-1)*e->get_compliance(gradD_K[0], this->mesh->thickness, u, l);
-                        auto eps_vec = e->get_strain_vector(c, u);
-                        for(auto& e:eps_vec){
-                            e *= 1e6;
-                        }
 
-                        const double rho = this->relaxed_rho(*x_it);
-                        const double drho = this->relaxed_rho_grad(*x_it);
-
-                        double dH_e = 0;
-                        if(this->problem_type == utils::PROBLEM_TYPE_2D){
-                            const StrainVector2D eps = Eigen::Map<const StrainVector2D>(eps_vec.data(), 3);
-                            const double eps_lhs1 = this->LHS_2D(0, eps);
-                            const double eps_lhs2 = this->LHS_2D(1, eps);
-                            const double H1 = Hm(rho*eps_lhs1);
-                            const double H2 = Hp(rho*eps_lhs2);
-                            const auto dH = drho*((dHm(rho*eps_lhs1)*rho*eps_lhs1 + H1)*eps_lhs1 +
-                                                  (dHp(rho*eps_lhs2)*rho*eps_lhs2 + H2)*eps_lhs2);
-
-                            dH_e = dH;
-                        } else if(this->problem_type == utils::PROBLEM_TYPE_3D){
-                            const StrainVector3D eps = Eigen::Map<const StrainVector3D>(eps_vec.data(), 6);
-                            const double eps_lhs1 = this->LHS_3D(0, eps);
-                            const double eps_lhs2 = this->LHS_3D(1, eps);
-                            const double H1 = Hm(rho*eps_lhs1);
-                            const double H2 = Hp(rho*eps_lhs2);
-                            const auto dH = drho*((dHm(rho*eps_lhs1)*rho*eps_lhs1 + H1)*eps_lhs1 +
-                                                  (dHp(rho*eps_lhs2)*rho*eps_lhs2 + H2)*eps_lhs2);
-
-                            dH_e = dH;
-                        }
-
-                        *grad_it = dH_e - lKu;
+                        *grad_it = -lKu;
                         *gradHe_it = *grad_it;
 
                         const double rho_lKu = std::pow(*x_it, pc);
