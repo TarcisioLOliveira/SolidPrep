@@ -282,9 +282,10 @@ std::array<gp_Dir, 3> OrthotropicFlow::get_array(const MeshElement* e, const gp_
             R[i] += grad[i*NODES_PER_ELEM + j]*this->radial[id];
         }
     }
-
     gp_Dir Ld(L[0], L[1], L[2]);
-    gp_Dir Rd(R[0], R[1], R[2]);
+    gp_Vec Rv(R[0], R[1], R[2]);
+
+    gp_Dir Rd(Rv - Rv.Dot(Ld)*Ld);
 
     return {Ld, Rd, Ld.Crossed(Rd)};
 }
