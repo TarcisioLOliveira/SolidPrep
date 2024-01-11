@@ -45,6 +45,9 @@
 #include <Message.hxx>
 #include <Message_PrinterOStream.hxx>
 #include "spview.hpp"
+#ifdef USE_BLIS
+    #include <blis.h>
+#endif
 
 int main(int argc, char* argv[]){
     MPI_Init(NULL, NULL);
@@ -54,6 +57,10 @@ int main(int argc, char* argv[]){
     
     int mpi_id = 0;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi_id);
+
+#ifdef USE_BLIS
+    bli_init();
+#endif
 
     PetscInitialize(&argc, &argv, NULL, NULL);
 
@@ -369,7 +376,12 @@ int main(int argc, char* argv[]){
 
     PetscFinalize();
 
+#ifdef USE_BLIS
+     bli_finalize();
+#endif
+
     MPI_Finalize();
+
 
     return 0;
 }

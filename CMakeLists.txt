@@ -15,6 +15,8 @@ set(CMAKE_CXX_STANDARD 17)
 
 set(NO_OPENMP OFF CACHE BOOL "Compile without OpenMP support")
 set(THREADS_PREFER_PTHREAD_FLAG ON)
+set(USE_BLIS OFF CACHE BOOL "Use BLIS as BLAS library")
+set(BLAS_PATH /opt/blis-native CACHE STRING "Path to BLAS files")
 # set(USE_CUDA OFF CACHE BOOL "Compile with CUDA support")
 # 
 # if(USE_CUDA)
@@ -23,11 +25,18 @@ set(THREADS_PREFER_PTHREAD_FLAG ON)
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
+# PkgConfig
+find_package(PkgConfig REQUIRED)
+
 find_package(OpenCASCADE REQUIRED)
 if(OpenCASCADE_FOUND)
     message("-- OpenCASCADE found. Version: ${OpenCASCADE_VERSION_MAJOR}.${OpenCASCADE_VERSION_MINOR}.${OpenCASCADE_MAINTENANCE_VERSION}.")
     message("-- OpenCASCADE include directory: ${OpenCASCADE_INCLUDE_DIR}")
     message("-- OpenCASCADE libraries: ${OpenCASCADE_LIBRARIES}")
+endif()
+if(USE_BLIS)
+    set(BLA_VENDOR FLAME)
+    add_compile_definitions(USE_BLIS)
 endif()
 find_package(BLAS REQUIRED)
 find_package(LAPACK REQUIRED)
@@ -41,12 +50,6 @@ find_package(MPI REQUIRED)
 find_package(MUMPS REQUIRED)
 find_package(Eigen3 REQUIRED NO_MODULE)
 find_package(GSL REQUIRED)
-# if(USE_CUDA)
-#     find_package(NVHPC COMPONENTS CUDA MATH HOSTUTILS REQUIRED)
-# endif()
-
-# PkgConfig
-find_package(PkgConfig REQUIRED)
 
 # PETSc
 if (PKG_CONFIG_FOUND)
