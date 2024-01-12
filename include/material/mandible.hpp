@@ -29,23 +29,29 @@ class Mandible : public Material{
     public:
     class ImplantRegion{
         public:
-        gp_Pnt center_1;
-        gp_Pnt center_2;
-        double r1;
-        double r2;
+        ImplantRegion() = default;
+        ImplantRegion(const gp_Pnt& center_1, const gp_Pnt& center_2, double r1, double r2, const std::vector<double>& a, double dl);
 
-        void initialize(double decay_distance, double str_pnt, double str_pnt_dist);
         double get_implant_multiplier(const gp_Pnt& p) const;
 
         private:
         inline double f(const double x) const{
-            return a*x*x*x + b*x*x + c*x + d;
+            double sum = 0;
+            for(size_t i = 0; i < this->a_len; ++i){
+                sum += a[i]*std::pow(x, i);
+            }
+            return sum;
         }
 
+        gp_Pnt center_1;
+        gp_Pnt center_2;
+        double r1;
+        double r2;
         gp_Dir normal;
         double decay_distance;
         double min_str;
-        double a, b, c, d;
+        std::vector<double> a;
+        size_t a_len;
         double max_l;
 
     };

@@ -403,20 +403,22 @@ std::vector<std::unique_ptr<Material>> ProjectData::load_materials(const rapidjs
                 this->log_data(impdata, "r2", TYPE_DOUBLE, true);
 
                 this->log_data(impdata, "decay_distance", TYPE_DOUBLE, true);
-                this->log_data(impdata, "str_pnt", TYPE_DOUBLE, true);
-                this->log_data(impdata, "str_pnt_dist", TYPE_DOUBLE, true);
+                this->log_data(impdata, "coefficients", TYPE_ARRAY, true);
 
                 const auto a1 = impdata["center1"].GetArray();
                 const auto a2 = impdata["center2"].GetArray();
-                imp.center_1 = gp_Pnt(a1[0].GetDouble(), a1[1].GetDouble(), a1[2].GetDouble());
-                imp.center_2 = gp_Pnt(a2[0].GetDouble(), a2[1].GetDouble(), a2[2].GetDouble());
-                imp.r1 = impdata["r1"].GetDouble();
-                imp.r2 = impdata["r2"].GetDouble();
+                gp_Pnt center_1 = gp_Pnt(a1[0].GetDouble(), a1[1].GetDouble(), a1[2].GetDouble());
+                gp_Pnt center_2 = gp_Pnt(a2[0].GetDouble(), a2[1].GetDouble(), a2[2].GetDouble());
+                double r1 = impdata["r1"].GetDouble();
+                double r2 = impdata["r2"].GetDouble();
 
                 const double decay_distance = impdata["decay_distance"].GetDouble();
-                const double str_pnt = impdata["str_pnt"].GetDouble();
-                const double str_pnt_dist = impdata["str_pnt_dist"].GetDouble();
-                imp.initialize(decay_distance, str_pnt, str_pnt_dist);
+                const auto c = impdata["coefficients"].GetArray();
+                std::vector<double> coeffs(c.Size());
+                for(size_t i = 0; i < coeffs.size(); ++i){
+                    coeffs[i] = c[i].GetDouble();
+                }
+                imp = material::Mandible::ImplantRegion(center_1, center_2, r1, r2, coeffs, decay_distance);
             }
 
             material.emplace_back(new material::Mandible(name, o, i, path_points1, path_points2, C, has_implant, imp));

@@ -362,26 +362,13 @@ double Mandible::angle_with_ref(const gp_Vec& dist) const{
     return std::acos(n.Dot(this->center_ref))*mult/std::abs(mult) + M_PI;
 }
 
-void Mandible::ImplantRegion::initialize(double decay_distance, double str_pnt, double str_pnt_dist){
-    this->decay_distance = decay_distance;
-    const double xl = decay_distance;
-    const double fm = str_pnt;
-    const double xm = str_pnt_dist;
-    Eigen::Matrix<double, 4, 4> M
-        {{xl*xl*xl, xl*xl, xl, 1},
-         {3*xl*xl, 2*xl, 1, 0},
-         {0, 0, 1, 0},
-         {xm*xm*xm, xm*xm, xm, 1}};
-    Eigen::Vector<double, 4> V{1, 0, 0, fm};
-
-    Eigen::Vector<double, 4> R = M.fullPivLu().solve(V);
-    this->a = R[0];
-    this->b = R[1];
-    this->c = R[2];
-    this->d = R[3];
-    this->min_str = d;
-    this->max_l = this->center_1.Distance(this->center_2);
-    this->normal = gp_Vec(center_1, center_2);
+Mandible::ImplantRegion::ImplantRegion(const gp_Pnt& center_1, const gp_Pnt& center_2, double r1, double r2, const std::vector<double>& a, double dl):
+    center_1(center_1), center_2(center_2), r1(r1), r2(r2),
+    normal(gp_Vec(center_1, center_2)),
+    decay_distance(dl), min_str(a[0]),
+    a(a), a_len(a.size()),
+    max_l(center_1.Distance(center_2)){
+    
 }
 
 double Mandible::ImplantRegion::get_implant_multiplier(const gp_Pnt& p) const{
