@@ -133,7 +133,7 @@ class BTRI6 : public BoundaryMeshElement{
         return Eigen::Matrix<double, 3, 12>
             {{dNdx(p, 0), 0, dNdx(p, 1), 0, dNdx(p, 2), 0, dNdx(p, 3), 0, dNdx(p, 4), 0, dNdx(p, 5), 0},
              {0, dNdy(p, 0), 0, dNdy(p, 1), 0, dNdy(p, 2), 0, dNdy(p, 3), 0, dNdy(p, 4), 0, dNdy(p, 5)},
-             {dNdy(p, 0), dNdx(p, 0), dNdy(p, 1), dNdx(p, 1), dNdy(p, 2), dNdx(p, 2), dNdy(p, 3), dNdx(p, 3), dNdy(p, 4), dNdx(p, 4), dNdy(p, 5), dNdx(p, 5)}};
+             {0.5*dNdy(p, 0), 0.5*dNdx(p, 0), 0.5*dNdy(p, 1), 0.5*dNdx(p, 1), 0.5*dNdy(p, 2), 0.5*dNdx(p, 2), 0.5*dNdy(p, 3), 0.5*dNdx(p, 3), 0.5*dNdy(p, 4), 0.5*dNdx(p, 4), 0.5*dNdy(p, 5), 0.5*dNdx(p, 5)}};
     }
 };
 

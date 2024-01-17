@@ -125,7 +125,7 @@ class BTRI3 : public BoundaryMeshElement{
     inline Eigen::Matrix<double, 3, 6> dF_mat_2dof() const{
         return Eigen::Matrix<double, 3, 6>{{b[0],    0, b[1],    0, b[2],    0},
                                            {   0, c[0],    0, c[1],    0, c[2]},
-                                           {c[0], b[0], c[1], b[1], c[2], b[2]}};
+                                           {0.5*c[0], 0.5*b[0], 0.5*c[1], 0.5*b[1], 0.5*c[2], 0.5*b[2]}};
     }
 };
 
