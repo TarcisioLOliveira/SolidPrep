@@ -405,12 +405,11 @@ class MeshElement : public Element{
      * Calculates the force vector for a distributed load.
      *
      * @param t Geometry thickness.
-     * @param dir Load direction.
-     * @param norm Distributed load intensity over area (that is, pressure).
+     * @param vec Load vector.
      * @param points Delimiting points.
      * @return Force vector.
      */
-    virtual std::vector<double> get_f(const double t, const gp_Dir& dir, double norm, const std::vector<gp_Pnt>& points) const = 0;
+    virtual std::vector<double> get_f(const double t, const gp_Vec& vec, const std::vector<gp_Pnt>& points) const = 0;
     /**
      * Returns the geometry of the element.
      *

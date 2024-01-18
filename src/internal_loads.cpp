@@ -188,11 +188,10 @@ void InternalLoads::apply_load_3D(const std::vector<long>& node_positions, std::
         Eigen::Vector<double, N> Fr = this->rot3D*F0;
         std::vector<double> F{Fr[0], Fr[1], Fr[2]};
 
-        const double norm = Fr.norm();
-        gp_Dir vec(Fr[0], Fr[1], Fr[2]);
+        gp_Vec vec(Fr[0], Fr[1], Fr[2]);
 
         //const auto Rf = e->parent->get_Rf(Sn, F, this->center, this->thickness, points);
-        const auto Rf = e->parent->get_f(this->thickness, vec, norm, points);
+        const auto Rf = e->parent->get_f(this->thickness, vec, points);
         //logger::quick_log(fe);
         for(size_t i = 0; i < nodes_per_elem; ++i){
             for(size_t j = 0; j < dof; ++j){

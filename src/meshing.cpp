@@ -434,12 +434,7 @@ void Meshing::generate_load_vector(const TopoDS_Shape& shape){
             const auto& node_pos = this->node_positions[spid];
             auto& load_vec = this->load_vector[spid];
             for(auto& f : p.forces){
-                double norm = f->vec.Magnitude()/(thickness*f->S.get_dimension());
-                gp_Dir dir(f->vec);
-
-                if(this->is_strictly_inside2D(f->S.get_centroid(), shape)){
-                    norm = norm/2;
-                }
+                gp_Vec vec(f->vec/(thickness*f->S.get_dimension()));
 
                 gp_Dir Snormal = f->S.get_normal();
                 double Ssize = f->S.get_dimension();
@@ -461,7 +456,7 @@ void Meshing::generate_load_vector(const TopoDS_Shape& shape){
                     }
                     std::vector<double> fe;
                     if(list.size() >= 2){
-                        fe = e.parent->get_f(thickness, dir, norm, list);
+                        fe = e.parent->get_f(thickness, vec, list);
                     } else if(list.size() > 1) {
                         for(size_t i = 0; i < Nb; ++i){
                             size_t j = (i+1)%Nb;
@@ -479,7 +474,7 @@ void Meshing::generate_load_vector(const TopoDS_Shape& shape){
                                 break;
                             }
                         }
-                        fe = e.parent->get_f(thickness, dir, norm, list);
+                        fe = e.parent->get_f(thickness, vec, list);
                     }
                     if(fe.size() > 0){
                         logger::quick_log(fe);
@@ -548,8 +543,7 @@ void Meshing::generate_load_vector(const TopoDS_Shape& shape){
                     }
                 }
 
-                double norm = f->vec.Magnitude()/A;
-                gp_Dir dir(f->vec);
+                gp_Vec vec(f->vec/A);
 
                 for(size_t i = 0; i < apply_force.size(); ++i){
                     if(apply_force[i]){
@@ -558,7 +552,7 @@ void Meshing::generate_load_vector(const TopoDS_Shape& shape){
                         for(size_t i = 0; i < Nb; ++i){
                             points[i] = e.nodes[i]->point;
                         }
-                        const auto fe = e.parent->get_f(1, dir, norm, points);
+                        const auto fe = e.parent->get_f(1, vec, points);
                         logger::quick_log(fe);
                         for(auto& ff:fe){
                             F += ff;
@@ -639,12 +633,7 @@ void Meshing::prepare_for_FEM(const TopoDS_Shape& shape,
 
     if(this->elem_info->get_problem_type() == utils::PROBLEM_TYPE_2D){
         for(auto& f : forces){
-            double norm = f.vec.Magnitude()/(thickness*f.S.get_dimension());
-            gp_Dir dir(f.vec);
-
-            if(this->is_strictly_inside2D(f.S.get_centroid(), shape)){
-                norm = norm/2;
-            }
+            gp_Vec vec(f.vec/(thickness*f.S.get_dimension()));
 
             gp_Dir Snormal = f.S.get_normal();
             double Ssize = f.S.get_dimension();
@@ -694,7 +683,7 @@ void Meshing::prepare_for_FEM(const TopoDS_Shape& shape,
                 }
                 std::vector<double> fe;
                 if(list.size() == 2){
-                    fe = e->get_f(thickness, dir, norm, {list[0]->point, list[1]->point});
+                    fe = e->get_f(thickness, vec, {list[0]->point, list[1]->point});
                 } else if(list.size() == 1){
                     for(size_t i = 0; i < N; ++i){
                         size_t j = (i+1)%N;
@@ -705,12 +694,12 @@ void Meshing::prepare_for_FEM(const TopoDS_Shape& shape,
                             break;
                         }
                         if(is_between_points(n1, n2, p1)){
-                            fe = e->get_f(thickness, dir, norm, {n1, p1});
+                            fe = e->get_f(thickness, vec, {n1, p1});
                             // logger::quick_log(n1.X(), n1.Y(), p1.X(), p1.Y(), n2.X(), n2.Y());
                             // logger::quick_log(fe);
                             break;
                         } else if(is_between_points(n1, n2, p2)){
-                            fe = e->get_f(thickness, dir, norm, {n1, p2});
+                            fe = e->get_f(thickness, vec, {n1, p2});
                             // logger::quick_log(n1.X(), n1.Y(), p2.X(), p2.Y(), n2.X(), n2.Y());
                             // logger::quick_log(fe);
                             break;
@@ -738,8 +727,7 @@ void Meshing::prepare_for_FEM(const TopoDS_Shape& shape,
         }
     } else if(this->elem_info->get_problem_type() == utils::PROBLEM_TYPE_3D){
         for(auto& f : forces){
-            double norm = f.vec.Magnitude()/f.S.get_dimension();
-            gp_Dir dir(f.vec);
+            gp_Vec vec(f.vec/f.S.get_dimension());
 
             // TODO: generalize this and make it faster
             for(auto& e : element_list){
@@ -752,7 +740,7 @@ void Meshing::prepare_for_FEM(const TopoDS_Shape& shape,
                     }
                 }
                 if(points.size() == 3){
-                    auto fe = e->get_f(1, dir, norm, points);
+                    auto fe = e->get_f(1, vec, points);
                     logger::quick_log(fe);
                     for(size_t i = 0; i < N; ++i){
                         for(size_t j = 0; j < dof; ++j){

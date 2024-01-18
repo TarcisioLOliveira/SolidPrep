@@ -402,17 +402,14 @@ class MeshElementCommon2D : public MeshElementCommon<T>{
         return points;
     }
 
-    virtual std::vector<double> get_f(const double t, const gp_Dir& dir, double norm, const std::vector<gp_Pnt>& points) const override{
+    virtual std::vector<double> get_f(const double t, const gp_Vec& vec, const std::vector<gp_Pnt>& points) const override{
         const size_t K_DIM = T::K_DIM;
-
-        const double px = dir.X()*norm;
-        const double py = dir.Y()*norm;
 
         const auto Nf = this->get_Nf(t, points);
 
         std::vector<double> f(K_DIM, 0);
         for(size_t i = 0; i < K_DIM; ++i){
-            f[i] = Nf[T::DIM*i]*px + Nf[T::DIM*i+1]*py;
+            f[i] = Nf[T::DIM*i]*vec.X() + Nf[T::DIM*i+1]*vec.Y();
         }
 
         return f;
@@ -612,18 +609,14 @@ class MeshElementCommon3D : public MeshElementCommon<T>{
         return this->_von_Mises_derivative(D, dD, mult, point, u, V, S_SIZE);
     }
 
-    virtual std::vector<double> get_f(const double t, const gp_Dir& dir, double norm, const std::vector<gp_Pnt>& points) const override{
+    virtual std::vector<double> get_f(const double t, const gp_Vec& vec, const std::vector<gp_Pnt>& points) const override{
         const size_t K_DIM = T::K_DIM;
-
-        const double px = dir.X()*norm;
-        const double py = dir.Y()*norm;
-        const double pz = dir.Z()*norm;
 
         const auto Nf = this->get_Nf(t, points);
 
         std::vector<double> f(K_DIM, 0);
         for(size_t i = 0; i < K_DIM; ++i){
-            f[i] = Nf[T::DIM*i]*px + Nf[T::DIM*i+1]*py + Nf[T::DIM*i+2]*pz;
+            f[i] = Nf[T::DIM*i]*vec.X() + Nf[T::DIM*i+1]*vec.Y() + Nf[T::DIM*i+2]*vec.Z();
         }
 
         return f;
