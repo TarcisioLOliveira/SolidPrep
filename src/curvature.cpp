@@ -100,70 +100,6 @@ void Curvature::generate_curvature_3D(const std::vector<std::unique_ptr<MeshNode
         [this](const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px)->double{
             return this->make_EI_uv_base_3D(S, px);
         };
-    const auto fn_EI_vvv =
-        [this](const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px)->double{
-            return this->make_EI_vvv_base_3D(S, px);
-        };
-    const auto fn_EI_uuu =
-        [this](const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px)->double{
-            return this->make_EI_uuu_base_3D(S, px);
-        };
-    const auto fn_EI_uuv =
-        [this](const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px)->double{
-            return this->make_EI_uuv_base_3D(S, px);
-        };
-    const auto fn_EI_uvv =
-        [this](const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px)->double{
-            return this->make_EI_uvv_base_3D(S, px);
-        };
-    const auto fn_S34_vv =
-        [this](const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px)->double{
-            return this->make_S34_vv_base_3D(S, px);
-        };
-    const auto fn_S34_uu =
-        [this](const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px)->double{
-            return this->make_S34_uu_base_3D(S, px);
-        };
-    const auto fn_S34_vvv =
-        [this](const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px)->double{
-            return this->make_S34_vvv_base_3D(S, px);
-        };
-    const auto fn_S34_uuu =
-        [this](const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px)->double{
-            return this->make_S34_uuu_base_3D(S, px);
-        };
-    const auto fn_S34_uuv =
-        [this](const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px)->double{
-            return this->make_S34_uuv_base_3D(S, px);
-        };
-    const auto fn_S34_uvv =
-        [this](const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px)->double{
-            return this->make_S34_uvv_base_3D(S, px);
-        };
-    const auto fn_S35_vv =
-        [this](const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px)->double{
-            return this->make_S35_vv_base_3D(S, px);
-        };
-    const auto fn_S35_uu =
-        [this](const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px)->double{
-            return this->make_S35_uu_base_3D(S, px);
-        };
-    const auto fn_S35_vvv =
-        [this](const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px)->double{
-            return this->make_S35_vvv_base_3D(S, px);
-        };
-    const auto fn_S35_uuu =
-        [this](const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px)->double{
-            return this->make_S35_uuu_base_3D(S, px);
-        };
-    const auto fn_S35_uuv =
-        [this](const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px)->double{
-            return this->make_S35_uuv_base_3D(S, px);
-        };
-    const auto fn_S35_uvv =
-        [this](const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px)->double{
-            return this->make_S35_uvv_base_3D(S, px);
-        };
 
     const auto result1 = this->integrate_surface_3D(boundary_mesh, {fn_A, fn_EA, fn_EA_u, fn_EA_v, fn_EA_w});
     this->Area = result1[0];
@@ -178,44 +114,10 @@ void Curvature::generate_curvature_3D(const std::vector<std::unique_ptr<MeshNode
         this->integrate_surface_3D(boundary_mesh, 
                 {fn_EI_uu,
                 fn_EI_vv,
-                fn_EI_uv,
-                fn_EI_uuu,
-                fn_EI_vvv,
-                fn_EI_uuv,
-                fn_EI_uvv,
-                fn_S34_uu,
-                fn_S34_vv,
-                fn_S34_vvv,
-                fn_S34_uuu,
-                fn_S34_vvv,
-                fn_S34_uuv,
-                fn_S34_uvv,
-                fn_S35_uu,
-                fn_S35_vv,
-                fn_S35_uuu,
-                fn_S35_vvv,
-                fn_S35_uuv,
-                fn_S35_uvv});
+                fn_EI_uv});
     this->EI_uu = result2[0];
     this->EI_vv = result2[1];
     this->EI_uv = result2[2];
-    this->EI_uuu = result2[3];
-    this->EI_vvv = result2[4];
-    this->EI_uuv = result2[5];
-    this->EI_uvv = result2[6];
-    this->S34_uu = result2[7];
-    this->S34_vv = result2[8];
-    this->S34_vvv = result2[9];
-    this->S34_uuu = result2[10];
-    this->S34_vvv = result2[11];
-    this->S34_uuv = result2[12];
-    this->S34_uvv = result2[13];
-    this->S35_uu = result2[14];
-    this->S35_vv = result2[15];
-    this->S35_uuu = result2[16];
-    this->S35_vvv = result2[17];
-    this->S35_uuv = result2[18];
-    this->S35_uvv = result2[19];
     logger::quick_log("A: ", Area);
     logger::quick_log("EA: ", EA);
     logger::quick_log("c_v: ", c_v);
@@ -225,31 +127,16 @@ void Curvature::generate_curvature_3D(const std::vector<std::unique_ptr<MeshNode
     logger::quick_log("EI_uu", EI_uu);
     logger::quick_log("EI_vv", EI_vv);
     logger::quick_log("EI_uv", EI_uv);
-    logger::quick_log("EI_uuu", EI_uuu);
-    logger::quick_log("EI_vvv", EI_vvv);
-    logger::quick_log("EI_uuv", EI_uuv);
-    logger::quick_log("EI_uvv", EI_uvv);
-    logger::quick_log("S34_uu", S34_uu);
-    logger::quick_log("S34_vv", S34_vv);
-    logger::quick_log("S34_uuu", S34_uuu);
-    logger::quick_log("S34_vvv", S34_vvv);
-    logger::quick_log("S34_uuv", S34_uuv);
-    logger::quick_log("S34_uvv", S34_uvv);
-    logger::quick_log("S35_uu", S35_uu);
-    logger::quick_log("S35_vv", S35_vv);
-    logger::quick_log("S35_uuu", S35_uuu);
-    logger::quick_log("S35_vvv", S35_vvv);
-    logger::quick_log("S35_uuv", S35_uuv);
-    logger::quick_log("S35_uvv", S35_uvv);
 
     this->reduced_vec_len = reduced_vector_size;
     this->F.resize(2*full_vector_size,0);
     this->phi.resize(full_vector_size,0);
+    this->xi.resize(full_vector_size,0);
 
     this->calculate_stress_field_3D(boundary_nodes, boundary_mesh);
 }
 
-void Curvature::get_stress_3D(const BoundaryMeshElement* e, double& s_w, double& t_uw, double& t_vw) const{
+void Curvature::get_stress_3D(const BoundaryMeshElement* e, double& t_uw, double& t_vw, double& s_w) const{
     s_w = 0;
     gp_Pnt c = e->get_centroid();
     gp_Pnt c2 = utils::change_point(c, this->rot3D);
@@ -259,16 +146,15 @@ void Curvature::get_stress_3D(const BoundaryMeshElement* e, double& s_w, double&
     t_uw = 0;
     t_vw = 0;
     Eigen::Vector<double, 2> grad_phi = e->grad_1dof_id(c, this->phi);
+    Eigen::Vector<double, 2> grad_xi = e->grad_1dof_id(c, this->xi);
     Eigen::Vector<double, 3> grad_F = e->dF_2dof_id(c, this->F);
-    t_uw =  grad_phi[1];
-    t_vw = -grad_phi[0];
+    t_uw =  grad_phi[1] + grad_xi[0] + Kxz;
+    t_vw = -grad_phi[0] + grad_xi[1] + Kyz;
 
     const auto S = this->get_S_3D(e->parent, c2);
     double s_u = grad_F[1];
     double s_v = grad_F[0];
     double t_uv = -grad_F[2];
-    t_uw += (Kxz_1*x*x + Kxz_2*y*y)/S(2,2);
-    t_vw += (Kyz_1*y*y + Kyz_2*x*x)/S(2,2);
 
     s_w = (A*x + B*y + C)/S(2,2) - (S(0,2)*s_u + S(1,2)*s_v + S(2,3)*t_vw + S(2,4)*t_uw + S(2,5)*t_uv)/S(2,2);
 }
@@ -276,69 +162,10 @@ void Curvature::get_stress_3D(const BoundaryMeshElement* e, double& s_w, double&
 void Curvature::calculate_stress_field_3D(const std::vector<std::unique_ptr<MeshNode>>& boundary_nodes, const std::vector<std::unique_ptr<BoundaryMeshElement>>& boundary_mesh){
     const size_t num_nodes = this->elem_info->get_nodes_per_element();
 
-    const size_t F_offset = 2*this->reduced_vec_len;
-    size_t phi_size = F_offset + this->reduced_vec_len;
     const gp_Pnt center(c_u, c_v, 0);
 
-    // Eigen solvers DO NOT WORK CORRECTLY HERE
-    general_solver::MUMPSGeneral solver;
-    solver.initialize_matrix(false, phi_size);
-
     /* 
-     * First part: obtain phi_1 and F_1.
-     *
-     * Both come from: 
-     * phi = theta*phi_1 + phi_0
-     * F = theta*F_1 + F_0
-     *
-     * And need to be obtained first so that theta, A and B may be calculated.
-     * Based on Lekhnitskii formalism.
-     *
-     */
-    std::vector<double> b(phi_size, 0);
-
-    this->base_matrix_upos(solver, boundary_mesh, num_nodes, F_offset);
-
-    for(const auto& e:boundary_mesh){
-        const Eigen::VectorXd N = 2*e->source_1dof();
-
-        for(size_t i = 0; i < num_nodes; ++i){
-            const long id1 = e->nodes[i]->u_pos[0];
-            if(id1 < 0){
-                continue;
-            }
-            b[F_offset + id1] += N[i];
-        }
-    }
-
-
-    solver.compute();
-
-    solver.solve(b);
-    auto phi_tmp = b;
-
-    /*
-     * Save phi_1 and F_1 in the global vector.
-     *
-     */
-    for(const auto& n:boundary_nodes){
-        const long id1 = n->u_pos[0];
-        if(id1 < 0){
-            continue;
-        }
-        this->F[2*n->id] += phi_tmp[2*id1];
-        this->F[2*n->id+1] += phi_tmp[2*id1+1];
-    }
-    for(const auto& n:boundary_nodes){
-        const long id1 = n->u_pos[0];
-        if(id1 < 0){
-            continue;
-        }
-        this->phi[n->id] += phi_tmp[F_offset + id1];
-    }
-
-    /* 
-     * Second part: obtain phi_0 and F_0.
+     * Obtain F, phi, xi, etc.
      *
      * Matrix is slightly larger to acomodate theta, A and B.
      * Unfortunately, such addition makes it necessary to redo M and refactorize
@@ -348,15 +175,22 @@ void Curvature::calculate_stress_field_3D(const std::vector<std::unique_ptr<Mesh
      * really necessary to optimize for it as the solver would already ignore
      * the zero-filled rectangles.
      */
-    const size_t F_phi_offset = F_offset + this->phi.size();;
-    // A B C theta Kyz_2 Kxz_2
-    phi_size = F_phi_offset + 4 + 2;
+    const size_t F_offset = 2*this->reduced_vec_len;
+    const size_t F_phi_offset = F_offset + this->phi.size();
+    const size_t F_phi_xi_offset = F_phi_offset + this->xi.size();
+    const size_t phi_size = F_phi_xi_offset + 2;
+    // Eigen solvers DO NOT WORK CORRECTLY HERE
+    general_solver::MUMPSGeneral solver;
     solver.initialize_matrix(false, phi_size);
 
-    this->base_matrix_id(solver, boundary_mesh, num_nodes, F_offset);
+    this->base_matrix_id(solver, boundary_mesh, num_nodes, F_offset, F_phi_offset);
+    solver.compute();
 
-    b.resize(phi_size);
-    std::fill(b.begin(), b.end(), 0);
+    // 0 A B C theta Kyz Kxz
+    std::vector<std::vector<double>> b(7);
+    for(auto& v:b){
+        v.resize(phi_size,0);
+    }
 
     // Az Bz
     Eigen::Matrix<double, 2, 2> EIM{{EI_vv, EI_uv},
@@ -369,35 +203,47 @@ void Curvature::calculate_stress_field_3D(const std::vector<std::unique_ptr<Mesh
 
     logger::quick_log("Az", Az);
     logger::quick_log("Bz", Bz);
-    this->Kxz_1 = -Az/2.0;
-    this->Kyz_1 = -Bz/2.0;
 
     /*
      * Generate the constants which multiply theta and fill the additional
      * rectangles in the matrix.
      */
-    double C1 = 0, Cx1 = 0, Cy1 = 0, Ct1 = 0;
-    double xC1 = 0, yC1 = 0;
     Eigen::Matrix<double, 2, 2> I{{1,0},
                                   {0,1}};
+
+    // 0
+    size_t B_NUM = 0;
+    if(Az != 0 || Bz != 0){
+        for(const auto& e:boundary_mesh){
+
+            const gp_Pnt centroid = e->get_centroid();
+            const gp_Pnt c = utils::change_point(centroid, this->rot3D);
+            const auto S = this->get_S_3D(e->parent, c);
+
+            const auto NAzBz = e->int_N_AzBz(center, Az/S(2,2), Bz/S(2,2));
+
+            for(size_t i = 0; i < num_nodes; ++i){
+                const long id2 = e->nodes[i]->id;
+
+                b[B_NUM][F_phi_offset + id2] += NAzBz[i];
+
+            }
+        }
+
+        solver.solve(b[B_NUM]);
+    }
+
+    // A
+    B_NUM = 1;
     for(const auto& e:boundary_mesh){
         Eigen::Matrix<double, 3, 3> B4;
         Eigen::Matrix<double, 3, 2> B3;
         Eigen::Matrix<double, 2, 2> B2;
 
-        const auto N = e->source_1dof();
-        const auto Nx = e->int_N_x(center);
-        const auto Ny = e->int_N_y(center);
-        const auto dphi = e->int_grad_phi();
-        const auto dphix = e->int_grad_phi_x(center);
-        const auto dphiy = e->int_grad_phi_y(center);
-        const auto dF = e->int_grad_F();
-        const auto dFx = e->int_grad_F_x(center);
-        const auto dFy = e->int_grad_F_y(center);
-        gp_Pnt c = utils::change_point(e->get_centroid(), this->rot3D);
+        const gp_Pnt centroid = e->get_centroid();
+        const gp_Pnt c = utils::change_point(centroid, this->rot3D);
         const auto S = this->get_S_3D(e->parent, c);
         this->get_B_tensors_3D(e->parent, c, B4, B3, B2);
-
         const Eigen::Matrix<double, 3, 3> aF
             {{S(1,2)/S(2,2), 0, 0},
              {0, S(0,2)/S(2,2), 0},
@@ -405,147 +251,187 @@ void Curvature::calculate_stress_field_3D(const std::vector<std::unique_ptr<Mesh
         const Eigen::Matrix<double, 2, 2> aphi
             {{S(2,3)/S(2,2), 0},
              {0, S(2,4)/S(2,2)}};
-
-        const Eigen::MatrixXd dFt = e->int_grad_F_t2_t1(B3, center);
-        const Eigen::MatrixXd dphit = e->int_grad_phi_t2_t1(B2, center);
         const Eigen::MatrixXd dFD = e->int_grad_F_D(aF, center);
         const Eigen::MatrixXd dphiD = e->int_grad_phi_D(aphi, center);
 
         for(size_t i = 0; i < num_nodes; ++i){
-            // phi vector
+            const long id1 = e->nodes[i]->u_pos[0];
             const long id2 = e->nodes[i]->id;
 
-            Cx1 += (-S(2,3)*dphix(0,i)+S(2,4)*dphix(1,i))*phi[id2]/S(2,2);
-            Cy1 += (-S(2,3)*dphiy(0,i)+S(2,4)*dphiy(1,i))*phi[id2]/S(2,2);
-            C1  += (-S(2,3)*dphi (0,i)+S(2,4)*dphi (1,i))*phi[id2]/S(2,2);
-            // In this case, phi = 0 at the boundary
-            Ct1 += 2*N[i]*phi[id2];
-
-            xC1 += (-dphi(0,i))*phi[id2];
-            yC1 += ( dphi(1,i))*phi[id2];
-
-            // Cx0
-            solver.add_value(F_phi_offset + 0, F_offset + id2, -(-S(2,3)*dphix(0,i)+S(2,4)*dphix(1,i))/S(2,2));
-            // Cy0
-            solver.add_value(F_phi_offset + 1, F_offset + id2, -(-S(2,3)*dphiy(0,i)+S(2,4)*dphiy(1,i))/S(2,2));
-            // C0                                                    
-            solver.add_value(F_phi_offset + 2, F_offset + id2, -(-S(2,3)*dphi (0,i)+S(2,4)*dphi (1,i))/S(2,2));
-            // Ct0
-            // In this case, phi != 0 at the boundary
-            solver.add_value(F_phi_offset + 3, F_offset + id2, -dphix(0,i)-dphiy(1,i));
-
-            // Kyz_2, Kxz_2
-            // xC0
-            solver.add_value(F_phi_offset + 4, F_offset + id2, (-dphi(0,i)));
-            // yC0
-            solver.add_value(F_phi_offset + 5, F_offset + id2, ( dphi(1,i)));
-
-            // phi source
-            // shear coeffs
-            solver.add_value(F_offset + id2, F_phi_offset + 4 + 0, dphit(i,1));
-            solver.add_value(F_offset + id2, F_phi_offset + 4 + 1, dphit(i,3));
-            b[F_offset + id2] += -dphit(i,0)*Kyz_1 - dphit(i,2)*Kxz_1;
-            // A coeffs
-            solver.add_value(F_offset + id2, F_phi_offset + 0, dphiD(i,0));
-            // B coeffs
-            solver.add_value(F_offset + id2, F_phi_offset + 1, dphiD(i,1));
-            // C coeffs
-            solver.add_value(F_offset + id2, F_phi_offset + 2, dphiD(i,2));
-
-            // F vector
-            const long id1 = e->nodes[i]->u_pos[0];
-            if(id1 < 0){
-                continue;
+            if(id1 >+ 0){
+                b[B_NUM][2*id1 + 0] -= dFD(2*i+0,0);
+                b[B_NUM][2*id1 + 1] -= dFD(2*i+1,0);
             }
-            Cx1 +=  (
-                     (S(1,2)*dFx(0,2*i+0)-0.5*S(2,5)*dFx(2,2*i+0))*phi_tmp[2*id1+0]+
-                     (S(0,2)*dFx(1,2*i+1)-0.5*S(2,5)*dFx(2,2*i+1))*phi_tmp[2*id1+1])
-                     /S(2,2);
-            Cy1 +=  (
-                     (S(1,2)*dFy(0,2*i+0)-0.5*S(2,5)*dFy(2,2*i+0))*phi_tmp[2*id1+0]+
-                     (S(0,2)*dFy(1,2*i+1)-0.5*S(2,5)*dFy(2,2*i+1))*phi_tmp[2*id1+1])
-                     /S(2,2);
-            C1  +=  (
-                    (S(1,2)*dF (0,2*i+0)-0.5*S(2,5)*dF (2,2*i+0))*phi_tmp[2*id1+0]+
-                    (S(0,2)*dF (1,2*i+1)-0.5*S(2,5)*dF (2,2*i+1))*phi_tmp[2*id1+1])
-                    /S(2,2);
-
-            // Cx0
-            solver.add_value(F_phi_offset + 0, 2*id1 + 0, -(S(1,2)*dFx(0,2*i+0)-0.5*S(2,5)*dFx(2,2*i+0))/S(2,2));
-            solver.add_value(F_phi_offset + 0, 2*id1 + 1, -(S(0,2)*dFx(1,2*i+1)-0.5*S(2,5)*dFx(2,2*i+1))/S(2,2));
-            // Cy0
-            solver.add_value(F_phi_offset + 1, 2*id1 + 0, -(S(1,2)*dFy(0,2*i+0)-0.5*S(2,5)*dFy(2,2*i+0))/S(2,2));
-            solver.add_value(F_phi_offset + 1, 2*id1 + 1, -(S(0,2)*dFy(1,2*i+1)-0.5*S(2,5)*dFy(2,2*i+1))/S(2,2));
-            // C0                                                    
-            solver.add_value(F_phi_offset + 2, 2*id1 + 0, -(S(1,2)*dF (0,2*i+0)-0.5*S(2,5)*dF (2,2*i+0))/S(2,2));
-            solver.add_value(F_phi_offset + 2, 2*id1 + 1, -(S(0,2)*dF (1,2*i+1)-0.5*S(2,5)*dF (2,2*i+1))/S(2,2));
-
-            // F source
-            // shear coeffs
-            solver.add_value(2*id1 + 0, F_phi_offset + 4 + 0, dFt(2*i+0,1));
-            solver.add_value(2*id1 + 1, F_phi_offset + 4 + 0, dFt(2*i+1,1));
-            solver.add_value(2*id1 + 0, F_phi_offset + 4 + 1, dFt(2*i+0,3));
-            solver.add_value(2*id1 + 1, F_phi_offset + 4 + 1, dFt(2*i+1,3));
-            b[2*id1 + 0] += -dFt(2*i+0,0)*Kyz_1 - dFt(2*i+0,2)*Kxz_1;
-            b[2*id1 + 1] += -dFt(2*i+1,0)*Kyz_1 - dFt(2*i+1,2)*Kxz_1;
-            // A coeffs
-            solver.add_value(2*id1 + 0, F_phi_offset + 0, dFD(2*i+0,0));
-            solver.add_value(2*id1 + 1, F_phi_offset + 0, dFD(2*i+1,0));
-            // B coeffs
-            solver.add_value(2*id1 + 0, F_phi_offset + 1, dFD(2*i+0,1));
-            solver.add_value(2*id1 + 1, F_phi_offset + 1, dFD(2*i+1,1));
-            // C coeffs
-            solver.add_value(2*id1 + 0, F_phi_offset + 2, dFD(2*i+0,2));
-            solver.add_value(2*id1 + 1, F_phi_offset + 2, dFD(2*i+1,2));
+            b[B_NUM][F_offset + id2] -= dphiD(i,0);
         }
     }
+    solver.solve(b[B_NUM]);
 
-    // A B square
-    solver.add_value(F_phi_offset + 0, F_phi_offset + 0, EI_vv);
-    solver.add_value(F_phi_offset + 0, F_phi_offset + 1, EI_uv);
-    solver.add_value(F_phi_offset + 1, F_phi_offset + 0, EI_uv);
-    solver.add_value(F_phi_offset + 1, F_phi_offset + 1, EI_uu);
+    // B
+    B_NUM = 2;
+    for(const auto& e:boundary_mesh){
+        Eigen::Matrix<double, 3, 3> B4;
+        Eigen::Matrix<double, 3, 2> B3;
+        Eigen::Matrix<double, 2, 2> B2;
 
-    solver.add_value(F_phi_offset + 0, F_phi_offset + 4 + 0, -S34_uvv);
-    solver.add_value(F_phi_offset + 0, F_phi_offset + 4 + 1, -S35_uuu);
-    b[F_phi_offset + 0] = -M_v + Kyz_1*S34_uuu + Kxz_1*S35_uvv;
-    solver.add_value(F_phi_offset + 1, F_phi_offset + 4 + 0, -S34_vvv);
-    solver.add_value(F_phi_offset + 1, F_phi_offset + 4 + 1, -S35_uuv);
-    b[F_phi_offset + 1] = -M_u + Kyz_1*S34_uuv + Kxz_1*S35_vvv;
+        const gp_Pnt centroid = e->get_centroid();
+        const gp_Pnt c = utils::change_point(centroid, this->rot3D);
+        const auto S = this->get_S_3D(e->parent, c);
+        this->get_B_tensors_3D(e->parent, c, B4, B3, B2);
+        const Eigen::Matrix<double, 3, 3> aF
+            {{S(1,2)/S(2,2), 0, 0},
+             {0, S(0,2)/S(2,2), 0},
+             {0, 0, S(2,5)/S(2,2)}};
+        const Eigen::Matrix<double, 2, 2> aphi
+            {{S(2,3)/S(2,2), 0},
+             {0, S(2,4)/S(2,2)}};
+        const Eigen::MatrixXd dFD = e->int_grad_F_D(aF, center);
+        const Eigen::MatrixXd dphiD = e->int_grad_phi_D(aphi, center);
+
+        for(size_t i = 0; i < num_nodes; ++i){
+            const long id1 = e->nodes[i]->u_pos[0];
+            const long id2 = e->nodes[i]->id;
+
+            if(id1 >+ 0){
+                b[B_NUM][2*id1 + 0] -= dFD(2*i+0,1);
+                b[B_NUM][2*id1 + 1] -= dFD(2*i+1,1);
+            }
+            b[B_NUM][F_offset + id2] -= dphiD(i,1);
+        }
+    }
+    solver.solve(b[B_NUM]);
 
     // C
-    solver.add_value(F_phi_offset + 2, F_phi_offset + 2, EA);
-    solver.add_value(F_phi_offset + 2, F_phi_offset + 4 + 0, -S34_vv);
-    solver.add_value(F_phi_offset + 2, F_phi_offset + 4 + 1, -S35_uu);
-    b[F_phi_offset + 2] = -V_w + Kyz_1*S34_uu + Kxz_1*S35_vv;
+    B_NUM = 3;
+    for(const auto& e:boundary_mesh){
+        Eigen::Matrix<double, 3, 3> B4;
+        Eigen::Matrix<double, 3, 2> B3;
+        Eigen::Matrix<double, 2, 2> B2;
+
+        const gp_Pnt centroid = e->get_centroid();
+        const gp_Pnt c = utils::change_point(centroid, this->rot3D);
+        const auto S = this->get_S_3D(e->parent, c);
+        this->get_B_tensors_3D(e->parent, c, B4, B3, B2);
+        const Eigen::Matrix<double, 3, 3> aF
+            {{S(1,2)/S(2,2), 0, 0},
+             {0, S(0,2)/S(2,2), 0},
+             {0, 0, S(2,5)/S(2,2)}};
+        const Eigen::Matrix<double, 2, 2> aphi
+            {{S(2,3)/S(2,2), 0},
+             {0, S(2,4)/S(2,2)}};
+        const Eigen::MatrixXd dFD = e->int_grad_F_D(aF, center);
+        const Eigen::MatrixXd dphiD = e->int_grad_phi_D(aphi, center);
+
+        for(size_t i = 0; i < num_nodes; ++i){
+            const long id1 = e->nodes[i]->u_pos[0];
+            const long id2 = e->nodes[i]->id;
+
+            if(id1 >+ 0){
+                b[B_NUM][2*id1 + 0] -= dFD(2*i+0,2);
+                b[B_NUM][2*id1 + 1] -= dFD(2*i+1,2);
+            }
+            b[B_NUM][F_offset + id2] -= dphiD(i,2);
+        }
+    }
+    solver.solve(b[B_NUM]);
 
     // theta
-    solver.add_value(F_phi_offset + 0, F_phi_offset + 3, -Cx1);
-    solver.add_value(F_phi_offset + 1, F_phi_offset + 3, -Cy1);
-    solver.add_value(F_phi_offset + 2, F_phi_offset + 3, -C1 );
-    solver.add_value(F_phi_offset + 3, F_phi_offset + 3,  Ct1);
-    solver.add_value(F_phi_offset + 3, F_phi_offset + 4 + 0,  EI_vvv);
-    solver.add_value(F_phi_offset + 3, F_phi_offset + 4 + 1, -EI_uuu);
-    b[F_phi_offset + 3] = -M_w - Kyz_1*EI_uuv + Kxz_1*EI_uvv;
+    B_NUM = 4;
+    for(const auto& e:boundary_mesh){
+        const auto N = e->source_1dof();
 
-    // Kyz_2, Kxz_2
-    solver.add_value(F_phi_offset + 4, F_phi_offset + 3,  xC1);
-    solver.add_value(F_phi_offset + 5, F_phi_offset + 3,  yC1);
+        for(size_t i = 0; i < num_nodes; ++i){
+            const long id2 = e->nodes[i]->id;
+
+            b[B_NUM][F_offset + id2] += 2*N[i];
+        }
+    }
+    solver.solve(b[B_NUM]);
+
+    // Kyz
+    B_NUM = 5;
+    for(const auto& e:boundary_mesh){
+        Eigen::Matrix<double, 3, 3> B4;
+        Eigen::Matrix<double, 3, 2> B3;
+        Eigen::Matrix<double, 2, 2> B2;
+
+        const gp_Pnt centroid = e->get_centroid();
+        const gp_Pnt c = utils::change_point(centroid, this->rot3D);
+        const auto dphi = e->int_grad_phi();
+        const auto dF = e->int_grad_F();
+        this->get_B_tensors_3D(e->parent, c, B4, B3, B2);
+        const Eigen::MatrixXd BF = dF.transpose()*B3;
+        const Eigen::MatrixXd Bphi = dphi.transpose()*B2;
+
+        for(size_t i = 0; i < num_nodes; ++i){
+            const long id1 = e->nodes[i]->u_pos[0];
+            const long id2 = e->nodes[i]->id;
+
+            if(id1 >+ 0){
+                b[B_NUM][2*id1 + 0] -= BF(2*i+0,0);
+                b[B_NUM][2*id1 + 1] -= BF(2*i+1,0);
+            }
+            b[B_NUM][F_offset + id2] -= Bphi(i,0);
+        }
+    }
+    solver.solve(b[B_NUM]);
+
+    // Kxz
+    B_NUM = 6;
+    for(const auto& e:boundary_mesh){
+        Eigen::Matrix<double, 3, 3> B4;
+        Eigen::Matrix<double, 3, 2> B3;
+        Eigen::Matrix<double, 2, 2> B2;
+
+        const gp_Pnt centroid = e->get_centroid();
+        const gp_Pnt c = utils::change_point(centroid, this->rot3D);
+        const auto dphi = e->int_grad_phi();
+        const auto dF = e->int_grad_F();
+        this->get_B_tensors_3D(e->parent, c, B4, B3, B2);
+        const Eigen::MatrixXd BF = dF.transpose()*B3;
+        const Eigen::MatrixXd Bphi = dphi.transpose()*B2;
+
+        for(size_t i = 0; i < num_nodes; ++i){
+            const long id1 = e->nodes[i]->u_pos[0];
+            const long id2 = e->nodes[i]->id;
+
+            if(id1 >+ 0){
+                b[B_NUM][2*id1 + 0] -= BF(2*i+0,1);
+                b[B_NUM][2*id1 + 1] -= BF(2*i+1,1);
+            }
+            b[B_NUM][F_offset + id2] -= Bphi(i,1);
+        }
+    }
+    solver.solve(b[B_NUM]);
+
+    Eigen::Matrix<double, 6, 6> Mat;
+    Mat.fill(0);
+    Eigen::Vector<double, 6> Vec;
+    Vec.fill(0);
+
+    // A B square
+    Mat(0, 0) = EI_vv;
+    Mat(0, 1) = EI_uv;
+    Mat(1, 0) = EI_uv;
+    Mat(1, 1) = EI_uu;
+
+    Vec[0] = -M_v;
+    Vec[1] = -M_u;
+
+    // C
+    Mat(2,2) = EA;
+    Vec[2] = -V_w;
+
+    // theta
+    Vec[3] = -M_w;
 
     // t_yz
-    solver.add_value(F_phi_offset + 4, F_phi_offset + 4 + 0,  EI_vv);
-    b[F_phi_offset + 4] = V_v - Kyz_1*EI_uu;
+    Mat(4,4) = Area;
+    Vec[4] = V_v;
     // t_xz
-    solver.add_value(F_phi_offset + 5, F_phi_offset + 4 + 1,  EI_uu);
-    b[F_phi_offset + 5] = -V_u - Kxz_1*EI_vv;
+    Mat(5,5) = Area;
+    Vec[5] = -V_u;
 
-    solver.compute();
-
-    solver.solve(b);
-    phi_tmp = b;
-
-    double C0 = 0, Cx0 = 0, Cy0 = 0, Ct0 = 0;
-    double xC0 = 0, yC0 = 0;
     for(const auto& e:boundary_mesh){
         const auto N = e->source_1dof();
         const auto Nx = e->int_N_x(center);
@@ -554,42 +440,101 @@ void Curvature::calculate_stress_field_3D(const std::vector<std::unique_ptr<Mesh
         const auto dphi = e->int_grad_phi();
         const auto dphix = e->int_grad_phi_x(center);
         const auto dphiy = e->int_grad_phi_y(center);
+        const auto dxi = e->int_grad_xi();
+        const auto dxix = e->int_grad_xi_x(center);
+        const auto dxiy = e->int_grad_xi_y(center);
         const auto dF = e->int_grad_F();
         const auto dFx = e->int_grad_F_x(center);
         const auto dFy = e->int_grad_F_y(center);
-        gp_Pnt c = utils::change_point(e->get_centroid(), this->rot3D);
+        const gp_Pnt centroid = e->get_centroid();
+        const gp_Pnt c = utils::change_point(centroid, this->rot3D);
         const auto S = this->get_S_3D(e->parent, c);
 
+        const double dx = centroid.X() - center.X();
+        const double dy = centroid.Y() - center.Y();
+        const double a = e->get_area();
+
+        Mat(0,4) += -(S(2,3)*dx*a)/S(2,2);
+        Mat(1,4) += -(S(2,3)*dy*a)/S(2,2);
+        Mat(2,4) += -(S(2,3)*a)/S(2,2);
+
+        Mat(0,5) += -(S(2,4)*dx*a)/S(2,2);
+        Mat(1,5) += -(S(2,4)*dy*a)/S(2,2);
+        Mat(2,5) += -(S(2,4)*a)/S(2,2);
+
         for(size_t i = 0; i < num_nodes; ++i){
+            const long id1 = e->nodes[i]->u_pos[0];
+            if(id1 >= 0){
+                Vec[0] -= -(S(1,2)*dFx(0,2*i+0)-0.5*S(2,5)*dFx(2,2*i+0))/S(2,2)*b[0][2*id1 + 0];
+                Vec[0] -= -(S(0,2)*dFx(1,2*i+1)-0.5*S(2,5)*dFx(2,2*i+1))/S(2,2)*b[0][2*id1 + 1];
+                Vec[1] -= -(S(1,2)*dFy(0,2*i+0)-0.5*S(2,5)*dFy(2,2*i+0))/S(2,2)*b[0][2*id1 + 0];
+                Vec[1] -= -(S(0,2)*dFy(1,2*i+1)-0.5*S(2,5)*dFy(2,2*i+1))/S(2,2)*b[0][2*id1 + 1];
+                Vec[2] -= -(S(1,2)*dF (0,2*i+0)-0.5*S(2,5)*dF (2,2*i+0))/S(2,2)*b[0][2*id1 + 0];
+                Vec[2] -= -(S(0,2)*dF (1,2*i+1)-0.5*S(2,5)*dF (2,2*i+1))/S(2,2)*b[0][2*id1 + 1];
+            }
+
             const long id2 = e->nodes[i]->id;
 
-            Cx0 += (-S(2,3)*dphix(0,i)+S(2,4)*dphix(1,i))*phi_tmp[F_offset + id2]/S(2,2);
-            Cy0 += (-S(2,3)*dphiy(0,i)+S(2,4)*dphiy(1,i))*phi_tmp[F_offset + id2]/S(2,2);
-            C0  += (-S(2,3)*dphi (0,i)+S(2,4)*dphi (1,i))*phi_tmp[F_offset + id2]/S(2,2);
-            // phi != 0 at the boundary
-            Ct0 += (-dphix(0,i)-dphiy(1,i))*phi_tmp[F_offset + id2];
+            Vec[0] -= -(-S(2,3)*dphix(0,i)+S(2,4)*dphix(1,i))*b[0][F_offset + id2]/S(2,2);
+            Vec[1] -= -(-S(2,3)*dphiy(0,i)+S(2,4)*dphiy(1,i))*b[0][F_offset + id2]/S(2,2);
+            Vec[2] -= -(-S(2,3)*dphi (0,i)+S(2,4)*dphi (1,i))*b[0][F_offset + id2]/S(2,2);
+            Vec[3] -= (-dphix(0,i)-dphiy(1,i))*b[0][F_offset + id2];
+            Vec[4] -= (-dphi(0,i))*b[0][F_offset + id2];
+            Vec[5] -= ( dphi(1,i))*b[0][F_offset + id2];
 
-            xC0 += (-dphi(0,i))*phi_tmp[F_offset + id2];
-            yC0 += ( dphi(1,i))*phi_tmp[F_offset + id2];
+            Vec[0] -= -(S(2,3)*dxix(0,i)+S(2,4)*dxix(1,i))*b[0][F_phi_offset + id2]/S(2,2);
+            Vec[1] -= -(S(2,3)*dxiy(0,i)+S(2,4)*dxiy(1,i))*b[0][F_phi_offset + id2]/S(2,2);
+            Vec[2] -= -(S(2,3)*dxi (0,i)+S(2,4)*dxi (1,i))*b[0][F_phi_offset + id2]/S(2,2);
+            Vec[3] -= ( dxix(0,i)-dxiy(1,i))*b[0][F_phi_offset + id2];
+            Vec[4] -= ( dxi(0,i))*b[0][F_phi_offset + id2];
+            Vec[5] -= ( dxi(1,i))*b[0][F_phi_offset + id2];
+        }
+        for(size_t j = 0; j < 6; ++j){
+            for(size_t i = 0; i < num_nodes; ++i){
+                const long id1 = e->nodes[i]->u_pos[0];
+                if(id1 >= 0){
+                    Mat(0,j) += -(S(1,2)*dFx(0,2*i+0)-0.5*S(2,5)*dFx(2,2*i+0))/S(2,2)*b[j+1][2*id1 + 0];
+                    Mat(0,j) += -(S(0,2)*dFx(1,2*i+1)-0.5*S(2,5)*dFx(2,2*i+1))/S(2,2)*b[j+1][2*id1 + 1];
+                    Mat(1,j) += -(S(1,2)*dFy(0,2*i+0)-0.5*S(2,5)*dFy(2,2*i+0))/S(2,2)*b[j+1][2*id1 + 0];
+                    Mat(1,j) += -(S(0,2)*dFy(1,2*i+1)-0.5*S(2,5)*dFy(2,2*i+1))/S(2,2)*b[j+1][2*id1 + 1];
+                    Mat(2,j) += -(S(1,2)*dF (0,2*i+0)-0.5*S(2,5)*dF (2,2*i+0))/S(2,2)*b[j+1][2*id1 + 0];
+                    Mat(2,j) += -(S(0,2)*dF (1,2*i+1)-0.5*S(2,5)*dF (2,2*i+1))/S(2,2)*b[j+1][2*id1 + 1];
+                }
+                const long id2 = e->nodes[i]->id;
+
+                Mat(0,j) += -(-S(2,3)*dphix(0,i)+S(2,4)*dphix(1,i))*b[j+1][F_offset + id2]/S(2,2);
+                Mat(1,j) += -(-S(2,3)*dphiy(0,i)+S(2,4)*dphiy(1,i))*b[j+1][F_offset + id2]/S(2,2);
+                Mat(2,j) += -(-S(2,3)*dphi (0,i)+S(2,4)*dphi (1,i))*b[j+1][F_offset + id2]/S(2,2);
+                Mat(3,j) += (-dphix(0,i)-dphiy(1,i))*b[j+1][F_offset + id2];
+                Mat(4,j) += (-dphi(0,i))*b[j+1][F_offset + id2];
+                Mat(5,j) += ( dphi(1,i))*b[j+1][F_offset + id2];
+
+                Mat(0,j) += -(S(2,3)*dxix(0,i)+S(2,4)*dxix(1,i))*b[j+1][F_phi_offset + id2]/S(2,2);
+                Mat(1,j) += -(S(2,3)*dxiy(0,i)+S(2,4)*dxiy(1,i))*b[j+1][F_phi_offset + id2]/S(2,2);
+                Mat(2,j) += -(S(2,3)*dxi (0,i)+S(2,4)*dxi (1,i))*b[j+1][F_phi_offset + id2]/S(2,2);
+                Mat(3,j) += ( dxix(0,i)-dxiy(1,i))*b[j+1][F_phi_offset + id2];
+                Mat(4,j) += ( dxi(0,i))*b[j+1][F_phi_offset + id2];
+                Mat(5,j) += ( dxi(1,i))*b[j+1][F_phi_offset + id2];
+            }
         }
     }
 
-    this->A     = phi_tmp[F_phi_offset + 0];
-    this->B     = phi_tmp[F_phi_offset + 1];
-    this->C     = phi_tmp[F_phi_offset + 2];
-    this->theta = phi_tmp[F_phi_offset + 3];
-    this->Kyz_2 = phi_tmp[F_phi_offset + 4];
-    this->Kxz_2 = phi_tmp[F_phi_offset + 5];
+    //solver.print_matrix();
+    //logger::quick_log("");
+    //logger::quick_log(b);
+    //logger::quick_log("");
 
-    /*
-     * Multiply phi_1 and F_1 by theta
-     */
-    for(auto& f : this->F){
-        f *= theta;
-    }
-    for(auto& f : this->phi){
-        f *= theta;
-    }
+    //logger::quick_log(Mat);
+    //logger::quick_log("");
+    //logger::quick_log(Vec);
+    Eigen::Vector<double, 6> Res = Mat.fullPivLu().solve(Vec);
+
+    this->A     = Res[0];
+    this->B     = Res[1];
+    this->C     = Res[2];
+    this->theta = Res[3];
+    this->Kyz   = Res[4];
+    this->Kxz   = Res[5];
 
     /*
      * Save phi_0 and F_0 in the global vector.
@@ -600,49 +545,55 @@ void Curvature::calculate_stress_field_3D(const std::vector<std::unique_ptr<Mesh
         if(id1 < 0){
             continue;
         }
-        this->F[2*n->id] += phi_tmp[2*id1];
-        this->F[2*n->id+1] += phi_tmp[2*id1+1];
+        this->F[2*n->id] += b[0][2*id1];
+        this->F[2*n->id+1] += b[0][2*id1+1];
+        for(size_t i = 0; i < 6; ++i){
+            this->F[2*n->id] += Res[i]*b[i+1][2*id1];
+            this->F[2*n->id+1] += Res[i]*b[i+1][2*id1+1];
+        }
     }
     for(const auto& n:boundary_nodes){
         const long id1 = n->id;
-        this->phi[n->id] += phi_tmp[F_offset + id1];
+        this->phi[n->id] += b[0][F_offset + id1];
+        for(size_t i = 0; i < 6; ++i){
+            this->phi[n->id] += Res[i]*b[i+1][F_offset + id1];
+        }
+    }
+    for(const auto& n:boundary_nodes){
+        const long id1 = n->id;
+        this->xi[n->id] += b[0][F_phi_offset + id1];
+        for(size_t i = 0; i < 6; ++i){
+            this->xi[n->id] += Res[i]*b[i+1][F_phi_offset + id1];
+        }
     }
 
     logger::quick_log("A", A);
     logger::quick_log("B", B);
     logger::quick_log("C", C);
     logger::quick_log("theta", theta);
-    logger::quick_log("Kyz_1", Kyz_1);
-    logger::quick_log("Kyz_2", Kyz_2);
-    logger::quick_log("Kxz_1", Kxz_1);
-    logger::quick_log("Kxz_2", Kxz_2);
-    logger::quick_log("Cx0", Cx0);
-    logger::quick_log("Cy0", Cy0);
-    logger::quick_log("C0 ", C0 );
-    logger::quick_log("Ct0", Ct0);
-    logger::quick_log("xC0", xC0);
-    logger::quick_log("yC0", yC0);
-    logger::quick_log("Cx1", Cx1);
-    logger::quick_log("Cy1", Cy1);
-    logger::quick_log("C1 ", C1 );
-    logger::quick_log("Ct1", Ct1);
-    logger::quick_log("xC1", xC1);
-    logger::quick_log("yC1", yC1);
+    logger::quick_log("Kyz", Kyz);
+    logger::quick_log("Kxz", Kxz);
     logger::quick_log("");
 }
     
-void Curvature::base_matrix_id(general_solver::MUMPSGeneral& M, const std::vector<std::unique_ptr<BoundaryMeshElement>>& boundary_mesh, const size_t num_nodes, const size_t F_offset) const{
+void Curvature::base_matrix_id(general_solver::MUMPSGeneral& M, const std::vector<std::unique_ptr<BoundaryMeshElement>>& boundary_mesh, const size_t num_nodes, const size_t F_offset, const size_t F_phi_offset) const{
     Eigen::Matrix<double, 3, 3> B4;
     Eigen::Matrix<double, 3, 2> B3;
     Eigen::Matrix<double, 2, 2> B2;
+    Eigen::Matrix<double, 2, 2> A{{1, 0},{0, 1}};
 
     std::vector<double> L4v(2*num_nodes*2*num_nodes,0);
     std::vector<double> L3v(2*num_nodes*num_nodes,0);
     std::vector<double> L3vT(2*num_nodes*num_nodes,0);
     std::vector<double> L2v(num_nodes*num_nodes,0);
 
+    std::vector<double> L3zv(2*num_nodes*num_nodes,0);
+    std::vector<double> L2zv(num_nodes*num_nodes,0);
+    std::vector<double> Lzv(num_nodes*num_nodes,0);
+
     std::vector<long> pos_L4(num_nodes*2,0);
     std::vector<long> pos_L2(num_nodes,0);
+    std::vector<long> pos_L2z(num_nodes,0);
 
     for(const auto& e:boundary_mesh){
         gp_Pnt c = utils::change_point(e->get_centroid(), this->rot3D);
@@ -650,6 +601,11 @@ void Curvature::base_matrix_id(general_solver::MUMPSGeneral& M, const std::vecto
         const Eigen::MatrixXd L4 = e->L4(B4);
         const Eigen::MatrixXd L3 = e->L3(B3);
         const Eigen::MatrixXd L2 = e->L2(B2);
+
+        const Eigen::MatrixXd L3z = e->L3z(B3);
+        const Eigen::MatrixXd L2z = e->L2z(B2);
+
+        const Eigen::MatrixXd Lz = e->diffusion_1dof(A);
 
         for(size_t i = 0; i < 2*num_nodes; ++i){
             for(size_t j = 0; j < 2*num_nodes; ++j){
@@ -665,6 +621,7 @@ void Curvature::base_matrix_id(general_solver::MUMPSGeneral& M, const std::vecto
         for(size_t i = 0; i < num_nodes; ++i){
             for(size_t j = 0; j < num_nodes; ++j){
                 L2v[i*num_nodes + j] = L2(i,j);
+                Lzv[i*num_nodes + j] = Lz(i,j);
             }
         }
 
@@ -681,12 +638,17 @@ void Curvature::base_matrix_id(general_solver::MUMPSGeneral& M, const std::vecto
         for(size_t i = 0; i < num_nodes; ++i){
             const long id1 = e->nodes[i]->id;
             pos_L2[i] = F_offset + id1;
+            pos_L2z[i] = F_phi_offset + id1;
         }
 
         M.add_element(L4v, pos_L4);
         M.add_element(L3v, pos_L4, pos_L2);
         M.add_element(L3vT, pos_L2, pos_L4);
         M.add_element(L2v, pos_L2);
+
+        M.add_element(L3zv, pos_L4, pos_L2z);
+        M.add_element(L2zv, pos_L2, pos_L2z);
+        M.add_element(Lzv, pos_L2z);
     }
 }
 

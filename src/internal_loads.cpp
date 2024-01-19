@@ -183,7 +183,7 @@ void InternalLoads::apply_load_3D(const std::vector<long>& node_positions, std::
             points[i] = e->nodes[i]->point;
         }
 
-        this->curvature->get_stress_3D(b.get(), s_z, t_xz, t_yz);
+        this->curvature->get_stress_3D(b.get(), t_xz, t_yz, s_z);
         Eigen::Vector<double, N> F0{t_xz, t_yz, s_z};
         Eigen::Vector<double, N> Fr = this->rot3D*F0;
         std::vector<double> F{Fr[0], Fr[1], Fr[2]};
@@ -206,37 +206,37 @@ void InternalLoads::apply_load_3D(const std::vector<long>& node_positions, std::
     }
     // Correct force values if necessary
     logger::quick_log("Calculated:", FF[0], FF[1], FF[2]);
-    FF = this->Lek_basis.transpose()*this->rot3D*FF;
-    FF[0] -= this->F[0];
-    FF[1] -= this->F[1];
-    FF[2] -= this->F[2];
-    if(std::abs(FF[0]) > 1e-14 ||
-       std::abs(FF[1]) > 1e-14 ||
-       std::abs(FF[2]) > 1e-14){
-        std::set<const Node*> nodes;
-        for(const auto& e:this->submesh){
-            for(size_t i = 0; i < bound_nodes_per_elem; ++i){
-                const auto n = e->nodes[i];
-                nodes.insert(n);
-            }
-        }
-        const size_t N = nodes.size();
-        Eigen::Vector<double, 3> dF{-FF[0]/N, -FF[1]/N, -FF[2]/N};
-        dF = this->rot3D.transpose()*this->Lek_basis*dF;
-        FF.fill(0);
-        for(const auto& n:nodes){
-            for(size_t j = 0; j < dof; ++j){
-                if(n->u_pos[j] >= 0){
-                    const auto p = node_positions[n->u_pos[j]];
-                    if(p >= 0){
-                        load_vector[p] += dF[j];
-                        FF[j] += load_vector[p];
-                    }
-                }
-            }
-        }
-        logger::quick_log("Corrected:", FF[0], FF[1], FF[2]);
-    }
+    //FF = this->Lek_basis.transpose()*this->rot3D*FF;
+    //FF[0] -= this->F[0];
+    //FF[1] -= this->F[1];
+    //FF[2] -= this->F[2];
+    //if(std::abs(FF[0]) > 1e-14 ||
+    //   std::abs(FF[1]) > 1e-14 ||
+    //   std::abs(FF[2]) > 1e-14){
+    //    std::set<const Node*> nodes;
+    //    for(const auto& e:this->submesh){
+    //        for(size_t i = 0; i < bound_nodes_per_elem; ++i){
+    //            const auto n = e->nodes[i];
+    //            nodes.insert(n);
+    //        }
+    //    }
+    //    const size_t N = nodes.size();
+    //    Eigen::Vector<double, 3> dF{-FF[0]/N, -FF[1]/N, -FF[2]/N};
+    //    dF = this->rot3D.transpose()*this->Lek_basis*dF;
+    //    FF.fill(0);
+    //    for(const auto& n:nodes){
+    //        for(size_t j = 0; j < dof; ++j){
+    //            if(n->u_pos[j] >= 0){
+    //                const auto p = node_positions[n->u_pos[j]];
+    //                if(p >= 0){
+    //                    load_vector[p] += dF[j];
+    //                    FF[j] += load_vector[p];
+    //                }
+    //            }
+    //        }
+    //    }
+    //    logger::quick_log("Corrected:", FF[0], FF[1], FF[2]);
+    //}
 }
 
 class PointSort{

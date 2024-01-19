@@ -143,6 +143,31 @@ Eigen::MatrixXd BTRI3::int_grad_phi_y(const gp_Pnt& center) const{
 
     return dN;
 };
+Eigen::MatrixXd BTRI3::int_grad_xi() const{
+    return delta*this->dxi_mat_1dof2();
+};
+Eigen::MatrixXd BTRI3::int_grad_xi_x(const gp_Pnt& center) const{
+    const auto p = this->GS_point(1.0/3.0, 1.0/3.0, 1.0/3.0);
+    const double dx = p.X() - center.X();
+    auto dxi = this->dxi_mat_1dof2();
+    for(size_t i = 0; i < 3; ++i){
+        dxi(0, i) *= delta*dx;
+        dxi(1, i) *= delta*dx;
+    }
+
+    return dxi;
+};
+Eigen::MatrixXd BTRI3::int_grad_xi_y(const gp_Pnt& center) const{
+    const auto p = this->GS_point(1.0/3.0, 1.0/3.0, 1.0/3.0);
+    const double dy = p.Y() - center.Y();
+    auto dxi = this->dxi_mat_1dof2();
+    for(size_t i = 0; i < 3; ++i){
+        dxi(0, i) *= delta*dy;
+        dxi(1, i) *= delta*dy;
+    }
+
+    return dxi;
+};
 Eigen::MatrixXd BTRI3::int_grad_F() const{
     return delta*this->dF_mat_2dof();
 };
@@ -170,7 +195,19 @@ Eigen::MatrixXd BTRI3::int_grad_F_y(const gp_Pnt& center) const{
 
     return dF;
 };
+Eigen::VectorXd BTRI3::int_N_AzBz(const gp_Pnt& center, const double Az, const double Bz) const{
+    const auto& gsi = utils::GaussLegendreTri<2>::get();
+    Eigen::Vector<double, 3>  result{0, 0, 0};
+    for(auto it = gsi.begin(); it < gsi.end(); ++it){
+        const gp_Pnt p = this->GS_point(it->a, it->b, it->c);
+        const double dx = p.X() - center.X();
+        const double dy = p.Y() - center.Y();
+        const auto NN = this->N_mat_1dof(p);
+        result += it->w*NN*(Az*dx + Bz*dy);
+    }
 
+    return delta*result;
+}
 Eigen::VectorXd BTRI3::int_N_x(const gp_Pnt& center) const{
     const auto& gsi = utils::GaussLegendreTri<2>::get();
     Eigen::Vector<double, 3>  result{0, 0, 0};
@@ -295,6 +332,19 @@ Eigen::MatrixXd BTRI3::L2(const Eigen::MatrixXd& B) const{
     const auto dN = this->dN_mat_1dof();
 
     return delta*dN.transpose()*B*dN;
+}
+
+Eigen::MatrixXd BTRI3::L3z(const Eigen::MatrixXd& B) const{
+    const auto dF = this->dF_mat_2dof();
+    const auto dxi = this->dxi_mat_1dof();
+
+    return delta*dF.transpose()*B*dxi;
+}
+Eigen::MatrixXd BTRI3::L2z(const Eigen::MatrixXd& B) const{
+    const auto dN = this->dN_mat_1dof();
+    const auto dxi = this->dxi_mat_1dof();
+
+    return delta*dN.transpose()*B*dxi;
 }
 
 }

@@ -61,11 +61,15 @@ class BTRI3 : public BoundaryMeshElement{
     virtual Eigen::MatrixXd int_grad_phi() const override;
     virtual Eigen::MatrixXd int_grad_phi_x(const gp_Pnt& center) const override;
     virtual Eigen::MatrixXd int_grad_phi_y(const gp_Pnt& center) const override;
+    virtual Eigen::MatrixXd int_grad_xi() const override;
+    virtual Eigen::MatrixXd int_grad_xi_x(const gp_Pnt& center) const override;
+    virtual Eigen::MatrixXd int_grad_xi_y(const gp_Pnt& center) const override;
     virtual Eigen::MatrixXd int_grad_F() const override;
     virtual Eigen::MatrixXd int_grad_F_x(const gp_Pnt& center) const override;
     virtual Eigen::MatrixXd int_grad_F_y(const gp_Pnt& center) const override;
     virtual Eigen::VectorXd int_N_x(const gp_Pnt& center) const override;
     virtual Eigen::VectorXd int_N_y(const gp_Pnt& center) const override;
+    virtual Eigen::VectorXd int_N_AzBz(const gp_Pnt& center, const double Az, const double Bz) const override;
 
     virtual Eigen::MatrixXd int_grad_F_t2_t1(const Eigen::MatrixXd& B3, const gp_Pnt& center) const override;
     virtual Eigen::MatrixXd int_grad_phi_t2_t1(const Eigen::MatrixXd& B2, const gp_Pnt& center) const override;
@@ -75,6 +79,9 @@ class BTRI3 : public BoundaryMeshElement{
     virtual Eigen::MatrixXd L4(const Eigen::MatrixXd& B) const override;
     virtual Eigen::MatrixXd L3(const Eigen::MatrixXd& B) const override;
     virtual Eigen::MatrixXd L2(const Eigen::MatrixXd& B) const override;
+
+    virtual Eigen::MatrixXd L3z(const Eigen::MatrixXd& B) const override;
+    virtual Eigen::MatrixXd L2z(const Eigen::MatrixXd& B) const override;
 
     virtual double get_area() const override{
         return this->delta;
@@ -121,6 +128,14 @@ class BTRI3 : public BoundaryMeshElement{
     inline Eigen::Matrix<double, 2, 3> dN_mat_1dof() const{
         return Eigen::Matrix<double, 2, 3>{{b[0], b[1], b[2]},
                                            {c[0], c[1], c[2]}};
+    }
+    inline Eigen::Matrix<double, 2, 3> dxi_mat_1dof() const{
+        return Eigen::Matrix<double, 2, 3>{{-c[0], -c[1], -c[2]},
+                                           {b[0], b[1], b[2]}};
+    }
+    inline Eigen::Matrix<double, 2, 3> dxi_mat_1dof2() const{
+        return Eigen::Matrix<double, 2, 3>{{c[0], c[1], c[2]},
+                                           {b[0], b[1], b[2]}};
     }
     inline Eigen::Matrix<double, 3, 6> dF_mat_2dof() const{
         return Eigen::Matrix<double, 3, 6>{{b[0],    0, b[1],    0, b[2],    0},

@@ -61,11 +61,15 @@ class BTRI6 : public BoundaryMeshElement{
     virtual Eigen::MatrixXd int_grad_phi() const override;
     virtual Eigen::MatrixXd int_grad_phi_x(const gp_Pnt& center) const override;
     virtual Eigen::MatrixXd int_grad_phi_y(const gp_Pnt& center) const override;
+    virtual Eigen::MatrixXd int_grad_xi() const override;
+    virtual Eigen::MatrixXd int_grad_xi_x(const gp_Pnt& center) const override;
+    virtual Eigen::MatrixXd int_grad_xi_y(const gp_Pnt& center) const override;
     virtual Eigen::MatrixXd int_grad_F() const override;
     virtual Eigen::MatrixXd int_grad_F_x(const gp_Pnt& center) const override;
     virtual Eigen::MatrixXd int_grad_F_y(const gp_Pnt& center) const override;
     virtual Eigen::VectorXd int_N_x(const gp_Pnt& center) const override;
     virtual Eigen::VectorXd int_N_y(const gp_Pnt& center) const override;
+    virtual Eigen::VectorXd int_N_AzBz(const gp_Pnt& center, const double Az, const double Bz) const override;
 
     virtual Eigen::MatrixXd int_grad_F_t2_t1(const Eigen::MatrixXd& B3, const gp_Pnt& center) const override;
     virtual Eigen::MatrixXd int_grad_phi_t2_t1(const Eigen::MatrixXd& B2, const gp_Pnt& center) const override;
@@ -75,6 +79,9 @@ class BTRI6 : public BoundaryMeshElement{
     virtual Eigen::MatrixXd L4(const Eigen::MatrixXd& B) const override;
     virtual Eigen::MatrixXd L3(const Eigen::MatrixXd& B) const override;
     virtual Eigen::MatrixXd L2(const Eigen::MatrixXd& B) const override;
+
+    virtual Eigen::MatrixXd L3z(const Eigen::MatrixXd& B) const override;
+    virtual Eigen::MatrixXd L2z(const Eigen::MatrixXd& B) const override;
 
     virtual double get_area() const override{
         return this->delta;
@@ -127,6 +134,16 @@ class BTRI6 : public BoundaryMeshElement{
     inline Eigen::Matrix<double, 2, 6> dN_mat_1dof(const gp_Pnt& p) const{
         return Eigen::Matrix<double, 2, 6>{{dNdx(p, 0), dNdx(p, 1), dNdx(p, 2), dNdx(p, 3), dNdx(p, 4), dNdx(p, 5)},
                                            {dNdy(p, 0), dNdy(p, 1), dNdy(p, 2), dNdy(p, 3), dNdy(p, 4), dNdy(p, 5)}};
+    }
+    inline Eigen::Matrix<double, 2, 6> dxi_mat_1dof(const gp_Pnt& p) const{
+        return Eigen::Matrix<double, 2, 6>{
+            {-dNdy(p, 0), -dNdy(p, 1), -dNdy(p, 2), -dNdy(p, 3), -dNdy(p, 4), -dNdy(p, 5)},
+            {dNdx(p, 0), dNdx(p, 1), dNdx(p, 2), dNdx(p, 3), dNdx(p, 4), dNdx(p, 5)}};
+    }
+    inline Eigen::Matrix<double, 2, 6> dxi_mat_1dof2(const gp_Pnt& p) const{
+        return Eigen::Matrix<double, 2, 6>{
+            {dNdy(p, 0), dNdy(p, 1), dNdy(p, 2), dNdy(p, 3), dNdy(p, 4), dNdy(p, 5)},
+            {dNdx(p, 0), dNdx(p, 1), dNdx(p, 2), dNdx(p, 3), dNdx(p, 4), dNdx(p, 5)}};
     }
 
     inline Eigen::Matrix<double, 3, 12> dF_mat_2dof(const gp_Pnt& p) const{

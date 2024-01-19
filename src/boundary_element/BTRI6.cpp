@@ -190,6 +190,50 @@ Eigen::MatrixXd BTRI6::int_grad_phi_y(const gp_Pnt& center) const{
 
     return result;
 };
+Eigen::MatrixXd BTRI6::int_grad_xi() const{
+    Eigen::Matrix<double, 2, 6> result;
+    result.fill(0);
+
+    const auto& gli = utils::GaussLegendreTri<2>::get();
+    for(auto it = gli.begin(); it < gli.end(); ++it){
+        const gp_Pnt p = this->GS_point(it->a, it->b, it->c);
+        const auto dxi = this->dxi_mat_1dof2(p);
+        result += it->w*dxi;
+    }
+    result *= delta;
+
+    return result;
+};
+Eigen::MatrixXd BTRI6::int_grad_xi_x(const gp_Pnt& center) const{
+    Eigen::Matrix<double, 2, 6> result;
+    result.fill(0);
+
+    const auto& gli = utils::GaussLegendreTri<2>::get();
+    for(auto it = gli.begin(); it < gli.end(); ++it){
+        const gp_Pnt p = this->GS_point(it->a, it->b, it->c);
+        const double dx = p.X() - center.X();
+        const auto dxi = this->dxi_mat_1dof2(p);
+        result += it->w*dxi*dx;
+    }
+    result *= delta;
+
+    return result;
+};
+Eigen::MatrixXd BTRI6::int_grad_xi_y(const gp_Pnt& center) const{
+    Eigen::Matrix<double, 2, 6> result;
+    result.fill(0);
+
+    const auto& gli = utils::GaussLegendreTri<2>::get();
+    for(auto it = gli.begin(); it < gli.end(); ++it){
+        const gp_Pnt p = this->GS_point(it->a, it->b, it->c);
+        const double dy = p.Y() - center.Y();
+        const auto dxi = this->dxi_mat_1dof2(p);
+        result += it->w*dxi*dy;
+    }
+    result *= delta;
+
+    return result;
+};
 Eigen::MatrixXd BTRI6::int_grad_F() const{
     Eigen::Matrix<double, 3, 12> result;
     result.fill(0);
@@ -234,6 +278,22 @@ Eigen::MatrixXd BTRI6::int_grad_F_y(const gp_Pnt& center) const{
 
     return result;
 };
+Eigen::VectorXd BTRI6::int_N_AzBz(const gp_Pnt& center, const double Az, const double Bz) const{
+    Eigen::Vector<double, 6> result;
+    result.fill(0);
+
+    const auto& gli = utils::GaussLegendreTri<3>::get();
+    for(auto it = gli.begin(); it < gli.end(); ++it){
+        const gp_Pnt p = this->GS_point(it->a, it->b, it->c);
+        const double dx = p.X() - center.X();
+        const double dy = p.Y() - center.Y();
+        const auto N = this->N_mat_1dof(p);
+        result += it->w*N*(Az*dx+Bz*dy);
+    }
+    result *= delta;
+
+    return result;
+}
 Eigen::VectorXd BTRI6::int_N_x(const gp_Pnt& center) const{
     const auto& gsi = utils::GaussLegendreTri<3>::get();
     Eigen::Vector<double, 6>  result{0, 0, 0, 0, 0, 0};
@@ -370,6 +430,39 @@ Eigen::MatrixXd BTRI6::L2(const Eigen::MatrixXd& B) const{
         const auto dN = this->dN_mat_1dof(p);
 
         result += it->w*dN.transpose()*B*dN;
+    }
+    result *= delta;
+
+    return result;
+}
+
+Eigen::MatrixXd BTRI6::L3z(const Eigen::MatrixXd& B) const{
+    const auto& gli = utils::GaussLegendreTri<2>::get();
+    Eigen::Matrix<double, 12, 6> result;
+    result.fill(0);
+
+    for(auto it = gli.begin(); it < gli.end(); ++it){
+        const gp_Pnt p = this->GS_point(it->a, it->b, it->c);
+        const auto dF = this->dF_mat_2dof(p);
+        const auto dxi = this->dxi_mat_1dof(p);
+
+        result += it->w*dF.transpose()*B*dxi;
+    }
+    result *= delta;
+
+    return result;
+}
+Eigen::MatrixXd BTRI6::L2z(const Eigen::MatrixXd& B) const{
+    const auto& gli = utils::GaussLegendreTri<2>::get();
+    Eigen::Matrix<double, 6, 6> result;
+    result.fill(0);
+
+    for(auto it = gli.begin(); it < gli.end(); ++it){
+        const gp_Pnt p = this->GS_point(it->a, it->b, it->c);
+        const auto dN = this->dN_mat_1dof(p);
+        const auto dxi = this->dxi_mat_1dof(p);
+
+        result += it->w*dN.transpose()*B*dxi;
     }
     result *= delta;
 

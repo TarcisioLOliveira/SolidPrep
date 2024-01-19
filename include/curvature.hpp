@@ -43,7 +43,7 @@ class Curvature{
     inline gp_Pnt get_center() const{
         return gp_Pnt(c_u, c_v, c_w);
     }
-    void get_stress_3D(const BoundaryMeshElement* e, double& s_w, double& t_uw, double& t_vw) const;
+    void get_stress_3D(const BoundaryMeshElement* e, double& t_uw, double& t_vw, double& s_w) const;
 
     private:
     const Material* mat;
@@ -63,35 +63,16 @@ class Curvature{
     double EI_uu  = 0;
     double EI_vv  = 0;
     double EI_uv  = 0;
-    double EI_uuu = 0;
-    double EI_vvv = 0;
-    double EI_uvv = 0;
-    double EI_uuv = 0;
     double c_u, c_v, c_w;
     double A, B, C;
     double theta;
 
-    double Kyz_1;
-    double Kyz_2;
-    double Kxz_1;
-    double Kxz_2;
-
-    double S34_uu  = 0;
-    double S34_vv  = 0;
-    double S34_uuu = 0;
-    double S34_vvv = 0;
-    double S34_uvv = 0;
-    double S34_uuv = 0;
-    double S35_uu  = 0;
-    double S35_vv  = 0;
-    double S35_uuu = 0;
-    double S35_vvv = 0;
-    double S35_uvv = 0;
-    double S35_uuv = 0;
+    double Kyz = 0;
+    double Kxz = 0;
 
     std::vector<double> F;
     std::vector<double> phi;
-    std::vector<double> psi_shear;
+    std::vector<double> xi;
 
     std::vector<double> permute_shear_3D;
     std::vector<double> rotate_X_Z_3D;
@@ -103,7 +84,7 @@ class Curvature{
     void calculate_stress_field_3D(const std::vector<std::unique_ptr<MeshNode>>& boundary_nodes, const std::vector<std::unique_ptr<BoundaryMeshElement>>& boundary_mesh);
 
     void base_matrix_upos(general_solver::MUMPSGeneral& M, const std::vector<std::unique_ptr<BoundaryMeshElement>>& boundary_mesh, const size_t num_nodes, const size_t F_offset) const;
-    void base_matrix_id(general_solver::MUMPSGeneral& M, const std::vector<std::unique_ptr<BoundaryMeshElement>>& boundary_mesh, const size_t num_nodes, const size_t F_offset) const;
+    void base_matrix_id(general_solver::MUMPSGeneral& M, const std::vector<std::unique_ptr<BoundaryMeshElement>>& boundary_mesh, const size_t num_nodes, const size_t F_offset, const size_t F_phi_offset) const;
 
     Eigen::VectorXd integrate_surface_3D(const std::vector<std::unique_ptr<BoundaryMeshElement>>& boundary_mesh, const std::vector<std::function<double(const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px)>>& fn) const;
     void GS_tri(const MeshElement* const e, const std::array<gp_Pnt, 3>& p, const std::array<gp_Pnt, 3>& px, const std::vector<std::function<double(const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px)>>& fn, Eigen::VectorXd& result) const;
@@ -144,76 +125,6 @@ class Curvature{
         const double dx = px.X() - c_u;
         const double dy = px.Y() - c_v;
         return dx*dy/S(2,2);
-    }
-    inline double make_EI_uuu_base_3D(const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px) const{
-        const double dy = px.Y() - c_v;
-        return dy*dy*dy/S(2,2);
-    }
-    inline double make_EI_vvv_base_3D(const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px) const{
-        const double dx = px.X() - c_u;
-        return dx*dx*dx/S(2,2);
-    }
-    inline double make_EI_uvv_base_3D(const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px) const{
-        const double dx = px.X() - c_u;
-        const double dy = px.Y() - c_v;
-        return dx*dx*dy/S(2,2);
-    }
-    inline double make_EI_uuv_base_3D(const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px) const{
-        const double dx = px.X() - c_u;
-        const double dy = px.Y() - c_v;
-        return dx*dy*dy/S(2,2);
-    }
-    inline double make_S34_uu_base_3D(const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px) const{
-        const double dy = px.Y() - c_v;
-        return S(2,3)*dy*dy/(S(2,2)*S(2,2));
-    }
-    inline double make_S34_vv_base_3D(const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px) const{
-        const double dx = px.X() - c_u;
-        return S(2,3)*dx*dx/(S(2,2)*S(2,2));
-    }
-    inline double make_S35_uu_base_3D(const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px) const{
-        const double dy = px.Y() - c_v;
-        return S(2,4)*dy*dy/(S(2,2)*S(2,2));
-    }
-    inline double make_S35_vv_base_3D(const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px) const{
-        const double dx = px.X() - c_u;
-        return S(2,4)*dx*dx/(S(2,2)*S(2,2));
-    }
-    inline double make_S34_uuu_base_3D(const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px) const{
-        const double dy = px.Y() - c_v;
-        return S(2,3)*dy*dy*dy/(S(2,2)*S(2,2));
-    }
-    inline double make_S34_uuv_base_3D(const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px) const{
-        const double dx = px.X() - c_u;
-        const double dy = px.Y() - c_v;
-        return S(2,3)*dx*dy*dy/(S(2,2)*S(2,2));
-    }
-    inline double make_S34_uvv_base_3D(const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px) const{
-        const double dx = px.X() - c_u;
-        const double dy = px.Y() - c_v;
-        return S(2,3)*dx*dx*dy/(S(2,2)*S(2,2));
-    }
-    inline double make_S34_vvv_base_3D(const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px) const{
-        const double dx = px.X() - c_u;
-        return S(2,3)*dx*dx*dx/(S(2,2)*S(2,2));
-    }
-    inline double make_S35_uuu_base_3D(const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px) const{
-        const double dy = px.Y() - c_v;
-        return S(2,4)*dy*dy*dy/(S(2,2)*S(2,2));
-    }
-    inline double make_S35_uuv_base_3D(const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px) const{
-        const double dx = px.X() - c_u;
-        const double dy = px.Y() - c_v;
-        return S(2,4)*dx*dy*dy/(S(2,2)*S(2,2));
-    }
-    inline double make_S35_uvv_base_3D(const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px) const{
-        const double dx = px.X() - c_u;
-        const double dy = px.Y() - c_v;
-        return S(2,4)*dx*dx*dy/(S(2,2)*S(2,2));
-    }
-    inline double make_S35_vvv_base_3D(const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px) const{
-        const double dx = px.X() - c_u;
-        return S(2,4)*dx*dx*dx/(S(2,2)*S(2,2));
     }
 };
 

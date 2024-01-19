@@ -617,11 +617,15 @@ class BoundaryMeshElement : public Element{
     virtual Eigen::MatrixXd int_grad_phi() const = 0;
     virtual Eigen::MatrixXd int_grad_phi_x(const gp_Pnt& center) const = 0;
     virtual Eigen::MatrixXd int_grad_phi_y(const gp_Pnt& center) const = 0;
+    virtual Eigen::MatrixXd int_grad_xi() const = 0;
+    virtual Eigen::MatrixXd int_grad_xi_x(const gp_Pnt& center) const = 0;
+    virtual Eigen::MatrixXd int_grad_xi_y(const gp_Pnt& center) const = 0;
     virtual Eigen::MatrixXd int_grad_F() const = 0;
     virtual Eigen::MatrixXd int_grad_F_x(const gp_Pnt& center) const = 0;
     virtual Eigen::MatrixXd int_grad_F_y(const gp_Pnt& center) const = 0;
     virtual Eigen::VectorXd int_N_x(const gp_Pnt& center) const = 0;
     virtual Eigen::VectorXd int_N_y(const gp_Pnt& center) const = 0;
+    virtual Eigen::VectorXd int_N_AzBz(const gp_Pnt& center, const double Az, const double Bz) const = 0;
 
     virtual Eigen::MatrixXd int_grad_F_t2_t1(const Eigen::MatrixXd& B3, const gp_Pnt& center) const = 0;
     virtual Eigen::MatrixXd int_grad_phi_t2_t1(const Eigen::MatrixXd& B2, const gp_Pnt& center) const = 0;
@@ -631,6 +635,9 @@ class BoundaryMeshElement : public Element{
     virtual Eigen::MatrixXd L4(const Eigen::MatrixXd& B) const = 0;
     virtual Eigen::MatrixXd L3(const Eigen::MatrixXd& B) const = 0;
     virtual Eigen::MatrixXd L2(const Eigen::MatrixXd& B) const = 0;
+
+    virtual Eigen::MatrixXd L3z(const Eigen::MatrixXd& B) const = 0;
+    virtual Eigen::MatrixXd L2z(const Eigen::MatrixXd& B) const = 0;
 
     virtual double get_area() const = 0;
 
