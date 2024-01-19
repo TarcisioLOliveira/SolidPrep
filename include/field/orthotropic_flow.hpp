@@ -29,7 +29,7 @@ namespace field{
 
 class OrthotropicFlow : public CoordinateField {
     public:
-    OrthotropicFlow(const MeshElementFactory* elem_info, std::vector<Geometry*> geoms, std::vector<CrossSection> entries, std::vector<double> coeffs, double thickness, bool show);
+    OrthotropicFlow(const MeshElementFactory* elem_info, std::vector<Geometry*> geoms, std::vector<CrossSection> entries, std::vector<double> coeffs, double alpha, double thickness, bool show);
 
     virtual void generate() override;
     virtual void initialize_views(Visualization* viz) override;
@@ -61,6 +61,7 @@ class OrthotropicFlow : public CoordinateField {
     std::vector<double> coeffs;
     std::vector<double> elem_mult_long;
     std::vector<double> elem_mult_rad;
+    double ALPHA = 1;
     double thickness;
     bool show;
     size_t DIM;

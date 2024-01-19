@@ -1028,11 +1028,13 @@ std::vector<std::unique_ptr<Field>> ProjectData::load_fields(const rapidjson::Ge
             this->log_data(f, "geometries", TYPE_ARRAY, true);
             this->log_data(f, "boundary_conditions", TYPE_ARRAY, true);
             this->log_data(f, "display", TYPE_BOOL, true);
+            this->log_data(f, "alpha", TYPE_DOUBLE, true);
 
             std::vector<Geometry*> geoms;
             std::vector<CrossSection> cs;
             std::vector<double> coeffs;
             bool show = f["display"].GetBool();
+            const double alpha = f["alpha"].GetDouble();
             for(const auto& g:f["geometries"].GetArray()){
                 logger::log_assert(g.GetInt() < this->geometries.size(), logger::ERROR, "there are only {} geometries being loaded, but geometry number {} was selected for field of type {}", this->geometries.size(), g.GetInt(), type);
                 geoms.push_back(this->geometries[g.GetInt()].get());
@@ -1044,7 +1046,7 @@ std::vector<std::unique_ptr<Field>> ProjectData::load_fields(const rapidjson::Ge
                 coeffs.push_back(c["coeff"].GetDouble());
             }
 
-            fields.emplace_back(std::make_unique<field::OrthotropicFlow>(this->topopt_element.get(), geoms, cs, coeffs, this->thickness, show));
+            fields.emplace_back(std::make_unique<field::OrthotropicFlow>(this->topopt_element.get(), geoms, cs, coeffs, alpha, this->thickness, show));
         }
     }
 

@@ -27,9 +27,9 @@
 
 namespace field{
 
-OrthotropicFlow::OrthotropicFlow(const MeshElementFactory* elem_info, std::vector<Geometry*> geoms, std::vector<CrossSection> entries, std::vector<double> coeffs, double thickness, bool show):
+OrthotropicFlow::OrthotropicFlow(const MeshElementFactory* elem_info, std::vector<Geometry*> geoms, std::vector<CrossSection> entries, std::vector<double> coeffs, double alpha, double thickness, bool show):
     elem_info(elem_info), geoms(std::move(geoms)), 
-    entries(std::move(entries)), coeffs(std::move(coeffs)),
+    entries(std::move(entries)), coeffs(std::move(coeffs)), ALPHA(alpha),
     thickness(thickness), show(show),
     DIM((elem_info->get_problem_type() == utils::PROBLEM_TYPE_2D) ? 2 : 3),
     NODES_PER_ELEM(elem_info->get_nodes_per_element()){
@@ -214,7 +214,7 @@ void OrthotropicFlow::generate(){
 
     for(const auto& g:this->geoms){
         for(const auto& e:g->mesh){
-            const Eigen::MatrixXd M_e = e->diffusion_1dof(thickness, A) + e->absorption_1dof(thickness);
+            const Eigen::MatrixXd M_e = e->diffusion_1dof(thickness, A) + ALPHA*e->absorption_1dof(thickness);
             std::vector<double> M_ev(num_nodes*num_nodes, 0);
             std::copy(M_e.data(), M_e.data()+M_ev.size(), M_ev.begin());
             std::vector<long> pos(num_nodes);
