@@ -143,13 +143,13 @@ void Curvature::get_stress_3D(const BoundaryMeshElement* e, double& t_uw, double
     const double x = c.X() - this->c_u;
     const double y = c.Y() - this->c_v;
 
-    t_uw = 0;
     t_vw = 0;
+    t_uw = 0;
     Eigen::Vector<double, 2> grad_phi = e->grad_1dof_id(c, this->phi);
     Eigen::Vector<double, 2> grad_xi = e->grad_1dof_id(c, this->xi);
     Eigen::Vector<double, 3> grad_F = e->dF_2dof_id(c, this->F);
-    t_uw =  grad_phi[1] + grad_xi[0] + Kxz;
     t_vw = -grad_phi[0] + grad_xi[1] + Kyz;
+    t_uw =  grad_phi[1] + grad_xi[0] + Kxz;
 
     const auto S = this->get_S_3D(e->parent, c2);
     double s_u = grad_F[1];
@@ -178,12 +178,16 @@ void Curvature::calculate_stress_field_3D(const std::vector<std::unique_ptr<Mesh
     const size_t F_offset = 2*this->reduced_vec_len;
     const size_t F_phi_offset = F_offset + this->phi.size();
     const size_t F_phi_xi_offset = F_phi_offset + this->xi.size();
-    const size_t phi_size = F_phi_xi_offset + 2;
+    const size_t phi_size = F_phi_xi_offset;
     // Eigen solvers DO NOT WORK CORRECTLY HERE
     general_solver::MUMPSGeneral solver;
     solver.initialize_matrix(false, phi_size);
 
     this->base_matrix_id(solver, boundary_mesh, num_nodes, F_offset, F_phi_offset);
+
+    //solver.print_matrix();
+    //logger::quick_log("");
+
     solver.compute();
 
     // 0 A B C theta Kyz Kxz
@@ -226,7 +230,6 @@ void Curvature::calculate_stress_field_3D(const std::vector<std::unique_ptr<Mesh
                 const long id2 = e->nodes[i]->id;
 
                 b[B_NUM][F_phi_offset + id2] += NAzBz[i];
-
             }
         }
 
@@ -258,7 +261,7 @@ void Curvature::calculate_stress_field_3D(const std::vector<std::unique_ptr<Mesh
             const long id1 = e->nodes[i]->u_pos[0];
             const long id2 = e->nodes[i]->id;
 
-            if(id1 >+ 0){
+            if(id1 >= 0){
                 b[B_NUM][2*id1 + 0] -= dFD(2*i+0,0);
                 b[B_NUM][2*id1 + 1] -= dFD(2*i+1,0);
             }
@@ -292,7 +295,7 @@ void Curvature::calculate_stress_field_3D(const std::vector<std::unique_ptr<Mesh
             const long id1 = e->nodes[i]->u_pos[0];
             const long id2 = e->nodes[i]->id;
 
-            if(id1 >+ 0){
+            if(id1 >= 0){
                 b[B_NUM][2*id1 + 0] -= dFD(2*i+0,1);
                 b[B_NUM][2*id1 + 1] -= dFD(2*i+1,1);
             }
@@ -326,7 +329,7 @@ void Curvature::calculate_stress_field_3D(const std::vector<std::unique_ptr<Mesh
             const long id1 = e->nodes[i]->u_pos[0];
             const long id2 = e->nodes[i]->id;
 
-            if(id1 >+ 0){
+            if(id1 >= 0){
                 b[B_NUM][2*id1 + 0] -= dFD(2*i+0,2);
                 b[B_NUM][2*id1 + 1] -= dFD(2*i+1,2);
             }
@@ -367,7 +370,7 @@ void Curvature::calculate_stress_field_3D(const std::vector<std::unique_ptr<Mesh
             const long id1 = e->nodes[i]->u_pos[0];
             const long id2 = e->nodes[i]->id;
 
-            if(id1 >+ 0){
+            if(id1 >= 0){
                 b[B_NUM][2*id1 + 0] -= BF(2*i+0,0);
                 b[B_NUM][2*id1 + 1] -= BF(2*i+1,0);
             }
@@ -395,7 +398,7 @@ void Curvature::calculate_stress_field_3D(const std::vector<std::unique_ptr<Mesh
             const long id1 = e->nodes[i]->u_pos[0];
             const long id2 = e->nodes[i]->id;
 
-            if(id1 >+ 0){
+            if(id1 >= 0){
                 b[B_NUM][2*id1 + 0] -= BF(2*i+0,1);
                 b[B_NUM][2*id1 + 1] -= BF(2*i+1,1);
             }
@@ -437,12 +440,12 @@ void Curvature::calculate_stress_field_3D(const std::vector<std::unique_ptr<Mesh
         const auto Nx = e->int_N_x(center);
         const auto Ny = e->int_N_y(center);
         const auto M_e = e->diffusion_1dof(I);
-        const auto dphi = e->int_grad_phi();
-        const auto dphix = e->int_grad_phi_x(center);
-        const auto dphiy = e->int_grad_phi_y(center);
-        const auto dxi = e->int_grad_xi();
-        const auto dxix = e->int_grad_xi_x(center);
-        const auto dxiy = e->int_grad_xi_y(center);
+        const auto d1dof = e->int_grad_phi();
+        const auto d1dofx = e->int_grad_phi_x(center);
+        const auto d1dofy = e->int_grad_phi_y(center);
+        //const auto dxi = e->int_grad_xi();
+        //const auto dxix = e->int_grad_xi_x(center);
+        //const auto dxiy = e->int_grad_xi_y(center);
         const auto dF = e->int_grad_F();
         const auto dFx = e->int_grad_F_x(center);
         const auto dFy = e->int_grad_F_y(center);
@@ -465,68 +468,63 @@ void Curvature::calculate_stress_field_3D(const std::vector<std::unique_ptr<Mesh
         for(size_t i = 0; i < num_nodes; ++i){
             const long id1 = e->nodes[i]->u_pos[0];
             if(id1 >= 0){
-                Vec[0] -= -(S(1,2)*dFx(0,2*i+0)-0.5*S(2,5)*dFx(2,2*i+0))/S(2,2)*b[0][2*id1 + 0];
-                Vec[0] -= -(S(0,2)*dFx(1,2*i+1)-0.5*S(2,5)*dFx(2,2*i+1))/S(2,2)*b[0][2*id1 + 1];
-                Vec[1] -= -(S(1,2)*dFy(0,2*i+0)-0.5*S(2,5)*dFy(2,2*i+0))/S(2,2)*b[0][2*id1 + 0];
-                Vec[1] -= -(S(0,2)*dFy(1,2*i+1)-0.5*S(2,5)*dFy(2,2*i+1))/S(2,2)*b[0][2*id1 + 1];
-                Vec[2] -= -(S(1,2)*dF (0,2*i+0)-0.5*S(2,5)*dF (2,2*i+0))/S(2,2)*b[0][2*id1 + 0];
-                Vec[2] -= -(S(0,2)*dF (1,2*i+1)-0.5*S(2,5)*dF (2,2*i+1))/S(2,2)*b[0][2*id1 + 1];
+                Vec[0] -= -(S(1,2)*dFx(0,2*i+0)-S(2,5)*dFx(2,2*i+0))/S(2,2)*b[0][2*id1 + 0];
+                Vec[0] -= -(S(0,2)*dFx(1,2*i+1)-S(2,5)*dFx(2,2*i+1))/S(2,2)*b[0][2*id1 + 1];
+                Vec[1] -= -(S(1,2)*dFy(0,2*i+0)-S(2,5)*dFy(2,2*i+0))/S(2,2)*b[0][2*id1 + 0];
+                Vec[1] -= -(S(0,2)*dFy(1,2*i+1)-S(2,5)*dFy(2,2*i+1))/S(2,2)*b[0][2*id1 + 1];
+                Vec[2] -= -(S(1,2)*dF (0,2*i+0)-S(2,5)*dF (2,2*i+0))/S(2,2)*b[0][2*id1 + 0];
+                Vec[2] -= -(S(0,2)*dF (1,2*i+1)-S(2,5)*dF (2,2*i+1))/S(2,2)*b[0][2*id1 + 1];
             }
 
             const long id2 = e->nodes[i]->id;
 
-            Vec[0] -= -(-S(2,3)*dphix(0,i)+S(2,4)*dphix(1,i))*b[0][F_offset + id2]/S(2,2);
-            Vec[1] -= -(-S(2,3)*dphiy(0,i)+S(2,4)*dphiy(1,i))*b[0][F_offset + id2]/S(2,2);
-            Vec[2] -= -(-S(2,3)*dphi (0,i)+S(2,4)*dphi (1,i))*b[0][F_offset + id2]/S(2,2);
-            Vec[3] -= (-dphix(0,i)-dphiy(1,i))*b[0][F_offset + id2];
-            Vec[4] -= (-dphi(0,i))*b[0][F_offset + id2];
-            Vec[5] -= ( dphi(1,i))*b[0][F_offset + id2];
+            Vec[0] -= -(-S(2,3)*d1dofx(0,i)+S(2,4)*d1dofx(1,i))*b[0][F_offset + id2]/S(2,2);
+            Vec[1] -= -(-S(2,3)*d1dofy(0,i)+S(2,4)*d1dofy(1,i))*b[0][F_offset + id2]/S(2,2);
+            Vec[2] -= -(-S(2,3)*d1dof (0,i)+S(2,4)*d1dof (1,i))*b[0][F_offset + id2]/S(2,2);
+            Vec[3] -= (-d1dofx(0,i)-d1dofy(1,i))*b[0][F_offset + id2];
+            Vec[4] -= (-d1dof(0,i))*b[0][F_offset + id2];
+            Vec[5] -= ( d1dof(1,i))*b[0][F_offset + id2];
 
-            Vec[0] -= -(S(2,3)*dxix(0,i)+S(2,4)*dxix(1,i))*b[0][F_phi_offset + id2]/S(2,2);
-            Vec[1] -= -(S(2,3)*dxiy(0,i)+S(2,4)*dxiy(1,i))*b[0][F_phi_offset + id2]/S(2,2);
-            Vec[2] -= -(S(2,3)*dxi (0,i)+S(2,4)*dxi (1,i))*b[0][F_phi_offset + id2]/S(2,2);
-            Vec[3] -= ( dxix(0,i)-dxiy(1,i))*b[0][F_phi_offset + id2];
-            Vec[4] -= ( dxi(0,i))*b[0][F_phi_offset + id2];
-            Vec[5] -= ( dxi(1,i))*b[0][F_phi_offset + id2];
+            Vec[0] -= -(S(2,3)*d1dofx(1,i)+S(2,4)*d1dofx(0,i))*b[0][F_phi_offset + id2]/S(2,2);
+            Vec[1] -= -(S(2,3)*d1dofy(1,i)+S(2,4)*d1dofy(0,i))*b[0][F_phi_offset + id2]/S(2,2);
+            Vec[2] -= -(S(2,3)*d1dof (1,i)+S(2,4)*d1dof (0,i))*b[0][F_phi_offset + id2]/S(2,2);
+            Vec[3] -= ( d1dofx(1,i)-d1dofy(0,i))*b[0][F_phi_offset + id2];
+            Vec[4] -= ( d1dof(1,i))*b[0][F_phi_offset + id2];
+            Vec[5] -= ( d1dof(0,i))*b[0][F_phi_offset + id2];
         }
         for(size_t j = 0; j < 6; ++j){
             for(size_t i = 0; i < num_nodes; ++i){
                 const long id1 = e->nodes[i]->u_pos[0];
                 if(id1 >= 0){
-                    Mat(0,j) += -(S(1,2)*dFx(0,2*i+0)-0.5*S(2,5)*dFx(2,2*i+0))/S(2,2)*b[j+1][2*id1 + 0];
-                    Mat(0,j) += -(S(0,2)*dFx(1,2*i+1)-0.5*S(2,5)*dFx(2,2*i+1))/S(2,2)*b[j+1][2*id1 + 1];
-                    Mat(1,j) += -(S(1,2)*dFy(0,2*i+0)-0.5*S(2,5)*dFy(2,2*i+0))/S(2,2)*b[j+1][2*id1 + 0];
-                    Mat(1,j) += -(S(0,2)*dFy(1,2*i+1)-0.5*S(2,5)*dFy(2,2*i+1))/S(2,2)*b[j+1][2*id1 + 1];
-                    Mat(2,j) += -(S(1,2)*dF (0,2*i+0)-0.5*S(2,5)*dF (2,2*i+0))/S(2,2)*b[j+1][2*id1 + 0];
-                    Mat(2,j) += -(S(0,2)*dF (1,2*i+1)-0.5*S(2,5)*dF (2,2*i+1))/S(2,2)*b[j+1][2*id1 + 1];
+                    Mat(0,j) += -(S(1,2)*dFx(0,2*i+0)-S(2,5)*dFx(2,2*i+0))/S(2,2)*b[j+1][2*id1 + 0];
+                    Mat(0,j) += -(S(0,2)*dFx(1,2*i+1)-S(2,5)*dFx(2,2*i+1))/S(2,2)*b[j+1][2*id1 + 1];
+                    Mat(1,j) += -(S(1,2)*dFy(0,2*i+0)-S(2,5)*dFy(2,2*i+0))/S(2,2)*b[j+1][2*id1 + 0];
+                    Mat(1,j) += -(S(0,2)*dFy(1,2*i+1)-S(2,5)*dFy(2,2*i+1))/S(2,2)*b[j+1][2*id1 + 1];
+                    Mat(2,j) += -(S(1,2)*dF (0,2*i+0)-S(2,5)*dF (2,2*i+0))/S(2,2)*b[j+1][2*id1 + 0];
+                    Mat(2,j) += -(S(0,2)*dF (1,2*i+1)-S(2,5)*dF (2,2*i+1))/S(2,2)*b[j+1][2*id1 + 1];
                 }
                 const long id2 = e->nodes[i]->id;
 
-                Mat(0,j) += -(-S(2,3)*dphix(0,i)+S(2,4)*dphix(1,i))*b[j+1][F_offset + id2]/S(2,2);
-                Mat(1,j) += -(-S(2,3)*dphiy(0,i)+S(2,4)*dphiy(1,i))*b[j+1][F_offset + id2]/S(2,2);
-                Mat(2,j) += -(-S(2,3)*dphi (0,i)+S(2,4)*dphi (1,i))*b[j+1][F_offset + id2]/S(2,2);
-                Mat(3,j) += (-dphix(0,i)-dphiy(1,i))*b[j+1][F_offset + id2];
-                Mat(4,j) += (-dphi(0,i))*b[j+1][F_offset + id2];
-                Mat(5,j) += ( dphi(1,i))*b[j+1][F_offset + id2];
+                Mat(0,j) += -(-S(2,3)*d1dofx(0,i)+S(2,4)*d1dofx(1,i))*b[j+1][F_offset + id2]/S(2,2);
+                Mat(1,j) += -(-S(2,3)*d1dofy(0,i)+S(2,4)*d1dofy(1,i))*b[j+1][F_offset + id2]/S(2,2);
+                Mat(2,j) += -(-S(2,3)*d1dof (0,i)+S(2,4)*d1dof (1,i))*b[j+1][F_offset + id2]/S(2,2);
+                Mat(3,j) += (-d1dofx(0,i)-d1dofy(1,i))*b[j+1][F_offset + id2];
+                Mat(4,j) += (-d1dof(0,i))*b[j+1][F_offset + id2];
+                Mat(5,j) += ( d1dof(1,i))*b[j+1][F_offset + id2];
 
-                Mat(0,j) += -(S(2,3)*dxix(0,i)+S(2,4)*dxix(1,i))*b[j+1][F_phi_offset + id2]/S(2,2);
-                Mat(1,j) += -(S(2,3)*dxiy(0,i)+S(2,4)*dxiy(1,i))*b[j+1][F_phi_offset + id2]/S(2,2);
-                Mat(2,j) += -(S(2,3)*dxi (0,i)+S(2,4)*dxi (1,i))*b[j+1][F_phi_offset + id2]/S(2,2);
-                Mat(3,j) += ( dxix(0,i)-dxiy(1,i))*b[j+1][F_phi_offset + id2];
-                Mat(4,j) += ( dxi(0,i))*b[j+1][F_phi_offset + id2];
-                Mat(5,j) += ( dxi(1,i))*b[j+1][F_phi_offset + id2];
+                Mat(0,j) += -(S(2,3)*d1dofx(1,i)+S(2,4)*d1dofx(0,i))*b[j+1][F_phi_offset + id2]/S(2,2);
+                Mat(1,j) += -(S(2,3)*d1dofy(1,i)+S(2,4)*d1dofy(0,i))*b[j+1][F_phi_offset + id2]/S(2,2);
+                Mat(2,j) += -(S(2,3)*d1dof (1,i)+S(2,4)*d1dof (0,i))*b[j+1][F_phi_offset + id2]/S(2,2);
+                Mat(3,j) += ( d1dofx(1,i)-d1dofy(0,i))*b[j+1][F_phi_offset + id2];
+                Mat(4,j) += ( d1dof(1,i))*b[j+1][F_phi_offset + id2];
+                Mat(5,j) += ( d1dof(0,i))*b[j+1][F_phi_offset + id2];
             }
         }
     }
 
-    //solver.print_matrix();
-    //logger::quick_log("");
-    //logger::quick_log(b);
-    //logger::quick_log("");
-
-    //logger::quick_log(Mat);
-    //logger::quick_log("");
-    //logger::quick_log(Vec);
+    logger::quick_log(Mat);
+    logger::quick_log("");
+    logger::quick_log(Vec);
     Eigen::Vector<double, 6> Res = Mat.fullPivLu().solve(Vec);
 
     this->A     = Res[0];
@@ -616,11 +614,15 @@ void Curvature::base_matrix_id(general_solver::MUMPSGeneral& M, const std::vecto
             for(size_t j = 0; j < num_nodes; ++j){
                 L3v[i*num_nodes + j] = L3(i,j);
                 L3vT[j*2*num_nodes + i] = L3(i,j);
+
+                L3zv[i*num_nodes + j] = L3z(i,j);
             }
         }
         for(size_t i = 0; i < num_nodes; ++i){
             for(size_t j = 0; j < num_nodes; ++j){
                 L2v[i*num_nodes + j] = L2(i,j);
+
+                L2zv[i*num_nodes + j] = L2z(i,j);
                 Lzv[i*num_nodes + j] = Lz(i,j);
             }
         }
