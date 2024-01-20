@@ -636,8 +636,14 @@ class BoundaryMeshElement : public Element{
     virtual Eigen::MatrixXd L3(const Eigen::MatrixXd& B) const = 0;
     virtual Eigen::MatrixXd L2(const Eigen::MatrixXd& B) const = 0;
 
-    virtual Eigen::MatrixXd L3z(const Eigen::MatrixXd& B) const = 0;
-    virtual Eigen::MatrixXd L2z(const Eigen::MatrixXd& B) const = 0;
+    virtual Eigen::MatrixXd L3xi(const Eigen::MatrixXd& B) const = 0;
+    virtual Eigen::MatrixXd L2xi(const Eigen::MatrixXd& B) const = 0;
+
+    virtual Eigen::MatrixXd L4chi(const Eigen::MatrixXd& B) const = 0;
+    virtual Eigen::MatrixXd L3Tchi(const Eigen::MatrixXd& B) const = 0;
+
+    virtual Eigen::MatrixXd L4zeta(const Eigen::MatrixXd& B) const = 0;
+    virtual Eigen::MatrixXd L3Tzeta(const Eigen::MatrixXd& B) const = 0;
 
     virtual double get_area() const = 0;
 

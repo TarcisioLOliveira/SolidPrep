@@ -80,8 +80,14 @@ class BTRI6 : public BoundaryMeshElement{
     virtual Eigen::MatrixXd L3(const Eigen::MatrixXd& B) const override;
     virtual Eigen::MatrixXd L2(const Eigen::MatrixXd& B) const override;
 
-    virtual Eigen::MatrixXd L3z(const Eigen::MatrixXd& B) const override;
-    virtual Eigen::MatrixXd L2z(const Eigen::MatrixXd& B) const override;
+    virtual Eigen::MatrixXd L3xi(const Eigen::MatrixXd& B) const override;
+    virtual Eigen::MatrixXd L2xi(const Eigen::MatrixXd& B) const override;
+
+    virtual Eigen::MatrixXd L4chi(const Eigen::MatrixXd& B) const override;
+    virtual Eigen::MatrixXd L3Tchi(const Eigen::MatrixXd& B) const override;
+
+    virtual Eigen::MatrixXd L4zeta(const Eigen::MatrixXd& B) const override;
+    virtual Eigen::MatrixXd L3Tzeta(const Eigen::MatrixXd& B) const override;
 
     virtual double get_area() const override{
         return this->delta;
@@ -151,6 +157,18 @@ class BTRI6 : public BoundaryMeshElement{
             {{dNdx(p, 0), 0, dNdx(p, 1), 0, dNdx(p, 2), 0, dNdx(p, 3), 0, dNdx(p, 4), 0, dNdx(p, 5), 0},
              {0, dNdy(p, 0), 0, dNdy(p, 1), 0, dNdy(p, 2), 0, dNdy(p, 3), 0, dNdy(p, 4), 0, dNdy(p, 5)},
              {0.5*dNdy(p, 0), 0.5*dNdx(p, 0), 0.5*dNdy(p, 1), 0.5*dNdx(p, 1), 0.5*dNdy(p, 2), 0.5*dNdx(p, 2), 0.5*dNdy(p, 3), 0.5*dNdx(p, 3), 0.5*dNdy(p, 4), 0.5*dNdx(p, 4), 0.5*dNdy(p, 5), 0.5*dNdx(p, 5)}};
+    }
+    inline Eigen::Matrix<double, 3, 6> dchi_mat_1dof(const gp_Pnt& p) const{
+        return Eigen::Matrix<double, 3, 6>{
+            {-dNdx(p, 0), -dNdx(p, 1), -dNdx(p, 2), -dNdx(p, 3), -dNdx(p, 4), -dNdx(p, 5)},
+            {dNdx(p, 0), dNdx(p, 1), dNdx(p, 2), dNdx(p, 3), dNdx(p, 4), dNdx(p, 5)},
+            {-dNdy(p, 0), -dNdy(p, 1), -dNdy(p, 2), -dNdy(p, 3), -dNdy(p, 4), -dNdy(p, 5)}};
+    }
+    inline Eigen::Matrix<double, 3, 6> dzeta_mat_1dof(const gp_Pnt& p) const{
+        return Eigen::Matrix<double, 3, 6>{
+            {dNdy(p, 0), dNdy(p, 1), dNdy(p, 2), dNdy(p, 3), dNdy(p, 4), dNdy(p, 5)},
+            {-dNdy(p, 0), -dNdy(p, 1), -dNdy(p, 2), -dNdy(p, 3), -dNdy(p, 4), -dNdy(p, 5)},
+            {-dNdx(p, 0), -dNdx(p, 1), -dNdx(p, 2), -dNdx(p, 3), -dNdx(p, 4), -dNdx(p, 5)}};
     }
 };
 

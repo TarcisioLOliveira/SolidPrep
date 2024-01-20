@@ -334,17 +334,46 @@ Eigen::MatrixXd BTRI3::L2(const Eigen::MatrixXd& B) const{
     return delta*dN.transpose()*B*dN;
 }
 
-Eigen::MatrixXd BTRI3::L3z(const Eigen::MatrixXd& B) const{
+Eigen::MatrixXd BTRI3::L3xi(const Eigen::MatrixXd& B) const{
     const auto dF = this->dF_mat_2dof();
     const auto dxi = this->dxi_mat_1dof();
 
     return delta*dF.transpose()*B*dxi;
 }
-Eigen::MatrixXd BTRI3::L2z(const Eigen::MatrixXd& B) const{
+Eigen::MatrixXd BTRI3::L2xi(const Eigen::MatrixXd& B) const{
     const auto dN = this->dN_mat_1dof();
     const auto dxi = this->dxi_mat_1dof();
 
     return delta*dN.transpose()*B*dxi;
+}
+
+Eigen::MatrixXd BTRI3::L4chi(const Eigen::MatrixXd& B) const{
+    const auto dF = this->dF_mat_2dof();
+    const auto dchi = this->dchi_mat_1dof();
+
+    return delta*dF.transpose()*B*dchi;
+}
+
+Eigen::MatrixXd BTRI3::L3Tchi(const Eigen::MatrixXd& B) const{
+    const auto dphi = this->dN_mat_1dof();
+    const auto dchi = this->dchi_mat_1dof();
+
+    return delta*dphi.transpose()*B.transpose()*dchi;
+}
+
+Eigen::MatrixXd BTRI3::L4zeta(const Eigen::MatrixXd& B) const{
+    const auto dF = this->dF_mat_2dof();
+    const auto dzeta = this->dzeta_mat_1dof();
+
+    return delta*dF.transpose()*B*dzeta;
+}
+
+Eigen::MatrixXd BTRI3::L3Tzeta(const Eigen::MatrixXd& B) const{
+    const auto dphi = this->dN_mat_1dof();
+    const auto dzeta = this->dzeta_mat_1dof();
+
+    return delta*dphi.transpose()*B.transpose()*dzeta;
+
 }
 
 }

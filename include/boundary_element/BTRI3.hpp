@@ -80,8 +80,14 @@ class BTRI3 : public BoundaryMeshElement{
     virtual Eigen::MatrixXd L3(const Eigen::MatrixXd& B) const override;
     virtual Eigen::MatrixXd L2(const Eigen::MatrixXd& B) const override;
 
-    virtual Eigen::MatrixXd L3z(const Eigen::MatrixXd& B) const override;
-    virtual Eigen::MatrixXd L2z(const Eigen::MatrixXd& B) const override;
+    virtual Eigen::MatrixXd L3xi(const Eigen::MatrixXd& B) const override;
+    virtual Eigen::MatrixXd L2xi(const Eigen::MatrixXd& B) const override;
+
+    virtual Eigen::MatrixXd L4chi(const Eigen::MatrixXd& B) const override;
+    virtual Eigen::MatrixXd L3Tchi(const Eigen::MatrixXd& B) const override;
+
+    virtual Eigen::MatrixXd L4zeta(const Eigen::MatrixXd& B) const override;
+    virtual Eigen::MatrixXd L3Tzeta(const Eigen::MatrixXd& B) const override;
 
     virtual double get_area() const override{
         return this->delta;
@@ -141,6 +147,18 @@ class BTRI3 : public BoundaryMeshElement{
         return Eigen::Matrix<double, 3, 6>{{b[0],    0, b[1],    0, b[2],    0},
                                            {   0, c[0],    0, c[1],    0, c[2]},
                                            {0.5*c[0], 0.5*b[0], 0.5*c[1], 0.5*b[1], 0.5*c[2], 0.5*b[2]}};
+    }
+    inline Eigen::Matrix<double, 3, 3> dchi_mat_1dof() const{
+        return Eigen::Matrix<double, 3, 3>{
+                                           {-b[0], -b[1], -b[2]},
+                                           {b[0], b[1], b[2]},
+                                           {-c[0], -c[1], -c[2]}};
+    }
+    inline Eigen::Matrix<double, 3, 3> dzeta_mat_1dof() const{
+        return Eigen::Matrix<double, 3, 3>{
+                                           {c[0], c[1], c[2]},
+                                           {-c[0], -c[1], -c[2]},
+                                           {-b[0], -b[1], -b[2]}};
     }
 };
 

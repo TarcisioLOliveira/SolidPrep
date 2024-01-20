@@ -309,6 +309,9 @@ void COO<INT>::generate_coo(INT n){
                 *r = count;
                 ++cur_row;
                 ++r;
+                //if(r >= this->cooRowPtr.end()){
+                //    break;
+                //}
             }
             *ri = p.first.i+offset;
             *c = p.first.j+offset;

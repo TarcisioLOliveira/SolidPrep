@@ -127,7 +127,9 @@ void MUMPSGeneral::compute(){
     }
 
     this->config.job = 2; // Decompose
+    this->config.ICNTL(33) = 1;
     dmumps_c(&this->config);
+    logger::quick_log("DET", this->config.rinfog[12-1], this->config.rinfog[34-1]);
 
     this->factorized = true;
 }

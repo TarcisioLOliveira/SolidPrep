@@ -436,7 +436,7 @@ Eigen::MatrixXd BTRI6::L2(const Eigen::MatrixXd& B) const{
     return result;
 }
 
-Eigen::MatrixXd BTRI6::L3z(const Eigen::MatrixXd& B) const{
+Eigen::MatrixXd BTRI6::L3xi(const Eigen::MatrixXd& B) const{
     const auto& gli = utils::GaussLegendreTri<2>::get();
     Eigen::Matrix<double, 12, 6> result;
     result.fill(0);
@@ -452,7 +452,7 @@ Eigen::MatrixXd BTRI6::L3z(const Eigen::MatrixXd& B) const{
 
     return result;
 }
-Eigen::MatrixXd BTRI6::L2z(const Eigen::MatrixXd& B) const{
+Eigen::MatrixXd BTRI6::L2xi(const Eigen::MatrixXd& B) const{
     const auto& gli = utils::GaussLegendreTri<2>::get();
     Eigen::Matrix<double, 6, 6> result;
     result.fill(0);
@@ -463,6 +463,70 @@ Eigen::MatrixXd BTRI6::L2z(const Eigen::MatrixXd& B) const{
         const auto dxi = this->dxi_mat_1dof(p);
 
         result += it->w*dN.transpose()*B*dxi;
+    }
+    result *= delta;
+
+    return result;
+}
+Eigen::MatrixXd BTRI6::L4chi(const Eigen::MatrixXd& B) const{
+    const auto& gli = utils::GaussLegendreTri<2>::get();
+    Eigen::Matrix<double, 12, 6> result;
+    result.fill(0);
+
+    for(auto it = gli.begin(); it < gli.end(); ++it){
+        const gp_Pnt p = this->GS_point(it->a, it->b, it->c);
+        const auto dF = this->dF_mat_2dof(p);
+        const auto dchi = this->dchi_mat_1dof(p);
+
+        result += it->w*dF.transpose()*B*dchi;
+    }
+    result *= delta;
+
+    return result;
+}
+Eigen::MatrixXd BTRI6::L3Tchi(const Eigen::MatrixXd& B) const{
+    const auto& gli = utils::GaussLegendreTri<2>::get();
+    Eigen::Matrix<double, 6, 6> result;
+    result.fill(0);
+
+    for(auto it = gli.begin(); it < gli.end(); ++it){
+        const gp_Pnt p = this->GS_point(it->a, it->b, it->c);
+        const auto dN = this->dN_mat_1dof(p);
+        const auto dchi = this->dchi_mat_1dof(p);
+
+        result += it->w*dN.transpose()*B.transpose()*dchi;
+    }
+    result *= delta;
+
+    return result;
+}
+Eigen::MatrixXd BTRI6::L4zeta(const Eigen::MatrixXd& B) const{
+    const auto& gli = utils::GaussLegendreTri<2>::get();
+    Eigen::Matrix<double, 12, 6> result;
+    result.fill(0);
+
+    for(auto it = gli.begin(); it < gli.end(); ++it){
+        const gp_Pnt p = this->GS_point(it->a, it->b, it->c);
+        const auto dF = this->dF_mat_2dof(p);
+        const auto dzeta = this->dzeta_mat_1dof(p);
+
+        result += it->w*dF.transpose()*B*dzeta;
+    }
+    result *= delta;
+
+    return result;
+}
+Eigen::MatrixXd BTRI6::L3Tzeta(const Eigen::MatrixXd& B) const{
+    const auto& gli = utils::GaussLegendreTri<2>::get();
+    Eigen::Matrix<double, 6, 6> result;
+    result.fill(0);
+
+    for(auto it = gli.begin(); it < gli.end(); ++it){
+        const gp_Pnt p = this->GS_point(it->a, it->b, it->c);
+        const auto dN = this->dN_mat_1dof(p);
+        const auto dzeta = this->dzeta_mat_1dof(p);
+
+        result += it->w*dN.transpose()*B.transpose()*dzeta;
     }
     result *= delta;
 
