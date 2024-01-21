@@ -86,6 +86,13 @@ Eigen::MatrixXd BTRI3::absorption_1dof() const{
 Eigen::VectorXd BTRI3::source_1dof() const{
     return this->delta*this->N_mat_1dof(this->GS_point(1.0/3.0, 1.0/3.0, 1.0/3.0));
 }
+Eigen::VectorXd BTRI3::flow_1dof(const std::array<const Node*, 2>& nodes) const{
+    gp_Pnt p = nodes[0]->point;
+    p.BaryCenter(1, nodes[1]->point, 1);
+    const double d = nodes[0]->point.Distance(nodes[1]->point);
+
+    return d*this->N_mat_1dof(p);
+}
 Eigen::VectorXd BTRI3::grad_1dof_upos(const gp_Pnt& p, const std::vector<double>& phi) const{
     (void)p;
     Eigen::Vector<double, 3> phiv{0, 0, 0};

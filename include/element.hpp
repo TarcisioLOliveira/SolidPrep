@@ -594,6 +594,7 @@ class BoundaryMeshElement : public Element{
      * @return source matrix.
      */
     virtual Eigen::VectorXd source_1dof() const = 0;
+    virtual Eigen::VectorXd flow_1dof(const std::array<const Node*, 2>& nodes) const = 0;
 
     /**
      * Returns the gradient at point p for 1 dof field.

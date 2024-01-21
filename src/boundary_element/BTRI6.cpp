@@ -114,6 +114,28 @@ Eigen::VectorXd BTRI6::source_1dof() const{
     }
     return result*delta;
 }
+Eigen::VectorXd BTRI6::flow_1dof(const std::array<const Node*, 2>& nodes) const{
+    std::array<double, 2> x{nodes[0]->point.X(), nodes[1]->point.X()};
+    std::array<double, 2> y{nodes[0]->point.Y(), nodes[1]->point.Y()};
+
+    const double rnorm = 0.5*nodes[0]->point.Distance(nodes[1]->point);
+
+    Eigen::Vector<double, NODES_PER_ELEM> M;
+    M.fill(0);
+    constexpr size_t GN = 2;
+    const auto& GL = utils::GaussLegendre<GN>::get();
+
+    for(auto xi = GL.begin(); xi < GL.end(); ++xi){
+        const double s = xi->x;
+        const double X = 0.5*(x[0]*(1-s) + x[1]*(1+s));
+        const double Y = 0.5*(y[0]*(1-s) + y[1]*(1+s));
+        const gp_Pnt p(X, Y, 0);
+        M += xi->w*N_mat_1dof(p);
+    }
+    M *= rnorm;
+
+    return M;
+}
 Eigen::VectorXd BTRI6::grad_1dof_upos(const gp_Pnt& p, const std::vector<double>& phi) const{
     (void)p;
     Eigen::Vector<double, 6> phiv{0, 0, 0, 0, 0, 0};

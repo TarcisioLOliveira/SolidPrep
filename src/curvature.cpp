@@ -151,6 +151,12 @@ void Curvature::get_stress_3D(const BoundaryMeshElement* e, double& t_uw, double
     Eigen::Vector<double, 2> grad_xi = e->grad_1dof_id(c, this->xi);
     Eigen::Vector<double, 2> grad_zeta = e->grad_1dof_id(c, this->zeta);
     Eigen::Vector<double, 2> grad_chi = e->grad_1dof_id(c, this->chi);
+    //double Fx = 0, Fy = 0;
+    //for(size_t i = 0; i < 3; ++i){
+    //    const auto& n = e->nodes[i];
+    //    Fx += this->F[2*n->id + 0]/3;
+    //    Fy += this->F[2*n->id + 1]/3;
+    //}
     t_vw = -grad_phi[0] + grad_xi[1] + Kyz;
     t_uw =  grad_phi[1] + grad_xi[0] + Kxz;
 
@@ -179,41 +185,21 @@ void Curvature::calculate_stress_field_3D(const std::vector<std::unique_ptr<Mesh
      * the zero-filled rectangles.
      */
     const size_t F_offset = 2*this->reduced_vec_len; //this->F.size();
-    const size_t F_phi_offset = F_offset + this->phi.size();
+    const size_t F_phi_offset = F_offset + this->reduced_vec_len;
     const size_t F_phi_xi_offset = F_phi_offset + this->xi.size();
     const size_t F_phi_xi_chi_offset = F_phi_xi_offset + this->reduced_vec_len;//this->chi.size();
     const size_t F_phi_xi_chi_zeta_offset = F_phi_xi_chi_offset + this->reduced_vec_len;//this->zeta.size();
-    const size_t phi_size = F_phi_xi_chi_zeta_offset;
+    constexpr size_t MAX_B = 6;//12;
+    const size_t phi_size = F_phi_xi_chi_zeta_offset + MAX_B;
 
-    constexpr size_t MAX_B = 12;
     // Eigen solvers DO NOT WORK CORRECTLY HERE
     general_solver::MUMPSGeneral solver;
     solver.initialize_matrix(false, phi_size);
 
     this->base_matrix_id(solver, boundary_mesh, num_nodes);
 
-    //solver.print_matrix();
-    //logger::quick_log("");
-
-    solver.compute();
-
     // A B C theta Kyz Kxz
-    std::vector<std::vector<double>> b(MAX_B);
-    for(auto& v:b){
-        v.resize(phi_size,0);
-    }
-
-    // Az Bz
-    Eigen::Matrix<double, 2, 2> EIM{{EI_vv, EI_uv},
-                                    {EI_uv, EI_uu}};
-    Eigen::Vector<double, 2> VV{-V_u, V_v};
-    Eigen::Vector<double, 2> Vz = EIM.fullPivLu().solve(VV);
-
-    const double Az = Vz[0];
-    const double Bz = Vz[1];
-
-    logger::quick_log("Az", Az);
-    logger::quick_log("Bz", Bz);
+    std::vector<double> b(phi_size, 0);
 
     /*
      * Generate the constants which multiply theta and fill the additional
@@ -222,213 +208,105 @@ void Curvature::calculate_stress_field_3D(const std::vector<std::unique_ptr<Mesh
     Eigen::Matrix<double, 2, 2> I{{1,0},
                                   {0,1}};
 
-    size_t B_NUM = 0;
-
-     // A
-     B_NUM = 0;
-     for(const auto& e:boundary_mesh){
-         Eigen::Matrix<double, 3, 3> B4;
-         Eigen::Matrix<double, 3, 2> B3;
-         Eigen::Matrix<double, 2, 2> B2;
-
-         const gp_Pnt centroid = e->get_centroid();
-         const gp_Pnt c = utils::change_point(centroid, this->rot3D);
-         const auto S = this->get_S_3D(e->parent, c);
-         this->get_B_tensors_3D(e->parent, c, B4, B3, B2);
-         const Eigen::Matrix<double, 3, 3> aF
-             {{S(1,2)/S(2,2), 0, 0},
-              {0, S(0,2)/S(2,2), 0},
-              {0, 0, S(2,5)/S(2,2)}};
-         const Eigen::Matrix<double, 2, 2> aphi
-             {{S(2,3)/S(2,2), 0},
-              {0, S(2,4)/S(2,2)}};
-         const Eigen::MatrixXd dFD = e->int_grad_F_D(aF, center);
-         const Eigen::MatrixXd dphiD = e->int_grad_phi_D(aphi, center);
-
-         for(size_t i = 0; i < num_nodes; ++i){
-             const long id1 = e->nodes[i]->u_pos[0];
-             if(id1 > -1){
-                 b[B_NUM][2*id1 + 0] -= dFD(2*i+0,0);
-                 b[B_NUM][2*id1 + 1] -= dFD(2*i+1,0);
-             }
-
-             const long id2 = e->nodes[i]->id;
-
-             b[B_NUM][F_offset + id2] -= dphiD(i,0);
-         }
-     }
-     solver.solve(b[B_NUM]);
-
-     // B
-     B_NUM = 1;
-     for(const auto& e:boundary_mesh){
-         Eigen::Matrix<double, 3, 3> B4;
-         Eigen::Matrix<double, 3, 2> B3;
-         Eigen::Matrix<double, 2, 2> B2;
-
-         const gp_Pnt centroid = e->get_centroid();
-         const gp_Pnt c = utils::change_point(centroid, this->rot3D);
-         const auto S = this->get_S_3D(e->parent, c);
-         this->get_B_tensors_3D(e->parent, c, B4, B3, B2);
-         const Eigen::Matrix<double, 3, 3> aF
-             {{S(1,2)/S(2,2), 0, 0},
-              {0, S(0,2)/S(2,2), 0},
-              {0, 0, S(2,5)/S(2,2)}};
-         const Eigen::Matrix<double, 2, 2> aphi
-             {{S(2,3)/S(2,2), 0},
-              {0, S(2,4)/S(2,2)}};
-         const Eigen::MatrixXd dFD = e->int_grad_F_D(aF, center);
-         const Eigen::MatrixXd dphiD = e->int_grad_phi_D(aphi, center);
-
-         for(size_t i = 0; i < num_nodes; ++i){
-             const long id1 = e->nodes[i]->u_pos[0];
-             if(id1 > -1){
-                 b[B_NUM][2*id1 + 0] -= dFD(2*i+0,1);
-                 b[B_NUM][2*id1 + 1] -= dFD(2*i+1,1);
-             }
-
-             const long id2 = e->nodes[i]->id;
-
-             b[B_NUM][F_offset + id2] -= dphiD(i,1);
-         }
-     }
-     solver.solve(b[B_NUM]);
-
-     // C
-     B_NUM = 2;
-     for(const auto& e:boundary_mesh){
-         Eigen::Matrix<double, 3, 3> B4;
-         Eigen::Matrix<double, 3, 2> B3;
-         Eigen::Matrix<double, 2, 2> B2;
-
-         const gp_Pnt centroid = e->get_centroid();
-         const gp_Pnt c = utils::change_point(centroid, this->rot3D);
-         const auto S = this->get_S_3D(e->parent, c);
-         this->get_B_tensors_3D(e->parent, c, B4, B3, B2);
-         const Eigen::Matrix<double, 3, 3> aF
-             {{S(1,2)/S(2,2), 0, 0},
-              {0, S(0,2)/S(2,2), 0},
-              {0, 0, S(2,5)/S(2,2)}};
-         const Eigen::Matrix<double, 2, 2> aphi
-             {{S(2,3)/S(2,2), 0},
-              {0, S(2,4)/S(2,2)}};
-         const Eigen::MatrixXd dFD = e->int_grad_F_D(aF, center);
-         const Eigen::MatrixXd dphiD = e->int_grad_phi_D(aphi, center);
-
-         for(size_t i = 0; i < num_nodes; ++i){
-             const long id1 = e->nodes[i]->u_pos[0];
-             if(id1 > -1){
-                 b[B_NUM][2*id1 + 0] -= dFD(2*i+0,2);
-                 b[B_NUM][2*id1 + 1] -= dFD(2*i+1,2);
-             }
-
-             const long id2 = e->nodes[i]->id;
-
-             b[B_NUM][F_offset + id2] -= dphiD(i,2);
-         }
-     }
-     solver.solve(b[B_NUM]);
-
-    // theta
-    B_NUM = 3;
+    Eigen::Matrix<double, 3, 3> B4;
+    Eigen::Matrix<double, 3, 2> B3;
+    Eigen::Matrix<double, 2, 2> B2;
     for(const auto& e:boundary_mesh){
+
+        const gp_Pnt centroid = e->get_centroid();
+        const gp_Pnt c = utils::change_point(centroid, this->rot3D);
+        const auto S = this->get_S_3D(e->parent, c);
+        this->get_B_tensors_3D(e->parent, c, B4, B3, B2);
+        const Eigen::Matrix<double, 3, 3> aF
+            {{S(1,2)/S(2,2), 0, 0},
+             {0, S(0,2)/S(2,2), 0},
+             {0, 0, -S(2,5)/S(2,2)}};
+        const Eigen::Matrix<double, 2, 2> aphi
+            {{-S(2,3)/S(2,2), 0},
+             {0, S(2,4)/S(2,2)}};
+        const Eigen::MatrixXd dFD = e->int_grad_F_D(aF, center);
+        const Eigen::MatrixXd dphiD = e->int_grad_phi_D(aphi, center);
+
+        const auto dphi = e->int_grad_phi();
+        const auto dF = e->int_grad_F();
+        const Eigen::MatrixXd BF = dF.transpose()*B3;
+        const Eigen::MatrixXd Bphi = dphi.transpose()*B2;
+
         const auto N = e->source_1dof();
 
         for(size_t i = 0; i < num_nodes; ++i){
-            const long id2 = e->nodes[i]->id;
-
-            b[B_NUM][F_offset + id2] += 2*N[i];
-        }
-    }
-    solver.solve(b[B_NUM]);
-
-    // Kyz
-    B_NUM = 4;
-    for(const auto& e:boundary_mesh){
-        Eigen::Matrix<double, 3, 3> B4;
-        Eigen::Matrix<double, 3, 2> B3;
-        Eigen::Matrix<double, 2, 2> B2;
-
-        const gp_Pnt centroid = e->get_centroid();
-        const gp_Pnt c = utils::change_point(centroid, this->rot3D);
-        const auto dphi = e->int_grad_phi();
-        const auto dF = e->int_grad_F();
-        this->get_B_tensors_3D(e->parent, c, B4, B3, B2);
-        const Eigen::MatrixXd BF = dF.transpose()*B3;
-        const Eigen::MatrixXd Bphi = dphi.transpose()*B2;
-
-        for(size_t i = 0; i < num_nodes; ++i){
             const long id1 = e->nodes[i]->u_pos[0];
             if(id1 > -1){
-                b[B_NUM][2*id1 + 0] -= -BF(2*i+0,0);
-                b[B_NUM][2*id1 + 1] -= -BF(2*i+1,0);
+                // F
+                // A
+                solver.add_value(2*id1 + 0, F_phi_xi_chi_zeta_offset + 0, dFD(2*i+0,0));
+                solver.add_value(2*id1 + 1, F_phi_xi_chi_zeta_offset + 0, dFD(2*i+1,0));
+
+                // B
+                solver.add_value(2*id1 + 0, F_phi_xi_chi_zeta_offset + 1, dFD(2*i+0,1));
+                solver.add_value(2*id1 + 1, F_phi_xi_chi_zeta_offset + 1, dFD(2*i+1,1));
+                                            
+                // C
+                solver.add_value(2*id1 + 0, F_phi_xi_chi_zeta_offset + 2, dFD(2*i+0,2));
+                solver.add_value(2*id1 + 1, F_phi_xi_chi_zeta_offset + 2, dFD(2*i+1,2));
+                                            
+                // theta                    
+                // unused                   
+                                            
+                // Kyz                      
+                solver.add_value(2*id1 + 0, F_phi_xi_chi_zeta_offset + 4, -BF(2*i+0,0));
+                solver.add_value(2*id1 + 1, F_phi_xi_chi_zeta_offset + 4, -BF(2*i+1,0));
+                                            
+                // Kxz                      
+                solver.add_value(2*id1 + 0, F_phi_xi_chi_zeta_offset + 5,  BF(2*i+0,1));
+                solver.add_value(2*id1 + 1, F_phi_xi_chi_zeta_offset + 5,  BF(2*i+1,1));
+
+                // phi
+                 // A
+                solver.add_value(F_offset + id1, F_phi_xi_chi_zeta_offset + 0, dphiD(i,0));
+                                                 
+                 // B                            
+                solver.add_value(F_offset + id1, F_phi_xi_chi_zeta_offset + 1, dphiD(i,1));
+                                                 
+                 // C                            
+                solver.add_value(F_offset + id1, F_phi_xi_chi_zeta_offset + 2, dphiD(i,2));
+                                                 
+                // theta                         
+                solver.add_value(F_offset + id1, F_phi_xi_chi_zeta_offset + 3, -2*N[i]);
+                                                 
+                // Kyz                           
+                solver.add_value(F_offset + id1, F_phi_xi_chi_zeta_offset + 4, -Bphi(i,0));
+                                                 
+                // Kxz                           
+                solver.add_value(F_offset + id1, F_phi_xi_chi_zeta_offset + 5,  Bphi(i,1));
             }
 
-            const long id2 = e->nodes[i]->id;
-
-            b[B_NUM][F_offset + id2] -= -Bphi(i,0);
         }
     }
-    solver.solve(b[B_NUM]);
-
-    // Kxz
-    B_NUM = 5;
-    for(const auto& e:boundary_mesh){
-        Eigen::Matrix<double, 3, 3> B4;
-        Eigen::Matrix<double, 3, 2> B3;
-        Eigen::Matrix<double, 2, 2> B2;
-
-        const gp_Pnt centroid = e->get_centroid();
-        const gp_Pnt c = utils::change_point(centroid, this->rot3D);
-        const auto dphi = e->int_grad_phi();
-        const auto dF = e->int_grad_F();
-        this->get_B_tensors_3D(e->parent, c, B4, B3, B2);
-        const Eigen::MatrixXd BF = dF.transpose()*B3;
-        const Eigen::MatrixXd Bphi = dphi.transpose()*B2;
-
-        for(size_t i = 0; i < num_nodes; ++i){
-            const long id1 = e->nodes[i]->u_pos[0];
-            if(id1 > -1){
-                b[B_NUM][2*id1 + 0] -= BF(2*i+0,1);
-                b[B_NUM][2*id1 + 1] -= BF(2*i+1,1);
-            }
-            const long id2 = e->nodes[i]->id;
-
-            b[B_NUM][F_offset + id2] -= Bphi(i,1);
-        }
-    }
-    solver.solve(b[B_NUM]);
-
-    Eigen::Matrix<double, MAX_B, MAX_B> Mat;
-    Mat.fill(0);
-    Eigen::Vector<double, MAX_B> Vec;
-    Vec.fill(0);
 
     // A B square
-    Mat(0, 0) = EI_vv;
-    Mat(0, 1) = EI_uv;
-    Mat(1, 0) = EI_uv;
-    Mat(1, 1) = EI_uu;
+    solver.add_value(F_phi_xi_chi_zeta_offset + 0, F_phi_xi_chi_zeta_offset + 0,  EI_vv);
+    solver.add_value(F_phi_xi_chi_zeta_offset + 0, F_phi_xi_chi_zeta_offset + 1,  EI_uv);
+    solver.add_value(F_phi_xi_chi_zeta_offset + 1, F_phi_xi_chi_zeta_offset + 0,  EI_uv);
+    solver.add_value(F_phi_xi_chi_zeta_offset + 1, F_phi_xi_chi_zeta_offset + 1,  EI_uu);
 
-    Vec[0] = -M_v;
-    Vec[1] = -M_u;
+    b[F_phi_xi_chi_zeta_offset + 0] = -M_v;
+    b[F_phi_xi_chi_zeta_offset + 1] = -M_u;
 
     // C
-    Mat(2,2) = EA;
-    Vec[2] = -V_w;
+    solver.add_value(F_phi_xi_chi_zeta_offset + 2, F_phi_xi_chi_zeta_offset + 2,  EA);
+    b[F_phi_xi_chi_zeta_offset + 2] = -V_w;
 
     // theta
-    Vec[3] = -M_w;
+    b[F_phi_xi_chi_zeta_offset + 3] = -M_w;
 
     // t_yz
-    Mat(4,4) = Area;
-    Vec[4] = V_v;
-    // t_xz
-    Mat(5,5) = Area;
-    Vec[5] = -V_u;
+    solver.add_value(F_phi_xi_chi_zeta_offset + 4, F_phi_xi_chi_zeta_offset + 4,  Area);
+    b[F_phi_xi_chi_zeta_offset + 4] = V_v;
 
-    Vec[6] = -V_u;
-    Vec[7] = V_v;
+    // t_xz
+    solver.add_value(F_phi_xi_chi_zeta_offset + 5, F_phi_xi_chi_zeta_offset + 5,  Area);
+    b[F_phi_xi_chi_zeta_offset + 5] = -V_u;
 
     for(const auto& e:boundary_mesh){
         const auto N = e->source_1dof();
@@ -453,77 +331,126 @@ void Curvature::calculate_stress_field_3D(const std::vector<std::unique_ptr<Mesh
         const double a = e->get_area();
 
         // Kyz
-        Mat(0,4) += -(S(2,3)*dx*a)/S(2,2);
-        Mat(1,4) += -(S(2,3)*dy*a)/S(2,2);
-        Mat(2,4) += -(S(2,3)*a)/S(2,2);
+        solver.add_value(F_phi_xi_chi_zeta_offset + 0, F_phi_xi_chi_zeta_offset + 4, -(S(2,3)*dx*a)/S(2,2));
+        solver.add_value(F_phi_xi_chi_zeta_offset + 1, F_phi_xi_chi_zeta_offset + 4, -(S(2,3)*dy*a)/S(2,2));
+        solver.add_value(F_phi_xi_chi_zeta_offset + 2, F_phi_xi_chi_zeta_offset + 4, -(S(2,3)*a)/S(2,2));
 
         // Kxz
-        Mat(0,5) += -(S(2,4)*dx*a)/S(2,2);
-        Mat(1,5) += -(S(2,4)*dy*a)/S(2,2);
-        Mat(2,5) += -(S(2,4)*a)/S(2,2);
+        solver.add_value(F_phi_xi_chi_zeta_offset + 0, F_phi_xi_chi_zeta_offset + 5, -(S(2,4)*dx*a)/S(2,2));
+        solver.add_value(F_phi_xi_chi_zeta_offset + 1, F_phi_xi_chi_zeta_offset + 5, -(S(2,4)*dy*a)/S(2,2));
+        solver.add_value(F_phi_xi_chi_zeta_offset + 2, F_phi_xi_chi_zeta_offset + 5, -(S(2,4)*a)/S(2,2));
 
-        for(size_t j = 0; j < MAX_B; ++j){
+        for(size_t i = 0; i < num_nodes; ++i){
+            const long id1 = e->nodes[i]->u_pos[0];
+
+            if(id1 > -1){
+                // F
+                solver.add_value(F_phi_xi_chi_zeta_offset + 0, 2*id1 + 0, -(S(1,2)*dFx(0,2*i+0)-S(2,5)*dFx(2,2*i+0))/S(2,2));
+                solver.add_value(F_phi_xi_chi_zeta_offset + 0, 2*id1 + 1, -(S(0,2)*dFx(1,2*i+1)-S(2,5)*dFx(2,2*i+1))/S(2,2));
+                solver.add_value(F_phi_xi_chi_zeta_offset + 1, 2*id1 + 0, -(S(1,2)*dFy(0,2*i+0)-S(2,5)*dFy(2,2*i+0))/S(2,2));
+                solver.add_value(F_phi_xi_chi_zeta_offset + 1, 2*id1 + 1, -(S(0,2)*dFy(1,2*i+1)-S(2,5)*dFy(2,2*i+1))/S(2,2));
+                solver.add_value(F_phi_xi_chi_zeta_offset + 2, 2*id1 + 0, -(S(1,2)*dF (0,2*i+0)-S(2,5)*dF (2,2*i+0))/S(2,2));
+                solver.add_value(F_phi_xi_chi_zeta_offset + 2, 2*id1 + 1, -(S(0,2)*dF (1,2*i+1)-S(2,5)*dF (2,2*i+1))/S(2,2));
+
+                // chi
+                solver.add_value(F_phi_xi_chi_zeta_offset + 0, F_phi_xi_offset + id1, -((-S(1,2)+S(0,2))*d1dofx(0,i)+S(2,5)*d1dofx(1,i))/S(2,2));
+                solver.add_value(F_phi_xi_chi_zeta_offset + 1, F_phi_xi_offset + id1, -((-S(1,2)+S(0,2))*d1dofy(0,i)+S(2,5)*d1dofy(1,i))/S(2,2));
+                solver.add_value(F_phi_xi_chi_zeta_offset + 2, F_phi_xi_offset + id1, -((-S(1,2)+S(0,2))*d1dof (0,i)+S(2,5)*d1dof (1,i))/S(2,2));
+
+                // zeta
+                solver.add_value(F_phi_xi_chi_zeta_offset + 0, F_phi_xi_chi_offset + id1, -((S(1,2)-S(0,2))*d1dofx(1,i)+S(2,5)*d1dofx(0,i))/S(2,2));
+                solver.add_value(F_phi_xi_chi_zeta_offset + 1, F_phi_xi_chi_offset + id1, -((S(1,2)-S(0,2))*d1dofy(1,i)+S(2,5)*d1dofy(0,i))/S(2,2));
+                solver.add_value(F_phi_xi_chi_zeta_offset + 2, F_phi_xi_chi_offset + id1, -((S(1,2)-S(0,2))*d1dof (1,i)+S(2,5)*d1dof (0,i))/S(2,2));
+
+                // // phi
+                solver.add_value(F_phi_xi_chi_zeta_offset + 0, F_offset + id1, -(-S(2,3)*d1dofx(0,i)+S(2,4)*d1dofx(1,i))/S(2,2));
+                solver.add_value(F_phi_xi_chi_zeta_offset + 1, F_offset + id1, -(-S(2,3)*d1dofy(0,i)+S(2,4)*d1dofy(1,i))/S(2,2));
+                solver.add_value(F_phi_xi_chi_zeta_offset + 2, F_offset + id1, -(-S(2,3)*d1dof (0,i)+S(2,4)*d1dof (1,i))/S(2,2));
+                solver.add_value(F_phi_xi_chi_zeta_offset + 3, F_offset + id1, (-d1dofx(0,i)-d1dofy(1,i)));
+                solver.add_value(F_phi_xi_chi_zeta_offset + 4, F_offset + id1, (-d1dof(0,i)));
+                solver.add_value(F_phi_xi_chi_zeta_offset + 5, F_offset + id1, ( d1dof(1,i)));
+            }
+
+            const long id2 = e->nodes[i]->id;
+
+            // xi
+            solver.add_value(F_phi_xi_chi_zeta_offset + 0, F_phi_offset + id2, -(S(2,3)*d1dofx(1,i)+S(2,4)*d1dofx(0,i))/S(2,2));
+            solver.add_value(F_phi_xi_chi_zeta_offset + 1, F_phi_offset + id2, -(S(2,3)*d1dofy(1,i)+S(2,4)*d1dofy(0,i))/S(2,2));
+            solver.add_value(F_phi_xi_chi_zeta_offset + 2, F_phi_offset + id2, -(S(2,3)*d1dof (1,i)+S(2,4)*d1dof (0,i))/S(2,2));
+            solver.add_value(F_phi_xi_chi_zeta_offset + 3, F_phi_offset + id2, ( d1dofx(1,i)-d1dofy(0,i)));
+            solver.add_value(F_phi_xi_chi_zeta_offset + 4, F_phi_offset + id2, ( d1dof(1,i)));
+            solver.add_value(F_phi_xi_chi_zeta_offset + 5, F_phi_offset + id2, ( d1dof(0,i)));
+        }
+    }
+
+    //solver.print_matrix();
+    //logger::quick_log("");
+
+    solver.compute();
+
+    double Az = 0, Bz = 0, Cz = 0;
+    if(this->V_u != 0 || this->V_v != 0){
+
+        std::vector<double> bz(phi_size, 0);
+
+        bz[F_phi_xi_chi_zeta_offset + 0] = -V_u;
+        bz[F_phi_xi_chi_zeta_offset + 1] = V_v;
+        solver.solve(bz);
+
+        Az = bz[F_phi_xi_chi_zeta_offset + 0];
+        Bz = bz[F_phi_xi_chi_zeta_offset + 1];
+        Cz = bz[F_phi_xi_chi_zeta_offset + 2];
+
+        logger::quick_log("Az", Az);
+        logger::quick_log("Bz", Bz);
+        logger::quick_log("Cz", Cz);
+
+        for(const auto& e:boundary_mesh){
+            const auto N = e->source_1dof();
+            const auto Nx = e->int_N_x(center);
+            const auto Ny = e->int_N_y(center);
+            const auto M_e = e->diffusion_1dof(I);
+            const auto d1dof = e->int_grad_phi();
+            const auto d1dofx = e->int_grad_phi_x(center);
+            const auto d1dofy = e->int_grad_phi_y(center);
+            //const auto dxi = e->int_grad_xi();
+            //const auto dxix = e->int_grad_xi_x(center);
+            //const auto dxiy = e->int_grad_xi_y(center);
+            const auto dF = e->int_grad_F();
+            const auto dFx = e->int_grad_F_x(center);
+            const auto dFy = e->int_grad_F_y(center);
+            const gp_Pnt centroid = e->get_centroid();
+            const gp_Pnt c = utils::change_point(centroid, this->rot3D);
+            const auto S = this->get_S_3D(e->parent, c);
+
+            const double dx = centroid.X() - center.X();
+            const double dy = centroid.Y() - center.Y();
+            const double a = e->get_area();
+
             for(size_t i = 0; i < num_nodes; ++i){
                 const long id1 = e->nodes[i]->u_pos[0];
 
                 if(id1 > -1){
-                    // F
-                    Mat(0,j) += -(S(1,2)*dFx(0,2*i+0)-S(2,5)*dFx(2,2*i+0))*b[j][2*id1 + 0]/S(2,2);
-                    Mat(0,j) += -(S(0,2)*dFx(1,2*i+1)-S(2,5)*dFx(2,2*i+1))*b[j][2*id1 + 1]/S(2,2);
-                    Mat(1,j) += -(S(1,2)*dFy(0,2*i+0)-S(2,5)*dFy(2,2*i+0))*b[j][2*id1 + 0]/S(2,2);
-                    Mat(1,j) += -(S(0,2)*dFy(1,2*i+1)-S(2,5)*dFy(2,2*i+1))*b[j][2*id1 + 1]/S(2,2);
-                    Mat(2,j) += -(S(1,2)*dF (0,2*i+0)-S(2,5)*dF (2,2*i+0))*b[j][2*id1 + 0]/S(2,2);
-                    Mat(2,j) += -(S(0,2)*dF (1,2*i+1)-S(2,5)*dF (2,2*i+1))*b[j][2*id1 + 1]/S(2,2);
 
-                    // chi
-                    Mat(0,j) += -((-S(1,2)+S(0,2))*d1dofx(0,i)+S(2,5)*d1dofx(1,i))*b[j][F_phi_xi_offset + id1]/S(2,2);
-                    Mat(1,j) += -((-S(1,2)+S(0,2))*d1dofy(0,i)+S(2,5)*d1dofy(1,i))*b[j][F_phi_xi_offset + id1]/S(2,2);
-                    Mat(2,j) += -((-S(1,2)+S(0,2))*d1dof (0,i)+S(2,5)*d1dof (1,i))*b[j][F_phi_xi_offset + id1]/S(2,2);
 
-                    // zeta
-                    Mat(0,j) += -((S(1,2)-S(0,2))*d1dofx(1,i)+S(2,5)*d1dofx(0,i))*b[j][F_phi_xi_chi_offset + id1]/S(2,2);
-                    Mat(1,j) += -((S(1,2)-S(0,2))*d1dofy(1,i)+S(2,5)*d1dofy(0,i))*b[j][F_phi_xi_chi_offset + id1]/S(2,2);
-                    Mat(2,j) += -((S(1,2)-S(0,2))*d1dof (1,i)+S(2,5)*d1dof (0,i))*b[j][F_phi_xi_chi_offset + id1]/S(2,2);
                 }
 
                 const long id2 = e->nodes[i]->id;
 
-                // phi
-                Mat(0,j) += -(-S(2,3)*d1dofx(0,i)+S(2,4)*d1dofx(1,i))*b[j][F_offset + id2]/S(2,2);
-                Mat(1,j) += -(-S(2,3)*d1dofy(0,i)+S(2,4)*d1dofy(1,i))*b[j][F_offset + id2]/S(2,2);
-                Mat(2,j) += -(-S(2,3)*d1dof (0,i)+S(2,4)*d1dof (1,i))*b[j][F_offset + id2]/S(2,2);
-                Mat(3,j) += (-d1dofx(0,i)-d1dofy(1,i))*b[j][F_offset + id2];
-                Mat(4,j) += (-d1dof(0,i))*b[j][F_offset + id2];
-                Mat(5,j) += ( d1dof(1,i))*b[j][F_offset + id2];
-
                 // xi
-                Mat(0,j) += -(S(2,3)*d1dofx(1,i)+S(2,4)*d1dofx(0,i))*b[j][F_phi_offset + id2]/S(2,2);
-                Mat(1,j) += -(S(2,3)*d1dofy(1,i)+S(2,4)*d1dofy(0,i))*b[j][F_phi_offset + id2]/S(2,2);
-                Mat(2,j) += -(S(2,3)*d1dof (1,i)+S(2,4)*d1dof (0,i))*b[j][F_phi_offset + id2]/S(2,2);
-                Mat(3,j) += ( d1dofx(1,i)-d1dofy(0,i))*b[j][F_phi_offset + id2];
-                Mat(4,j) += ( d1dof(1,i))*b[j][F_phi_offset + id2];
-                Mat(5,j) += ( d1dof(0,i))*b[j][F_phi_offset + id2];
+                b[F_phi_offset + id2] += (Az*Nx[i] + Bz*Ny[i] + Cz*N[i])/S(2,2);
             }
         }
     }
-    const size_t MAX_B_HALF = MAX_B/2;
-    for(size_t i = 0; i < MAX_B_HALF; ++i){
-        for(size_t j = 0; j < MAX_B_HALF; ++j){
-            Mat(MAX_B_HALF + i, MAX_B_HALF + j) = Mat(i,j);
-        }
-    }
 
-    logger::quick_log(Mat);
-    logger::quick_log("");
-    logger::quick_log(Vec);
-    Eigen::Vector<double, MAX_B> Res = Mat.fullPivLu().solve(Vec);
+    solver.solve(b);
 
-    this->A     = Res[0];
-    this->B     = Res[1];
-    this->C     = Res[2];
-    this->theta = Res[3];
-    this->Kyz   = Res[4];
-    this->Kxz   = Res[5];
+    this->A     = b[F_phi_xi_chi_zeta_offset + 0];
+    this->B     = b[F_phi_xi_chi_zeta_offset + 1];
+    this->C     = b[F_phi_xi_chi_zeta_offset + 2];
+    this->theta = b[F_phi_xi_chi_zeta_offset + 3];
+    this->Kyz   = b[F_phi_xi_chi_zeta_offset + 4];
+    this->Kxz   = b[F_phi_xi_chi_zeta_offset + 5];
 
     /*
      * Save phi_0 and F_0 in the global vector.
@@ -533,17 +460,16 @@ void Curvature::calculate_stress_field_3D(const std::vector<std::unique_ptr<Mesh
     for(const auto& n:boundary_nodes){
         const long id1 = n->u_pos[0];
         const long id2 = n->id;
-        for(size_t i = 0; i < MAX_B; ++i){
-            if(id1 > -1){
-                this->F[2*n->id] += Res[i]*b[i][2*id1];
-                this->F[2*n->id+1] += Res[i]*b[i][2*id1+1];
-                this->chi[n->id] += Res[i]*b[i][F_phi_xi_offset + id1];
-                this->zeta[n->id] += Res[i]*b[i][F_phi_xi_chi_offset + id1];
-            }
+        if(id1 > -1){
+            this->F[2*n->id]   += b[2*id1];
+            this->F[2*n->id+1] += b[2*id1+1];
+            this->chi[n->id]   += b[F_phi_xi_offset + id1];
+            this->zeta[n->id]  += b[F_phi_xi_chi_offset + id1];
 
-            this->phi[n->id] += Res[i]*b[i][F_offset + id2];
-            this->xi[n->id] += Res[i]*b[i][F_phi_offset + id2];
+            this->phi[n->id]   += b[F_offset + id1];
         }
+
+        this->xi[n->id]  += b[F_phi_offset + id2];
     }
 
     bool F_zero = true;
@@ -577,7 +503,7 @@ void Curvature::calculate_stress_field_3D(const std::vector<std::unique_ptr<Mesh
     
 void Curvature::base_matrix_id(general_solver::MUMPSGeneral& M, const std::vector<std::unique_ptr<BoundaryMeshElement>>& boundary_mesh, const size_t num_nodes) const{
     const size_t F_offset = 2*this->reduced_vec_len; //this->F.size();
-    const size_t F_phi_offset = F_offset + this->phi.size();
+    const size_t F_phi_offset = F_offset + this->reduced_vec_len;
     const size_t F_phi_xi_offset = F_phi_offset + this->xi.size();
     const size_t F_phi_xi_chi_offset = F_phi_xi_offset + this->reduced_vec_len;//this->chi.size();
 
@@ -660,11 +586,13 @@ void Curvature::base_matrix_id(general_solver::MUMPSGeneral& M, const std::vecto
             if(id1 > -1){
                 pos_L4[2*i] = 2*id1;
                 pos_L4[2*i+1] = 2*id1+1;
+                pos_L2[i] = F_offset + id1;
                 pos_L2chi[i] = F_phi_xi_offset + id1;
                 pos_L2zeta[i] = F_phi_xi_chi_offset + id1;
             } else {
                 pos_L4[2*i] = -1;
                 pos_L4[2*i+1] = -1;
+                pos_L2[i] = -1;
                 pos_L2chi[i] = -1;
                 pos_L2zeta[i] = -1;
             }
@@ -672,7 +600,6 @@ void Curvature::base_matrix_id(general_solver::MUMPSGeneral& M, const std::vecto
 
         for(size_t i = 0; i < num_nodes; ++i){
             const long id1 = e->nodes[i]->id;
-            pos_L2[i] = F_offset + id1;
             pos_L2xi[i] = F_phi_offset + id1;
         }
 
