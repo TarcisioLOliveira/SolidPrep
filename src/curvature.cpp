@@ -401,9 +401,28 @@ void Curvature::calculate_stress_field_3D(const std::vector<std::unique_ptr<Mesh
         Bz = bz[F_phi_xi_chi_zeta_offset + 1];
         Cz = bz[F_phi_xi_chi_zeta_offset + 2];
 
+        const double Kyz_z = bz[F_phi_xi_chi_zeta_offset + 4];
+        const double Kxz_z = bz[F_phi_xi_chi_zeta_offset + 5];
+
         logger::quick_log("Az", Az);
         logger::quick_log("Bz", Bz);
         logger::quick_log("Cz", Cz);
+
+        #pragma omp parallel for
+        for(const auto& n:boundary_nodes){
+            const long id1 = n->u_pos[0];
+            const long id2 = n->id;
+            if(id1 > -1){
+                this->F[2*n->id]   = bz[2*id1];
+                this->F[2*n->id+1] = bz[2*id1+1];
+                this->chi[n->id]   = bz[F_phi_xi_offset + id1];
+                this->zeta[n->id]  = bz[F_phi_xi_chi_offset + id1];
+
+                this->phi[n->id]   = bz[F_offset + id1];
+            }
+
+            this->xi[n->id]  = bz[F_phi_offset + id2];
+        }
 
         for(const auto& e:boundary_mesh){
             const auto N = e->source_1dof();
@@ -423,24 +442,41 @@ void Curvature::calculate_stress_field_3D(const std::vector<std::unique_ptr<Mesh
             const gp_Pnt c = utils::change_point(centroid, this->rot3D);
             const auto S = this->get_S_3D(e->parent, c);
 
-            const double dx = centroid.X() - center.X();
-            const double dy = centroid.Y() - center.Y();
-            const double a = e->get_area();
+            const Eigen::MatrixXd grad_phi = e->int_NdN(this->phi);
+            const Eigen::MatrixXd grad_F = e->int_NdF(this->F);
+            const Eigen::MatrixXd grad_xi = e->int_NdN(this->xi);
+            const Eigen::MatrixXd grad_chi = e->int_NdN(this->chi);
+            const Eigen::MatrixXd grad_zeta = e->int_NdN(this->zeta);
 
             for(size_t i = 0; i < num_nodes; ++i){
                 const long id1 = e->nodes[i]->u_pos[0];
 
+                const double sx  =  grad_F(i,1) + grad_chi(i,0) - grad_zeta(i,1);
+                const double sy  =  grad_F(i,0) - grad_chi(i,0) + grad_zeta(i,1);
+                const double txy =  grad_F(i,2) + grad_chi(i,1) + grad_zeta(i,0);
+                const double tyz = -grad_phi(i,0) + grad_xi(i,1) + Kyz_z;
+                const double txz =  grad_phi(i,1) + grad_xi(i,0) + Kxz_z;
+
                 if(id1 > -1){
-
-
+                    // chi
+                    b[F_phi_xi_offset + id1] += txz;
+                    // zeta
+                    b[F_phi_xi_chi_offset + id1] += tyz;
                 }
 
                 const long id2 = e->nodes[i]->id;
 
                 // xi
                 b[F_phi_offset + id2] += (Az*Nx[i] + Bz*Ny[i] + Cz*N[i])/S(2,2);
+                b[F_phi_offset + id2] -= (S(0,2)*sx + S(1,2)*sy + S(2,3)*tyz + S(2,4)*txz + S(2,5)*txy)/S(2,2);
             }
         }
+
+        std::fill(F.begin(), F.end(), 0);
+        std::fill(phi.begin(), phi.end(), 0);
+        std::fill(xi.begin(), xi.end(), 0);
+        std::fill(chi.begin(), chi.end(), 0);
+        std::fill(zeta.begin(), zeta.end(), 0);
     }
 
     solver.solve(b);
@@ -461,36 +497,16 @@ void Curvature::calculate_stress_field_3D(const std::vector<std::unique_ptr<Mesh
         const long id1 = n->u_pos[0];
         const long id2 = n->id;
         if(id1 > -1){
-            this->F[2*n->id]   += b[2*id1];
-            this->F[2*n->id+1] += b[2*id1+1];
-            this->chi[n->id]   += b[F_phi_xi_offset + id1];
-            this->zeta[n->id]  += b[F_phi_xi_chi_offset + id1];
+            this->F[2*n->id]   = b[2*id1];
+            this->F[2*n->id+1] = b[2*id1+1];
+            this->chi[n->id]   = b[F_phi_xi_offset + id1];
+            this->zeta[n->id]  = b[F_phi_xi_chi_offset + id1];
 
-            this->phi[n->id]   += b[F_offset + id1];
+            this->phi[n->id]   = b[F_offset + id1];
         }
 
-        this->xi[n->id]  += b[F_phi_offset + id2];
+        this->xi[n->id]  = b[F_phi_offset + id2];
     }
-
-    bool F_zero = true;
-    bool xi_zero = true;
-    bool chi_zero = true;
-    bool zeta_zero = true;
-    for(const auto& n:boundary_nodes){
-        if(std::abs(F[2*n->id+0]) > 1e-10 || std::abs(F[2*n->id+1]) > 1e-10){
-            F_zero = false;
-        }
-        if(std::abs(this->xi[n->id]) > 1e-10){
-            xi_zero = false;
-        }
-        if(std::abs(this->chi[n->id]) > 1e-10){
-            chi_zero = false;
-        }
-        if(std::abs(this->zeta[n->id]) > 1e-10){
-            zeta_zero = false;
-        }
-    }
-    logger::quick_log(F_zero, xi_zero, chi_zero, zeta_zero);
 
     logger::quick_log("A", A);
     logger::quick_log("B", B);

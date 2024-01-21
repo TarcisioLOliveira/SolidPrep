@@ -202,19 +202,6 @@ Eigen::MatrixXd BTRI3::int_grad_F_y(const gp_Pnt& center) const{
 
     return dF;
 };
-Eigen::VectorXd BTRI3::int_N_AzBz(const gp_Pnt& center, const double Az, const double Bz) const{
-    const auto& gsi = utils::GaussLegendreTri<2>::get();
-    Eigen::Vector<double, 3>  result{0, 0, 0};
-    for(auto it = gsi.begin(); it < gsi.end(); ++it){
-        const gp_Pnt p = this->GS_point(it->a, it->b, it->c);
-        const double dx = p.X() - center.X();
-        const double dy = p.Y() - center.Y();
-        const auto NN = this->N_mat_1dof(p);
-        result += it->w*NN*(Az*dx + Bz*dy);
-    }
-
-    return delta*result;
-}
 Eigen::VectorXd BTRI3::int_N_x(const gp_Pnt& center) const{
     const auto& gsi = utils::GaussLegendreTri<2>::get();
     Eigen::Vector<double, 3>  result{0, 0, 0};
@@ -238,6 +225,33 @@ Eigen::VectorXd BTRI3::int_N_y(const gp_Pnt& center) const{
     }
 
     return delta*result;
+}
+Eigen::MatrixXd BTRI3::int_NdN(const std::vector<double>& phi) const{
+    const auto p = this->GS_point(1.0/3.0, 1.0/3.0, 1.0/3.0);
+    const auto N = this->N_mat_1dof(p);
+    const auto dN = this->dN_mat_1dof();
+
+    Eigen::Vector<double, 3> phiv{0, 0, 0};
+    for(size_t i = 0; i < 3; ++i){
+        const auto p = this->nodes[i]->id;
+        phiv[i] = phi[p];
+    }
+
+    return this->delta*N*(dN*phiv).transpose();
+}
+Eigen::MatrixXd BTRI3::int_NdF(const std::vector<double>& phi) const{
+    const auto p = this->GS_point(1.0/3.0, 1.0/3.0, 1.0/3.0);
+    const auto N = this->N_mat_1dof(p);
+    const auto dF = this->dF_mat_2dof();
+
+    Eigen::Vector<double, 6> phiv{0, 0, 0, 0, 0, 0};
+    for(size_t i = 0; i < 3; ++i){
+        const auto p = this->nodes[i]->id;
+        phiv[2*i+0] = phi[2*p+0];
+        phiv[2*i+1] = phi[2*p+1];
+    }
+
+    return this->delta*N*(dF*phiv).transpose();
 }
 
 Eigen::MatrixXd BTRI3::int_grad_F_t2_t1(const Eigen::MatrixXd& B3, const gp_Pnt& center) const{

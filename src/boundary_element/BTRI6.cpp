@@ -300,22 +300,6 @@ Eigen::MatrixXd BTRI6::int_grad_F_y(const gp_Pnt& center) const{
 
     return result;
 };
-Eigen::VectorXd BTRI6::int_N_AzBz(const gp_Pnt& center, const double Az, const double Bz) const{
-    Eigen::Vector<double, 6> result;
-    result.fill(0);
-
-    const auto& gli = utils::GaussLegendreTri<3>::get();
-    for(auto it = gli.begin(); it < gli.end(); ++it){
-        const gp_Pnt p = this->GS_point(it->a, it->b, it->c);
-        const double dx = p.X() - center.X();
-        const double dy = p.Y() - center.Y();
-        const auto N = this->N_mat_1dof(p);
-        result += it->w*N*(Az*dx+Bz*dy);
-    }
-    result *= delta;
-
-    return result;
-}
 Eigen::VectorXd BTRI6::int_N_x(const gp_Pnt& center) const{
     const auto& gsi = utils::GaussLegendreTri<3>::get();
     Eigen::Vector<double, 6>  result{0, 0, 0, 0, 0, 0};
@@ -336,6 +320,47 @@ Eigen::VectorXd BTRI6::int_N_y(const gp_Pnt& center) const{
         const double dy = p.Y() - center.Y();
         const auto NN = this->N_mat_1dof(p);
         result += it->w*NN*dy;
+    }
+
+    return delta*result;
+}
+Eigen::MatrixXd BTRI6::int_NdN(const std::vector<double>& phi) const{
+    Eigen::Matrix<double, 6, 2> result;
+    result.fill(0);
+
+    Eigen::Vector<double, 6> phiv{0, 0, 0, 0, 0, 0};
+    for(size_t i = 0; i < 6; ++i){
+        const auto p = this->nodes[i]->id;
+        phiv[i] = phi[p];
+    }
+
+    const auto& gsi = utils::GaussLegendreTri<3>::get();
+    for(auto it = gsi.begin(); it < gsi.end(); ++it){
+        const gp_Pnt p = this->GS_point(it->a, it->b, it->c);
+        const auto N = this->N_mat_1dof(p);
+        const auto dN = this->dN_mat_1dof(p);
+        result += it->w*N*(dN*phiv).transpose();
+    }
+
+    return delta*result;
+}
+Eigen::MatrixXd BTRI6::int_NdF(const std::vector<double>& phi) const{
+    Eigen::Matrix<double, 6, 3> result;
+    result.fill(0);
+
+    Eigen::Vector<double, 12> phiv{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+    for(size_t i = 0; i < 6; ++i){
+        const auto p = this->nodes[i]->id;
+        phiv[2*i+0] = phi[2*p+0];
+        phiv[2*i+1] = phi[2*p+1];
+    }
+
+    const auto& gsi = utils::GaussLegendreTri<3>::get();
+    for(auto it = gsi.begin(); it < gsi.end(); ++it){
+        const gp_Pnt p = this->GS_point(it->a, it->b, it->c);
+        const auto N = this->N_mat_1dof(p);
+        const auto dF = this->dF_mat_2dof(p);
+        result += it->w*N*(dF*phiv).transpose();
     }
 
     return delta*result;
