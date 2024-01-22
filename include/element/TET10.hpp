@@ -270,11 +270,11 @@ class TET10 : public MeshElementCommon3DTet<TET10>{
             dNN(3,3*i+0) = Ny;
             dNN(3,3*i+1) = Nx;
 
-            dNN(4,3*i+1) = Nz;
-            dNN(4,3*i+2) = Ny;
+            dNN(4,3*i+0) = Nz;
+            dNN(4,3*i+2) = Nx;
 
-            dNN(5,3*i+0) = Nz;
-            dNN(5,3*i+2) = Nx;
+            dNN(5,3*i+1) = Nz;
+            dNN(5,3*i+2) = Ny;
         }
 
         return dNN;

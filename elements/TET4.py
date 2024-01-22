@@ -129,12 +129,13 @@ def init_DB():
         B3[3*i+1] = sympy.simplify(sympy.expand(sympy.diff(N[i][1,1], x)))
 
     for i in range(4):
-        B4[3*i+1] = sympy.simplify(sympy.expand(sympy.diff(N[i][1,1], z)))
-        B4[3*i+2] = sympy.simplify(sympy.expand(sympy.diff(N[i][2,2], y)))
+        B4[3*i+0] = sympy.simplify(sympy.expand(sympy.diff(N[i][0,0], z)))
+        B4[3*i+2] = sympy.simplify(sympy.expand(sympy.diff(N[i][2,2], x)))
 
     for i in range(4):
-        B5[3*i+0] = sympy.simplify(sympy.expand(sympy.diff(N[i][0,0], z)))
-        B5[3*i+2] = sympy.simplify(sympy.expand(sympy.diff(N[i][2,2], x)))
+        B5[3*i+1] = sympy.simplify(sympy.expand(sympy.diff(N[i][1,1], z)))
+        B5[3*i+2] = sympy.simplify(sympy.expand(sympy.diff(N[i][2,2], y)))
+
 
     B = sympy.Matrix([B0, B1, B2, B3, B4, B5])
 

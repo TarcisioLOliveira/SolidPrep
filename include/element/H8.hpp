@@ -264,10 +264,10 @@ class H8 : public MeshElementCommon3DHex<H8>{
             Bm(2, 3*i + 2) = Niz[i];
             Bm(3, 3*i + 0) = Niy[i];
             Bm(3, 3*i + 1) = Nix[i];
-            Bm(4, 3*i + 1) = Niz[i];
-            Bm(4, 3*i + 2) = Niy[i];
-            Bm(5, 3*i + 0) = Niz[i];
-            Bm(5, 3*i + 2) = Nix[i];
+            Bm(4, 3*i + 0) = Niz[i];
+            Bm(4, 3*i + 2) = Nix[i];
+            Bm(5, 3*i + 1) = Niz[i];
+            Bm(5, 3*i + 2) = Niy[i];
         }
 
         return Bm;
