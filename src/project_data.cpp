@@ -294,6 +294,12 @@ std::vector<std::unique_ptr<Material>> ProjectData::load_materials(const rapidjs
             }
             this->log_data(mat, "density", TYPE_DOUBLE, true);
             double density = mat["density"].GetDouble();
+            this->log_data(mat, "nu_lower_half", TYPE_ARRAY, true);
+            const auto& nuarr = mat["nu_lower_half"].GetArray();
+            std::vector<bool> nu_lower_half
+                {nuarr[0].GetBool(),
+                 nuarr[1].GetBool(),
+                 nuarr[2].GetBool()};
 
             for(auto& i:values[0]) i *= 1e3; // E
             for(auto& i:values[2]) i *= 1e3; // G
@@ -301,7 +307,7 @@ std::vector<std::unique_ptr<Material>> ProjectData::load_materials(const rapidjs
             // for(auto& i:values[2]) i *= 1e9; // G
             // for(auto& i:values[3]) i *= 1e6; // Smax
             // for(auto& i:values[4]) i *= 1e6; // Tmax
-            material.emplace_back(new material::LinearElasticOrthotropic(name, density, values[0], values[1], values[2], values[3], values[4]));
+            material.emplace_back(new material::LinearElasticOrthotropic(name, density, values[0], values[1], nu_lower_half, values[2], values[3], values[4]));
         } else if(mat["type"] == "linear_elastic_isotropic"){
             std::vector<std::string> properties{"density", "E", "nu", "Smax", "Tmax"};
             for(auto& s:properties){
@@ -315,7 +321,6 @@ std::vector<std::unique_ptr<Material>> ProjectData::load_materials(const rapidjs
             double density = mat["density"].GetDouble();
             bool plane_stress = mat["plane_stress"].GetBool();
 
-            //this->material.reset(new material::LinearElasticIsotropic(E*1e9, nu, Smax*1e6, Tmax*1e6, plane_stress));
             material.emplace_back(new material::LinearElasticIsotropic(name, density, E*1e3, nu, Smax, Tmax, plane_stress));
         } else if(mat["type"] == "linear_elastic_orthotropic_field"){
             std::vector<std::string> properties{"E", "nu", "G", "Smax", "Tmax"};
@@ -343,6 +348,12 @@ std::vector<std::unique_ptr<Material>> ProjectData::load_materials(const rapidjs
             this->log_data(mat, "density", TYPE_DOUBLE, true);
             double density = mat["density"].GetDouble();
             int field_num = mat["field"].GetInt();
+            this->log_data(mat, "nu_lower_half", TYPE_ARRAY, true);
+            const auto& nuarr = mat["nu_lower_half"].GetArray();
+            std::vector<bool> nu_lower_half
+                {nuarr[0].GetBool(),
+                 nuarr[1].GetBool(),
+                 nuarr[2].GetBool()};
 
             for(auto& i:values[0]) i *= 1e3; // E
             for(auto& i:values[2]) i *= 1e3; // G
@@ -357,7 +368,7 @@ std::vector<std::unique_ptr<Material>> ProjectData::load_materials(const rapidjs
             logger::log_assert(f->get_type() == Field::Type::COORDINATE, logger::ERROR, "orthotropic_field material type requires a coordinate field");
             CoordinateField* cf = static_cast<CoordinateField*>(f);
 
-            material.emplace_back(new material::LinearElasticOrthotropicField(name, density, values[0], values[1], values[2], values[3], values[4], cf));
+            material.emplace_back(new material::LinearElasticOrthotropicField(name, density, values[0], values[1], nu_lower_half, values[2], values[3], values[4], cf));
         } else if(mat["type"] == "mandible"){
             queue.push_back(mat_num);
         }

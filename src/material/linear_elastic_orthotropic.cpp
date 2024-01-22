@@ -28,19 +28,36 @@
 
 namespace material{
 
-LinearElasticOrthotropic::LinearElasticOrthotropic(const std::string& name, const double density, std::vector<double> E, std::vector<double> nu, std::vector<double> G, std::vector<double> Smax, std::vector<double> Tmax):
+LinearElasticOrthotropic::LinearElasticOrthotropic(const std::string& name, const double density, std::vector<double> E, std::vector<double> nu, std::vector<bool> nu_lower_half, std::vector<double> G, std::vector<double> Smax, std::vector<double> Tmax):
     Material(name, std::move(Smax), std::move(Tmax)), density(density){
    
+    double Sxy = 0, Sxz = 0, Syz = 0;
+    if(nu_lower_half[0]){
+        Sxy = -nu[0]/E[0];
+    } else {
+        Sxy = -nu[0]/E[1];
+    }
+    if(nu_lower_half[1]){
+        Sxz = -nu[1]/E[0];
+    } else {
+        Sxz = -nu[1]/E[2];
+    }
+    if(nu_lower_half[2]){
+        Syz = -nu[2]/E[1];
+    } else {
+        Syz = -nu[2]/E[2];
+    }
+
     this->S_2D.resize(9,0);
-    S_2D[0] = 1/E[0]; S_2D[1] = -nu[0]/E[0];
-    S_2D[3] = -nu[0]/E[0]; S_2D[4] = 1/E[1];
+    S_2D[0] = 1/E[0]; S_2D[1] = Sxy;
+    S_2D[3] = Sxy; S_2D[4] = 1/E[1];
     S_2D[8] = 1/G[0];
     this->D_2D = utils::D_op::invert_2D(S_2D);
 
     this->S_3D.resize(36,0);
-    S_3D[ 0] = 1/E[0]; S_3D[ 1] = -nu[0]/E[0]; S_3D[ 2] = -nu[1]/E[0];
-    S_3D[ 6] = -nu[0]/E[0]; S_3D[ 7] = 1/E[1]; S_3D[ 8] = -nu[2]/E[1];
-    S_3D[12] = -nu[1]/E[0]; S_3D[13] = -nu[2]/E[1]; S_3D[14] = 1/E[2];
+    S_3D[ 0] = 1/E[0]; S_3D[ 1] = Sxy; S_3D[ 2] = Sxz;
+    S_3D[ 6] = Sxy; S_3D[ 7] = 1/E[1]; S_3D[ 8] = Syz;
+    S_3D[12] = Sxz; S_3D[13] = Syz; S_3D[14] = 1/E[2];
     S_3D[21] = 1/G[0];
     S_3D[28] = 1/G[1];
     S_3D[35] = 1/G[2];

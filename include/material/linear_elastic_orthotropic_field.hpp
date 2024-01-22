@@ -28,7 +28,7 @@ namespace material{
 
 class LinearElasticOrthotropicField : public Material{
     public:
-    LinearElasticOrthotropicField(const std::string& name, const double density, std::vector<double> E, std::vector<double> nu, std::vector<double> G, std::vector<double> Smax, std::vector<double> Tmax, const CoordinateField* field);
+    LinearElasticOrthotropicField(const std::string& name, const double density, std::vector<double> E, std::vector<double> nu, std::vector<bool> nu_lower_half, std::vector<double> G, std::vector<double> Smax, std::vector<double> Tmax, const CoordinateField* field);
 
     virtual std::vector<double> stiffness_2D(const MeshElement* const e, const gp_Pnt& p) const override;
     virtual std::vector<double> stiffness_3D(const MeshElement* const e, const gp_Pnt& p) const override;
