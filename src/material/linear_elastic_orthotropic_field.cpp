@@ -102,44 +102,41 @@ double LinearElasticOrthotropicField::beam_E_2D(const MeshElement* const e, cons
     // Anisotropic Elasticity: Theory and Applications
     // (Ting, 1996)
 
-    auto d = this->stiffness_2D(e, p);
-    const auto Rt = utils::basis_tensor_2D(R);
-    this->rotate_D_2D(d, Rt);
+    auto S = this->stiffness_inverse_2D(e, p);
+    const auto Rt = utils::basis_tensor_2D_inv_T(R);
+    this->rotate_S_2D(S, Rt);
 
-    return d[0];
+    return 1/S[0];
 }
 double LinearElasticOrthotropicField::beam_E_3D(const MeshElement* const e, const gp_Pnt& p, const Eigen::Matrix<double, 3, 3>& R) const{
     // Anisotropic Elasticity: Theory and Applications
     // (Ting, 1996)
 
-    auto d = this->stiffness_3D(e, p);
+    auto S = this->stiffness_inverse_3D(e, p);
+    const auto Rt = utils::basis_tensor_3D_inv_T(R);
+    this->rotate_S_3D(S, Rt);
 
-    const auto Rt = utils::basis_tensor_3D(R);
-    this->rotate_D_3D(d, Rt);
-
-    return d[0];
+    return 1.0/S[0];
 }
 std::array<double, 2> LinearElasticOrthotropicField::beam_EG_2D(const MeshElement* const e, const gp_Pnt& p, const Eigen::Matrix<double, 2, 2>& R) const{
     // Anisotropic Elasticity: Theory and Applications
     // (Ting, 1996)
 
-    auto d = this->stiffness_2D(e, p);
+    auto S = this->stiffness_inverse_2D(e, p);
+    const auto Rt = utils::basis_tensor_2D_inv_T(R);
+    this->rotate_S_2D(S, Rt);
 
-    const auto Rt = utils::basis_tensor_2D(R);
-    this->rotate_D_2D(d, Rt);
-
-    return {d[0], d[8]};
+    return {1.0/S[0], 1.0/S[8]};
 }
 std::array<double, 4> LinearElasticOrthotropicField::beam_EG_3D(const MeshElement* const e, const gp_Pnt& p, const Eigen::Matrix<double, 3, 3>& R) const{
     // Anisotropic Elasticity: Theory and Applications
     // (Ting, 1996)
 
-    auto d = this->stiffness_3D(e, p);
+    auto S = this->stiffness_inverse_3D(e, p);
+    const auto Rt = utils::basis_tensor_3D_inv_T(R);
+    this->rotate_S_3D(S, Rt);
 
-    const auto Rt = utils::basis_tensor_3D(R);
-    this->rotate_D_3D(d, Rt);
-
-    return {d[0], d[21], d[28], d[35]};
+    return {1.0/S[0], 1.0/S[21], 1.0/S[28], 1.0/S[35]};
 }
 
 double LinearElasticOrthotropicField::S12_2D(const MeshElement* const e, const gp_Pnt& p, const Eigen::Matrix<double, 2, 2>& R) const{

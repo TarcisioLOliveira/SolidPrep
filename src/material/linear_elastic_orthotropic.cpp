@@ -71,10 +71,10 @@ double LinearElasticOrthotropic::beam_E_2D(const MeshElement* const e, const gp_
     (void)e;
 
     const auto Rt = utils::basis_tensor_2D(R);
-    auto d = this->D_2D;
-    this->rotate_D_2D(d, Rt);
+    auto S = this->S_2D;
+    this->rotate_S_2D(S, Rt);
 
-    return d[0];
+    return 1.0/S[0];
 }
 double LinearElasticOrthotropic::beam_E_3D(const MeshElement* const e, const gp_Pnt& p, const Eigen::Matrix<double, 3, 3>& R) const{
     // Anisotropic Elasticity: Theory and Applications
@@ -83,10 +83,10 @@ double LinearElasticOrthotropic::beam_E_3D(const MeshElement* const e, const gp_
     (void)e;
 
     const auto Rt = utils::basis_tensor_3D(R);
-    auto d = this->D_3D;
-    this->rotate_D_3D(d, Rt);
+    auto S = this->S_3D;
+    this->rotate_S_3D(S, Rt);
 
-    return d[0];
+    return 1.0/S[0];
 }
 std::array<double, 2> LinearElasticOrthotropic::beam_EG_2D(const MeshElement* const e, const gp_Pnt& p, const Eigen::Matrix<double, 2, 2>& R) const{
     // Anisotropic Elasticity: Theory and Applications
@@ -95,10 +95,10 @@ std::array<double, 2> LinearElasticOrthotropic::beam_EG_2D(const MeshElement* co
     (void)e;
 
     const auto Rt = utils::basis_tensor_2D(R);
-    auto d = this->D_2D;
-    this->rotate_D_2D(d, Rt);
+    auto S = this->S_2D;
+    this->rotate_S_2D(S, Rt);
 
-    return {d[0], d[8]};
+    return {1.0/S[0], 1.0/S[8]};
 }
 std::array<double, 4> LinearElasticOrthotropic::beam_EG_3D(const MeshElement* const e, const gp_Pnt& p, const Eigen::Matrix<double, 3, 3>& R) const{
     // Anisotropic Elasticity: Theory and Applications
@@ -107,10 +107,10 @@ std::array<double, 4> LinearElasticOrthotropic::beam_EG_3D(const MeshElement* co
     (void)e;
 
     const auto Rt = utils::basis_tensor_3D(R);
-    auto d = this->D_3D;
-    this->rotate_D_3D(d, Rt);
+    auto S = this->S_3D;
+    this->rotate_S_3D(S, Rt);
 
-    return {d[0], d[21], d[28], d[35]};
+    return {1.0/S[0], 1.0/S[21], 1.0/S[28], 1.0/S[35]};
 }
 
 std::vector<double> LinearElasticOrthotropic::get_max_stresses(gp_Dir d) const{
