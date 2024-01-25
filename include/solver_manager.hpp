@@ -33,6 +33,8 @@ class SolverManager{
     void calculate_displacements_global(const Meshing* const mesh, std::vector<std::vector<double>>& load, std::vector<double>& u);
     void calculate_displacements_adjoint(const Meshing* const mesh, std::vector<std::vector<double>>& load, std::vector<double>& u);
 
+    std::vector<double> calculate_reactions(const Meshing* const mesh, const std::vector<double>& u) const;
+
     const std::vector<std::vector<double>>& sub_u = this->split_u;
     const std::vector<std::vector<double>>& D_vec = this->D_matrices;
 

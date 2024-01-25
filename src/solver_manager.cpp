@@ -215,3 +215,96 @@ void SolverManager::update_D_matrices(const Meshing* const mesh, const std::vect
     }
     logger::quick_log("Done.");
 }
+
+std::vector<double> SolverManager::calculate_reactions(const Meshing* const mesh, const std::vector<double>& u) const{
+    const double t = mesh->thickness;
+    const size_t dof       = mesh->elem_info->get_dof_per_node();
+    const size_t node_num  = mesh->elem_info->get_nodes_per_element();
+    const size_t bnode_num = mesh->elem_info->get_boundary_nodes_per_element();
+    const size_t k_size    = mesh->elem_info->get_k_dimension();
+    std::vector<double> f(u.size(),0);
+
+    size_t D_offset = 0;
+    std::vector<long> u_pos(k_size);
+    std::vector<double> F(dof);
+    for(auto& g : mesh->geometries){
+        if(!g->materials.get_materials()[0]->is_homogeneous()){
+            size_t it = 0;
+            for(const auto& e:g->mesh){
+                for(size_t i = 0; i < node_num; ++i){
+                    const auto& n = e->nodes[i];
+                    for(size_t j = 0; j < dof; ++j){
+                        u_pos[i*dof + j] = n->u_pos[j];
+                    }
+                }
+                const auto& D = this->D_matrices[D_offset + it];
+                std::vector<double> k = e->get_k(D, t);
+                ++it;
+                for(size_t i = 0; i < k_size; ++i){
+                    for(size_t j = 0; j < k_size; ++j){
+                        if(u_pos[i] > -1 && u_pos[j] > -1){
+                            const double val = k[i*k_size + j]*u[u_pos[j]];
+                            f[u_pos[i]] += val;
+                            F[i % dof] += val;
+                        }
+                    }                    
+                }
+            }
+            D_offset += g->mesh.size();
+        } else {
+            const auto D = g->materials.get_D(g->mesh.front().get(), g->mesh.front()->get_centroid());
+            for(auto& e : g->mesh){
+                for(size_t i = 0; i < node_num; ++i){
+                    const auto& n = e->nodes[i];
+                    for(size_t j = 0; j < dof; ++j){
+                        u_pos[i*dof + j] = n->u_pos[j];
+                    }
+                }
+                const std::vector<double> k = e->get_k(D, t);
+                for(size_t i = 0; i < k_size; ++i){
+                    for(size_t j = 0; j < k_size; ++j){
+                        if(u_pos[i] > -1 && u_pos[j] > -1){
+                            const double val = k[i*k_size + j]*u[u_pos[j]];
+                            f[u_pos[i]] += val;
+                            F[i % dof] += val;
+                        }
+                    }                    
+                }
+            }
+        }
+    }
+    //if(mesh->springs->size() > 0){
+    //    std::vector<gp_Pnt> points(bnode_num);
+    //    for(size_t it = 0; it < mesh->springs->size(); ++it){
+    //        for(const auto& b : mesh->springs->at(it).submesh){
+    //            const auto c = b->get_centroid(bnode_num);
+    //            const auto& K = mesh->springs->at(it).get_K(b->parent, c);
+    //            const auto& e = b->parent;
+    //            for(size_t i = 0; i < bnode_num; ++i){
+    //                points[i] = b->nodes[i]->point;
+    //            }
+    //            for(size_t i = 0; i < node_num; ++i){
+    //                const auto& n = e->nodes[i];
+    //                for(size_t j = 0; j < dof; ++j){
+    //                    u_pos[i*dof + j] = n->u_pos[j];
+    //                }
+    //            }
+    //            const std::vector<double> R = e->get_R(K, t, points);
+    //            for(size_t i = 0; i < k_size; ++i){
+    //                for(size_t j = 0; j < k_size; ++j){
+    //                    if(u_pos[i] > -1 && u_pos[j] > -1){
+    //                        const double val = R[i*k_size + j]*u[u_pos[j]];
+    //                        f[u_pos[i]] += val;
+    //                        F[i % dof] += val;
+    //                    }
+    //                }                    
+    //            }
+    //        }
+    //    }
+    //}
+    logger::quick_log("Force equilibrium:");
+    logger::quick_log(F);
+    logger::quick_log("");
+
+    return f;
+}
