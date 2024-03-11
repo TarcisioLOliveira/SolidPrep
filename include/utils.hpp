@@ -160,6 +160,17 @@ namespace utils{
     }
 
     template<>
+    inline std::string format<const std::string&>(std::string str, const std::string& a){
+        size_t pos = str.find("{}");
+
+        if(pos == std::string::npos){
+            return str;
+        } else {
+            return str.substr(0, pos) + a + str.substr(pos+2);
+        }
+    }
+
+    template<>
     inline std::string format<const char*>(std::string str, const char*&& a){
         size_t pos = str.find("{}");
 
