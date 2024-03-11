@@ -221,7 +221,7 @@ TopoDS_Shape load_shape(const std::string& path, double scale) {
     IFSelect_ReturnStatus stat = reader.ReadFile(path.c_str());
     if(stat != IFSelect_RetDone){
         reader.PrintCheckLoad(false, IFSelect_ItemsByEntity);
-        exit(EXIT_FAILURE);
+        logger::log_assert(false, logger::ERROR, "STEP file not found: {}", path);
     }
 
     Standard_Integer NbRoots = reader.NbRootsForTransfer();
@@ -231,7 +231,7 @@ TopoDS_Shape load_shape(const std::string& path, double scale) {
     s = reader.OneShape();
     if(s.IsNull()){
         reader.PrintCheckTransfer(true, IFSelect_ItemsByEntity);
-        exit(EXIT_FAILURE);
+        logger::log_assert(false, logger::ERROR, "STEP file is empty: {}", path);
     }
 
     if(scale != 1){
