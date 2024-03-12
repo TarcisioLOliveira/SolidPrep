@@ -5,16 +5,37 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [UNRELEASED]
+
+## [v0.2.0]
 ### Added
 - `ElementCommon` family of classes, to enhance code reuse and extension among
   element classes.
 - `Geometry` class, replacing `GroundStructure`.
 - Support for multiple geometries.
 - Support for multiple materials.
-- Q4 element.
-- Iterative solvers (gradient descent and PCG).
+- Q4, Q4S, TET4, H8 elements.
+- Iterative solvers (gradient descent and PCG) (not recommended).
+- MUMPS support.
+- PETSc support (CPU + CUDA).
+- Eigen3 support.
+- Gauss-Legendre integration (using GSL).
+- Improved results display using SPView.
+- OpenMP support.
+- Support for combining different objective and restriction functions.
+- Support for different density filters.
+- Support for different projection approaches.
+- Support for generating fields using the generated meshes.
+- Support for non-homogeneous materials.
+- Support for different boundary conditions (beyond force and support).
+- GlobalStiffnessMatrix base class.
+- General solvers.
+- Experimental features.
 
 ### Fixed
+- Many small fixes.
+- Improved error messages in ProjectData (more work is still necessary).
+- Display error message on missing STEP file.
+- Some problems were obsoleted due to rewrites.
 
 ### Changed
 - Moved project loading from header to source file.
@@ -22,6 +43,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fully refactor element classes.
 - Fully refactor finite element classes.
 - Fully refactor meshing classes.
+- Improve OpenMP approach to MMA.
+- Deprecate `topology_optimization` directory.
 - Many optimizations.
 
 ### Removed
