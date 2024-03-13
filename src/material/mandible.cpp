@@ -330,7 +330,9 @@ double Mandible::angle_with_ref(const gp_Vec& dist) const{
     const gp_Vec cv = n.Crossed(this->center_ref);
     const double mult = cv.Dot(this->center_normal);
 
-    return std::acos(n.Dot(this->center_ref))*mult/std::abs(mult) + M_PI;
+    const int sgn = (0 <= mult) - (mult < 0);
+
+    return std::acos(n.Dot(this->center_ref))*sgn + M_PI;
 }
 
 Mandible::ImplantRegion::ImplantRegion(const gp_Pnt& center_1, const gp_Pnt& center_2, double r1, double r2, const std::vector<double>& a, double dl):
