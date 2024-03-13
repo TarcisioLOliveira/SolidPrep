@@ -1,0 +1,275 @@
+{
+    "solid_type": "3D", // or "3D"
+    "analysis": "fea_only", // or "fea_only" or "beams_only" or "topopt_only"
+    "material":[
+        {
+            "name": "steel",
+            "type": "linear_elastic_isotropic",
+            "Smax": 100.0,
+            "Tmax": 75.0,
+            "density": 7600,
+            "E": 180.0,
+            "nu": 0.3,
+            "plane_stress": true
+        },
+        {
+            "name": "cortical",
+            "type": "linear_elastic_orthotropic_field",
+            "Smax": [100, 100, 100],
+            "Tmax": [75, 75, 75],
+            "E": [26.6, 12.5, 17.9], // Longitudinal, Radial, Transversal
+            "nu": [0.31, 0.28, 0.18],
+            "nu_lower_half": [false, false, true],
+            "G": [5.3, 7.1, 4.5],
+            "density": 1740,
+            "plane_stress": true,
+            "field": 0
+        },
+        {
+            "name": "trabecular",
+            "type": "linear_elastic_orthotropic_field",
+            "Smax": [100, 100, 100],
+            "Tmax": [75, 75, 75],
+            "E": [0.907, 0.511, 0.114], // Longitudinal, Radial, Transversal
+            "nu": [0.31, 0.3, 0.22],
+            "nu_lower_half": [false, false, true],
+            "G": [0.434, 0.081, 0.078],
+            "density": 1740,
+            "plane_stress": true,
+            "field": 0
+        },
+        {
+            "name": "mandible",
+            "type": "mandible",
+            "material_outer": "cortical",
+            "material_inner": "trabecular",
+            "C": 50,
+            "path_points1": "rbm_p1.txt",
+            "path_points2": "rbm_p2.txt"
+        }
+    ],
+    "geometry":[
+        {
+            // 100x40x40
+            "file_path": "prism.step", // Relative path from problem definition file's path
+            "scale": 1, // [mm]
+            "material": "mandible",
+            //"alt_materials": ["bone"],
+            "do_topopt": true
+        }
+    ],
+    "fields":[
+        {
+            "type": "orthotropic_flow",
+            "display": false,
+            "alpha": 1e-4,
+            "geometries": [0],
+            "boundary_conditions":[
+                {
+                    "coeff": -1,
+                    "rectangle":{
+                        "center": [-50,0,0], // [mm], set to scale
+                        "normal": [-1,0,0],
+                        "w": 40, // [mm]
+                        "h": 40, // [mm]
+                        "rotation": 0 // [°]
+                    }
+                },
+                {
+                    "coeff": 1,
+                    "rectangle":{
+                        "center": [50,0,0], // [mm], set to scale
+                        "normal": [1,0,0],
+                        "w": 40, // [mm]
+                        "h": 40, // [mm]
+                        "rotation": 0 // [°]
+                    }
+                }
+            ]
+        }
+    ],
+    "finite_element":{
+        "type": "mumps",
+        "eps": 1e-5,
+        "solver": "mma",
+        "preconditioner": "jacobi",
+        "backend": "cuda"
+    },
+    "sizing":{
+        "type": "standard_sizing", // Sizing algorithm2D
+        "element_size": 2, // Element size for beam analysis
+        "oversizing": 1.0, // Oversizing constant, optional
+        "finite_element":{
+            "type": "direct_solver"
+        },
+        "pathfinding":{
+            "type": "visibility_graph",
+            "step": 2, // [mm]
+            "restriction_size": 0, // Optional, defines additional safety distance from edges.
+            "max_turn_angle": 5 // [°]
+        }
+    },
+    "mesher":{
+        "type": "gmsh",
+        "element_size": 2.0,
+        "element_type": "TET4", //YUQIU and YIN, 1994
+        "algorithm2D": 8, // Gmsh meshing algorithm2D, optional
+        "algorithm3D": 10 // Gmsh meshing algorithm3D, optional
+    },
+    "topopt":{
+        "type": "mma",
+        "pc": 3, // penalization
+        "xtol_abs": 1e-8, // Convergence criterium, absolute maximum design variable change
+        "ftol_rel": -1e-10, // Convergence criterium, relative maximum compliance change
+        "result_threshold": 0.5, // Minimum density a the resulting element must have to be included in resulting STEP file
+        "save_result": false, // Save result as STEP file
+        "rho_init": 0.2, // Initial density
+        "psi": 0.5,
+        "asyminit": 0.005,
+        "asymdec": 0.7,
+        "asyminc": 1.2,
+        "maxfac": 1e-2,
+        "minfac": 1e-6,
+        "c": 1e5,
+        "density_filter":{
+            "type":"averaging",
+            "radius": 8
+        },
+        "projection":{
+            "type":"none",
+            "eta": 0.5,
+            "beta":{
+                "initial": 1,
+                "final": 16,
+                "value_step": 2,
+                "iteration_step": 1000
+            }
+        },
+        "objective":[
+            {
+                "type": "volume",
+                "weight": 1
+            }
+        ],
+        "constraints":[
+            //{
+            //    "type": "volume",
+            //    "less_than": 0.5
+            //},
+            //{
+            //    "type": "mechanostat",
+            //    "beta": 1e5,
+            //    "compression": [100, 1000],
+            //    "traction": [65, 650],
+            //    "shear": [35, 350],
+            //    "less_than": 1e-1
+            //}
+            //{
+            //    "type": "global_stress_pnorm_normalized",
+            //    "less_than": 10,
+            //    "P": 40,
+            //    "pt": 0.5,
+            //    "psi": 0.5,
+            //    "weight": 1.0
+            //}
+            {
+                "type": "global_stress_heaviside",
+                "max_stress": 6,
+                "C": 1e5,
+                "pt": 0.5,
+                "psi": 0.3,
+                "less_than": 1e-1
+            }
+        ]
+    },
+    //"loads":[
+    //    {
+    //        "rectangle":{
+    //            "center": [0,-20,0], // [mm], set to scale
+    //            "normal": [0,-1,0],
+    //            "w": 10, // [mm]
+    //            "h": 10, // [mm]
+    //            "rotation": 0 // [°]
+    //        },
+    //        "load": [0, -1e-10, 0] // [N]
+    //    }
+    //    //{
+    //    //    "rectangle":{
+    //    //        "center": [-50,0,0], // [mm], set to scale
+    //    //        "normal": [-1,0,0],
+    //    //        "w": 40, // [mm]
+    //    //        "h": 40, // [mm]
+    //    //        "rotation": 0 // [°]
+    //    //    },
+    //    //    "load": [0, -2000, 0] // [N]
+    //    //}
+    //],
+    "supports":[
+        //{
+        //    "X": true, // Blocks X forces
+        //    "Y": true, // Blocks Y forces
+        //    "Z": true, // Blocks Z forces
+        //    "MX": true, // Blocks moments around X
+        //    "MY": true, // Blocks moments around Y
+        //    "MZ": true, // Blocks moments around Z
+        //    "rectangle":{
+        //        "center": [-50,0,0], // [mm], set to scale
+        //        "normal": [-1,0,0],
+        //        "w": 40, // [mm]
+        //        "h": 40, // [mm]
+        //        "rotation": 0 // [°]
+        //    }
+        //},
+        {
+            "X": true, // Blocks X forces
+            "Y": true, // Blocks Y forces
+            "Z": true, // Blocks Z forces
+            "MX": true, // Blocks moments around X
+            "MY": true, // Blocks moments around Y
+            "MZ": true, // Blocks moments around Z
+            "rectangle":{
+                "center": [50,0,0], // [mm], set to scale
+                "normal": [1,0,0],
+                "w": 40, // [mm]
+                "h": 40, // [mm]
+                "rotation": 0 // [°]
+            }
+        }
+    ],
+    "internal_loads":[
+        {
+            "material": "mandible",
+            // Right-handed orthonormal basis vectors
+            "normal": [-1, 0, 0],
+            "v": [0, 1, 0],
+            "w": [0, 0, -1],
+            "F": [0, 0, 0],
+            "M": [0, 2000, 0], // [N.mm]
+            "rectangle":{
+                "center": [-50,0,0], // [mm], set to scale
+                "normal": [-1,0,0],
+                "w": 40, // [mm]
+                "h": 40, // [mm]
+                "rotation": 0 // [°]
+            }
+        //},
+        //{
+        //    "material": "steel",
+        //    // Right-handed orthonormal basis vectors
+        //    "normal": [1, 0, 0],
+        //    "v": [0, 1, 0],
+        //    "w": [0, 0, 1],
+        //    //"F": [0, 0, -3],
+        //    //"M": [0, -200, 0], // [N.mm]
+        //    "F": [200, 200, 200],
+        //    "M": [200, 200, 200], // [N.mm]
+        //    "rectangle":{
+        //        "center": [50,0,0], // [mm], set to scale
+        //        "normal": [1,0,0],
+        //        "w": 40, // [mm]
+        //        "h": 40, // [mm]
+        //        "rotation": 0 // [°]
+        //    }
+        }
+    ]
+}

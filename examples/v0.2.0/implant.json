@@ -1,0 +1,290 @@
+{
+    "solid_type": "3D", // or "3D"
+    "analysis": "fea_only", // or "fea_only" or "beams_only" or "topopt_only"
+    "material":[
+        {
+            "name": "titanium",
+            "type": "linear_elastic_isotropic",
+            "Smax": 100.0,
+            "Tmax": 75.0,
+            // Titanium
+            "E": 102.7,
+            "nu": 0.34,
+            "density": 4500,
+            "plane_stress": true
+        },
+        {
+            "name": "gingiva",
+            "type": "linear_elastic_isotropic",
+            "Smax": 100.0,
+            "Tmax": 75.0,
+            "E": 3e-3,
+            "nu": 0.45,
+            "density": 100,
+            "plane_stress": true
+        },
+        {
+            "name": "cortical",
+            "type": "linear_elastic_orthotropic_field",
+            "Smax": [100, 100, 100],
+            "Tmax": [75, 75, 75],
+            "E": [26.6, 12.5, 17.9], // Longitudinal, Radial, Transversal
+            "nu": [0.31, 0.28, 0.18],
+            "nu_lower_half": [false, false, true],
+            "G": [5.3, 7.1, 4.5],
+            "density": 1740,
+            "plane_stress": true,
+            "field": 0
+        },
+        {
+            "name": "trabecular",
+            "type": "linear_elastic_orthotropic_field",
+            "Smax": [100, 100, 100],
+            "Tmax": [75, 75, 75],
+            "E": [0.907, 0.511, 0.114], // Longitudinal, Radial, Transversal
+            "nu": [0.31, 0.3, 0.22],
+            "nu_lower_half": [false, false, true],
+            "G": [0.434, 0.081, 0.078],
+            "density": 1740,
+            "plane_stress": true,
+            "field": 0
+        },
+        {
+            "name": "trabecular2",
+            "type": "linear_elastic_orthotropic_field",
+            "Smax": [100, 100, 100],
+            "Tmax": [75, 75, 75],
+            "E": [0.907e1, 0.511e1, 0.114e1], // Longitudinal, Radial, Transversal
+            "nu": [0.31, 0.3, 0.22],
+            "nu_lower_half": [false, false, true],
+            "G": [0.434e1, 0.081e1, 0.078e1],
+            "density": 1740,
+            "plane_stress": true,
+            "field": 0
+        },
+        {
+            "implant":{
+                "center1":[-0.34747087822799994, 24.857678900055, -1.546334576829],
+                "center2":[-0.34747087822799994, 13.07380317475, -1.546334576829],
+                "r1": 2.37,
+                "r2": 1.53,
+                "decay_distance": 1.0,
+                "coefficients": [0.46868009, 0.0, 10.86875466, -35.34209545,  48.59945936, -31.45973154, 7.86493289] // (Huja et al., 1998)
+            },
+            "name": "mandible",
+            "type": "mandible",
+            "material_outer": "cortical",
+            "material_inner": "trabecular",
+            "C": 5,
+            "path_points1": "points1_inner.txt",
+            "path_points2": "points2_inner.txt"
+        }
+    ],
+    "geometry":[
+        {
+            "file_path": "mandible.step", // Relative path from problem definition file's path
+            "scale": 1, // [mm]
+            "material": "mandible",
+            "alt_materials": ["titanium"],
+            "do_topopt": true
+        },
+        {
+            "file_path": "implant_full_natural.stp", // Relative path from problem definition file's path
+            "scale": 1, // [mm]
+            "material": "titanium",
+            "do_topopt": false,
+            "alt_materials": []
+        }
+    ],
+    "fields":[
+        {
+            "type": "orthotropic_flow",
+            "display": false,
+            //"alpha": 1,
+            "alpha": 1e-1,
+            "geometries": [0],
+            "boundary_conditions":[
+                // Lamellar bone conditions
+                // {
+                //     "coeff": 1,
+                //     "file":{
+                //         "path": "mandible_inner_01.step",
+                //         "scale": 1
+                //     }
+                // },
+                // {
+                //     "coeff": -1,
+                //     "file":{
+                //         "path": "mandible_inner_02.step",
+                //         "scale": 1
+                //     }
+                // },
+                // {
+                //     "coeff": -100,
+                //     "file":{
+                //         "path": "mandible_cut_side01.step",
+                //         "scale": 1
+                //     }
+                // },
+                // {
+                //     "coeff": 100,
+                //     "file":{
+                //         "path": "mandible_cut_side02.step",
+                //         "scale": 1
+                //     }
+                // }
+                // Woven bone conditions
+                {
+                    "coeff": -1,
+                    "file":{
+                        "path": "mandible_cut_side01.step",
+                        "scale": 1
+                    }
+                },
+                {
+                    "coeff": 1,
+                    "file":{
+                        "path": "mandible_cut_side02.step",
+                        "scale": 1
+                    }
+                }
+            ]
+        }
+    ],
+    "finite_element":{
+        "type": "petsc_pcg",
+        "eps": 1e-5,
+        "solver": "mma",
+        "preconditioner": "jacobi",
+        "backend": "cuda"
+    },
+    "sizing":{ // Unused
+        "type": "standard_sizing", // Sizing algorithm2D
+        "element_size": 2, // Element size for beam analysis
+        "oversizing": 1.0, // Oversizing constant, optional
+        "finite_element":{
+            "type": "direct_solver"
+        },
+        "pathfinding":{
+            "type": "visibility_graph",
+            "step": 2, // [mm]
+            "restriction_size": 0, // Optional, defines additional safety distance from edges.
+            "max_turn_angle": 5 // [°]
+        }
+    },
+    "mesher":{
+        "type": "gmsh",
+        "tmp_scale": 1, // Temporarily scales geometry for meshing, as models too small may cause problems in gmsh
+        "element_size": 0.30,
+        "element_type": "TET4", 
+        "algorithm2D": 6, // Gmsh meshing algorithm2D, optional
+        "algorithm3D": 10 // Gmsh meshing algorithm3D, optional
+    },
+    "topopt":{
+        "type": "mma",
+        "pc": 3, // penalization
+        "xtol_abs": 1e-8, // Convergence criterium, absolute maximum design variable change
+        "ftol_rel": -1e-7, // Convergence criterium, relative maximum compliance change
+        "result_threshold": 0.5, // minimum density a the resulting element must have to be included in resulting STEP file
+        "save_result": true, // results are not being built properly
+        "rho_init": 1.0, // Initial density
+        "psi": 0.5,
+        "asyminit": 0.005,
+        "asymdec": 0.7,
+        "asyminc": 1.2,
+        "maxfac": 1e0,
+        "minfac": 1e-9,
+        "c": 1e5,
+        "density_filter":{
+            "type":"averaging",
+            "radius": 8
+        },
+        "projection":{
+            "type":"threshold",
+            "eta": 0.5,
+            "beta":{
+                "initial": 1,
+                "final": 32,
+                "value_step": 2,
+                "iteration_step": 200
+            }
+        },
+        "objective":[
+            {
+                "type": "volume",
+                "weight": -1.0
+            }
+        ],
+        "constraints":[
+            {
+                "type": "mechanostat",
+                "beta": 1e5,
+                "compression": [200, 4000],
+                "traction": [140, 2800],
+                "shear": [70, 1400],
+                "less_than": 1
+            }
+        ]
+    },
+    "loads":[
+        {
+            "file":{
+                "path": "abutment_top_natural.stp",
+                "scale": 1
+            },
+            // Normal bilateral mastication
+            "load": [0, -16.77, 0] // [N]
+            // Full clenching
+            // "load": [0, -98.03, 0] // [N]
+        }
+    ],
+    "springs":[
+        {
+            "L": [16.6, 16.6, 16.6],
+            "normal": [1, 0, 0],
+            "v": [0, 1, 0],
+            "w": [0, 0, 1],
+            "material": "mandible",
+            "file":{
+                "path": "mandible_cut_side02.step",
+                "scale": 1
+            }
+        }
+    ],
+    "internal_loads":[
+        {
+            "material": "mandible",
+            // Right-handed orthonormal basis vectors
+            "normal": [-1, 0, 0],
+            "v": [0, 1, 0],
+            "w": [0, 0, -1],
+            // Normal bilateral mastication
+            "F": [-3.47, -14.42, -7.29],
+            "M": [-1539.43, 362.74, 509.79],
+            // Full clenching
+            // "F": [-7.55, -84.51, -15.53],
+            // "M": [-8515.83, 857.91, 2753.93],
+            "file":{
+                "path": "mandible_cut_side01.step",
+                "scale": 1
+            }
+        //},
+        //{
+        //    "material": "mandible",
+        //    // Right-handed orthonormal basis vectors
+        //    "normal": [1, 0, 0],
+        //    "v": [0, 1, 0],
+        //    "w": [0, 0, 1],
+        //    // Normal bilateral mastication
+        //    "F": [-3.47, 31.19, -7.29],
+        //    "M": [-1498.53, -361.84, 241.54],
+        //    // Full clenching
+        //    // "F": [-7.55, 182.54, -15.53],
+        //    // "M": [-8276.35, -855.31, 1183.66],
+        //    "file":{
+        //        "path": "mandible_cut_side02.step",
+        //        "scale": 1
+        //    }
+        }
+    ]
+}
