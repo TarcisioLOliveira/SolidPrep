@@ -66,6 +66,10 @@ class ProjectData {
         OPTIMIZE_ONLY,
         BEAMS_ONLY
     };
+    enum FEMType{
+        STANDARD,
+        XFEM
+    };
     /**
      * Loads project data file.
      *
@@ -96,6 +100,7 @@ class ProjectData {
     std::vector<std::unique_ptr<Field>> fields;
     std::vector<SubProblem> sub_problems;
     AnalysisType analysis;
+    FEMType fem_type = STANDARD;
     std::string folder_path;
     
     private:

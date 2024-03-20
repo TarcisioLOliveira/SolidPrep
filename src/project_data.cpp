@@ -99,6 +99,16 @@ ProjectData::ProjectData(std::string project_file){
     logger::log_assert(doc.IsObject(), logger::ERROR, "The root of the JSON file must be an object.");
 
     this->folder_path = this->get_folder_path(project_file);
+    if(this->log_data(doc, "fem_type", TYPE_STRING, false)){
+        const std::string type = doc["fem_type"].GetString();
+        if(type == "standard"){
+            this->fem_type = STANDARD;
+        } else  if(type == "xfem"){
+            this->fem_type = XFEM;
+        } else {
+            logger::log_assert(false, logger::ERROR, "unknown FEM type: {}", type);
+        }
+    }
 
     logger::log_assert(doc.HasMember("solid_type"), logger::ERROR, "Missing member: ");
     if(this->log_data(doc, "solid_type", TYPE_STRING, true)){
