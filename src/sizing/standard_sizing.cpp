@@ -88,7 +88,7 @@ TopoDS_Shape StandardSizing::boundary_expansion_approach(){
     geom->set_materials({this->data->materials[0].get()});
     std::vector<std::unique_ptr<Geometry>> ggeom;
     ggeom.push_back(std::move(geom));
-    meshing::StandardBeamMesher mesh(ggeom, gt9_maker.get(), this->element_size, this->data->thickness);
+    meshing::StandardBeamMesher mesh(ggeom, gt9_maker.get(), this->data, this->element_size, this->data->thickness);
     mesh.mesh(this->data->forces, this->data->supports, this->data->springs);
     this->solver->generate_matrix(&mesh, mesh.load_vector[0].size(), mesh.node_positions[0], false, std::vector<std::vector<double>>());
     std::vector<double> u(mesh.load_vector[0]);

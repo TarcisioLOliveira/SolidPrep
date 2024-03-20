@@ -38,8 +38,9 @@ namespace meshing{
 
 Gmsh::Gmsh(const std::vector<std::unique_ptr<Geometry>>& geometries,
            const MeshElementFactory* const elem_type,
+           const ProjectData* const proj_data,
            double size, double thickness, double tmp_scale, int algorithm2D, int algorithm3D):
-    Meshing(geometries, elem_type, thickness),
+    Meshing(geometries, elem_type, proj_data, thickness),
     size(tmp_scale*size), algorithm2D(algorithm2D), algorithm3D(algorithm3D), tmp_scale(tmp_scale){
 }
 

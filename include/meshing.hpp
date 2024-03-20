@@ -83,8 +83,10 @@ class Meshing{
     public:
     Meshing(const std::vector<std::unique_ptr<Geometry>>& geometries,
             const MeshElementFactory* const elem_type,
+            const ProjectData* const proj_data,
             const double thickness):
         elem_info(elem_type), geometries(utils::extract_pointers(geometries)),
+        proj_data(proj_data),
         thickness(thickness){}
 
     virtual ~Meshing() = default;
@@ -133,6 +135,7 @@ class Meshing{
 
     const MeshElementFactory * const elem_info;
     const std::vector<Geometry*> geometries;
+    const ProjectData* const proj_data;
     const double thickness;
     size_t max_dofs;
 

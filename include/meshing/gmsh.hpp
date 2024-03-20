@@ -32,6 +32,7 @@ class Gmsh : public Meshing{
     public:
     Gmsh(const std::vector<std::unique_ptr<Geometry>>& geometries,
          const MeshElementFactory* const elem_type,
+         const ProjectData* const proj_data,
          double size, double thickness, double tmp_scale = 1, int algorithm2D = 6, int algorithm3D = 4);
 
     virtual void mesh(const std::vector<Force>& forces, 

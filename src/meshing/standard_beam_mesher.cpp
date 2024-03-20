@@ -35,8 +35,9 @@ namespace meshing{
 
 StandardBeamMesher::StandardBeamMesher(const std::vector<std::unique_ptr<Geometry>>& geometries,
                                        const MeshElementFactory* const elem_type,
+                                       const ProjectData* const proj_data,
                                        double size, double thickness, int algorithm):
-    BeamMeshing(geometries, elem_type, thickness),
+    BeamMeshing(geometries, elem_type, proj_data, thickness),
     size(size), algorithm(algorithm){
 }
 
