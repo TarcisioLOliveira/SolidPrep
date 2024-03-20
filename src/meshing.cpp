@@ -1128,25 +1128,34 @@ std::vector<size_t> Meshing::find_duplicates(std::unordered_map<size_t, MeshNode
 
     // The usual method to find duplicates is to test each one against the
     // other, which is O(N^2). However, std::sort() is Nlog2N, then,
-    // figuring out the duplicates is O(N), so it's a much better
-    // alternative.
+    // figuring out the duplicates becomes faster, as you can limit search
+    // to nodes with equal X. It should be O(M^2) with M << N.
     std::sort(this->node_list.begin(), this->node_list.end(), point_sort);
 
     double eps = Precision::Confusion();
     logger::quick_log(node_list.size());
     auto i = this->node_list.begin();
     while(i < this->node_list.end()-1){
-        if((*i)->point.IsEqual((*(i+1))->point, eps)){
-            id_map[(*(i+1))->id] = id_map[(*i)->id];
-            auto bn = std::find(this->boundary_node_list.begin(), this->boundary_node_list.end(), (i+1)->get());
-            if(bn != this->boundary_node_list.end()){
-                this->boundary_node_list.erase(bn);
+        auto j = i + 1;
+        //while(j < this->node_list.end()){
+        while(j < this->node_list.end() &&
+              std::abs((*i)->point.X() - (*j)->point.X()) < eps){
+            if((*i)->point.IsEqual((*j)->point, eps)){
+                id_map[(*j)->id] = id_map[(*i)->id];
+                auto bn = std::find(this->boundary_node_list.begin(), this->boundary_node_list.end(), j->get());
+                if(bn != this->boundary_node_list.end()){
+                    this->boundary_node_list.erase(bn);
+                }
+                //gp_Pnt test = (*i)->point;
+                const size_t diff = i - this->node_list.begin();
+                j = this->node_list.erase(j);
+                i = this->node_list.begin() + diff;
+                //logger::log_assert(test.IsEqual((*i)->point, eps), logger::ERROR, "oops");
+            } else {
+                ++j;
             }
-            i = this->node_list.erase(i+1);
-            --i;
-        } else {
-            ++i;
         }
+        ++i;
     }
     logger::quick_log(node_list.size());
     
