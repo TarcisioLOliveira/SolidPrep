@@ -146,6 +146,7 @@ class Meshing{
     std::vector<Spring>* springs;
     std::vector<InternalLoads>* internal_loads;
     std::vector<SubProblem>* sub_problems;
+    std::vector<BoundaryElement*> inter_geometry_boundary;
 
     std::vector<double> global_load_vector;
     // Subproblems

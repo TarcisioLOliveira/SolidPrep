@@ -187,6 +187,7 @@ void Meshing::populate_boundary_elements(const std::vector<ElementShape>& bounda
     const size_t N = this->elem_info->get_boundary_nodes_per_element();
     this->boundary_elements.clear();
     this->boundary_elements.reserve(boundary_base_mesh.size());
+    std::vector<size_t> inter_geom;
     for(size_t i = 0; i < boundary_base_mesh.size(); ++i){
         const auto& b = boundary_base_mesh[i];
         std::set<MeshElement*> common_nodes;
@@ -238,14 +239,20 @@ void Meshing::populate_boundary_elements(const std::vector<ElementShape>& bounda
                     }
                     if(!found){
                         this->boundary_elements.emplace_back(b.nodes, *it, mult*n);
+                        inter_geom.push_back(this->boundary_elements.size()-1);
                         ++it;
                         this->boundary_elements.emplace_back(b.nodes, *it, -mult*n);
+                        inter_geom.push_back(this->boundary_elements.size()-1);
                     }
                 } else {
                     logger::log_assert(false, logger::ERROR, "More than two elements are connected to a single boundary (this shouldn't happen).");
                 }
             }
         }
+    }
+    this->inter_geometry_boundary.resize(inter_geom.size());
+    for(size_t i = 0; i < inter_geom.size(); ++i){
+        this->inter_geometry_boundary[i] = &this->boundary_elements[inter_geom[i]];
     }
 }
 
