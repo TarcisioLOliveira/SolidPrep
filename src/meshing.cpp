@@ -510,7 +510,7 @@ void Meshing::generate_load_vector(const TopoDS_Shape& shape){
                         fe = e.parent->get_f(thickness, vec, list);
                     }
                     if(fe.size() > 0){
-                        logger::quick_log(fe);
+                        //logger::quick_log(fe);
                         for(auto& ff:fe){
                             F += ff;
                         }
@@ -525,7 +525,7 @@ void Meshing::generate_load_vector(const TopoDS_Shape& shape){
                         }
                     }
                 }
-                logger::quick_log(F);
+                logger::quick_log("Force sum ", F);
             }
         }
     } else if(this->elem_info->get_problem_type() == utils::PROBLEM_TYPE_3D){
@@ -586,7 +586,7 @@ void Meshing::generate_load_vector(const TopoDS_Shape& shape){
                             points[i] = e.nodes[i]->point;
                         }
                         const auto fe = e.parent->get_f(1, vec, points);
-                        logger::quick_log(fe);
+                        //logger::quick_log(fe);
                         for(auto& ff:fe){
                             F += ff;
                         }
@@ -602,7 +602,7 @@ void Meshing::generate_load_vector(const TopoDS_Shape& shape){
                     }
                 }
             }
-            logger::quick_log(F);
+            logger::quick_log("Force sum:", F);
         }
     }
 }
