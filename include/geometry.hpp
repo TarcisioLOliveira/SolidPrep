@@ -95,6 +95,7 @@ class Geometry{
 
     std::vector<std::unique_ptr<MeshElement>> mesh;
     std::vector<BoundaryElement*> boundary_mesh;
+    std::vector<BoundaryElement*> inter_geometry_boundary_mesh;
     // Only used for non-linear FEA
     std::vector<std::unique_ptr<MeshNode>> node_list; 
     private:

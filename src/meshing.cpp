@@ -389,8 +389,34 @@ void Meshing::distribute_boundary_elements(){
                 }
             }
         }
+        size_t sum = 0;
+        for(auto& g:this->geometries){
+            sum += g->boundary_mesh.size();
+        }
+        logger::log_assert(sum == this->boundary_elements.size(), logger::ERROR, "Not all boundary elements were distributed: {} != {}", sum, this->boundary_elements.size());
+        for(auto& b:this->inter_geometry_boundary){
+            for(auto& g:this->geometries){
+                bool found = false;
+                for(const auto& e:g->mesh){
+                    if(e.get() == b->parent){
+                        g->inter_geometry_boundary_mesh.push_back(b);
+                        found = true;
+                        break;
+                    }
+                }
+                if(found){
+                    break;
+                }
+            }
+        }
+        sum = 0;
+        for(auto& g:this->geometries){
+            sum += g->inter_geometry_boundary_mesh.size();
+        }
+        logger::log_assert(sum == this->inter_geometry_boundary.size(), logger::ERROR, "Not all inter geoemtry boundary elements were distributed: {} != {}", sum, this->inter_geometry_boundary.size());
         for(auto& g:this->geometries){
             g->boundary_mesh.shrink_to_fit();
+            g->inter_geometry_boundary_mesh.shrink_to_fit();
         }
     } else if(geometries.size() == 1){
         auto& g = geometries[0];
