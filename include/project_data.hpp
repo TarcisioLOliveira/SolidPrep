@@ -66,9 +66,9 @@ class ProjectData {
         OPTIMIZE_ONLY,
         BEAMS_ONLY
     };
-    enum FEMType{
-        STANDARD,
-        XFEM
+    enum ContactType{
+        RIGID,
+        FRICTIONLESS
     };
     /**
      * Loads project data file.
@@ -100,7 +100,7 @@ class ProjectData {
     std::vector<std::unique_ptr<Field>> fields;
     std::vector<SubProblem> sub_problems;
     AnalysisType analysis;
-    FEMType fem_type = STANDARD;
+    ContactType contact_type = RIGID;
     std::string folder_path;
     
     private:
@@ -117,6 +117,8 @@ class ProjectData {
     bool log_data(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc, std::string name, DataType type, bool required) const;
 
     std::string get_folder_path(const std::string& project_file_path) const;
+
+    ContactType get_contact_type(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc);
 
     std::vector<std::unique_ptr<Material>> load_materials(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc);
 

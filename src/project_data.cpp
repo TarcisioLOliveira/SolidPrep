@@ -99,15 +99,8 @@ ProjectData::ProjectData(std::string project_file){
     logger::log_assert(doc.IsObject(), logger::ERROR, "The root of the JSON file must be an object.");
 
     this->folder_path = this->get_folder_path(project_file);
-    if(this->log_data(doc, "fem_type", TYPE_STRING, false)){
-        const std::string type = doc["fem_type"].GetString();
-        if(type == "standard"){
-            this->fem_type = STANDARD;
-        } else  if(type == "xfem"){
-            this->fem_type = XFEM;
-        } else {
-            logger::log_assert(false, logger::ERROR, "unknown FEM type: {}", type);
-        }
+    if(this->log_data(doc, "contact_type", TYPE_STRING, false)){
+        this->contact_type = this->get_contact_type(doc["contact_type"]);
     }
 
     logger::log_assert(doc.HasMember("solid_type"), logger::ERROR, "Missing member: ");
@@ -267,6 +260,17 @@ bool ProjectData::log_data(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc
             break;
     }
     return correct_type;
+}
+
+ProjectData::ContactType ProjectData::get_contact_type(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc){
+    const std::string type = doc["type"].GetString();
+    if(type == "rigid"){
+        return ContactType::RIGID;
+    } else  if(type == "frictionless"){
+        return ContactType::FRICTIONLESS;
+    } else {
+        logger::log_assert(false, logger::ERROR, "unknown contact type: {}", type);
+    }
 }
 
 std::vector<std::unique_ptr<Material>> ProjectData::load_materials(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc){
