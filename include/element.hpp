@@ -36,7 +36,7 @@
  */
 class Node{
     public:
-    const gp_Pnt point; ///< Node position
+    gp_Pnt point; ///< Node position
     size_t id;
     /**
      * Stores the position of the values of local displacement in the global
