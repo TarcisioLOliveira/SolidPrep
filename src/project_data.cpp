@@ -99,7 +99,7 @@ ProjectData::ProjectData(std::string project_file){
     logger::log_assert(doc.IsObject(), logger::ERROR, "The root of the JSON file must be an object.");
 
     this->folder_path = this->get_folder_path(project_file);
-    if(this->log_data(doc, "contact_type", TYPE_STRING, false)){
+    if(this->log_data(doc, "contact_type", TYPE_OBJECT, false)){
         this->contact_type = this->get_contact_type(doc["contact_type"]);
     }
 
