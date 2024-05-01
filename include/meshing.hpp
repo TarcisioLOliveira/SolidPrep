@@ -133,6 +133,15 @@ class Meshing{
                        const std::vector<Support>& supports,
                        const std::vector<double>& rho, double threshold);
 
+    /**
+     * Extends a vector (e.g. displacement vector) from rigid form to non-rigid
+     * form.
+     *
+     * @param v Rigid-form vector
+     * @param v_ext Non-rigid-form vector
+     */
+    virtual void extend_vector(const size_t subproblem, const std::vector<double>& v, std::vector<double>& v_ext){}
+
     const MeshElementFactory * const elem_info;
     const std::vector<Geometry*> geometries;
     const ProjectData* const proj_data;
@@ -153,6 +162,16 @@ class Meshing{
     std::vector<std::vector<double>> load_vector;
     std::vector<std::vector<long>> node_positions;
     std::vector<size_t> dofs_per_subproblem;
+
+    private:
+    // Original to internal node mapping
+    // Stored _temporarily_ between a call to generate_elements() and
+    // apply_boundary_conditions(). Their existence is checked to ensure
+    // the object is in the appropriate state before applying boundary
+    // conditions.
+    std::unordered_map<size_t, MeshNode*> to_rigid_map;
+    // Number of nodes that are/would be removed by deduplication
+    size_t number_duplicated_nodes = 0;
 
     protected:
     TopoDS_Shape orig_shape;
@@ -315,10 +334,11 @@ class Meshing{
      * condition, but they behave correctly without this workaround.
      *
      * @param id_map Mapping of node tags to node_list indices.
+     * @param delete_dups Whether to delete duplicates.
      *
      * @return Indices of duplicated nodes, to be used late in remove_duplicates().
      */
-    virtual std::vector<size_t> find_duplicates(std::unordered_map<size_t, MeshNode*>& id_map);
+    virtual std::vector<size_t> find_duplicates(std::unordered_map<size_t, MeshNode*>& id_map, const bool delete_dups);
 
     /**
      * Turns a vector of geometries into a single compound geometry.

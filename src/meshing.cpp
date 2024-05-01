@@ -50,16 +50,36 @@ void Meshing::generate_elements(const TopoDS_Shape& shape,
     logger::quick_log("Generating elements and preparing for finite element analysis...");
     this->fix_node_point_precision();
 
-    if(deduplicate){
-       this->find_duplicates(id_map);
+    std::unordered_map<size_t, MeshNode*> original_map = id_map;
+    const bool rigid = (this->proj_data->contact_type == ProjectData::ContactType::RIGID);
+
+    const bool delete_duplicated = deduplicate && rigid;
+    if(this->geometries.size() > 1){
+        this->find_duplicates(id_map, delete_duplicated);
     }
 
     const size_t nodes_per_elem = this->elem_info->get_nodes_per_element();
     const size_t bound_nodes_per_elem = this->elem_info->get_boundary_nodes_per_element();
 
     {
-        auto list = this->generate_element_shapes(elem_node_tags, nodes_per_elem, id_map);
+        std::vector<ElementShape> list;
+        if(rigid){
+            // Generate element shapes from trimmed node list
+            list = this->generate_element_shapes(elem_node_tags, nodes_per_elem, id_map);
+        } else {
+            // Generate element shapes from original node list
+            // Currently no per-geometry boundary setting, applies to whole list
+            list = this->generate_element_shapes(elem_node_tags, nodes_per_elem, original_map);
+        }
+        // Re-id nodes and remove unused nodes from map
         this->optimize(list, &id_map);
+        for(const auto& n:id_map){
+            const size_t oid = n.first;
+            MeshNode* dedup_n = n.second;
+            MeshNode* prev_n = original_map[oid];
+            const size_t curr_id = prev_n->id;
+            this->to_rigid_map[curr_id] = dedup_n;
+        }
         auto elements = this->create_element_list(list, this->elem_info);
         list.clear();
         populate_inverse_mesh(elements);
@@ -82,6 +102,11 @@ void Meshing::apply_boundary_conditions(const std::vector<Force>& forces,
                                         std::vector<SubProblem>& sub_problems){
 
     logger::quick_log("Applying boundary conditions...");
+    const bool rigid = (this->proj_data->contact_type == ProjectData::ContactType::RIGID);
+    logger::log_assert(this->to_rigid_map.size() > 0,
+            logger::ERROR,
+            "ensure elements are generated before applying boundary conditions.");
+
     const size_t dof = this->elem_info->get_dof_per_node();
     const size_t vec_size = this->node_list.size()*dof;
     this->max_dofs = vec_size;
@@ -108,9 +133,6 @@ void Meshing::apply_boundary_conditions(const std::vector<Force>& forces,
         auto& n = this->node_list[i];
         for(size_t j = 0; j < dof; ++j){
             n->u_pos[j] = n->id*dof + j;
-            for(auto& v:this->node_positions){
-                v[n->id*dof + j] = 0;//n->id*dof + j;
-            }
         }
     }
 
@@ -122,10 +144,46 @@ void Meshing::apply_boundary_conditions(const std::vector<Force>& forces,
     for(size_t it = 0; it < this->node_positions.size(); ++it){
         auto& v = this->node_positions[it];
         long current = 0;
-        for(auto& i:v){
-            if(i >= 0){
-                i = current;
-                ++current;
+        if(rigid){
+            for(auto& i:v){
+                if(i >= 0){
+                    i = current;
+                    ++current;
+                }
+            }
+        } else {
+            std::vector<bool> pos_set(this->node_list.size(), false);
+            for(size_t i = 0; i < this->node_list.size(); ++i){
+                const auto& n = this->node_list[i];
+                const size_t n_id = n->id;
+                const size_t on_id = this->to_rigid_map[n->id]->id;
+                if(pos_set[i]){
+                    continue;
+                }
+                if(n_id == on_id){
+                    pos_set[i] = true;
+                    for(size_t d = 0; d < dof; ++d){
+                        if(v[n_id*dof + d] >= 0){
+                            v[n_id*dof + d] = current;
+                            ++current;
+                        }
+                    }
+                } else if(on_id < n_id){
+                    pos_set[i] = true;
+                    for(size_t d = 0; d < dof; ++d){
+                        v[n_id*dof + d] = v[on_id*dof + d];
+                    }
+                } else {
+                    pos_set[i] = true;
+                    pos_set[on_id] = true;
+                    for(size_t d = 0; d < dof; ++d){
+                        if(v[n_id*dof + d] >= 0){
+                            v[n_id*dof + d] = current;
+                            v[on_id*dof + d] = current;
+                            ++current;
+                        }
+                    }
+                }
             }
         }
         this->dofs_per_subproblem[it] = current;
@@ -157,6 +215,7 @@ void Meshing::apply_boundary_conditions(const std::vector<Force>& forces,
         }
     }
 
+    this->to_rigid_map.clear();
     logger::quick_log("Done.");
 }
 
@@ -942,27 +1001,68 @@ void Meshing::reverse_cuthill_mckee(const std::vector<ElementShape>& elem_list){
     added[min_node] = true;
     std::vector<size_t> result;
     result.reserve(this->node_list.size());
-    while(!queue.empty()){
-        size_t node = queue.front();
-        auto& adj = adjacents[node];
+    if(this->proj_data->contact_type == ProjectData::RIGID){
+        while(!queue.empty()){
+            size_t node = queue.front();
+            auto& adj = adjacents[node];
 
-        std::vector<size_t> new_nodes;
-        new_nodes.reserve(adj.size());
-        for(auto& n:adj){
-            if(!added[n]){
-                added[n] = true;
-                auto upper = std::upper_bound(new_nodes.begin(), new_nodes.end(), n, comp);
-                new_nodes.insert(upper, n);
+            std::vector<size_t> new_nodes;
+            new_nodes.reserve(adj.size());
+            for(auto& n:adj){
+                if(!added[n]){
+                    added[n] = true;
+                    auto upper = std::upper_bound(new_nodes.begin(), new_nodes.end(), n, comp);
+                    new_nodes.insert(upper, n);
+                }
             }
-        }
-        for(auto& n:new_nodes){
-            queue.push(n);
-        }
+            for(auto& n:new_nodes){
+                queue.push(n);
+            }
 
-        result.push_back(node);
-        queue.pop();
+            result.push_back(node);
+            queue.pop();
+        }
+        logger::log_assert(result.size() == this->node_list.size(), logger::ERROR, "Mesh contains disconnected nodes. result: {}, node_list: {}.", result.size(), node_list.size());
+    } else {
+        size_t loop_count = 0;
+        do{
+            bool all_added = true;
+            while(!queue.empty()){
+                size_t node = queue.front();
+                auto& adj = adjacents[node];
+
+                std::vector<size_t> new_nodes;
+                new_nodes.reserve(adj.size());
+                for(auto& n:adj){
+                    if(!added[n]){
+                        added[n] = true;
+                        auto upper = std::upper_bound(new_nodes.begin(), new_nodes.end(), n, comp);
+                        new_nodes.insert(upper, n);
+                    }
+                }
+                for(auto& n:new_nodes){
+                    queue.push(n);
+                }
+
+                result.push_back(node);
+                queue.pop();
+            }
+            for(size_t i = 0; i < added.size(); ++i){
+                if(!added[i]){
+                    queue.push(i);
+                    added[i] = true;
+                    all_added = false;
+                    break;
+                }
+            }
+            ++loop_count;
+            if(all_added){
+                break;
+            }
+        } while(result.size() != this->node_list.size());
+        logger::log_assert(loop_count == this->geometries.size(), logger::WARNING, "Number of separate meshes is different from number of geometries: {} and {}. Disconnected nodes?.", loop_count, geometries.size());
+        logger::log_assert(result.size() == this->node_list.size(), logger::ERROR, "Inconsistency in the number of nodes after RCM. result: {}, node_list: {}.", result.size(), node_list.size());
     }
-    logger::log_assert(result.size() == this->node_list.size(), logger::ERROR, "Mesh contains disconnected nodes. result: {}, node_list: {}.", result.size(), node_list.size());
 
     // Reorder node list
     std::vector<std::unique_ptr<MeshNode>> new_node_list(this->node_list.size());
@@ -1145,7 +1245,7 @@ std::vector<ElementShape> Meshing::generate_element_shapes(
     return list;
 }
 
-std::vector<size_t> Meshing::find_duplicates(std::unordered_map<size_t, MeshNode*>& id_map){
+std::vector<size_t> Meshing::find_duplicates(std::unordered_map<size_t, MeshNode*>& id_map, const bool delete_dups){
     const auto point_sort = 
         [](const std::unique_ptr<MeshNode>& n1, const std::unique_ptr<MeshNode>& n2)->bool{
             if(n1->point.X() < n2->point.X()){
@@ -1167,31 +1267,39 @@ std::vector<size_t> Meshing::find_duplicates(std::unordered_map<size_t, MeshNode
     std::sort(this->node_list.begin(), this->node_list.end(), point_sort);
 
     double eps = Precision::Confusion();
-    logger::quick_log(node_list.size());
+    logger::quick_log("Original number of nodes:", node_list.size());
     auto i = this->node_list.begin();
     while(i < this->node_list.end()-1){
         auto j = i + 1;
         //while(j < this->node_list.end()){
         while(j < this->node_list.end() &&
-              std::abs((*i)->point.X() - (*j)->point.X()) < eps){
-            if((*i)->point.IsEqual((*j)->point, eps)){
-                id_map[(*j)->id] = id_map[(*i)->id];
+              (*i)->point.X() == (*j)->point.X() &&
+              (*i)->point.Y() == (*j)->point.Y() &&
+              (*i)->point.Z() == (*j)->point.Z()){
+
+            id_map[(*j)->id] = id_map[(*i)->id];
+            ++this->number_duplicated_nodes;
+            //gp_Pnt test = (*i)->point;
+            if(delete_dups){
                 auto bn = std::find(this->boundary_node_list.begin(), this->boundary_node_list.end(), j->get());
                 if(bn != this->boundary_node_list.end()){
                     this->boundary_node_list.erase(bn);
                 }
-                //gp_Pnt test = (*i)->point;
                 const size_t diff = i - this->node_list.begin();
                 j = this->node_list.erase(j);
                 i = this->node_list.begin() + diff;
-                //logger::log_assert(test.IsEqual((*i)->point, eps), logger::ERROR, "oops");
             } else {
                 ++j;
             }
         }
-        ++i;
+        if(delete_dups){
+            ++i;
+        } else {
+            i += j - i;
+        }
     }
-    logger::quick_log(node_list.size());
+    logger::quick_log("Final number of nodes:", node_list.size());
+    logger::quick_log("Duplicates:", this->number_duplicated_nodes);
     
     return duplicates;
 }
