@@ -164,6 +164,12 @@ class Meshing{
     bool is_strictly_inside3D(gp_Pnt p, TopoDS_Shape s) const;
 
     /**
+     * Adjusts imprecisions in node point floating points so that they are
+     * more easily sortable and comparable.
+     */
+    void fix_node_point_precision();
+
+    /**
      * Main function for populating each geometry's element list. Uses the other
      * protected functions in this class to do so. Can be overriden if desired,
      * as can the other functions.

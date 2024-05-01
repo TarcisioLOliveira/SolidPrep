@@ -48,6 +48,7 @@ void Meshing::generate_elements(const TopoDS_Shape& shape,
 
     this->orig_shape = shape;
     logger::quick_log("Generating elements and preparing for finite element analysis...");
+    this->fix_node_point_precision();
 
     if(deduplicate){
        this->find_duplicates(id_map);
@@ -1246,4 +1247,43 @@ bool Meshing::adapt_for_boundary_condition_inside(TopoDS_Shape& shape, const std
     shape = sh;
 
     return has_condition_inside;
+}
+
+void Meshing::fix_node_point_precision(){
+    const std::function<bool(const std::unique_ptr<MeshNode>&,const std::unique_ptr<MeshNode>&)> coord_sort[3] ={
+        [](const std::unique_ptr<MeshNode>& n1, const std::unique_ptr<MeshNode>& n2)->bool{
+            if(n1->point.X() < n2->point.X()){
+                return true;
+            }
+            return false;
+        },
+        [](const std::unique_ptr<MeshNode>& n1, const std::unique_ptr<MeshNode>& n2)->bool{
+            if(n1->point.Y() < n2->point.Y()){
+                return true;
+            }
+            return false;
+        },
+        [](const std::unique_ptr<MeshNode>& n1, const std::unique_ptr<MeshNode>& n2)->bool{
+            if(n1->point.Z() < n2->point.Z()){
+                return true;
+            }
+            return false;
+        }
+    };
+
+    const double eps = Precision::Confusion();
+
+    for(size_t i = 0; i < 3; ++i){
+        std::sort(this->node_list.begin(), this->node_list.end(), coord_sort[i]);
+        const size_t C = 1+i;
+        double curr_val = this->node_list[0]->point.Coord(C);
+        for(size_t it = 1; it < this->node_list.size(); ++it){
+            if(this->node_list[it]->point.Coord(C) - curr_val < eps){
+                this->node_list[it]->point.SetCoord(C, curr_val);
+            } else {
+                curr_val = this->node_list[it]->point.Coord(C);
+            }
+        }
+    }
+
 }
