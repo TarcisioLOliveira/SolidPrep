@@ -92,6 +92,9 @@ void Meshing::generate_elements(const TopoDS_Shape& shape,
         this->populate_boundary_elements(bound_list, boundary_condition_inside);
         this->distribute_boundary_elements();
     }
+    if(!rigid){
+        this->generate_lambda_elements();
+    }
     logger::quick_log("Done.");
 }
 
@@ -1409,6 +1412,100 @@ void Meshing::extend_vector(const size_t subproblem, const std::vector<double>& 
             const long p = npos[dof*n->id + j];
             if(p > -1){
                 v_ext[n->u_pos[j]] = v[p];
+            }
+        }
+    }
+}
+
+void Meshing::generate_lambda_elements(){
+    this->lambda_elements.reserve(this->inter_geometry_boundary.size()/2);
+    for(size_t i = 0; i < this->lambda_elements.size(); ++i){
+        const BoundaryElement* const parent = this->inter_geometry_boundary[2*i];
+        const gp_Vec n = parent->normal;
+        gp_Vec p1(0,1,0);
+        if(n.IsEqual(p1, Precision::Confusion(), Precision::Angular())){
+            p1 = gp_Vec(0,0,1);
+        } else if(n.IsEqual(gp_Vec(0,0,1), Precision::Confusion(), Precision::Angular())){
+            p1 = gp_Vec(1,0,0);
+        }
+        p1 = n - (n.Dot(p1))*n;
+        p1.Normalize();
+        gp_Dir p2 = n.Crossed(p1);
+
+        this->lambda_elements.emplace_back(i, n, p1, p2, parent);
+    }
+}
+
+void Meshing::get_lambda_vector(const std::vector<double>& lambda, std::vector<double>& l, const LambdaOutput out, const LambdaType type) const{
+    logger::log_assert(out != LambdaOutput::UNITARY, logger::ERROR, "UNITARY type is insupported in get_lambda_vector()");
+    logger::log_assert(lambda.size() == this->lambda_elements.size(), logger::ERROR, "lambda vector size is different from number of lambda elements. Vector: {}; Elements: {}", lambda.size(), this->lambda_elements.size());
+
+    const size_t l_num = this->lambda_elements.size();
+    const size_t normal_offset = (type == LambdaType::ALL) ? l_num*2 : 0;
+    if(type == LambdaType::PARALLEL){
+        if(l.size() < 2*l_num){
+            l.resize(2*l_num);
+        }
+    }
+    if(type == LambdaType::NORMAL){
+        if(l.size() < l_num){
+            l.resize(l_num);
+        }
+    }
+    if(type == LambdaType::ALL){
+        if(l.size() < 3*l_num){
+            l.resize(3*l_num);
+        }
+    }
+    if(type == LambdaType::PARALLEL || type == LambdaType::ALL){
+        if(out == LambdaOutput::STANDARD_FUNCTION){
+            for(size_t i = 0; i < l_num; ++i){
+                l[i] = lambda[i];
+                l[l_num + i] = lambda[l_num + i];
+            }
+        } else if(out == LambdaOutput::STANDARD_FIRST_DERIVATIVE){
+            std::fill(l.begin(), l.begin() + 2*l_num, 1);
+        } else if(out == LambdaOutput::STANDARD_SECOND_DERIVATIVE){
+            std::fill(l.begin(), l.begin() + 2*l_num, 0);
+        }
+    }
+    if(type == LambdaType::NORMAL || type == LambdaType::ALL){
+        if(out == LambdaOutput::STANDARD_FUNCTION){
+            for(size_t i = 0; i < l_num; ++i){
+                const double li = lambda[i + 2*l_num];
+                l[normal_offset + i] = li*li;
+            }
+        } else if(out == LambdaOutput::STANDARD_FIRST_DERIVATIVE){
+            for(size_t i = 0; i < l_num; ++i){
+                const double li = lambda[i + 2*l_num];
+                l[normal_offset + i] = 2*li;
+            }
+        } else if(out == LambdaOutput::STANDARD_SECOND_DERIVATIVE){
+            std::fill(l.begin() + normal_offset, l.begin() + normal_offset + l_num, 2);
+        }
+    }
+}
+
+void Meshing::apply_lambda(const std::vector<double>& lambda, std::vector<double>& v_ext) const{
+    const size_t l_num = this->lambda_elements.size();
+    const size_t dof = this->elem_info->get_dof_per_node();
+    const size_t bnode_num = this->elem_info->get_boundary_nodes_per_element();
+    for(size_t i = 0; i < l_num; ++i){
+        const auto& l = this->lambda_elements[i];
+        const double ln = lambda[i + 2*l_num];
+        Eigen::Matrix<double, 3, 3> R
+            {{l.n.X(), l.p1.X(), l.p2.X()},
+             {l.n.Y(), l.p1.Y(), l.p2.Y()},
+             {l.n.Z(), l.p1.Z(), l.p2.Z()}};
+        Eigen::Vector<double, 3> lv
+            {ln*ln,
+             lambda[i + 0],
+             lambda[i + l_num]};
+        lv = R*lv;
+        for(size_t j = 0; j < bnode_num; ++j){
+            const auto b = l.parent;
+            for(size_t k = 0; k < dof; ++k){
+                v_ext[b->nodes[j]->u_pos[k]] += lv[k];
             }
         }
     }

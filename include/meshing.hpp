@@ -78,6 +78,18 @@ class BoundaryElement{
         return nodes;
     }
 };
+class LambdaElement{
+    public:
+    LambdaElement(size_t id, gp_Dir n, gp_Dir p1, gp_Dir p2, const BoundaryElement* const parent):
+        id(id), n(n), p1(p1), p2(p2), parent(parent){}
+    ~LambdaElement() = default;
+
+    const size_t id;
+    const gp_Dir n;
+    const gp_Dir p1;
+    const gp_Dir p2;
+    const BoundaryElement* const parent;
+};
 
 class Meshing{
     public:
@@ -142,6 +154,47 @@ class Meshing{
      */
     virtual void extend_vector(const size_t subproblem, const std::vector<double>& v, std::vector<double>& v_ext) const;
 
+    enum class LambdaType{
+        PARALLEL,
+        NORMAL,
+        ALL
+    };
+    enum class LambdaOutput{
+        STANDARD_FUNCTION, // Linear for parallel, quadratic for normal
+        STANDARD_FIRST_DERIVATIVE,
+        STANDARD_SECOND_DERIVATIVE,
+        UNITARY // For generating global matrix
+    };
+
+    /**
+     * Applies relative displacement lambdas into an extended vector.
+     *
+     * @param lambda Vector of raw lambda values
+     * @param v_ext Extended vector
+     */
+    void apply_lambda(const std::vector<double>& lambda, std::vector<double>& v_ext) const;
+
+    /**
+     * Creates the elemental lambda vector for all lambda (i == -1) or specific
+     * lambda (i >= 0) of specified type, resulting in specified output.
+     *
+     * This is used for gradient calculation mostly.
+     *
+     * @param u_pos Element nodal positions in global vector (rigid)
+     * @param lambda Vector of lambda values
+     * @param l_e Elemental vector (output)
+     * @param i Lambda id
+     * @param out Type of output
+     * @param type Type of lambda for output
+     */
+    //void get_lambda_e(const size_t l_id, const std::vector<double>& lambda, std::vector<double>& l_e, const long i = -1, const LambdaOutput out = LambdaOutput::STANDARD_FUNCTION, const LambdaType type = LambdaType::NORMAL) const;
+
+    /**
+     *  Calculated lambda functions are stored in l in shape:
+     *  [p1 ... p2 ... n]
+     */
+    void get_lambda_vector(const std::vector<double>& lambda, std::vector<double>& l, const LambdaOutput out = LambdaOutput::STANDARD_FUNCTION, const LambdaType type = LambdaType::NORMAL) const;
+
     const MeshElementFactory * const elem_info;
     const std::vector<Geometry*> geometries;
     const ProjectData* const proj_data;
@@ -156,6 +209,7 @@ class Meshing{
     std::vector<InternalLoads>* internal_loads;
     std::vector<SubProblem>* sub_problems;
     std::vector<BoundaryElement*> inter_geometry_boundary;
+    std::vector<LambdaElement> lambda_elements;
 
     std::vector<double> global_load_vector;
     // Subproblems
@@ -181,6 +235,12 @@ class Meshing{
     // Inside and not on boundary
     bool is_strictly_inside2D(gp_Pnt p, TopoDS_Shape s) const;
     bool is_strictly_inside3D(gp_Pnt p, TopoDS_Shape s) const;
+
+    /**
+     * If contact type is non-rigid, generate lambda elements to calculate
+     * relative displacements.
+     */
+    void generate_lambda_elements();
 
     /**
      * Adjusts imprecisions in node point floating points so that they are
