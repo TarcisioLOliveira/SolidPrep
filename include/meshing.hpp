@@ -140,7 +140,7 @@ class Meshing{
      * @param v Rigid-form vector
      * @param v_ext Non-rigid-form vector
      */
-    virtual void extend_vector(const size_t subproblem, const std::vector<double>& v, std::vector<double>& v_ext){}
+    virtual void extend_vector(const size_t subproblem, const std::vector<double>& v, std::vector<double>& v_ext) const;
 
     const MeshElementFactory * const elem_info;
     const std::vector<Geometry*> geometries;

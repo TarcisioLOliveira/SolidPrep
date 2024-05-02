@@ -1395,3 +1395,21 @@ void Meshing::fix_node_point_precision(){
     }
 
 }
+
+
+void Meshing::extend_vector(const size_t subproblem, const std::vector<double>& v, std::vector<double>& v_ext) const{
+    const size_t dof = this->elem_info->get_dof_per_node();
+    if(v_ext.size() < this->node_list.size()*dof){
+        v_ext.resize(this->node_list.size()*dof, 0);
+    }
+    const auto& npos = this->node_positions[subproblem];
+    for(size_t i = 0; i < this->node_list.size(); ++i){
+        const auto& n = this->node_list[i];
+        for(size_t j = 0; j < dof; ++j){
+            const long p = npos[dof*n->id + j];
+            if(p > -1){
+                v_ext[n->u_pos[j]] = v[p];
+            }
+        }
+    }
+}
