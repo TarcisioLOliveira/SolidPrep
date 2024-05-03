@@ -1428,7 +1428,7 @@ void Meshing::generate_lambda_elements(){
         } else if(n.IsEqual(gp_Vec(0,0,1), Precision::Confusion(), Precision::Angular())){
             p1 = gp_Vec(1,0,0);
         }
-        p1 = n - (n.Dot(p1))*n;
+        p1 = p1 - (n.Dot(p1))*n;
         p1.Normalize();
         gp_Dir p2 = n.Crossed(p1);
 
