@@ -45,9 +45,9 @@
 #include "material/mandible.hpp"
 #include "material/linear_elastic_orthotropic_field.hpp"
 #include "sizing/standard_sizing.hpp"
-#include "finite_element/direct_solver.hpp"
-#include "finite_element/gradient_descent.hpp"
-#include "finite_element/PCG.hpp"
+//#include "finite_element/direct_solver.hpp"
+//#include "finite_element/gradient_descent.hpp"
+//#include "finite_element/PCG.hpp"
 #include "finite_element/mumps_solver.hpp"
 #include "finite_element/eigen_pcg.hpp"
 #include "finite_element/petsc_pcg.hpp"
@@ -590,39 +590,40 @@ std::unique_ptr<Sizing> ProjectData::load_sizer(const rapidjson::GenericValue<ra
 std::unique_ptr<FiniteElement> ProjectData::load_fea(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc){
     auto& fea = doc["finite_element"];
     std::unique_ptr<FiniteElement> finite_element;
-    if(fea["type"] == "direct_solver"){
-        finite_element.reset(new finite_element::DirectSolver());
-    } else if(fea["type"] == "gradient_descent"){
-        this->log_data(fea, "eps", TYPE_DOUBLE, true);
-        this->log_data(fea, "solver", TYPE_STRING, true);
-        double eps = fea["eps"].GetDouble();
-        std::string s = fea["solver"].GetString();
-        finite_element::GradientDescent::Solver solver = finite_element::GradientDescent::Solver::STANDARD;
-        if(s == "standard"){
-            solver = finite_element::GradientDescent::Solver::STANDARD;
-        } else if(s == "mma"){
-            solver = finite_element::GradientDescent::Solver::MMA;
-        } else if(s == "lagrange_mma"){
-            solver = finite_element::GradientDescent::Solver::LAGRANGE_MMA;
-        } else {
-            logger::log_assert(false, logger::ERROR, "Unknown solver: {}", s);
-        }
-        finite_element.reset(new finite_element::GradientDescent(eps, solver));
-    } else if(fea["type"] == "PCG"){
-        this->log_data(fea, "eps", TYPE_DOUBLE, true);
-        this->log_data(fea, "preconditioner", TYPE_STRING, true);
-        double eps = fea["eps"].GetDouble();
-        std::string precond = fea["preconditioner"].GetString();
-        finite_element::PCG::Preconditioner p = finite_element::PCG::Preconditioner::JACOBI;
-        if(precond == "jacobi"){
-            p = finite_element::PCG::Preconditioner::JACOBI;
-        } else if(precond == "ssor"){
-            p = finite_element::PCG::Preconditioner::SSOR;
-        } else {
-            logger::log_assert(false, logger::ERROR, "Unknown preconditioner: {}", precond);
-        }
-        finite_element.reset(new finite_element::PCG(eps, p));
-    } else if(fea["type"] == "mumps"){
+    //if(fea["type"] == "direct_solver"){
+    //    finite_element.reset(new finite_element::DirectSolver());
+    //} else if(fea["type"] == "gradient_descent"){
+    //    this->log_data(fea, "eps", TYPE_DOUBLE, true);
+    //    this->log_data(fea, "solver", TYPE_STRING, true);
+    //    double eps = fea["eps"].GetDouble();
+    //    std::string s = fea["solver"].GetString();
+    //    finite_element::GradientDescent::Solver solver = finite_element::GradientDescent::Solver::STANDARD;
+    //    if(s == "standard"){
+    //        solver = finite_element::GradientDescent::Solver::STANDARD;
+    //    } else if(s == "mma"){
+    //        solver = finite_element::GradientDescent::Solver::MMA;
+    //    } else if(s == "lagrange_mma"){
+    //        solver = finite_element::GradientDescent::Solver::LAGRANGE_MMA;
+    //    } else {
+    //        logger::log_assert(false, logger::ERROR, "Unknown solver: {}", s);
+    //    }
+    //    finite_element.reset(new finite_element::GradientDescent(eps, solver));
+    //} else if(fea["type"] == "PCG"){
+    //    this->log_data(fea, "eps", TYPE_DOUBLE, true);
+    //    this->log_data(fea, "preconditioner", TYPE_STRING, true);
+    //    double eps = fea["eps"].GetDouble();
+    //    std::string precond = fea["preconditioner"].GetString();
+    //    finite_element::PCG::Preconditioner p = finite_element::PCG::Preconditioner::JACOBI;
+    //    if(precond == "jacobi"){
+    //        p = finite_element::PCG::Preconditioner::JACOBI;
+    //    } else if(precond == "ssor"){
+    //        p = finite_element::PCG::Preconditioner::SSOR;
+    //    } else {
+    //        logger::log_assert(false, logger::ERROR, "Unknown preconditioner: {}", precond);
+    //    }
+    //    finite_element.reset(new finite_element::PCG(eps, p));
+    //} else if(fea["type"] == "mumps"){
+    if(fea["type"] == "mumps"){
         finite_element.reset(new finite_element::MUMPSSolver());
     } else if(fea["type"] == "eigen_pcg"){
         finite_element.reset(new finite_element::EigenPCG());

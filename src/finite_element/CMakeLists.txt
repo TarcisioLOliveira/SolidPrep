@@ -1,9 +1,9 @@
 set(PROJECT_NAME SolidPrep)
 
 set(SOURCES_FINITE_ELEMENT
-    direct_solver.cpp
-    gradient_descent.cpp
-    PCG.cpp
+    #direct_solver.cpp
+    #gradient_descent.cpp
+    #PCG.cpp
     mumps_solver.cpp
     eigen_pcg.cpp
     petsc_pcg.cpp
