@@ -331,7 +331,7 @@ void InternalLoads::generate_mesh(const std::vector<BoundaryElement>& boundary_e
                 for(size_t j = 0; j < orig_bound_nodes; ++j){
                     nodes[j] = b.nodes[j];
                 }
-                applied.emplace_back(nodes, b.parent, b.normal);
+                applied.emplace_back(nodes, b.parent, b.normal, b.geom_id);
                 this->submesh[cur_elem] = &boundary_elements[i];
                 ++cur_elem;
             }
@@ -445,7 +445,7 @@ std::vector<BoundaryElement> InternalLoads::increase_element_order(const std::ve
     }
     for(size_t i = 0; i < boundary_elements.size(); ++i){
         auto& b = boundary_elements[i];
-        new_elements.emplace_back(new_nodes[i], b.parent, b.normal);
+        new_elements.emplace_back(new_nodes[i], b.parent, b.normal, b.geom_id);
     }
     
     return new_elements;

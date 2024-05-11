@@ -35,14 +35,16 @@ class MUMPSSolver : public FiniteElement{
     public:
     MUMPSSolver();
     virtual ~MUMPSSolver();
-    virtual void generate_matrix(const Meshing* const mesh, const size_t L, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache) override;
-
-    virtual void calculate_displacements(std::vector<double>& load) override;
 
     private:
+    virtual void generate_matrix_base(const Meshing* const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const MatrixType type) override;
+
+    virtual void solve(std::vector<double>& load, std::vector<double>& lambda) override;
+
     DMUMPS_STRUC_C config;
     global_stiffness_matrix::MUMPSSparseSymmetric gsm;
     std::vector<double> buffer;
+    size_t l_num = 0;
     bool first_time = true;
     bool factorized = false;
 };

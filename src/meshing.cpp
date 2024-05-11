@@ -85,10 +85,26 @@ void Meshing::generate_elements(const TopoDS_Shape& shape,
         populate_inverse_mesh(elements);
         this->distribute_elements(geom_elem_mapping, elements);
         elements.clear();
+        // Generate element ids
+        size_t e_id = 0;
+        for(auto& g:this->geometries){
+            for(auto& e:g->mesh){
+                e->id = e_id;
+                ++e_id;
+            }
+        }
     }
 
     {
-        auto bound_list = this->generate_element_shapes(bound_elem_node_tags, bound_nodes_per_elem, id_map, true);
+        std::vector<ElementShape> bound_list;
+        if(rigid){
+            // Generate element shapes from trimmed node list
+            bound_list = this->generate_element_shapes(bound_elem_node_tags, bound_nodes_per_elem, id_map, true);
+        } else {
+            // Generate element shapes from original node list
+            // Currently no per-geometry boundary setting, applies to whole list
+            bound_list = this->generate_element_shapes(bound_elem_node_tags, bound_nodes_per_elem, original_map, true);
+        }
         this->populate_boundary_elements(bound_list, boundary_condition_inside);
         this->distribute_boundary_elements();
     }
@@ -218,7 +234,6 @@ void Meshing::apply_boundary_conditions(const std::vector<Force>& forces,
         }
     }
 
-    this->to_rigid_map.clear();
     logger::quick_log("Done.");
 }
 
@@ -251,6 +266,10 @@ void Meshing::populate_boundary_elements(const std::vector<ElementShape>& bounda
     this->boundary_elements.clear();
     this->boundary_elements.reserve(boundary_base_mesh.size());
     std::vector<size_t> inter_geom;
+    // If contact type is rigid, overlapping nodes have been merged, so finding
+    // the intergeometry boundary is a matter of looking for intersections
+    // using the inverse mesh. Such boundary involves two boundary elements
+    // sharing the same boundary nodes, but having opposite normals.
     for(size_t i = 0; i < boundary_base_mesh.size(); ++i){
         const auto& b = boundary_base_mesh[i];
         std::set<MeshElement*> common_nodes;
@@ -271,9 +290,10 @@ void Meshing::populate_boundary_elements(const std::vector<ElementShape>& bounda
             common_nodes = std::move(tmp_common_nodes);
         }
         if(common_nodes.size() > 0){
-            if(boundary_condition_inside){
-                this->boundary_elements.emplace_back(b.nodes, *common_nodes.begin(), b.normal);
-            } else if(common_nodes.size() >= 1){
+            //if(boundary_condition_inside){
+            //    this->boundary_elements.emplace_back(b.nodes, *common_nodes.begin(), b.normal);
+            //} else 
+            if(common_nodes.size() >= 1){
                 double x = 0, y = 0, z = 0;
                 for(auto& n:b.nodes){
                     x += n->point.X();
@@ -290,21 +310,63 @@ void Meshing::populate_boundary_elements(const std::vector<ElementShape>& bounda
                 const double mult = (d.Dot(n) < 0) ? 1 : -1;
                 if(common_nodes.size() == 1){
                     auto it = common_nodes.begin();
-                    this->boundary_elements.emplace_back(b.nodes, *it, mult*n);
+                    size_t geom_id = 0;
+                    for(const auto& g:this->geometries){
+                        bool found = false;
+                        for(const auto& e:g->mesh){
+                            if(e.get() == *it){
+                                found = true;
+                                break;
+                            }
+                        }
+                        if(found){
+                            break;
+                        }
+                        ++geom_id;
+                    }
+                    this->boundary_elements.emplace_back(b.nodes, *it, mult*n, geom_id);
                 } else if(common_nodes.size() == 2){
                     auto it = common_nodes.begin();
                     bool found = false;
                     for(const auto& be:this->boundary_elements){
-                        if(be.parent == *it && be.normal.IsEqual(mult*n, Precision::Confusion())){
+                        if(be.parent == *it && std::abs(be.normal.Dot(n)) > 1.0 - Precision::Confusion()){
                             found = true;
                             break;
                         }
                     }
                     if(!found){
-                        this->boundary_elements.emplace_back(b.nodes, *it, mult*n);
+                        size_t geom_id = 0;
+                        for(const auto& g:this->geometries){
+                            bool found = false;
+                            for(const auto& e:g->mesh){
+                                if(e.get() == *it){
+                                    found = true;
+                                    break;
+                                }
+                            }
+                            if(found){
+                                break;
+                            }
+                            ++geom_id;
+                        }
+                        this->boundary_elements.emplace_back(b.nodes, *it, mult*n, geom_id);
                         inter_geom.push_back(this->boundary_elements.size()-1);
                         ++it;
-                        this->boundary_elements.emplace_back(b.nodes, *it, -mult*n);
+                        geom_id = 0;
+                        for(const auto& g:this->geometries){
+                            bool found = false;
+                            for(const auto& e:g->mesh){
+                                if(e.get() == *it){
+                                    found = true;
+                                    break;
+                                }
+                            }
+                            if(found){
+                                break;
+                            }
+                            ++geom_id;
+                        }
+                        this->boundary_elements.emplace_back(b.nodes, *it, -mult*n, geom_id);
                         inter_geom.push_back(this->boundary_elements.size()-1);
                     }
                 } else {
@@ -313,6 +375,27 @@ void Meshing::populate_boundary_elements(const std::vector<ElementShape>& bounda
             }
         }
     }
+    // If contact type is not rigid, nodes have not been merged, so one needs
+    // to use to_rigid_map to find overlapping nodes and generate intergeometry
+    // boundary metadata
+    if(this->proj_data->contact_type != ProjectData::RIGID){
+        std::vector<size_t> bnodes(N);
+        // Not optimal, but easier to implement
+        for(size_t i = 0; i < this->boundary_elements.size(); ++i){
+            const BoundaryElement* b = &this->boundary_elements[i];
+            const gp_Pnt c(b->get_centroid(N));
+            for(size_t j = i+1; j < this->boundary_elements.size(); ++j){
+                const BoundaryElement* b2 = &this->boundary_elements[j];
+                const gp_Pnt c2(b2->get_centroid(N));
+                if(c.IsEqual(c2, Precision::Confusion())){
+                    inter_geom.push_back(i);
+                    inter_geom.push_back(j);
+                }
+            }
+        }
+    }
+    logger::quick_log("bound_elems ", this->boundary_elements.size());
+    logger::quick_log("inter_geom", inter_geom.size());
     this->inter_geometry_boundary.resize(inter_geom.size());
     for(size_t i = 0; i < inter_geom.size(); ++i){
         this->inter_geometry_boundary[i] = &this->boundary_elements[inter_geom[i]];
@@ -1412,27 +1495,54 @@ void Meshing::extend_vector(const size_t subproblem, const std::vector<double>& 
             const long p = npos[dof*n->id + j];
             if(p > -1){
                 v_ext[n->u_pos[j]] = v[p];
+            } else {
+                v_ext[n->u_pos[j]] = 0;
             }
         }
     }
 }
 
 void Meshing::generate_lambda_elements(){
+    const size_t lsize = this->inter_geometry_boundary.size()/2;
     this->lambda_elements.reserve(this->inter_geometry_boundary.size()/2);
-    for(size_t i = 0; i < this->lambda_elements.size(); ++i){
-        const BoundaryElement* const parent = this->inter_geometry_boundary[2*i];
+    for(size_t i = 0; i < lsize; ++i){
+        const auto b1 = this->inter_geometry_boundary[2*i];
+        const auto b2 = this->inter_geometry_boundary[2*i+1];
+        // Using b1->geom_id < b2->geom_id does not work for some reason
+        // For some reason, one needs the element with the most rigid material
+        // as the base element for this to work correctly.
+        const BoundaryElement* const parent = (b1->geom_id > b2->geom_id) ? b1 : b2;
         const gp_Vec n = parent->normal;
         gp_Vec p1(0,1,0);
-        if(n.IsEqual(p1, Precision::Confusion(), Precision::Angular())){
+        if(std::abs(n.Dot(p1)) > 1 -  Precision::Confusion()){
             p1 = gp_Vec(0,0,1);
-        } else if(n.IsEqual(gp_Vec(0,0,1), Precision::Confusion(), Precision::Angular())){
+        } else if(std::abs(n.Dot(gp_Vec(0,0,1))) > 1 -  Precision::Confusion()){
             p1 = gp_Vec(1,0,0);
         }
         p1 = p1 - (n.Dot(p1))*n;
         p1.Normalize();
         gp_Dir p2 = n.Crossed(p1);
+        //if(std::abs(n.X() + 1) < Precision::Confusion()){
+        //    logger::quick_log(n.X(), n.Y(), n.Z());
+        //    logger::quick_log(p1.X(), p1.Y(), p1.Z());
+        //    logger::quick_log(p2.X(), p2.Y(), p2.Z());
+        //    logger::quick_log("");
+        //}
 
         this->lambda_elements.emplace_back(i, n, p1, p2, parent);
+    }
+
+    const auto order_lambdas = 
+        [&](const LambdaElement& l1, const LambdaElement& l2){
+            if(l1.parent->geom_id < l2.parent->geom_id){
+                return true;
+            }
+            return l1.parent->parent->id < l2.parent->parent->id;
+        };
+
+    std::sort(this->lambda_elements.begin(), this->lambda_elements.end(), order_lambdas);
+    for(size_t i = 0; i < this->lambda_elements.size(); ++i){
+        this->lambda_elements[i].id = i;
     }
 }
 
@@ -1501,11 +1611,12 @@ void Meshing::apply_lambda(const std::vector<double>& lambda, std::vector<double
             {ln*ln,
              lambda[i + 0],
              lambda[i + l_num]};
+        //lv = R.transpose()*lv;
         lv = R*lv;
+        const auto b = l.parent;
         for(size_t j = 0; j < bnode_num; ++j){
-            const auto b = l.parent;
             for(size_t k = 0; k < dof; ++k){
-                v_ext[b->nodes[j]->u_pos[k]] += lv[k];
+                v_ext[b->nodes[j]->u_pos[k]] -= lv[k];
             }
         }
     }

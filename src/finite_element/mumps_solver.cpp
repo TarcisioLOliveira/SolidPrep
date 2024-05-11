@@ -77,12 +77,13 @@ MUMPSSolver::~MUMPSSolver(){
     dmumps_c(&this->config);
 }
 
-void MUMPSSolver::generate_matrix(const Meshing* const mesh, const size_t L, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache){
+void MUMPSSolver::generate_matrix_base(const Meshing* const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const MatrixType type){
     int mpi_id = 0;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi_id);
 
+    this->l_num = l_num;
     if(mpi_id == 0){
-        this->gsm.generate(mesh, node_positions, L, topopt, D_cache);
+        this->gsm.generate(mesh, u_size, l_num, node_positions, topopt, D_cache, type);
 
         std::vector<int>& rows = this->gsm.get_rows();
         std::vector<int>& cols = this->gsm.get_cols();
@@ -90,7 +91,7 @@ void MUMPSSolver::generate_matrix(const Meshing* const mesh, const size_t L, con
         // Insert matrix data
         // Do this after every regeneration as the vectors may expand, which
         // will change their address.
-        this->config.n   = L;
+        this->config.n   = u_size + 2*l_num;
         this->config.nnz = vals.size();
         this->config.a   = vals.data();
         this->config.irn = rows.data();
@@ -98,18 +99,19 @@ void MUMPSSolver::generate_matrix(const Meshing* const mesh, const size_t L, con
         this->factorized = false;
     }
     if(this->first_time){
+        const double buffer_mult = 1.35;
         this->config.job = 1; // Perform analysis
         dmumps_c(&this->config);
         int size = this->config.INFO(8);
         if(size > 0){
-            this->buffer.resize(size*1.35);
+            this->buffer.resize(size*buffer_mult);
             if(this->buffer.size() < 1e6){
                 this->config.lwk_user = buffer.size();
             } else {
                 this->config.lwk_user = -double(buffer.size())/1e6;
             }
         } else {
-            this->buffer.resize(-double(size)*1e6*1.35);
+            this->buffer.resize(-double(size)*1e6*buffer_mult);
             this->config.lwk_user = -double(this->buffer.size())/1e6;
         }
         this->config.ICNTL(14) = 35;
@@ -119,7 +121,7 @@ void MUMPSSolver::generate_matrix(const Meshing* const mesh, const size_t L, con
     }
 }
 
-void MUMPSSolver::calculate_displacements(std::vector<double>& load){
+void MUMPSSolver::solve(std::vector<double>& load, std::vector<double>& lambda){
     int mpi_id = 0;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi_id);
 
@@ -137,15 +139,21 @@ void MUMPSSolver::calculate_displacements(std::vector<double>& load){
         }
     }
 
+    logger::log_assert(load.size() + 2*l_num == (size_t)this->config.n, logger::ERROR, "invalid vector input vector dimension, is {}, should be {}", load.size() + 2*l_num, this->config.n);
+    std::vector<double> u_tmp;
     this->config.job = 3; // Solve using decomposed matrix
     if(mpi_id == 0){
-        this->config.rhs = load.data(); // Set right-hand side
+        u_tmp.resize(load.size() + 2*l_num, 0);
+        std::copy(load.begin(), load.end(), u_tmp.begin());
+        this->config.rhs = u_tmp.data(); // Set right-hand side
         logger::quick_log("Calculating displacements...");
     }
 
     dmumps_c(&this->config);
 
     if(mpi_id == 0){
+        std::copy(u_tmp.begin(), u_tmp.begin() + load.size(), load.begin());
+        std::copy(u_tmp.begin() + load.size(), u_tmp.end(), lambda.begin());
         logger::quick_log("Done.");
     }
 }

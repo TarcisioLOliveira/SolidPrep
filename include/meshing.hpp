@@ -40,14 +40,15 @@ class BoundaryElement{
     const MeshNode** const nodes;
     const MeshElement* const parent;
     const gp_Dir normal;
+    const size_t geom_id;
     
     ~BoundaryElement(){
         delete[] nodes;
     }
-    BoundaryElement(const std::vector<MeshNode*>& n, const MeshElement* const parent, gp_Dir normal):
-        nodes(allocate_nodes(n)), parent(parent), normal(std::move(normal)){}
-    BoundaryElement(const std::vector<const MeshNode*>& n, const MeshElement* const parent, gp_Dir normal):
-        nodes(allocate_nodes(n)), parent(parent), normal(std::move(normal)){}
+    BoundaryElement(const std::vector<MeshNode*>& n, const MeshElement* const parent, gp_Dir normal, size_t geom_id):
+        nodes(allocate_nodes(n)), parent(parent), normal(std::move(normal)), geom_id(geom_id){}
+    BoundaryElement(const std::vector<const MeshNode*>& n, const MeshElement* const parent, gp_Dir normal, size_t geom_id):
+        nodes(allocate_nodes(n)), parent(parent), normal(std::move(normal)), geom_id(geom_id){}
 
     inline gp_Pnt get_centroid(const size_t N) const{
         double x = 0, y = 0, z = 0;
@@ -84,11 +85,11 @@ class LambdaElement{
         id(id), n(n), p1(p1), p2(p2), parent(parent){}
     ~LambdaElement() = default;
 
-    const size_t id;
-    const gp_Dir n;
-    const gp_Dir p1;
-    const gp_Dir p2;
-    const BoundaryElement* const parent;
+    size_t id;
+    gp_Dir n;
+    gp_Dir p1;
+    gp_Dir p2;
+    const BoundaryElement* parent;
 };
 
 class Meshing{

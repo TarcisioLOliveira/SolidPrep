@@ -34,7 +34,7 @@ class EigenSparseAsymmetric : public GlobalStiffnessMatrix{
 
     virtual ~EigenSparseAsymmetric() = default;
 
-    virtual void generate(const Meshing * const mesh, const std::vector<long>& node_positions, const size_t matrix_width, bool topopt, const std::vector<std::vector<double>>& D_cache) override;
+    virtual void generate(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const FiniteElement::MatrixType type) override;
 
     Mat& get_K() {
         return K;
@@ -44,13 +44,36 @@ class EigenSparseAsymmetric : public GlobalStiffnessMatrix{
     bool first_time = true;
     Mat K;
 
+    inline virtual void insert_block_symmetric(const std::vector<double>& k, const std::vector<long>& posi, const std::vector<long>& posj) override{
+        const size_t w = posj.size();
+        const size_t h = posi.size();
+        for(size_t i = 0; i < h; ++i){
+            if(posi[i] < 0){
+                continue;
+            }
+            for(size_t j = 0; j < w; ++j){
+                if(posj[j] < 0){
+                    continue;
+                }
+                if(posi[i] > -1 && posj[j] > -1){
+                    K.coeffRef(posi[i], posj[j]) += k[w*i + j];
+                    K.coeffRef(posj[j], posi[i]) += k[w*i + j];
+                }
+            }
+        }
+    }
+
     virtual inline void insert_element_matrix(const std::vector<double>& k, const std::vector<long>& pos) override{
         const size_t w = pos.size();
         for(size_t i = 0; i < w; ++i){
+            if(pos[i] < 0){
+                continue;
+            }
             for(size_t j = 0; j < w; ++j){
-                if(pos[i] > -1 && pos[j] > -1){
-                    K.coeffRef(pos[i], pos[j]) += k[w*i + j];
+                if(pos[j] < 0){
+                    continue;
                 }
+                K.coeffRef(pos[i], pos[j]) += k[w*i + j];
             }
         }
     }

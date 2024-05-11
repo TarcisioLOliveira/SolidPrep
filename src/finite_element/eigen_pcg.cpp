@@ -28,24 +28,31 @@ namespace finite_element{
 
 EigenPCG::EigenPCG():gsm(){}
 
-void EigenPCG::generate_matrix(const Meshing* const mesh, const size_t L, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache){
-    this->gsm.generate(mesh, node_positions, L, topopt, D_cache);
+void EigenPCG::generate_matrix_base(const Meshing* const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const MatrixType type){
+
+    this->l_num = l_num;
+    this->gsm.generate(mesh, u_size, l_num, node_positions, topopt, D_cache, type);
     auto& K = this->gsm.get_K();
     this->cg.compute(K);
 }
 
-void EigenPCG::calculate_displacements(std::vector<double>& load){
+void EigenPCG::solve(std::vector<double>& load, std::vector<double>& lambda){
     int mpi_id = 0;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi_id);
+    // TODO: lambda
 
     if(mpi_id != 0){
         return;
     }
 
-    Eigen::VectorXd f = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(load.data(), load.size());
+    Eigen::VectorXd f(load.size() + 2*l_num);
+    std::copy(load.begin(), load.end(), f.begin());
     Eigen::VectorXd u = cg.solve(f);
 
-    std::copy(u.cbegin(), u.cend(), load.begin());
+    std::copy(u.cbegin(), u.cbegin() + load.size(), load.begin());
+    if(l_num > 0){
+        std::copy(u.cbegin() + load.size(), u.cend(), lambda.begin());
+    }
 }
 
 }

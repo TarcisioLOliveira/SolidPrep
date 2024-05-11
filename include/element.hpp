@@ -162,6 +162,7 @@ class Element{
     // Used for rendering element and other functions which require knowing
     // the geometry and its edges.
     Node** const nodes;
+    size_t id = 0;
 
     virtual ~Element(){
         delete[] nodes;

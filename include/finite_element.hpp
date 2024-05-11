@@ -33,13 +33,36 @@ class FiniteElement{
     public:
     const double K_MIN = 1e-6;
 
+    enum class ProblemType{
+        RIGID,
+        LAMBDA_OPT,
+        LAMBDA_NEWTON
+    };
+
+    enum class MatrixType{
+        RIGID,
+        LAMBDA_SLIDING,
+        LAMBDA_HESSIAN
+    };
+
     virtual ~FiniteElement() = default;
 
-    virtual void generate_matrix(const Meshing* const mesh, const size_t L, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache) = 0;
+    void generate_matrix(const Meshing* const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const ProblemType type);
 
-    virtual void calculate_displacements(std::vector<double>& load) = 0;
+    void calculate_displacements(const Meshing* const mesh, std::vector<double>& load, std::vector<double>& lambda);
 
     virtual std::vector<double> calculate_forces(const Meshing* const mesh, const std::vector<double>& displacements) const;
+
+    protected:
+    ProblemType prob_type;
+
+    virtual void generate_matrix_base(const Meshing* const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const MatrixType type) = 0;
+
+    virtual void solve(std::vector<double>& load, std::vector<double>& lambda) = 0;
+
+    void solve_rigid(const Meshing* const mesh, std::vector<double>& load, std::vector<double>& lambda);
+    void solve_opt(const Meshing* const mesh, std::vector<double>& load, std::vector<double>& lambda);
+    void solve_newton(const Meshing* const mesh, std::vector<double>& load, std::vector<double>& lambda);
 };
 
 #endif

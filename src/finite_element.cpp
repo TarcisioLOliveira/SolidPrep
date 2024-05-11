@@ -23,6 +23,32 @@
 #include "logger.hpp"
 #include "project_data.hpp"
 
+void FiniteElement::generate_matrix(const Meshing* const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const ProblemType type){
+    this->prob_type = type;
+    this->generate_matrix_base(mesh, u_size, l_num, node_positions, topopt, D_cache, 
+            (type == ProblemType::RIGID) ? MatrixType::RIGID : MatrixType::LAMBDA_SLIDING);
+}
+
+void FiniteElement::calculate_displacements(const Meshing* const mesh, std::vector<double>& load, std::vector<double>& lambda){
+    if(this->prob_type == ProblemType::RIGID){
+        this->solve_rigid(mesh, load, lambda);
+    } else if(this->prob_type == ProblemType::LAMBDA_OPT){
+        this->solve_opt(mesh, load, lambda);
+    } else if(this->prob_type == ProblemType::LAMBDA_NEWTON){
+        this->solve_newton(mesh, load, lambda);
+    }
+}
+
+void FiniteElement::solve_rigid(const Meshing* const mesh, std::vector<double>& load, std::vector<double>& lambda){
+    this->solve(load, lambda);
+}
+void FiniteElement::solve_opt(const Meshing* const mesh, std::vector<double>& load, std::vector<double>& lambda){
+    this->solve(load, lambda);
+}
+void FiniteElement::solve_newton(const Meshing* const mesh, std::vector<double>& load, std::vector<double>& lambda){
+    this->solve(load, lambda);
+}
+
 std::vector<double> FiniteElement::calculate_forces(const Meshing* const mesh, const std::vector<double>& displacements) const{
     logger::quick_log("Calculating forces...");
     const size_t dof       = mesh->elem_info->get_dof_per_node();

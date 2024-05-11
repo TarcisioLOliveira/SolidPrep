@@ -37,7 +37,7 @@ class PETScSparseSymmetric : public GlobalStiffnessMatrix{
     };
     virtual ~PETScSparseSymmetric();
 
-    virtual void generate(const Meshing * const mesh, const std::vector<long>& node_positions, const size_t matrix_width, bool topopt, const std::vector<std::vector<double>>& D_cache) override;
+    virtual void generate(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const FiniteElement::MatrixType type) override;
 
     Mat get_K() const{
         return this->K;
@@ -47,8 +47,8 @@ class PETScSparseSymmetric : public GlobalStiffnessMatrix{
     Mat K = 0;
     bool first_time = true;
 
-    virtual void preallocate(const Meshing * const mesh, const std::vector<long>& node_positions, const size_t matrix_width, bool topopt, const std::vector<std::vector<double>>& D_cache, const size_t mpi_id) = 0;
-    virtual void assemble_matrix(const Meshing * const mesh, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const size_t mpi_id) = 0;
+    virtual void preallocate(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const FiniteElement::MatrixType type, const size_t mpi_id) = 0;
+    virtual void assemble_matrix(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const FiniteElement::MatrixType type, const size_t mpi_id) = 0;
     virtual void zero() = 0;
 };
 
@@ -58,10 +58,19 @@ class PETScSparseSymmetricCPU : public PETScSparseSymmetric {
     virtual ~PETScSparseSymmetricCPU() = default;
 
     protected:
-    virtual void preallocate(const Meshing * const mesh, const std::vector<long>& node_positions, const size_t matrix_width, bool topopt, const std::vector<std::vector<double>>& D_cache, const size_t mpi_id) override;
-    virtual void assemble_matrix(const Meshing * const mesh, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const size_t mpi_id) override;
+    virtual void preallocate(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const FiniteElement::MatrixType type, const size_t mpi_id) override;
+    virtual void assemble_matrix(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const FiniteElement::MatrixType type, const size_t mpi_id) override;
     inline virtual void zero() override{
         MatZeroEntries(this->K);
+    }
+
+    inline virtual void insert_block_symmetric(const std::vector<double>& k, const std::vector<long>& posi, const std::vector<long>& posj) override{
+        // Requires 64-bit indices
+        MatSetValues(this->K, posi.size(), posi.data(), posj.size(), posj.data(), k.data(), ADD_VALUES);
+        // I think this is a hack, but it works
+        MatSetOption(this->K, MAT_ROW_ORIENTED, PETSC_FALSE);
+        MatSetValues(this->K, posj.size(), posj.data(), posi.size(), posi.data(), k.data(), ADD_VALUES);
+        MatSetOption(this->K, MAT_ROW_ORIENTED, PETSC_TRUE);
     }
 
     inline virtual void insert_element_matrix(const std::vector<double>& k, const std::vector<long>& pos) override{
@@ -83,10 +92,16 @@ class PETScSparseSymmetricCUDA : public PETScSparseSymmetric {
     protected:
     utils::COO<PetscInt> K_coo;
 
-    virtual void preallocate(const Meshing * const mesh, const std::vector<long>& node_positions, const size_t matrix_width, bool topopt, const std::vector<std::vector<double>>& D_cache, const size_t mpi_id) override;
-    virtual void assemble_matrix(const Meshing * const mesh, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const size_t mpi_id) override;
+    virtual void preallocate(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const FiniteElement::MatrixType type, const size_t mpi_id) override;
+    virtual void assemble_matrix(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const FiniteElement::MatrixType type, const size_t mpi_id) override;
     inline virtual void zero() override{
         this->K_coo.zero();
+    }
+
+    inline virtual void insert_block_symmetric(const std::vector<double>& k, const std::vector<long>& posi, const std::vector<long>& posj) override{
+        // Requires 64-bit indices
+        this->K_coo.insert_block(k, posi, posj, false);
+        this->K_coo.insert_block(k, posi, posj, true);
     }
 
     inline virtual void insert_element_matrix(const std::vector<double>& k, const std::vector<long>& pos) override{

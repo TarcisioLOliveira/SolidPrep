@@ -34,11 +34,11 @@ class PETScPCG : public FiniteElement{
 
     virtual ~PETScPCG();
 
-    virtual void generate_matrix(const Meshing* const mesh, const size_t L, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache) override;
-
-    virtual void calculate_displacements(std::vector<double>& load) override;
-
     private:
+    virtual void generate_matrix_base(const Meshing* const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const MatrixType type) override;
+
+    virtual void solve(std::vector<double>& load, std::vector<double>& lambda) override;
+
     std::unique_ptr<global_stiffness_matrix::PETScSparseSymmetric> gsm;
     Vec u;
     Vec f = 0;
@@ -47,6 +47,8 @@ class PETScPCG : public FiniteElement{
     bool first_time = true;
     bool setup = false;
     std::string vec_type = VECSTANDARD;
+    size_t l_num = 0;
+    MatrixType matrix_type;
 };
 
 }

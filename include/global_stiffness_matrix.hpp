@@ -22,17 +22,21 @@
 #define GLOBAL_STIFFNESS_MATRIX_HPP
 
 #include "meshing.hpp"
+#include "finite_element.hpp"
 
 class GlobalStiffnessMatrix{
     public:
     virtual ~GlobalStiffnessMatrix() = default;
     const double K_MIN = 1e-14;
-    virtual void generate(const Meshing * const mesh, const std::vector<long>& node_positions, const size_t matrix_width, bool topopt, const std::vector<std::vector<double>>& D_cache) = 0;
+
+    virtual void generate(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const FiniteElement::MatrixType type) = 0;
 
     protected:
     size_t W, N;
 
-    virtual void generate_base(const Meshing * const mesh, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache);
+    virtual void generate_base(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const FiniteElement::MatrixType type);
+
+    virtual void generate_expansion(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const Meshing::LambdaType type);
 
     virtual void calculate_dimensions(const Meshing * const mesh, const std::vector<long>& node_positions, const size_t matrix_width);
 
@@ -41,6 +45,10 @@ class GlobalStiffnessMatrix{
     virtual void add_geometry(const Meshing * const mesh, const std::vector<long>& node_positions, const Geometry * const g, const size_t D_offset, const std::vector<std::vector<double>>& D_cache);
 
     virtual void add_springs(const Meshing * const mesh, const std::vector<long>& node_positions);
+
+    virtual void insert_expansion_matrices(const std::vector<double>& k, const std::vector<double>& R, const std::vector<long>& u_pos, const size_t l_i, const size_t l_num, const size_t u_num, const Meshing::LambdaType type);
+
+    virtual void insert_block_symmetric(const std::vector<double>& k, const std::vector<long>& posi, const std::vector<long>& posj) = 0;
 
     virtual void insert_element_matrix(const std::vector<double>& k, const std::vector<long>& pos) = 0;
 

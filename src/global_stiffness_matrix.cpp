@@ -21,9 +21,13 @@
 #include "global_stiffness_matrix.hpp"
 #include "cblas.h"
 #include "logger.hpp"
+#include "project_data.hpp"
+#include <limits>
 
-void GlobalStiffnessMatrix::generate_base(const Meshing * const mesh, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache){
+void GlobalStiffnessMatrix::generate_base(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const FiniteElement::MatrixType type){
     size_t D_offset = 0;
+    const double t = mesh->thickness;
+    const size_t L = u_size + ((type != FiniteElement::MatrixType::RIGID) ? 2*l_num : 0);
     for(auto& g : mesh->geometries){
         if((topopt && g->do_topopt) || !g->materials.get_materials()[0]->is_homogeneous()){
             this->add_geometry(mesh, node_positions, g, D_offset, D_cache);
@@ -35,9 +39,98 @@ void GlobalStiffnessMatrix::generate_base(const Meshing * const mesh, const std:
     if(mesh->springs->size() > 0){
         this->add_springs(mesh, node_positions);
     }
+    if(type != FiniteElement::MatrixType::RIGID){
+        this->generate_expansion(mesh, u_size, l_num, node_positions, topopt, D_cache, Meshing::LambdaType::PARALLEL);
+    }
     if(topopt){
-        for(size_t i = 0; i < mesh->load_vector.size(); ++i){
+        for(size_t i = 0; i < L; ++i){
             this->add_to_matrix(i, i, this->K_MIN);
+        }
+    }
+}
+
+void GlobalStiffnessMatrix::generate_expansion(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const Meshing::LambdaType type){
+    const double t = mesh->thickness;
+    const size_t bnode_num = mesh->elem_info->get_boundary_nodes_per_element();
+    const size_t kw = mesh->elem_info->get_k_dimension();
+    const size_t lw = 3;
+    const size_t dof      = mesh->elem_info->get_dof_per_node();
+    const size_t node_num = mesh->elem_info->get_nodes_per_element();
+    // TODO: Springs
+    // TODO: DENSITY
+
+    std::vector<long> u_pos(dof*node_num);
+    const auto& lambda_list = mesh->lambda_elements;
+    size_t geom = 0;
+    const Geometry* g = mesh->geometries[geom];
+    bool use_D_cache = (topopt && g->do_topopt) || !g->materials.get_materials()[0]->is_homogeneous();
+    size_t D_offset = 0;
+    std::vector<double> D;
+    if(!use_D_cache){
+        D = g->materials.get_D(g->mesh.front().get(), g->mesh.front()->get_centroid());
+    }
+    std::vector<double> k;
+    std::vector<double> R(kw*lw, 0);
+    for(size_t l_i = 0; l_i < lambda_list.size(); ++l_i){
+        // Maps node ids to list of nodes which are affected by current lambda
+        // Nodes use relative ids (not Node::id)
+        std::unordered_map<MeshElement*, std::vector<size_t>> element_node_map;
+
+        const auto& l_e = lambda_list[l_i];
+
+        if(l_e.parent->geom_id != geom){
+            if(!use_D_cache){
+                D_offset += g->mesh.size();
+            }
+            geom = l_e.parent->geom_id;
+            const Geometry* g = mesh->geometries[geom];
+            use_D_cache = (topopt && g->do_topopt) || !g->materials.get_materials()[0]->is_homogeneous();
+            if(!use_D_cache){
+                D = g->materials.get_D(g->mesh.front().get(), g->mesh.front()->get_centroid());
+            }
+        }
+
+        std::vector<double> R0 = 
+            {l_e.n.X(), l_e.p1.X(), l_e.p2.X(),
+             l_e.n.Y(), l_e.p1.Y(), l_e.p2.Y(),
+             l_e.n.Z(), l_e.p1.Z(), l_e.p2.Z()};
+        for(size_t j = 0; j < bnode_num; ++j){
+            const auto n = l_e.parent->nodes[j];
+            const auto elems = mesh->inverse_mesh.equal_range(n->id);
+            for(auto it = elems.first; it != elems.second; ++it){
+                element_node_map[it->second].push_back(n->id);
+            }
+        }
+
+        for(const auto& en:element_node_map){
+            const auto e = en.first;
+            const auto& nodes = en.second;
+            if(use_D_cache){
+                k = e->get_k(D_cache[e->id - D_offset], t);
+            } else {
+                k = e->get_k(D, t);
+            }
+            std::fill(R.begin(), R.end(), 0);
+            for(size_t i = 0; i < node_num; ++i){
+                const auto& n = e->nodes[i];
+                for(size_t j = 0; j < dof; ++j){
+                    const size_t p = n->id*dof + j;
+                    u_pos[i*dof + j] = node_positions[p];
+                }
+                for(size_t j = 0; j < nodes.size(); ++j){
+                    if(n->id == nodes[j]){
+                        for(size_t ii = 0; ii < lw; ++ii){
+                            for(size_t jj = 0; jj < lw; ++jj){
+                                // Transpose R0
+                                //R[i*lw*lw + ii*lw + jj] = -R0[jj*lw + ii];
+                                R[i*lw*lw + ii*lw + jj] = -R0[ii*lw + jj];
+                            }
+                        }
+                        break;
+                    }
+                }
+            }
+            this->insert_expansion_matrices(k, R, u_pos, l_i, l_num, u_size, type);
         }
     }
 }
@@ -155,4 +248,34 @@ void GlobalStiffnessMatrix::calculate_dimensions(const Meshing* const mesh, cons
             }
         }
     }
+}
+
+
+void GlobalStiffnessMatrix::insert_expansion_matrices(const std::vector<double>& k, const std::vector<double>& R, const std::vector<long>& u_pos, const size_t l_i, const size_t l_num, const size_t u_num, const Meshing::LambdaType type){
+    const size_t kw = u_pos.size();
+    const size_t lw = 3;
+
+    std::vector<long> l_pos{
+        (type != Meshing::LambdaType::PARALLEL) ? static_cast<long>(u_num + l_i + 2*l_num) : -1,
+        (type != Meshing::LambdaType::NORMAL) ? static_cast<long>(u_num + l_i) : -1,
+        (type != Meshing::LambdaType::NORMAL) ? static_cast<long>(u_num + l_i + l_num) : -1
+    };
+
+    std::vector<double> KR(kw*lw, 0);
+    // No idea why the BLAS multiplication is not working
+    // cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, kw, lw, kw, 1, k.data(), kw, R.data(), kw, 0, KR.data(), kw);
+    for(size_t i = 0; i < kw; ++i){
+        for(size_t j = 0; j < lw; ++j){
+            for(size_t l = 0; l < kw; ++l){
+                KR[i*lw + j] += k[i*kw + l]*R[l*lw + j];
+            }
+        }
+    }
+    
+    this->insert_block_symmetric(KR, u_pos, l_pos);
+
+    std::vector<double> RKR(lw*lw, 0);
+    cblas_dgemm(CblasRowMajor, CblasTrans, CblasNoTrans, lw, lw, kw, 1, R.data(), lw, KR.data(), lw, 0, RKR.data(), lw);
+
+    this->insert_element_matrix(RKR, l_pos);
 }

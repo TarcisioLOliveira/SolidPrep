@@ -32,7 +32,7 @@ class EigenSparseAsymmetricTriplets : public GlobalStiffnessMatrix{
 
     virtual ~EigenSparseAsymmetricTriplets() = default;
 
-    virtual void generate(const Meshing * const mesh, const std::vector<long>& node_positions, const size_t matrix_width, bool topopt, const std::vector<std::vector<double>>& D_cache) override;
+    virtual void generate(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const FiniteElement::MatrixType type) override;
 
     std::vector<T> triplets;
 
@@ -40,6 +40,10 @@ class EigenSparseAsymmetricTriplets : public GlobalStiffnessMatrix{
     bool first_time = true;
     utils::SparseMatrix K;
 
+    inline virtual void insert_block_symmetric(const std::vector<double>& k, const std::vector<long>& posi, const std::vector<long>& posj) override{
+        this->K.insert_block(k, posi, posj);
+        this->K.insert_block(k, posj, posi);
+    }
     virtual inline void insert_element_matrix(const std::vector<double>& k, const std::vector<long>& pos) override{
         this->K.insert_matrix_general_mumps(k, pos);
     }
@@ -48,26 +52,28 @@ class EigenSparseAsymmetricTriplets : public GlobalStiffnessMatrix{
     }
 };
 
-void EigenSparseAsymmetricTriplets::generate(const Meshing * const mesh, const std::vector<long>& node_positions, const size_t matrix_width, bool topopt, const std::vector<std::vector<double>>& D_cache){
-    (void)matrix_width;
-    this->generate_base(mesh, node_positions, topopt, D_cache);
+void EigenSparseAsymmetricTriplets::generate(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const FiniteElement::MatrixType type){
+    (void) u_size;
+    (void) l_num;
+    this->generate_base(mesh, u_size, l_num, node_positions, topopt, D_cache, type);
     this->triplets = K.get_eigen_triplets();
     this->K.clear();
 }
 
 }
 
-void EigenSparseAsymmetric::generate(const Meshing* const mesh, const std::vector<long>& node_positions, const size_t matrix_width, bool topopt, const std::vector<std::vector<double>>& D_cache){
+void EigenSparseAsymmetric::generate(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const FiniteElement::MatrixType type){
     logger::quick_log("Generating stiffness matrix...");
     if(this->first_time){
+        const size_t matrix_width = u_size + 2*l_num;
         this->K = Mat(matrix_width, matrix_width);
         internal::EigenSparseAsymmetricTriplets trigen;
-        trigen.generate(mesh, node_positions, matrix_width, topopt, D_cache);
+        trigen.generate(mesh, u_size, l_num, node_positions, topopt, D_cache, type);
         this->K.setFromTriplets(trigen.triplets.begin(), trigen.triplets.end());
         this->first_time = false;
     } else {
         std::fill(this->K.valuePtr(), this->K.valuePtr() + this->K.nonZeros(), 0);
-        this->generate_base(mesh, node_positions, topopt, D_cache);
+        this->generate_base(mesh, u_size, l_num, node_positions, topopt, D_cache, type);
     }
     logger::quick_log("Done.");
 }

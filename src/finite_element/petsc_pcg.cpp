@@ -20,7 +20,9 @@
 
 
 #include <mpich-x86_64/mpi.h>
+#include <vector>
 #include "finite_element/petsc_pcg.hpp"
+#include "project_data.hpp"
 #include "logger.hpp"
 
 namespace finite_element{
@@ -45,12 +47,14 @@ PETScPCG::~PETScPCG(){
     KSPDestroy(&this->ksp);
 }
 
-void PETScPCG::generate_matrix(const Meshing* const mesh, const size_t L, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache){
-    this->gsm->generate(mesh, node_positions, L, topopt, D_cache);
+void PETScPCG::generate_matrix_base(const Meshing* const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const MatrixType type){
+    this->matrix_type = type;
+    this->l_num = l_num;
+    this->gsm->generate(mesh, u_size, l_num, node_positions, topopt, D_cache, type);
     this->setup = false;
 }
 
-void PETScPCG::calculate_displacements(std::vector<double>& load){
+void PETScPCG::solve(std::vector<double>& load, std::vector<double>& lambda){
     int mpi_id = 0;
     int mpi_size = 0;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi_id);
@@ -58,7 +62,7 @@ void PETScPCG::calculate_displacements(std::vector<double>& load){
 
     auto K = this->gsm->get_K();
 
-    long M = load.size();
+    long M = load.size() + 2*this->l_num;
     long n = 0, m = 0;
     MatGetLocalSize(K, &n, &m);
     MPI_Bcast(&M, 1, MPI_LONG, 0, MPI_COMM_WORLD);
@@ -80,13 +84,27 @@ void PETScPCG::calculate_displacements(std::vector<double>& load){
         VecSetUp(this->f);
 
         KSPCreate(PETSC_COMM_WORLD, &this->ksp);
-        KSPSetType(this->ksp, KSPCG);
+        if(this->matrix_type == MatrixType::RIGID){
+            KSPSetType(this->ksp, KSPCG);
+        } else {
+            // KSPCG returns KSP_DIVERGED_INDEFINITE_MAT when used with
+            // LAMBDA_SLIDING for some reason, even though:
+            // (1) The matrix is confirmed by PETSc to be symmetric
+            // (2) Cholesky factorization works both in PETSc and in MUMPS
+            // Therefore, it was necessary to use an alternate CG approach
+            // in order to avoid considerably slower methods (e.g. BiCGSTAB).
+            // KSPFCG and KSPPIPECG both were confirmed to work, although
+            // they KSP_DIVERGED_ITS under normal convergence criteria.
+            KSPSetType(this->ksp, KSPPIPECG);
+        }
+        //KSPSetType(this->ksp, KSPPREONLY);
         KSPCGSetType(this->ksp, KSP_CG_HERMITIAN);
         KSPSetInitialGuessNonzero(this->ksp, PETSC_FALSE);
 
         KSPGetPC(this->ksp, &this->pc);
         PCFactorSetUseInPlace(this->pc, PETSC_TRUE);
         PCSetType(this->pc, PCJACOBI);
+        //PCSetType(this->pc, PCCHOLESKY);
 
         this->first_time = false;
     }
@@ -99,9 +117,6 @@ void PETScPCG::calculate_displacements(std::vector<double>& load){
         VecSetUp(this->u);
     }
 
-    if(mpi_id != 0){
-        load.resize(M);
-    }
     MPI_Bcast(load.data(), load.size(), MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
     long begin = 0, end = 0;
@@ -109,14 +124,20 @@ void PETScPCG::calculate_displacements(std::vector<double>& load){
 
     double* f_data = nullptr;
     VecGetArray(this->f, &f_data);
-    for(auto d = 0; d < end - begin; ++d){
-        *(f_data+d) = load[begin+d];
+    if(end < load.size()){
+        for(auto d = 0; d < end - begin; ++d){
+            *(f_data+d) = load[begin+d];
+        }
+    } else {
+        const long end2 = load.size();
+        for(auto d = 0; d < end2 - begin; ++d){
+            *(f_data+d) = load[begin+d];
+        }
+        for(auto d = end2; d < end - end2; ++d){
+            *(f_data+d) = 0;
+        }
     }
     VecRestoreArray(this->f, &f_data);
-
-    // if(mpi_id == 0){
-    //     VecSetValues(this->f, load.size(), indices.data(), load.data(), INSERT_VALUES);
-    // }
 
     VecAssemblyBegin(this->u);
     VecAssemblyEnd(this->u);
@@ -124,8 +145,19 @@ void PETScPCG::calculate_displacements(std::vector<double>& load){
     VecAssemblyBegin(this->f);
     VecAssemblyEnd(this->f);
 
+    PetscBool is_sym;
+    MatIsHermitian(K, 1e-7, &is_sym);
+    logger::quick_log("is symmetric?", is_sym);
+
     if(!this->setup){
         KSPSetOperators(this->ksp, K, K);
+        if(this->matrix_type != MatrixType::RIGID){
+            // Defaults: rtol=1e-5, atol=1e-50, dtol=1e5, and maxits=1e4
+            // Increased tolerance for faster convergence. 
+            // Results seem to be good enough, fortunately.
+            // Otherwise, it reaches max iterations every time.
+            KSPSetTolerances(this->ksp, 1e-3, 1e-7, 1e5, 1e4);
+        }
 
         KSPSetUp(this->ksp);
         PCSetUp(this->pc);
@@ -133,14 +165,17 @@ void PETScPCG::calculate_displacements(std::vector<double>& load){
     }
 
     KSPSolve(this->ksp, this->f, this->u);
+    KSPConvergedReason r;
+    KSPGetConvergedReason(this->ksp, &r);
+    logger::quick_log("Converged?", r);
 
     const double* load_data;
 
     VecGetArrayRead(u, &load_data);
+    std::vector<double> u_tmp(M, 0);
 
     if(mpi_size > 1){
         if(mpi_id == 0){
-            std::fill(load.begin(), load.end(), 0);
             std::copy(load_data, load_data + m, load.begin());
             std::vector<double> load_data2(2*m,0);
             long l = 0;
@@ -150,7 +185,7 @@ void PETScPCG::calculate_displacements(std::vector<double>& load){
                 MPI_Recv(&l, 1, MPI_DOUBLE, i, 111, MPI_COMM_WORLD, &mpi_status);
                 MPI_Recv(load_data2.data(), l, MPI_DOUBLE, i, 111, MPI_COMM_WORLD, &mpi_status);
                 for(long j = 0; j < m; ++j){
-                    load[j+step] += load_data2[j];
+                    u_tmp[j+step] += load_data2[j];
                 }
                 step += l;
             }
@@ -160,11 +195,16 @@ void PETScPCG::calculate_displacements(std::vector<double>& load){
             MPI_Send(load_data, m, MPI_DOUBLE, 0, 111, MPI_COMM_WORLD);
         }
     } else {
-        std::copy(load_data, load_data + M, load.begin());
+        std::copy(load_data, load_data + M, u_tmp.begin());
     }
     MPI_Barrier(MPI_COMM_WORLD);
 
     VecRestoreArrayRead(this->u, &load_data);
+
+    std::copy(u_tmp.begin(), u_tmp.begin() + load.size(), load.begin());
+    if(this->l_num > 0){
+        std::copy(u_tmp.begin() + load.size(), u_tmp.end(), lambda.begin());
+    }
 }
 
 }

@@ -31,7 +31,7 @@ class MUMPSSparseSymmetric : public GlobalStiffnessMatrix{
     public:
     virtual ~MUMPSSparseSymmetric() = default;
 
-    virtual void generate(const Meshing * const mesh, const std::vector<long>& node_positions, const size_t matrix_width, bool topopt, const std::vector<std::vector<double>>& D_cache) override;
+    virtual void generate(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const FiniteElement::MatrixType type) override;
 
     inline std::vector<int>& get_rows(){
         return this->sK.rows;
@@ -47,7 +47,14 @@ class MUMPSSparseSymmetric : public GlobalStiffnessMatrix{
     bool first_time = true;
     utils::COO<int> sK = utils::COO<int>(1);
 
-    virtual inline void insert_element_matrix(const std::vector<double>& k, const std::vector<long>& pos) override{
+    inline virtual void insert_block_symmetric(const std::vector<double>& k, const std::vector<long>& posi, const std::vector<long>& posj) override{
+        if(posi[0] > posj[0]){
+            this->sK.insert_block(k, posi, posj, false);
+        } else {
+            this->sK.insert_block(k, posi, posj, true);
+        }
+    }
+    inline virtual void insert_element_matrix(const std::vector<double>& k, const std::vector<long>& pos) override{
         this->sK.insert_matrix_symmetric(k, pos);
     }
     inline virtual void add_to_matrix(size_t i, size_t j, double val) override{
