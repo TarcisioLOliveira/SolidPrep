@@ -77,14 +77,18 @@ class SparseMatrix{
     inline void insert_matrix_symmetric_mumps(const std::vector<double>& M, const std::vector<long>& pos){
         size_t W = pos.size();
         for(size_t i = 0; i < W; ++i){
+            if(pos[i] < 0){
+                continue;
+            }
             for(size_t j = 0; j <= i; ++j){
+                if(pos[j] < 0){
+                    continue;
+                }
                 if(M[i*W + j] != 0){
-                    if(pos[i] > -1 && pos[j] > -1){
-                        if(pos[i] >= pos[j]){
-                            this->data[Point(pos[i], pos[j])] += M[i*W + j];
-                        } else {
-                            this->data[Point(pos[j], pos[i])] += M[i*W + j];
-                        }
+                    if(pos[i] >= pos[j]){
+                        this->data[Point(pos[i], pos[j])] += M[i*W + j];
+                    } else {
+                        this->data[Point(pos[j], pos[i])] += M[i*W + j];
                     }
                 }
             }
@@ -93,11 +97,15 @@ class SparseMatrix{
     inline void insert_matrix_general_mumps(const std::vector<double>& M, const std::vector<long>& pos){
         size_t W = pos.size();
         for(size_t i = 0; i < W; ++i){
+            if(pos[i] < 0){
+                continue;
+            }
             for(size_t j = 0; j < W; ++j){
+                if(pos[j] < 0){
+                    continue;
+                }
                 if(M[i*W + j] != 0){
-                    if(pos[i] > -1 && pos[j] > -1){
-                        this->data[Point(pos[i], pos[j])] += M[i*W + j];
-                    }
+                    this->data[Point(pos[i], pos[j])] += M[i*W + j];
                 }
             }
         }
