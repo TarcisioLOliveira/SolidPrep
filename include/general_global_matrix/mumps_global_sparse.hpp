@@ -68,7 +68,7 @@ class MUMPSGlobalSparse{
         }
     }
     inline void add_element(const std::vector<double>& matrix, const std::vector<long>& pos_i, const std::vector<long>& pos_j){
-        this->M.insert_block(matrix, pos_i, pos_j);
+        this->M.insert_block(matrix, pos_i, pos_j, false);
     }
     inline void add_value(size_t i, size_t j, double val){
         if(spd){

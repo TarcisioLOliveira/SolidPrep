@@ -165,48 +165,102 @@ class COO{
             }
         }
     }
-    inline void insert_block(const std::vector<double>& M, const std::vector<long>& pos_i, const std::vector<long>& pos_j){
+    inline void insert_block(const std::vector<double>& M, const std::vector<long>& pos_i, const std::vector<long>& pos_j, const bool transpose){
         size_t Wi = pos_i.size();
         size_t Wj = pos_j.size();
         if(this->coo_first_time){
-            for(size_t i = 0; i < Wi; ++i){
-                for(size_t j = 0; j < Wj; ++j){
-                    if(std::abs(M[i*Wj + j]) > 0){
-                        if(pos_i[i] > -1 && pos_j[j] > -1){
+            if(!transpose){
+                for(size_t i = 0; i < Wi; ++i){
+                    if(pos_i[i] < 0){
+                        continue;
+                    }
+                    for(size_t j = 0; j < Wj; ++j){
+                        if(pos_j[j] < 0){
+                            continue;
+                        }
+                        if(std::abs(M[i*Wj + j]) > 0){
                             this->data[Point(pos_i[i], pos_j[j])] += M[i*Wj + j];
+                        }
+                    }
+                }
+            } else {
+                for(size_t i = 0; i < Wi; ++i){
+                    if(pos_i[i] < 0){
+                        continue;
+                    }
+                    for(size_t j = 0; j < Wj; ++j){
+                        if(pos_j[j] < 0){
+                            continue;
+                        }
+                        if(std::abs(M[i*Wj + j]) > 0){
+                            this->data[Point(pos_j[j], pos_i[i])] += M[i*Wj + j];
                         }
                     }
                 }
             }
         } else {
-            for(size_t i = 0; i < Wi; ++i){
-                if(pos_i[i] < 0){
-                    continue;
-                }
-                size_t j = 0;
-                while(j < Wj && pos_j[j] < 0){
-                    ++j;
-                }
-                // pos is not ordered!
-                while(j < Wj){
-                    bool found_one = false;
-                    for(int c = cooRowPtr[pos_i[i]]; c < cooRowPtr[pos_i[i]+1]; ++c){
-                        if(cooColInd[c] == pos_j[j] + offset){
-                            found_one = true;
-                            cooVal[c] += M[i*Wj+j];
-                            size_t j_prev = j;
+            if(!transpose){
+                for(size_t i = 0; i < Wi; ++i){
+                    if(pos_i[i] < 0){
+                        continue;
+                    }
+                    size_t j = 0;
+                    while(j < Wj && pos_j[j] < 0){
+                        ++j;
+                    }
+                    // pos is not ordered!
+                    while(j < Wj){
+                        bool found_one = false;
+                        for(int c = cooRowPtr[pos_i[i]]; c < cooRowPtr[pos_i[i]+1]; ++c){
+                            if(cooColInd[c] == pos_j[j] + offset){
+                                found_one = true;
+                                cooVal[c] += M[i*Wj+j];
+                                size_t j_prev = j;
+                                do{
+                                    ++j;
+                                } while(j < Wj && pos_j[j] < 0);
+                                if(j >= Wj || pos_j[j] < pos_j[j_prev]){
+                                    break;
+                                }
+                            }
+                        }
+                        if(!found_one){
                             do{
                                 ++j;
                             } while(j < Wj && pos_j[j] < 0);
-                            if(j >= Wj || pos_j[j] < pos_j[j_prev]){
-                                break;
-                            }
                         }
                     }
-                    if(!found_one){
-                        do{
-                            ++j;
-                        } while(j < Wj && pos_j[j] < 0);
+                }
+            } else {
+                for(size_t j = 0; j < Wj; ++j){
+                    if(pos_j[j] < 0){
+                        continue;
+                    }
+                    size_t i = 0;
+                    while(i < Wi && pos_i[i] < 0){
+                        ++i;
+                    }
+                    // pos is not ordered!
+                    while(i < Wi){
+                        bool found_one = false;
+                        for(int c = cooRowPtr[pos_j[j]]; c < cooRowPtr[pos_j[j]+1]; ++c){
+                            if(cooColInd[c] == pos_i[i] + offset){
+                                found_one = true;
+                                cooVal[c] += M[i*Wj+j];
+                                size_t i_prev = i;
+                                do{
+                                    ++i;
+                                } while(i < Wi && pos_i[i] < 0);
+                                if(i >= Wi || pos_i[i] < pos_i[i_prev]){
+                                    break;
+                                }
+                            }
+                        }
+                        if(!found_one){
+                            do{
+                                ++i;
+                            } while(i < Wi && pos_i[i] < 0);
+                        }
                     }
                 }
             }
