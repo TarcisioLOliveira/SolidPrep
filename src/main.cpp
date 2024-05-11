@@ -19,24 +19,16 @@
  */
 
 #include <bits/chrono.h>
-#include <iostream>
 #include <STEPCAFControl_Writer.hxx>
 #include <STEPControl_StepModelType.hxx>
 #include "logger.hpp"
 #include "project_data.hpp"
-#include "sizing/beam_sizing.hpp"
 #include "utils.hpp"
 #include <gmsh.h>
 #include <petsc.h>
-#include <ratio>
-#include <set>
 #include "meshing/gmsh.hpp"
-#include "finite_element/direct_solver.hpp"
 #include "visualization.hpp"
-#include "topology_optimization/minimal_volume.hpp"
 #include <string>
-#include <thread>
-#include "sizing/standard_sizing.hpp"
 #include <chrono>
 #include <mpich-x86_64/mpi.h>
 #include <cblas.h>
@@ -44,7 +36,6 @@
 #include <Eigen/Core>
 #include <Message.hxx>
 #include <Message_PrinterOStream.hxx>
-#include "spview.hpp"
 #ifdef USE_BLIS
     #include <blis.h>
 #endif
