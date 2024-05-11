@@ -55,14 +55,18 @@ class COO{
         size_t W = pos.size();
         if(this->coo_first_time){
             for(size_t i = 0; i < W; ++i){
+                if(pos[i] < 0){
+                    continue;
+                }
                 for(size_t j = 0; j <= i; ++j){
+                    if(pos[j] < 0){
+                        continue;
+                    }
                     if(std::abs(M[i*W + j]) > 0){
-                        if(pos[i] > -1 && pos[j] > -1){
-                            if(pos[i] >= pos[j]){
-                                this->data[Point(pos[i], pos[j])] += M[i*W + j];
-                            } else {
-                                this->data[Point(pos[j], pos[i])] += M[i*W + j];
-                            }
+                        if(pos[i] >= pos[j]){
+                            this->data[Point(pos[i], pos[j])] += M[i*W + j];
+                        } else {
+                            this->data[Point(pos[j], pos[i])] += M[i*W + j];
                         }
                     }
                 }
@@ -115,11 +119,15 @@ class COO{
         size_t W = pos.size();
         if(this->coo_first_time){
             for(size_t i = 0; i < W; ++i){
+                if(pos[i] < 0){
+                    continue;
+                }
                 for(size_t j = 0; j < W; ++j){
+                    if(pos[j] < 0){
+                        continue;
+                    }
                     if(std::abs(M[i*W + j]) > 0){
-                        if(pos[i] > -1 && pos[j] > -1){
-                            this->data[Point(pos[i], pos[j])] += M[i*W + j];
-                        }
+                        this->data[Point(pos[i], pos[j])] += M[i*W + j];
                     }
                 }
             }
