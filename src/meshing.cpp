@@ -1503,15 +1503,14 @@ void Meshing::extend_vector(const size_t subproblem, const std::vector<double>& 
 }
 
 void Meshing::generate_lambda_elements(){
+    const size_t node_num = this->elem_info->get_nodes_per_element();
+    const size_t bnode_num = this->elem_info->get_boundary_nodes_per_element();
     const size_t lsize = this->inter_geometry_boundary.size()/2;
     this->lambda_elements.reserve(this->inter_geometry_boundary.size()/2);
     for(size_t i = 0; i < lsize; ++i){
         const auto b1 = this->inter_geometry_boundary[2*i];
         const auto b2 = this->inter_geometry_boundary[2*i+1];
-        // Using b1->geom_id < b2->geom_id does not work for some reason
-        // For some reason, one needs the element with the most rigid material
-        // as the base element for this to work correctly.
-        const BoundaryElement* const parent = (b1->geom_id > b2->geom_id) ? b1 : b2;
+        const BoundaryElement* const parent = (b1->geom_id < b2->geom_id) ? b1 : b2;
         const gp_Vec n = parent->normal;
         gp_Vec p1(0,1,0);
         if(std::abs(n.Dot(p1)) > 1 -  Precision::Confusion()){
@@ -1543,6 +1542,32 @@ void Meshing::generate_lambda_elements(){
     std::sort(this->lambda_elements.begin(), this->lambda_elements.end(), order_lambdas);
     for(size_t i = 0; i < this->lambda_elements.size(); ++i){
         this->lambda_elements[i].id = i;
+    }
+
+    std::set<MeshElement*> lambda_affected_elements_tmp;
+    for(const auto& l:this->lambda_elements){
+        for(size_t i = 0; i < bnode_num; ++i){
+            this->node_lambda_map[l.parent->nodes[i]->id].push_back(l.id);
+
+            const auto eq_range = this->inverse_mesh.equal_range(l.parent->nodes[i]->id);
+            for(auto k = eq_range.first; k != eq_range.second; ++k){
+                lambda_affected_elements_tmp.insert(k->second);
+            }
+        }
+    }
+    this->lambda_affected_elements.reserve(lambda_affected_elements_tmp.size());
+    for(const auto& e:lambda_affected_elements_tmp){
+        std::set<size_t> l_tmp;
+        for(size_t i = 0; i < node_num; ++i){
+            const auto& vi = this->node_lambda_map.find(e->nodes[i]->id);
+            if(vi != this->node_lambda_map.end()){
+                const auto& v = vi->second;
+                l_tmp.insert(v.begin(), v.end());
+            }
+        }
+        std::vector<size_t> lambdas(l_tmp.begin(), l_tmp.end());
+        size_t geom_id = this->lambda_elements[lambdas[0]].parent->geom_id;
+        this->lambda_affected_elements.emplace_back(geom_id, std::move(lambdas), e);
     }
 }
 
@@ -1611,8 +1636,8 @@ void Meshing::apply_lambda(const std::vector<double>& lambda, std::vector<double
             {ln*ln,
              lambda[i + 0],
              lambda[i + l_num]};
-        //lv = R.transpose()*lv;
-        lv = R*lv;
+        lv = R.transpose()*lv;
+        //lv = R*lv;
         const auto b = l.parent;
         for(size_t j = 0; j < bnode_num; ++j){
             for(size_t k = 0; k < dof; ++k){

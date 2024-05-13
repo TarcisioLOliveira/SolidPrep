@@ -92,6 +92,24 @@ class LambdaElement{
     const BoundaryElement* parent;
 };
 
+class LambdaAffectedElement{
+    public:
+    LambdaAffectedElement(size_t geom_id, std::vector<size_t> lambdas, const MeshElement* e):
+        geom_id(geom_id), lambdas(std::move(lambdas)), e(e){}
+
+    size_t geom_id;
+    std::vector<size_t> lambdas;
+    const MeshElement* e;
+
+    bool operator<(const LambdaAffectedElement& l) const{
+        if(this->geom_id < l.geom_id){
+            return true;
+        } else {
+            return this->e->id < l.e->id;
+        }
+    }
+};
+
 class Meshing{
     public:
     Meshing(const std::vector<std::unique_ptr<Geometry>>& geometries,
@@ -211,6 +229,8 @@ class Meshing{
     std::vector<SubProblem>* sub_problems;
     std::vector<BoundaryElement*> inter_geometry_boundary;
     std::vector<LambdaElement> lambda_elements;
+    std::unordered_map<size_t, std::vector<size_t>> node_lambda_map;
+    std::vector<LambdaAffectedElement> lambda_affected_elements;
 
     std::vector<double> global_load_vector;
     // Subproblems

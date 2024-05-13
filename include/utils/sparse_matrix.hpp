@@ -110,19 +110,35 @@ class SparseMatrix{
             }
         }
     }
-    inline void insert_block(const std::vector<double>& M, const std::vector<long>& pos_i, const std::vector<long>& pos_j){
+    inline void insert_block(const std::vector<double>& M, const std::vector<long>& pos_i, const std::vector<long>& pos_j, const bool transpose){
         size_t Wi = pos_i.size();
         size_t Wj = pos_j.size();
-        for(size_t i = 0; i < Wi; ++i){
-            if(pos_i[i] < 0){
-                continue;
-            }
-            for(size_t j = 0; j < Wj; ++j){
-                if(pos_j[j] < 0){
+        if(!transpose){
+            for(size_t i = 0; i < Wi; ++i){
+                if(pos_i[i] < 0){
                     continue;
                 }
-                if(std::abs(M[i*Wj + j]) > 0){
-                    this->data[Point(pos_i[i], pos_j[j])] += M[i*Wj + j];
+                for(size_t j = 0; j < Wj; ++j){
+                    if(pos_j[j] < 0){
+                        continue;
+                    }
+                    if(std::abs(M[i*Wj + j]) > 0){
+                        this->data[Point(pos_i[i], pos_j[j])] += M[i*Wj + j];
+                    }
+                }
+            }
+        } else {
+            for(size_t i = 0; i < Wi; ++i){
+                if(pos_i[i] < 0){
+                    continue;
+                }
+                for(size_t j = 0; j < Wj; ++j){
+                    if(pos_j[j] < 0){
+                        continue;
+                    }
+                    if(std::abs(M[i*Wj + j]) > 0){
+                        this->data[Point(pos_j[j], pos_i[i])] += M[i*Wj + j];
+                    }
                 }
             }
         }

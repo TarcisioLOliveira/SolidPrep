@@ -46,7 +46,7 @@ class GlobalStiffnessMatrix{
 
     virtual void add_springs(const Meshing * const mesh, const std::vector<long>& node_positions);
 
-    virtual void insert_expansion_matrices(const std::vector<double>& k, const std::vector<double>& R, const std::vector<long>& u_pos, const size_t l_i, const size_t l_num, const size_t u_num, const Meshing::LambdaType type);
+    virtual void insert_expansion_matrices(const std::vector<double>& k, const std::vector<double>& R, const std::vector<long>& u_pos, const std::vector<size_t>& l_i, const size_t dof, const size_t l_num, const size_t u_num, const Meshing::LambdaType type);
 
     virtual void insert_block_symmetric(const std::vector<double>& k, const std::vector<long>& posi, const std::vector<long>& posj) = 0;
 

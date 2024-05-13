@@ -84,19 +84,7 @@ void PETScPCG::solve(std::vector<double>& load, std::vector<double>& lambda){
         VecSetUp(this->f);
 
         KSPCreate(PETSC_COMM_WORLD, &this->ksp);
-        if(this->matrix_type == MatrixType::RIGID){
-            KSPSetType(this->ksp, KSPCG);
-        } else {
-            // KSPCG returns KSP_DIVERGED_INDEFINITE_MAT when used with
-            // LAMBDA_SLIDING for some reason, even though:
-            // (1) The matrix is confirmed by PETSc to be symmetric
-            // (2) Cholesky factorization works both in PETSc and in MUMPS
-            // Therefore, it was necessary to use an alternate CG approach
-            // in order to avoid considerably slower methods (e.g. BiCGSTAB).
-            // KSPFCG and KSPPIPECG both were confirmed to work, although
-            // they KSP_DIVERGED_ITS under normal convergence criteria.
-            KSPSetType(this->ksp, KSPPIPECG);
-        }
+        KSPSetType(this->ksp, KSPCG);
         //KSPSetType(this->ksp, KSPPREONLY);
         KSPCGSetType(this->ksp, KSP_CG_HERMITIAN);
         KSPSetInitialGuessNonzero(this->ksp, PETSC_FALSE);
@@ -145,19 +133,12 @@ void PETScPCG::solve(std::vector<double>& load, std::vector<double>& lambda){
     VecAssemblyBegin(this->f);
     VecAssemblyEnd(this->f);
 
-    PetscBool is_sym;
-    MatIsHermitian(K, 1e-7, &is_sym);
-    logger::quick_log("is symmetric?", is_sym);
+    //PetscBool is_sym;
+    //MatIsHermitian(K, 1e-7, &is_sym);
+    //logger::quick_log("is symmetric?", is_sym);
 
     if(!this->setup){
         KSPSetOperators(this->ksp, K, K);
-        if(this->matrix_type != MatrixType::RIGID){
-            // Defaults: rtol=1e-5, atol=1e-50, dtol=1e5, and maxits=1e4
-            // Increased tolerance for faster convergence. 
-            // Results seem to be good enough, fortunately.
-            // Otherwise, it reaches max iterations every time.
-            KSPSetTolerances(this->ksp, 1e-3, 1e-7, 1e5, 1e4);
-        }
 
         KSPSetUp(this->ksp);
         PCSetUp(this->pc);
@@ -165,9 +146,9 @@ void PETScPCG::solve(std::vector<double>& load, std::vector<double>& lambda){
     }
 
     KSPSolve(this->ksp, this->f, this->u);
-    KSPConvergedReason r;
-    KSPGetConvergedReason(this->ksp, &r);
-    logger::quick_log("Converged?", r);
+    //KSPConvergedReason r;
+    //KSPGetConvergedReason(this->ksp, &r);
+    //logger::quick_log("Converged?", r);
 
     const double* load_data;
 
