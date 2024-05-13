@@ -39,7 +39,6 @@ void EigenPCG::generate_matrix_base(const Meshing* const mesh, const size_t u_si
 void EigenPCG::solve(std::vector<double>& load, std::vector<double>& lambda){
     int mpi_id = 0;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi_id);
-    // TODO: lambda
 
     if(mpi_id != 0){
         return;
@@ -47,6 +46,7 @@ void EigenPCG::solve(std::vector<double>& load, std::vector<double>& lambda){
 
     Eigen::VectorXd f(load.size() + 2*l_num);
     std::copy(load.begin(), load.end(), f.begin());
+    std::fill(f.begin() + load.size(), f.end(), 0);
     Eigen::VectorXd u = cg.solve(f);
 
     std::copy(u.cbegin(), u.cbegin() + load.size(), load.begin());

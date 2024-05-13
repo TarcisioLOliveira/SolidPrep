@@ -41,8 +41,8 @@ class EigenSparseAsymmetricTriplets : public GlobalStiffnessMatrix{
     utils::SparseMatrix K;
 
     inline virtual void insert_block_symmetric(const std::vector<double>& k, const std::vector<long>& posi, const std::vector<long>& posj) override{
-        this->K.insert_block(k, posi, posj);
-        this->K.insert_block(k, posj, posi);
+        this->K.insert_block(k, posi, posj, false);
+        this->K.insert_block(k, posi, posj, true);
     }
     virtual inline void insert_element_matrix(const std::vector<double>& k, const std::vector<long>& pos) override{
         this->K.insert_matrix_general_mumps(k, pos);
