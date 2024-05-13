@@ -82,6 +82,7 @@
 #include "function/mass_first_material.hpp"
 #include "function/mechanostat.hpp"
 #include "field/orthotropic_flow.hpp"
+#include "nonlinear_solver/steepest_descent.hpp"
 
 ProjectData::ProjectData(std::string project_file){
 #ifdef _WIN32
@@ -101,6 +102,11 @@ ProjectData::ProjectData(std::string project_file){
     this->folder_path = this->get_folder_path(project_file);
     if(this->log_data(doc, "contact_type", TYPE_OBJECT, false)){
         this->contact_type = this->get_contact_type(doc["contact_type"]);
+        if(this->contact_type == ContactType::RIGID){
+            this->nonlinear_solver = std::make_unique<nonlinear_solver::Linear>();
+        } else {
+            this->nonlinear_solver = this->get_nonlinear_solver(doc["contact_type"]);
+        }
     }
 
     logger::log_assert(doc.HasMember("solid_type"), logger::ERROR, "Missing member: ");
@@ -1373,4 +1379,25 @@ std::vector<SubProblem> ProjectData::load_sub_problems(const rapidjson::GenericV
     }
 
     return sub_problems;
+}
+
+std::unique_ptr<NonlinearSolver> ProjectData::get_nonlinear_solver(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc){
+    this->log_data(doc, "method", TYPE_STRING, true);
+    std::string method = doc["method"].GetString();
+    if(method == "steepest"){
+        this->log_data(doc, "init", TYPE_DOUBLE, true);
+        this->log_data(doc, "inc", TYPE_DOUBLE, true);
+        this->log_data(doc, "dec", TYPE_DOUBLE, true);
+        this->log_data(doc, "xtol_abs", TYPE_DOUBLE, true);
+        double init = doc["init"].GetDouble();
+        double inc = doc["inc"].GetDouble();
+        double dec = doc["dec"].GetDouble();
+        double xtol_abs = doc["xtol_abs"].GetDouble();
+
+        return std::make_unique<nonlinear_solver::SteepestDescent>(init, inc, dec, xtol_abs);
+    } else {
+        logger::log_assert(false, logger::ERROR, "unknown solving method: {}", method);
+    }
+
+    return nullptr;
 }
