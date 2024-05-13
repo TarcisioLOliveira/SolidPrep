@@ -39,7 +39,13 @@ class NonlinearSolver{
         NEWTON
     };
 
-    virtual ~NonlinearSolver();
+    NonlinearSolver(double xtol_abs, double rtol_abs):
+        xtol_abs(xtol_abs), rtol_abs(rtol_abs){}
+
+    const double xtol_abs;
+    const double rtol_abs;
+
+    virtual ~NonlinearSolver() = default;
 
     virtual void setup(size_t N) = 0;
 
@@ -57,12 +63,14 @@ class NonlinearSolver{
     virtual SolverType get_type() const = 0; 
 };
 
-namespace nl_solver{
+namespace nonlinear_solver{
 
 // Stub class
 class Linear : public NonlinearSolver{
     public:
     ~Linear() = default;
+
+    Linear():NonlinearSolver(0,0){}
 
     virtual void setup(size_t N){
         (void)N;

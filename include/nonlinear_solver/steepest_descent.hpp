@@ -28,7 +28,7 @@ namespace nonlinear_solver{
 
 class SteepestDescent : public NonlinearSolver{
     public:
-    SteepestDescent(double INIT, double INC, double DEC);
+    SteepestDescent(double INIT, double INC, double DEC, double xtol_abs);
 
     virtual ~SteepestDescent() = default;
 

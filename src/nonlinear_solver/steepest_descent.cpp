@@ -22,8 +22,8 @@
 
 namespace nonlinear_solver{
 
-SteepestDescent::SteepestDescent(double INIT, double INC, double DEC):
-    INIT(INIT), INC(INC), DEC(DEC), STEP(INIT){
+SteepestDescent::SteepestDescent(double INIT, double INC, double DEC, double xtol_abs):
+    NonlinearSolver(xtol_abs, 0), INIT(INIT), INC(INC), DEC(DEC), STEP(INIT){
 
 }
 
