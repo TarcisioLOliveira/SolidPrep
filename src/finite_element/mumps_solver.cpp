@@ -26,7 +26,9 @@
 
 namespace finite_element{
 
-MUMPSSolver::MUMPSSolver(){
+MUMPSSolver::MUMPSSolver(NonlinearSolver* nl):
+    FiniteElement(nl)
+{
     this->config.sym = 1; // Hermitian matrix
     this->config.job = -1; // Configuration initialization
     this->config.par = 1; // Host process also does computations

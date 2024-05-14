@@ -28,10 +28,10 @@ void SolverManager::generate_matrix(const Meshing* const mesh, const std::vector
         auto& n = mesh->node_positions[i];
         auto& l = mesh->load_vector[i];
         if(mesh->proj_data->contact_type == ProjectData::RIGID){
-            this->solvers[i]->generate_matrix(mesh, l.size(), 0, n, density.size() > 0, this->D_matrices, FiniteElement::ProblemType::RIGID);
+            this->solvers[i]->generate_matrix(mesh, l.size(), 0, n, density.size() > 0, this->D_matrices);
         } else {
             // TODO: improve problem definition
-            this->solvers[i]->generate_matrix(mesh, l.size(), mesh->lambda_elements.size(), n, density.size() > 0, this->D_matrices, FiniteElement::ProblemType::LAMBDA_NEWTON);
+            this->solvers[i]->generate_matrix(mesh, l.size(), mesh->lambda_elements.size(), n, density.size() > 0, this->D_matrices);
         }
     }
 }

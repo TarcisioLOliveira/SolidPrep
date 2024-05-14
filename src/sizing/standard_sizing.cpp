@@ -90,7 +90,7 @@ TopoDS_Shape StandardSizing::boundary_expansion_approach(){
     ggeom.push_back(std::move(geom));
     meshing::StandardBeamMesher mesh(ggeom, gt9_maker.get(), this->data, this->element_size, this->data->thickness);
     mesh.mesh(this->data->forces, this->data->supports, this->data->springs);
-    this->solver->generate_matrix(&mesh, mesh.load_vector[0].size(), 0, mesh.node_positions[0], false, std::vector<std::vector<double>>(), FiniteElement::ProblemType::RIGID);
+    this->solver->generate_matrix(&mesh, mesh.load_vector[0].size(), 0, mesh.node_positions[0], false, std::vector<std::vector<double>>());
     std::vector<double> u(mesh.load_vector[0]);
     std::vector<double> lambda;
     this->solver->calculate_displacements(&mesh, u, lambda);

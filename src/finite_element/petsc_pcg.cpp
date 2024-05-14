@@ -27,8 +27,8 @@
 
 namespace finite_element{
 
-PETScPCG::PETScPCG(PETScBackend backend):
-    gsm(nullptr){
+PETScPCG::PETScPCG(NonlinearSolver* nl, PETScBackend backend):
+    FiniteElement(nl), gsm(nullptr){
     switch(backend){
         case PETScBackend::CPU:
             this->vec_type = VECSTANDARD;

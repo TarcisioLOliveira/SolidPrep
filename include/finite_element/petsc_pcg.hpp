@@ -30,7 +30,7 @@ class PETScPCG : public FiniteElement{
     public:
     typedef global_stiffness_matrix::PETScSparseSymmetric::Backend PETScBackend;
 
-    PETScPCG(PETScBackend backend);
+    PETScPCG(NonlinearSolver* nl, PETScBackend backend);
 
     virtual ~PETScPCG();
 

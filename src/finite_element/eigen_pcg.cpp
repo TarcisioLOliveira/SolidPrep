@@ -26,7 +26,7 @@
 
 namespace finite_element{
 
-EigenPCG::EigenPCG():gsm(){}
+EigenPCG::EigenPCG(NonlinearSolver* nl):FiniteElement(nl), gsm(){}
 
 void EigenPCG::generate_matrix_base(const Meshing* const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const MatrixType type){
 

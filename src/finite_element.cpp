@@ -23,23 +23,32 @@
 #include "logger.hpp"
 #include "project_data.hpp"
 
-void FiniteElement::generate_matrix(const Meshing* const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const ProblemType type){
-    this->prob_type = type;
+FiniteElement::FiniteElement(NonlinearSolver* nl)
+    :prob_type(nl->get_class()), nl_type(nl->get_type()), nl_solver(nl){
+
+}
+
+void FiniteElement::generate_matrix(const Meshing* const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache){
     this->generate_matrix_base(mesh, u_size, l_num, node_positions, topopt, D_cache, 
-            (type == ProblemType::RIGID) ? MatrixType::RIGID : MatrixType::LAMBDA_SLIDING);
+            (this->prob_type == NonlinearSolver::SolverClass::LINEAR) ? MatrixType::RIGID : MatrixType::LAMBDA_SLIDING);
 }
 
 void FiniteElement::calculate_displacements(const Meshing* const mesh, std::vector<double>& load, std::vector<double>& lambda){
-    if(this->prob_type == ProblemType::RIGID){
-        this->solve_rigid(mesh, load, lambda);
-    } else if(this->prob_type == ProblemType::LAMBDA_OPT){
-        this->solve_opt(mesh, load, lambda);
-    } else if(this->prob_type == ProblemType::LAMBDA_NEWTON){
-        this->solve_newton(mesh, load, lambda);
+    switch(this->prob_type){
+        case NonlinearSolver::SolverClass::LINEAR:
+            this->solve_rigid(mesh, load, lambda);
+            break;
+        case NonlinearSolver::SolverClass::GRADIENT_BASED:
+            this->solve_opt(mesh, load, lambda);
+            break;
+        case NonlinearSolver::SolverClass::HESSIAN_BASED:
+            this->solve_newton(mesh, load, lambda);
+            break;
     }
 }
 
 void FiniteElement::solve_rigid(const Meshing* const mesh, std::vector<double>& load, std::vector<double>& lambda){
+    (void)mesh;
     this->solve(load, lambda);
 }
 void FiniteElement::solve_opt(const Meshing* const mesh, std::vector<double>& load, std::vector<double>& lambda){

@@ -33,7 +33,7 @@ namespace finite_element{
 
 class MUMPSSolver : public FiniteElement{
     public:
-    MUMPSSolver();
+    MUMPSSolver(NonlinearSolver* nl);
     virtual ~MUMPSSolver();
 
     private:

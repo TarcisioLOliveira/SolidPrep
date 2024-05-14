@@ -26,6 +26,7 @@
 #include "element.hpp"
 #include "meshing.hpp"
 #include "geometry.hpp"
+#include "nonlinear_solver.hpp"
 
 class ProjectData;
 
@@ -33,28 +34,25 @@ class FiniteElement{
     public:
     const double K_MIN = 1e-6;
 
-    enum class ProblemType{
-        RIGID,
-        LAMBDA_OPT,
-        LAMBDA_NEWTON
-    };
-
     enum class MatrixType{
         RIGID,
         LAMBDA_SLIDING,
         LAMBDA_HESSIAN
     };
 
+    FiniteElement(NonlinearSolver* nl);
+
     virtual ~FiniteElement() = default;
 
-    void generate_matrix(const Meshing* const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const ProblemType type);
+    void generate_matrix(const Meshing* const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache);
 
     void calculate_displacements(const Meshing* const mesh, std::vector<double>& load, std::vector<double>& lambda);
 
     virtual std::vector<double> calculate_forces(const Meshing* const mesh, const std::vector<double>& displacements) const;
 
     protected:
-    ProblemType prob_type;
+    const NonlinearSolver::SolverClass prob_type;
+    const NonlinearSolver::SolverType nl_type;
 
     virtual void generate_matrix_base(const Meshing* const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const MatrixType type) = 0;
 
@@ -63,6 +61,9 @@ class FiniteElement{
     void solve_rigid(const Meshing* const mesh, std::vector<double>& load, std::vector<double>& lambda);
     void solve_opt(const Meshing* const mesh, std::vector<double>& load, std::vector<double>& lambda);
     void solve_newton(const Meshing* const mesh, std::vector<double>& load, std::vector<double>& lambda);
+
+    private:
+    NonlinearSolver* const nl_solver;
 };
 
 #endif

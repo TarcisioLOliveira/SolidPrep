@@ -630,9 +630,9 @@ std::unique_ptr<FiniteElement> ProjectData::load_fea(const rapidjson::GenericVal
     //    finite_element.reset(new finite_element::PCG(eps, p));
     //} else if(fea["type"] == "mumps"){
     if(fea["type"] == "mumps"){
-        finite_element.reset(new finite_element::MUMPSSolver());
+        finite_element.reset(new finite_element::MUMPSSolver(this->nonlinear_solver.get()));
     } else if(fea["type"] == "eigen_pcg"){
-        finite_element.reset(new finite_element::EigenPCG());
+        finite_element.reset(new finite_element::EigenPCG(this->nonlinear_solver.get()));
     } else if(fea["type"] == "petsc_pcg"){
         this->log_data(fea, "backend", TYPE_STRING, true);
         std::string backend = fea["backend"].GetString();
@@ -643,7 +643,7 @@ std::unique_ptr<FiniteElement> ProjectData::load_fea(const rapidjson::GenericVal
             b = finite_element::PETScPCG::PETScBackend::CUDA;
         }
 
-        finite_element.reset(new finite_element::PETScPCG(b));
+        finite_element.reset(new finite_element::PETScPCG(this->nonlinear_solver.get(), b));
     }
 
     return finite_element;
