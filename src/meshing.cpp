@@ -1521,12 +1521,6 @@ void Meshing::generate_lambda_elements(){
         p1 = p1 - (n.Dot(p1))*n;
         p1.Normalize();
         gp_Dir p2 = n.Crossed(p1);
-        //if(std::abs(n.X() + 1) < Precision::Confusion()){
-        //    logger::quick_log(n.X(), n.Y(), n.Z());
-        //    logger::quick_log(p1.X(), p1.Y(), p1.Z());
-        //    logger::quick_log(p2.X(), p2.Y(), p2.Z());
-        //    logger::quick_log("");
-        //}
 
         this->lambda_elements.emplace_back(i, n, p1, p2, parent);
     }
@@ -1572,7 +1566,7 @@ void Meshing::generate_lambda_elements(){
 }
 
 void Meshing::get_lambda_vector(const std::vector<double>& lambda, std::vector<double>& l, const LambdaOutput out, const LambdaType type) const{
-    logger::log_assert(out != LambdaOutput::UNITARY, logger::ERROR, "UNITARY type is insupported in get_lambda_vector()");
+    logger::log_assert(out != LambdaOutput::UNITARY, logger::ERROR, "UNITARY type is unsupported in get_lambda_vector()");
     logger::log_assert(lambda.size() == this->lambda_elements.size(), logger::ERROR, "lambda vector size is different from number of lambda elements. Vector: {}; Elements: {}", lambda.size(), this->lambda_elements.size());
 
     const size_t l_num = this->lambda_elements.size();
@@ -1636,8 +1630,8 @@ void Meshing::apply_lambda(const std::vector<double>& lambda, std::vector<double
             {ln*ln,
              lambda[i + 0],
              lambda[i + l_num]};
-        lv = R.transpose()*lv;
-        //lv = R*lv;
+        //lv = R.transpose()*lv;
+        lv = R*lv;
         const auto b = l.parent;
         for(size_t j = 0; j < bnode_num; ++j){
             for(size_t k = 0; k < dof; ++k){

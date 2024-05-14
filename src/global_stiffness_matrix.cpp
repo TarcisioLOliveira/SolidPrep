@@ -59,7 +59,6 @@ void GlobalStiffnessMatrix::generate_expansion(const Meshing * const mesh, const
     // TODO: DENSITY
 
     std::vector<long> u_pos(kw);
-    const auto& lambda_list = mesh->lambda_elements;
     size_t geom = 0;
     const Geometry* g = mesh->geometries[geom];
     bool use_D_cache = (topopt && g->do_topopt) || !g->materials.get_materials()[0]->is_homogeneous();
@@ -121,8 +120,8 @@ void GlobalStiffnessMatrix::generate_expansion(const Meshing * const mesh, const
                     for(size_t ii = 0; ii < lw; ++ii){
                         for(size_t jj = 0; jj < lw; ++jj){
                             // Transpose R0
-                            R[(i*lw + ii)*(lw*ln) + (jj + l_it*lw)] = -R0[jj*lw + ii];
-                            //R[i*lw*lw + ii*lw + jj] = -R0[ii*lw + jj];
+                            //R[(i*lw + ii)*(lw*ln) + (jj + l_it*lw)] = -R0[jj*lw + ii];
+                            R[(i*lw + ii)*(lw*ln) + (jj + l_it*lw)] = -R0[ii*lw + jj];
                         }
                     }
                     ++lv_it[i];
@@ -133,71 +132,6 @@ void GlobalStiffnessMatrix::generate_expansion(const Meshing * const mesh, const
         //exit(0);
         this->insert_expansion_matrices(k, R, u_pos, l_e.lambdas, lw, l_num, u_size, type);
     }
-    /*
-    std::vector<double> R(kw*lw, 0);
-    for(size_t l_i = 0; l_i < lambda_list.size(); ++l_i){
-        // Maps node ids to list of nodes which are affected by current lambda
-        // Nodes use relative ids (not Node::id)
-        std::unordered_map<MeshElement*, std::vector<size_t>> element_node_map;
-
-        const auto& l_e = lambda_list[l_i];
-
-        if(l_e.parent->geom_id != geom){
-            if(!use_D_cache){
-                D_offset += g->mesh.size();
-            }
-            geom = l_e.parent->geom_id;
-            const Geometry* g = mesh->geometries[geom];
-            use_D_cache = (topopt && g->do_topopt) || !g->materials.get_materials()[0]->is_homogeneous();
-            if(!use_D_cache){
-                D = g->materials.get_D(g->mesh.front().get(), g->mesh.front()->get_centroid());
-            }
-        }
-
-        std::vector<double> R0 = 
-            {l_e.n.X(), l_e.p1.X(), l_e.p2.X(),
-             l_e.n.Y(), l_e.p1.Y(), l_e.p2.Y(),
-             l_e.n.Z(), l_e.p1.Z(), l_e.p2.Z()};
-        for(size_t j = 0; j < bnode_num; ++j){
-            const auto n = l_e.parent->nodes[j];
-            const auto elems = mesh->inverse_mesh.equal_range(n->id);
-            for(auto it = elems.first; it != elems.second; ++it){
-                element_node_map[it->second].push_back(n->id);
-            }
-        }
-
-        for(const auto& en:element_node_map){
-            const auto e = en.first;
-            const auto& nodes = en.second;
-            if(use_D_cache){
-                k = e->get_k(D_cache[e->id - D_offset], t);
-            } else {
-                k = e->get_k(D, t);
-            }
-            std::fill(R.begin(), R.end(), 0);
-            for(size_t i = 0; i < node_num; ++i){
-                const auto& n = e->nodes[i];
-                for(size_t j = 0; j < dof; ++j){
-                    const size_t p = n->id*dof + j;
-                    u_pos[i*dof + j] = node_positions[p];
-                }
-                for(size_t j = 0; j < nodes.size(); ++j){
-                    if(n->id == nodes[j]){
-                        for(size_t ii = 0; ii < lw; ++ii){
-                            for(size_t jj = 0; jj < lw; ++jj){
-                                // Transpose R0
-                                //R[i*lw*lw + ii*lw + jj] = -R0[jj*lw + ii];
-                                R[i*lw*lw + ii*lw + jj] = -R0[ii*lw + jj];
-                            }
-                        }
-                        break;
-                    }
-                }
-            }
-            this->insert_expansion_matrices(k, R, u_pos, l_i, l_num, u_size, type);
-        }
-    }
-    */
 }
 
 void GlobalStiffnessMatrix::add_geometry(const Meshing* const mesh, const std::vector<long>& node_positions, const Geometry* const g){
