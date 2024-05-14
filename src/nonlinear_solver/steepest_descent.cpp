@@ -30,9 +30,11 @@ SteepestDescent::SteepestDescent(double INIT, double INC, double DEC, double xto
 void SteepestDescent::setup(size_t N){
     this->N = N;
     this->xold.resize(N);
+    this->it = 0;
+    std::fill(this->xold.begin(), this->xold.end(), 0);
 }
 
-void SteepestDescent::update(double* x, double f, const double* dfdx){
+bool SteepestDescent::update(double* x, double f, const double* dfdx){
     if(this->it >= 2){
         if((fold2 - fold1)*(fold1 - f) <= 0){
             STEP *= DEC;
@@ -48,12 +50,17 @@ void SteepestDescent::update(double* x, double f, const double* dfdx){
     for(size_t i = 0; i < N; ++i){
         maxl = std::max(std::abs(dfdx[i]), maxl);
     }
+
+    double ch = 0.0;
     for(size_t i = 0; i < N; ++i){
         xold[i] = x[i];
         x[i] -= STEP*dfdx[i]/maxl;
+        ch = std::max(std::abs(x[i] - xold[i]), ch);
     }
 
     ++this->it;
+
+    return ch < this->xtol_abs;
 }
 
 }

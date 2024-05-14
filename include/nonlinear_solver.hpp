@@ -55,8 +55,10 @@ class NonlinearSolver{
      * gradient.
      * HESSIAN_BASED takes the solution to the linear problem of a iteration
      * in dfdx and updates x based on it, f, and internal parameters.
+     *
+     * Return true when it reaches stop criterium.
      */
-    virtual void update(double* x, double f, const double* dfdx) = 0;
+    virtual bool update(double* x, double f, const double* dfdx) = 0;
 
     virtual SolverClass get_class() const = 0; 
 
@@ -77,11 +79,13 @@ class Linear : public NonlinearSolver{
         logger::log_assert(false, logger::ERROR, "Linear solver does not support nonlinear solver methods");
     }
 
-    virtual void update(double* x, double f, const double* dfdx){
+    virtual bool update(double* x, double f, const double* dfdx){
         (void)x;
         (void)f;
         (void)dfdx;
         logger::log_assert(false, logger::ERROR, "Linear solver does not support nonlinear solver methods");
+
+        return true;
     }
 
     virtual SolverClass get_class() const{

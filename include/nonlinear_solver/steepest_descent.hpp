@@ -34,7 +34,7 @@ class SteepestDescent : public NonlinearSolver{
 
     virtual void setup(size_t N);
 
-    virtual void update(double* x, double f, const double* dfdx);
+    virtual bool update(double* x, double f, const double* dfdx);
 
     virtual SolverClass get_class() const{
         return SolverClass::GRADIENT_BASED;
