@@ -1630,7 +1630,6 @@ void Meshing::apply_lambda(const std::vector<double>& lambda, std::vector<double
             {ln*ln,
              lambda[i + 0],
              lambda[i + l_num]};
-        //lv = R.transpose()*lv;
         lv = R*lv;
         const auto b = l.parent;
         for(size_t j = 0; j < bnode_num; ++j){

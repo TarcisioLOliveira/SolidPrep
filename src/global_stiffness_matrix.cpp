@@ -119,8 +119,6 @@ void GlobalStiffnessMatrix::generate_expansion(const Meshing * const mesh, const
                 if(lv_vec[i] != nullptr && lv_it[i] < lv_vec[i]->size() && lv_vec[i]->at(lv_it[i]) == l_i){
                     for(size_t ii = 0; ii < lw; ++ii){
                         for(size_t jj = 0; jj < lw; ++jj){
-                            // Transpose R0
-                            //R[(i*lw + ii)*(lw*ln) + (jj + l_it*lw)] = -R0[jj*lw + ii];
                             R[(i*lw + ii)*(lw*ln) + (jj + l_it*lw)] = -R0[ii*lw + jj];
                         }
                     }
@@ -128,8 +126,6 @@ void GlobalStiffnessMatrix::generate_expansion(const Meshing * const mesh, const
                 }
             }
         }
-        //logger::log_matrix(R, kw, lw*ln);
-        //exit(0);
         this->insert_expansion_matrices(k, R, u_pos, l_e.lambdas, lw, l_num, u_size, type);
     }
 }
@@ -272,12 +268,6 @@ void GlobalStiffnessMatrix::insert_expansion_matrices(const std::vector<double>&
             }
         }
     }
-    // logger::quick_log(l_pos);
-    // logger::quick_log("");
-    // logger::log_matrix(R, kw, lw*ln);
-    // logger::quick_log("");
-    // logger::log_matrix(KR, kw, lw*ln);
-    // exit(0);
     
     this->insert_block_symmetric(KR, u_pos, l_pos);
 
