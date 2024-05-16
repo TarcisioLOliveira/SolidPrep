@@ -47,6 +47,7 @@ class SolverManager{
     std::vector<std::unique_ptr<FiniteElement>> solvers;
     std::vector<double> old_densities;
     std::vector<std::vector<double>> D_matrices;
+    bool topopt = false;
     // Sorry
     // One vector per calculate_* called per subproblem
     std::vector<std::vector<std::vector<double>>> lambdas;

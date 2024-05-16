@@ -31,6 +31,7 @@ EigenPCG::EigenPCG(NonlinearSolver* nl):FiniteElement(nl), gsm(){}
 void EigenPCG::generate_matrix_base(const Meshing* const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const MatrixType type){
 
     this->l_num = l_num;
+    this->u_size = u_size;
     this->gsm.generate(mesh, u_size, l_num, node_positions, topopt, D_cache, type);
     auto& K = this->gsm.get_K();
     this->cg.compute(K);
@@ -44,14 +45,13 @@ void EigenPCG::solve(std::vector<double>& load, std::vector<double>& lambda){
         return;
     }
 
-    Eigen::VectorXd f(load.size() + 2*l_num);
+    Eigen::VectorXd f(load.size());
     std::copy(load.begin(), load.end(), f.begin());
-    std::fill(f.begin() + load.size(), f.end(), 0);
     Eigen::VectorXd u = cg.solve(f);
 
-    std::copy(u.cbegin(), u.cbegin() + load.size(), load.begin());
+    std::copy(u.cbegin(), u.cbegin() + this->u_size, load.begin());
     if(l_num > 0){
-        std::copy(u.cbegin() + load.size(), u.cend(), lambda.begin());
+        std::copy(u.cbegin() + this->u_size, u.cend(), lambda.begin());
     }
 }
 

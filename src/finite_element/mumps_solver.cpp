@@ -84,6 +84,7 @@ void MUMPSSolver::generate_matrix_base(const Meshing* const mesh, const size_t u
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi_id);
 
     this->l_num = l_num;
+    this->u_size = u_size;
     if(mpi_id == 0){
         this->gsm.generate(mesh, u_size, l_num, node_positions, topopt, D_cache, type);
 
@@ -141,12 +142,11 @@ void MUMPSSolver::solve(std::vector<double>& load, std::vector<double>& lambda){
         }
     }
 
-    logger::log_assert(load.size() + 2*l_num == (size_t)this->config.n, logger::ERROR, "invalid vector input vector dimension, is {}, should be {}", load.size() + 2*l_num, this->config.n);
     std::vector<double> u_tmp;
     this->config.job = 3; // Solve using decomposed matrix
     if(mpi_id == 0){
-        u_tmp.resize(load.size() + 2*l_num, 0);
-        std::copy(load.begin(), load.end(), u_tmp.begin());
+        logger::log_assert(load.size() == (size_t)this->config.n, logger::ERROR, "invalid vector input vector dimension, is {}, should be {}", load.size(), this->config.n);
+        u_tmp = load;
         this->config.rhs = u_tmp.data(); // Set right-hand side
         logger::quick_log("Calculating displacements...");
     }
@@ -154,8 +154,8 @@ void MUMPSSolver::solve(std::vector<double>& load, std::vector<double>& lambda){
     dmumps_c(&this->config);
 
     if(mpi_id == 0){
-        std::copy(u_tmp.begin(), u_tmp.begin() + load.size(), load.begin());
-        std::copy(u_tmp.begin() + load.size(), u_tmp.end(), lambda.begin());
+        std::copy(u_tmp.begin(), u_tmp.begin() + this->u_size, load.begin());
+        std::copy(u_tmp.begin() + this->u_size, u_tmp.end(), lambda.begin());
         logger::quick_log("Done.");
     }
 }

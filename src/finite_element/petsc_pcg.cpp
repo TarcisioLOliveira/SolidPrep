@@ -49,6 +49,7 @@ PETScPCG::~PETScPCG(){
 
 void PETScPCG::generate_matrix_base(const Meshing* const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const MatrixType type){
     this->matrix_type = type;
+    this->u_size = u_size;
     this->l_num = l_num;
     this->gsm->generate(mesh, u_size, l_num, node_positions, topopt, D_cache, type);
     this->setup = false;
@@ -62,7 +63,7 @@ void PETScPCG::solve(std::vector<double>& load, std::vector<double>& lambda){
 
     auto K = this->gsm->get_K();
 
-    long M = load.size() + 2*this->l_num;
+    long M = load.size();
     long n = 0, m = 0;
     MatGetLocalSize(K, &n, &m);
     MPI_Bcast(&M, 1, MPI_LONG, 0, MPI_COMM_WORLD);
@@ -87,7 +88,7 @@ void PETScPCG::solve(std::vector<double>& load, std::vector<double>& lambda){
         KSPSetType(this->ksp, KSPCG);
         //KSPSetType(this->ksp, KSPPREONLY);
         KSPCGSetType(this->ksp, KSP_CG_HERMITIAN);
-        KSPSetInitialGuessNonzero(this->ksp, PETSC_FALSE);
+        KSPSetInitialGuessNonzero(this->ksp, PETSC_TRUE);
 
         KSPGetPC(this->ksp, &this->pc);
         PCFactorSetUseInPlace(this->pc, PETSC_TRUE);
@@ -97,14 +98,6 @@ void PETScPCG::solve(std::vector<double>& load, std::vector<double>& lambda){
         this->first_time = false;
     }
 
-    if(this->u == 0){
-        VecCreateMPI(PETSC_COMM_WORLD, m, M, &this->u);
-        VecSetType(this->u, this->vec_type.c_str());
-        //VecSetSizes(this->u, PETSC_DECIDE, load.size());
-        //DMCreateGlobalVector(this->dm, &this->u);
-        VecSetUp(this->u);
-    }
-
     MPI_Bcast(load.data(), load.size(), MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
     long begin = 0, end = 0;
@@ -112,18 +105,8 @@ void PETScPCG::solve(std::vector<double>& load, std::vector<double>& lambda){
 
     double* f_data = nullptr;
     VecGetArray(this->f, &f_data);
-    if(end < load.size()){
-        for(auto d = 0; d < end - begin; ++d){
-            *(f_data+d) = load[begin+d];
-        }
-    } else {
-        const long end2 = load.size();
-        for(auto d = 0; d < end2 - begin; ++d){
-            *(f_data+d) = load[begin+d];
-        }
-        for(auto d = end2; d < end - end2; ++d){
-            *(f_data+d) = 0;
-        }
+    for(auto d = 0; d < end - begin; ++d){
+        *(f_data+d) = load[begin+d];
     }
     VecRestoreArray(this->f, &f_data);
 
@@ -182,9 +165,9 @@ void PETScPCG::solve(std::vector<double>& load, std::vector<double>& lambda){
 
     VecRestoreArrayRead(this->u, &load_data);
 
-    std::copy(u_tmp.begin(), u_tmp.begin() + load.size(), load.begin());
+    std::copy(u_tmp.begin(), u_tmp.begin() + this->u_size, load.begin());
     if(this->l_num > 0){
-        std::copy(u_tmp.begin() + load.size(), u_tmp.end(), lambda.begin());
+        std::copy(u_tmp.begin() + this->u_size, u_tmp.end(), lambda.begin());
     }
 }
 

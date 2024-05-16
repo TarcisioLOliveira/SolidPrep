@@ -44,6 +44,7 @@ class EigenPCG : public FiniteElement{
     virtual void solve(std::vector<double>& load, std::vector<double>& lambda) override;
 
     size_t l_num = 0;
+    size_t u_size = 0;
     global_stiffness_matrix::EigenSparseAsymmetric gsm;
     Eigen::ConjugateGradient<global_stiffness_matrix::EigenSparseAsymmetric::Mat, Eigen::Lower|Eigen::Upper, Eigen::DiagonalPreconditioner<double>> cg;
     //Eigen::BiCGSTAB<global_stiffness_matrix::EigenSparseAsymmetric::Mat, Eigen::DiagonalPreconditioner<double>> cg;

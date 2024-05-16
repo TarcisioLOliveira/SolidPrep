@@ -48,6 +48,7 @@ class PETScPCG : public FiniteElement{
     bool setup = false;
     std::string vec_type = VECSTANDARD;
     size_t l_num = 0;
+    size_t u_size = 0;
     MatrixType matrix_type;
 };
 

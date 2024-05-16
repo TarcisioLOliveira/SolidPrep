@@ -46,7 +46,7 @@ class FiniteElement{
 
     void generate_matrix(const Meshing* const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache);
 
-    void calculate_displacements(const Meshing* const mesh, std::vector<double>& load, std::vector<double>& lambda);
+    void calculate_displacements(const Meshing* const mesh, std::vector<double>& load, std::vector<double>& lambda, const bool topopt, const std::vector<std::vector<double>>& D_cache);
 
     virtual std::vector<double> calculate_forces(const Meshing* const mesh, const std::vector<double>& displacements) const;
 
@@ -58,12 +58,15 @@ class FiniteElement{
 
     virtual void solve(std::vector<double>& load, std::vector<double>& lambda) = 0;
 
-    void solve_rigid(const Meshing* const mesh, std::vector<double>& load, std::vector<double>& lambda);
-    void solve_opt(const Meshing* const mesh, std::vector<double>& load, std::vector<double>& lambda);
+    void solve_rigid(std::vector<double>& load, std::vector<double>& lambda);
+    void solve_opt(const Meshing* const mesh, std::vector<double>& load, std::vector<double>& lambda, const bool topopt, const std::vector<std::vector<double>>& D_cache);
     void solve_newton(const Meshing* const mesh, std::vector<double>& load, std::vector<double>& lambda);
 
     private:
     NonlinearSolver* const nl_solver;
+
+    void calculate_gradient(const Meshing* const mesh, std::vector<double>& grad, const std::vector<double>& u_ext, const std::vector<double>& f_ext, const std::vector<double>& lambda, bool topopt, const std::vector<std::vector<double>>& D_cache) const;
+    void apply_lambda_force(const Meshing* const mesh, std::vector<double>& f, const std::vector<double>& lambda, bool topopt, const std::vector<std::vector<double>>& D_cache) const;
 };
 
 #endif

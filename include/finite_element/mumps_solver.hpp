@@ -44,6 +44,7 @@ class MUMPSSolver : public FiniteElement{
     DMUMPS_STRUC_C config;
     global_stiffness_matrix::MUMPSSparseSymmetric gsm;
     std::vector<double> buffer;
+    size_t u_size = 0;
     size_t l_num = 0;
     bool first_time = true;
     bool factorized = false;
