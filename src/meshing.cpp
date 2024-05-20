@@ -73,12 +73,14 @@ void Meshing::generate_elements(const TopoDS_Shape& shape,
         }
         // Re-id nodes and remove unused nodes from map
         this->optimize(list, &id_map);
-        for(const auto& n:id_map){
-            const size_t oid = n.first;
-            MeshNode* dedup_n = n.second;
-            MeshNode* prev_n = original_map[oid];
-            const size_t curr_id = prev_n->id;
-            this->to_rigid_map[curr_id] = dedup_n;
+        if(!rigid){
+            for(const auto& n:id_map){
+                const size_t oid = n.first;
+                MeshNode* dedup_n = n.second;
+                MeshNode* prev_n = original_map[oid];
+                const size_t curr_id = prev_n->id;
+                this->to_rigid_map[curr_id] = dedup_n;
+            }
         }
         auto elements = this->create_element_list(list, this->elem_info);
         list.clear();
@@ -122,9 +124,11 @@ void Meshing::apply_boundary_conditions(const std::vector<Force>& forces,
 
     logger::quick_log("Applying boundary conditions...");
     const bool rigid = (this->proj_data->contact_type == ProjectData::ContactType::RIGID);
-    logger::log_assert(this->to_rigid_map.size() > 0,
-            logger::ERROR,
-            "ensure elements are generated before applying boundary conditions.");
+    if (!rigid){
+        logger::log_assert(this->to_rigid_map.size() > 0,
+                logger::ERROR,
+                "ensure elements are generated before applying boundary conditions.");
+    }
 
     const size_t dof = this->elem_info->get_dof_per_node();
     const size_t vec_size = this->node_list.size()*dof;
