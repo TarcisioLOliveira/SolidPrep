@@ -31,9 +31,19 @@ FiniteElement::FiniteElement(NonlinearSolver* nl)
 }
 
 void FiniteElement::generate_matrix(const Meshing* const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache){
-    this->generate_matrix_base(mesh, u_size, l_num, node_positions, topopt, D_cache, 
-            (this->prob_type == NonlinearSolver::SolverClass::LINEAR) ? MatrixType::RIGID : MatrixType::LAMBDA_SLIDING);
-
+    MatrixType mtype = MatrixType::RIGID;
+    switch(this->prob_type){
+        case NonlinearSolver::SolverClass::LINEAR:
+            mtype = MatrixType::RIGID;
+            break;
+        case NonlinearSolver::SolverClass::GRADIENT_BASED:
+            mtype = MatrixType::LAMBDA_SLIDING;
+            break;
+        case NonlinearSolver::SolverClass::HESSIAN_BASED:
+            mtype = MatrixType::LAMBDA_HESSIAN;
+            break;
+    }
+    this->generate_matrix_base(mesh, u_size, l_num, node_positions, topopt, D_cache, mtype);
 }
 
 void FiniteElement::calculate_displacements(const Meshing* const mesh, std::vector<double>& load, std::vector<double>& lambda, const bool topopt, const std::vector<std::vector<double>>& D_cache){

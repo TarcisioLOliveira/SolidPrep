@@ -38,8 +38,10 @@ void GlobalStiffnessMatrix::generate_base(const Meshing * const mesh, const size
     if(mesh->springs->size() > 0){
         this->add_springs(mesh, node_positions);
     }
-    if(type != FiniteElement::MatrixType::RIGID){
+    if(type == FiniteElement::MatrixType::LAMBDA_SLIDING){
         this->generate_expansion(mesh, u_size, l_num, node_positions, topopt, D_cache, Meshing::LambdaType::PARALLEL);
+    } else if(type == FiniteElement::MatrixType::LAMBDA_HESSIAN){
+        this->generate_expansion(mesh, u_size, l_num, node_positions, topopt, D_cache, Meshing::LambdaType::ALL);
     }
     if(topopt){
         for(size_t i = 0; i < L; ++i){
