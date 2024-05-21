@@ -140,7 +140,7 @@ void PETScPCG::solve(std::vector<double>& load, std::vector<double>& lambda){
 
     if(mpi_size > 1){
         if(mpi_id == 0){
-            std::copy(load_data, load_data + m, load.begin());
+            std::copy(load_data, load_data + m, u_tmp.begin());
             std::vector<double> load_data2(2*m,0);
             long l = 0;
             long step = m;
