@@ -33,6 +33,10 @@ class MUMPSSparseSymmetric : public GlobalStiffnessMatrix{
 
     virtual void generate(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const FiniteElement::MatrixType type) override;
 
+    inline virtual void dot_vector(const std::vector<double>& v, std::vector<double>& v_out) const override{
+        this->sK.dot_vector(v, v_out, false);
+    }
+
     inline std::vector<int>& get_rows(){
         return this->sK.rows;
     }

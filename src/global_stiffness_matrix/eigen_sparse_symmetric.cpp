@@ -35,6 +35,12 @@ class EigenSparseSymmetricTriplets : public GlobalStiffnessMatrix{
 
     virtual void generate(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const FiniteElement::MatrixType type) override;
 
+    inline virtual void dot_vector(const std::vector<double>& v, std::vector<double>& v_out) const override{
+        (void)v;
+        (void)v_out;
+        // Unused
+    }
+
     std::vector<T> triplets;
 
     protected:

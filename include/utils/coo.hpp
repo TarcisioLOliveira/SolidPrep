@@ -51,6 +51,22 @@ class COO{
     COO(INT offset = 0):
         offset(offset){}
 
+    inline void dot_vector(const std::vector<double>& v, std::vector<double>& v_out, const double full_matrix) const{
+        if(this->coo_first_time){
+            if(full_matrix){
+                this->map_full_dot_vector(v, v_out);
+            } else {
+                this->map_sym_dot_vector(v, v_out);
+            }
+        } else {
+            if(full_matrix){
+                this->coo_full_dot_vector(v, v_out);
+            } else {
+                this->coo_sym_dot_vector(v, v_out);
+            }
+        }
+    }
+
     inline void insert_matrix_symmetric(const std::vector<double>& M, const std::vector<long>& pos){
         size_t W = pos.size();
         if(this->coo_first_time){
@@ -322,6 +338,12 @@ class COO{
     std::vector<INT> cooRowInd;
     std::vector<INT> cooColInd;
     std::vector<double> cooVal;
+
+
+    void map_full_dot_vector(const std::vector<double>& v, std::vector<double>& v_out) const;
+    void map_sym_dot_vector(const std::vector<double>& v, std::vector<double>& v_out) const;
+    void coo_full_dot_vector(const std::vector<double>& v, std::vector<double>& v_out) const;
+    void coo_sym_dot_vector(const std::vector<double>& v, std::vector<double>& v_out) const;
     
     inline void add_coo(const INT i, const INT j, const double v){
         for(int c = cooRowPtr[i]; c < cooRowPtr[i+1]; ++c){
@@ -344,6 +366,51 @@ class COO{
         return 0;
     }
 };
+
+template<typename INT>
+void COO<INT>::map_full_dot_vector(const std::vector<double>& v, std::vector<double>& v_out) const{
+    for(auto &p:this->data){
+        const size_t i = p.first.i;
+        const size_t j = p.first.j;
+        const double val = p.second;
+        v_out[i] += val*v[j];
+    }
+}
+template<typename INT>
+void COO<INT>::map_sym_dot_vector(const std::vector<double>& v, std::vector<double>& v_out) const{
+    for(auto &p:this->data){
+        const size_t i = p.first.i;
+        const size_t j = p.first.j;
+        const double val = p.second;
+        if(i == j){
+            v_out[i] += val*v[j];
+        } else {
+            v_out[i] += val*v[j];
+            v_out[j] += val*v[i];
+        }
+    }
+}
+template<typename INT>
+void COO<INT>::coo_full_dot_vector(const std::vector<double>& v, std::vector<double>& v_out) const{
+    #pragma omp parallel for
+    for(size_t i = 0; i < cooRowPtr.size() - 1; ++i){
+        for(INT c = cooRowPtr[i]; c < cooRowPtr[i+1]; ++c){
+                v_out[i] += cooVal[c]*v[cooColInd[c]];
+        }
+    }
+}
+template<typename INT>
+void COO<INT>::coo_sym_dot_vector(const std::vector<double>& v, std::vector<double>& v_out) const{
+    #pragma omp parallel for
+    for(size_t i = 0; i < cooRowPtr.size() - 1; ++i){
+        INT c = 0;
+        for(c = cooRowPtr[i]; c < cooRowPtr[i+1]-1; ++c){
+                v_out[i] += cooVal[c]*v[cooColInd[c] - offset];
+                v_out[cooColInd[c] - offset] += cooVal[c]*v[i];
+        }
+        v_out[i] += cooVal[c]*v[cooColInd[c] - offset];
+    }
+}
 
 template<typename INT>
 void COO<INT>::generate_coo(INT n){

@@ -22,6 +22,7 @@
 #define EIGEN_SPARSE_SYMMETRIC_HPP
 
 #include <Eigen/SparseCore>
+#include <Eigen/src/Core/util/Constants.h>
 #include <Eigen/src/SparseCore/SparseMatrix.h>
 #include "meshing.hpp"
 #include "global_stiffness_matrix.hpp"
@@ -35,6 +36,13 @@ class EigenSparseSymmetric : public GlobalStiffnessMatrix{
     virtual ~EigenSparseSymmetric() = default;
 
     virtual void generate(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const FiniteElement::MatrixType type) override;
+
+    inline virtual void dot_vector(const std::vector<double>& v, std::vector<double>& v_out) const override{
+        Eigen::VectorXd u = Eigen::Map<const Eigen::VectorXd>(v.data(), v.size());
+
+        Eigen::VectorXd u_out = this->K.selfadjointView<Eigen::Lower>()*u;
+        std::copy(u_out.begin(), u_out.end(), v_out.begin());
+    }
 
     Mat& get_K() {
         return K;
@@ -64,7 +72,7 @@ class EigenSparseSymmetric : public GlobalStiffnessMatrix{
         }
     }
 
-    inline void insert_element_matrix(const std::vector<double>& k, const std::vector<long>& pos) override{
+    inline virtual void insert_element_matrix(const std::vector<double>& k, const std::vector<long>& pos) override{
         const size_t w = pos.size();
         for(size_t i = 0; i < w; ++i){
             if(pos[i] < 0){

@@ -19,7 +19,6 @@
  */
 
 #include <Eigen/IterativeLinearSolvers>
-#include <Eigen/src/Core/util/Constants.h>
 #include <mpich-x86_64/mpi.h>
 #include "finite_element/eigen_pcg.hpp"
 #include "logger.hpp"

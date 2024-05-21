@@ -25,12 +25,6 @@
 #include "global_stiffness_matrix/eigen_sparse_symmetric.hpp"
 #include "global_stiffness_matrix/eigen_sparse_asymmetric.hpp"
 #include <Eigen/Sparse>
-#include <Eigen/src/Core/Matrix.h>
-#include <Eigen/src/Core/util/Constants.h>
-#include <Eigen/src/IterativeLinearSolvers/BasicPreconditioners.h>
-#include <Eigen/src/IterativeLinearSolvers/BiCGSTAB.h>
-#include <Eigen/src/IterativeLinearSolvers/ConjugateGradient.h>
-#include <Eigen/src/IterativeLinearSolvers/IncompleteLUT.h>
 
 namespace finite_element{
 

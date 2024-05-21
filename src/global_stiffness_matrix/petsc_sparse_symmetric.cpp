@@ -100,6 +100,66 @@ void PETScSparseSymmetricCPU::assemble_matrix(const Meshing * const mesh, const 
     MatAssemblyBegin(this->K, MAT_FINAL_ASSEMBLY);
     MatAssemblyEnd(this->K, MAT_FINAL_ASSEMBLY);
 }
+
+void PETScSparseSymmetricCPU::dot_vector(const std::vector<double>& v, std::vector<double>& v_out) const{
+    int mpi_id = 0;
+    int mpi_size = 0;
+    MPI_Comm_rank(MPI_COMM_WORLD, &mpi_id);
+    MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
+
+    long M = v.size();
+    long n = 0, m = 0;
+    MatGetLocalSize(K, &n, &m);
+    MPI_Bcast(&M, 1, MPI_LONG, 0, MPI_COMM_WORLD);
+
+    Vec v1, v2;
+    VecCreateMPI(PETSC_COMM_WORLD, m, M, &v1);
+    VecCreateMPI(PETSC_COMM_WORLD, m, M, &v2);
+    VecSetType(v1, VECSTANDARD);
+    VecSetType(v2, VECSTANDARD);
+    VecSetUp(v1);
+    VecSetUp(v2);
+
+    long begin = 0, end = 0;
+    VecGetOwnershipRange(v1, &begin, &end);
+
+    double* v_data = nullptr;
+    VecGetArray(v1, &v_data);
+    std::copy(v.begin() + begin, v.begin() + end, v_data);
+    VecRestoreArray(v1, &v_data);
+
+    MatMult(this->K, v1, v2);
+
+    const double* v_out_data;
+    VecGetArrayRead(v2, &v_out_data);
+
+    if(mpi_size > 1){
+        if(mpi_id == 0){
+            std::copy(v_out_data, v_out_data + m, v_out.begin());
+            std::vector<double> v_out_data2(2*m,0);
+            long l = 0;
+            long step = m;
+            for(int i = 1; i < mpi_size; ++i){
+                MPI_Status mpi_status;
+                MPI_Recv(&l, 1, MPI_DOUBLE, i, 111, MPI_COMM_WORLD, &mpi_status);
+                MPI_Recv(v_out_data2.data(), l, MPI_DOUBLE, i, 111, MPI_COMM_WORLD, &mpi_status);
+                for(long j = 0; j < m; ++j){
+                    v_out[j+step] += v_out_data2[j];
+                }
+                step += l;
+            }
+        } else {
+            long l = end - begin;
+            MPI_Send(&l, 1, MPI_DOUBLE, 0, 111, MPI_COMM_WORLD);
+            MPI_Send(v_out_data, m, MPI_DOUBLE, 0, 111, MPI_COMM_WORLD);
+        }
+    } else {
+        std::copy(v_out_data, v_out_data + M, v_out.begin());
+    }
+    MPI_Barrier(MPI_COMM_WORLD);
+    VecRestoreArrayRead(v2, &v_out_data);
+}
+
 void PETScSparseSymmetricCUDA::preallocate(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const FiniteElement::MatrixType type, const size_t mpi_id){
     MatCreate(PETSC_COMM_WORLD, &this->K);
     MatSetType(this->K, MATAIJCUSPARSE);

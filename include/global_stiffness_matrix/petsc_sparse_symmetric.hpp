@@ -57,6 +57,8 @@ class PETScSparseSymmetricCPU : public PETScSparseSymmetric {
     PETScSparseSymmetricCPU() = default;
     virtual ~PETScSparseSymmetricCPU() = default;
 
+    virtual void dot_vector(const std::vector<double>& v, std::vector<double>& v_out) const override;
+
     protected:
     virtual void preallocate(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const FiniteElement::MatrixType type, const size_t mpi_id) override;
     virtual void assemble_matrix(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const FiniteElement::MatrixType type, const size_t mpi_id) override;
@@ -88,6 +90,10 @@ class PETScSparseSymmetricCUDA : public PETScSparseSymmetric {
     public:
     PETScSparseSymmetricCUDA() = default;
     virtual ~PETScSparseSymmetricCUDA() = default;
+
+    inline virtual void dot_vector(const std::vector<double>& v, std::vector<double>& v_out) const override{
+        this->K_coo.dot_vector(v, v_out, true);
+    }
 
     protected:
     utils::COO<PetscInt> K_coo;
