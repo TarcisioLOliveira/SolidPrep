@@ -22,7 +22,6 @@
 #define GMSH_HPP
 
 #include "meshing.hpp"
-#include "utils.hpp"
 
 class ProjectData;
 
@@ -45,7 +44,7 @@ class Gmsh : public Meshing{
     int algorithm3D;
     double tmp_scale;
 
-    std::unordered_map<size_t, MeshNode*> gmsh_meshing(bool has_condition_inside, TopoDS_Shape sh, std::vector<size_t>& geom_elem_mapping, std::vector<size_t>& elem_node_tags, std::vector<size_t>& bound_elem_node_tags, const MeshElementFactory* const elem_type);
+    std::unordered_map<size_t, MeshNode*> gmsh_meshing(bool has_condition_inside, TopoDS_Shape sh, std::vector<size_t>& geom_elem_mapping, std::vector<size_t>& elem_node_tags, std::vector<size_t>& bound_elem_node_tags, const MeshElementFactory* const elem_type, std::unordered_map<size_t, size_t>& duplicate_map);
 };
 
 }

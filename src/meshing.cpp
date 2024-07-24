@@ -43,19 +43,19 @@ void Meshing::generate_elements(const TopoDS_Shape& shape,
                                 const std::vector<size_t>& elem_node_tags, 
                                 const std::vector<size_t>& bound_elem_node_tags,
                                 std::unordered_map<size_t, MeshNode*>& id_map,
+                                std::unordered_map<size_t, size_t>& duplicate_map,
                                 const bool deduplicate,
                                 const bool boundary_condition_inside){
 
     this->orig_shape = shape;
     logger::quick_log("Generating elements and preparing for finite element analysis...");
-    this->fix_node_point_precision();
 
     std::unordered_map<size_t, MeshNode*> original_map = id_map;
     const bool rigid = (this->proj_data->contact_type == ProjectData::ContactType::RIGID);
 
     const bool delete_duplicated = deduplicate && rigid;
     if(this->geometries.size() > 1){
-        this->find_duplicates(id_map, delete_duplicated);
+        this->deduplicate(id_map, duplicate_map, delete_duplicated);
     }
 
     const size_t nodes_per_elem = this->elem_info->get_nodes_per_element();
@@ -333,7 +333,7 @@ void Meshing::populate_boundary_elements(const std::vector<ElementShape>& bounda
                     auto it = common_nodes.begin();
                     bool found = false;
                     for(const auto& be:this->boundary_elements){
-                        if(be.parent == *it && std::abs(be.normal.Dot(n)) > 1.0 - Precision::Confusion()){
+                        if(be.parent == *it && std::abs(be.normal.Dot(n)) >= 1.0 - Precision::Confusion()){
                             found = true;
                             break;
                         }
@@ -383,27 +383,90 @@ void Meshing::populate_boundary_elements(const std::vector<ElementShape>& bounda
     // to use to_rigid_map to find overlapping nodes and generate intergeometry
     // boundary metadata
     if(this->proj_data->contact_type != ProjectData::RIGID){
+        // Generate inverse mesh for boundary
+        for(auto& b:this->boundary_elements){
+            for(size_t i = 0; i < N; ++i){
+                this->boundary_inverse_mesh.emplace(b.nodes[i]->id, &b);
+            }
+        }
         std::vector<size_t> bnodes(N);
-        // Not optimal, but easier to implement
-        for(size_t i = 0; i < this->boundary_elements.size(); ++i){
-            const BoundaryElement* b = &this->boundary_elements[i];
-            const gp_Pnt c(b->get_centroid(N));
-            for(size_t j = i+1; j < this->boundary_elements.size(); ++j){
-                const BoundaryElement* b2 = &this->boundary_elements[j];
-                const gp_Pnt c2(b2->get_centroid(N));
-                if(c.IsEqual(c2, Precision::Confusion())){
-                    inter_geom.push_back(i);
-                    inter_geom.push_back(j);
+        for(auto& b:this->boundary_elements){
+            bool found_equivalent = true;
+            for(size_t i = 0; i < N; ++i){
+                const auto rn = this->to_rigid_map[b.nodes[i]->id];
+                // All nodes must have equivalents
+                // If at the edge of intergeometry boundary, not all nodes
+                // will have equivalents, so check that all fit into the
+                // intergeometry region
+                if(rn->id != b.nodes[i]->id){
+                    bnodes[i] = rn->id;
+                } else {
+                    found_equivalent = false;
+                    break;
+                }
+            }
+            if(found_equivalent){
+                std::set<BoundaryElement*> common_nodes;
+                const auto eq_range = this->boundary_inverse_mesh.equal_range(bnodes[0]);
+                for(auto k = eq_range.first; k != eq_range.second; ++k){
+                    common_nodes.insert(k->second);
+                }
+                for(size_t j = 1; j < N; ++j){
+                    std::set<BoundaryElement*> tmp_common_nodes;
+                    std::set<BoundaryElement*> tmp_comp;
+                    const auto eq_range = this->boundary_inverse_mesh.equal_range(bnodes[j]);
+                    for(auto k = eq_range.first; k != eq_range.second; ++k){
+                        tmp_comp.insert(k->second);
+                    }
+                    std::set_intersection(common_nodes.begin(), common_nodes.end(),
+                                          tmp_comp.begin(), tmp_comp.end(),
+                                          std::inserter(tmp_common_nodes, tmp_common_nodes.begin()));
+                    common_nodes = std::move(tmp_common_nodes);
+                }
+                if(common_nodes.size() == 1){
+                    this->inter_geometry_boundary.push_back(&b);
+                    this->inter_geometry_boundary.push_back(*common_nodes.begin());
+                } else {
+                    logger::quick_log("????????", common_nodes.size());
                 }
             }
         }
+        // std::vector<size_t> bnodes(N);
+        // // Not optimal, but easier to implement.
+        // // This is not working correctly and I don't know why.
+        // for(size_t i = 0; i < this->boundary_elements.size(); ++i){
+        //     const BoundaryElement* b = &this->boundary_elements[i];
+        //     const gp_Pnt c(b->get_centroid(N));
+        //     //double dist = 1e100;
+        //     //gp_Pnt c_test;
+        //     for(size_t j = i+1; j < this->boundary_elements.size(); ++j){
+        //         const BoundaryElement* b2 = &this->boundary_elements[j];
+        //         const gp_Pnt c2(b2->get_centroid(N));
+        //         //if(c.Distance(c2) < dist){
+        //         //    c_test = c2;
+        //         //    dist = c.Distance(c2);
+        //         //}
+        //         if(c.IsEqual(c2, Precision::Confusion())){
+        //             inter_geom.push_back(i);
+        //             inter_geom.push_back(j);
+        //             break;
+        //         }
+        //     }
+        //     //if(std::abs(c.X()) < 11 && std::abs(c.Z()) < 11 && std::abs(c.Y()) < 19){
+        //     //    logger::quick_log(c.X(), c.Y(), c.Z(), dist);
+        //     //}
+        // }
     }
-    logger::quick_log("bound_elems ", this->boundary_elements.size());
-    logger::quick_log("inter_geom", inter_geom.size());
-    this->inter_geometry_boundary.resize(inter_geom.size());
-    for(size_t i = 0; i < inter_geom.size(); ++i){
-        this->inter_geometry_boundary[i] = &this->boundary_elements[inter_geom[i]];
+    logger::quick_log("bound_elems", this->boundary_elements.size());
+    if(inter_geom.size() > 0){
+        this->inter_geometry_boundary.resize(inter_geom.size());
+        for(size_t i = 0; i < inter_geom.size(); ++i){
+            this->inter_geometry_boundary[i] = &this->boundary_elements[inter_geom[i]];
+        }
+    } else {
+        this->inter_geometry_boundary.shrink_to_fit();
     }
+    logger::quick_log("inter_geom", this->inter_geometry_boundary.size());
 }
 
 void Meshing::apply_supports(){
@@ -1335,59 +1398,135 @@ std::vector<ElementShape> Meshing::generate_element_shapes(
     return list;
 }
 
-std::vector<size_t> Meshing::find_duplicates(std::unordered_map<size_t, MeshNode*>& id_map, const bool delete_dups){
-    const auto point_sort = 
-        [](const std::unique_ptr<MeshNode>& n1, const std::unique_ptr<MeshNode>& n2)->bool{
-            if(n1->point.X() < n2->point.X()){
-                return true;
-            } else if(n1->point.X() == n2->point.X() && n1->point.Y() < n2->point.Y()){
-                return true;
-            } else if(n1->point.X() == n2->point.X() && n1->point.Y() == n2->point.Y() && n1->point.Z() < n2->point.Z()){
-                return true;
+void Meshing::deduplicate(std::unordered_map<size_t, MeshNode*>& id_map, const std::unordered_map<size_t, size_t>& duplicate_map, const bool delete_dups){
+    for(const auto& dn:duplicate_map){
+        auto n = this->boundary_node_list.begin();
+        while(n < this->boundary_node_list.end()){
+            if((*n)->id == dn.first){
+                break;
             }
-            return false;
-        };
+            ++n;
+        }
+        logger::log_assert(n != this->boundary_node_list.end(),
+                logger::ERROR,
+                "WHAT");
+        id_map[dn.second] = *n;
+        if(delete_dups){
+            this->boundary_node_list.erase(n);
+
+            auto nn = this->node_list.begin();
+            while(nn < this->node_list.end()){
+                if((*nn)->id == dn.second){
+                    break;
+                }
+                ++nn;
+            }
+            this->node_list.erase(nn);
+        }
+    }
+}
+
+std::vector<size_t> Meshing::find_duplicates(std::unordered_map<size_t, MeshNode*>& id_map, const bool delete_dups){
+    //const auto point_sort = 
+    //    [](const std::unique_ptr<MeshNode>& n1, const std::unique_ptr<MeshNode>& n2)->bool{
+    //        if(n1->point.X() < n2->point.X()){
+    //            return true;
+    //        } else if(n1->point.X() == n2->point.X() && n1->point.Y() < n2->point.Y()){
+    //            return true;
+    //        } else if(n1->point.X() == n2->point.X() && n1->point.Y() == n2->point.Y() && n1->point.Z() < n2->point.Z()){
+    //            return true;
+    //        }
+    //        return false;
+    //    };
 
     std::vector<size_t> duplicates;
+    this->number_duplicated_nodes = 0;
 
-    // The usual method to find duplicates is to test each one against the
-    // other, which is O(N^2). However, std::sort() is Nlog2N, then,
-    // figuring out the duplicates becomes faster, as you can limit search
-    // to nodes with equal X. It should be O(M^2) with M << N.
-    std::sort(this->node_list.begin(), this->node_list.end(), point_sort);
-
-    double eps = Precision::Confusion();
-    logger::quick_log("Original number of nodes:", node_list.size());
-    auto i = this->node_list.begin();
-    while(i < this->node_list.end()-1){
+    // Assume there are only duplicates on the boundary (as it should be)
+    for(auto i = this->boundary_node_list.begin(); i < this->boundary_node_list.end(); ++i){
+        if(!delete_dups){
+            auto dup_it = std::find(duplicates.begin(), duplicates.end(), (*i)->id);
+            if(dup_it != duplicates.end()){
+                continue;
+            }
+        }
         auto j = i + 1;
-        //while(j < this->node_list.end()){
-        while(j < this->node_list.end() &&
-              (*i)->point.X() == (*j)->point.X() &&
-              (*i)->point.Y() == (*j)->point.Y() &&
-              (*i)->point.Z() == (*j)->point.Z()){
+        while(j < this->boundary_node_list.end()){
+            if((*i)->point.IsEqual((*j)->point, Precision::Confusion())){
 
-            id_map[(*j)->id] = id_map[(*i)->id];
-            ++this->number_duplicated_nodes;
-            //gp_Pnt test = (*i)->point;
-            if(delete_dups){
-                auto bn = std::find(this->boundary_node_list.begin(), this->boundary_node_list.end(), j->get());
-                if(bn != this->boundary_node_list.end()){
-                    this->boundary_node_list.erase(bn);
+                id_map[(*j)->id] = id_map[(*i)->id];
+                ++this->number_duplicated_nodes;
+                //gp_Pnt test = (*i)->point;
+                if(delete_dups){
+                    auto n = this->node_list.begin();
+                    while(n < this->node_list.end()){
+                        if(n->get() == *j){
+                            break;
+                        }
+                        ++n;
+                    }
+                    logger::log_assert(n != this->node_list.end(), logger::ERROR, "boundary node not present in main node list");
+                    this->node_list.erase(n);
+                    //const size_t diff = i - this->boundary_node_list.begin();
+                    j = this->boundary_node_list.erase(j);
+                    //i = this->boundary_node_list.begin() + diff;
+                } else {
+                    duplicates.push_back((*j)->id);
+                    ++j;
                 }
-                const size_t diff = i - this->node_list.begin();
-                j = this->node_list.erase(j);
-                i = this->node_list.begin() + diff;
+
+                // There may be more than one duplicate, e.g., multiple geometry
+                // intersection, do don't break
             } else {
                 ++j;
             }
         }
-        if(delete_dups){
-            ++i;
-        } else {
-            i += j - i;
-        }
+        ++i;
     }
+
+    // // The usual method to find duplicates is to test each one against the
+    // // other, which is O(N^2). However, std::sort() is Nlog2N, then,
+    // // figuring out the duplicates becomes faster, as you can limit search
+    // // to nodes with equal X. It should be O(M^2) with M << N.
+    // std::sort(this->node_list.begin(), this->node_list.end(), point_sort);
+
+    // double eps = Precision::Confusion();
+    // logger::quick_log("Original number of nodes:", node_list.size());
+    // auto i = this->node_list.begin();
+    // while(i < this->node_list.end()-1){
+    //     auto j = i + 1;
+    //     if(std::abs((*i)->point.X()) < 10 &&
+    //        std::abs((*i)->point.Y()) < 10 &&
+    //        std::abs((*i)->point.Z()) < 10){
+    //         logger::quick_log((*i)->point.X(), (*i)->point.Y(), (*i)->point.Z());
+    //     }
+    //     //while(j < this->node_list.end()){
+    //     while(j < this->node_list.end() &&
+    //           (*i)->point.X() == (*j)->point.X() &&
+    //           (*i)->point.Y() == (*j)->point.Y() &&
+    //           (*i)->point.Z() == (*j)->point.Z()){
+
+    //         id_map[(*j)->id] = id_map[(*i)->id];
+    //         ++this->number_duplicated_nodes;
+    //         //gp_Pnt test = (*i)->point;
+    //         if(delete_dups){
+    //             auto bn = std::find(this->boundary_node_list.begin(), this->boundary_node_list.end(), j->get());
+    //             if(bn != this->boundary_node_list.end()){
+    //                 this->boundary_node_list.erase(bn);
+    //             }
+    //             const size_t diff = i - this->node_list.begin();
+    //             j = this->node_list.erase(j);
+    //             i = this->node_list.begin() + diff;
+    //         } else {
+    //             ++j;
+    //         }
+    //     }
+    //     if(delete_dups){
+    //         ++i;
+    //     } else {
+    //         i += j - i;
+    //     }
+    // }
     logger::quick_log("Final number of nodes:", node_list.size());
     logger::quick_log("Duplicates:", this->number_duplicated_nodes);
     

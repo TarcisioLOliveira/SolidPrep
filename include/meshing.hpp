@@ -222,6 +222,7 @@ class Meshing{
 
     std::vector<std::unique_ptr<MeshNode>> node_list;
     std::unordered_multimap<size_t, MeshElement*> inverse_mesh;
+    std::unordered_multimap<size_t, BoundaryElement*> boundary_inverse_mesh;
     std::vector<BoundaryElement> boundary_elements;
     std::vector<MeshNode*> boundary_node_list;
     std::vector<Spring>* springs;
@@ -287,6 +288,7 @@ class Meshing{
                                    const std::vector<size_t>& elem_node_tags, 
                                    const std::vector<size_t>& bound_elem_node_tags,
                                    std::unordered_map<size_t, MeshNode*>& id_map,
+                                   std::unordered_map<size_t, size_t>& duplicate_map,
                                    const bool deduplicate,
                                    const bool boundary_condition_inside);
 
@@ -420,6 +422,8 @@ class Meshing{
      * @return Indices of duplicated nodes, to be used late in remove_duplicates().
      */
     virtual std::vector<size_t> find_duplicates(std::unordered_map<size_t, MeshNode*>& id_map, const bool delete_dups);
+
+    virtual void deduplicate(std::unordered_map<size_t, MeshNode*>& id_map, const std::unordered_map<size_t, size_t>& duplicate_map, const bool delete_dups);
 
     /**
      * Turns a vector of geometries into a single compound geometry.

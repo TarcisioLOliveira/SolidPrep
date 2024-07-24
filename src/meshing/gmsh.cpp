@@ -23,11 +23,8 @@
 #include "utils.hpp"
 #include <BRepBuilderAPI_Transform.hxx>
 #include <BRep_Builder.hxx>
-#include <cmath>
 #include <gmsh.h>
 #include <algorithm>
-#include <iomanip>
-#include <limits>
 #include "project_data.hpp"
 #include <unordered_map>
 #include <BOPAlgo_Splitter.hxx>
@@ -50,7 +47,7 @@ void Gmsh::mesh(const std::vector<Force>& forces,
     TopoDS_Shape shape = this->make_compound(this->geometries);
 
     bool has_condition_inside = false;
-    auto problem_type = this->elem_info->get_problem_type();
+    const auto problem_type = this->elem_info->get_problem_type();
     TopoDS_Shape sh;
     if(this->tmp_scale == 1.0){
         sh = BRepBuilderAPI_Copy(shape);
@@ -58,6 +55,12 @@ void Gmsh::mesh(const std::vector<Force>& forces,
         sh = this->make_compound(this->geometries, this->tmp_scale);
     }
     if(problem_type == utils::PROBLEM_TYPE_2D){
+        // I'll need to find out later how to deal with this.
+        // Boundary conditions inside the domain don't make a lot of sense,
+        // but they're useful for design automation.
+        // I'm currently phasing this out because now I just duplicate
+        // the boundary in these cases anyway, but I still don't know
+        // if the behavior is exactly the same.
         has_condition_inside = this->adapt_for_boundary_condition_inside(shape, forces, supports);
     } else {
         // Maybe disable for cubic elements?
@@ -100,32 +103,8 @@ void Gmsh::mesh(const std::vector<Force>& forces,
     //     logger::log_assert(this->geometries.size() == 1, logger::ERROR, "applying boundary conditions inside a geometry is currently not supported when the number of geometries is greater than 1.");
     // }
 
-    std::vector<size_t> geom_elem_mapping, elem_node_tags, bound_elem_node_tags;
-    auto id_map = this->gmsh_meshing(has_condition_inside, sh, geom_elem_mapping, elem_node_tags, bound_elem_node_tags, this->elem_info);
-
-    bool deduplicate = false;
-    if(geometries.size() > 1){
-        deduplicate = true;
-    }
-    this->generate_elements(shape,
-                            geom_elem_mapping, 
-                            elem_node_tags, 
-                            bound_elem_node_tags,
-                            id_map,
-                            deduplicate,
-                            has_condition_inside);
-}
-
-std::unordered_map<size_t, MeshNode*> Gmsh::gmsh_meshing(bool has_condition_inside, TopoDS_Shape sh, std::vector<size_t>& geom_elem_mapping, std::vector<size_t>& elem_node_tags, std::vector<size_t>& bound_elem_node_tags, const MeshElementFactory* const elem_type){
     gmsh::initialize();
-
-    gmsh::model::add("base");
     gmsh::option::setNumber("Geometry.AutoCoherence", 2);
-
-    gmsh::vectorpair vec;
-    gmsh::model::occ::importShapesNativePointer(static_cast<const void*>(&sh), vec);
-    gmsh::model::occ::synchronize();
-
     gmsh::option::setNumber("Mesh.MeshSizeMin", 0);
     gmsh::option::setNumber("Mesh.MeshSizeMax", this->size);
 
@@ -134,11 +113,11 @@ std::unordered_map<size_t, MeshNode*> Gmsh::gmsh_meshing(bool has_condition_insi
 
     const size_t order = this->elem_info->get_element_order();
     gmsh::option::setNumber("Mesh.ElementOrder", order);
-    gmsh::option::setNumber("Mesh.Optimize", 1);
-    //gmsh::option::setNumber("Mesh.OptimizeNetgen", 1);
     if(order > 1){
         gmsh::option::setNumber("Mesh.HighOrderOptimize", 2);
     }
+    gmsh::option::setNumber("Mesh.Optimize", 1);
+    //gmsh::option::setNumber("Mesh.OptimizeNetgen", 1);
     gmsh::option::setNumber("Mesh.OptimizeThreshold", 0.5);
     gmsh::option::setNumber("Geometry.Tolerance", 1e-2);
     gmsh::option::setNumber("Mesh.Smoothing", 200);
@@ -155,8 +134,7 @@ std::unordered_map<size_t, MeshNode*> Gmsh::gmsh_meshing(bool has_condition_insi
     gmsh::option::setNumber("Mesh.LcIntegrationPrecision", 1e-7);
 
     // Quad/hex recombination
-    auto problem_type = this->elem_info->get_problem_type();
-    if(elem_type->get_shape_type() == Element::Shape::QUAD){
+    if(this->elem_info->get_shape_type() == Element::Shape::QUAD){
         gmsh::option::setNumber("Mesh.RecombinationAlgorithm", 2);
         gmsh::option::setNumber("Mesh.RecombineAll", 1);
         gmsh::option::setNumber("Mesh.Recombine3DAll", 1);
@@ -167,6 +145,44 @@ std::unordered_map<size_t, MeshNode*> Gmsh::gmsh_meshing(bool has_condition_insi
         }
     }
 
+    if(this->geometries.size() > 1 && problem_type == utils::PROBLEM_TYPE_3D){
+        BOPAlgo_Builder sec;
+        sec.SetNonDestructive(true);
+        sec.SetRunParallel(true);
+        sec.SetUseOBB(false);
+        for(size_t i = 0; i < this->geometries.size(); ++i){
+            sec.AddArgument(this->geometries[i]->shape);
+        }
+        sec.Perform();
+        sec.DumpErrors(std::cout);
+        sh = sec.Shape();
+    }
+
+    std::vector<size_t> geom_elem_mapping, elem_node_tags, bound_elem_node_tags;
+    std::unordered_map<size_t, size_t> duplicate_map;
+    auto id_map = this->gmsh_meshing(has_condition_inside, sh, geom_elem_mapping, elem_node_tags, bound_elem_node_tags, this->elem_info, duplicate_map);
+
+    bool deduplicate = false;
+    if(geometries.size() > 1){
+        deduplicate = true;
+    }
+    this->generate_elements(shape,
+                            geom_elem_mapping, 
+                            elem_node_tags, 
+                            bound_elem_node_tags,
+                            id_map,
+                            duplicate_map,
+                            deduplicate,
+                            has_condition_inside);
+}
+
+std::unordered_map<size_t, MeshNode*> Gmsh::gmsh_meshing(bool has_condition_inside, TopoDS_Shape sh, std::vector<size_t>& geom_elem_mapping, std::vector<size_t>& elem_node_tags, std::vector<size_t>& bound_elem_node_tags, const MeshElementFactory* const elem_type, std::unordered_map<size_t, size_t>& duplicate_map){
+
+    const size_t type = elem_type->get_gmsh_element_type();
+    const size_t bound_type = elem_type->get_boundary_gmsh_element_type();
+    const auto problem_type = this->elem_info->get_problem_type();
+    const size_t nodes_per_elem = this->elem_info->get_nodes_per_element();
+
     size_t dim = 0;
     if(problem_type == utils::PROBLEM_TYPE_2D){
         dim = 2;
@@ -174,40 +190,64 @@ std::unordered_map<size_t, MeshNode*> Gmsh::gmsh_meshing(bool has_condition_insi
         dim = 3;
     }
 
-    gmsh::model::mesh::generate(dim);
+    std::vector<size_t> node_tags, boundary_node_tags;
+    std::vector<double> node_coords;
+    geom_elem_mapping.resize(geometries.size(),0);
 
-    gmsh::write("mesh.msh");
+    if(geometries.size() == 1){
+        gmsh::model::add("base");
+        gmsh::vectorpair vec;
+        gmsh::model::occ::importShapesNativePointer(static_cast<const void*>(&sh), vec);
+        gmsh::model::occ::synchronize();
 
-    size_t type = elem_type->get_gmsh_element_type();
-    size_t bound_type = elem_type->get_boundary_gmsh_element_type();
-    std::vector<int> elem_types;
-    gmsh::model::mesh::getElementTypes(elem_types);
-    // Check if meshing went well
-    logger::log_assert(std::find(elem_types.begin(), elem_types.end(), type) != elem_types.end(), logger::ERROR,
-                        "element type not found in mesh's list of element types (this shouldn't happen).");
-    logger::log_assert(std::find(elem_types.begin(), elem_types.end(), bound_type) != elem_types.end(), logger::ERROR,
-                        "element type of boundary elements not found in mesh's list of element types (this shouldn't happen).");
+        gmsh::model::mesh::generate(dim);
 
-    // Get nodes and their tags
-    std::vector<std::size_t> node_tags, boundary_node_tags;
-    std::vector<double> node_coords, node_params;
-    if(has_condition_inside){
-        gmsh::model::mesh::getNodes(node_tags, node_coords, node_params, -1, -1, true);
-    } else {
+        //gmsh::write("mesh.msh");
+
+        std::vector<int> elem_types;
+        gmsh::model::mesh::getElementTypes(elem_types);
+        // Check if meshing went well
+        logger::log_assert(std::find(elem_types.begin(), elem_types.end(), type) != elem_types.end(), logger::ERROR,
+                            "element type not found in mesh's list of element types (this shouldn't happen).");
+        logger::log_assert(std::find(elem_types.begin(), elem_types.end(), bound_type) != elem_types.end(), logger::ERROR,
+                            "element type of boundary elements not found in mesh's list of element types (this shouldn't happen).");
+
+        // Get nodes and their tags
+        std::vector<double> node_params;
         gmsh::model::mesh::getNodes(node_tags, node_coords, node_params, dim, -1, true);
         std::vector<double> bnode_coords, bnode_params;
         gmsh::model::mesh::getNodes(boundary_node_tags, bnode_coords, bnode_params, dim-1, -1, true);
-    }
 
-    // Would need to be changed to support multiple elements
-    geom_elem_mapping.resize(geometries.size(),0);
-    if(geom_elem_mapping.size() == 1){
+        // Would need to be changed to support multiple element types
         std::vector<size_t> elem_tags;
         gmsh::model::mesh::getElementsByType(type, elem_tags, elem_node_tags, -1);
         geom_elem_mapping[0] = elem_tags.size();
         elem_tags.clear();
         gmsh::model::mesh::getElementsByType(bound_type, elem_tags, bound_elem_node_tags);
+
+        gmsh::clear();
     } else {
+        gmsh::model::add("base");
+        gmsh::vectorpair vec;
+        gmsh::model::occ::importShapesNativePointer(static_cast<const void*>(&sh), vec);
+        gmsh::model::occ::synchronize();
+
+        gmsh::model::mesh::generate(dim);
+
+        std::vector<int> elem_types;
+        gmsh::model::mesh::getElementTypes(elem_types);
+        //logger::quick_log(elem_types);
+        // Check if meshing went well
+        logger::log_assert(std::find(elem_types.begin(), elem_types.end(), type) != elem_types.end(), logger::ERROR,
+                            "element type not found in mesh's list of element types (this shouldn't happen).");
+        logger::log_assert(std::find(elem_types.begin(), elem_types.end(), bound_type) != elem_types.end(), logger::ERROR,
+                            "element type of boundary elements not found in mesh's list of element types (this shouldn't happen).");
+
+        std::vector<double> node_params;
+        gmsh::model::mesh::getNodes(node_tags, node_coords, node_params, dim, -1, true);
+        std::vector<double> bnode_coords, bnode_params;
+        gmsh::model::mesh::getNodes(boundary_node_tags, bnode_coords, bnode_params, dim-1, -1, true);
+
         std::vector<size_t> elem_tags;
         // Boundary elements
         gmsh::model::mesh::getElementsByType(bound_type, elem_tags, bound_elem_node_tags);
@@ -226,9 +266,112 @@ std::unordered_map<size_t, MeshNode*> Gmsh::gmsh_meshing(bool has_condition_insi
         for(size_t j = 1; j < geom_elem_mapping.size(); ++j){
             geom_elem_mapping[j] += geom_elem_mapping[j-1];
         }
+
+        elem_tags.clear();
+
+        size_t node_tag_new = 1+*std::max_element(node_tags.begin(), node_tags.end());
+
+        struct AddedNode{
+            size_t g1, g2;
+            size_t id;
+            gp_Pnt p;
+        };
+        std::unordered_map<size_t, AddedNode> new_node_tag_map;
+        std::vector<std::vector<size_t>> new_bound_elems;
+        {
+            const size_t N = vec.size() - 1;
+            new_bound_elems.reserve(N*(N+1)/2);
+        }
+
+        for(size_t i = 0; i < vec.size(); ++i){
+            for(size_t j = i+1; j < vec.size(); ++j){
+                gmsh::vectorpair tags{vec[i], vec[j]};
+
+                gmsh::vectorpair b1, bc;
+
+                gmsh::model::getBoundary(tags, bc, true, false);
+                gmsh::model::getBoundary({vec[i]}, b1, true, false);
+
+                std::set<int> vc_set;
+                for(const auto& bi:bc){
+                    vc_set.insert(bi.second);
+                }
+                for(const auto& bi:b1){
+                    const auto res = vc_set.find(bi.second);
+                    if(res == vc_set.end()){
+                        std::vector<size_t> node_tags_tmp;
+                        std::vector<double> node_coords_tmp, node_params_tmp;
+                        gmsh::model::mesh::getNodes(node_tags_tmp, node_coords_tmp, node_params_tmp, dim-1, bi.second, true);
+
+                        std::vector<size_t> elem_tags_tmp, bound_elem_node_tags_tmp;
+                        gmsh::model::mesh::getElementsByType(bound_type, elem_tags_tmp, bound_elem_node_tags_tmp, bi.second);
+
+                        new_bound_elems.push_back(std::move(bound_elem_node_tags_tmp));
+
+                        for(size_t k = 0; k < node_tags_tmp.size(); ++k){
+                            size_t old_id = node_tags_tmp[k];
+                            auto pos = new_node_tag_map.find(old_id);
+                            if(pos == new_node_tag_map.end()){
+                                new_node_tag_map[old_id] = AddedNode{
+                                    i, j, node_tag_new,
+                                    gp_Pnt(
+                                        node_coords_tmp[3*k + 0],
+                                        node_coords_tmp[3*k + 1],
+                                        node_coords_tmp[3*k + 2]
+                                    )};
+                                duplicate_map[old_id] = node_tag_new;
+
+                                ++node_tag_new;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        const size_t new_nodes_num = new_node_tag_map.size();
+        const size_t old_nodes_size = node_tags.size();
+        const size_t old_bound_nodes_size = boundary_node_tags.size();
+        node_tags.resize(node_tags.size() + new_nodes_num);
+        node_coords.resize(node_coords.size() + 3*new_nodes_num);
+        boundary_node_tags.resize(boundary_node_tags.size() + new_nodes_num);
+        auto new_node_it = new_node_tag_map.begin();
+        for(size_t i = 0; i < new_nodes_num; ++i){
+            node_tags[old_nodes_size + i] = new_node_it->second.id;
+            boundary_node_tags[old_bound_nodes_size + i] = new_node_it->second.id;
+            for(size_t j = 0; j < 3; ++j){
+                node_coords[3*(old_nodes_size + i)+j] = new_node_it->second.p.Coord(1+j);
+            }
+            ++new_node_it;
+        }
+
+        size_t new_bound_elem_size = 0;
+        for(auto& bl:new_bound_elems){
+            new_bound_elem_size += bl.size();
+            for(auto& bn:bl){
+                bn = new_node_tag_map[bn].id;
+            }
+        }
+        const size_t old_bound_elem_size = bound_elem_node_tags.size();
+        bound_elem_node_tags.reserve(old_bound_elem_size + new_bound_elem_size);
+        auto b_it = bound_elem_node_tags.begin() + old_bound_elem_size;
+        for(auto& bl:new_bound_elems){
+            b_it = bound_elem_node_tags.insert(b_it, bl.begin(), bl.end());
+            b_it += bl.size();
+        }
+
+        for(size_t i = 1; i < vec.size(); ++i){
+            #pragma omp parallel for
+            for(size_t j = nodes_per_elem*geom_elem_mapping[i-1]; j < nodes_per_elem*geom_elem_mapping[i]; ++j){
+                auto pos = new_node_tag_map.find(elem_node_tags[j]);
+                if(pos != new_node_tag_map.end() && pos->second.g1 != i){
+                    elem_node_tags[j] = pos->second.id;
+                }
+            }
+        }
+
+        gmsh::clear();
     }
 
-    gmsh::clear();
     gmsh::finalize();
 
     const size_t dof = elem_type->get_dof_per_node();
