@@ -55,7 +55,7 @@ void PETScPCG::generate_matrix_base(const Meshing* const mesh, const size_t u_si
     this->setup = false;
 }
 
-void PETScPCG::solve(std::vector<double>& load, std::vector<double>& lambda){
+void PETScPCG::solve(std::vector<double>& load){
     int mpi_id = 0;
     int mpi_size = 0;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi_id);
@@ -86,16 +86,48 @@ void PETScPCG::solve(std::vector<double>& load, std::vector<double>& lambda){
 
         KSPCreate(PETSC_COMM_WORLD, &this->ksp);
         KSPSetType(this->ksp, KSPCG);
+        //KSPSetType(this->ksp, KSPCHEBYSHEV);
+        //KSPSetType(this->ksp, KSPCR);
+        //KSPSetType(this->ksp, KSPMINRES);
         //KSPSetType(this->ksp, KSPPREONLY);
         KSPCGSetType(this->ksp, KSP_CG_HERMITIAN);
-        KSPSetInitialGuessNonzero(this->ksp, PETSC_TRUE);
+        if(this->prob_type == NonlinearSolver::SolverClass::GRADIENT_BASED){
+            KSPSetInitialGuessNonzero(this->ksp, PETSC_TRUE);
+        } else {
+            KSPSetInitialGuessNonzero(this->ksp, PETSC_FALSE);
+        }
 
         KSPGetPC(this->ksp, &this->pc);
+        //KSPSetNormType(this->ksp, KSP_NORM_UNPRECONDITIONED);
         PCFactorSetUseInPlace(this->pc, PETSC_TRUE);
         PCSetType(this->pc, PCJACOBI);
+        //PCSetType(this->pc, PCHYPRE);
+        //PCSetType(this->pc, PCKACZMARZ);
+        //PCHYPRESetType(this->pc, "ams");
+        //PetscOptionsSetValue(NULL, "-pc_hypre_boomeramg_nodal_coarsen", "6");
+        //MPI_Comm mc = MPI_COMM_WORLD;
+        //PCMGSetLevels(this->pc, 1, &mc);
+        //PCGAMGSetProcEqLim(this->pc, 1000);
+        //PCGAMGSetCoarseEqLim(this->pc, 1000);
+        //PCGAMGSetLowMemoryFilter(this->pc, PETSC_TRUE);
+        //
+        //PCJacobiSetType(this->pc, PC_JACOBI_ROWSUM);
+        PCJacobiSetType(this->pc, PC_JACOBI_DIAGONAL);
+        //PCJacobiSetUseAbs(this->pc, PETSC_TRUE);
+        //PCJacobiSetFixDiagonal(this->pc, PETSC_TRUE);
+
+        KSPSetTolerances(this->ksp, 1e-1, 1e-50, 1e5, 1e5);
+        //
+        //KSPSetPCSide(this->ksp, PC_SYMMETRIC);
+        //PCSetType(this->pc, PCSOR);
+        //PCSORSetSymmetric(this->pc, SOR_SYMMETRIC_SWEEP);
         //PCSetType(this->pc, PCCHOLESKY);
 
-        this->first_time = false;
+        //this->first_time = false;
+    //} else {
+    //    if(!this->setup){
+    //        PCSetType(this->pc, PCASM);
+    //    }
     }
 
     MPI_Bcast(load.data(), load.size(), MPI_DOUBLE, 0, MPI_COMM_WORLD);
@@ -117,7 +149,7 @@ void PETScPCG::solve(std::vector<double>& load, std::vector<double>& lambda){
     VecAssemblyEnd(this->f);
 
     //PetscBool is_sym;
-    //MatIsHermitian(K, 1e-7, &is_sym);
+    //MatIsSymmetric(K, 1e-7, &is_sym);
     //logger::quick_log("is symmetric?", is_sym);
 
     if(!this->setup){
@@ -129,18 +161,17 @@ void PETScPCG::solve(std::vector<double>& load, std::vector<double>& lambda){
     }
 
     KSPSolve(this->ksp, this->f, this->u);
-    //KSPConvergedReason r;
-    //KSPGetConvergedReason(this->ksp, &r);
-    //logger::quick_log("Converged?", r);
+    KSPConvergedReason r;
+    KSPGetConvergedReason(this->ksp, &r);
+    logger::quick_log("Converged?", r);
 
     const double* load_data;
 
     VecGetArrayRead(u, &load_data);
-    std::vector<double> u_tmp(M, 0);
 
     if(mpi_size > 1){
         if(mpi_id == 0){
-            std::copy(load_data, load_data + m, u_tmp.begin());
+            std::copy(load_data, load_data + m, load.begin());
             std::vector<double> load_data2(2*m,0);
             long l = 0;
             long step = m;
@@ -149,7 +180,7 @@ void PETScPCG::solve(std::vector<double>& load, std::vector<double>& lambda){
                 MPI_Recv(&l, 1, MPI_DOUBLE, i, 111, MPI_COMM_WORLD, &mpi_status);
                 MPI_Recv(load_data2.data(), l, MPI_DOUBLE, i, 111, MPI_COMM_WORLD, &mpi_status);
                 for(long j = 0; j < m; ++j){
-                    u_tmp[j+step] += load_data2[j];
+                    load[j+step] += load_data2[j];
                 }
                 step += l;
             }
@@ -159,16 +190,37 @@ void PETScPCG::solve(std::vector<double>& load, std::vector<double>& lambda){
             MPI_Send(load_data, m, MPI_DOUBLE, 0, 111, MPI_COMM_WORLD);
         }
     } else {
-        std::copy(load_data, load_data + M, u_tmp.begin());
+        std::copy(load_data, load_data + M, load.begin());
     }
     MPI_Barrier(MPI_COMM_WORLD);
 
     VecRestoreArrayRead(this->u, &load_data);
 
-    std::copy(u_tmp.begin(), u_tmp.begin() + this->u_size, load.begin());
-    if(this->l_num > 0){
-        std::copy(u_tmp.begin() + this->u_size, u_tmp.end(), lambda.begin());
+    if(this->first_time){
+        //long begin = 0, end = 0;
+        //VecGetOwnershipRange(this->u, &begin, &end);
+
+        //double* u_data = nullptr;
+        //VecGetArray(this->u, &u_data);
+        //for(auto d = 0; d < end - begin; ++d){
+        //    *(u_data+d) = 0;
+        //}
+        //VecRestoreArray(this->u, &u_data);
+        this->first_time = false;
     }
+}
+void PETScPCG::reset_hessian(){
+    this->gsm->reset_hessian();
+    this->setup = false;
+}
+bool PETScPCG::generate_hessian(std::vector<double>& lambda, const std::vector<double>& Ku){
+    return this->gsm->generate_hessian(lambda, Ku);
+}
+void PETScPCG::dot_vector(const std::vector<double>& v, std::vector<double>& v_out) const{
+    this->gsm->dot_vector(v, v_out);
+}
+double PETScPCG::get_newton_step(const std::vector<double>& delta, const std::vector<double>& lambda, const std::vector<double>& Ku){
+    return this->gsm->get_newton_step(delta, lambda, Ku);
 }
 
 }

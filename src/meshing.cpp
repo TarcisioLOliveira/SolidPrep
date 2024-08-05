@@ -1536,8 +1536,8 @@ std::vector<size_t> Meshing::find_duplicates(std::unordered_map<size_t, MeshNode
 TopoDS_Shape Meshing::make_compound(const std::vector<Geometry*>& geometries, const double scale) const{
     // Assuming linear with a single element type
     BRep_Builder builder;
-    TopoDS_Compound comp;
-    builder.MakeCompound(comp);
+    TopoDS_CompSolid comp;
+    builder.MakeCompSolid(comp);
     if(scale == 1.0){
         for(const auto& geom:geometries){
             builder.Add(comp, geom->shape);
@@ -1615,7 +1615,7 @@ void Meshing::fix_node_point_precision(){
         const size_t C = 1+i;
         double curr_val = this->node_list[0]->point.Coord(C);
         for(size_t it = 1; it < this->node_list.size(); ++it){
-            if(this->node_list[it]->point.Coord(C) - curr_val < eps){
+            if(std::abs(this->node_list[it]->point.Coord(C) - curr_val) < eps){
                 this->node_list[it]->point.SetCoord(C, curr_val);
             } else {
                 curr_val = this->node_list[it]->point.Coord(C);
@@ -1745,12 +1745,12 @@ void Meshing::get_lambda_vector(const std::vector<double>& lambda, std::vector<d
         if(out == LambdaOutput::STANDARD_FUNCTION){
             for(size_t i = 0; i < l_num; ++i){
                 const double li = lambda[i + 2*l_num];
-                l[normal_offset + i] = li*li;
+                l[normal_offset + i] = li*li;//std::sqrt(li*li+1e-14) - 1e-7;
             }
         } else if(out == LambdaOutput::STANDARD_FIRST_DERIVATIVE){
             for(size_t i = 0; i < l_num; ++i){
                 const double li = lambda[i + 2*l_num];
-                l[normal_offset + i] = 2*li;
+                l[normal_offset + i] = 2*li;//li/std::sqrt(li*li+1e-14);
             }
         } else if(out == LambdaOutput::STANDARD_SECOND_DERIVATIVE){
             std::fill(l.begin() + normal_offset, l.begin() + normal_offset + l_num, 2);
@@ -1770,7 +1770,7 @@ void Meshing::apply_lambda(const std::vector<double>& lambda, std::vector<double
              {l.n.Y(), l.p1.Y(), l.p2.Y()},
              {l.n.Z(), l.p1.Z(), l.p2.Z()}};
         Eigen::Vector<double, 3> lv
-            {ln*ln,
+            {ln*ln,//std::sqrt(ln*ln+1e-14) - 1e-7,
              lambda[i + 0],
              lambda[i + l_num]};
         lv = R*lv;

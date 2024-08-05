@@ -32,6 +32,8 @@ PETScSparseSymmetric::~PETScSparseSymmetric(){
 void PETScSparseSymmetric::generate(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const FiniteElement::MatrixType type){
     int mpi_id = 0;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi_id);
+    this->u_size = u_size;
+    this->l_num = l_num;
 
     if(mpi_id == 0){
         logger::quick_log("Generating stiffness matrix...");
@@ -55,7 +57,12 @@ void PETScSparseSymmetricCPU::preallocate(const Meshing * const mesh, const size
     MatCreate(PETSC_COMM_WORLD, &this->K);
     MatSetType(this->K, MATAIJ);
 
-    long M = u_size + 2*l_num;
+    long M = u_size;
+    if(type == FiniteElement::MatrixType::LAMBDA_SLIDING){
+        M += 2*l_num;
+    } else if(type == FiniteElement::MatrixType::LAMBDA_HESSIAN){
+        M += 3*l_num;
+    }
     MPI_Bcast(&M, 1, MPI_LONG, 0, MPI_COMM_WORLD);
 
     MatSetSizes(this->K, PETSC_DECIDE, PETSC_DECIDE, M, M);
@@ -164,7 +171,12 @@ void PETScSparseSymmetricCUDA::preallocate(const Meshing * const mesh, const siz
     MatCreate(PETSC_COMM_WORLD, &this->K);
     MatSetType(this->K, MATAIJCUSPARSE);
 
-    long M = u_size + 2*l_num;
+    long M = u_size;
+    if(type == FiniteElement::MatrixType::LAMBDA_SLIDING){
+        M += 2*l_num;
+    } else if(type == FiniteElement::MatrixType::LAMBDA_HESSIAN){
+        M += 3*l_num;
+    }
     MPI_Bcast(&M, 1, MPI_LONG, 0, MPI_COMM_WORLD);
 
     MatSetSizes(this->K, PETSC_DECIDE, PETSC_DECIDE, M, M);
@@ -188,8 +200,47 @@ void PETScSparseSymmetricCUDA::assemble_matrix(const Meshing * const mesh, const
         if(!this->first_time){
             this->generate_base(mesh, u_size, l_num, node_positions, topopt, D_cache, type);
         }
+        if(type == FiniteElement::MatrixType::LAMBDA_HESSIAN){
+            this->K_coo.backup_matrix();
+        }
         MatSetValuesCOO(this->K, this->K_coo.vals.data(), INSERT_VALUES);
     }
+}
+
+bool PETScSparseSymmetricCUDA::generate_hessian(std::vector<double>& lambda, const std::vector<double>& Ku){
+    bool mod = this->K_coo.generate_hessian(this->u_size + 2*this->l_num, this->l_num, lambda, Ku, true);
+    MatSetValuesCOO(this->K, this->K_coo.vals.data(), INSERT_VALUES);
+    //const size_t hoffset = this->u_size + 2*this->l_num;
+    //for(size_t i = 0; i < l_num; ++i){
+    //    const size_t ui = hoffset + i;
+    //    std::cout << this->K_coo.get(ui, ui) << " ";
+    //}
+    //std::cout << std::endl;
+    return mod;
+}
+
+void PETScSparseSymmetricCUDA::reset_hessian(){
+    this->K_coo.restore_matrix();
+}
+
+double PETScSparseSymmetricCUDA::get_newton_step(const std::vector<double>& delta, const std::vector<double>& lambda, const std::vector<double>& Ku){
+    const size_t hoffset = this->u_size + 2*this->l_num;
+    double M = 1.0;
+    for(size_t i = 0; i < l_num; ++i){
+        const size_t ui = hoffset + i;
+        const size_t li = 2*l_num + i;
+        if(Ku[ui] > 0 || std::abs(delta[ui]) < 1e-14){
+            continue;
+        }
+        const double M_test1 = ( std::sqrt(-Ku[ui]/(2*this->K_coo.get(ui,ui))) - lambda[li])/delta[ui];
+        const double M_test2 = (-std::sqrt(-Ku[ui]/(2*this->K_coo.get(ui,ui))) - lambda[li])/delta[ui];
+
+        const double M_test = std::max(M_test1, M_test2);
+        if(M_test > 0 && M_test < M){
+            M = M_test;
+        }
+    }
+    return M;
 }
 
 }

@@ -33,6 +33,12 @@ class GlobalStiffnessMatrix{
 
     virtual void dot_vector(const std::vector<double>& v, std::vector<double>& v_out) const = 0;
 
+    virtual void reset_hessian() = 0;
+
+    virtual bool generate_hessian(std::vector<double>& lambda, const std::vector<double>& Ku) = 0;
+
+    virtual double get_newton_step(const std::vector<double>& delta, const std::vector<double>& lambda, const std::vector<double>& Ku) = 0;
+
     protected:
     size_t W, N;
 

@@ -51,7 +51,7 @@ class COO{
     COO(INT offset = 0):
         offset(offset){}
 
-    inline void dot_vector(const std::vector<double>& v, std::vector<double>& v_out, const double full_matrix) const{
+    inline void dot_vector(const std::vector<double>& v, std::vector<double>& v_out, const bool full_matrix) const{
         if(this->coo_first_time){
             if(full_matrix){
                 this->map_full_dot_vector(v, v_out);
@@ -64,6 +64,22 @@ class COO{
             } else {
                 this->coo_sym_dot_vector(v, v_out);
             }
+        }
+    }
+
+    inline void backup_matrix(){
+        this->cooVal_bkp = this->cooVal;
+    }
+
+    inline void restore_matrix(){
+        std::copy(cooVal_bkp.begin(), cooVal_bkp.end(), cooVal.begin());
+    }
+
+    inline bool generate_hessian(const size_t hoffset, const size_t l_len, std::vector<double>& l, const std::vector<double>& Ku, const bool full_matrix){
+        if(full_matrix){
+            return this->coo_full_hessian(hoffset, l_len, l, Ku);
+        } else {
+            return this->coo_sym_hessian(hoffset, l_len, l, Ku);
         }
     }
 
@@ -338,15 +354,19 @@ class COO{
     std::vector<INT> cooRowInd;
     std::vector<INT> cooColInd;
     std::vector<double> cooVal;
+    std::vector<double> cooVal_bkp;
 
 
     void map_full_dot_vector(const std::vector<double>& v, std::vector<double>& v_out) const;
     void map_sym_dot_vector(const std::vector<double>& v, std::vector<double>& v_out) const;
     void coo_full_dot_vector(const std::vector<double>& v, std::vector<double>& v_out) const;
     void coo_sym_dot_vector(const std::vector<double>& v, std::vector<double>& v_out) const;
+
+    bool coo_full_hessian(const size_t hoffset, const size_t l_len, std::vector<double>& l, const std::vector<double>& Ku);
+    bool coo_sym_hessian(const size_t hoffset, const size_t l_len, std::vector<double>& l, const std::vector<double>& Ku);
     
     inline void add_coo(const INT i, const INT j, const double v){
-        for(int c = cooRowPtr[i]; c < cooRowPtr[i+1]; ++c){
+        for(INT c = cooRowPtr[i]; c < cooRowPtr[i+1]; ++c){
             if(cooColInd[c] == j + offset){
                 cooVal[c] += v;
                 break;
@@ -354,8 +374,8 @@ class COO{
         }
     }
     inline double get_coo(const INT i, const INT j) const{
-        for(int c = cooRowPtr[i]; c < cooRowPtr[i+1]; ++c){
-            if(j + offset >= cooColInd[c]){
+        for(INT c = cooRowPtr[i]; c < cooRowPtr[i+1]; ++c){
+            if(j + offset <= cooColInd[c]){
                 if(cooColInd[c] == j + offset){
                     return cooVal[c];
                 } else {
@@ -366,6 +386,179 @@ class COO{
         return 0;
     }
 };
+
+template<typename INT>
+bool COO<INT>::coo_full_hessian(const size_t hoffset, const size_t l_len, std::vector<double>& l, const std::vector<double>& Ku){
+    // hoffset = u_size + 2*l_len
+    //bool modified = false;
+    //for(size_t i = hoffset; i < cooRowPtr.size() - 1; ++i){
+    //    INT c = cooRowPtr[i+1];
+    //    double& li = l[2*l_len + i - hoffset];
+    //    const double dli = 2*li;
+    //    const double ddli = 2;
+    //    while(c < cooRowPtr[i+1]){
+    //        const size_t j = cooColInd[c] - offset;
+    //        if(i == j){
+    //            break;
+    //        }
+    //        ++c;
+    //    }
+    //    const double diag = cooVal[c]*dli*dli + ddli*Ku[i];
+    //    if(diag <= 1e-9 && li != 0){
+    //        li = 0;
+    //        modified = true;
+    //    }
+    //}
+    //if(modified){
+    //    return true;
+    //}
+
+    // Shift modification
+    double min_diag = 0;
+    for(size_t i = hoffset; i < cooRowPtr.size() - 1; ++i){
+        INT c = cooRowPtr[i];
+        double& li = l[2*l_len + i - hoffset];
+        const double dli = 2*li;
+        const double ddli = 2;
+        while(c < cooRowPtr[i+1]){
+            const size_t j = cooColInd[c] - offset;
+            if(i == j){
+                break;
+            }
+            ++c;
+        }
+        const double diag = cooVal[c]*dli*dli + ddli*Ku[i];
+        if(diag < 0 && li != 0 && diag < min_diag){
+            min_diag = diag;
+        }
+    }
+    min_diag *= 1.01;
+    logger::quick_log("min diag", min_diag);
+
+    // "Vertical" step
+    for(size_t i = 0; i < hoffset; ++i){
+        INT c = cooRowPtr[i];
+        while(cooColInd[c] - offset < hoffset && c < cooRowPtr[i+1]){
+            //const size_t j = cooColInd[c] - offset;
+            //if(i == j){
+            //    cooVal[c] -= min_diag;
+            //}
+            ++c;
+        }
+        while(c < cooRowPtr[i+1]){
+            const size_t j = cooColInd[c] - offset;
+            const double lj = l[2*l_len + j - hoffset];
+            const double dlj = -1.0/(lj*lj);//2*lj;
+            cooVal[c] *= dlj;
+            ++c;
+        }
+    }
+    // "Horizontal" step
+    for(size_t i = hoffset; i < cooRowPtr.size() - 1; ++i){
+        INT c = cooRowPtr[i];
+        const double li = l[2*l_len + i - hoffset];
+        const double dli = -1.0/(li*li);//2*li;
+        while(cooColInd[c] - offset < hoffset && c < cooRowPtr[i+1]){
+            cooVal[c] *= dli;
+            ++c;
+        }
+        // "Square" step
+        while(c < cooRowPtr[i+1]){
+            const size_t j = cooColInd[c] - offset;
+            const double lj = l[2*l_len + j - hoffset];
+            const double dlj = -1.0/(lj*lj);//2*lj;
+            cooVal[c] *= dlj*dli;
+
+            // "Sum" step
+            if(i == j){
+                const double ddli = 2;
+                cooVal[c] += ddli*Ku[i];// + 1e-9;
+                cooVal[c] -= min_diag;
+                cooVal[c] += 1e-9;
+                //if(cooVal[c] <= 1e-9){// || std::isnan(cooVal[c]) || std::isinf(cooVal[c])){
+                //    cooVal[c] = 1e-9;
+                //    //logger::quick_log(cooVal[c], ddli, li, Ku[i], i, j);
+                //}
+            }
+            ++c;
+        }
+    }
+    return false;
+}
+
+template<typename INT>
+bool COO<INT>::coo_sym_hessian(const size_t hoffset, const size_t l_len, std::vector<double>& l, const std::vector<double>& Ku){
+    //bool modified = false;
+    //for(size_t i = hoffset; i < cooRowPtr.size() - 1; ++i){
+    //    INT c = cooRowPtr[i+1];
+    //    double& li = l[2*l_len + i - hoffset];
+    //    const double dli = 2*li;
+    //    const double ddli = 2;
+    //    while(c < cooRowPtr[i+1]){
+    //        const size_t j = cooColInd[c] - offset;
+    //        if(i == j){
+    //            break;
+    //        }
+    //        ++c;
+    //    }
+    //    const double diag = cooVal[c]*dli*dli + ddli*Ku[i];
+    //    if(diag <= 1e-9 && li != 0){
+    //        li = 0;
+    //        modified = true;
+    //    }
+    //}
+    //if(modified){
+    //    return true;
+    //}
+    // Shift modification
+    double min_diag = 0;
+    for(size_t i = hoffset; i < cooRowPtr.size() - 1; ++i){
+        INT c = cooRowPtr[i];
+        double& li = l[2*l_len + i - hoffset];
+        const double dli = 2*li;
+        const double ddli = 2;
+        while(c < cooRowPtr[i+1]){
+            const size_t j = cooColInd[c] - offset;
+            if(i == j){
+                break;
+            }
+            ++c;
+        }
+        const double diag = cooVal[c]*dli*dli + ddli*Ku[i];
+        if(diag < 0 && li != 0 && diag < min_diag){
+            min_diag = diag;
+        }
+    }
+    min_diag *= 1.01;
+    logger::quick_log("min diag", min_diag);
+    // "Horizontal" step
+    for(size_t i = hoffset; i < cooRowPtr.size() - 1; ++i){
+        INT c = cooRowPtr[i];
+        const double li = l[2*l_len + i - hoffset];
+        const double dli = 2*li;//li/std::sqrt(li*li + 1e-14); // Approx li, except near 0, then 0
+        while(cooColInd[c] - offset < hoffset && c < cooRowPtr[i+1]){
+            cooVal[c] *= dli;
+            ++c;
+        }
+        // "Square" step
+        while(c < cooRowPtr[i+1]){
+            const size_t j = cooColInd[c] - offset;
+            const double lj = l[2*l_len + j - hoffset];
+            const double dlj = 2*lj;//lj/std::sqrt(lj*lj + 1e-14);
+            cooVal[c] *= dlj*dli;
+
+            ++c;
+        }
+        const double ddli = 2;//1e-14/std::pow(li*li + 1e-14, 1.5); // Approx 0
+        // "Sum" step
+        cooVal[c - 1] += ddli*Ku[i];
+        cooVal[c - 1] -= min_diag;
+        cooVal[c - 1] += 1e-9;
+        //std::cout << cooVal[c - 1] << " ";
+    }
+    //std::cout << std::endl;
+    return false;
+}
 
 template<typename INT>
 void COO<INT>::map_full_dot_vector(const std::vector<double>& v, std::vector<double>& v_out) const{
@@ -395,20 +588,21 @@ void COO<INT>::coo_full_dot_vector(const std::vector<double>& v, std::vector<dou
     #pragma omp parallel for
     for(size_t i = 0; i < cooRowPtr.size() - 1; ++i){
         for(INT c = cooRowPtr[i]; c < cooRowPtr[i+1]; ++c){
-                v_out[i] += cooVal[c]*v[cooColInd[c]];
+            v_out[i] += cooVal[c]*v[cooColInd[c] - offset];
         }
     }
 }
 template<typename INT>
 void COO<INT>::coo_sym_dot_vector(const std::vector<double>& v, std::vector<double>& v_out) const{
-    #pragma omp parallel for
     for(size_t i = 0; i < cooRowPtr.size() - 1; ++i){
         INT c = 0;
         for(c = cooRowPtr[i]; c < cooRowPtr[i+1]-1; ++c){
-                v_out[i] += cooVal[c]*v[cooColInd[c] - offset];
-                v_out[cooColInd[c] - offset] += cooVal[c]*v[i];
+            const size_t j = cooColInd[c] - offset;
+            v_out[i] += cooVal[c]*v[j];
+            v_out[j] += cooVal[c]*v[i];
         }
-        v_out[i] += cooVal[c]*v[cooColInd[c] - offset];
+        const size_t j = cooColInd[c] - offset;
+        v_out[i] += cooVal[c]*v[j];
     }
 }
 

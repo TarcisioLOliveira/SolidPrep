@@ -44,12 +44,17 @@ class EigenSparseSymmetric : public GlobalStiffnessMatrix{
         std::copy(u_out.begin(), u_out.end(), v_out.begin());
     }
 
+    inline virtual void reset_hessian() override{};
+    inline virtual bool generate_hessian(std::vector<double>& lambda, const std::vector<double>& Ku) override{};
+    virtual double get_newton_step(const std::vector<double>& delta, const std::vector<double>& lambda, const std::vector<double>& Ku) override;
+
     Mat& get_K() {
         return K;
     }
 
     protected:
     bool first_time = true;
+    size_t u_size, l_num;
     Mat K;
 
     inline virtual void insert_block_symmetric(const std::vector<double>& k, const std::vector<long>& posi, const std::vector<long>& posj) override{

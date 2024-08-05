@@ -37,7 +37,11 @@ class PETScPCG : public FiniteElement{
     private:
     virtual void generate_matrix_base(const Meshing* const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const MatrixType type) override;
 
-    virtual void solve(std::vector<double>& load, std::vector<double>& lambda) override;
+    virtual void solve(std::vector<double>& load) override;
+    virtual void reset_hessian() override;
+    virtual bool generate_hessian(std::vector<double>& lambda, const std::vector<double>& Ku) override;
+    virtual void dot_vector(const std::vector<double>& v, std::vector<double>& v_out) const override;
+    virtual double get_newton_step(const std::vector<double>& delta, const std::vector<double>& lambda, const std::vector<double>& Ku) override;
 
     std::unique_ptr<global_stiffness_matrix::PETScSparseSymmetric> gsm;
     Vec u;

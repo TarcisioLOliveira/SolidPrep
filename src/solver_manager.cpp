@@ -47,8 +47,7 @@ void SolverManager::calculate_displacements_global(const Meshing* const mesh, st
     }
     for(size_t i = 0; i < mesh->sub_problems->size(); ++i){
         if(this->iteration == 1){
-            // CHANGE FOR NEWTON
-            this->lambdas[i].emplace_back(mesh->lambda_elements.size()*3, 0.1);
+            this->lambdas[i].emplace_back(mesh->lambda_elements.size()*3, 0.001);
         }
         auto& l = load[i];
         this->split_u[i].resize(mesh->max_dofs, 0);

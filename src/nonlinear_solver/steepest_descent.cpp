@@ -19,6 +19,7 @@
  */
 
 #include "nonlinear_solver/steepest_descent.hpp"
+#include "logger.hpp"
 
 namespace nonlinear_solver{
 
@@ -35,21 +36,22 @@ void SteepestDescent::setup(size_t N){
 }
 
 bool SteepestDescent::update(double* x, double f, const double* dfdx){
-    if(this->it >= 2){
-        if((fold2 - fold1)*(fold1 - f) <= 0){
-            STEP *= DEC;
-        } else {
-            STEP *= INC;
-            STEP = std::min(1.0, STEP);
-        }
-    }
+    //if(this->it >= 2){
+    //    if((fold2 - fold1)*(fold1 - f) <= 0){
+    //        STEP *= DEC;
+    //    } else {
+    //        STEP *= INC;
+    //        STEP = std::min(1.0, STEP);
+    //    }
+    //}
     fold2 = fold1;
     fold1 = f;
 
-    double maxl = 0;
-    for(size_t i = 0; i < N; ++i){
-        maxl = std::max(std::abs(dfdx[i]), maxl);
-    }
+    //double maxl = 0;
+    //for(size_t i = 0; i < N; ++i){
+    //    maxl = std::max(std::abs(dfdx[i]), maxl);
+    //}
+    double maxl = 1;
 
     double ch = 0.0;
     for(size_t i = 0; i < N; ++i){
@@ -57,6 +59,7 @@ bool SteepestDescent::update(double* x, double f, const double* dfdx){
         x[i] -= STEP*dfdx[i]/maxl;
         ch = std::max(std::abs(x[i] - xold[i]), ch);
     }
+    logger::quick_log("dx:", ch);
 
     ++this->it;
 

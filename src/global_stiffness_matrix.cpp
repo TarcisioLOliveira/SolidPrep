@@ -26,7 +26,12 @@
 
 void GlobalStiffnessMatrix::generate_base(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const FiniteElement::MatrixType type){
     size_t D_offset = 0;
-    const size_t L = u_size + ((type != FiniteElement::MatrixType::RIGID) ? 2*l_num : 0);
+    size_t L = u_size;
+    if(type == FiniteElement::MatrixType::LAMBDA_SLIDING){
+        L += 2*l_num;
+    } else if(type == FiniteElement::MatrixType::LAMBDA_HESSIAN){
+        L += 3*l_num;
+    }
     for(auto& g : mesh->geometries){
         if((topopt && g->do_topopt) || !g->materials.get_materials()[0]->is_homogeneous()){
             this->add_geometry(mesh, node_positions, g, D_offset, D_cache);

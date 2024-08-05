@@ -37,6 +37,12 @@ class MUMPSSparseSymmetric : public GlobalStiffnessMatrix{
         this->sK.dot_vector(v, v_out, false);
     }
 
+    virtual bool generate_hessian(std::vector<double>& lambda, const std::vector<double>& Ku) override;
+
+    virtual void reset_hessian() override;
+
+    virtual double get_newton_step(const std::vector<double>& delta, const std::vector<double>& lambda, const std::vector<double>& Ku) override;
+
     inline std::vector<int>& get_rows(){
         return this->sK.rows;
     }
@@ -50,6 +56,7 @@ class MUMPSSparseSymmetric : public GlobalStiffnessMatrix{
     protected:
     bool first_time = true;
     utils::COO<int> sK = utils::COO<int>(1);
+    size_t u_size, l_num;
 
     inline virtual void insert_block_symmetric(const std::vector<double>& k, const std::vector<long>& posi, const std::vector<long>& posj) override{
         if(posi[0] > posj[0]){

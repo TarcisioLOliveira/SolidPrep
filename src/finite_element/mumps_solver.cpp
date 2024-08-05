@@ -85,6 +85,12 @@ void MUMPSSolver::generate_matrix_base(const Meshing* const mesh, const size_t u
 
     this->l_num = l_num;
     this->u_size = u_size;
+    long M = u_size;
+    if(type == FiniteElement::MatrixType::LAMBDA_SLIDING){
+        M += 2*l_num;
+    } else if(type == FiniteElement::MatrixType::LAMBDA_HESSIAN){
+        M += 3*l_num;
+    }
     if(mpi_id == 0){
         this->gsm.generate(mesh, u_size, l_num, node_positions, topopt, D_cache, type);
 
@@ -94,7 +100,7 @@ void MUMPSSolver::generate_matrix_base(const Meshing* const mesh, const size_t u
         // Insert matrix data
         // Do this after every regeneration as the vectors may expand, which
         // will change their address.
-        this->config.n   = u_size + 2*l_num;
+        this->config.n   = M;
         this->config.nnz = vals.size();
         this->config.a   = vals.data();
         this->config.irn = rows.data();
@@ -124,7 +130,7 @@ void MUMPSSolver::generate_matrix_base(const Meshing* const mesh, const size_t u
     }
 }
 
-void MUMPSSolver::solve(std::vector<double>& load, std::vector<double>& lambda){
+void MUMPSSolver::solve(std::vector<double>& load){
     int mpi_id = 0;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi_id);
 
@@ -134,7 +140,9 @@ void MUMPSSolver::solve(std::vector<double>& load, std::vector<double>& lambda){
         }
 
         this->config.job = 2; // Factorize
+        this->config.ICNTL(33) = 1;
         dmumps_c(&this->config);
+        logger::quick_log("DET", this->config.rinfog[12-1], this->config.rinfog[34-1]);
         this->factorized = true;
 
         if(mpi_id == 0){
@@ -142,22 +150,32 @@ void MUMPSSolver::solve(std::vector<double>& load, std::vector<double>& lambda){
         }
     }
 
-    std::vector<double> u_tmp;
     this->config.job = 3; // Solve using decomposed matrix
     if(mpi_id == 0){
         logger::log_assert(load.size() == (size_t)this->config.n, logger::ERROR, "invalid vector input vector dimension, is {}, should be {}", load.size(), this->config.n);
-        u_tmp = load;
-        this->config.rhs = u_tmp.data(); // Set right-hand side
+        this->config.rhs = load.data(); // Set right-hand side
         logger::quick_log("Calculating displacements...");
     }
 
     dmumps_c(&this->config);
 
     if(mpi_id == 0){
-        std::copy(u_tmp.begin(), u_tmp.begin() + this->u_size, load.begin());
-        std::copy(u_tmp.begin() + this->u_size, u_tmp.end(), lambda.begin());
         logger::quick_log("Done.");
     }
+}
+
+void MUMPSSolver::reset_hessian(){
+    this->gsm.reset_hessian();
+    this->factorized = false;
+}
+bool MUMPSSolver::generate_hessian(std::vector<double>& lambda, const std::vector<double>& Ku){
+    return this->gsm.generate_hessian(lambda, Ku);
+}
+void MUMPSSolver::dot_vector(const std::vector<double>& v, std::vector<double>& v_out) const{
+    this->gsm.dot_vector(v, v_out);
+}
+double MUMPSSolver::get_newton_step(const std::vector<double>& delta, const std::vector<double>& lambda, const std::vector<double>& Ku){
+    return this->gsm.get_newton_step(delta, lambda, Ku);
 }
 
 }

@@ -83,6 +83,7 @@
 #include "function/mechanostat.hpp"
 #include "field/orthotropic_flow.hpp"
 #include "nonlinear_solver/steepest_descent.hpp"
+#include "nonlinear_solver/newton.hpp"
 
 ProjectData::ProjectData(std::string project_file){
 #ifdef _WIN32
@@ -1395,6 +1396,13 @@ std::unique_ptr<NonlinearSolver> ProjectData::get_nonlinear_solver(const rapidjs
         double xtol_abs = doc["xtol_abs"].GetDouble();
 
         return std::make_unique<nonlinear_solver::SteepestDescent>(init, inc, dec, xtol_abs);
+    } else if(method == "newton"){
+        this->log_data(doc, "mult", TYPE_DOUBLE, true);
+        this->log_data(doc, "rtol_abs", TYPE_DOUBLE, true);
+        double mult = doc["mult"].GetDouble();
+        double rtol_abs = doc["rtol_abs"].GetDouble();
+
+        return std::make_unique<nonlinear_solver::Newton>(mult, rtol_abs);
     } else {
         logger::log_assert(false, logger::ERROR, "unknown solving method: {}", method);
     }

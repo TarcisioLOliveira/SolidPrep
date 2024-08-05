@@ -46,6 +46,7 @@ class PETScSparseSymmetric : public GlobalStiffnessMatrix{
     protected:
     Mat K = 0;
     bool first_time = true;
+    size_t u_size, l_num;
 
     virtual void preallocate(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const FiniteElement::MatrixType type, const size_t mpi_id) = 0;
     virtual void assemble_matrix(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const FiniteElement::MatrixType type, const size_t mpi_id) = 0;
@@ -58,6 +59,12 @@ class PETScSparseSymmetricCPU : public PETScSparseSymmetric {
     virtual ~PETScSparseSymmetricCPU() = default;
 
     virtual void dot_vector(const std::vector<double>& v, std::vector<double>& v_out) const override;
+
+    inline virtual void reset_hessian() override{};
+
+    inline virtual bool generate_hessian(std::vector<double>& lambda, const std::vector<double>& Ku) override{};
+
+    virtual double get_newton_step(const std::vector<double>& delta, const std::vector<double>& lambda, const std::vector<double>& Ku) override{}
 
     protected:
     virtual void preallocate(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const FiniteElement::MatrixType type, const size_t mpi_id) override;
@@ -94,6 +101,12 @@ class PETScSparseSymmetricCUDA : public PETScSparseSymmetric {
     inline virtual void dot_vector(const std::vector<double>& v, std::vector<double>& v_out) const override{
         this->K_coo.dot_vector(v, v_out, true);
     }
+
+    inline virtual void reset_hessian() override;
+
+    inline virtual bool generate_hessian(std::vector<double>& lambda, const std::vector<double>& Ku) override;
+
+    virtual double get_newton_step(const std::vector<double>& delta, const std::vector<double>& lambda, const std::vector<double>& Ku) override;
 
     protected:
     utils::COO<PetscInt> K_coo;

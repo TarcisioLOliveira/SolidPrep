@@ -36,7 +36,7 @@ void EigenPCG::generate_matrix_base(const Meshing* const mesh, const size_t u_si
     this->cg.compute(K);
 }
 
-void EigenPCG::solve(std::vector<double>& load, std::vector<double>& lambda){
+void EigenPCG::solve(std::vector<double>& load){
     int mpi_id = 0;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi_id);
 
@@ -48,10 +48,23 @@ void EigenPCG::solve(std::vector<double>& load, std::vector<double>& lambda){
     std::copy(load.begin(), load.end(), f.begin());
     Eigen::VectorXd u = cg.solve(f);
 
-    std::copy(u.cbegin(), u.cbegin() + this->u_size, load.begin());
-    if(l_num > 0){
-        std::copy(u.cbegin() + this->u_size, u.cend(), lambda.begin());
-    }
+    std::copy(u.cbegin(), u.cend(), load.begin());
+}
+
+void EigenPCG::reset_hessian(){
+    this->gsm.reset_hessian();
+}
+bool EigenPCG::generate_hessian(std::vector<double>& lambda, const std::vector<double>& Ku){
+    bool mod = this->gsm.generate_hessian(lambda, Ku);
+    auto& K = this->gsm.get_K();
+    this->cg.compute(K);
+    return mod;
+}
+void EigenPCG::dot_vector(const std::vector<double>& v, std::vector<double>& v_out) const{
+    this->gsm.dot_vector(v, v_out);
+}
+double EigenPCG::get_newton_step(const std::vector<double>& delta, const std::vector<double>& lambda, const std::vector<double>& Ku){
+    return this->gsm.get_newton_step(delta, lambda, Ku);
 }
 
 }
