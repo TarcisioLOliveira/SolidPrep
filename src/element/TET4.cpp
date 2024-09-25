@@ -22,6 +22,7 @@
 #include <Eigen/Dense>
 #include "element/TET4.hpp"
 #include "boundary_element/BTRI3.hpp"
+#include "contact_element/CTRI3.hpp"
 #include "cblas.h"
 #include "logger.hpp"
 #include <BRepBuilderAPI_MakeVertex.hxx>
@@ -45,6 +46,10 @@ TET4::TET4(ElementShape s):
 
 std::unique_ptr<BoundaryMeshElementFactory> TET4::get_boundary_element_info() {
     return std::unique_ptr<BoundaryMeshElementFactory>(new BoundaryMeshElementFactoryImpl<boundary_element::BTRI3>());
+}
+
+std::unique_ptr<ContactMeshElementFactory> TET4::get_contact_element_info() {
+    return std::unique_ptr<ContactMeshElementFactory>(new ContactMeshElementFactoryImpl<contact_element::CTRI3>());
 }
 
 void TET4::get_coeffs(){
@@ -940,6 +945,19 @@ Eigen::VectorXd TET4::flow_1dof(const double t, const MeshNode** nodes) const{
     };
 
     return M;
+}
+
+std::vector<double> TET4::get_Ni(const gp_Pnt& p) const{
+    const auto Nm = this->N_mat(p.X(), p.Y(), p.Z());
+
+    std::vector<double> Ni(DIM*K_DIM);
+    for(size_t i = 0; i < DIM; ++i){
+        for(size_t j = 0; j < K_DIM; ++j){
+            Ni[i*K_DIM + j] = Nm(i,j);
+        }
+    }
+
+    return Ni;
 }
 
 }

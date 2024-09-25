@@ -45,6 +45,10 @@ class TRI3 : public MeshElementCommon2DTri<TRI3>{
         logger::log_assert(false, logger::ERROR, "LINE ELEMENT TYPE NOT IMPLEMENTED");
         return std::unique_ptr<BoundaryMeshElementFactory>();
     }
+    static std::unique_ptr<ContactMeshElementFactory> get_contact_element_info(){
+        logger::log_assert(false, logger::ERROR, "LINE ELEMENT TYPE NOT IMPLEMENTED");
+        return std::unique_ptr<ContactMeshElementFactory>();
+    }
 
     static const spview::defs::ElementType SPVIEW_CODE = spview::defs::TRI3;
 

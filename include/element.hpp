@@ -252,6 +252,11 @@ class MeshElement : public Element{
     public:
 
     virtual ~MeshElement() = default;
+
+    virtual std::vector<double> get_MnMn(const MeshElement* const e2, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds, const gp_Dir n) const{}
+
+    virtual std::vector<double> get_Ni(const gp_Pnt& p) const{}
+
     /**
      * Creates and returns the elemental stiffness matrix.
      *
@@ -671,6 +676,50 @@ class BoundaryMeshElement : public Element{
      */
     BoundaryMeshElement(const std::vector<MeshNode*>& nodes, const MeshElement* const parent):
         Element(std::vector<Node*>(nodes.begin(), nodes.end())), parent(parent)
+        {}
+};
+
+class ContactMeshElement : public Element{
+    public:
+    const MeshElement* const e1;
+    const MeshElement* const e2;
+
+    virtual std::vector<double> get_frictionless_Ge() const = 0;
+
+    virtual std::vector<double> fl_uLne(const std::vector<double>& D, const std::vector<double>& ln_e) const = 0;
+    virtual std::vector<double> fl_LnLne(const std::vector<double>& D, const std::vector<double>& ln_e) const = 0;
+    virtual std::vector<double> fl_LtLne(const std::vector<double>& D, const std::vector<double>& ln_e, size_t ti) const = 0;
+    virtual std::vector<double> fl_uLte(const std::vector<double>& D, size_t ti) const = 0;
+    virtual std::vector<double> fl_LtLte(const std::vector<double>& D, size_t t1, size_t t2) const = 0;
+
+    virtual std::vector<double> fl2_uL(const std::vector<double>& l_e) const = 0;
+    virtual std::vector<double> fl2_LL(const std::vector<double>& l_e, const std::vector<double>& u1, const std::vector<double>& u2) const = 0;
+
+    virtual void fl2_Ku_lambda(const double EPS, const std::vector<long> u1_pos, const std::vector<long> u2_pos, const std::vector<long>& lu_pos, const std::vector<double>& u, std::vector<double>& Ku) const = 0;
+
+    virtual double get_area() const = 0;
+
+    /**
+     * Calculates the centroid of the element.
+     *
+     * @return The centroid.
+     */
+    virtual gp_Pnt get_centroid() const = 0;
+    /**
+     * Calculates the normal of the element.
+     *
+     * @return The normal.
+     */
+    virtual gp_Dir get_normal() const = 0;
+
+    protected:
+    /**
+     * Creates an element with the specified nodes.
+     *
+     * @param nodes List of nodes.
+     */
+    ContactMeshElement(const std::vector<MeshNode*>& nodes, const MeshElement* const e1, const MeshElement* const e2):
+        Element(std::vector<Node*>(nodes.begin(), nodes.end())), e1(e1), e2(e2)
         {}
 };
 

@@ -134,9 +134,9 @@ TopoDS_Shape MMA::optimize(SolverManager* fem, Meshing* mesh){
     if(mpi_id == 0){
         this->projection->project_densities(new_x);
     }
+    std::vector<double> u(mesh->max_dofs, 0);
     fem->generate_matrix(mesh, new_x, pc, this->psi);
     auto loads = mesh->load_vector;
-    std::vector<double> u(mesh->max_dofs, 0);
     fem->calculate_displacements_global(mesh, loads, u);
     if(mpi_id == 0){
         this->get_stresses(mesh->geometries, u, fem->D_vec, this->stresses);

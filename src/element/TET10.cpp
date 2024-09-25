@@ -48,6 +48,11 @@ TET10::TET10(ElementShape s):
 std::unique_ptr<BoundaryMeshElementFactory> TET10::get_boundary_element_info() {
     return std::unique_ptr<BoundaryMeshElementFactory>(new BoundaryMeshElementFactoryImpl<boundary_element::BTRI6>());
 }
+std::unique_ptr<ContactMeshElementFactory> TET10::get_contact_element_info() {
+    logger::log_assert(false, logger::ERROR, "CTRI6 ELEMENT TYPE NOT IMPLEMENTED");
+    return std::unique_ptr<ContactMeshElementFactory>();
+    //return std::unique_ptr<ContactMeshElementFactory>(new ContactMeshElementFactoryImpl<contact_element::CTRI6>());
+}
 
 void TET10::get_coeffs(){
     constexpr size_t N = 4;

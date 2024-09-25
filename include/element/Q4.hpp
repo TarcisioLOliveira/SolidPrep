@@ -47,6 +47,10 @@ class Q4 : public MeshElementCommon2DQuad<Q4>{
         logger::log_assert(false, logger::ERROR, "LINE ELEMENT TYPE NOT IMPLEMENTED");
         return std::unique_ptr<BoundaryMeshElementFactory>();
     }
+    static std::unique_ptr<ContactMeshElementFactory> get_contact_element_info(){
+        logger::log_assert(false, logger::ERROR, "LINE ELEMENT TYPE NOT IMPLEMENTED");
+        return std::unique_ptr<ContactMeshElementFactory>();
+    }
 
     static const spview::defs::ElementType SPVIEW_CODE = spview::defs::Q4;
 

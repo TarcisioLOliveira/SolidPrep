@@ -29,6 +29,7 @@
 #include "nonlinear_solver.hpp"
 
 class ProjectData;
+class GlobalStiffnessMatrix;
 
 class FiniteElement{
     public:
@@ -36,25 +37,28 @@ class FiniteElement{
 
     enum class MatrixType{
         RIGID,
+        FRICTIONLESS,
         LAMBDA_SLIDING,
         LAMBDA_HESSIAN
     };
 
-    FiniteElement(NonlinearSolver* nl);
+    FiniteElement(NonlinearSolver* nl, GlobalStiffnessMatrix* m);
 
     virtual ~FiniteElement() = default;
 
-    void generate_matrix(const Meshing* const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache);
+    void generate_matrix(const Meshing* const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const std::vector<double>& u_ext);
 
-    void calculate_displacements(const Meshing* const mesh, std::vector<double>& load, std::vector<double>& lambda, const bool topopt, const std::vector<std::vector<double>>& D_cache);
+    void calculate_displacements(const Meshing* const mesh, std::vector<double>& load, const std::vector<double>& u0, std::vector<double>& lambda, const bool topopt, const std::vector<std::vector<double>>& D_cache);
 
     virtual std::vector<double> calculate_forces(const Meshing* const mesh, const std::vector<double>& displacements) const;
 
     protected:
     const NonlinearSolver::SolverClass prob_type;
     const NonlinearSolver::SolverType nl_type;
+    GlobalStiffnessMatrix* matrix = nullptr;
+    size_t u_size, l_num;
 
-    virtual void generate_matrix_base(const Meshing* const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const MatrixType type) = 0;
+    virtual void generate_matrix_base(const Meshing* const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const std::vector<double>& u_ext, const MatrixType type) = 0;
 
     virtual void solve(std::vector<double>& load) = 0;
     virtual void reset_hessian() = 0;
@@ -63,8 +67,11 @@ class FiniteElement{
     virtual double get_newton_step(const std::vector<double>& delta, const std::vector<double>& lambda, const std::vector<double>& Ku) = 0;
 
     void solve_rigid(std::vector<double>& load);
+    void solve_frictionless(const Meshing* const mesh, std::vector<double>& load, std::vector<double>& lambda);
     void solve_opt(const Meshing* const mesh, std::vector<double>& load, std::vector<double>& lambda, const bool topopt, const std::vector<std::vector<double>>& D_cache);
     void solve_newton(const Meshing* const mesh, std::vector<double>& load, std::vector<double>& lambda, const bool topopt, const std::vector<std::vector<double>>& D_cache);
+
+    void solve_newton(const Meshing* const mesh, std::vector<double>& load, const bool topopt, const std::vector<std::vector<double>>& D_cache, const std::vector<double>& u0);
 
     private:
     NonlinearSolver* const nl_solver;

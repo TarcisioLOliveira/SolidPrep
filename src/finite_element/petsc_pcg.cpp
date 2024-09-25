@@ -28,7 +28,7 @@
 namespace finite_element{
 
 PETScPCG::PETScPCG(NonlinearSolver* nl, PETScBackend backend):
-    FiniteElement(nl), gsm(nullptr){
+    FiniteElement(nl, nullptr), gsm(nullptr){
     switch(backend){
         case PETScBackend::CPU:
             this->vec_type = VECSTANDARD;
@@ -39,6 +39,7 @@ PETScPCG::PETScPCG(NonlinearSolver* nl, PETScBackend backend):
             this->gsm = std::make_unique<global_stiffness_matrix::PETScSparseSymmetricCUDA>();
             break;
     }
+    this->matrix = this->gsm.get();
 }
 
 PETScPCG::~PETScPCG(){
@@ -47,11 +48,9 @@ PETScPCG::~PETScPCG(){
     KSPDestroy(&this->ksp);
 }
 
-void PETScPCG::generate_matrix_base(const Meshing* const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const MatrixType type){
+void PETScPCG::generate_matrix_base(const Meshing* const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const std::vector<double>& u_ext, const MatrixType type){
     this->matrix_type = type;
-    this->u_size = u_size;
-    this->l_num = l_num;
-    this->gsm->generate(mesh, u_size, l_num, node_positions, topopt, D_cache, type);
+    this->gsm->generate(mesh, u_size, l_num, node_positions, topopt, D_cache, u_ext, type);
     this->setup = false;
 }
 
@@ -91,11 +90,7 @@ void PETScPCG::solve(std::vector<double>& load){
         //KSPSetType(this->ksp, KSPMINRES);
         //KSPSetType(this->ksp, KSPPREONLY);
         KSPCGSetType(this->ksp, KSP_CG_HERMITIAN);
-        if(this->prob_type == NonlinearSolver::SolverClass::GRADIENT_BASED){
-            KSPSetInitialGuessNonzero(this->ksp, PETSC_TRUE);
-        } else {
-            KSPSetInitialGuessNonzero(this->ksp, PETSC_FALSE);
-        }
+        KSPSetInitialGuessNonzero(this->ksp, PETSC_TRUE);
 
         KSPGetPC(this->ksp, &this->pc);
         //KSPSetNormType(this->ksp, KSP_NORM_UNPRECONDITIONED);
@@ -116,7 +111,7 @@ void PETScPCG::solve(std::vector<double>& load){
         //PCJacobiSetUseAbs(this->pc, PETSC_TRUE);
         //PCJacobiSetFixDiagonal(this->pc, PETSC_TRUE);
 
-        KSPSetTolerances(this->ksp, 1e-1, 1e-50, 1e5, 1e5);
+        //KSPSetTolerances(this->ksp, 1e-1, 1e-50, 1e5, 1e5);
         //
         //KSPSetPCSide(this->ksp, PC_SYMMETRIC);
         //PCSetType(this->pc, PCSOR);

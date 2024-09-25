@@ -110,6 +110,18 @@ class LambdaAffectedElement{
     }
 };
 
+struct PairedBoundaryElements{
+    BoundaryElement* const b1;
+    BoundaryElement* const b2;
+    std::unique_ptr<ContactMeshElement> elem;
+
+    PairedBoundaryElements(
+        BoundaryElement* const b1,
+        BoundaryElement* const b2,
+        std::unique_ptr<ContactMeshElement> elem)
+    : b1(b1), b2(b2), elem(std::move(elem)){}
+};
+
 class Meshing{
     public:
     Meshing(const std::vector<std::unique_ptr<Geometry>>& geometries,
@@ -164,6 +176,8 @@ class Meshing{
                        const std::vector<Support>& supports,
                        const std::vector<double>& rho, double threshold);
 
+    void generate_initial_u_contact(std::vector<double>& u) const;
+
     /**
      * Extends a vector (e.g. displacement vector) from rigid form to non-rigid
      * form.
@@ -172,6 +186,8 @@ class Meshing{
      * @param v_ext Non-rigid-form vector
      */
     virtual void extend_vector(const size_t subproblem, const std::vector<double>& v, std::vector<double>& v_ext) const;
+
+    virtual void de_extend_vector(const size_t subproblem, const std::vector<double>& v_ext, std::vector<double>& v) const;
 
     enum class LambdaType{
         PARALLEL,
@@ -229,9 +245,11 @@ class Meshing{
     std::vector<InternalLoads>* internal_loads;
     std::vector<SubProblem>* sub_problems;
     std::vector<BoundaryElement*> inter_geometry_boundary;
+    std::vector<PairedBoundaryElements> paired_boundary;
     std::vector<LambdaElement> lambda_elements;
     std::unordered_map<size_t, std::vector<size_t>> node_lambda_map;
     std::vector<LambdaAffectedElement> lambda_affected_elements;
+    std::map<size_t, long> lag_node_map;
 
     std::vector<double> global_load_vector;
     // Subproblems
@@ -269,6 +287,8 @@ class Meshing{
      * more easily sortable and comparable.
      */
     void fix_node_point_precision();
+
+    void distribute_node_pointers();
 
     /**
      * Main function for populating each geometry's element list. Uses the other

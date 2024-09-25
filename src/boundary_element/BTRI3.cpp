@@ -22,7 +22,6 @@
 #include "boundary_element/BTRI3.hpp"
 #include "logger.hpp"
 #include "utils/gauss_legendre.hpp"
-#include "utils/boundary_nullifier.hpp"
 
 namespace boundary_element{
 

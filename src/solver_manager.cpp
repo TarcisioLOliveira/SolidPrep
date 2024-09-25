@@ -25,14 +25,20 @@
 void SolverManager::generate_matrix(const Meshing* const mesh, const std::vector<double>& density, double pc, double psi){
     this->topopt = density.size() > 0;
     this->update_D_matrices(mesh, density, pc, psi);
+    const size_t l_num = 0;//mesh->lag_node_map.size();
+    if(this->iteration == 0 && mesh->proj_data->contact_type != ProjectData::RIGID){
+        this->split_u.resize(mesh->sub_problems->size());
+        this->split_u[0].resize(mesh->max_dofs, 0);
+        mesh->generate_initial_u_contact(this->split_u[0]);
+    }
     for(size_t i = 0; i < mesh->sub_problems->size(); ++i){
         auto& n = mesh->node_positions[i];
         auto& l = mesh->load_vector[i];
         if(mesh->proj_data->contact_type == ProjectData::RIGID){
-            this->solvers[i]->generate_matrix(mesh, l.size(), 0, n, this->topopt, this->D_matrices);
+            this->solvers[i]->generate_matrix(mesh, l.size(), 0, n, this->topopt, this->D_matrices, this->split_u[i]);
         } else {
             // TODO: improve problem definition
-            this->solvers[i]->generate_matrix(mesh, l.size(), mesh->lambda_elements.size(), n, this->topopt, this->D_matrices);
+            this->solvers[i]->generate_matrix(mesh, l.size(), l_num, n, this->topopt, this->D_matrices, this->split_u[i]);
         }
     }
 }
@@ -47,16 +53,16 @@ void SolverManager::calculate_displacements_global(const Meshing* const mesh, st
     }
     for(size_t i = 0; i < mesh->sub_problems->size(); ++i){
         if(this->iteration == 1){
-            this->lambdas[i].emplace_back(mesh->lambda_elements.size()*3, 0.001);
+            this->lambdas[i].emplace_back(mesh->lag_node_map.size(), 0.01);
         }
         auto& l = load[i];
         this->split_u[i].resize(mesh->max_dofs, 0);
 
 
         auto& ui = this->split_u[i];
-        this->solvers[i]->calculate_displacements(mesh, l, this->lambdas[i][0], this->topopt, this->D_matrices);
+        this->solvers[i]->calculate_displacements(mesh, l, ui, this->lambdas[i][0], this->topopt, this->D_matrices);
         mesh->extend_vector(i, l, ui);
-        mesh->apply_lambda(this->lambdas[i][0], ui);
+        //mesh->apply_lambda(this->lambdas[i][0], ui);
         #pragma omp parallel for
         for(size_t j = 0; j < u.size(); ++j){
             u[j] += ui[j];
@@ -74,6 +80,7 @@ void SolverManager::calculate_displacements_adjoint(const Meshing* const mesh, s
         auto& l = load[i];
         auto& n = mesh->node_positions[i];
         this->split_u[i].resize(mesh->max_dofs, 0);
+        auto& ui = this->split_u[i];
         if(l.size() == mesh->max_dofs){
             std::vector<double> load_pos(mesh->dofs_per_subproblem[i]);
             #pragma omp parallel for
@@ -83,7 +90,7 @@ void SolverManager::calculate_displacements_adjoint(const Meshing* const mesh, s
                     load_pos[p_new] = l[j];
                 }
             }
-            this->solvers[i]->calculate_displacements(mesh, load_pos, this->lambdas[i][this->solve_step], this->topopt, this->D_matrices);
+            this->solvers[i]->calculate_displacements(mesh, load_pos, ui, this->lambdas[i][this->solve_step], this->topopt, this->D_matrices);
             mesh->extend_vector(i, load_pos, u);
             mesh->apply_lambda(this->lambdas[i][solve_step], u);
             #pragma omp parallel for
@@ -94,7 +101,7 @@ void SolverManager::calculate_displacements_adjoint(const Meshing* const mesh, s
                 }
             }
         } else if(l.size() == mesh->dofs_per_subproblem[i]){
-            this->solvers[i]->calculate_displacements(mesh, l, this->lambdas[i][this->solve_step], this->topopt, this->D_matrices);
+            this->solvers[i]->calculate_displacements(mesh, l, ui, this->lambdas[i][this->solve_step], this->topopt, this->D_matrices);
             mesh->extend_vector(i, l, u);
             mesh->apply_lambda(this->lambdas[i][this->solve_step], u);
         } else {

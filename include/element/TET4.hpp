@@ -43,6 +43,7 @@ class TET4 : public MeshElementCommon3DTet<TET4>{
     static const size_t BOUNDARY_NODES_PER_ELEM = 3;
     static const size_t BOUNDARY_GMSH_TYPE = 2;
     static std::unique_ptr<BoundaryMeshElementFactory> get_boundary_element_info();
+    static std::unique_ptr<ContactMeshElementFactory> get_contact_element_info();
 
     static const spview::defs::ElementType SPVIEW_CODE = spview::defs::TET4;
 
@@ -59,6 +60,8 @@ class TET4 : public MeshElementCommon3DTet<TET4>{
     virtual Eigen::MatrixXd absorption_1dof(const double t) const override;
     virtual Eigen::VectorXd source_1dof(const double t) const override;
     virtual Eigen::VectorXd flow_1dof(const double t, const MeshNode** nodes) const override;
+
+    virtual std::vector<double> get_Ni(const gp_Pnt& p) const override;
 
     virtual inline std::unique_ptr<MeshElementFactory> get_element_info() const override{
         return std::unique_ptr<MeshElementFactory>(new MeshElementFactoryImpl<TET4>());

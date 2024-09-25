@@ -23,23 +23,21 @@
 
 namespace global_stiffness_matrix{
 
-void MUMPSSparseSymmetric::generate(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const FiniteElement::MatrixType type){
+void MUMPSSparseSymmetric::generate(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const std::vector<double>& u_ext, const FiniteElement::MatrixType type){
     logger::quick_log("Generating stiffness matrix...");
     this->u_size = u_size;
     this->l_num = l_num;
     this->sK.zero();
-    this->generate_base(mesh, u_size, l_num, node_positions, topopt, D_cache, type);
+    this->generate_base(mesh, u_size, l_num, node_positions, topopt, D_cache, u_ext, type);
     size_t M = u_size;
-    if(type == FiniteElement::MatrixType::LAMBDA_SLIDING){
-        M += 2*l_num;
-    } else if(type == FiniteElement::MatrixType::LAMBDA_HESSIAN){
-        M += 3*l_num;
+    if(type == FiniteElement::MatrixType::FRICTIONLESS){
+        M += l_num;
     }
     if(this->first_time){
         this->sK.generate_coo(M);
         this->first_time = false;
     }
-    if(type == FiniteElement::MatrixType::LAMBDA_HESSIAN){
+    if(type != FiniteElement::MatrixType::RIGID){
         this->sK.backup_matrix();
     }
     logger::quick_log("Done.");

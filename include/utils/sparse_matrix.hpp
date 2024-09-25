@@ -84,13 +84,13 @@ class SparseMatrix{
                 if(pos[j] < 0){
                     continue;
                 }
-                if(M[i*W + j] != 0){
+                //if(M[i*W + j] != 0){
                     if(pos[i] >= pos[j]){
                         this->data[Point(pos[i], pos[j])] += M[i*W + j];
                     } else {
                         this->data[Point(pos[j], pos[i])] += M[i*W + j];
                     }
-                }
+                //}
             }
         }
     }
@@ -104,9 +104,9 @@ class SparseMatrix{
                 if(pos[j] < 0){
                     continue;
                 }
-                if(M[i*W + j] != 0){
+                //if(M[i*W + j] != 0){
                     this->data[Point(pos[i], pos[j])] += M[i*W + j];
-                }
+                //}
             }
         }
     }
@@ -122,9 +122,9 @@ class SparseMatrix{
                     if(pos_j[j] < 0){
                         continue;
                     }
-                    if(std::abs(M[i*Wj + j]) > 0){
+                    //if(std::abs(M[i*Wj + j]) > 0){
                         this->data[Point(pos_i[i], pos_j[j])] += M[i*Wj + j];
-                    }
+                    //}
                 }
             }
         } else {
@@ -136,9 +136,9 @@ class SparseMatrix{
                     if(pos_j[j] < 0){
                         continue;
                     }
-                    if(std::abs(M[i*Wj + j]) > 0){
+                    //if(std::abs(M[i*Wj + j]) > 0){
                         this->data[Point(pos_j[j], pos_i[i])] += M[i*Wj + j];
-                    }
+                    //}
                 }
             }
         }

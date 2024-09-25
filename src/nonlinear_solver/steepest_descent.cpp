@@ -44,6 +44,9 @@ bool SteepestDescent::update(double* x, double f, const double* dfdx){
     //        STEP = std::min(1.0, STEP);
     //    }
     //}
+    if(f > fold1){
+        STEP *= DEC;
+    }
     fold2 = fold1;
     fold1 = f;
 

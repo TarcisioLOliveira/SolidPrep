@@ -26,8 +26,6 @@
 #include "material.hpp"
 #include <vector>
 #include "utils.hpp"
-#include "element_factory.hpp"
-#include "element_common.hpp"
 
 namespace boundary_element{
 

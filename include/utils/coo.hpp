@@ -94,13 +94,13 @@ class COO{
                     if(pos[j] < 0){
                         continue;
                     }
-                    if(std::abs(M[i*W + j]) > 0){
+                    //if(std::abs(M[i*W + j]) > 0){
                         if(pos[i] >= pos[j]){
                             this->data[Point(pos[i], pos[j])] += M[i*W + j];
                         } else {
                             this->data[Point(pos[j], pos[i])] += M[i*W + j];
                         }
-                    }
+                    //}
                 }
             }
         } else {
@@ -158,9 +158,9 @@ class COO{
                     if(pos[j] < 0){
                         continue;
                     }
-                    if(std::abs(M[i*W + j]) > 0){
+                    //if(std::abs(M[i*W + j]) > 0){
                         this->data[Point(pos[i], pos[j])] += M[i*W + j];
-                    }
+                    //}
                 }
             }
         } else {
@@ -210,9 +210,9 @@ class COO{
                         if(pos_j[j] < 0){
                             continue;
                         }
-                        if(std::abs(M[i*Wj + j]) > 0){
+                        //if(std::abs(M[i*Wj + j]) > 0){
                             this->data[Point(pos_i[i], pos_j[j])] += M[i*Wj + j];
-                        }
+                        //}
                     }
                 }
             } else {
@@ -224,9 +224,9 @@ class COO{
                         if(pos_j[j] < 0){
                             continue;
                         }
-                        if(std::abs(M[i*Wj + j]) > 0){
+                        //if(std::abs(M[i*Wj + j]) > 0){
                             this->data[Point(pos_j[j], pos_i[i])] += M[i*Wj + j];
-                        }
+                        //}
                     }
                 }
             }
@@ -448,7 +448,7 @@ bool COO<INT>::coo_full_hessian(const size_t hoffset, const size_t l_len, std::v
         while(c < cooRowPtr[i+1]){
             const size_t j = cooColInd[c] - offset;
             const double lj = l[2*l_len + j - hoffset];
-            const double dlj = -1.0/(lj*lj);//2*lj;
+            const double dlj = 2*lj;
             cooVal[c] *= dlj;
             ++c;
         }
@@ -457,7 +457,7 @@ bool COO<INT>::coo_full_hessian(const size_t hoffset, const size_t l_len, std::v
     for(size_t i = hoffset; i < cooRowPtr.size() - 1; ++i){
         INT c = cooRowPtr[i];
         const double li = l[2*l_len + i - hoffset];
-        const double dli = -1.0/(li*li);//2*li;
+        const double dli = 2*li;
         while(cooColInd[c] - offset < hoffset && c < cooRowPtr[i+1]){
             cooVal[c] *= dli;
             ++c;
@@ -466,7 +466,7 @@ bool COO<INT>::coo_full_hessian(const size_t hoffset, const size_t l_len, std::v
         while(c < cooRowPtr[i+1]){
             const size_t j = cooColInd[c] - offset;
             const double lj = l[2*l_len + j - hoffset];
-            const double dlj = -1.0/(lj*lj);//2*lj;
+            const double dlj = 2*lj;
             cooVal[c] *= dlj*dli;
 
             // "Sum" step
@@ -474,7 +474,7 @@ bool COO<INT>::coo_full_hessian(const size_t hoffset, const size_t l_len, std::v
                 const double ddli = 2;
                 cooVal[c] += ddli*Ku[i];// + 1e-9;
                 cooVal[c] -= min_diag;
-                cooVal[c] += 1e-9;
+                cooVal[c] += 1e-14;
                 //if(cooVal[c] <= 1e-9){// || std::isnan(cooVal[c]) || std::isinf(cooVal[c])){
                 //    cooVal[c] = 1e-9;
                 //    //logger::quick_log(cooVal[c], ddli, li, Ku[i], i, j);

@@ -84,6 +84,7 @@
 #include "field/orthotropic_flow.hpp"
 #include "nonlinear_solver/steepest_descent.hpp"
 #include "nonlinear_solver/newton.hpp"
+#include "nonlinear_solver/mma.hpp"
 
 ProjectData::ProjectData(std::string project_file){
 #ifdef _WIN32
@@ -1396,6 +1397,25 @@ std::unique_ptr<NonlinearSolver> ProjectData::get_nonlinear_solver(const rapidjs
         double xtol_abs = doc["xtol_abs"].GetDouble();
 
         return std::make_unique<nonlinear_solver::SteepestDescent>(init, inc, dec, xtol_abs);
+    } else if(method == "mma"){
+        this->log_data(doc, "init", TYPE_DOUBLE, true);
+        this->log_data(doc, "inc", TYPE_DOUBLE, true);
+        this->log_data(doc, "dec", TYPE_DOUBLE, true);
+        this->log_data(doc, "delta_max", TYPE_DOUBLE, true);
+        this->log_data(doc, "delta_min", TYPE_DOUBLE, true);
+        this->log_data(doc, "xmin", TYPE_DOUBLE, true);
+        this->log_data(doc, "xmax", TYPE_DOUBLE, true);
+        this->log_data(doc, "xtol_abs", TYPE_DOUBLE, true);
+        double init = doc["init"].GetDouble();
+        double inc = doc["inc"].GetDouble();
+        double dec = doc["dec"].GetDouble();
+        double delta_min = doc["delta_min"].GetDouble();
+        double delta_max = doc["delta_max"].GetDouble();
+        double xmin = doc["xmin"].GetDouble();
+        double xmax = doc["xmax"].GetDouble();
+        double xtol_abs = doc["xtol_abs"].GetDouble();
+
+        return std::make_unique<nonlinear_solver::MMA>(init, inc, dec, delta_min, delta_max, xmin, xmax, xtol_abs);
     } else if(method == "newton"){
         this->log_data(doc, "mult", TYPE_DOUBLE, true);
         this->log_data(doc, "rtol_abs", TYPE_DOUBLE, true);

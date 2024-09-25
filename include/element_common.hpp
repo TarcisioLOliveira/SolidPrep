@@ -40,6 +40,7 @@
 #include "logger.hpp"
 #include "utils.hpp"
 #include "spview.hpp"
+#include "utils/gauss_legendre.hpp"
 #include <lapacke.h>
 
 template<class T>
@@ -71,7 +72,7 @@ class MeshElementCommon : public MeshElement{
 
         return results;
     }
-
+    
     virtual double get_compliance(const std::vector<double>& D, const double t, const std::vector<double>& u) const override{
         const size_t N = T::NODES_PER_ELEM;
         const size_t K_DIM = T::K_DIM;
@@ -707,10 +708,109 @@ class MeshElementCommon3DTet : public MeshElementCommon3D<T>{
         return points;
     }
 
+    virtual std::vector<double> get_MnMn(const MeshElement* const e2, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds, const gp_Dir n) const override{
+        const size_t ORDER = T::ORDER;
+        const size_t NODES_PER_ELEM = T::NODES_PER_ELEM;
+        const size_t DOF = T::NODE_DOF;
+        const size_t KW = T::K_DIM;
+        const size_t DIM = this->DIM;
+        std::vector<double> uv1(KW), uv2(KW);
+        for(size_t i = 0; i < NODES_PER_ELEM; ++i){
+            for(size_t j = 0; j < DOF; ++j){
+                uv1[i*DOF + j] = u_ext[this->nodes[i]->u_pos[j]];
+                uv2[i*DOF + j] = u_ext[e2->nodes[i]->u_pos[j]];
+            }
+        }
+        const auto& gli = utils::GaussLegendreTri<2*ORDER + 2>::get();
+        std::vector<double> NN(2*KW, 0);
+        std::vector<double> MnMn(4*KW*KW, 0);
+
+        std::vector<double> up1(DIM), up2(DIM);
+        for(auto it = gli.begin(); it != gli.end(); ++it){
+            std::fill(up1.begin(), up1.end(), 0);
+            std::fill(up2.begin(), up2.end(), 0);
+            const gp_Pnt pi = MeshElementCommon3DTet<T>::ECTRI_GL_to_point(*it, bounds);
+            const auto N1 = this->get_Ni(pi);
+            const auto N2 = e2->get_Ni(pi);
+            double gp = 0;
+            for(size_t j = 0; j < DIM; ++j){
+                for(size_t i = 0; i < KW; ++i){
+                    up1[j] += N1[j*KW + i]*uv1[i];
+                    up2[j] += N2[j*KW + i]*uv2[i];
+                }
+                gp += (up2[j] - up1[j])*n.Coord(1+j);
+                //gp += (up2[j] - up1[j])*n.Coord(1+j);
+            }
+            //if(std::abs(n.Coord(2)) > 1e-7){
+            //    std::cout << gp << " " << n.Coord(2) << " ";
+            //}
+            //gp += 1e-1;
+            //gp = std::max(-3e-6, gp);
+            //if(std::isnan(gp) || std::isinf(gp)){
+            //    gp = -3e-6;
+            //}
+            //const double gpcubed = gp*gp*gp;
+            //const double gpexp = std::exp(-1e7*(gp-2e-6));
+            if(gp < 1e-7){
+                std::fill(NN.begin(), NN.end(), 0);
+                for(size_t i = 0; i < KW; ++i){
+                    for(size_t j = 0; j < DIM; ++j){
+                        NN[i] += N1[i + j*KW]*n.Coord(1+j);
+                        NN[i + KW] += N2[i + j*KW]*n.Coord(1+j);
+                    }
+                }
+                for(size_t i = 0; i < 2*KW; ++i){
+                    for(size_t j = 0; j < 2*KW; ++j){
+                        //MnMn[2*KW*i + j] += it->w*NN[i]*NN[j]*2.0/gpcubed;
+                        //MnMn[2*KW*i + j] += it->w*NN[i]*NN[j]/gpexp;
+                        MnMn[2*KW*i + j] += it->w*NN[i]*NN[j];
+                    }
+                }
+            }
+            //} else if(gp < 1e-5){
+            //    const double mult = 1 - gp/1e-5;
+            //    std::fill(NN.begin(), NN.end(), 0);
+            //    for(size_t i = 0; i < KW; ++i){
+            //        for(size_t j = 0; j < DIM; ++j){
+            //            NN[i] += N1[i + j*KW]*n.Coord(1+j);
+            //            NN[i + KW] += N2[i + j*KW]*n.Coord(1+j);
+            //        }
+            //    }
+            //    for(size_t i = 0; i < 2*KW; ++i){
+            //        for(size_t j = 0; j < 2*KW; ++j){
+            //            //MnMn[2*KW*i + j] += it->w*NN[i]*NN[j]*2.0/gpcubed;
+            //            //MnMn[2*KW*i + j] += it->w*NN[i]*NN[j]/gpexp;
+            //            MnMn[2*KW*i + j] += it->w*NN[i]*NN[j]*mult;
+            //        }
+            //    }
+            //}
+        }
+        for(size_t i = 0; i < KW; ++i){
+            for(size_t j = KW; j < 2*KW; ++j){
+                MnMn[2*KW*i + j] *= -1.0;
+                MnMn[2*KW*j + i] *= -1.0;
+            }
+        }
+        //std::cout << std::endl;
+        const gp_Vec v1(bounds[0], bounds[1]);
+        const gp_Vec v2(bounds[0], bounds[2]);
+        const double A = 0.5*v1.Crossed(v2).Magnitude();
+        cblas_dscal(MnMn.size(), A, MnMn.data(), 1);
+
+        return MnMn;
+    }
+
     protected:
     MeshElementCommon3DTet(const std::vector<MeshNode*>& nodes):
             MeshElementCommon3D<T>(nodes)
             {}
+
+    inline static gp_Pnt ECTRI_GL_to_point(const utils::GLPointTri& gp, const std::vector<gp_Pnt>& bounds){
+        return gp_Pnt
+            (gp.a*bounds[0].X() + gp.b*bounds[1].X() + gp.c*bounds[2].X(),
+             gp.a*bounds[0].Y() + gp.b*bounds[1].Y() + gp.c*bounds[2].Y(),
+             gp.a*bounds[0].Z() + gp.b*bounds[1].Z() + gp.c*bounds[2].Z());
+    } 
 
     inline TopoDS_Solid generate_geometry(const gp_Pnt& p1, const gp_Pnt& p2, const gp_Pnt& p3, const gp_Pnt& p4) const{
         const TopoDS_Vertex v1 = BRepBuilderAPI_MakeVertex(p1);

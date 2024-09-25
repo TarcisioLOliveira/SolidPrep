@@ -19,6 +19,7 @@
  */
 
 #include "element.hpp"
+#include "utils/gauss_legendre.hpp"
 
 
 BeamNode* BeamNodeFactory::make_node(gp_Pnt p, size_t id, double dim, gp_Dir n, BeamNodeType t){

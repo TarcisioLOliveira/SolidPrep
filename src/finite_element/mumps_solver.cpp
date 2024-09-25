@@ -22,15 +22,14 @@
 #include <mpich-x86_64/mpi.h>
 #include "finite_element/mumps_solver.hpp"
 #include "logger.hpp"
-#include "utils/sparse_matrix.hpp"
 
 namespace finite_element{
 
 MUMPSSolver::MUMPSSolver(NonlinearSolver* nl):
-    FiniteElement(nl)
+    FiniteElement(nl, &this->gsm)
 {
-    this->config.sym = 1; // Hermitian matrix
     this->config.job = -1; // Configuration initialization
+    this->config.sym = 1; // Hermitian matrix
     this->config.par = 1; // Host process also does computations
     this->config.comm_fortran = -987654; // Default communicator
     // No text output
@@ -63,7 +62,6 @@ MUMPSSolver::MUMPSSolver(NonlinearSolver* nl):
     this->config.ICNTL(21) = 0; // assembled
     // Complete factorization
     this->config.ICNTL(19) = 0;
-
     dmumps_c(&this->config);
     // No text output, but for real now
     this->config.ICNTL(1) = 0;
@@ -79,20 +77,13 @@ MUMPSSolver::~MUMPSSolver(){
     dmumps_c(&this->config);
 }
 
-void MUMPSSolver::generate_matrix_base(const Meshing* const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const MatrixType type){
+void MUMPSSolver::generate_matrix_base(const Meshing* const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const std::vector<double>& u_ext, const MatrixType type){
     int mpi_id = 0;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi_id);
 
-    this->l_num = l_num;
-    this->u_size = u_size;
-    long M = u_size;
-    if(type == FiniteElement::MatrixType::LAMBDA_SLIDING){
-        M += 2*l_num;
-    } else if(type == FiniteElement::MatrixType::LAMBDA_HESSIAN){
-        M += 3*l_num;
-    }
+    long M = u_size + l_num;
     if(mpi_id == 0){
-        this->gsm.generate(mesh, u_size, l_num, node_positions, topopt, D_cache, type);
+        this->gsm.generate(mesh, u_size, l_num, node_positions, topopt, D_cache, u_ext, type);
 
         std::vector<int>& rows = this->gsm.get_rows();
         std::vector<int>& cols = this->gsm.get_cols();
