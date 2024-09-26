@@ -159,14 +159,5 @@ void MUMPSSolver::reset_hessian(){
     this->gsm.reset_hessian();
     this->factorized = false;
 }
-bool MUMPSSolver::generate_hessian(std::vector<double>& lambda, const std::vector<double>& Ku){
-    return this->gsm.generate_hessian(lambda, Ku);
-}
-void MUMPSSolver::dot_vector(const std::vector<double>& v, std::vector<double>& v_out) const{
-    this->gsm.dot_vector(v, v_out);
-}
-double MUMPSSolver::get_newton_step(const std::vector<double>& delta, const std::vector<double>& lambda, const std::vector<double>& Ku){
-    return this->gsm.get_newton_step(delta, lambda, Ku);
-}
 
 }

@@ -207,14 +207,5 @@ void PETScPCG::reset_hessian(){
     this->gsm->reset_hessian();
     this->setup = false;
 }
-bool PETScPCG::generate_hessian(std::vector<double>& lambda, const std::vector<double>& Ku){
-    return this->gsm->generate_hessian(lambda, Ku);
-}
-void PETScPCG::dot_vector(const std::vector<double>& v, std::vector<double>& v_out) const{
-    this->gsm->dot_vector(v, v_out);
-}
-double PETScPCG::get_newton_step(const std::vector<double>& delta, const std::vector<double>& lambda, const std::vector<double>& Ku){
-    return this->gsm->get_newton_step(delta, lambda, Ku);
-}
 
 }

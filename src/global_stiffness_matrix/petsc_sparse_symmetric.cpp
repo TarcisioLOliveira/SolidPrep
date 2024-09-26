@@ -93,8 +93,6 @@ void PETScSparseSymmetricCPU::preallocate(const Meshing * const mesh, const size
     MatSetUp(this->K);
 
     MatDestroy(&tmp);
-    //MatSetSizes(this->K, mesh->load_vector.size(), mesh->load_vector.size(), mesh->load_vector.size(), mesh->load_vector.size());
-    //MatSetUp(this->K);
 }
 
 void PETScSparseSymmetricCPU::assemble_matrix(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const std::vector<double>& u_ext, const FiniteElement::ContactType type, const size_t mpi_id){
@@ -203,40 +201,8 @@ void PETScSparseSymmetricCUDA::assemble_matrix(const Meshing * const mesh, const
     }
 }
 
-bool PETScSparseSymmetricCUDA::generate_hessian(std::vector<double>& lambda, const std::vector<double>& Ku){
-    bool mod = this->K_coo.generate_hessian(this->u_size + 2*this->l_num, this->l_num, lambda, Ku, true);
-    MatSetValuesCOO(this->K, this->K_coo.vals.data(), INSERT_VALUES);
-    //const size_t hoffset = this->u_size + 2*this->l_num;
-    //for(size_t i = 0; i < l_num; ++i){
-    //    const size_t ui = hoffset + i;
-    //    std::cout << this->K_coo.get(ui, ui) << " ";
-    //}
-    //std::cout << std::endl;
-    return mod;
-}
-
 void PETScSparseSymmetricCUDA::reset_hessian(){
     this->K_coo.restore_matrix();
-}
-
-double PETScSparseSymmetricCUDA::get_newton_step(const std::vector<double>& delta, const std::vector<double>& lambda, const std::vector<double>& Ku){
-    const size_t hoffset = this->u_size + 2*this->l_num;
-    double M = 1.0;
-    for(size_t i = 0; i < l_num; ++i){
-        const size_t ui = hoffset + i;
-        const size_t li = 2*l_num + i;
-        if(Ku[ui] > 0 || std::abs(delta[ui]) < 1e-14){
-            continue;
-        }
-        const double M_test1 = ( std::sqrt(-Ku[ui]/(2*this->K_coo.get(ui,ui))) - lambda[li])/delta[ui];
-        const double M_test2 = (-std::sqrt(-Ku[ui]/(2*this->K_coo.get(ui,ui))) - lambda[li])/delta[ui];
-
-        const double M_test = std::max(M_test1, M_test2);
-        if(M_test > 0 && M_test < M){
-            M = M_test;
-        }
-    }
-    return M;
 }
 
 }

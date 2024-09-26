@@ -35,11 +35,7 @@ class GlobalStiffnessMatrix{
 
     virtual void reset_hessian() = 0;
 
-    virtual bool generate_hessian(std::vector<double>& lambda, const std::vector<double>& Ku) = 0;
-
     virtual void add_frictionless_part2(const Meshing * const mesh, const std::vector<long>& node_positions, const std::vector<double>& u_ext, const std::vector<double>& lambda);
-
-    virtual double get_newton_step(const std::vector<double>& delta, const std::vector<double>& lambda, const std::vector<double>& Ku) = 0;
 
     void append_Ku_frictionless(const Meshing* const mesh, const std::vector<double>& u, std::vector<double>& Ku) const;
 
@@ -48,8 +44,6 @@ class GlobalStiffnessMatrix{
     const double EPS = 5e7;
 
     virtual void generate_base(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const std::vector<double>& u_ext, const FiniteElement::ContactType type);
-
-    virtual void generate_expansion(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const Meshing::LambdaType type);
 
     virtual void calculate_dimensions(const Meshing * const mesh, const std::vector<long>& node_positions, const size_t matrix_width);
 
@@ -62,8 +56,6 @@ class GlobalStiffnessMatrix{
     virtual void add_contacts(const Meshing * const mesh, const std::vector<long>& node_positions, const std::vector<double>& u_ext);
 
     virtual void add_frictionless_part1(const Meshing * const mesh, const std::vector<long>& node_positions, const std::vector<double>& u_ext);
-
-    virtual void insert_expansion_matrices(const std::vector<double>& k, const std::vector<double>& R, const std::vector<long>& u_pos, const std::vector<size_t>& l_i, const size_t dof, const size_t l_num, const size_t u_num, const Meshing::LambdaType type);
 
     virtual void insert_block_symmetric(const std::vector<double>& k, const std::vector<long>& posi, const std::vector<long>& posj) = 0;
 

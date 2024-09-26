@@ -36,9 +36,6 @@ class EigenPCG : public FiniteElement{
 
     virtual void solve(std::vector<double>& load) override;
     virtual void reset_hessian() override;
-    virtual bool generate_hessian(std::vector<double>& lambda, const std::vector<double>& Ku) override;
-    virtual void dot_vector(const std::vector<double>& v, std::vector<double>& v_out) const override;
-    virtual double get_newton_step(const std::vector<double>& delta, const std::vector<double>& lambda, const std::vector<double>& Ku) override;
 
     size_t l_num = 0;
     size_t u_size = 0;

@@ -43,17 +43,6 @@ class EigenSparseSymmetricTriplets : public GlobalStiffnessMatrix{
     inline virtual void reset_hessian() override{
         // Unused 
     };
-    inline virtual bool generate_hessian(std::vector<double>& lambda, const std::vector<double>& Ku) override{
-        (void)lambda;
-        (void)Ku;
-        // Unused
-    };
-    inline virtual double get_newton_step(const std::vector<double>& delta, const std::vector<double>& lambda, const std::vector<double>& Ku) override{
-        (void) delta;
-        (void) lambda;
-        (void) Ku;
-        // Unused
-    }
 
     std::vector<T> triplets;
 
@@ -109,23 +98,6 @@ void EigenSparseSymmetric::generate(const Meshing * const mesh, const size_t u_s
         this->K_bkp = K;
     }
     logger::quick_log("Done.");
-}
-
-double EigenSparseSymmetric::get_newton_step(const std::vector<double>& delta, const std::vector<double>& lambda, const std::vector<double>& Ku){
-    const size_t hoffset = this->u_size + 2*this->l_num;
-    double M = 1.0;
-    for(size_t i = 0; i < l_num; ++i){
-        const size_t ui = hoffset + i;
-        const size_t li = 2*l_num + i;
-        if(Ku[ui] > 0 || std::abs(delta[ui]) < 1e-14){
-            continue;
-        }
-        double M_test = (std::sqrt((this->K_MIN - 2*Ku[ui])/this->K.coeff(ui,ui)) - lambda[li])/delta[ui];
-        if(M_test > 0 && M_test < M){
-            M = M_test;
-        }
-    }
-    return M;
 }
 
 }

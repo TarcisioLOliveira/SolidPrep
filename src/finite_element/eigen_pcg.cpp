@@ -55,17 +55,5 @@ void EigenPCG::solve(std::vector<double>& load){
 void EigenPCG::reset_hessian(){
     this->gsm.reset_hessian();
 }
-bool EigenPCG::generate_hessian(std::vector<double>& lambda, const std::vector<double>& Ku){
-    bool mod = this->gsm.generate_hessian(lambda, Ku);
-    auto& K = this->gsm.get_K();
-    this->cg.compute(K);
-    return mod;
-}
-void EigenPCG::dot_vector(const std::vector<double>& v, std::vector<double>& v_out) const{
-    this->gsm.dot_vector(v, v_out);
-}
-double EigenPCG::get_newton_step(const std::vector<double>& delta, const std::vector<double>& lambda, const std::vector<double>& Ku){
-    return this->gsm.get_newton_step(delta, lambda, Ku);
-}
 
 }

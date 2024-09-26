@@ -92,7 +92,7 @@ void FiniteElement::solve_frictionless_displ(const Meshing* const mesh, std::vec
     //double old_step = 1;
     double step = 1.0;
     //std::fill(Ku.begin(), Ku.end(), 0);
-    this->dot_vector(u, Ku);
+    this->matrix->dot_vector(u, Ku);
     std::fill(Ku.begin() + u_size, Ku.end(), 0);
     this->matrix->append_Ku_frictionless(mesh, u, Ku);
     for(size_t i = 0; i < vec_size; ++i){
@@ -135,7 +135,7 @@ void FiniteElement::solve_frictionless_displ(const Meshing* const mesh, std::vec
             mesh->extend_vector(0, u_test, u_ext);
 
             std::fill(Ku.begin(), Ku.end(), 0);
-            this->dot_vector(u_test, Ku);
+            this->matrix->dot_vector(u_test, Ku);
             std::fill(Ku.begin() + u_size, Ku.end(), 0);
             this->matrix->append_Ku_frictionless(mesh, u_test, Ku);
 
@@ -145,7 +145,7 @@ void FiniteElement::solve_frictionless_displ(const Meshing* const mesh, std::vec
             rnorm = std::sqrt(cblas_ddot(r.size(), r.data(), 1, r.data(), 1));
             //if(it == 1){
             //    std::fill(Kd.begin(), Kd.end(), 0);
-            //    this->dot_vector(dr, Kd);
+            //    this->matrix->dot_vector(dr, Kd);
             //    double dmr = cblas_ddot(r.size(), r.data(), 1, Kd.data(), 1);
             //    double dmrnorm = -dmr/rnorm;
             //    logger::quick_log("dmr", dmr);
@@ -179,7 +179,7 @@ void FiniteElement::solve_frictionless_displ(const Meshing* const mesh, std::vec
         this->reset_hessian();
         //this->generate_matrix(mesh, u.size(), 0, mesh->node_positions[0], topopt, D_cache, u_ext);
         std::fill(Ku.begin(), Ku.end(), 0);
-        this->dot_vector(u, Ku);
+        this->matrix->dot_vector(u, Ku);
         std::fill(Ku.begin() + u_size, Ku.end(), 0);
         this->matrix->append_Ku_frictionless(mesh, u, Ku);
         for(size_t i = 0; i < vec_size; ++i){
@@ -270,7 +270,7 @@ void FiniteElement::solve_frictionless_penalty(const Meshing* const mesh, std::v
 
     double step = 1.0;
     std::fill(Ku.begin(), Ku.end(), 0);
-    this->dot_vector(u, Ku);
+    this->matrix->dot_vector(u, Ku);
     for(size_t i = 0; i < u_size; ++i){
         r[i] = -(Ku[i] - f[i]);
     }
@@ -289,7 +289,7 @@ void FiniteElement::solve_frictionless_penalty(const Meshing* const mesh, std::v
         mesh->extend_vector(0, u, u_ext);
         this->generate_matrix(mesh, u.size(), 0, mesh->node_positions[0], topopt, D_cache, u_ext);
         std::fill(Ku.begin(), Ku.end(), 0);
-        this->dot_vector(u, Ku);
+        this->matrix->dot_vector(u, Ku);
 
         for(size_t i = 0; i < u_size; ++i){
             r[i] = -(Ku[i] - f[i]);

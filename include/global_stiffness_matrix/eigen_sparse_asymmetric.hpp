@@ -44,9 +44,6 @@ class EigenSparseAsymmetric : public GlobalStiffnessMatrix{
     inline virtual void reset_hessian() override{
        this->K = this->K_bkp; 
     };
-    virtual bool generate_hessian(std::vector<double>& lambda, const std::vector<double>& Ku) override;
-
-    virtual double get_newton_step(const std::vector<double>& delta, const std::vector<double>& lambda, const std::vector<double>& Ku) override;
 
     Mat& get_K() {
         return K;
