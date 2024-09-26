@@ -243,9 +243,7 @@ void FiniteElement::solve_frictionless_displ(const Meshing* const mesh, std::vec
     std::copy(u.begin(), u.begin() + u_size, load.begin());
 }
 void FiniteElement::solve_frictionless_penalty(const Meshing* const mesh, std::vector<double>& load, const bool topopt, const std::vector<std::vector<double>>& D_cache, const std::vector<double>& u0){
-    const size_t l_num = mesh->lambda_elements.size();
-    const size_t u_size = load.size();
-    const size_t vec_size = u_size;
+    const size_t vec_size = this->u_size;
 
     double E = 0;
     size_t it = 0;

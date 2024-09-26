@@ -62,7 +62,6 @@ void SolverManager::calculate_displacements_global(const Meshing* const mesh, st
         auto& ui = this->split_u[i];
         this->solvers[i]->calculate_displacements(mesh, l, ui, this->lambdas[i][0], this->topopt, this->D_matrices);
         mesh->extend_vector(i, l, ui);
-        //mesh->apply_lambda(this->lambdas[i][0], ui);
         #pragma omp parallel for
         for(size_t j = 0; j < u.size(); ++j){
             u[j] += ui[j];
@@ -75,7 +74,7 @@ void SolverManager::calculate_displacements_adjoint(const Meshing* const mesh, s
     logger::log_assert(this->iteration > 0, logger::ERROR, "calculate_displacements_global() must be called once before calculate_displacements_adjoint() each iteration");
     for(size_t i = 0; i < mesh->sub_problems->size(); ++i){
         if(this->iteration == 1){
-            this->lambdas[i].emplace_back(mesh->lambda_elements.size()*3, 0.1);
+            this->lambdas[i].emplace_back(mesh->lag_node_map.size(), 0.01);
         }
         auto& l = load[i];
         auto& n = mesh->node_positions[i];
@@ -92,7 +91,6 @@ void SolverManager::calculate_displacements_adjoint(const Meshing* const mesh, s
             }
             this->solvers[i]->calculate_displacements(mesh, load_pos, ui, this->lambdas[i][this->solve_step], this->topopt, this->D_matrices);
             mesh->extend_vector(i, load_pos, u);
-            mesh->apply_lambda(this->lambdas[i][solve_step], u);
             #pragma omp parallel for
             for(size_t j = 0; j < n.size(); ++j){
                 const long p_new = n[j];
@@ -103,7 +101,6 @@ void SolverManager::calculate_displacements_adjoint(const Meshing* const mesh, s
         } else if(l.size() == mesh->dofs_per_subproblem[i]){
             this->solvers[i]->calculate_displacements(mesh, l, ui, this->lambdas[i][this->solve_step], this->topopt, this->D_matrices);
             mesh->extend_vector(i, l, u);
-            mesh->apply_lambda(this->lambdas[i][this->solve_step], u);
         } else {
             logger::log_assert(false, logger::ERROR, "incorrect load vector size, must be equal to mesh->max_dofs OR mesh->dofs_per_subproblem[i]");
         }
@@ -242,7 +239,6 @@ std::vector<double> SolverManager::calculate_reactions(const Meshing* const mesh
     const double t = mesh->thickness;
     const size_t dof       = mesh->elem_info->get_dof_per_node();
     const size_t node_num  = mesh->elem_info->get_nodes_per_element();
-    const size_t bnode_num = mesh->elem_info->get_boundary_nodes_per_element();
     const size_t k_size    = mesh->elem_info->get_k_dimension();
     std::vector<double> f(u.size(),0);
 
