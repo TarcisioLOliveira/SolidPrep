@@ -35,7 +35,7 @@ class EigenSparseSymmetric : public GlobalStiffnessMatrix{
 
     virtual ~EigenSparseSymmetric() = default;
 
-    virtual void generate(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const std::vector<double>& u_ext, const FiniteElement::MatrixType type) override;
+    virtual void generate(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const std::vector<double>& u_ext, const FiniteElement::ContactType type) override;
 
     inline virtual void dot_vector(const std::vector<double>& v, std::vector<double>& v_out) const override{
         Eigen::VectorXd u = Eigen::Map<const Eigen::VectorXd>(v.data(), v.size());
@@ -44,7 +44,9 @@ class EigenSparseSymmetric : public GlobalStiffnessMatrix{
         std::copy(u_out.begin(), u_out.end(), v_out.begin());
     }
 
-    inline virtual void reset_hessian() override{};
+    inline virtual void reset_hessian() override{
+       this->K = this->K_bkp; 
+    };
     inline virtual bool generate_hessian(std::vector<double>& lambda, const std::vector<double>& Ku) override{};
     virtual double get_newton_step(const std::vector<double>& delta, const std::vector<double>& lambda, const std::vector<double>& Ku) override;
 
@@ -56,6 +58,7 @@ class EigenSparseSymmetric : public GlobalStiffnessMatrix{
     bool first_time = true;
     size_t u_size, l_num;
     Mat K;
+    Mat K_bkp;
 
     inline virtual void insert_block_symmetric(const std::vector<double>& k, const std::vector<long>& posi, const std::vector<long>& posj) override{
         const size_t w = posj.size();

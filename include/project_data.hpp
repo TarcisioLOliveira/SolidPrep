@@ -44,13 +44,17 @@
 #include "field.hpp"
 #include "solver_manager.hpp"
 #include "sub_problem.hpp"
-#include "nonlinear_solver.hpp"
 
 /**
  * Reads and stores project data.
  */
 class ProjectData {
     public:
+
+    struct ContactData{
+        FiniteElement::ContactType contact_type = FiniteElement::ContactType::RIGID;
+        double rtol_abs = 0;
+    };
 
     enum DataType{
         TYPE_NULL,
@@ -66,19 +70,6 @@ class ProjectData {
         FEA_ONLY,
         OPTIMIZE_ONLY,
         BEAMS_ONLY
-    };
-    enum ContactType{
-        RIGID,
-        FRICTIONLESS
-    };
-    enum SolverType{
-        LINEAR,
-        OPTIMIZATION,
-        NEWTON
-    };
-    enum SolverOptType{
-        STEEPEST_DESCENT,
-        MMA
     };
     /**
      * Loads project data file.
@@ -109,9 +100,9 @@ class ProjectData {
     std::unique_ptr<Optimizer> optimizer;
     std::vector<std::unique_ptr<Field>> fields;
     std::vector<SubProblem> sub_problems;
-    std::unique_ptr<NonlinearSolver> nonlinear_solver;
     AnalysisType analysis;
-    ContactType contact_type = RIGID;
+    ContactData contact_data;
+    
     std::string folder_path;
     
     private:
@@ -129,9 +120,7 @@ class ProjectData {
 
     std::string get_folder_path(const std::string& project_file_path) const;
 
-    ContactType get_contact_type(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc);
-
-    std::unique_ptr<NonlinearSolver> get_nonlinear_solver(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc);
+    ContactData get_contact_data(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc);
 
     std::vector<std::unique_ptr<Material>> load_materials(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc);
 

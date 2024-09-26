@@ -32,7 +32,7 @@ class EigenSparseAsymmetricTriplets : public GlobalStiffnessMatrix{
 
     virtual ~EigenSparseAsymmetricTriplets() = default;
 
-    virtual void generate(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const std::vector<double>& u_ext, const FiniteElement::MatrixType type) override;
+    virtual void generate(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const std::vector<double>& u_ext, const FiniteElement::ContactType type) override;
 
     inline virtual void dot_vector(const std::vector<double>& v, std::vector<double>& v_out) const override{
         (void)v;
@@ -72,7 +72,7 @@ class EigenSparseAsymmetricTriplets : public GlobalStiffnessMatrix{
     }
 };
 
-void EigenSparseAsymmetricTriplets::generate(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const std::vector<double>& u_ext, const FiniteElement::MatrixType type){
+void EigenSparseAsymmetricTriplets::generate(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const std::vector<double>& u_ext, const FiniteElement::ContactType type){
     (void) u_size;
     (void) l_num;
     this->generate_base(mesh, u_size, l_num, node_positions, topopt, D_cache, u_ext, type);
@@ -82,34 +82,25 @@ void EigenSparseAsymmetricTriplets::generate(const Meshing * const mesh, const s
 
 }
 
-void EigenSparseAsymmetric::generate(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const std::vector<double>& u_ext, const FiniteElement::MatrixType type){
+void EigenSparseAsymmetric::generate(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const std::vector<double>& u_ext, const FiniteElement::ContactType type){
     logger::quick_log("Generating stiffness matrix...");
     this->u_size = u_size;
     this->l_num = l_num;
     if(this->first_time){
         size_t matrix_width = u_size;
-        if(type == FiniteElement::MatrixType::LAMBDA_SLIDING){
-            matrix_width += 2*l_num;
-        } else if(type == FiniteElement::MatrixType::LAMBDA_HESSIAN){
-            matrix_width += 3*l_num;
+        if(type != FiniteElement::ContactType::RIGID){
+            matrix_width += l_num;
         }
         this->K = Mat(matrix_width, matrix_width);
         internal::EigenSparseAsymmetricTriplets trigen;
         trigen.generate(mesh, u_size, l_num, node_positions, topopt, D_cache, u_ext, type);
         this->K.setFromTriplets(trigen.triplets.begin(), trigen.triplets.end());
         this->first_time = false;
-        if(type == FiniteElement::MatrixType::LAMBDA_HESSIAN){
-            this->LD = Mat(matrix_width, matrix_width);
-            for(size_t i = 0; i < matrix_width; ++i){
-                this->LD.coeffRef(i,i) = 1;
-            }
-            this->LD.makeCompressed();
-        }
     } else {
         std::fill(this->K.valuePtr(), this->K.valuePtr() + this->K.nonZeros(), 0);
         this->generate_base(mesh, u_size, l_num, node_positions, topopt, D_cache, u_ext, type);
     }
-    if(type == FiniteElement::MatrixType::LAMBDA_HESSIAN){
+    if(type == FiniteElement::ContactType::FRICTIONLESS_DISPL){
         this->K_bkp = K;
     }
     logger::quick_log("Done.");
@@ -119,9 +110,7 @@ bool EigenSparseAsymmetric::generate_hessian(std::vector<double>& lambda, const 
     const size_t hoffset = u_size + 2*l_num;
     for(size_t i = 0; i < l_num; ++i){
         const double l = lambda[2*l_num + i];
-        this->LD.coeffRef(i + hoffset, i + hoffset) = 2*l;
     }
-    this->K = LD*K*LD;
     for(size_t i = 0; i < l_num; ++i){
         this->K.coeffRef(i + hoffset, i + hoffset) += 2*Ku[i + hoffset];
     }

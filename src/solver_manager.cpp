@@ -26,7 +26,7 @@ void SolverManager::generate_matrix(const Meshing* const mesh, const std::vector
     this->topopt = density.size() > 0;
     this->update_D_matrices(mesh, density, pc, psi);
     const size_t l_num = 0;//mesh->lag_node_map.size();
-    if(this->iteration == 0 && mesh->proj_data->contact_type != ProjectData::RIGID){
+    if(this->iteration == 0 && mesh->proj_data->contact_data.contact_type != FiniteElement::ContactType::RIGID){
         this->split_u.resize(mesh->sub_problems->size());
         this->split_u[0].resize(mesh->max_dofs, 0);
         mesh->generate_initial_u_contact(this->split_u[0]);
@@ -34,7 +34,7 @@ void SolverManager::generate_matrix(const Meshing* const mesh, const std::vector
     for(size_t i = 0; i < mesh->sub_problems->size(); ++i){
         auto& n = mesh->node_positions[i];
         auto& l = mesh->load_vector[i];
-        if(mesh->proj_data->contact_type == ProjectData::RIGID){
+        if(mesh->proj_data->contact_data.contact_type != FiniteElement::ContactType::RIGID){
             this->solvers[i]->generate_matrix(mesh, l.size(), 0, n, this->topopt, this->D_matrices, this->split_u[i]);
         } else {
             // TODO: improve problem definition

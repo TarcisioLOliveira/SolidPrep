@@ -25,8 +25,8 @@
 
 namespace finite_element{
 
-MUMPSSolver::MUMPSSolver(NonlinearSolver* nl):
-    FiniteElement(nl, &this->gsm)
+MUMPSSolver::MUMPSSolver(ContactType contact_type, double rtol_abs):
+    FiniteElement(contact_type, rtol_abs, &this->gsm)
 {
     this->config.job = -1; // Configuration initialization
     this->config.sym = 1; // Hermitian matrix
@@ -77,7 +77,7 @@ MUMPSSolver::~MUMPSSolver(){
     dmumps_c(&this->config);
 }
 
-void MUMPSSolver::generate_matrix_base(const Meshing* const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const std::vector<double>& u_ext, const MatrixType type){
+void MUMPSSolver::generate_matrix_base(const Meshing* const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const std::vector<double>& u_ext, const ContactType type){
     int mpi_id = 0;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi_id);
 

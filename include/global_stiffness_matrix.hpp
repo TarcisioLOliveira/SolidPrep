@@ -29,7 +29,7 @@ class GlobalStiffnessMatrix{
     virtual ~GlobalStiffnessMatrix() = default;
     const double K_MIN = 1e-14;
 
-    virtual void generate(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const std::vector<double>& u_ext, const FiniteElement::MatrixType type) = 0;
+    virtual void generate(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const std::vector<double>& u_ext, const FiniteElement::ContactType type) = 0;
 
     virtual void dot_vector(const std::vector<double>& v, std::vector<double>& v_out) const = 0;
 
@@ -47,7 +47,7 @@ class GlobalStiffnessMatrix{
     size_t W, N;
     const double EPS = 5e7;
 
-    virtual void generate_base(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const std::vector<double>& u_ext, const FiniteElement::MatrixType type);
+    virtual void generate_base(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const std::vector<double>& u_ext, const FiniteElement::ContactType type);
 
     virtual void generate_expansion(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const Meshing::LambdaType type);
 

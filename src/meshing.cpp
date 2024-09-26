@@ -51,7 +51,7 @@ void Meshing::generate_elements(const TopoDS_Shape& shape,
     logger::quick_log("Generating elements and preparing for finite element analysis...");
 
     std::unordered_map<size_t, MeshNode*> original_map = id_map;
-    const bool rigid = (this->proj_data->contact_type == ProjectData::ContactType::RIGID);
+    const bool rigid = (this->proj_data->contact_data.contact_type == FiniteElement::ContactType::RIGID);
 
     const bool delete_duplicated = deduplicate && rigid;
     if(this->geometries.size() > 1){
@@ -124,7 +124,7 @@ void Meshing::apply_boundary_conditions(const std::vector<Force>& forces,
                                         std::vector<SubProblem>& sub_problems){
 
     logger::quick_log("Applying boundary conditions...");
-    const bool rigid = (this->proj_data->contact_type == ProjectData::ContactType::RIGID);
+    const bool rigid = (this->proj_data->contact_data.contact_type != FiniteElement::ContactType::RIGID);
     if (!rigid){
         logger::log_assert(this->to_rigid_map.size() > 0,
                 logger::ERROR,
@@ -384,7 +384,7 @@ void Meshing::populate_boundary_elements(const std::vector<ElementShape>& bounda
     // If contact type is not rigid, nodes have not been merged, so one needs
     // to use to_rigid_map to find overlapping nodes and generate intergeometry
     // boundary metadata
-    if(this->proj_data->contact_type != ProjectData::RIGID){
+    if(this->proj_data->contact_data.contact_type != FiniteElement::ContactType::RIGID){
         // Generate inverse mesh for boundary
         for(auto& b:this->boundary_elements){
             for(size_t i = 0; i < N; ++i){
@@ -1176,7 +1176,7 @@ void Meshing::reverse_cuthill_mckee(const std::vector<ElementShape>& elem_list){
     added[min_node] = true;
     std::vector<size_t> result;
     result.reserve(this->node_list.size());
-    if(this->proj_data->contact_type == ProjectData::RIGID){
+    if(this->proj_data->contact_data.contact_type == FiniteElement::ContactType::RIGID){
         while(!queue.empty()){
             size_t node = queue.front();
             auto& adj = adjacents[node];

@@ -60,9 +60,6 @@
 #include "element/TET4.hpp"
 #include "element/H8.hpp"
 #include "element/TET10.hpp"
-#include "topology_optimization/minimal_volume.hpp"
-#include "topology_optimization/minimal_compliance.hpp"
-#include "topology_optimization/compliance_constraint_simple.hpp"
 #include "density_filter/convolution.hpp"
 #include "density_filter/helmholtz.hpp"
 #include "density_filter/averaging.hpp"
@@ -82,9 +79,6 @@
 #include "function/mass_first_material.hpp"
 #include "function/mechanostat.hpp"
 #include "field/orthotropic_flow.hpp"
-#include "nonlinear_solver/steepest_descent.hpp"
-#include "nonlinear_solver/newton.hpp"
-#include "nonlinear_solver/mma.hpp"
 
 ProjectData::ProjectData(std::string project_file){
 #ifdef _WIN32
@@ -103,12 +97,7 @@ ProjectData::ProjectData(std::string project_file){
 
     this->folder_path = this->get_folder_path(project_file);
     if(this->log_data(doc, "contact_type", TYPE_OBJECT, false)){
-        this->contact_type = this->get_contact_type(doc["contact_type"]);
-        if(this->contact_type == ContactType::RIGID){
-            this->nonlinear_solver = std::make_unique<nonlinear_solver::Linear>();
-        } else {
-            this->nonlinear_solver = this->get_nonlinear_solver(doc["contact_type"]);
-        }
+        this->contact_data = this->get_contact_data(doc["contact_type"]);
     }
 
     logger::log_assert(doc.HasMember("solid_type"), logger::ERROR, "Missing member: ");
@@ -270,14 +259,27 @@ bool ProjectData::log_data(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc
     return correct_type;
 }
 
-ProjectData::ContactType ProjectData::get_contact_type(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc){
-    const std::string type = doc["type"].GetString();
-    if(type == "rigid"){
-        return ContactType::RIGID;
-    } else  if(type == "frictionless"){
-        return ContactType::FRICTIONLESS;
+ProjectData::ContactData ProjectData::get_contact_data(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc){
+    if(this->log_data(doc, "type", TYPE_STRING, false)){
+        const std::string type = doc["type"].GetString();
+        FiniteElement::ContactType contact_type = FiniteElement::ContactType::RIGID;
+        if(type == "rigid"){
+            contact_type = FiniteElement::ContactType::RIGID;
+        } else {
+            this->log_data(doc, "rtol_abs", TYPE_DOUBLE, true);
+            double rtol_abs = doc["rtol_abs"].GetDouble();
+            if(type == "frictionless_penalty"){
+            contact_type = FiniteElement::ContactType::FRICTIONLESS_PENALTY;
+            } else  if(type == "frictionless_displ"){
+                contact_type = FiniteElement::ContactType::FRICTIONLESS_DISPL;
+            } else {
+                logger::log_assert(false, logger::ERROR, "unknown contact type: {}", type);
+            }
+            return {contact_type, rtol_abs};
+        }
+
     } else {
-        logger::log_assert(false, logger::ERROR, "unknown contact type: {}", type);
+        return {FiniteElement::ContactType::RIGID, 0};
     }
 }
 
@@ -632,9 +634,9 @@ std::unique_ptr<FiniteElement> ProjectData::load_fea(const rapidjson::GenericVal
     //    finite_element.reset(new finite_element::PCG(eps, p));
     //} else if(fea["type"] == "mumps"){
     if(fea["type"] == "mumps"){
-        finite_element.reset(new finite_element::MUMPSSolver(this->nonlinear_solver.get()));
+        finite_element.reset(new finite_element::MUMPSSolver(this->contact_data.contact_type, this->contact_data.rtol_abs));
     } else if(fea["type"] == "eigen_pcg"){
-        finite_element.reset(new finite_element::EigenPCG(this->nonlinear_solver.get()));
+        finite_element.reset(new finite_element::EigenPCG(this->contact_data.contact_type, this->contact_data.rtol_abs));
     } else if(fea["type"] == "petsc_pcg"){
         this->log_data(fea, "backend", TYPE_STRING, true);
         std::string backend = fea["backend"].GetString();
@@ -645,7 +647,7 @@ std::unique_ptr<FiniteElement> ProjectData::load_fea(const rapidjson::GenericVal
             b = finite_element::PETScPCG::PETScBackend::CUDA;
         }
 
-        finite_element.reset(new finite_element::PETScPCG(this->nonlinear_solver.get(), b));
+        finite_element.reset(new finite_element::PETScPCG(this->contact_data.contact_type, this->contact_data.rtol_abs, b));
     }
 
     return finite_element;
@@ -1381,51 +1383,4 @@ std::vector<SubProblem> ProjectData::load_sub_problems(const rapidjson::GenericV
     }
 
     return sub_problems;
-}
-
-std::unique_ptr<NonlinearSolver> ProjectData::get_nonlinear_solver(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc){
-    this->log_data(doc, "method", TYPE_STRING, true);
-    std::string method = doc["method"].GetString();
-    if(method == "steepest"){
-        this->log_data(doc, "init", TYPE_DOUBLE, true);
-        this->log_data(doc, "inc", TYPE_DOUBLE, true);
-        this->log_data(doc, "dec", TYPE_DOUBLE, true);
-        this->log_data(doc, "xtol_abs", TYPE_DOUBLE, true);
-        double init = doc["init"].GetDouble();
-        double inc = doc["inc"].GetDouble();
-        double dec = doc["dec"].GetDouble();
-        double xtol_abs = doc["xtol_abs"].GetDouble();
-
-        return std::make_unique<nonlinear_solver::SteepestDescent>(init, inc, dec, xtol_abs);
-    } else if(method == "mma"){
-        this->log_data(doc, "init", TYPE_DOUBLE, true);
-        this->log_data(doc, "inc", TYPE_DOUBLE, true);
-        this->log_data(doc, "dec", TYPE_DOUBLE, true);
-        this->log_data(doc, "delta_max", TYPE_DOUBLE, true);
-        this->log_data(doc, "delta_min", TYPE_DOUBLE, true);
-        this->log_data(doc, "xmin", TYPE_DOUBLE, true);
-        this->log_data(doc, "xmax", TYPE_DOUBLE, true);
-        this->log_data(doc, "xtol_abs", TYPE_DOUBLE, true);
-        double init = doc["init"].GetDouble();
-        double inc = doc["inc"].GetDouble();
-        double dec = doc["dec"].GetDouble();
-        double delta_min = doc["delta_min"].GetDouble();
-        double delta_max = doc["delta_max"].GetDouble();
-        double xmin = doc["xmin"].GetDouble();
-        double xmax = doc["xmax"].GetDouble();
-        double xtol_abs = doc["xtol_abs"].GetDouble();
-
-        return std::make_unique<nonlinear_solver::MMA>(init, inc, dec, delta_min, delta_max, xmin, xmax, xtol_abs);
-    } else if(method == "newton"){
-        this->log_data(doc, "mult", TYPE_DOUBLE, true);
-        this->log_data(doc, "rtol_abs", TYPE_DOUBLE, true);
-        double mult = doc["mult"].GetDouble();
-        double rtol_abs = doc["rtol_abs"].GetDouble();
-
-        return std::make_unique<nonlinear_solver::Newton>(mult, rtol_abs);
-    } else {
-        logger::log_assert(false, logger::ERROR, "unknown solving method: {}", method);
-    }
-
-    return nullptr;
 }

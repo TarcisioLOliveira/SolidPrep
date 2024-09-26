@@ -24,10 +24,10 @@
 #include "project_data.hpp"
 #include <limits>
 
-void GlobalStiffnessMatrix::generate_base(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const std::vector<double>& u_ext, const FiniteElement::MatrixType type){
+void GlobalStiffnessMatrix::generate_base(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const std::vector<double>& u_ext, const FiniteElement::ContactType type){
     size_t D_offset = 0;
     size_t L = u_size;
-    if(type == FiniteElement::MatrixType::FRICTIONLESS){
+    if(type != FiniteElement::ContactType::RIGID){
         L += l_num;
     }
     const std::vector<double> lambda(l_num, 0);
@@ -47,8 +47,9 @@ void GlobalStiffnessMatrix::generate_base(const Meshing * const mesh, const size
     if(mesh->springs->size() > 0){
         this->add_springs(mesh, node_positions);
     }
-    if(mesh->paired_boundary.size() > 0){
+    if(type == FiniteElement::ContactType::FRICTIONLESS_PENALTY){
         this->add_contacts(mesh, node_positions, u_ext);
+    } else if(type == FiniteElement::ContactType::FRICTIONLESS_DISPL){
         //this->add_frictionless_part1(mesh, node_positions, u_ext);
         //this->add_frictionless_part2(mesh, node_positions, u_ext, lambda);
         //for(size_t i = u_size; i < L; ++i){

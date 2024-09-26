@@ -21,28 +21,24 @@
 #ifndef FINITE_ELEMENT_HPP
 #define FINITE_ELEMENT_HPP
 
-#include <memory>
 #include <vector>
 #include "element.hpp"
 #include "meshing.hpp"
 #include "geometry.hpp"
-#include "nonlinear_solver.hpp"
 
-class ProjectData;
 class GlobalStiffnessMatrix;
 
 class FiniteElement{
     public:
     const double K_MIN = 1e-6;
 
-    enum class MatrixType{
+    enum ContactType{
         RIGID,
-        FRICTIONLESS,
-        LAMBDA_SLIDING,
-        LAMBDA_HESSIAN
+        FRICTIONLESS_PENALTY,
+        FRICTIONLESS_DISPL
     };
 
-    FiniteElement(NonlinearSolver* nl, GlobalStiffnessMatrix* m);
+    FiniteElement(ContactType contact_type, double rtol_abs, GlobalStiffnessMatrix* m);
 
     virtual ~FiniteElement() = default;
 
@@ -53,12 +49,12 @@ class FiniteElement{
     virtual std::vector<double> calculate_forces(const Meshing* const mesh, const std::vector<double>& displacements) const;
 
     protected:
-    const NonlinearSolver::SolverClass prob_type;
-    const NonlinearSolver::SolverType nl_type;
+    const ContactType contact_type;
+    const double rtol_abs;
     GlobalStiffnessMatrix* matrix = nullptr;
     size_t u_size, l_num;
 
-    virtual void generate_matrix_base(const Meshing* const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const std::vector<double>& u_ext, const MatrixType type) = 0;
+    virtual void generate_matrix_base(const Meshing* const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const std::vector<double>& u_ext, const ContactType type) = 0;
 
     virtual void solve(std::vector<double>& load) = 0;
     virtual void reset_hessian() = 0;
@@ -67,18 +63,11 @@ class FiniteElement{
     virtual double get_newton_step(const std::vector<double>& delta, const std::vector<double>& lambda, const std::vector<double>& Ku) = 0;
 
     void solve_rigid(std::vector<double>& load);
-    void solve_frictionless(const Meshing* const mesh, std::vector<double>& load, std::vector<double>& lambda);
-    void solve_opt(const Meshing* const mesh, std::vector<double>& load, std::vector<double>& lambda, const bool topopt, const std::vector<std::vector<double>>& D_cache);
-    void solve_newton(const Meshing* const mesh, std::vector<double>& load, std::vector<double>& lambda, const bool topopt, const std::vector<std::vector<double>>& D_cache);
+    void solve_frictionless_displ(const Meshing* const mesh, std::vector<double>& load, std::vector<double>& lambda);
 
-    void solve_newton(const Meshing* const mesh, std::vector<double>& load, const bool topopt, const std::vector<std::vector<double>>& D_cache, const std::vector<double>& u0);
+    void solve_frictionless_penalty(const Meshing* const mesh, std::vector<double>& load, const bool topopt, const std::vector<std::vector<double>>& D_cache, const std::vector<double>& u0);
 
     private:
-    NonlinearSolver* const nl_solver;
-
-    void calculate_gradient(const Meshing* const mesh, std::vector<double>& grad, const std::vector<double>& u_ext, const std::vector<double>& f_ext, const std::vector<double>& lambda, bool topopt, const std::vector<std::vector<double>>& D_cache) const;
-    void calculate_gradient2(const Meshing* const mesh, std::vector<double>& grad, const std::vector<double>& u_ext_pure, const std::vector<double>& f_ext, const std::vector<double>& lambda, bool topopt, const std::vector<std::vector<double>>& D_cache) const;
-    void apply_lambda_force(const Meshing* const mesh, std::vector<double>& f, const std::vector<double>& lambda, bool topopt, const std::vector<std::vector<double>>& D_cache) const;
 };
 
 #endif

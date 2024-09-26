@@ -27,8 +27,8 @@
 
 namespace finite_element{
 
-PETScPCG::PETScPCG(NonlinearSolver* nl, PETScBackend backend):
-    FiniteElement(nl, nullptr), gsm(nullptr){
+PETScPCG::PETScPCG(ContactType contact_type, double rtol_abs, PETScBackend backend):
+    FiniteElement(contact_type, rtol_abs, nullptr), gsm(nullptr){
     switch(backend){
         case PETScBackend::CPU:
             this->vec_type = VECSTANDARD;
@@ -48,8 +48,7 @@ PETScPCG::~PETScPCG(){
     KSPDestroy(&this->ksp);
 }
 
-void PETScPCG::generate_matrix_base(const Meshing* const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const std::vector<double>& u_ext, const MatrixType type){
-    this->matrix_type = type;
+void PETScPCG::generate_matrix_base(const Meshing* const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const std::vector<double>& u_ext, const ContactType type){
     this->gsm->generate(mesh, u_size, l_num, node_positions, topopt, D_cache, u_ext, type);
     this->setup = false;
 }
