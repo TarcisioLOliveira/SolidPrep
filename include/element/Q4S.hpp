@@ -66,12 +66,28 @@ class Q4S : public MeshElementCommon2DQuad<Q4S>{
     virtual Eigen::VectorXd source_1dof(const double t) const override;
     virtual Eigen::VectorXd flow_1dof(const double t, const MeshNode** nodes) const override;
 
+    virtual std::vector<double> get_Ni(const gp_Pnt& p) const override;
+
     virtual inline std::unique_ptr<MeshElementFactory> get_element_info() const override{
         return std::unique_ptr<MeshElementFactory>(new MeshElementFactoryImpl<Q4S>());
     }
 
     private:
     double a, b, x0, y0 = 0;
+
+    inline double N(double x, double y, size_t i) const{
+        switch(i){
+            case 0:
+                return (a-x)*(b-y)/(4*a*b);
+            case 1:
+                return (a+x)*(b-y)/(4*a*b);
+            case 2:
+                return (a+x)*(b+y)/(4*a*b);
+            case 3:
+                return (a-x)*(b+y)/(4*a*b);
+        }
+        return 0;
+    }
 
     virtual std::vector<double> get_DB(const std::vector<double>& D, const gp_Pnt& point) const override;
     virtual std::vector<double> get_Nf(const double t, const std::vector<gp_Pnt>& points) const override;

@@ -430,6 +430,17 @@ std::vector<double> Q4::get_nodal_density_gradient(gp_Pnt p) const{
                                c[0] + d[0]*x, c[1] + d[1]*x, c[2] + d[2]*x, c[3] + d[3]*x};
 }
 
+std::vector<double> Q4::get_Ni(const gp_Pnt& p) const{
+    const auto Nm = this->N_mat(p.X(), p.Y());
+    std::vector<double> Nv(NODE_DOF*K_DIM, 0);
+    for(size_t i = 0; i < NODE_DOF; ++i){
+        for(size_t j = 0; j < K_DIM; ++j){
+            Nv[i*K_DIM + j] = Nm(i, j);
+        }
+    }
+    return Nv;
+}
+
 }
 
 

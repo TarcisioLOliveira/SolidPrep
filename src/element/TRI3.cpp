@@ -388,4 +388,14 @@ Eigen::VectorXd TRI3::flow_1dof(const double t, const MeshNode** nodes) const{
     return M;
 }
 
+std::vector<double> TRI3::get_Ni(const gp_Pnt& p) const{
+    const auto Ni = this->N_mat_1dof(p.X(), p.Y());
+    std::vector<double> Nv(NODE_DOF*K_DIM, 0);
+    for(size_t i = 0; i < NODES_PER_ELEM; ++i){
+        Nv[0*K_DIM + NODE_DOF*(i+0)] = Ni[i];
+        Nv[1*K_DIM + NODE_DOF*(i+1)] = Ni[i];
+    }
+    return Nv;
+}
+
 }

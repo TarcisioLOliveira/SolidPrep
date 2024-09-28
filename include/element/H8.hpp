@@ -23,11 +23,9 @@
 
 #include "element.hpp"
 #include "material.hpp"
-#include "utils.hpp"
 #include "element_factory.hpp"
 #include <Eigen/Core>
 #include <Eigen/Dense>
-#include <Eigen/src/Core/Matrix.h>
 #include <memory>
 #include "element_common.hpp"
 #include <array>
@@ -63,13 +61,29 @@ class H8 : public MeshElementCommon3DHex<H8>{
     virtual Eigen::VectorXd source_1dof(const double t) const override;
     virtual Eigen::VectorXd flow_1dof(const double t, const MeshNode** nodes) const override;
 
+    virtual std::vector<double> get_MnMn(const MeshElement* const e2, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds, const gp_Dir n) const override;
+
+    virtual std::vector<double> get_Ni(const gp_Pnt& p) const override;
+
     virtual inline std::unique_ptr<MeshElementFactory> get_element_info() const override{
         return std::unique_ptr<MeshElementFactory>(new MeshElementFactoryImpl<H8>());
     }
 
     private:
+    enum CubeSide{
+        X_MIN,
+        X_MAX,
+        Y_MIN,
+        Y_MAX,
+        Z_MIN,
+        Z_MAX,
+        UNKNOWN
+    };
     virtual std::vector<double> get_DB(const std::vector<double>& D, const gp_Pnt& point) const override;
     virtual std::vector<double> get_Nf(const double t, const std::vector<gp_Pnt>& points) const override;
+
+    CubeSide get_cube_side(const std::vector<gp_Pnt>& points) const;
+    gp_Pnt to_surface_point(const double xi, const double eta, const CubeSide side) const;
 
     inline double N_norm(double x, double y, double z, size_t i) const{
         switch(i){

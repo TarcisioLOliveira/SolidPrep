@@ -435,7 +435,10 @@ void Meshing::populate_boundary_elements(const std::vector<ElementShape>& bounda
                         this->lag_node_map[nodes[i]->id] = 0;
                     }
                     ElementShape es{std::move(nodes), e1->normal};
-                    std::unique_ptr<ContactMeshElement> bme(this->elem_info->get_contact_element_info()->make_element(es, e1->parent, e2->parent));
+                    std::unique_ptr<ContactMeshElement> bme(nullptr);
+                    if(this->proj_data->contact_data.contact_type == FiniteElement::FRICTIONLESS_DISPL){
+                        bme.reset(this->elem_info->get_contact_element_info()->make_element(es, e1->parent, e2->parent));
+                    }
                     this->paired_boundary.emplace_back(e1, e2, std::move(bme));
 
                 } else {

@@ -66,6 +66,8 @@ class TRI3 : public MeshElementCommon2DTri<TRI3>{
     virtual Eigen::VectorXd source_1dof(const double t) const override;
     virtual Eigen::VectorXd flow_1dof(const double t, const MeshNode** nodes) const override;
 
+    virtual std::vector<double> get_Ni(const gp_Pnt& p) const override;
+
     virtual inline std::unique_ptr<MeshElementFactory> get_element_info() const override{
         return std::unique_ptr<MeshElementFactory>(new MeshElementFactoryImpl<TRI3>());
     }

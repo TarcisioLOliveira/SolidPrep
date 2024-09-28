@@ -313,4 +313,15 @@ Eigen::VectorXd TET10::flow_1dof(const double t, const MeshNode** nodes) const{
     return M;
 }
 
+std::vector<double> TET10::get_Ni(const gp_Pnt& p) const{
+    const auto Nm = this->N_mat(p);
+    std::vector<double> Nv(NODE_DOF*K_DIM, 0);
+    for(size_t i = 0; i < NODE_DOF; ++i){
+        for(size_t j = 0; j < K_DIM; ++j){
+            Nv[i*K_DIM + j] = Nm(i, j);
+        }
+    }
+    return Nv;
+}
+
 }

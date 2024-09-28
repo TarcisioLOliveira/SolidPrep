@@ -711,6 +711,21 @@ Eigen::VectorXd Q4S::flow_1dof(const double t, const MeshNode** nodes) const{
     return M;
 }
 
+std::vector<double> Q4S::get_Ni(const gp_Pnt& p) const{
+    const std::vector<double> Ni{
+        N(p.X(), p.Y(), 0),
+        N(p.X(), p.Y(), 1),
+        N(p.X(), p.Y(), 2),
+        N(p.X(), p.Y(), 3)
+    };
+    std::vector<double> Nv(NODE_DOF*K_DIM, 0);
+    for(size_t i = 0; i < NODES_PER_ELEM; ++i){
+        Nv[0*K_DIM + NODE_DOF*(i+0)] = Ni[i];
+        Nv[1*K_DIM + NODE_DOF*(i+1)] = Ni[i];
+    }
+    return Nv;
+}
+
 }
 
 
