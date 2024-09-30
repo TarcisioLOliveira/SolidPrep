@@ -45,11 +45,11 @@ void GlobalStiffnessMatrix::generate_base(const Meshing * const mesh, const size
     if(type == FiniteElement::ContactType::FRICTIONLESS_PENALTY){
         this->add_contacts(mesh, node_positions, u_ext);
     } else if(type == FiniteElement::ContactType::FRICTIONLESS_DISPL){
-        //this->add_frictionless_part1(mesh, node_positions, u_ext);
-        //this->add_frictionless_part2(mesh, node_positions, u_ext, lambda);
-        //for(size_t i = u_size; i < L; ++i){
-        //    this->add_to_matrix(i, i, this->K_MIN);
-        //}
+        this->add_frictionless_part1(mesh, node_positions);
+        this->add_frictionless_part2(mesh, node_positions, u_ext, lambda);
+        for(size_t i = u_size; i < L; ++i){
+            this->add_to_matrix(i, i, this->K_MIN);
+        }
     }
     if(topopt){
         for(size_t i = 0; i < u_size; ++i){
@@ -182,7 +182,6 @@ void GlobalStiffnessMatrix::add_contacts(const Meshing * const mesh, const std::
     std::vector<gp_Pnt> points(node_num);
     std::vector<long> u_pos(2*kw);
     size_t added = 0;
-    size_t negative = 0;
     for(const auto& e:mesh->paired_boundary){
         for(size_t i = 0; i < bnum; ++i){
             points[i] = e.b1->nodes[i]->point;
@@ -197,26 +196,19 @@ void GlobalStiffnessMatrix::add_contacts(const Meshing * const mesh, const std::
         }
         //logger::quick_log(e.b1->geom_id, e.b2->geom_id);
         auto MM = e.b1->parent->get_MnMn(e.b2->parent, u_ext, points, e.b1->normal);
-        cblas_dscal(MM.size(), EPS, MM.data(), 1);
+        cblas_dscal(MM.size(), EPS_PENALTY, MM.data(), 1);
         for(size_t i = 0; i < 2*kw; ++i){
             if(std::abs(MM[i*2*kw + i]) > 1e-7){
                 ++added;
                 break;
             }
         }
-        for(size_t i = 0; i < 2*kw; ++i){
-            if(std::abs(MM[i*2*kw + i]) > 1e-7 && MM[i*2*kw + i] < 0){
-                ++negative;
-                break;
-            }
-        }
         this->insert_element_matrix(MM, u_pos);
     }
     logger::quick_log("added", added);
-    logger::quick_log("negative", negative);
 }
 
-void GlobalStiffnessMatrix::add_frictionless_part1(const Meshing * const mesh, const std::vector<long>& node_positions, const std::vector<double>& u_ext){
+void GlobalStiffnessMatrix::add_frictionless_part1(const Meshing * const mesh, const std::vector<long>& node_positions){
     const size_t node_num = mesh->elem_info->get_nodes_per_element();
     const size_t bnum = mesh->elem_info->get_boundary_nodes_per_element();
     const size_t dof = mesh->elem_info->get_dof_per_node();
@@ -236,9 +228,8 @@ void GlobalStiffnessMatrix::add_frictionless_part1(const Meshing * const mesh, c
                 u_pos[dof*(node_num + i) + j] = node_positions[n2->u_pos[j]];
             }
         }
-        //logger::quick_log(e.b1->geom_id, e.b2->geom_id);
-        auto uu = e.b1->parent->get_MnMn(e.b2->parent, u_ext, points, e.b1->normal);
-        cblas_dscal(uu.size(), this->EPS, uu.data(), 1);
+        auto uu = e.b1->parent->get_uu(e.b2->parent, points, e.b1->normal);
+        cblas_dscal(uu.size(), this->EPS_DISPL, uu.data(), 1);
         this->insert_element_matrix(uu, u_pos);
     }
 }
@@ -270,14 +261,12 @@ void GlobalStiffnessMatrix::add_frictionless_part2(const Meshing * const mesh, c
                 u2[dof*i + j] = u_ext[n2->u_pos[j]];
             }
         }
-        //logger::quick_log(e.b1->geom_id, e.b2->geom_id);
         auto LL = e.elem->fl2_LL(l_e, u1, u2);
         auto uL = e.elem->fl2_uL(l_e);
-        cblas_dscal(uL.size(), this->EPS, uL.data(), 1);
-        cblas_dscal(LL.size(), this->EPS, LL.data(), 1);
-        //for(auto& m:MM){
-        //    m *= EPS;
-        //}
+
+        cblas_dscal(uL.size(), this->EPS_DISPL, uL.data(), 1);
+        cblas_dscal(LL.size(), this->EPS_DISPL, LL.data(), 1);
+
         this->insert_block_symmetric(uL, u_pos, l_pos);
         this->insert_element_matrix(LL, l_pos);
     }
@@ -305,6 +294,6 @@ void GlobalStiffnessMatrix::append_Ku_frictionless(const Meshing* const mesh, co
                 u2_pos[dof*i + j] = mesh->node_positions[0][n2->u_pos[j]];
             }
         }
-        e.elem->fl2_Ku_lambda(this->EPS, u1_pos, u2_pos, l_pos, u, Ku);
+        e.elem->fl2_Ku_lambda(this->EPS_DISPL, u1_pos, u2_pos, l_pos, u, Ku);
     }
 }

@@ -176,7 +176,6 @@ void FiniteElement::solve_frictionless_displ(const Meshing* const mesh, std::vec
 
         logger::quick_log(lambda);
         mesh->extend_vector(0, u, u_ext);
-        this->reset_hessian();
         //this->generate_matrix(mesh, u.size(), 0, mesh->node_positions[0], topopt, D_cache, u_ext);
         std::fill(Ku.begin(), Ku.end(), 0);
         this->matrix->dot_vector(u, Ku);

@@ -325,8 +325,8 @@ std::vector<double> CTRI3::fl2_uL(const std::vector<double>& l_e) const{
         std::fill(NN.begin(), NN.end(), 0);
         for(size_t i = 0; i < U_KW; ++i){
             for(size_t j = 0; j < DIM; ++j){
-                NN[i] -= N1[i + j*U_KW]*n.Coord(1+j);
-                NN[i + U_KW] += N2[i + j*U_KW]*n.Coord(1+j);
+                NN[i] += N1[i + j*U_KW]*n.Coord(1+j);
+                NN[i + U_KW] -= N2[i + j*U_KW]*n.Coord(1+j);
             }
         }
         for(size_t i = 0; i < 2*U_KW; ++i){
@@ -411,18 +411,17 @@ void CTRI3::fl2_Ku_lambda(const double EPS, const std::vector<long> u1_pos, cons
         std::fill(NN.begin(), NN.end(), 0);
         for(size_t i = 0; i < U_KW; ++i){
             for(size_t j = 0; j < DIM; ++j){
-                NN[i] -= N1[i + j*U_KW]*n.Coord(1+j);
-                NN[i + U_KW] += N2[i + j*U_KW]*n.Coord(1+j);
+                NN[i] += N1[i + j*U_KW]*n.Coord(1+j);
+                NN[i + U_KW] -= N2[i + j*U_KW]*n.Coord(1+j);
             }
         }
         for(size_t i = 0; i < 2*U_KW; ++i){
             uL[i] += it->w*l*l*NN[i]/2;
         }
     }
-    cblas_dscal(uL.size(), EPS*this->delta, uL.data(), 1);
     for(size_t i = 0; i < U_KW; ++i){
-        Ku[u1_pos[i]] += uL[i];
-        Ku[u2_pos[i]] += uL[i + U_KW];
+        Ku[u1_pos[i]] += EPS*this->delta*uL[i];
+        Ku[u2_pos[i]] += EPS*this->delta*uL[i + U_KW];
     }
 
     const auto& gli2 = utils::GaussLegendreTri<4*ORDER>::get();
@@ -455,10 +454,9 @@ void CTRI3::fl2_Ku_lambda(const double EPS, const std::vector<long> u1_pos, cons
             LL[i] += it->w*mult*Nl[i];
         }
     }
-    cblas_dscal(LL.size(), EPS*this->delta, LL.data(), 1);
 
     for(size_t i = 0; i < NODES_PER_ELEM; ++i){
-        Ku[lu_pos[i]] += LL[i];
+        Ku[lu_pos[i]] += EPS*this->delta*LL[i];
     }
 }
 

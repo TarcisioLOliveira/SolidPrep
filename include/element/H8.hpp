@@ -61,6 +61,7 @@ class H8 : public MeshElementCommon3DHex<H8>{
     virtual Eigen::VectorXd source_1dof(const double t) const override;
     virtual Eigen::VectorXd flow_1dof(const double t, const MeshNode** nodes) const override;
 
+    virtual std::vector<double> get_uu(const MeshElement* const e2, const std::vector<gp_Pnt>& bounds, const gp_Dir n) const override;
     virtual std::vector<double> get_MnMn(const MeshElement* const e2, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds, const gp_Dir n) const override;
 
     virtual std::vector<double> get_Ni(const gp_Pnt& p) const override;

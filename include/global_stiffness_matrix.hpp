@@ -41,7 +41,8 @@ class GlobalStiffnessMatrix{
 
     protected:
     size_t W, N;
-    const double EPS = 5e7;
+    const double EPS_PENALTY = 5e7;
+    const double EPS_DISPL = 1e6;
 
     virtual void generate_base(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const std::vector<double>& u_ext, const FiniteElement::ContactType type);
 
@@ -55,7 +56,7 @@ class GlobalStiffnessMatrix{
 
     virtual void add_contacts(const Meshing * const mesh, const std::vector<long>& node_positions, const std::vector<double>& u_ext);
 
-    virtual void add_frictionless_part1(const Meshing * const mesh, const std::vector<long>& node_positions, const std::vector<double>& u_ext);
+    virtual void add_frictionless_part1(const Meshing * const mesh, const std::vector<long>& node_positions);
 
     virtual void insert_block_symmetric(const std::vector<double>& k, const std::vector<long>& posi, const std::vector<long>& posj) = 0;
 

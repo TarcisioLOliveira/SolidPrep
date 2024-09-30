@@ -253,6 +253,8 @@ class MeshElement : public Element{
 
     virtual ~MeshElement() = default;
 
+    virtual std::vector<double> get_uu(const MeshElement* const e2, const std::vector<gp_Pnt>& bounds, const gp_Dir n) const = 0;
+
     virtual std::vector<double> get_MnMn(const MeshElement* const e2, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds, const gp_Dir n) const = 0;
 
     virtual std::vector<double> get_Ni(const gp_Pnt& p) const = 0;

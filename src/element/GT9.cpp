@@ -547,6 +547,56 @@ Eigen::VectorXd GT9::flow_1dof(const double t, const MeshNode** nodes) const{
     return M;
 }
 
+std::vector<double> GT9::get_uu(const MeshElement* const e2, const std::vector<gp_Pnt>& bounds, const gp_Dir n) const{
+    const size_t KW = this->K_DIM;
+    const size_t DIM = this->DIM;
+
+    std::vector<double> NN(2*KW, 0);
+    std::vector<double> MnMn(4*KW*KW, 0);
+
+    constexpr size_t GN = 2*(2*ORDER);
+    const auto& GL = utils::GaussLegendre<GN>::get();
+
+    const double drnorm = bounds[0].Distance(bounds[1]);
+
+    const gp_Pnt p1 = bounds[0];
+    const gp_Pnt p2 = bounds[1];
+
+    for(auto xi = GL.begin(); xi < GL.end(); ++xi){
+        const gp_Pnt pi(
+            p1.X() + (p2.X() - p1.X())*xi->x,
+            p1.Y() + (p2.Y() - p1.Y())*xi->x,
+            p1.Z() + (p2.Z() - p1.Z())*xi->x
+        );
+
+        const auto N1 = this->get_Ni(pi);
+        const auto N2 = e2->get_Ni(pi);
+        std::fill(NN.begin(), NN.end(), 0);
+        for(size_t i = 0; i < KW; ++i){
+            for(size_t j = 0; j < DIM; ++j){
+                NN[i] += N1[i + j*KW]*n.Coord(1+j);
+                NN[i + KW] += N2[i + j*KW]*n.Coord(1+j);
+            }
+        }
+        for(size_t i = 0; i < 2*KW; ++i){
+            for(size_t j = 0; j < 2*KW; ++j){
+                MnMn[2*KW*i + j] += (xi->w*drnorm)*NN[i]*NN[j];
+            }
+        }
+    }
+    for(size_t i = 0; i < KW; ++i){
+        for(size_t j = KW; j < 2*KW; ++j){
+            MnMn[2*KW*i + j] *= -1.0;
+            MnMn[2*KW*j + i] *= -1.0;
+        }
+    }
+    const gp_Vec v1(bounds[0], bounds[1]);
+    const gp_Vec v2(bounds[0], bounds[2]);
+    const double A = 0.5*v1.Crossed(v2).Magnitude();
+    cblas_dscal(MnMn.size(), A, MnMn.data(), 1);
+
+    return MnMn;
+}
 std::vector<double> GT9::get_MnMn(const MeshElement* const e2, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds, const gp_Dir n) const{
     const size_t DOF = this->NODE_DOF;
     const size_t KW = this->K_DIM;
