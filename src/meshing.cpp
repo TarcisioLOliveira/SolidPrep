@@ -121,7 +121,7 @@ void Meshing::apply_boundary_conditions(const std::vector<Force>& forces,
                                         std::vector<SubProblem>& sub_problems){
 
     logger::quick_log("Applying boundary conditions...");
-    const bool rigid = (this->proj_data->contact_data.contact_type != FiniteElement::ContactType::RIGID);
+    const bool rigid = (this->proj_data->contact_data.contact_type == FiniteElement::ContactType::RIGID);
     if (!rigid){
         logger::log_assert(this->to_rigid_map.size() > 0,
                 logger::ERROR,
