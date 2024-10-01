@@ -205,8 +205,8 @@ void Curvature::calculate_stress_field_3D(const std::vector<std::unique_ptr<Mesh
      * Generate the constants which multiply theta and fill the additional
      * rectangles in the matrix.
      */
-    Eigen::Matrix<double, 2, 2> I{{1,0},
-                                  {0,1}};
+    Eigen::MatrixXd I{{1,0},
+                      {0,1}};
 
     Eigen::Matrix<double, 3, 3> B4;
     Eigen::Matrix<double, 3, 2> B3;
@@ -221,7 +221,7 @@ void Curvature::calculate_stress_field_3D(const std::vector<std::unique_ptr<Mesh
             {{S(1,2)/S(2,2), 0, 0},
              {0, S(0,2)/S(2,2), 0},
              {0, 0, -S(2,5)/S(2,2)}};
-        const Eigen::Matrix<double, 2, 2> aphi
+        const Eigen::MatrixXd aphi
             {{-S(2,3)/S(2,2), 0},
              {0, S(2,4)/S(2,2)}};
         const Eigen::MatrixXd dFD = e->int_grad_F_D(aF, center);
