@@ -44,6 +44,7 @@ Gmsh::Gmsh(const std::vector<std::unique_ptr<Geometry>>& geometries,
 void Gmsh::mesh(const std::vector<Force>& forces, 
                 const std::vector<Support>& supports,
                 std::vector<Spring>& springs){
+    (void)springs;
     TopoDS_Shape shape = this->make_compound(this->geometries);
 
     bool has_condition_inside = false;
@@ -177,6 +178,7 @@ void Gmsh::mesh(const std::vector<Force>& forces,
 }
 
 std::unordered_map<size_t, MeshNode*> Gmsh::gmsh_meshing(bool has_condition_inside, TopoDS_Shape sh, std::vector<size_t>& geom_elem_mapping, std::vector<size_t>& elem_node_tags, std::vector<size_t>& bound_elem_node_tags, const MeshElementFactory* const elem_type, std::unordered_map<size_t, size_t>& duplicate_map){
+    (void) has_condition_inside;
 
     const size_t type = elem_type->get_gmsh_element_type();
     const size_t bound_type = elem_type->get_boundary_gmsh_element_type();

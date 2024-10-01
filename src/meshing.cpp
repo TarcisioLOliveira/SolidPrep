@@ -119,6 +119,7 @@ void Meshing::apply_boundary_conditions(const std::vector<Force>& forces,
                                         std::vector<Spring>& springs,
                                         std::vector<InternalLoads>& internal_loads,
                                         std::vector<SubProblem>& sub_problems){
+    (void) forces;
 
     logger::quick_log("Applying boundary conditions...");
     const bool rigid = (this->proj_data->contact_data.contact_type == FiniteElement::ContactType::RIGID);
@@ -1707,72 +1708,3 @@ void Meshing::distribute_node_pointers(){
     }
 }
 
-void Meshing::generate_initial_u_contact(std::vector<double>& u) const{
-    const size_t bnum = this->elem_info->get_boundary_nodes_per_element();
-    const size_t dof = this->elem_info->get_dof_per_node();
-
-    //const double EPS = 1e-7;
-    //for(const auto& e:this->paired_boundary){
-    //    for(size_t i = 0; i < bnum; ++i){
-    //        const auto n1 = e.b1->nodes[i];
-    //        const auto n2 = e.b2->nodes[i];
-    //        const auto normal = e.b1->normal;
-    //        for(size_t j = 0; j < dof; ++j){
-    //            auto ni1 = node_positions[0][n1->u_pos[j]];
-    //            auto ni2 = node_positions[0][n2->u_pos[j]];
-    //            if(ni1 > -1){
-    //                u[ni1] -= normal.Coord(1+j)*EPS;
-    //            }
-    //            if(ni2 > -1){
-    //                u[ni2] += normal.Coord(1+j)*EPS;
-    //            }
-    //        }
-    //    }
-    //}
-    /*
-    utils::ProblemType prob_type = this->elem_info->get_problem_type();
-    size_t dim = 3;
-    if(prob_type == utils::PROBLEM_TYPE_2D){
-        dim = 2;
-    } else if(prob_type == utils::PROBLEM_TYPE_3D){
-        dim = 3;
-    }
-    for(const auto& g:this->geometries){
-        std::vector<double> F(dof, 0);
-        bool supported = false;
-        for(const auto& e:g->boundary_node_list){
-            for(size_t i = 0; i < dof; ++i){
-                if(this->node_positions[0][e->u_pos[i]] > -1){
-                    F[i] += this->global_load_vector[e->u_pos[i]];
-                } else {
-                    supported = true;
-                    break;
-                }
-            }
-            if(supported){
-                break;
-            }
-        }
-        if(supported){
-            continue;
-        }
-        double Fnorm = 0;
-        for(const auto& fi:F){
-            Fnorm += fi*fi;
-        }
-        Fnorm = std::sqrt(Fnorm);
-        for(auto& fi:F){
-            fi *= 1e-7/Fnorm;
-        }
-        for(const auto& e:g->node_list){
-            for(size_t i = 0; i < dof; ++i){
-                const size_t ni = this->node_positions[0][e->u_pos[i]];
-                u[ni] = F[i];
-            }
-            if(supported){
-                break;
-            }
-        }
-    }
-    */
-}

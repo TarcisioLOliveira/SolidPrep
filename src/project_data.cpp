@@ -209,7 +209,6 @@ ProjectData::ProjectData(std::string project_file){
         this->topopt_mesher = this->load_mesher(doc);
     }
     if(this->log_data(doc, "topopt", TYPE_OBJECT, needs_topopt)){
-        //this->topopt = this->load_topopt(doc);
         this->optimizer = this->load_optimizer(doc);
     }
 
@@ -677,75 +676,6 @@ std::unique_ptr<Meshing> ProjectData::load_mesher(const rapidjson::GenericValue<
     return mesher;
 }
 
-std::unique_ptr<TopologyOptimization> ProjectData::load_topopt(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc){
-    auto& to = doc["topopt"];
-    std::unique_ptr<TopologyOptimization> topopt;
-    /*
-    if(to["type"] == "minimal_volume"){
-        this->log_data(to, "Smax", TYPE_DOUBLE, true);
-        this->log_data(to, "rho_init", TYPE_DOUBLE, true);
-        this->log_data(to, "xtol_abs", TYPE_DOUBLE, true);
-        this->log_data(to, "Vfrac_abs", TYPE_DOUBLE, true);
-        this->log_data(to, "result_threshold", TYPE_DOUBLE, true);
-        this->log_data(to, "save_result", TYPE_BOOL, true);
-        this->log_data(to, "P", TYPE_INT, true);
-        this->log_data(to, "pc", TYPE_INT, true);
-
-        this->density_filter = this->load_density_filter(to);
-        this->projection = this->load_projection(to);
-
-        double Smax = to["Smax"].GetDouble();
-        double rho_init = to["rho_init"].GetDouble();
-        double xtol_abs = to["xtol_abs"].GetDouble();
-        double Vfrac_abs = to["Vfrac_abs"].GetDouble();
-        double result_threshold = to["result_threshold"].GetDouble();
-        bool save_result = to["save_result"].GetBool();
-        int P = to["P"].GetInt();
-        int pc = to["pc"].GetInt();
-        topopt.reset(new topology_optimization::MinimalVolume(this->density_filter.get(), this->projection.get(), Smax, this, rho_init, xtol_abs, Vfrac_abs, result_threshold, save_result, P, pc));
-    } else if(to["type"] == "minimal_compliance"){
-        this->log_data(to, "V", TYPE_DOUBLE, true);
-        this->log_data(to, "xtol_abs", TYPE_DOUBLE, true);
-        this->log_data(to, "ftol_rel", TYPE_DOUBLE, true);
-        this->log_data(to, "result_threshold", TYPE_DOUBLE, true);
-        this->log_data(to, "save_result", TYPE_BOOL, true);
-        this->log_data(to, "pc", TYPE_INT, true);
-
-        this->density_filter = this->load_density_filter(to);
-        this->projection = this->load_projection(to);
-
-        double V = to["V"].GetDouble();
-        double xtol_abs = to["xtol_abs"].GetDouble();
-        double ftol_rel = to["ftol_rel"].GetDouble();
-        double result_threshold = to["result_threshold"].GetDouble();
-        bool save_result = to["save_result"].GetBool();
-        int pc = to["pc"].GetInt();
-        topopt.reset(new topology_optimization::MinimalCompliance(this->density_filter.get(), this->projection.get(), this, V, xtol_abs, ftol_rel, result_threshold, save_result, pc));
-    } else if(to["type"] == "compliance_constraint_simple"){
-        this->log_data(to, "c_max", TYPE_DOUBLE, true);
-        this->log_data(to, "rho_init", TYPE_DOUBLE, true);
-        this->log_data(to, "xtol_abs", TYPE_DOUBLE, true);
-        this->log_data(to, "result_threshold", TYPE_DOUBLE, true);
-        this->log_data(to, "save_result", TYPE_BOOL, true);
-        this->log_data(to, "P", TYPE_INT, true);
-        this->log_data(to, "pc", TYPE_INT, true);
-
-        this->density_filter = this->load_density_filter(to);
-        this->projection = this->load_projection(to);
-
-        double c_max = to["c_max"].GetDouble();
-        double rho_init = to["rho_init"].GetDouble();
-        double xtol_abs = to["xtol_abs"].GetDouble();
-        double result_threshold = to["result_threshold"].GetDouble();
-        bool save_result = to["save_result"].GetBool();
-        int P = to["P"].GetInt();
-        int pc = to["pc"].GetInt();
-        topopt.reset(new topology_optimization::ComplianceConstraintSimple(this->density_filter.get(), this->projection.get(), c_max, this, rho_init, xtol_abs, result_threshold, save_result, P, pc));
-    }
-    */
-    return topopt;
-}
-
 std::unique_ptr<DensityFilter> ProjectData::load_density_filter(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc){
     this->log_data(doc, "density_filter", TYPE_OBJECT, true);
 
@@ -1073,7 +1003,7 @@ std::vector<std::unique_ptr<Field>> ProjectData::load_fields(const rapidjson::Ge
             bool show = f["display"].GetBool();
             const double alpha = f["alpha"].GetDouble();
             for(const auto& g:f["geometries"].GetArray()){
-                logger::log_assert(g.GetInt() < this->geometries.size(), logger::ERROR, "there are only {} geometries being loaded, but geometry number {} was selected for field of type {}", this->geometries.size(), g.GetInt(), type);
+                logger::log_assert((size_t)g.GetInt() < this->geometries.size(), logger::ERROR, "there are only {} geometries being loaded, but geometry number {} was selected for field of type {}", this->geometries.size(), g.GetInt(), type);
                 geoms.push_back(this->geometries[g.GetInt()].get());
             }
             for(const auto& c:f["boundary_conditions"].GetArray()){

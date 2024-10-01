@@ -29,6 +29,7 @@ Mass::Mass(const Meshing* const mesh):
     mesh(mesh){}
 
 void Mass::initialize(const Optimizer* const op){
+    (void) op;
 }
 
 double Mass::calculate(const Optimizer* const op, const std::vector<double>& u, const std::vector<double>& x){

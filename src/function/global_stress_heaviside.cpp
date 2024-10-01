@@ -82,6 +82,7 @@ double GlobalStressHeaviside::calculate(const Optimizer* const op, const std::ve
 }
 
 double GlobalStressHeaviside::calculate_with_gradient(const Optimizer* const op, const std::vector<double>& u, const std::vector<double>& x, std::vector<double>& grad){
+    (void) op;
     int mpi_id = 0;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi_id);
     std::vector<std::vector<double>> fl(this->mesh->sub_problems->size());
@@ -94,7 +95,6 @@ double GlobalStressHeaviside::calculate_with_gradient(const Optimizer* const op,
 
     const size_t s_size = this->mesh->elem_info->get_D_dimension();
     auto x_it = x.cbegin();
-    size_t it = 0;
     if(mpi_id == 0){
         for(const auto& g:this->mesh->geometries){
             if(g->do_topopt){
@@ -116,7 +116,6 @@ double GlobalStressHeaviside::calculate_with_gradient(const Optimizer* const op,
                         result += H*Se;
 
                         x_it += num_den;
-                        ++it;
                     }
                 } else {
                     for(const auto& e:g->mesh){

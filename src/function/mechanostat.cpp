@@ -59,6 +59,7 @@ double Mechanostat::calculate(const Optimizer* const op, const std::vector<doubl
     (void)op;
     (void)u;
     (void)x;
+    return 0;
 }
 double Mechanostat::calculate_with_gradient(const Optimizer* const op, const std::vector<double>& u, const std::vector<double>& x, std::vector<double>& grad){
     (void)op;

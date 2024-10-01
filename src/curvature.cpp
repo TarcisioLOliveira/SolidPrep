@@ -45,6 +45,9 @@ Curvature::Curvature(const Material* mat, gp_Dir u, gp_Dir v, gp_Dir w, Eigen::M
     M_v(M_v),
     M_w(M_u)
 {
+    (void) u;
+    (void) v;
+    (void) w;
 
     this->permute_shear_3D = std::vector<double>
         {1, 0, 0, 0, 0, 0,
@@ -238,17 +241,17 @@ void Curvature::calculate_stress_field_3D(const std::vector<std::unique_ptr<Mesh
             const long id1 = e->nodes[i]->u_pos[0];
             if(id1 > -1){
                 // F
-                // // A
-                // solver.add_value(2*id1 + 0, F_phi_xi_chi_zeta_offset + 0, dFD(2*i+0,0));
-                // solver.add_value(2*id1 + 1, F_phi_xi_chi_zeta_offset + 0, dFD(2*i+1,0));
+                // A
+                solver.add_value(2*id1 + 0, F_phi_xi_chi_zeta_offset + 0, dFD(2*i+0,0));
+                solver.add_value(2*id1 + 1, F_phi_xi_chi_zeta_offset + 0, dFD(2*i+1,0));
 
-                // // B
-                // solver.add_value(2*id1 + 0, F_phi_xi_chi_zeta_offset + 1, dFD(2*i+0,1));
-                // solver.add_value(2*id1 + 1, F_phi_xi_chi_zeta_offset + 1, dFD(2*i+1,1));
-                //                             
-                // // C
-                // solver.add_value(2*id1 + 0, F_phi_xi_chi_zeta_offset + 2, dFD(2*i+0,2));
-                // solver.add_value(2*id1 + 1, F_phi_xi_chi_zeta_offset + 2, dFD(2*i+1,2));
+                // B
+                solver.add_value(2*id1 + 0, F_phi_xi_chi_zeta_offset + 1, dFD(2*i+0,1));
+                solver.add_value(2*id1 + 1, F_phi_xi_chi_zeta_offset + 1, dFD(2*i+1,1));
+                                            
+                // C
+                solver.add_value(2*id1 + 0, F_phi_xi_chi_zeta_offset + 2, dFD(2*i+0,2));
+                solver.add_value(2*id1 + 1, F_phi_xi_chi_zeta_offset + 2, dFD(2*i+1,2));
                                             
                 // theta                    
                 // unused                   

@@ -32,7 +32,6 @@ void SolverManager::generate_matrix(const Meshing* const mesh, const std::vector
     if(this->iteration == 0 && mesh->proj_data->contact_data.contact_type != FiniteElement::ContactType::RIGID){
         this->split_u.resize(mesh->sub_problems->size());
         this->split_u[0].resize(mesh->max_dofs, 0);
-        mesh->generate_initial_u_contact(this->split_u[0]);
     }
     for(size_t i = 0; i < mesh->sub_problems->size(); ++i){
         auto& n = mesh->node_positions[i];

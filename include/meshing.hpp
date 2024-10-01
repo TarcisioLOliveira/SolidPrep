@@ -146,8 +146,6 @@ class Meshing{
                        const std::vector<Support>& supports,
                        const std::vector<double>& rho, double threshold);
 
-    void generate_initial_u_contact(std::vector<double>& u) const;
-
     /**
      * Extends a vector (e.g. displacement vector) from rigid form to non-rigid
      * form.

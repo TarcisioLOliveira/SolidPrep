@@ -36,6 +36,7 @@ void AMSupport::initialize_views(Visualization* viz){
 }
 
 void AMSupport::initialize(const Optimizer* const op){
+    (void) op;
     const size_t num_nodes = mesh->elem_info->get_nodes_per_element();
     const size_t num_nodes_bound = mesh->elem_info->get_boundary_nodes_per_element();
     size_t N = 0;
@@ -82,6 +83,7 @@ void AMSupport::initialize(const Optimizer* const op){
 }
 
 double AMSupport::calculate(const Optimizer* const op, const std::vector<double>& u, const std::vector<double>& x){
+    (void) u;
     int mpi_id = 0;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi_id);
 
@@ -224,6 +226,7 @@ double AMSupport::calculate(const Optimizer* const op, const std::vector<double>
 }
 
 double AMSupport::calculate_with_gradient_nodal(const Optimizer* const op, const std::vector<double>& u, const std::vector<double>& x, std::vector<double>& grad){
+    (void) u;
     int mpi_id = 0;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi_id);
 
@@ -264,7 +267,6 @@ double AMSupport::calculate_with_gradient_nodal(const Optimizer* const op, const
     const double cos_a = std::cos(this->support_angle);
     auto filter_mapping = this->filter->get_id_mapping();
     auto xn = this->filter->get_nodal_densities();
-    size_t geom_id = 0;
     for(const auto& g:mesh->geometries){
         if(g->do_topopt){
             const size_t num_den = g->number_of_densities_needed();
@@ -319,7 +321,6 @@ double AMSupport::calculate_with_gradient_nodal(const Optimizer* const op, const
                 x_it += num_den;
             }
         }
-        ++geom_id;
     }
     for(long i = 0; i < this->b.size(); ++i){
         this->Phi.coeffRef(i, i) += 1e-6;
@@ -337,7 +338,6 @@ double AMSupport::calculate_with_gradient_nodal(const Optimizer* const op, const
 
     auto d_it = this->diff.begin();
     auto fm_it = filter_mapping.cbegin();
-    geom_id = 0;
     for(const auto& g:mesh->geometries){
         if(g->do_topopt){
             for(const auto& e:g->mesh){
@@ -356,7 +356,6 @@ double AMSupport::calculate_with_gradient_nodal(const Optimizer* const op, const
                 ++d_it;
             }
         }
-        ++geom_id;
     }
 
     std::fill(this->Hgrad.begin(), this->Hgrad.end(), 1);
@@ -397,7 +396,6 @@ double AMSupport::calculate_with_gradient_nodal(const Optimizer* const op, const
     fm_it = filter_mapping.cbegin();
     x_it = x.cbegin();
     gx_it = this->gradx.cbegin();
-    geom_id = 0;
     for(const auto& g:mesh->geometries){
         if(g->do_topopt){
             const size_t num_den = g->number_of_densities_needed();
@@ -447,8 +445,8 @@ double AMSupport::calculate_with_gradient_nodal(const Optimizer* const op, const
                 //dh2 = this->dH(cos_a - h2/norm, 50, 0, 1.0);
                 h2 = this->H3(cos_a - h2/norm, 1000, 0);
                 dh2 = this->dH3(cos_a - h2/norm, 1000, 0);
-                double h2l = this->H2(h2/norm - cos_a, 1000, 0.0);
-                double dh2l = this->dH2(h2/norm - cos_a, 1000, 0.0);
+                //double h2l = this->H2(h2/norm - cos_a, 1000, 0.0);
+                //double dh2l = this->dH2(h2/norm - cos_a, 1000, 0.0);
                 for(size_t i = 0; i < num_nodes; ++i){
                     double switch_deriv = 0;
                     double norm_deriv = 0;
@@ -475,7 +473,6 @@ double AMSupport::calculate_with_gradient_nodal(const Optimizer* const op, const
                 g_it += num_den;
             }
         }
-        ++geom_id;
     }
 
     std::fill(grad.begin(), grad.end(), 0);
