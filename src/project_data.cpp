@@ -98,6 +98,8 @@ ProjectData::ProjectData(std::string project_file){
     this->folder_path = this->get_folder_path(project_file);
     if(this->log_data(doc, "contact_type", TYPE_OBJECT, false)){
         this->contact_data = this->get_contact_data(doc["contact_type"]);
+    } else {
+        this->contact_data = ProjectData::ContactData{FiniteElement::ContactType::RIGID, 0.0};
     }
 
     logger::log_assert(doc.HasMember("solid_type"), logger::ERROR, "Missing member: ");
@@ -260,14 +262,15 @@ bool ProjectData::log_data(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc
 }
 
 ProjectData::ContactData ProjectData::get_contact_data(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc){
-    if(this->log_data(doc, "type", TYPE_STRING, false)){
+    if(this->log_data(doc, "type", TYPE_STRING, true)){
         const std::string type = doc["type"].GetString();
         FiniteElement::ContactType contact_type = FiniteElement::ContactType::RIGID;
+        double rtol_abs = 0;
         if(type == "rigid"){
             contact_type = FiniteElement::ContactType::RIGID;
         } else {
             this->log_data(doc, "rtol_abs", TYPE_DOUBLE, true);
-            double rtol_abs = doc["rtol_abs"].GetDouble();
+            rtol_abs = doc["rtol_abs"].GetDouble();
             if(type == "frictionless_penalty"){
             contact_type = FiniteElement::ContactType::FRICTIONLESS_PENALTY;
             } else  if(type == "frictionless_displ"){
@@ -275,12 +278,10 @@ ProjectData::ContactData ProjectData::get_contact_data(const rapidjson::GenericV
             } else {
                 logger::log_assert(false, logger::ERROR, "unknown contact type: {}", type);
             }
-            return {contact_type, rtol_abs};
         }
-
-    } else {
-        return {FiniteElement::ContactType::RIGID, 0};
+        return {contact_type, rtol_abs};
     }
+    return ProjectData::ContactData{FiniteElement::ContactType::RIGID, 0.0};
 }
 
 std::vector<std::unique_ptr<Material>> ProjectData::load_materials(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc){
