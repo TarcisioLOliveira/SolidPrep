@@ -21,7 +21,6 @@
 #ifndef INTERNAL_LOADS_HPP
 #define INTERNAL_LOADS_HPP
 
-#include <algorithm>
 #include <array>
 #include <Eigen/Core>
 #include <memory>
@@ -82,13 +81,11 @@ class InternalLoads{
     std::vector<std::unique_ptr<MeshNode>> boundary_nodes;
     std::vector<std::unique_ptr<BoundaryMeshElement>> boundary_mesh;
 
-    std::vector<utils::LineBoundary> line_bounds;
     std::vector<const Node*> line_nodes;
 
     void generate_mesh(const std::vector<BoundaryElement>& boundary_elements);
 
     std::vector<BoundaryElement> increase_element_order(const std::vector<BoundaryElement>& boundary_elements);
-    void generate_boundary();
 
     // Base it off Meshing::apply_springs
     void apply_load(const std::vector<double>& load_vector) const;

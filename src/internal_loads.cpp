@@ -361,8 +361,6 @@ void InternalLoads::generate_mesh(const std::vector<BoundaryElement>& boundary_e
         }
     }
 
-    this->generate_boundary();
-
     long npos = 0;
     long id = 0;
     for(auto& l:this->line_nodes){
@@ -449,55 +447,4 @@ std::vector<BoundaryElement> InternalLoads::increase_element_order(const std::ve
     }
     
     return new_elements;
-}
-
-void InternalLoads::generate_boundary() {
-    const auto collinear =
-        [](const gp_Pnt& p1, const gp_Pnt& p2, const gp_Pnt& p3) -> bool{
-            const double d1 = p1.Distance(p2);
-            const double d2 = p1.Distance(p3);
-            const double d3 = p3.Distance(p2);
-
-            return std::abs(d2 + d3 - d1) < Precision::Confusion();
-        };
-
-    std::list<utils::LineBoundary> bound_tmp;
-    const size_t N = (this->elem_info->get_shape_type() == Element::Shape::TRI) ? 3 : 4;
-    const size_t total_nodes_num = this->boundary_elem_info->get_nodes_per_element();
-
-    for(const auto& e : this->boundary_mesh){
-        for(size_t i = 0; i < N; ++i){
-            const size_t j = (i+1) % N;
-            const auto& n1 = e->nodes[i];
-            const auto& n2 = e->nodes[j];
-            // TODO: detect inner boundaries
-            gp_Vec v(n1->point, n2->point);
-            gp_Dir n(v.Y(), -v.X(), 0);
-            std::vector<const Node*> other_nodes;
-            for(size_t k = N; k < total_nodes_num; ++k){
-                const auto& n3 = e->nodes[k];
-                if(collinear(n1->point, n2->point, n3->point)){
-                    other_nodes.push_back(n3);
-                }
-            }
-            utils::LineBoundary b{{n1, n2}, false, e.get(), n, other_nodes};
-            auto it = std::find(bound_tmp.begin(), bound_tmp.end(), b);
-            if(it == bound_tmp.end()){
-                bound_tmp.push_back(b);
-            } else {
-                bound_tmp.erase(it);
-            }
-        }
-    }
-
-    this->line_bounds.resize(bound_tmp.size());
-    std::move(bound_tmp.begin(), bound_tmp.end(), this->line_bounds.begin());
-
-    std::set<const Node*> nodes_tmp;
-    for(const auto& l:this->line_bounds){
-        nodes_tmp.insert(l.edges.begin(), l.edges.end());
-        nodes_tmp.insert(l.other_nodes.begin(), l.other_nodes.end());
-    }
-    this->line_nodes.resize(nodes_tmp.size());
-    std::copy(nodes_tmp.begin(), nodes_tmp.end(), this->line_nodes.begin());
 }
