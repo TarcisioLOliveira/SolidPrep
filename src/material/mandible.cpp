@@ -21,7 +21,6 @@
 #include <Eigen/Core>
 #include <Eigen/Dense>
 #include <cmath>
-#include <complex>
 #include <fstream>
 #include <algorithm>
 #include <gp_Ax1.hxx>
@@ -257,7 +256,6 @@ Mandible::RingPoint Mandible::Ring::get_r_max(double theta) const{
     double coeff = (theta - theta1)/(theta2 - theta1);
     gp_Pnt pn = p1.p;
     pn.Translate(coeff*gp_Vec(p1.p, p2.p));
-    //auto p = this->M->to_ring_point(pn);
     RingPoint p;
     p.theta = theta;
     p.lambda = p1.lambda + (p2.lambda - p1.lambda)*coeff;
@@ -332,7 +330,12 @@ double Mandible::angle_with_ref(const gp_Vec& dist) const{
 
     const int sgn = (0 <= mult) - (mult < 0);
 
-    return std::acos(n.Dot(this->center_ref))*sgn + M_PI;
+    // Avoid rounding errors
+    const double angle_base = std::max(std::min(n.Dot(this->center_ref), 1.0), -1.0);
+
+    const double result = std::acos(angle_base)*sgn + M_PI;
+
+    return result;
 }
 
 Mandible::ImplantRegion::ImplantRegion(const gp_Pnt& center_1, const gp_Pnt& center_2, double r1, double r2, const std::vector<double>& a, double dl):
