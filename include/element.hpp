@@ -571,6 +571,14 @@ namespace utils{
 class BoundaryMeshElement : public Element{
     public:
     const MeshElement* const parent;
+
+    virtual std::vector<double> get_K_ext(const Eigen::MatrixXd& D, const gp_Pnt& center) const = 0;
+    virtual std::vector<double> get_normal_stresses(const Eigen::MatrixXd& D, const std::vector<double>& u, const gp_Pnt& p, const gp_Pnt& center) const = 0;
+    virtual std::vector<double> get_stress_integrals(const Eigen::MatrixXd& D, const gp_Pnt& center) const = 0;
+    virtual std::vector<double> get_equilibrium_partial(const Eigen::MatrixXd& D, const gp_Pnt& center, const std::vector<size_t>& stresses) const = 0;
+    virtual std::vector<double> get_dz_vector(const Eigen::MatrixXd& S, const Eigen::MatrixXd& D, const double Az, const double Bz, const gp_Pnt& center) const = 0;
+    virtual std::vector<double> get_force_vector(const Eigen::MatrixXd& D, const std::vector<double>& u, const gp_Pnt& center, const Eigen::MatrixXd& rot) const = 0;
+
     /**
      * Returns a 1 degree of freedom diffusion matrix.
      * 
@@ -603,57 +611,6 @@ class BoundaryMeshElement : public Element{
      */
     virtual Eigen::VectorXd source_1dof() const = 0;
     virtual Eigen::VectorXd flow_1dof(const std::array<const Node*, 2>& nodes) const = 0;
-
-    /**
-     * Returns the gradient at point p for 1 dof field.
-     *
-     * @param p Point to be measured.
-     * @param phi Nodal value vector (1 dof).
-     *
-     * @return gradient vector.
-     */
-    virtual Eigen::VectorXd grad_1dof_upos(const gp_Pnt& p, const std::vector<double>& phi) const = 0;
-    /**
-     * Returns the gradient at point p for 1 dof field.
-     *
-     * @param p Point to be measured.
-     * @param phi Nodal value vector (1 dof).
-     *
-     * @return gradient vector.
-     */
-    virtual Eigen::VectorXd grad_1dof_id(const gp_Pnt& p, const std::vector<double>& phi) const = 0;
-    virtual Eigen::VectorXd dF_2dof_id(const gp_Pnt& p, const std::vector<double>& phi) const = 0;
-    virtual Eigen::MatrixXd int_grad_phi() const = 0;
-    virtual Eigen::MatrixXd int_grad_phi_x(const gp_Pnt& center) const = 0;
-    virtual Eigen::MatrixXd int_grad_phi_y(const gp_Pnt& center) const = 0;
-    virtual Eigen::MatrixXd int_grad_xi() const = 0;
-    virtual Eigen::MatrixXd int_grad_xi_x(const gp_Pnt& center) const = 0;
-    virtual Eigen::MatrixXd int_grad_xi_y(const gp_Pnt& center) const = 0;
-    virtual Eigen::MatrixXd int_grad_F() const = 0;
-    virtual Eigen::MatrixXd int_grad_F_x(const gp_Pnt& center) const = 0;
-    virtual Eigen::MatrixXd int_grad_F_y(const gp_Pnt& center) const = 0;
-    virtual Eigen::VectorXd int_N_x(const gp_Pnt& center) const = 0;
-    virtual Eigen::VectorXd int_N_y(const gp_Pnt& center) const = 0;
-    virtual Eigen::MatrixXd int_NdN(const std::vector<double>& phi) const = 0;
-    virtual Eigen::MatrixXd int_NdF(const std::vector<double>& phi) const = 0;
-
-    virtual Eigen::MatrixXd int_grad_F_t2_t1(const Eigen::MatrixXd& B3, const gp_Pnt& center) const = 0;
-    virtual Eigen::MatrixXd int_grad_phi_t2_t1(const Eigen::MatrixXd& B2, const gp_Pnt& center) const = 0;
-    virtual Eigen::MatrixXd int_grad_F_D(const Eigen::MatrixXd& a, const gp_Pnt& center) const = 0;
-    virtual Eigen::MatrixXd int_grad_phi_D(const Eigen::MatrixXd& a, const gp_Pnt& center) const = 0;
-
-    virtual Eigen::MatrixXd L4(const Eigen::MatrixXd& B) const = 0;
-    virtual Eigen::MatrixXd L3(const Eigen::MatrixXd& B) const = 0;
-    virtual Eigen::MatrixXd L2(const Eigen::MatrixXd& B) const = 0;
-
-    virtual Eigen::MatrixXd L3xi(const Eigen::MatrixXd& B) const = 0;
-    virtual Eigen::MatrixXd L2xi(const Eigen::MatrixXd& B) const = 0;
-
-    virtual Eigen::MatrixXd L4chi(const Eigen::MatrixXd& B) const = 0;
-    virtual Eigen::MatrixXd L3Tchi(const Eigen::MatrixXd& B) const = 0;
-
-    virtual Eigen::MatrixXd L4zeta(const Eigen::MatrixXd& B) const = 0;
-    virtual Eigen::MatrixXd L3Tzeta(const Eigen::MatrixXd& B) const = 0;
 
     virtual double get_area() const = 0;
 

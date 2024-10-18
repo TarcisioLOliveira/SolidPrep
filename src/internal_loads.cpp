@@ -54,19 +54,8 @@ InternalLoads::InternalLoads(CrossSection cross_section, double thickness, gp_Di
     type(type){
 
     this->boundary_elem_info = bound_elem;
-    //if(bound_elem->get_element_order() >= 2){
-    //    this->boundary_elem_info = bound_elem;
-    //} else if(elem_info->get_shape_type() == Element::Shape::TRI){
-    //    this->bound_elem_higher_order.reset(static_cast<BoundaryMeshElementFactory*>(
-    //                new BoundaryMeshElementFactoryImpl<boundary_element::BTRI6>()
-    //            ));
-    //    this->boundary_elem_info = this->bound_elem_higher_order.get();
-    //} else {
-    //    // TODO
-    //    logger::log_assert(false, logger::ERROR, "BQ8 not implemented");
-    //}
 
-    this->curvature = std::make_unique<Curvature>(mat, normal, v, w, rot2D, rot3D, this->boundary_elem_info, F[0], F[1], F[2], M[0], M[1], M[2]);
+    this->curvature = std::make_unique<Curvature>(mat, rot2D, rot3D, this->boundary_elem_info, F[0], F[1], F[2], M[0], M[1], M[2]);
 }
 
 void InternalLoads::calculate_curvature(std::vector<BoundaryElement>& boundary_elements){
@@ -166,14 +155,6 @@ void InternalLoads::apply_load_3D(const std::vector<long>& node_positions, std::
     const size_t nodes_per_elem = this->elem_info->get_nodes_per_element();
     const size_t dof = this->elem_info->get_dof_per_node();
 
-    const size_t N = 3;
-    Eigen::Matrix<double, N, N> S{{0, 0, 0},
-                                  {0, 0, 0},
-                                  {0, 0, 0}};
-    std::vector<double> Sn(N*N, 0);
-
-    double s_z = 0, t_yz = 0, t_xz = 0;
-
     Eigen::Vector<double, 3> FF{0, 0, 0};
     for(size_t j = 0; j < submesh.size(); ++j){
         const auto& e = submesh[j];
@@ -183,16 +164,7 @@ void InternalLoads::apply_load_3D(const std::vector<long>& node_positions, std::
             points[i] = e->nodes[i]->point;
         }
 
-        this->curvature->get_stress_3D(b.get(), t_xz, t_yz, s_z);
-        Eigen::Vector<double, N> F0{t_xz, t_yz, s_z};
-        Eigen::Vector<double, N> Fr = this->rot3D*F0;
-        std::vector<double> F{Fr[0], Fr[1], Fr[2]};
-
-        gp_Vec vec(Fr[0], Fr[1], Fr[2]);
-
-        //const auto Rf = e->parent->get_Rf(Sn, F, this->center, this->thickness, points);
-        const auto Rf = e->parent->get_f(this->thickness, vec, points);
-        //logger::quick_log(fe);
+        const auto Rf = this->curvature->get_force_vector_3D(b.get());
         for(size_t i = 0; i < nodes_per_elem; ++i){
             for(size_t j = 0; j < dof; ++j){
                 const auto n = e->parent->nodes[i];
@@ -204,39 +176,7 @@ void InternalLoads::apply_load_3D(const std::vector<long>& node_positions, std::
             }
         }
     }
-    // Correct force values if necessary
     logger::quick_log("Calculated:", FF[0], FF[1], FF[2]);
-    //FF = this->Lek_basis.transpose()*this->rot3D*FF;
-    //FF[0] -= this->F[0];
-    //FF[1] -= this->F[1];
-    //FF[2] -= this->F[2];
-    //if(std::abs(FF[0]) > 1e-14 ||
-    //   std::abs(FF[1]) > 1e-14 ||
-    //   std::abs(FF[2]) > 1e-14){
-    //    std::set<const Node*> nodes;
-    //    for(const auto& e:this->submesh){
-    //        for(size_t i = 0; i < bound_nodes_per_elem; ++i){
-    //            const auto n = e->nodes[i];
-    //            nodes.insert(n);
-    //        }
-    //    }
-    //    const size_t N = nodes.size();
-    //    Eigen::Vector<double, 3> dF{-FF[0]/N, -FF[1]/N, -FF[2]/N};
-    //    dF = this->rot3D.transpose()*this->Lek_basis*dF;
-    //    FF.fill(0);
-    //    for(const auto& n:nodes){
-    //        for(size_t j = 0; j < dof; ++j){
-    //            if(n->u_pos[j] >= 0){
-    //                const auto p = node_positions[n->u_pos[j]];
-    //                if(p >= 0){
-    //                    load_vector[p] += dF[j];
-    //                    FF[j] += load_vector[p];
-    //                }
-    //            }
-    //        }
-    //    }
-    //    logger::quick_log("Corrected:", FF[0], FF[1], FF[2]);
-    //}
 }
 
 class PointSort{
