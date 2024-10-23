@@ -93,7 +93,6 @@ std::vector<double> BTRI6::get_K_ext(const Eigen::MatrixXd& D, const gp_Pnt& cen
 std::vector<double> BTRI6::get_normal_stresses(const Eigen::MatrixXd& D, const std::vector<double>& u, const gp_Pnt& p, const gp_Pnt& center) const{
     const auto eps = this->get_eps(p, center);
     std::vector<double> E(S_SIZE, 0);
-    std::vector<double> ES(S_SIZE, 0);
     std::vector<double> S(3, 0);
     std::vector<double> vals(K_DIM + 6, 0);
     const size_t offset = u.size() - 6;
@@ -114,7 +113,7 @@ std::vector<double> BTRI6::get_normal_stresses(const Eigen::MatrixXd& D, const s
     }
     for(size_t i = 0; i < 3; ++i){
         for(size_t j = 0; j < S_SIZE; ++j){
-            S[i] += D((i + 2), j)*E[j] + ES[j];
+            S[i] += D((i + 2), j)*E[j];
         }
     }
 
