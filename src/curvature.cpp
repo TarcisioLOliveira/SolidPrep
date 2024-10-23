@@ -298,22 +298,23 @@ Eigen::VectorXd Curvature::integrate_surface_3D(const std::vector<std::unique_pt
     VectorWrapper result(fn.size());
     #pragma omp declare reduction(vecsum : VectorWrapper : omp_out += omp_in) 
     if(this->elem_info->get_shape_type() == Element::Shape::TRI){
+        constexpr size_t N = 3;
         #pragma omp parallel
         {
             VectorWrapper result_tmp(fn.size());
             #pragma omp for reduction(vecsum:result)
             for(size_t i = 0; i < boundary_mesh.size(); ++i){
-                Eigen::Matrix<double, 3, 3> points{{0,0,0},{0,0,0},{0,0,0}};
+                Eigen::Matrix<double, 3, N> points;
                 const auto& e = boundary_mesh[i];
-                std::array<gp_Pnt, 3> rel_points;
-                for(size_t x = 0; x < 3; ++x){
+                std::array<gp_Pnt, N> rel_points;
+                for(size_t x = 0; x < N; ++x){
                     rel_points[x] = e->nodes[x]->point;
                     for(size_t y = 0; y < 3; ++y){
                         points(y, x) = rel_points[x].Coord(y+1);
                     }
                 }
-                Eigen::Matrix<double, 3, 3> rotd_p = this->rot3D*points;
-                std::array<gp_Pnt, 3> abs_points{
+                Eigen::Matrix<double, 3, N> rotd_p = this->rot3D*points;
+                std::array<gp_Pnt, N> abs_points{
                     gp_Pnt(rotd_p(0, 0), rotd_p(1, 0), rotd_p(2, 0)),
                     gp_Pnt(rotd_p(0, 1), rotd_p(1, 1), rotd_p(2, 1)),
                     gp_Pnt(rotd_p(0, 2), rotd_p(1, 2), rotd_p(2, 2))
@@ -323,7 +324,32 @@ Eigen::VectorXd Curvature::integrate_surface_3D(const std::vector<std::unique_pt
             }
         }
     } else if(this->elem_info->get_shape_type() == Element::Shape::QUAD){
-
+        constexpr size_t N = 4;
+        #pragma omp parallel
+        {
+            VectorWrapper result_tmp(fn.size());
+            #pragma omp for reduction(vecsum:result)
+            for(size_t i = 0; i < boundary_mesh.size(); ++i){
+                Eigen::Matrix<double, 3, N> points;
+                const auto& e = boundary_mesh[i];
+                std::array<gp_Pnt, N> rel_points;
+                for(size_t x = 0; x < N; ++x){
+                    rel_points[x] = e->nodes[x]->point;
+                    for(size_t y = 0; y < 3; ++y){
+                        points(y, x) = rel_points[x].Coord(y+1);
+                    }
+                }
+                Eigen::Matrix<double, 3, N> rotd_p = this->rot3D*points;
+                std::array<gp_Pnt, N> abs_points{
+                    gp_Pnt(rotd_p(0, 0), rotd_p(1, 0), rotd_p(2, 0)),
+                    gp_Pnt(rotd_p(0, 1), rotd_p(1, 1), rotd_p(2, 1)),
+                    gp_Pnt(rotd_p(0, 2), rotd_p(1, 2), rotd_p(2, 2)),
+                    gp_Pnt(rotd_p(0, 3), rotd_p(1, 3), rotd_p(2, 3))
+                };
+                this->GS_quad(e->parent, abs_points, rel_points, fn, result_tmp.vec);
+                result += result_tmp;
+            }
+        }
     }
     return result.vec;
 }
@@ -425,21 +451,28 @@ void Curvature::GS_tri(const MeshElement* const e, const std::array<gp_Pnt, 3>& 
     const auto& gsi = utils::GaussLegendreTri<6>::get();
     for(auto it = gsi.begin(); it < gsi.end(); ++it){
         for(size_t i = 0; i < fn.size(); ++i){
-            gp_Pnt pxi{
-                it->a*px[0].X() + it->b*px[1].X() + it->c*px[2].X(),
-                it->a*px[0].Y() + it->b*px[1].Y() + it->c*px[2].Y(),
-                it->a*px[0].Z() + it->b*px[1].Z() + it->c*px[2].Z()
-            };
+            gp_Pnt pxi(this->GLT_point(*it, px));
             result[i] += it->w*fn[i](S, pxi);
         }
     }
     result *= drnorm;
 }
 
-void Curvature::GS_quad(const MeshElement* const e, const std::array<gp_Pnt, 3>& p, const std::array<gp_Pnt, 3>& px, const std::vector<std::function<double(const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px)>>& fn, Eigen::VectorXd& result) const{
-    (void)e;
-    (void)p;
-    (void)px;
-    (void)fn;
-    (void)result;
+void Curvature::GS_quad(const MeshElement* const e, const std::array<gp_Pnt, 4>& p, const std::array<gp_Pnt, 4>& px, const std::vector<std::function<double(const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px)>>& fn, Eigen::VectorXd& result) const{
+    result.fill(0);
+    const gp_Pnt centroid(
+            (p[0].X() + p[1].X() + p[2].X() + p[3].X())/4.0,
+            (p[0].Y() + p[1].Y() + p[2].Y() + p[3].Y())/4.0,
+            (p[0].Z() + p[1].Z() + p[2].Z() + p[3].Z())/4.0);
+    const auto S = this->get_S_3D(e, centroid);
+    const auto& gsi = utils::GaussLegendre<6>::get();
+    for(auto xi = gsi.begin(); xi < gsi.end(); ++xi){
+        for(auto eta = gsi.begin(); eta < gsi.end(); ++eta){
+            for(size_t i = 0; i < fn.size(); ++i){
+                gp_Pnt pxi(this->GL_point(*xi, *eta, px));
+                const double detJ = std::abs(this->J(xi->x, eta->x, px).determinant());
+                result[i] += xi->w*eta->w*detJ*fn[i](S, pxi);
+            }
+        }
+    }
 }

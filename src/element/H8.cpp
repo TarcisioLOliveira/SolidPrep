@@ -20,7 +20,7 @@
 
 #include <lapacke.h>
 #include "element/H8.hpp"
-#include "element/Q4.hpp"
+#include "boundary_element/BQ4.hpp"
 #include "logger.hpp"
 #include "utils/gauss_legendre.hpp"
 
@@ -31,9 +31,7 @@ H8::H8(ElementShape s):
 }
 
 std::unique_ptr<BoundaryMeshElementFactory> H8::get_boundary_element_info() {
-    logger::log_assert(false, logger::ERROR, "BQ4 ELEMENT TYPE NOT IMPLEMENTED");
-    return std::unique_ptr<BoundaryMeshElementFactory>();
-    //return std::unique_ptr<BoundaryMeshElementFactory>(new BoundaryMeshElementFactoryImpl<boundary_element::BQ4>());
+    return std::unique_ptr<BoundaryMeshElementFactory>(new BoundaryMeshElementFactoryImpl<boundary_element::BQ4>());
 }
 std::unique_ptr<ContactMeshElementFactory> H8::get_contact_element_info() {
     logger::log_assert(false, logger::ERROR, "CQ4 ELEMENT TYPE NOT IMPLEMENTED");
@@ -576,6 +574,7 @@ H8::CubeSide H8::get_cube_side(const std::vector<gp_Pnt>& points) const{
             if(this->nodes[i]->point.IsEqual(points[j], Precision::Confusion())){
                 idx[idx_i] = i;
                 ++idx_i;
+                break;
             }
         }
     }

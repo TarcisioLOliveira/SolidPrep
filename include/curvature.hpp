@@ -30,6 +30,7 @@
 #include "element.hpp"
 #include "element_factory.hpp"
 #include "general_solver/mumps_general.hpp"
+#include "utils/gauss_legendre.hpp"
 
 class Curvature{
     public:
@@ -84,7 +85,7 @@ class Curvature{
 
     Eigen::VectorXd integrate_surface_3D(const std::vector<std::unique_ptr<BoundaryMeshElement>>& boundary_mesh, const std::vector<std::function<double(const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px)>>& fn) const;
     void GS_tri(const MeshElement* const e, const std::array<gp_Pnt, 3>& p, const std::array<gp_Pnt, 3>& px, const std::vector<std::function<double(const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px)>>& fn, Eigen::VectorXd& result) const;
-    void GS_quad(const MeshElement* const e, const std::array<gp_Pnt, 3>& p, const std::array<gp_Pnt, 3>& px, const std::vector<std::function<double(const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px)>>& fn, Eigen::VectorXd& result) const;
+    void GS_quad(const MeshElement* const e, const std::array<gp_Pnt, 4>& p, const std::array<gp_Pnt, 4>& px, const std::vector<std::function<double(const Eigen::Matrix<double, 6, 6>& S, const gp_Pnt& px)>>& fn, Eigen::VectorXd& result) const;
 
     Eigen::Matrix<double, 6, 6> get_S_3D(const MeshElement* const e, const gp_Pnt& p) const;
     Eigen::Matrix<double, 6, 6> get_B_3D(const MeshElement* const e, const gp_Pnt& p) const;
@@ -129,6 +130,65 @@ class Curvature{
         const double dx = px.X() - c_u;
         const double dy = px.Y() - c_v;
         return dx*dy/S(2,2);
+    }
+
+    inline gp_Pnt GLT_point(const utils::GLPointTri& glp, const std::array<gp_Pnt, 3>& px) const{
+            return gp_Pnt{
+                glp.a*px[0].X() + glp.b*px[1].X() + glp.c*px[2].X(),
+                glp.a*px[0].Y() + glp.b*px[1].Y() + glp.c*px[2].Y(),
+                glp.a*px[0].Z() + glp.b*px[1].Z() + glp.c*px[2].Z()
+            };
+    }
+
+    inline double N_norm(double x, double y, size_t i) const{
+        switch(i){
+            case 0:
+                return 0.25*(1-x)*(1-y);
+            case 1:
+                return 0.25*(1+x)*(1-y);
+            case 2:
+                return 0.25*(1+x)*(1+y);
+            case 3:
+                return 0.25*(1-x)*(1+y);
+        }
+        return 0;
+    }
+    inline Eigen::Matrix<double, 2, 2> J(const double xi, const double eta, const std::array<gp_Pnt, 4>& px) const{
+        std::array<double, 4> x{
+            px[0].X(),
+            px[1].X(),
+            px[2].X(),
+            px[3].X()
+        };
+        std::array<double, 4> y{
+            px[0].Y(),
+            px[1].Y(),
+            px[2].Y(),
+            px[3].Y()
+        };
+        return Eigen::Matrix<double, 2, 2>
+        {{
+            eta*x[0]/4 - eta*x[1]/4 + eta*x[2]/4 - eta*x[3]/4 - x[0]/4 + x[1]/4 + x[2]/4 - x[3]/4
+            ,
+            eta*y[0]/4 - eta*y[1]/4 + eta*y[2]/4 - eta*y[3]/4 - y[0]/4 + y[1]/4 + y[2]/4 - y[3]/4
+            },{
+            x[0]*xi/4 - x[0]/4 - x[1]*xi/4 - x[1]/4 + x[2]*xi/4 + x[2]/4 - x[3]*xi/4 + x[3]/4
+            ,
+            xi*y[0]/4 - xi*y[1]/4 + xi*y[2]/4 - xi*y[3]/4 - y[0]/4 - y[1]/4 + y[2]/4 + y[3]/4
+        }};
+    }
+
+    inline gp_Pnt GL_point(const utils::GLPoint& xi, const utils::GLPoint& eta, const std::array<gp_Pnt, 4>& px) const{
+        double X = 0, Y = 0, Z = 0;
+        for(size_t i = 0; i < px.size(); ++i){
+            const double Ni = N_norm(xi.x, eta.x, i);
+            const gp_Pnt& pi = px[i];
+            X += Ni*pi.X();
+            Y += Ni*pi.Y();
+            Z += Ni*pi.Z();
+        }
+
+        return gp_Pnt(X, Y, Z);
     }
 };
 
