@@ -47,6 +47,19 @@ class H8 : public MeshElementCommon3DHex<H8>{
 
     static const spview::defs::ElementType SPVIEW_CODE = spview::defs::H8;
 
+    enum CubeSide{
+        X_MIN,
+        X_MAX,
+        Y_MIN,
+        Y_MAX,
+        Z_MIN,
+        Z_MAX,
+        UNKNOWN
+    };
+
+    CubeSide get_cube_side(const std::vector<gp_Pnt>& points) const;
+    gp_Pnt to_surface_point(const double xi, const double eta, const CubeSide side) const;
+
     H8(ElementShape s);
 
     virtual std::vector<double> get_k(const std::vector<double>& D, const double t) const override;
@@ -71,20 +84,8 @@ class H8 : public MeshElementCommon3DHex<H8>{
     }
 
     private:
-    enum CubeSide{
-        X_MIN,
-        X_MAX,
-        Y_MIN,
-        Y_MAX,
-        Z_MIN,
-        Z_MAX,
-        UNKNOWN
-    };
     virtual std::vector<double> get_DB(const std::vector<double>& D, const gp_Pnt& point) const override;
     virtual std::vector<double> get_Nf(const double t, const std::vector<gp_Pnt>& points) const override;
-
-    CubeSide get_cube_side(const std::vector<gp_Pnt>& points) const;
-    gp_Pnt to_surface_point(const double xi, const double eta, const CubeSide side) const;
 
     inline double N_norm(double x, double y, double z, size_t i) const{
         switch(i){
