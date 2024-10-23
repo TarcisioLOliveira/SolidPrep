@@ -185,7 +185,7 @@ class H8 : public MeshElementCommon3DHex<H8>{
                                                                        const std::array<double, NODES_PER_ELEM>& x, 
                                                                        const std::array<double, NODES_PER_ELEM>& y,
                                                                        const std::array<double, NODES_PER_ELEM>& z) const{
-        const auto Jm = J(xi, eta, zeta, x, y, z).inverse();
+        const Eigen::Matrix<double, NODE_DOF, NODE_DOF> Jm = J(xi, eta, zeta, x, y, z).inverse();
         Eigen::Matrix<double, NODE_DOF, NODES_PER_ELEM> M
                 {{dNdx_norm(xi,eta,zeta,0),dNdx_norm(xi,eta,zeta,1),dNdx_norm(xi,eta,zeta,2),dNdx_norm(xi,eta,zeta,3),dNdx_norm(xi,eta,zeta,4),dNdx_norm(xi,eta,zeta,5),dNdx_norm(xi,eta,zeta,6),dNdx_norm(xi,eta,zeta,7)},
                  {dNdy_norm(xi,eta,zeta,0),dNdy_norm(xi,eta,zeta,1),dNdy_norm(xi,eta,zeta,2),dNdy_norm(xi,eta,zeta,3),dNdy_norm(xi,eta,zeta,4),dNdy_norm(xi,eta,zeta,5),dNdy_norm(xi,eta,zeta,6),dNdy_norm(xi,eta,zeta,7)},
