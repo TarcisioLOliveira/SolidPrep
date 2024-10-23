@@ -22,7 +22,6 @@
 #include "logger.hpp"
 #include "utils.hpp"
 #include "meshing.hpp"
-#include "boundary_element/BTRI6.hpp"
 #include <memory>
 #include <set>
 
