@@ -75,7 +75,7 @@ int main(int argc, char* argv[]){
     if(mpi_id == 0){
         v.reset(new Visualization());
         v->start();
-        if(proj->analysis == ProjectData::COMPLETE || proj->analysis == ProjectData::BEAMS_ONLY){
+        if(proj->generate_beams){
             shape = proj->sizer->run();
             auto stop_sizing = std::chrono::high_resolution_clock::now();
             auto sizing_duration = std::chrono::duration_cast<std::chrono::seconds>(stop_sizing-start_sizing);
@@ -98,7 +98,7 @@ int main(int argc, char* argv[]){
     std::vector<MeshElement*> elems;
     std::vector<double> loads;
     auto stop_mesh = std::chrono::high_resolution_clock::now();
-    if(proj->analysis == ProjectData::FEA_ONLY || proj->analysis == ProjectData::BEAMS_ONLY){
+    if(proj->do_fea && !proj->do_topopt){
 
         // Finite element analysis
         auto start_fea = std::chrono::high_resolution_clock::now();
@@ -148,7 +148,7 @@ int main(int argc, char* argv[]){
                 }
 
 
-                if(proj->analysis == ProjectData::BEAMS_ONLY){
+                if(proj->generate_beams){
                     logger::quick_log("");
                     logger::quick_log("Sizing time: ", size_time, " minutes");
                     logger::quick_log("");
@@ -252,7 +252,7 @@ int main(int argc, char* argv[]){
                 }
 
                 logger::quick_log("Max stress: ", max_stress, " at ", max_point.X(), max_point.Y(), max_point.Z());
-                if(proj->analysis == ProjectData::BEAMS_ONLY){
+                if(proj->generate_beams){
                     logger::quick_log("");
                     logger::quick_log("Sizing time: ", size_time, " minutes");
                     logger::quick_log("");
@@ -310,7 +310,7 @@ int main(int argc, char* argv[]){
                 v->end();
             }
         }
-    } else if(proj->analysis == ProjectData::OPTIMIZE_ONLY || proj->analysis == ProjectData::COMPLETE){
+    } else if(proj->do_topopt){
 
         if(mpi_id == 0){
             // Display progress
@@ -346,7 +346,7 @@ int main(int argc, char* argv[]){
                 utils::shape_to_file("result.step", result);
             }
 
-            if(proj->analysis == ProjectData::COMPLETE){
+            if(proj->generate_beams){
                 logger::quick_log("Sizing time: ", size_time, " minutes");
             }
             logger::quick_log("Topology optimization time (including preparations for TO): ", to_time+mesh_time, " minutes");

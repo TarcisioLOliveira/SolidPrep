@@ -114,25 +114,22 @@ ProjectData::ProjectData(std::string project_file){
         }
     }
 
-    bool needs_sizing = true;
-    bool needs_topopt = true;
-    if(this->log_data(doc, "analysis", TYPE_STRING, true)){
-        std::string a = doc["analysis"].GetString();
-        if(a == "complete"){
-            this->analysis = COMPLETE;
-        } else if(a == "fea_only"){
-            this->analysis = FEA_ONLY;
-            needs_sizing = false;
-            needs_topopt = false;
-        } else if(a == "beams_only"){
-            this->analysis = BEAMS_ONLY;
-            needs_topopt = false;
-        } else if(a == "topopt_only"){
-            this->analysis = OPTIMIZE_ONLY;
-            needs_sizing = false;
+    if(this->log_data(doc, "analysis", TYPE_OBJECT, true)){
+        const auto& analysis = doc["analysis"];
+        if(this->log_data(analysis, "meshing", TYPE_BOOL, false)){
+            this->do_meshing = analysis["meshing"].GetBool();
+        }
+        if(this->log_data(analysis, "gen", TYPE_BOOL, false)){
+            this->generate_beams = analysis["gen"].GetBool();
+        }
+        if(this->log_data(analysis, "topopt", TYPE_BOOL, false)){
+            this->do_topopt = analysis["topopt"].GetBool();
+        }
+        if(this->log_data(analysis, "fea", TYPE_BOOL, false)){
+            this->do_fea = analysis["fea"].GetBool();
         }
     }
-    if(needs_sizing){
+    if(this->generate_beams){
         logger::log_assert(this->type == utils::PROBLEM_TYPE_2D,
                            logger::ERROR, "sizing is currently only implemented for 2D elasticity problems.");
     }
@@ -196,7 +193,7 @@ ProjectData::ProjectData(std::string project_file){
         }
         this->topopt_fea = std::make_unique<SolverManager>(std::move(solvers));
     }
-    if(this->log_data(doc, "sizing", TYPE_OBJECT, needs_sizing)){
+    if(this->log_data(doc, "sizing", TYPE_OBJECT, this->generate_beams)){
         if(this->log_data(doc["sizing"], "pathfinding", TYPE_OBJECT, false)){
             this->pathfinder = this->load_pathfinder(doc["sizing"]);
         }
@@ -208,7 +205,7 @@ ProjectData::ProjectData(std::string project_file){
     if(this->log_data(doc, "mesher", TYPE_OBJECT, true)){
         this->topopt_mesher = this->load_mesher(doc);
     }
-    if(this->log_data(doc, "topopt", TYPE_OBJECT, needs_topopt)){
+    if(this->log_data(doc, "topopt", TYPE_OBJECT, this->do_topopt)){
         this->optimizer = this->load_optimizer(doc);
     }
 
@@ -1256,7 +1253,7 @@ CrossSection ProjectData::get_cross_section(const rapidjson::GenericValue<rapidj
             };
             return CrossSection(r);
         } else if(has_file) {
-            logger::log_assert(this->analysis != this->COMPLETE && this->analysis != this->BEAMS_ONLY,
+            logger::log_assert(!this->generate_beams,
                                logger::ERROR, "cross-section of type file is currently not fully compatible with beam generation");
             const auto& file = doc["file"];
             this->log_data(file, "path", TYPE_STRING, true);

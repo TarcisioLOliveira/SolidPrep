@@ -65,18 +65,18 @@ class ProjectData {
         TYPE_ARRAY,
         TYPE_OBJECT
     };
-    enum AnalysisType{
-        COMPLETE,
-        FEA_ONLY,
-        OPTIMIZE_ONLY,
-        BEAMS_ONLY
-    };
     /**
      * Loads project data file.
      *
      * @param project_file Path to file.
      */
     ProjectData(std::string project_file);
+
+    // Analysis type
+    bool do_meshing = false;
+    bool generate_beams = false;
+    bool do_topopt = false;
+    bool do_fea = true;
 
     double thickness;
     std::unique_ptr<Pathfinding> pathfinder;
@@ -90,7 +90,6 @@ class ProjectData {
     std::vector<InternalLoads> internal_loads;
     std::unique_ptr<FiniteElement> sizer_fea;
     std::unique_ptr<TopologyOptimization> topopt;
-    //std::unique_ptr<FiniteElement> topopt_fea;
     std::unique_ptr<SolverManager> topopt_fea;
     std::unique_ptr<Meshing> topopt_mesher;
     std::unique_ptr<MeshElementFactory> topopt_element;
@@ -100,7 +99,6 @@ class ProjectData {
     std::unique_ptr<Optimizer> optimizer;
     std::vector<std::unique_ptr<Field>> fields;
     std::vector<SubProblem> sub_problems;
-    AnalysisType analysis;
     ContactData contact_data;
     
     std::string folder_path;
