@@ -193,7 +193,6 @@ class Meshing{
     size_t number_duplicated_nodes = 0;
 
     protected:
-    TopoDS_Shape orig_shape;
     std::vector<bool> get_support_dof(const Support& support, const MeshElementFactory* elem_maker) const;
     std::vector<double> get_force_dof(const Force& force, const MeshElementFactory* elem_maker) const;
     void reverse_cuthill_mckee(const std::vector<ElementShape>& elem_list);
@@ -214,7 +213,6 @@ class Meshing{
      * protected functions in this class to do so. Can be overriden if desired,
      * as can the other functions.
      *
-     * @param shape Shape being meshed
      * @param geom_elem_mapping Maps element ranges to the geometries which should contain them
      * @param elem_node_tags Map each node to its elements
      * @param bound_elem_node_tags Maps each boundary node to boundary elements
@@ -222,8 +220,7 @@ class Meshing{
      * @param deduplicate Whether to deduplicate nodes
      * @param boundary_condition_inside Whether there is one or more boundary conditions inside the geometry
      */
-    virtual void generate_elements(const TopoDS_Shape& shape,
-                                   const std::vector<size_t>& geom_elem_mapping, 
+    virtual void generate_elements(const std::vector<size_t>& geom_elem_mapping, 
                                    const std::vector<size_t>& elem_node_tags, 
                                    const std::vector<size_t>& bound_elem_node_tags,
                                    std::unordered_map<size_t, MeshNode*>& id_map,
@@ -282,10 +279,8 @@ class Meshing{
     /**
      * Generates the load vector member variable based on the mesh, shape and
      * loads applied.
-     *
-     * @param shape Shape being meshed
      */
-    void generate_load_vector(const TopoDS_Shape& shape);
+    void generate_load_vector();
 
 
     /**

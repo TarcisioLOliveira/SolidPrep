@@ -30,7 +30,6 @@
 #include <BRep_Builder.hxx>
 #include <BOPAlgo_Splitter.hxx>
 #include <BOPAlgo_Builder.hxx>
-#include <limits>
 #include <memory>
 #include <set>
 #include <queue>
@@ -38,8 +37,7 @@
 #include <vector>
 
 
-void Meshing::generate_elements(const TopoDS_Shape& shape,
-                                const std::vector<size_t>& geom_elem_mapping, 
+void Meshing::generate_elements(const std::vector<size_t>& geom_elem_mapping, 
                                 const std::vector<size_t>& elem_node_tags, 
                                 const std::vector<size_t>& bound_elem_node_tags,
                                 std::unordered_map<size_t, MeshNode*>& id_map,
@@ -47,7 +45,6 @@ void Meshing::generate_elements(const TopoDS_Shape& shape,
                                 const bool deduplicate,
                                 const bool boundary_condition_inside){
 
-    this->orig_shape = shape;
     logger::quick_log("Generating elements and preparing for finite element analysis...");
 
     std::unordered_map<size_t, MeshNode*> original_map = id_map;
@@ -214,7 +211,7 @@ void Meshing::apply_boundary_conditions(const std::vector<Force>& forces,
     }
 
     logger::quick_log("loads");
-    this->generate_load_vector(this->orig_shape);
+    this->generate_load_vector();
 
     if(springs.size() > 0){
         logger::quick_log("springs");
@@ -665,8 +662,7 @@ void Meshing::distribute_boundary_elements(){
     }
 }
 
-void Meshing::generate_load_vector(const TopoDS_Shape& shape){
-    (void) shape;
+void Meshing::generate_load_vector(){
     const size_t N = this->elem_info->get_nodes_per_element();
     const size_t Nb = this->elem_info->get_boundary_nodes_per_element();
     size_t dof = this->elem_info->get_dof_per_node();

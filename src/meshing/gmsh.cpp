@@ -167,8 +167,7 @@ void Gmsh::mesh(const std::vector<Force>& forces,
     if(geometries.size() > 1){
         deduplicate = true;
     }
-    this->generate_elements(shape,
-                            geom_elem_mapping, 
+    this->generate_elements(geom_elem_mapping, 
                             elem_node_tags, 
                             bound_elem_node_tags,
                             id_map,
