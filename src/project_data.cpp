@@ -18,6 +18,7 @@
  *
  */
 #include "material/mandible.hpp"
+#include "meshing/mesh_file.hpp"
 #include <cstring>
 #include <memory>
 #define _USE_MATH_DEFINES
@@ -116,11 +117,17 @@ ProjectData::ProjectData(std::string project_file){
 
     if(this->log_data(doc, "analysis", TYPE_OBJECT, true)){
         const auto& analysis = doc["analysis"];
-        if(this->log_data(analysis, "meshing", TYPE_BOOL, false)){
-            this->do_meshing = analysis["meshing"].GetBool();
-        }
         if(this->log_data(analysis, "gen", TYPE_BOOL, false)){
             this->generate_beams = analysis["gen"].GetBool();
+        }
+        if(this->log_data(analysis, "meshing", TYPE_BOOL, false)){
+            this->do_meshing = analysis["meshing"].GetBool();
+        } else if(this->generate_beams){
+            this->do_meshing = true;
+        }
+        if(this->generate_beams){
+            logger::log_assert(this->do_meshing, logger::WARNING, "mesh loading not supported for geometry generation, ignoring setting");
+            this->do_meshing = true;
         }
         if(this->log_data(analysis, "topopt", TYPE_BOOL, false)){
             this->do_topopt = analysis["topopt"].GetBool();
@@ -653,6 +660,24 @@ std::unique_ptr<FiniteElement> ProjectData::load_fea(const rapidjson::GenericVal
 std::unique_ptr<Meshing> ProjectData::load_mesher(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc){
     auto& mesh = doc["mesher"];
     std::unique_ptr<Meshing> mesher;
+    bool has_mesh_file_path = this->log_data(mesh, "file_path", TYPE_STRING, !this->do_meshing);
+    if(has_mesh_file_path){
+        std::string absolute_path = this->folder_path;
+        std::string mesh_path = mesh["file_path"].GetString();
+        absolute_path.append(mesh_path);
+        this->mesh_file_internal = std::make_unique<meshing::MeshFile>(this->geometries,
+                this->topopt_element.get(), this, this->thickness, 
+                absolute_path, this->element_name, !this->do_meshing);
+
+        this->mesh_file = this->mesh_file_internal.get();
+        // If meshing won't be done, use MeshFile instance as "mesher", so it
+        // can load the raw mesh data and proceed from there.
+        // As this is using unique_ptr, the mesh_file var will still
+        // point to the correct place in memory.
+        if(!this->do_meshing){
+            return std::move(this->mesh_file_internal);
+        }
+    }
     if(mesh["type"] == "gmsh"){
         this->log_data(mesh, "element_size", TYPE_DOUBLE, true);
         size_t algorithm2D = 6;
@@ -949,6 +974,7 @@ Projection::Parameter ProjectData::get_projection_parameter(const rapidjson::Gen
 
 std::unique_ptr<MeshElementFactory> ProjectData::get_element_type(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc){
     std::string name = doc.GetString();
+    this->element_name = name;
     if(name == "GT9"){
         return std::unique_ptr<MeshElementFactory>(static_cast<MeshElementFactory*>(
                     new MeshElementFactoryImpl<element::GT9>()

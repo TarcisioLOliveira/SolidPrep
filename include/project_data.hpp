@@ -20,13 +20,12 @@
 #ifndef PROJECT_DATA_HPP
 #define PROJECT_DATA_HPP
 
-#include <algorithm>
 #include <memory>
 #include <string>
 #include <vector>
+#include "meshing/mesh_file.hpp"
 #include "projection.hpp"
 #include "rapidjson/document.h"
-#include "rapidjson/rapidjson.h"
 
 #include "support.hpp"
 #include "pathfinding.hpp"
@@ -100,10 +99,13 @@ class ProjectData {
     std::vector<std::unique_ptr<Field>> fields;
     std::vector<SubProblem> sub_problems;
     ContactData contact_data;
+    meshing::MeshFile* mesh_file = nullptr;
     
     std::string folder_path;
+    std::string element_name;
     
     private:
+    std::unique_ptr<meshing::MeshFile> mesh_file_internal = nullptr;
     /**
      * Checks for existence and type of data in JSON file.
      *

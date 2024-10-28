@@ -34,6 +34,7 @@
 #include "geometry.hpp"
 
 class ProjectData;
+class MeshFile;
 
 class BoundaryElement{
     public:
