@@ -22,7 +22,6 @@
 #include <cstring>
 #include <memory>
 #define _USE_MATH_DEFINES
-#include <cmath>
 #include <BRepGProp.hxx>
 #include <GProp_GProps.hxx>
 #include <Bnd_Box.hxx>
@@ -153,8 +152,22 @@ ProjectData::ProjectData(std::string project_file){
     }
     if(this->log_data(doc, "mesher", TYPE_OBJECT, true)){
         this->log_data(doc["mesher"], "element_type", TYPE_STRING, true);
-        this->topopt_element = this->get_element_type(doc["mesher"]["element_type"]);
-        this->topopt_boundary_element = this->topopt_element->get_boundary_element_info();
+        if(this->do_meshing){
+            this->topopt_element = this->get_element_type(doc["mesher"]["element_type"].GetString());
+            this->topopt_boundary_element = this->topopt_element->get_boundary_element_info();
+        } else {
+            std::string absolute_path = this->folder_path;
+            std::string mesh_path = doc["mesher"]["file_path"].GetString();
+            absolute_path.append(mesh_path);
+
+            std::ifstream file(absolute_path, std::ios::in);
+            logger::log_assert(file.good(), logger::ERROR, "file not found: {}", absolute_path);
+            std::getline(file, this->element_name);
+            file.close();
+
+            this->topopt_element = this->get_element_type(this->element_name);
+            this->topopt_boundary_element = this->topopt_element->get_boundary_element_info();
+        }
     }
     if(this->log_data(doc, "geometry", TYPE_ARRAY, true)){
         this->geometries = this->load_geometries(doc);
@@ -667,7 +680,7 @@ std::unique_ptr<Meshing> ProjectData::load_mesher(const rapidjson::GenericValue<
         absolute_path.append(mesh_path);
         this->mesh_file_internal = std::make_unique<meshing::MeshFile>(this->geometries,
                 this->topopt_element.get(), this, this->thickness, 
-                absolute_path, this->element_name, !this->do_meshing);
+                absolute_path, this->element_name);
 
         this->mesh_file = this->mesh_file_internal.get();
         // If meshing won't be done, use MeshFile instance as "mesher", so it
@@ -972,8 +985,7 @@ Projection::Parameter ProjectData::get_projection_parameter(const rapidjson::Gen
     return param;
 }
 
-std::unique_ptr<MeshElementFactory> ProjectData::get_element_type(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc){
-    std::string name = doc.GetString();
+std::unique_ptr<MeshElementFactory> ProjectData::get_element_type(const std::string& name){
     this->element_name = name;
     if(name == "GT9"){
         return std::unique_ptr<MeshElementFactory>(static_cast<MeshElementFactory*>(

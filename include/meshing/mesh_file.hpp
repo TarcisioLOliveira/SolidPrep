@@ -33,14 +33,13 @@ class MeshFile : public Meshing{
          const MeshElementFactory* const elem_type,
          const ProjectData* const proj_data,
          double thickness, const std::string& file_path,
-         const std::string& elem_name, bool load);
+         const std::string& elem_name);
 
     void save_mesh(const std::vector<std::unique_ptr<MeshNode>>& node_list,
                    const std::vector<MeshNode*>& boundary_node_list,
                    const std::vector<size_t>& geom_elem_mapping, 
                    const std::vector<size_t>& elem_node_tags, 
                    const std::vector<size_t>& bound_elem_node_tags,
-                   std::unordered_map<size_t, MeshNode*>& id_map,
                    std::unordered_map<size_t, size_t>& duplicate_map) const;
 
     inline std::string get_element_name() const{

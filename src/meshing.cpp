@@ -45,15 +45,14 @@ void Meshing::generate_elements(const std::vector<size_t>& geom_elem_mapping,
                                 const bool deduplicate,
                                 const bool boundary_condition_inside){
 
-    logger::quick_log("Saving mesh...");
-    if(this->proj_data->mesh_file != nullptr){
+    if(this->proj_data->mesh_file != nullptr && this->proj_data->do_meshing){
+        logger::quick_log("Saving mesh...");
         this->proj_data->mesh_file->save_mesh(
                 this->node_list,
                 this->boundary_node_list,
                 geom_elem_mapping,
                 elem_node_tags,
                 bound_elem_node_tags,
-                id_map,
                 duplicate_map);
     }
 

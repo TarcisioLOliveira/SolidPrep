@@ -152,7 +152,7 @@ class ProjectData {
 
     void get_objective_functions(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc, double pc, double psi, std::vector<std::unique_ptr<DensityBasedFunction>>& functions, std::vector<double>& weights);
 
-    std::unique_ptr<MeshElementFactory> get_element_type(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc);
+    std::unique_ptr<MeshElementFactory> get_element_type(const std::string& name);
 
     std::vector<Force> get_loads(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc);
 
