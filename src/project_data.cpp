@@ -134,6 +134,13 @@ ProjectData::ProjectData(std::string project_file){
         if(this->log_data(analysis, "fea", TYPE_BOOL, false)){
             this->do_fea = analysis["fea"].GetBool();
         }
+        if(this->log_data(analysis, "shape_opt", TYPE_BOOL, false)){
+            this->do_shape_opt = analysis["shape_opt"].GetBool();
+        }
+        if(this->do_shape_opt){
+            logger::log_assert(!this->do_topopt, logger::ERROR, "topology optimization followed by shape optimization is currently not supported");
+            logger::log_assert(!this->generate_beams, logger::ERROR, "geometry generation followed by shape optimization is currently not supported");
+        }
     }
     if(this->generate_beams){
         logger::log_assert(this->type == utils::PROBLEM_TYPE_2D,

@@ -98,7 +98,7 @@ int main(int argc, char* argv[]){
     std::vector<MeshElement*> elems;
     std::vector<double> loads;
     auto stop_mesh = std::chrono::high_resolution_clock::now();
-    if(proj->do_fea && !proj->do_topopt){
+    if(proj->do_fea && !proj->do_topopt && !proj->do_shape_opt){
 
         // Finite element analysis
         auto start_fea = std::chrono::high_resolution_clock::now();
@@ -316,7 +316,6 @@ int main(int argc, char* argv[]){
             // Display progress
             v->load_mesh(proj->topopt_mesher.get(), proj->type);
 
-            //proj->topopt->initialize_views(&v);
             proj->optimizer->initialize_views(v.get());
             for(auto& f:proj->fields){
                 f->initialize_views(v.get());
@@ -329,7 +328,6 @@ int main(int argc, char* argv[]){
         auto start_to = std::chrono::high_resolution_clock::now();
 
         // Optimization
-        //TopoDS_Shape result = proj->topopt->optimize(proj->topopt_fea.get(), proj->topopt_mesher.get());
         TopoDS_Shape result = proj->optimizer->optimize(proj->topopt_fea.get(), proj->topopt_mesher.get());
 
         if(mpi_id == 0){
@@ -355,7 +353,57 @@ int main(int argc, char* argv[]){
 
             logger::quick_log("Finished.");
 
-            //t.join();
+            v->wait();
+
+            v->end();
+        }
+    }
+    if(proj->do_shape_opt){
+
+        if(mpi_id == 0){
+            // Display progress
+            v->load_mesh(proj->topopt_mesher.get(), proj->type);
+
+            proj->optimizer->initialize_views(v.get());
+            for(auto& f:proj->fields){
+                f->initialize_views(v.get());
+            }
+            for(auto& f:proj->fields){
+                f->display_views();
+            }
+        }
+
+        auto start_to = std::chrono::high_resolution_clock::now();
+
+        // Optimization
+        logger::quick_log("OPTIMIZER FUNCTION NOT YET IMPLEMENTED FOR SHAPE OPTIMIZATION!");
+        exit(0);
+        // TopoDS_Shape result = proj->optimizer->optimize(proj->topopt_fea.get(), proj->topopt_mesher.get());
+        TopoDS_Shape result;
+
+        if(mpi_id == 0){
+            // Display time
+            auto stop_to = std::chrono::high_resolution_clock::now();
+            auto to_duration = std::chrono::duration_cast<std::chrono::seconds>(stop_to-start_to);
+            double to_time = to_duration.count()/60.0;
+            auto total_duration = std::chrono::duration_cast<std::chrono::seconds>(stop_to-start_sizing);
+            double total_time = total_duration.count()/60.0;
+            auto mesh_duration = std::chrono::duration_cast<std::chrono::seconds>(stop_mesh-start_mesh);
+            double mesh_time = mesh_duration.count()/60.0;
+
+            if(result != TopoDS_Shape()){
+                utils::shape_to_file("result.step", result);
+            }
+
+            if(proj->generate_beams){
+                logger::quick_log("Sizing time: ", size_time, " minutes");
+            }
+            logger::quick_log("Topology optimization time (including preparations for TO): ", to_time+mesh_time, " minutes");
+            logger::quick_log("Total optimization time: ", to_time+size_time+mesh_time, " minutes");
+            logger::quick_log("Total runtime (including GUI loading, excluding saving result as STEP): ", total_time, " minutes");
+
+            logger::quick_log("Finished.");
+
             v->wait();
 
             v->end();

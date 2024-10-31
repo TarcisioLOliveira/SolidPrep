@@ -76,6 +76,7 @@ class ProjectData {
     bool generate_beams = false;
     bool do_topopt = false;
     bool do_fea = true;
+    bool do_shape_opt = false;
 
     double thickness;
     std::unique_ptr<Pathfinding> pathfinder;
