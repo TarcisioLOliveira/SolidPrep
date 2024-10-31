@@ -106,7 +106,7 @@ TopoDS_Shape MMA::optimize(SolverManager* fem, Meshing* mesh){
     mma.SetAsymptotes(this->asyminit, this->asymdec, this->asyminc);
     mma.SetBoundFactors(this->minfac, this->maxfac);
 
-    double ff = 0;
+    double ff = 1e-7;
     std::vector<double> dftmp(x.size());
     std::vector<double> dftmp_nodal(this->filter->get_nodal_density_size());
     std::vector<double> dgtmp1(x.size());
@@ -135,232 +135,14 @@ TopoDS_Shape MMA::optimize(SolverManager* fem, Meshing* mesh){
         this->projection->project_densities(new_x);
     }
     std::vector<double> u(mesh->max_dofs, 0);
-    fem->generate_matrix(mesh, new_x, pc, this->psi);
     auto loads = mesh->load_vector;
-    fem->calculate_displacements_global(mesh, loads, u);
-    if(mpi_id == 0){
-        this->get_stresses(mesh->geometries, u, fem->D_vec, this->stresses);
-        std::copy(stresses.begin(), stresses.end(), stress_render.begin());
-        auto xit = new_x.cbegin();
-        auto xvit = x_view.begin();
-        for(const auto& g:mesh->geometries){
-            if(g->do_topopt){
-                auto xvit2 = xvit;
-                xvit += g->mesh.size();
-                const size_t num_den = g->number_of_densities_needed();
-                while(xvit2 < xvit){
-                    *xvit2 = *xit;
-                    xit += num_den;
-                    ++xvit2;
-                }
-            }
-        }
-
-        this->density_view->update_view(x_view);
-        this->stress_view->update_view(stress_render);
-    }
-    if(this->objective.size() == 1){
-        if(this->objective[0]->filter_gradient_type() == DensityFilter::FilterGradient::ELEMENTAL){
-            ff = this->objective_weights.front()*this->objective.front()->calculate_with_gradient(this, u, new_x, dftmp);
-            if(mpi_id == 0){
-                this->projection->project_gradient(dftmp, x_fil);
-                this->filter->filter_gradient(dftmp, df);
-                if(this->objective_weights.front() != 1.0){
-                    for(auto& v:df){
-                        v *= this->objective_weights.front();
-                    }
-                }
-            }
-        } else {
-            ff = this->objective_weights.front()*this->objective.front()->calculate_with_gradient_nodal(this, u, new_x, dftmp_nodal);
-            if(mpi_id == 0){
-                this->filter->filter_gradient_nodal(dftmp_nodal, df);
-                if(this->objective_weights.front() != 1.0){
-                    for(auto& v:df){
-                        v *= this->objective_weights.front();
-                    }
-                }
-            }
-        }
-    } else {
-        ff = 0;
-        std::fill(df.begin(), df.end(), 0);
-        for(size_t i = 0; i < this->objective.size(); ++i){
-            if(this->objective[i]->filter_gradient_type() == DensityFilter::FilterGradient::ELEMENTAL){
-                ff += this->objective_weights[i]*this->objective[i]->calculate_with_gradient(this, u, new_x, dftmp);
-                if(mpi_id == 0){
-                    this->projection->project_gradient(dftmp, x_fil);
-                    this->filter->filter_gradient(dftmp, df);
-                    for(size_t j = 0; j < dftmp.size(); ++j){
-                        df[j] += this->objective_weights[i]*dftmp[j];
-                    }
-                }
-            } else {
-                ff += this->objective_weights[i]*this->objective[i]->calculate_with_gradient_nodal(this, u, new_x, dftmp_nodal);
-                if(mpi_id == 0){
-                    this->filter->filter_gradient_nodal(dftmp_nodal, dftmp);
-                    for(size_t j = 0; j < dftmp.size(); ++j){
-                        df[j] += this->objective_weights[i]*dftmp[j];
-                    }
-                }
-            }
-        }
-    }
-    MPI_Bcast(&ff, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-    if(mpi_id == 0){
-        this->projection->project_gradient(dftmp, x_fil);
-        this->filter->filter_gradient(dftmp, df);
-    }
-    if(M == 1){
-        auto& c = this->constraints[0];
-        if(c.fun->filter_gradient_type() == DensityFilter::FilterGradient::ELEMENTAL){
-            if(c.types[0] == Constraint::Type::LESS_THAN){
-                g[0] = c.fun->calculate_with_gradient(this, u, new_x, dgtmp1)
-                       - c.bounds[0];
-            } else if(c.types[0] == Constraint::Type::GREATER_THAN){
-                g[0] = - c.fun->calculate_with_gradient(this, u, new_x, dgtmp1)
-                       + c.bounds[0];
-            }
-            if(mpi_id == 0){
-                this->projection->project_gradient(dgtmp1, x_fil);
-                this->filter->filter_gradient(dgtmp1, dg);
-                if(c.types[0] == Constraint::Type::GREATER_THAN){
-                    for(auto& d:dg){
-                        d *= -1.0;
-                    }
-                }
-            }
-        } else {
-            if(c.types[0] == Constraint::Type::LESS_THAN){
-                g[0] = c.fun->calculate_with_gradient_nodal(this, u, new_x, dgtmp1_nodal)
-                       - c.bounds[0];
-            } else if(c.types[0] == Constraint::Type::GREATER_THAN){
-                g[0] = - c.fun->calculate_with_gradient_nodal(this, u, new_x, dgtmp1_nodal)
-                       + c.bounds[0];
-            }
-            if(mpi_id == 0){
-                //this->projection->project_gradient(dgtmp1_nodal, new_x);
-                this->filter->filter_gradient_nodal(dgtmp1_nodal, dg);
-                if(c.types[0] == Constraint::Type::GREATER_THAN){
-                    for(auto& d:dg){
-                        d *= -1.0;
-                    }
-                }
-            }
-        }
-    } else if(M > 1){
-        size_t g_id = 0;
-        for(size_t i = 0; i < this->constraints.size(); ++i){
-            auto& c = this->constraints[i];
-            if(c.fun->filter_gradient_type() == DensityFilter::FilterGradient::ELEMENTAL){
-                double val = c.fun->calculate_with_gradient(this, u, new_x, dgtmp1);
-                for(size_t k = 0; k < c.types.size(); ++k){
-                    if(c.types[k] == Constraint::Type::LESS_THAN){
-                        g[g_id] = val - c.bounds[k];
-                        if(mpi_id == 0){
-                            this->projection->project_gradient(dgtmp1, x_fil);
-                            this->filter->filter_gradient(dgtmp1, dgtmp2);
-                            for(size_t j = 0; j < x_size; ++j){
-                                dg[M*j + g_id] = dgtmp2[j];
-                            }
-                        }
-                        ++g_id;
-                    } else if(c.types[k] == Constraint::Type::GREATER_THAN){
-                        g[g_id] = - val + c.bounds[k];
-                        if(mpi_id == 0){
-                            this->projection->project_gradient(dgtmp1, x_fil);
-                            this->filter->filter_gradient(dgtmp1, dgtmp2);
-                            for(size_t j = 0; j < x_size; ++j){
-                                dg[M*j + g_id] = -dgtmp2[j];
-                            }
-                        }
-                        ++g_id;
-                    } else if(c.types[k] == Constraint::Type::EQUAL){
-                        g[g_id] = - val + c.bounds[k];
-                        g[g_id + 1] = -g[g_id];
-                        if(mpi_id == 0){
-                            this->projection->project_gradient(dgtmp1, x_fil);
-                            this->filter->filter_gradient(dgtmp1, dgtmp2);
-                            for(size_t j = 0; j < x_size; ++j){
-                                dg[M*j + g_id] = dgtmp2[j];
-                                dg[M*j + g_id + 1] = -dgtmp2[j];
-                            }
-                        }
-                        g_id += 2;
-                    }
-                }
-            } else {
-                double val = c.fun->calculate_with_gradient_nodal(this, u, new_x, dgtmp1_nodal);
-                for(size_t k = 0; k < c.types.size(); ++k){
-                    if(c.types[k] == Constraint::Type::LESS_THAN){
-                        g[g_id] = val - c.bounds[k];
-                        if(mpi_id == 0){
-                            //this->projection->project_gradient(dgtmp1, x_fil);
-                            this->filter->filter_gradient_nodal(dgtmp1_nodal, dgtmp2);
-                            for(size_t j = 0; j < x_size; ++j){
-                                dg[M*j + g_id] = dgtmp2[j];
-                            }
-                        }
-                        ++g_id;
-                    } else if(c.types[k] == Constraint::Type::GREATER_THAN){
-                        g[g_id] = - val + c.bounds[k];
-                        if(mpi_id == 0){
-                            //this->projection->project_gradient(dgtmp1, x_fil);
-                            this->filter->filter_gradient_nodal(dgtmp1_nodal, dgtmp2);
-                            for(size_t j = 0; j < x_size; ++j){
-                                dg[M*j + g_id] = -dgtmp2[j];
-                            }
-                        }
-                        ++g_id;
-                    } else if(c.types[k] == Constraint::Type::EQUAL){
-                        g[g_id] = val - c.bounds[k];
-                        g[g_id + 1] = -g[g_id];
-                        if(mpi_id == 0){
-                            //this->projection->project_gradient(dgtmp1, x_fil);
-                            this->filter->filter_gradient_nodal(dgtmp1_nodal, dgtmp2);
-                            for(size_t j = 0; j < x_size; ++j){
-                                dg[M*j + g_id] = dgtmp2[j];
-                                dg[M*j + g_id + 1] = -dgtmp2[j];
-                            }
-                        }
-                        g_id += 2;
-                    }
-                }
-            }
-        }
-    }
 
     // int max_innerit = 30;
     double ch = 1.0;
     int iter;
 	for (iter = 0; (ch > this->xtol_abs && (this->objective_weights.front() == 0 || std::abs((ff-fnew)/ff) > this->ftol_rel)); ++iter){
 
-        if(mpi_id == 0){
-            for(auto& f:this->objective){
-                f->update();
-            }
-            for(auto& f:this->constraints){
-                f.fun->update();
-            }
-        }
-
         fnew = ff;
-
-        if(mpi_id == 0){
-            mma.Update(x.data(), df.data(), g.data(), dg.data(), xmin.data(), xmax.data());
-            this->projection->update(iter);
-
-            ch = 0.0;
-            for (size_t i = 0; i < x.size(); ++i) {
-                ch = std::max(ch, std::abs(xold[i] - x[i]));
-                xold[i] = x[i];
-            }
-
-            this->filter->filter_densities(x, x_fil);
-            std::copy(x_fil.begin(), x_fil.end(), new_x.begin());
-            this->projection->project_densities(new_x);
-        }
-        MPI_Bcast(&ch, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
         fem->generate_matrix(mesh, new_x, pc, this->psi);
         for(size_t i = 0; i < mesh->node_positions.size(); ++i){
@@ -556,6 +338,29 @@ TopoDS_Shape MMA::optimize(SolverManager* fem, Meshing* mesh){
                 }
             }
         }
+
+        if(mpi_id == 0){
+            for(auto& f:this->objective){
+                f->update();
+            }
+            for(auto& f:this->constraints){
+                f.fun->update();
+            }
+
+            mma.Update(x.data(), df.data(), g.data(), dg.data(), xmin.data(), xmax.data());
+            this->projection->update(iter);
+
+            ch = 0.0;
+            for (size_t i = 0; i < x.size(); ++i) {
+                ch = std::max(ch, std::abs(xold[i] - x[i]));
+                xold[i] = x[i];
+            }
+
+            this->filter->filter_densities(x, x_fil);
+            std::copy(x_fil.begin(), x_fil.end(), new_x.begin());
+            this->projection->project_densities(new_x);
+        }
+        MPI_Bcast(&ch, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
         if(mpi_id == 0){
             logger::quick_log("");

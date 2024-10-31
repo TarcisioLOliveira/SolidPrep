@@ -93,7 +93,7 @@ TopoDS_Shape Newton::optimize(SolverManager* fem, Meshing* mesh){
 
     size_t M = 2*this->constraints.size();
 
-    double ff = 0;
+    double ff = 1e-7;
     double fnew = 0;
     std::vector<double> dftmp(x.size());
     std::vector<double> dftmp_nodal(this->filter->get_nodal_density_size());
