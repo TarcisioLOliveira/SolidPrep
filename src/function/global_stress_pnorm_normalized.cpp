@@ -18,9 +18,10 @@
  *
  */
 
-#include "function/global_stress_pnorm_normalized.hpp"
 #include <algorithm>
 #include <mpich-x86_64/mpi.h>
+#include "function/global_stress_pnorm_normalized.hpp"
+#include "optimizer.hpp"
 
 namespace function{
 

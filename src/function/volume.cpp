@@ -18,9 +18,10 @@
  *
  */
 
-#include "function/volume.hpp"
 #include <mpich-x86_64/mpi.h>
 #include <numeric>
+#include "function/volume.hpp"
+#include "optimizer.hpp"
 
 namespace function{
 

@@ -23,7 +23,7 @@
 
 #include "function.hpp"
 #include "meshing.hpp"
-#include "finite_element.hpp"
+#include "solver_manager.hpp"
 
 namespace function{
 

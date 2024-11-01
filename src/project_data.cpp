@@ -812,7 +812,7 @@ std::unique_ptr<Optimizer> ProjectData::load_optimizer(const rapidjson::GenericV
         std::vector<double> weights;
         this->get_objective_functions(to["objective"], pc, psi, objective, weights);
 
-        std::vector<Constraint> constraints;
+        std::vector<DensityBasedConstraint> constraints;
         this->get_constraints(to["constraints"], pc, psi, constraints);
 
         return std::make_unique<optimizer::MMA>(this->density_filter.get(), this->projection.get(), this, std::move(objective), std::move(weights), std::move(constraints), asyminit, asymdec, asyminc, minfac, maxfac, c, pc, psi, rho_init, xtol_abs, ftol_rel, result_threshold, save_result);
@@ -842,7 +842,7 @@ std::unique_ptr<Optimizer> ProjectData::load_optimizer(const rapidjson::GenericV
         std::vector<double> weights;
         this->get_objective_functions(to["objective"], pc, psi, objective, weights);
 
-        std::vector<Constraint> constraints;
+        std::vector<DensityBasedConstraint> constraints;
         this->get_constraints(to["constraints"], pc, psi, constraints);
 
         return std::make_unique<optimizer::Newton>(this->density_filter.get(), this->projection.get(), this, std::move(objective), std::move(weights), std::move(constraints), pc, psi, rho_init, xtol_abs, ftol_rel, result_threshold, save_result);
@@ -941,40 +941,6 @@ std::unique_ptr<DensityBasedFunction> ProjectData::get_function(const rapidjson:
     logger::log_assert(false, logger::ERROR, "function \"{}\" not found.", type);
 
     return nullptr;
-}
-
-void ProjectData::get_constraints(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc, double pc, double psi, std::vector<Constraint>& functions){
-    auto array = doc.GetArray();
-    for(auto& f:array){
-        std::vector<Constraint::Type> types;
-        std::vector<double> bounds;
-
-        this->log_data(f, "type", TYPE_STRING, true);
-        std::string type = f["type"].GetString();
-        if(f.HasMember("less_than")){
-            types.push_back(Constraint::Type::LESS_THAN);
-            bounds.push_back(f["less_than"].GetDouble());
-        }
-        if(f.HasMember("greater_than")){
-            types.push_back(Constraint::Type::GREATER_THAN);
-            bounds.push_back(f["greater_than"].GetDouble());
-        }
-        if(f.HasMember("equals")){
-            types.push_back(Constraint::Type::EQUAL);
-            bounds.push_back(f["equals"].GetDouble());
-        }
-        logger::log_assert(types.size() > 0, logger::ERROR, "constraint {} is missing at least one of the following: \"equals\", \"greater_than\", \"less_than\"", f["type"].GetString());
-
-        functions.emplace_back(this->get_function(f, pc, psi), types, bounds);
-    }
-}
-
-void ProjectData::get_objective_functions(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc, double pc, double psi, std::vector<std::unique_ptr<DensityBasedFunction>>& functions, std::vector<double>& weights){
-    auto array = doc.GetArray();
-    for(auto& f:array){
-        functions.push_back(this->get_function(f, pc, psi));
-        weights.push_back(f["weight"].GetDouble());
-    }
 }
 
 Projection::Parameter ProjectData::get_projection_parameter(const rapidjson::GenericValue<rapidjson::UTF8<>>& p) const{

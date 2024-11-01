@@ -25,7 +25,7 @@
 #include <Eigen/Dense>
 #include "function.hpp"
 #include "meshing.hpp"
-#include "finite_element.hpp"
+#include "solver_manager.hpp"
 #include "utils.hpp"
 
 namespace function{

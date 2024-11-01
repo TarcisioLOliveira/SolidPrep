@@ -22,8 +22,10 @@
 #define FUNCTION_HPP
 
 #include <vector>
-#include "optimizer.hpp"
 #include "density_filter.hpp"
+#include "visualization.hpp"
+
+class Optimizer;
 
 class Function {
     public:

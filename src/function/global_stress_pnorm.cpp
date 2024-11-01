@@ -18,11 +18,11 @@
  *
  */
 
-#include "function/global_stress_pnorm.hpp"
-#include "logger.hpp"
-#include <algorithm>
 #include <mpich-x86_64/mpi.h>
 #include <vector>
+#include "function/global_stress_pnorm.hpp"
+#include "logger.hpp"
+#include "optimizer.hpp"
 
 namespace function{
 

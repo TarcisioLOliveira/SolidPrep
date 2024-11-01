@@ -18,15 +18,12 @@
  *
  */
 
-#include "function/omni_machining.hpp"
-#include "logger.hpp"
-#include "projection/heaviside.hpp"
-#include "projection/threshold.hpp"
-#include <Eigen/src/Core/util/Constants.h>
-#include <limits>
 #include <mpi.h>
 #include <numeric>
-#include <set>
+#include "function/omni_machining.hpp"
+#include "logger.hpp"
+#include "projection/threshold.hpp"
+#include "optimizer.hpp"
 
 namespace function{
 

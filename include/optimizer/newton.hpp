@@ -31,7 +31,7 @@ namespace optimizer{
 
 class Newton : public Optimizer{
     public:
-    Newton(DensityFilter* filter, Projection* projection, ProjectData* data, std::vector<std::unique_ptr<DensityBasedFunction>> objective, std::vector<double> weights, std::vector<Constraint> constraints, double pc, double psi, double rho_init, double xtol_abs, double ftol_rel, double result_threshold, bool save);
+    Newton(DensityFilter* filter, Projection* projection, ProjectData* data, std::vector<std::unique_ptr<DensityBasedFunction>> objective, std::vector<double> weights, std::vector<DensityBasedConstraint> constraints, double pc, double psi, double rho_init, double xtol_abs, double ftol_rel, double result_threshold, bool save);
 
     virtual void initialize_views(Visualization* viz) override;
     virtual TopoDS_Shape optimize(SolverManager* fem, Meshing* mesh) override;
@@ -47,7 +47,7 @@ class Newton : public Optimizer{
     const bool save_result;
     std::vector<std::unique_ptr<DensityBasedFunction>> objective;
     std::vector<double> objective_weights;
-    std::vector<Constraint> constraints;
+    std::vector<DensityBasedConstraint> constraints;
 
     DensityFilter* filter;
     Projection* projection;

@@ -18,13 +18,11 @@
  *
  */
 
+#include <mpich-x86_64/mpi.h>
 #include "function/am_support.hpp"
 #include "logger.hpp"
 #include "projection/threshold.hpp"
-#include <Eigen/src/Core/util/Constants.h>
-#include <numeric>
-#include <set>
-#include <mpich-x86_64/mpi.h>
+#include "optimizer.hpp"
 
 namespace function{
 

@@ -18,12 +18,12 @@
  *
  */
 
+#include <limits>
+#include <mpich-x86_64/mpi.h>
 #include "function/mechanostat.hpp"
 #include "logger.hpp"
 #include "utils.hpp"
-#include <Eigen/src/Core/Map.h>
-#include <limits>
-#include <mpich-x86_64/mpi.h>
+#include "optimizer.hpp"
 
 namespace function{
 

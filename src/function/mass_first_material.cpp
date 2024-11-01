@@ -18,10 +18,10 @@
  *
  */
 
+#include <mpich-x86_64/mpi.h>
 #include "function/mass_first_material.hpp"
 #include "logger.hpp"
-#include <mpich-x86_64/mpi.h>
-#include <numeric>
+#include "optimizer.hpp"
 
 namespace function{
 

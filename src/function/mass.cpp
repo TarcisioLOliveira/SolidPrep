@@ -18,10 +18,9 @@
  *
  */
 
-#include "function/mass.hpp"
-#include "logger.hpp"
 #include <mpich-x86_64/mpi.h>
-#include <numeric>
+#include "function/mass.hpp"
+#include "optimizer.hpp"
 
 namespace function{
 

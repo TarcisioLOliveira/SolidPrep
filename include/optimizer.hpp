@@ -27,8 +27,9 @@
 #include "utils.hpp"
 #include "visualization.hpp"
 #include "solver_manager.hpp"
+#include "function.hpp"
 
-class DensityBasedFunction;
+class DensityBasedConstraint;
 
 class Constraint{
     public:
@@ -38,11 +39,26 @@ class Constraint{
         EQUAL
     };
 
-    Constraint(std::unique_ptr<DensityBasedFunction> fun, std::vector<Type> types, std::vector<double> bounds);
+    Constraint(std::vector<Type> types, std::vector<double> bounds);
 
-    std::unique_ptr<DensityBasedFunction> fun;
     std::vector<Type> types;
     std::vector<double> bounds;
+};
+
+class DensityBasedConstraint : public Constraint{
+    public:
+
+    DensityBasedConstraint(std::unique_ptr<DensityBasedFunction> fun, std::vector<Type> types, std::vector<double> bounds);
+
+    std::unique_ptr<DensityBasedFunction> fun;
+};
+
+class NodeShapeBasedConstraint : public Constraint{
+    public:
+
+    NodeShapeBasedConstraint(std::unique_ptr<NodeShapeBasedFunction> fun, std::vector<Type> types, std::vector<double> bounds);
+
+    std::unique_ptr<NodeShapeBasedFunction> fun;
 };
 
 class Optimizer{
