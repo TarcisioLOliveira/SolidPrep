@@ -29,6 +29,8 @@ class Optimizer;
 
 class Function {
     public:
+    virtual ~Function() = default;
+
     virtual void initialize_views(Visualization* viz){(void)viz;}
     virtual void initialize(const Optimizer* const op){(void)op;}
     virtual void update(){}
@@ -49,6 +51,8 @@ class Function {
 
 class DensityBasedFunction : public Function {
     public:
+    virtual ~DensityBasedFunction() = default;
+
     virtual double calculate_with_gradient_nodal(const Optimizer* const op, const std::vector<double>& u, const std::vector<double>& x, std::vector<double>& grad){
         (void)op;
         (void)u;
@@ -63,6 +67,8 @@ class DensityBasedFunction : public Function {
 };
 
 class NodeShapeBasedFunction : public Function {
+    public:
+    virtual ~NodeShapeBasedFunction() = default;
 
 };
 

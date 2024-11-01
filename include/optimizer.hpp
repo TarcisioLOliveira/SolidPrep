@@ -40,6 +40,7 @@ class Constraint{
     };
 
     Constraint(std::vector<Type> types, std::vector<double> bounds);
+    virtual ~Constraint() = default;
 
     std::vector<Type> types;
     std::vector<double> bounds;
@@ -49,6 +50,7 @@ class DensityBasedConstraint : public Constraint{
     public:
 
     DensityBasedConstraint(std::unique_ptr<DensityBasedFunction> fun, std::vector<Type> types, std::vector<double> bounds);
+    virtual ~DensityBasedConstraint() = default;
 
     std::unique_ptr<DensityBasedFunction> fun;
 };
@@ -57,6 +59,7 @@ class NodeShapeBasedConstraint : public Constraint{
     public:
 
     NodeShapeBasedConstraint(std::unique_ptr<NodeShapeBasedFunction> fun, std::vector<Type> types, std::vector<double> bounds);
+    virtual ~NodeShapeBasedConstraint() = default;
 
     std::unique_ptr<NodeShapeBasedFunction> fun;
 };
