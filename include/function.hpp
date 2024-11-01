@@ -22,17 +22,20 @@
 #define FUNCTION_HPP
 
 #include <vector>
-#include <cstdlib>
 #include "optimizer.hpp"
 #include "density_filter.hpp"
 
-class DensityBasedFunction{
+class Function {
     public:
-
     virtual void initialize_views(Visualization* viz){(void)viz;}
     virtual void initialize(const Optimizer* const op){(void)op;}
     virtual void update(){}
-    virtual double calculate(const Optimizer* const op, const std::vector<double>& u, const std::vector<double>& x) = 0;
+    virtual double calculate(const Optimizer* const op, const std::vector<double>& u, const std::vector<double>& x){
+        (void)op;
+        (void)u;
+        (void)x;
+        return 0;
+    }
     virtual double calculate_with_gradient(const Optimizer* const op, const std::vector<double>& u, const std::vector<double>& x, std::vector<double>& grad){
         (void)op;
         (void)u;
@@ -40,6 +43,10 @@ class DensityBasedFunction{
         (void)grad;
         return 0;
     }
+};
+
+class DensityBasedFunction : public Function {
+    public:
     virtual double calculate_with_gradient_nodal(const Optimizer* const op, const std::vector<double>& u, const std::vector<double>& x, std::vector<double>& grad){
         (void)op;
         (void)u;
@@ -51,6 +58,10 @@ class DensityBasedFunction{
     virtual DensityFilter::FilterGradient filter_gradient_type() const{
         return DensityFilter::FilterGradient::ELEMENTAL;
     }
+};
+
+class NodeShapeBasedFunction : public Function {
+
 };
 
 #endif
