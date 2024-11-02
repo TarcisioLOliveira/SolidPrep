@@ -18,13 +18,13 @@
  *
  */
 
-#include "optimizer/newton.hpp"
-#include "logger.hpp"
-#include "project_data.hpp"
-#include "optimization/MMASolver.hpp"
 #include <cblas.h>
 #include <chrono>
 #include <mpich-x86_64/mpi.h>
+#include "optimizer/density_based/newton.hpp"
+#include "logger.hpp"
+#include "project_data.hpp"
+#include "optimization/MMASolver.hpp"
 
 namespace optimizer{
 

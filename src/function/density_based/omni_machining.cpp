@@ -20,7 +20,7 @@
 
 #include <mpi.h>
 #include <numeric>
-#include "function/omni_machining.hpp"
+#include "function/density_based/omni_machining.hpp"
 #include "logger.hpp"
 #include "projection/threshold.hpp"
 #include "optimizer.hpp"

@@ -20,7 +20,7 @@
 
 #include <mpich-x86_64/mpi.h>
 #include <vector>
-#include "function/global_stress_pnorm.hpp"
+#include "function/density_based/global_stress_pnorm.hpp"
 #include "logger.hpp"
 #include "optimizer.hpp"
 

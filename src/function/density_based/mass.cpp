@@ -19,27 +19,19 @@
  */
 
 #include <mpich-x86_64/mpi.h>
-#include <numeric>
-#include "function/volume.hpp"
+#include "function/density_based/mass.hpp"
 #include "optimizer.hpp"
 
 namespace function{
 
-Volume::Volume(const Meshing* const mesh):
+Mass::Mass(const Meshing* const mesh):
     mesh(mesh){}
 
-void Volume::initialize(const DensityBasedOptimizer* const op){
-    auto v = op->get_volumes();
-    auto v_it = v.cbegin();
-    for(auto& g:this->mesh->geometries){
-        if(g->do_topopt){
-            this->max_V += std::accumulate(v_it, v_it + g->mesh.size(), 0.0);
-        }
-        v_it += g->mesh.size();
-    }
+void Mass::initialize(const DensityBasedOptimizer* const op){
+    (void) op;
 }
 
-double Volume::calculate(const DensityBasedOptimizer* const op, const std::vector<double>& u, const std::vector<double>& x){
+double Mass::calculate(const DensityBasedOptimizer* const op, const std::vector<double>& u, const std::vector<double>& x){
     (void)u;
     int mpi_id = 0;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi_id);
@@ -53,20 +45,25 @@ double Volume::calculate(const DensityBasedOptimizer* const op, const std::vecto
     auto x_it = x.cbegin();
     auto v_it = v.cbegin();
     for(auto& g:this->mesh->geometries){
+        const size_t num_den = g->number_of_densities_needed();
         if(g->do_topopt){
-            for(auto xi = x_it; xi < x_it+g->mesh.size(); ++xi, ++v_it){
-                V += *xi*(*v_it);
+            for(const auto& e:g->mesh){
+                const gp_Pnt p = e->get_centroid();
+                const double d = g->materials.get_density(x_it, e.get(), p);
+                V += d*(*v_it);
+                ++v_it;
+                x_it += num_den;
             }
-            x_it += g->mesh.size();
         } else {
             v_it += g->mesh.size();
         }
     }
-    V /= this->max_V;
+    V *= 1e3;
+    V /= 1e9;
 
     return V;
 }
-double Volume::calculate_with_gradient(const DensityBasedOptimizer* const op, const std::vector<double>& u, const std::vector<double>& x, std::vector<double>& grad){
+double Mass::calculate_with_gradient(const DensityBasedOptimizer* const op, const std::vector<double>& u, const std::vector<double>& x, std::vector<double>& grad){
     (void)u;
     int mpi_id = 0;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi_id);
@@ -81,17 +78,26 @@ double Volume::calculate_with_gradient(const DensityBasedOptimizer* const op, co
     auto v_it = v.cbegin();
     auto grad_it = grad.begin();
     for(auto& g:this->mesh->geometries){
+        const size_t num_den = g->number_of_densities_needed();
         if(g->do_topopt){
-            for(auto xi = x_it; xi < x_it+g->mesh.size(); ++xi, ++v_it, ++grad_it){
-                V += *xi*(*v_it);
-                *grad_it = *v_it/this->max_V;
+            for(const auto& e:g->mesh){
+                auto grad_it2 = grad_it;
+                const gp_Pnt p = e->get_centroid();
+                const auto d = g->materials.get_density_deriv(x_it, e.get(), p, grad_it2);
+                V += d*(*v_it);
+                while(grad_it < grad_it2){
+                    *grad_it *= *v_it*1e3/1e9;
+                    ++grad_it;
+                }
+                ++v_it;
+                x_it += num_den;
             }
-            x_it += g->mesh.size();
         } else {
             v_it += g->mesh.size();
         }
     }
-    V /= this->max_V;
+    V *= 1e3;
+    V /= 1e9;
 
     return V;
 }

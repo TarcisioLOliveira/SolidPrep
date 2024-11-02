@@ -19,7 +19,7 @@
  */
 
 #include <mpich-x86_64/mpi.h>
-#include "function/mass_first_material.hpp"
+#include "function/density_based/mass_first_material.hpp"
 #include "logger.hpp"
 #include "optimizer.hpp"
 

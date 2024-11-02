@@ -20,7 +20,7 @@
 
 #include <limits>
 #include <mpich-x86_64/mpi.h>
-#include "function/mechanostat.hpp"
+#include "function/density_based/mechanostat.hpp"
 #include "logger.hpp"
 #include "utils.hpp"
 #include "optimizer.hpp"

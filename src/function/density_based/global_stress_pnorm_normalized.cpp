@@ -20,7 +20,7 @@
 
 #include <algorithm>
 #include <mpich-x86_64/mpi.h>
-#include "function/global_stress_pnorm_normalized.hpp"
+#include "function/density_based/global_stress_pnorm_normalized.hpp"
 #include "optimizer.hpp"
 
 namespace function{
