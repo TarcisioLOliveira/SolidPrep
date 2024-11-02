@@ -19,7 +19,7 @@
  */
 
 #include <mpich-x86_64/mpi.h>
-#include "function/am_support.hpp"
+#include "function/density_based/am_support.hpp"
 #include "logger.hpp"
 #include "projection/threshold.hpp"
 #include "optimizer.hpp"

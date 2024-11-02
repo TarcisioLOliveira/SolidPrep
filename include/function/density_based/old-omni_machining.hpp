@@ -32,16 +32,16 @@
 
 namespace function{
 
-class OmniMachining : public DensityBasedFunction{
+class RadialMachining : public DensityBasedFunction{
     public:
-    OmniMachining(const Meshing* const mesh, const DensityFilter* const filter, gp_Pnt center, gp_Dir axis, double v_norm, double beta1, double beta2, double L);
+    RadialMachining(const Meshing* const mesh, const DensityFilter* const filter, gp_Pnt center, gp_Dir axis, double v_norm, double beta);
 
-    virtual ~OmniMachining() = default;
+    virtual ~RadialMachining() = default;
 
     virtual void initialize_views(Visualization* viz) override;
-    virtual void initialize(const DensityBasedOptimizer* const op) override;
-    virtual double calculate(const DensityBasedOptimizer* const op, const std::vector<double>& u, const std::vector<double>& x) override;
-    virtual double calculate_with_gradient(const DensityBasedOptimizer* const op, const std::vector<double>& u, const std::vector<double>& x, std::vector<double>& grad) override;
+    virtual void initialize(const Optimizer* const op) override;
+    virtual double calculate(const Optimizer* const op, const std::vector<double>& u, const std::vector<double>& x) override;
+    virtual double calculate_with_gradient(const Optimizer* const op, const std::vector<double>& u, const std::vector<double>& x, std::vector<double>& grad) override;
     virtual DensityFilter::FilterGradient filter_gradient_type() const override{
         return DensityFilter::FilterGradient::ELEMENTAL;
     }
@@ -52,14 +52,12 @@ class OmniMachining : public DensityBasedFunction{
     const gp_Pnt center;
     const gp_Dir axis;
     const double v_norm;
-    const double beta1;
-    const double beta2;
-    const double L;
+    const double beta;
     Eigen::VectorXd b;
     Eigen::VectorXd b_grad;
     std::vector<double> diff;
     std::vector<double> Hgrad;
-    std::vector<long> id_mapping_linear;
+    std::map<size_t, long> id_mapping;
     Eigen::SparseMatrix<double> Phi;
     Eigen::SparseLU<Eigen::SparseMatrix<double>, Eigen::COLAMDOrdering<int>> solver;
     projection::Threshold proj;

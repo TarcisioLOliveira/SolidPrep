@@ -19,7 +19,7 @@
  */
 
 #include <mpich-x86_64/mpi.h>
-#include "function/global_stress_heaviside.hpp"
+#include "function/density_based/global_stress_heaviside.hpp"
 #include "optimizer.hpp"
 
 namespace function{

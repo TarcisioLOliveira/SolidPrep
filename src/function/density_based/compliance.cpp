@@ -18,9 +18,9 @@
  *
  */
 
-#include "function/compliance.hpp"
 #include <cblas.h>
 #include <mpich-x86_64/mpi.h>
+#include "function/density_based/compliance.hpp"
 
 namespace function{
 
