@@ -25,7 +25,7 @@
 #include "utils.hpp"
 #include "optimizer.hpp"
 
-namespace function{
+namespace function::density_based{
 
 Mechanostat::Mechanostat(const Meshing* const mesh, SolverManager* fem, double pc, double psiK, double beta, Range traction, Range compression, Range shear, utils::ProblemType type):
     mesh(mesh), fem(fem), beta(beta), pc(pc), psiK(psiK),

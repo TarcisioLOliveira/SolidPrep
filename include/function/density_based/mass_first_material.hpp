@@ -24,7 +24,7 @@
 #include "function.hpp"
 #include "meshing.hpp"
 
-namespace function{
+namespace function::density_based{
 
 class MassFirstMaterial : public DensityBasedFunction{
     public:

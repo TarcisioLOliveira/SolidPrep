@@ -28,7 +28,7 @@
 #include "solver_manager.hpp"
 #include "utils.hpp"
 
-namespace function{
+namespace function::density_based{
 
 class Mechanostat : public DensityBasedFunction{
     public:

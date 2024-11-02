@@ -22,7 +22,7 @@
 #include "function/density_based/mass.hpp"
 #include "optimizer.hpp"
 
-namespace function{
+namespace function::density_based{
 
 Mass::Mass(const Meshing* const mesh):
     mesh(mesh){}

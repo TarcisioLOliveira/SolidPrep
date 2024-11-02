@@ -29,7 +29,7 @@
 #include "density_filter.hpp"
 #include "projection/threshold.hpp"
 
-namespace function{
+namespace function::density_based{
 
 class AMSupport : public DensityBasedFunction{
     public:

@@ -24,7 +24,7 @@
 #include "projection/threshold.hpp"
 #include "optimizer.hpp"
 
-namespace function{
+namespace function::density_based{
 
 AMSupport::AMSupport(const Meshing* const mesh, const DensityFilter* const filter, const Projection* const global_proj, gp_Dir axis, double v_norm, double L, double beta, double angle)
     : mesh(mesh), filter(filter), global_proj(global_proj), axis(axis), v_norm(v_norm), L(L), beta(beta), support_angle(angle), proj(projection::Threshold::Parameter{100, 50, 0, 0}, 0.75){}

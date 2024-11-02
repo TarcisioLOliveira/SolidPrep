@@ -26,7 +26,7 @@
 #include "optimization/MMASolver.hpp"
 #include "project_data.hpp"
 
-namespace optimizer{
+namespace optimizer::density_based{
 
 MMA::MMA(DensityFilter* filter, Projection* projection, ProjectData* data, std::vector<std::unique_ptr<DensityBasedFunction>> objective, std::vector<double> weights, std::vector<DensityBasedConstraint> constraints, double asyminit, double asymdec, double asyminc, double minfac, double maxfac, double c, double pc, double psi, double rho_init, double xtol_abs, double ftol_rel, double result_threshold, bool save):
     data(data), rho_init(rho_init), xtol_abs(xtol_abs), ftol_rel(ftol_rel), pc(pc), psi(psi), result_threshold(result_threshold), asyminit(asyminit), asymdec(asymdec), asyminc(asyminc), minfac(minfac), maxfac(maxfac), c(c), save_result(save), objective(std::move(objective)), objective_weights(std::move(weights)), constraints(std::move(constraints)), filter(filter), projection(projection), viz(nullptr)

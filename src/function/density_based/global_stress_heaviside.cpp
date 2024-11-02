@@ -22,7 +22,7 @@
 #include "function/density_based/global_stress_heaviside.hpp"
 #include "optimizer.hpp"
 
-namespace function{
+namespace function::density_based{
 
 GlobalStressHeaviside::GlobalStressHeaviside(const Meshing* const mesh, SolverManager* fem, double max_stress, double C, double pc, double pt, double psiK, double psiS):
     mesh(mesh), fem(fem), max_stress(max_stress), C(C), pc(pc), pt(pt), psiK(psiK), psiS(psiS){}
