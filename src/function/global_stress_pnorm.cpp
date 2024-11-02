@@ -29,7 +29,7 @@ namespace function{
 GlobalStressPnorm::GlobalStressPnorm(const Meshing* const mesh, SolverManager* fem, double pc, double P, double pt, double psiK, double psiS):
     mesh(mesh), fem(fem), pc(pc), P(P), pt(pt), psiK(psiK), psiS(psiS){}
 
-double GlobalStressPnorm::calculate(const Optimizer* const op, const std::vector<double>& u, const std::vector<double>& x){
+double GlobalStressPnorm::calculate(const DensityBasedOptimizer* const op, const std::vector<double>& u, const std::vector<double>& x){
     (void)x;
     auto grad_V = op->get_volumes();
     //auto stresses = op->get_stresses();
@@ -61,7 +61,7 @@ double GlobalStressPnorm::calculate(const Optimizer* const op, const std::vector
     return Spn;
 }
 
-double GlobalStressPnorm::calculate_with_gradient(const Optimizer* const op, const std::vector<double>& u, const std::vector<double>& x, std::vector<double>& grad){
+double GlobalStressPnorm::calculate_with_gradient(const DensityBasedOptimizer* const op, const std::vector<double>& u, const std::vector<double>& x, std::vector<double>& grad){
     int mpi_id = 0;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi_id);
     // Calculating stresses

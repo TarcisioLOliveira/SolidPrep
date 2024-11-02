@@ -27,7 +27,7 @@ namespace function{
 GlobalStressHeaviside::GlobalStressHeaviside(const Meshing* const mesh, SolverManager* fem, double max_stress, double C, double pc, double pt, double psiK, double psiS):
     mesh(mesh), fem(fem), max_stress(max_stress), C(C), pc(pc), pt(pt), psiK(psiK), psiS(psiS){}
 
-double GlobalStressHeaviside::calculate(const Optimizer* const op, const std::vector<double>& u, const std::vector<double>& x){
+double GlobalStressHeaviside::calculate(const DensityBasedOptimizer* const op, const std::vector<double>& u, const std::vector<double>& x){
     (void)op;
     int mpi_id = 0;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi_id);
@@ -81,7 +81,7 @@ double GlobalStressHeaviside::calculate(const Optimizer* const op, const std::ve
     return result;
 }
 
-double GlobalStressHeaviside::calculate_with_gradient(const Optimizer* const op, const std::vector<double>& u, const std::vector<double>& x, std::vector<double>& grad){
+double GlobalStressHeaviside::calculate_with_gradient(const DensityBasedOptimizer* const op, const std::vector<double>& u, const std::vector<double>& x, std::vector<double>& grad){
     (void) op;
     int mpi_id = 0;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi_id);

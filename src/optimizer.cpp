@@ -70,107 +70,6 @@ TopoDS_Shape Optimizer::STEP_workaround(const TopoDS_Shape& s) const{
     return reader.OneShape();
 }
 
-TopoDS_Shape Optimizer::make_shape(const std::vector<double>& x, const std::vector<Geometry*>& geometries, const double result_threshold, const utils::ProblemType type) const{
-    logger::quick_log(" "); 
-    logger::quick_log("Saving resulting geometries...");
-    // TODO: make it work with multiple geometries
-    std::cout << "\r" << 0 << "%         ";
-
-    if(type == utils::PROBLEM_TYPE_2D){
-        TopoDS_Shape result = BRepBuilderAPI_Copy(geometries[0]->shape);
-        for(size_t i = 0; i < x.size(); ++i){
-            if(x[i] < result_threshold){
-                TopoDS_Shape s(geometries[0]->mesh[i]->get_shape());
-                result = utils::cut_shape(result, s);
-            }
-            const double pc = i/(double)(x.size()-1);
-            std::cout << "\r" << pc*100 << "%         ";
-        }
-        std::cout << "\r" << 100 << "%         ";
-        logger::quick_log(" "); 
-        return result;
-    } else if(type == utils::PROBLEM_TYPE_3D){
-        TopoDS_Compound result;
-        TopoDS_Builder builder;
-        builder.MakeCompound(result);
-        size_t g_num = 0;
-        size_t count = 0;
-        auto x_it = x.cbegin();
-        for(auto& g:geometries){
-            if(g->do_topopt){
-                TopoDS_Compound result_geom;
-                TopoDS_Builder builder_geom;
-                builder_geom.MakeCompound(result_geom);
-                for(size_t i = 0; i < g->mesh.size(); ++i){
-                    if(*x_it >= result_threshold){
-                        TopoDS_Shape s(g->mesh[i]->get_shape());
-                        builder_geom.Add(result_geom, std::move(s));
-                        // auto ss = STEP_workaround(s);
-
-                        // // result = utils::cut_shape(result, ss);
-                        // TopoDS_Shape cur_shape;
-                        // double cur_mass = 0;
-
-                        // TopExp_Explorer exp(result, TopAbs_SHAPE);
-                        // if(exp.More()){
-                        //     for(; exp.More(); exp.Next()){
-                        //         auto cur = exp.Current();
-                        //         GProp_GProps props;
-                        //         BRepGProp::SurfaceProperties(cur, props);
-                        //         if(props.Mass() > cur_mass){
-                        //             cur_mass = props.Mass();
-                        //           cur_shape = cur;
-                        //         }
-                        //         break;
-                        //     }
-                        //     auto test = utils::cut_shape(cur_shape, ss);
-                        //     if(test.IsNull()){
-                        //         result = utils::cut_shape(result, ss);
-                        //     } else {
-                        //         result = test;
-                        //     }
-                        // } else {
-                        //     result = utils::cut_shape(result, ss);
-                        // }
-                    }
-                    ++x_it;
-                    const double pc = count/(double)(x.size()-1);
-                    std::cout << "\r" << pc*100 << "%         ";
-                    ++count;
-                }
-                std::cout << std::endl;
-                utils::shape_to_file("result_"+std::to_string(g_num)+".step", result_geom);
-                ++g_num;
-                //builder.Add(result, result_geom);
-            }
-        }
-
-        // // Another workaround.
-        // // When using solids, BRepAlgoAPI_Cut sometimes only cuts the faces,
-        // // leaving the solid part in place, but separate from the remaining
-        // // solid. Therefore, at the end of the process, extract the result
-        // // geometry by finding the solid with the greatest mass (assuming
-        // // it remains completely united, of course).
-        // TopoDS_Shape cur_shape;
-        // double cur_mass = 0;
-
-        // for(TopExp_Explorer exp(result, TopAbs_SOLID); exp.More(); exp.Next()){
-        //     auto cur = exp.Current();
-        //     GProp_GProps props;
-        //     BRepGProp::VolumeProperties(cur, props);
-        //     if(props.Mass() > cur_mass){
-        //         cur_mass = props.Mass();
-        //         cur_shape = cur;
-        //     }
-        // }
-        // result = cur_shape;
-        std::cout << "\r" << 100 << "%         ";
-        logger::quick_log(" "); 
-        return result;
-    }
-    return TopoDS_Shape();
-}
-
 void Optimizer::get_stresses(const std::vector<Geometry*> geometries, const std::vector<double>& u, const std::vector<std::vector<double>>& D_cache, std::vector<double>& stresses) const{
     auto stress_it = stresses.begin();
     size_t D_offset = 0;
@@ -198,7 +97,7 @@ size_t Optimizer::get_number_of_elements(const std::vector<Geometry*> geometries
     return elem_num;
 }
 
-void Optimizer::apply_densities(const std::vector<Geometry*> geometries, const std::vector<double>& x, std::vector<double>& vals, const double pc) const{
+void DensityBasedOptimizer::apply_densities(const std::vector<Geometry*> geometries, const std::vector<double>& x, std::vector<double>& vals, const double pc) const{
     if(pc == 0){
         return;
     } else if(pc == 1){
@@ -229,3 +128,145 @@ void Optimizer::apply_densities(const std::vector<Geometry*> geometries, const s
         }
     }
 }
+
+TopoDS_Shape DensityBasedOptimizer::make_shape(const std::vector<double>& x, const std::vector<Geometry*>& geometries, const double result_threshold, const utils::ProblemType type) const{
+    logger::quick_log(" "); 
+    logger::quick_log("Saving resulting geometries...");
+    // TODO: make it work with multiple geometries
+    std::cout << "\r" << 0 << "%         ";
+
+    if(type == utils::PROBLEM_TYPE_2D){
+        TopoDS_Compound result;
+        TopoDS_Builder builder;
+        builder.MakeCompound(result);
+        auto x_it = x.cbegin();
+        size_t g_num = 0;
+        for(auto& g:geometries){
+            if(g->do_topopt){
+                TopoDS_Shape result_geom = BRepBuilderAPI_Copy(geometries[0]->shape);
+                for(size_t i = 0; i < g->mesh.size(); ++i){
+                    if(*x_it < result_threshold){
+                        TopoDS_Shape s(g->mesh[i]->get_shape());
+                        result_geom = utils::cut_shape(result, s);
+                    }
+                    const double pc = (x_it - x.cbegin())/(double)(x.size()-1);
+                    std::cout << "\r" << pc*100 << "%         ";
+                    ++x_it;
+                }
+                builder.Add(result, result_geom);
+                std::cout << std::endl;
+                utils::shape_to_file("result_"+std::to_string(g_num)+".step", result_geom);
+                ++g_num;
+            }
+        }
+        std::cout << "\r" << 100 << "%         ";
+        logger::quick_log(" "); 
+        return result;
+    } else if(type == utils::PROBLEM_TYPE_3D){
+        TopoDS_Compound result;
+        TopoDS_Builder builder;
+        builder.MakeCompound(result);
+        size_t g_num = 0;
+        size_t count = 0;
+        auto x_it = x.cbegin();
+        for(auto& g:geometries){
+            if(g->do_topopt){
+                TopoDS_Compound result_geom;
+                TopoDS_Builder builder_geom;
+                builder_geom.MakeCompound(result_geom);
+                for(size_t i = 0; i < g->mesh.size(); ++i){
+                    if(*x_it >= result_threshold){
+                        TopoDS_Shape s(g->mesh[i]->get_shape());
+                        builder_geom.Add(result_geom, std::move(s));
+                    }
+                    ++x_it;
+                    const double pc = count/(double)(x.size()-1);
+                    std::cout << "\r" << pc*100 << "%         ";
+                    ++count;
+                }
+                std::cout << std::endl;
+                utils::shape_to_file("result_"+std::to_string(g_num)+".step", result_geom);
+                ++g_num;
+            }
+        }
+        std::cout << "\r" << 100 << "%         ";
+        logger::quick_log(" "); 
+        return result;
+    }
+    return TopoDS_Shape();
+}
+
+TopoDS_Shape NodeShapeBasedOptimizer::make_shape(const std::vector<Geometry*>& geometries, const utils::ProblemType type) const{
+    logger::quick_log(" "); 
+    logger::quick_log("Saving resulting geometries...");
+    // TODO: make it work with multiple geometries
+    std::cout << "\r" << 0 << "%         ";
+
+    if(type == utils::PROBLEM_TYPE_2D){
+        TopoDS_Compound result;
+        TopoDS_Builder builder;
+        builder.MakeCompound(result);
+        size_t g_num = 0;
+        double elem_num = 0;
+        for(auto& g:geometries){
+            if(g->do_topopt){
+                elem_num += g->mesh.size();
+            }
+        }
+        size_t elem_i = 0;
+        for(auto& g:geometries){
+            if(g->do_topopt){
+                TopoDS_Shape result_geom = BRepBuilderAPI_Copy(geometries[0]->shape);
+                for(size_t i = 0; i < g->mesh.size(); ++i){
+                    TopoDS_Shape s(g->mesh[i]->get_shape());
+                    result_geom = utils::cut_shape(result, s);
+                    const double pc = elem_i/elem_num;
+                    std::cout << "\r" << pc*100 << "%         ";
+                    ++elem_i;
+                }
+                builder.Add(result, result_geom);
+                std::cout << std::endl;
+                utils::shape_to_file("result_"+std::to_string(g_num)+".step", result_geom);
+                ++g_num;
+            }
+        }
+        std::cout << "\r" << 100 << "%         ";
+        logger::quick_log(" "); 
+        return result;
+    } else if(type == utils::PROBLEM_TYPE_3D){
+        TopoDS_Compound result;
+        TopoDS_Builder builder;
+        builder.MakeCompound(result);
+        size_t g_num = 0;
+        double elem_num = 0;
+        for(auto& g:geometries){
+            if(g->do_topopt){
+                elem_num += g->mesh.size();
+            }
+        }
+        size_t elem_i = 0;
+        for(auto& g:geometries){
+            if(g->do_topopt){
+                TopoDS_Compound result_geom;
+                TopoDS_Builder builder_geom;
+                builder_geom.MakeCompound(result_geom);
+                for(size_t i = 0; i < g->mesh.size(); ++i){
+                    TopoDS_Shape s(g->mesh[i]->get_shape());
+                    builder_geom.Add(result_geom, std::move(s));
+                    const double pc = elem_i/elem_num;
+                    std::cout << "\r" << pc*100 << "%         ";
+                    ++elem_i;
+                }
+                std::cout << std::endl;
+                utils::shape_to_file("result_"+std::to_string(g_num)+".step", result_geom);
+                ++g_num;
+            }
+        }
+        std::cout << "\r" << 100 << "%         ";
+        logger::quick_log(" "); 
+        return result;
+    }
+    return TopoDS_Shape();
+}
+
+

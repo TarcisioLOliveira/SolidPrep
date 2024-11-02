@@ -38,9 +38,9 @@ class Mechanostat : public DensityBasedFunction{
     virtual ~Mechanostat() = default;
 
     virtual void initialize_views(Visualization* viz) override;
-    virtual void initialize(const Optimizer* const op) override;
-    virtual double calculate(const Optimizer* const op, const std::vector<double>& u, const std::vector<double>& x) override;
-    virtual double calculate_with_gradient(const Optimizer* const op, const std::vector<double>& u, const std::vector<double>& x, std::vector<double>& grad) override;
+    virtual void initialize(const DensityBasedOptimizer* const op) override;
+    virtual double calculate(const DensityBasedOptimizer* const op, const std::vector<double>& u, const std::vector<double>& x) override;
+    virtual double calculate_with_gradient(const DensityBasedOptimizer* const op, const std::vector<double>& u, const std::vector<double>& x, std::vector<double>& grad) override;
 
     private:
     const Meshing* const mesh;

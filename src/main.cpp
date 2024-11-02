@@ -316,7 +316,7 @@ int main(int argc, char* argv[]){
             // Display progress
             v->load_mesh(proj->topopt_mesher.get(), proj->type);
 
-            proj->optimizer->initialize_views(v.get());
+            proj->topopt_optimizer->initialize_views(v.get());
             for(auto& f:proj->fields){
                 f->initialize_views(v.get());
             }
@@ -328,7 +328,7 @@ int main(int argc, char* argv[]){
         auto start_to = std::chrono::high_resolution_clock::now();
 
         // Optimization
-        TopoDS_Shape result = proj->optimizer->optimize(proj->topopt_fea.get(), proj->topopt_mesher.get());
+        TopoDS_Shape result = proj->topopt_optimizer->optimize(proj->topopt_fea.get(), proj->topopt_mesher.get());
 
         if(mpi_id == 0){
             // Display time
@@ -360,11 +360,13 @@ int main(int argc, char* argv[]){
     }
     if(proj->do_shape_opt){
 
+        logger::quick_log("OPTIMIZER FUNCTION NOT YET IMPLEMENTED FOR SHAPE OPTIMIZATION!");
+        exit(0);
         if(mpi_id == 0){
             // Display progress
             v->load_mesh(proj->topopt_mesher.get(), proj->type);
 
-            proj->optimizer->initialize_views(v.get());
+            proj->shopt_optimizer->initialize_views(v.get());
             for(auto& f:proj->fields){
                 f->initialize_views(v.get());
             }
@@ -376,10 +378,7 @@ int main(int argc, char* argv[]){
         auto start_to = std::chrono::high_resolution_clock::now();
 
         // Optimization
-        logger::quick_log("OPTIMIZER FUNCTION NOT YET IMPLEMENTED FOR SHAPE OPTIMIZATION!");
-        exit(0);
-        // TopoDS_Shape result = proj->optimizer->optimize(proj->topopt_fea.get(), proj->topopt_mesher.get());
-        TopoDS_Shape result;
+        TopoDS_Shape result = proj->shopt_optimizer->optimize(proj->topopt_fea.get(), proj->topopt_mesher.get());
 
         if(mpi_id == 0){
             // Display time

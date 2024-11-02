@@ -33,7 +33,7 @@ void AMSupport::initialize_views(Visualization* viz){
     this->shadow_view = viz->add_view("AM Supports", spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::DENSITY);
 }
 
-void AMSupport::initialize(const Optimizer* const op){
+void AMSupport::initialize(const DensityBasedOptimizer* const op){
     (void) op;
     const size_t num_nodes = mesh->elem_info->get_nodes_per_element();
     const size_t num_nodes_bound = mesh->elem_info->get_boundary_nodes_per_element();
@@ -80,7 +80,7 @@ void AMSupport::initialize(const Optimizer* const op){
     this->Phi = Eigen::SparseMatrix<double>(phi_size, phi_size);
 }
 
-double AMSupport::calculate(const Optimizer* const op, const std::vector<double>& u, const std::vector<double>& x){
+double AMSupport::calculate(const DensityBasedOptimizer* const op, const std::vector<double>& u, const std::vector<double>& x){
     (void) u;
     int mpi_id = 0;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi_id);
@@ -223,7 +223,7 @@ double AMSupport::calculate(const Optimizer* const op, const std::vector<double>
     return result;
 }
 
-double AMSupport::calculate_with_gradient_nodal(const Optimizer* const op, const std::vector<double>& u, const std::vector<double>& x, std::vector<double>& grad){
+double AMSupport::calculate_with_gradient_nodal(const DensityBasedOptimizer* const op, const std::vector<double>& u, const std::vector<double>& x, std::vector<double>& grad){
     (void) u;
     int mpi_id = 0;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi_id);

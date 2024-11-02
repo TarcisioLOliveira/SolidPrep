@@ -29,7 +29,7 @@
 
 namespace optimizer{
 
-class Newton : public Optimizer{
+class Newton : public DensityBasedOptimizer{
     public:
     Newton(DensityFilter* filter, Projection* projection, ProjectData* data, std::vector<std::unique_ptr<DensityBasedFunction>> objective, std::vector<double> weights, std::vector<DensityBasedConstraint> constraints, double pc, double psi, double rho_init, double xtol_abs, double ftol_rel, double result_threshold, bool save);
 

@@ -28,7 +28,7 @@ namespace function{
 Volume::Volume(const Meshing* const mesh):
     mesh(mesh){}
 
-void Volume::initialize(const Optimizer* const op){
+void Volume::initialize(const DensityBasedOptimizer* const op){
     auto v = op->get_volumes();
     auto v_it = v.cbegin();
     for(auto& g:this->mesh->geometries){
@@ -39,7 +39,7 @@ void Volume::initialize(const Optimizer* const op){
     }
 }
 
-double Volume::calculate(const Optimizer* const op, const std::vector<double>& u, const std::vector<double>& x){
+double Volume::calculate(const DensityBasedOptimizer* const op, const std::vector<double>& u, const std::vector<double>& x){
     (void)u;
     int mpi_id = 0;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi_id);
@@ -66,7 +66,7 @@ double Volume::calculate(const Optimizer* const op, const std::vector<double>& u
 
     return V;
 }
-double Volume::calculate_with_gradient(const Optimizer* const op, const std::vector<double>& u, const std::vector<double>& x, std::vector<double>& grad){
+double Volume::calculate_with_gradient(const DensityBasedOptimizer* const op, const std::vector<double>& u, const std::vector<double>& x, std::vector<double>& grad){
     (void)u;
     int mpi_id = 0;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi_id);

@@ -45,7 +45,7 @@ void Mechanostat::initialize_views(Visualization* viz){
     this->gradient_view = viz->add_view("Normalized Strain Gradient", spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::OTHER);
 }
 
-void Mechanostat::initialize(const Optimizer* const op){
+void Mechanostat::initialize(const DensityBasedOptimizer* const op){
     (void)op;
     size_t elem_num = 0;
     for(const auto& g:mesh->geometries){
@@ -55,13 +55,13 @@ void Mechanostat::initialize(const Optimizer* const op){
     this->gradHe.resize(elem_num, std::numeric_limits<double>::quiet_NaN());
 }
 
-double Mechanostat::calculate(const Optimizer* const op, const std::vector<double>& u, const std::vector<double>& x){
+double Mechanostat::calculate(const DensityBasedOptimizer* const op, const std::vector<double>& u, const std::vector<double>& x){
     (void)op;
     (void)u;
     (void)x;
     return 0;
 }
-double Mechanostat::calculate_with_gradient(const Optimizer* const op, const std::vector<double>& u, const std::vector<double>& x, std::vector<double>& grad){
+double Mechanostat::calculate_with_gradient(const DensityBasedOptimizer* const op, const std::vector<double>& u, const std::vector<double>& x, std::vector<double>& grad){
     (void)op;
     int mpi_id = 0;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi_id);

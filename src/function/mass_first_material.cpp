@@ -28,7 +28,7 @@ namespace function{
 MassFirstMaterial::MassFirstMaterial(const Meshing* const mesh):
     mesh(mesh){}
 
-void MassFirstMaterial::initialize(const Optimizer* const op){
+void MassFirstMaterial::initialize(const DensityBasedOptimizer* const op){
     (void)op;
     for(auto& g:this->mesh->geometries){
         if(g->do_topopt){
@@ -39,7 +39,7 @@ void MassFirstMaterial::initialize(const Optimizer* const op){
     }
 }
 
-double MassFirstMaterial::calculate(const Optimizer* const op, const std::vector<double>& u, const std::vector<double>& x){
+double MassFirstMaterial::calculate(const DensityBasedOptimizer* const op, const std::vector<double>& u, const std::vector<double>& x){
     (void)u;
     int mpi_id = 0;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi_id);
@@ -85,7 +85,7 @@ double MassFirstMaterial::calculate(const Optimizer* const op, const std::vector
 
     return V;
 }
-double MassFirstMaterial::calculate_with_gradient(const Optimizer* const op, const std::vector<double>& u, const std::vector<double>& x, std::vector<double>& grad){
+double MassFirstMaterial::calculate_with_gradient(const DensityBasedOptimizer* const op, const std::vector<double>& u, const std::vector<double>& x, std::vector<double>& grad){
     (void)u;
     int mpi_id = 0;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi_id);

@@ -36,7 +36,7 @@ void OmniMachining::initialize_views(Visualization* viz){
     this->grad_view = viz->add_view("Shadows Gradient", spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::DENSITY);
 }
 
-void OmniMachining::initialize(const Optimizer* const op){
+void OmniMachining::initialize(const DensityBasedOptimizer* const op){
     (void)op;
     const size_t num_nodes = mesh->elem_info->get_nodes_per_element();
     const size_t num_nodes_bound = mesh->elem_info->get_boundary_nodes_per_element();
@@ -92,7 +92,7 @@ void OmniMachining::initialize(const Optimizer* const op){
     this->Phi = Eigen::SparseMatrix<double>(phi_size, phi_size);
 }
 
-double OmniMachining::calculate(const Optimizer* const op, const std::vector<double>& u, const std::vector<double>& x){
+double OmniMachining::calculate(const DensityBasedOptimizer* const op, const std::vector<double>& u, const std::vector<double>& x){
     (void)op;
     (void)u;
     int mpi_id = 0;
@@ -201,7 +201,7 @@ double OmniMachining::calculate(const Optimizer* const op, const std::vector<dou
     return std::accumulate(this->diff.begin(), this->diff.end(), 0.0);
 }
 
-double OmniMachining::calculate_with_gradient(const Optimizer* const op, const std::vector<double>& u, const std::vector<double>& x, std::vector<double>& grad){
+double OmniMachining::calculate_with_gradient(const DensityBasedOptimizer* const op, const std::vector<double>& u, const std::vector<double>& x, std::vector<double>& grad){
     (void)op;
     (void)u;
     int mpi_id = 0;

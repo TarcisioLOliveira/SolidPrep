@@ -27,14 +27,14 @@ namespace function{
 Compliance::Compliance(const Meshing* const mesh, double pc, double psi):
     pc(pc), psi(psi), mesh(mesh){}
 
-double Compliance::calculate(const Optimizer* const op, const std::vector<double>& u, const std::vector<double>& x){
+double Compliance::calculate(const DensityBasedOptimizer* const op, const std::vector<double>& u, const std::vector<double>& x){
     (void)x;
     (void)op;
     const double c = cblas_ddot(u.size(), this->mesh->global_load_vector.data(), 1, u.data(), 1);
 
     return c;
 }
-double Compliance::calculate_with_gradient(const Optimizer* const op, const std::vector<double>& u, const std::vector<double>& x, std::vector<double>& grad){
+double Compliance::calculate_with_gradient(const DensityBasedOptimizer* const op, const std::vector<double>& u, const std::vector<double>& x, std::vector<double>& grad){
     (void)op;
     int mpi_id = 0;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi_id);

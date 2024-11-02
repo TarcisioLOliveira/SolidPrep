@@ -27,11 +27,11 @@ namespace function{
 Mass::Mass(const Meshing* const mesh):
     mesh(mesh){}
 
-void Mass::initialize(const Optimizer* const op){
+void Mass::initialize(const DensityBasedOptimizer* const op){
     (void) op;
 }
 
-double Mass::calculate(const Optimizer* const op, const std::vector<double>& u, const std::vector<double>& x){
+double Mass::calculate(const DensityBasedOptimizer* const op, const std::vector<double>& u, const std::vector<double>& x){
     (void)u;
     int mpi_id = 0;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi_id);
@@ -63,7 +63,7 @@ double Mass::calculate(const Optimizer* const op, const std::vector<double>& u, 
 
     return V;
 }
-double Mass::calculate_with_gradient(const Optimizer* const op, const std::vector<double>& u, const std::vector<double>& x, std::vector<double>& grad){
+double Mass::calculate_with_gradient(const DensityBasedOptimizer* const op, const std::vector<double>& u, const std::vector<double>& x, std::vector<double>& grad){
     (void)u;
     int mpi_id = 0;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi_id);

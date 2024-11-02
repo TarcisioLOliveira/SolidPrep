@@ -26,34 +26,37 @@
 #include "visualization.hpp"
 
 class Optimizer;
+class DensityBasedOptimizer;
+class NodeShapeBasedOptimizer;
+
 
 class Function {
     public:
     virtual ~Function() = default;
 
     virtual void initialize_views(Visualization* viz){(void)viz;}
-    virtual void initialize(const Optimizer* const op){(void)op;}
     virtual void update(){}
-    virtual double calculate(const Optimizer* const op, const std::vector<double>& u, const std::vector<double>& x){
-        (void)op;
-        (void)u;
-        (void)x;
-        return 0;
-    }
-    virtual double calculate_with_gradient(const Optimizer* const op, const std::vector<double>& u, const std::vector<double>& x, std::vector<double>& grad){
-        (void)op;
-        (void)u;
-        (void)x;
-        (void)grad;
-        return 0;
-    }
 };
 
 class DensityBasedFunction : public Function {
     public:
     virtual ~DensityBasedFunction() = default;
 
-    virtual double calculate_with_gradient_nodal(const Optimizer* const op, const std::vector<double>& u, const std::vector<double>& x, std::vector<double>& grad){
+    virtual void initialize(const DensityBasedOptimizer* const op){(void)op;}
+    virtual double calculate(const DensityBasedOptimizer* const op, const std::vector<double>& u, const std::vector<double>& x){
+        (void)op;
+        (void)u;
+        (void)x;
+        return 0;
+    }
+    virtual double calculate_with_gradient(const DensityBasedOptimizer* const op, const std::vector<double>& u, const std::vector<double>& x, std::vector<double>& grad){
+        (void)op;
+        (void)u;
+        (void)x;
+        (void)grad;
+        return 0;
+    }
+    virtual double calculate_with_gradient_nodal(const DensityBasedOptimizer* const op, const std::vector<double>& u, const std::vector<double>& x, std::vector<double>& grad){
         (void)op;
         (void)u;
         (void)x;
@@ -69,6 +72,21 @@ class DensityBasedFunction : public Function {
 class NodeShapeBasedFunction : public Function {
     public:
     virtual ~NodeShapeBasedFunction() = default;
+
+    virtual void initialize(const NodeShapeBasedOptimizer* const op){(void)op;}
+    virtual double calculate(const NodeShapeBasedOptimizer* const op, const std::vector<double>& u, const std::vector<double>& x){
+        (void)op;
+        (void)u;
+        (void)x;
+        return 0;
+    }
+    virtual double calculate_with_gradient(const NodeShapeBasedOptimizer* const op, const std::vector<double>& u, const std::vector<double>& x, std::vector<double>& grad){
+        (void)op;
+        (void)u;
+        (void)x;
+        (void)grad;
+        return 0;
+    }
 
 };
 

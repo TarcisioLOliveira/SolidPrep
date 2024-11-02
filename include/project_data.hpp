@@ -96,7 +96,8 @@ class ProjectData {
     std::unique_ptr<BoundaryMeshElementFactory> topopt_boundary_element;
     std::unique_ptr<DensityFilter> density_filter;
     std::unique_ptr<Projection> projection;
-    std::unique_ptr<Optimizer> optimizer;
+    std::unique_ptr<DensityBasedOptimizer> topopt_optimizer;
+    std::unique_ptr<NodeShapeBasedOptimizer> shopt_optimizer;
     std::vector<std::unique_ptr<Field>> fields;
     std::vector<SubProblem> sub_problems;
     ContactData contact_data;
@@ -143,17 +144,23 @@ class ProjectData {
 
     std::unique_ptr<Projection> load_projection(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc);
 
-    std::unique_ptr<Optimizer> load_optimizer(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc);
+    std::unique_ptr<DensityBasedOptimizer> load_topopt_optimizer(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc);
+
+    std::unique_ptr<NodeShapeBasedOptimizer> load_shopt_optimizer(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc);
 
     std::vector<std::unique_ptr<Field>> load_fields(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc);
 
-    std::unique_ptr<DensityBasedFunction> get_function(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc, double pc, double psiK);
+    std::unique_ptr<DensityBasedFunction> get_topopt_function(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc, double pc, double psiK);
 
-    template<class F>
-    void get_constraints(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc, double pc, double psi, std::vector<F>& functions);
+    std::unique_ptr<NodeShapeBasedFunction> get_shopt_function(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc);
 
-    template<class F>
-    void get_objective_functions(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc, double pc, double psi, std::vector<std::unique_ptr<F>>& functions, std::vector<double>& weights);
+    void get_topopt_constraints(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc, double pc, double psi, std::vector<DensityBasedConstraint>& functions);
+
+    void get_topopt_objective_functions(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc, double pc, double psi, std::vector<std::unique_ptr<DensityBasedFunction>>& functions, std::vector<double>& weights);
+
+    void get_shopt_constraints(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc, std::vector<NodeShapeBasedConstraint>& functions);
+
+    void get_shopt_objective_functions(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc, std::vector<std::unique_ptr<NodeShapeBasedFunction>>& functions, std::vector<double>& weights);
 
     std::unique_ptr<MeshElementFactory> get_element_type(const std::string& name);
 
@@ -169,43 +176,5 @@ class ProjectData {
 
     CrossSection get_cross_section(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc) const;
 };
-
-
-template<class F>
-void ProjectData::get_constraints(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc, double pc, double psi, std::vector<F>& functions){
-    auto array = doc.GetArray();
-    for(auto& f:array){
-        std::vector<Constraint::Type> types;
-        std::vector<double> bounds;
-
-        this->log_data(f, "type", TYPE_STRING, true);
-        std::string type = f["type"].GetString();
-        if(f.HasMember("less_than")){
-            types.push_back(Constraint::Type::LESS_THAN);
-            bounds.push_back(f["less_than"].GetDouble());
-        }
-        if(f.HasMember("greater_than")){
-            types.push_back(Constraint::Type::GREATER_THAN);
-            bounds.push_back(f["greater_than"].GetDouble());
-        }
-        if(f.HasMember("equals")){
-            types.push_back(Constraint::Type::EQUAL);
-            bounds.push_back(f["equals"].GetDouble());
-        }
-        logger::log_assert(types.size() > 0, logger::ERROR, "constraint {} is missing at least one of the following: \"equals\", \"greater_than\", \"less_than\"", f["type"].GetString());
-
-        functions.emplace_back(this->get_function(f, pc, psi), types, bounds);
-    }
-}
-
-template<class F>
-void ProjectData::get_objective_functions(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc, double pc, double psi, std::vector<std::unique_ptr<F>>& functions, std::vector<double>& weights){
-    auto array = doc.GetArray();
-    for(auto& f:array){
-        functions.push_back(this->get_function(f, pc, psi));
-        weights.push_back(f["weight"].GetDouble());
-    }
-}
-
 
 #endif

@@ -39,6 +39,12 @@ class Constraint{
         EQUAL
     };
 
+    Constraint() = default;
+    Constraint(const Constraint&) = default;
+    Constraint(Constraint&&) = default;
+    Constraint& operator=(const Constraint&) = default;
+    Constraint& operator=(Constraint&&) = default;
+
     Constraint(std::vector<Type> types, std::vector<double> bounds);
     virtual ~Constraint() = default;
 
@@ -48,6 +54,11 @@ class Constraint{
 
 class DensityBasedConstraint : public Constraint{
     public:
+    DensityBasedConstraint() = default;
+    DensityBasedConstraint(const DensityBasedConstraint&) = delete;
+    DensityBasedConstraint(DensityBasedConstraint&&) = default;
+    DensityBasedConstraint& operator=(const DensityBasedConstraint&) = delete;
+    DensityBasedConstraint& operator=(DensityBasedConstraint&&) = default;
 
     DensityBasedConstraint(std::unique_ptr<DensityBasedFunction> fun, std::vector<Type> types, std::vector<double> bounds);
     virtual ~DensityBasedConstraint() = default;
@@ -57,6 +68,12 @@ class DensityBasedConstraint : public Constraint{
 
 class NodeShapeBasedConstraint : public Constraint{
     public:
+    NodeShapeBasedConstraint() = default;
+    NodeShapeBasedConstraint(const NodeShapeBasedConstraint&) = delete;
+    NodeShapeBasedConstraint(NodeShapeBasedConstraint&&) = default;
+    NodeShapeBasedConstraint& operator=(const NodeShapeBasedConstraint&) = delete;
+    NodeShapeBasedConstraint& operator=(NodeShapeBasedConstraint&&) = default;
+
 
     NodeShapeBasedConstraint(std::unique_ptr<NodeShapeBasedFunction> fun, std::vector<Type> types, std::vector<double> bounds);
     virtual ~NodeShapeBasedConstraint() = default;
@@ -66,7 +83,6 @@ class NodeShapeBasedConstraint : public Constraint{
 
 class Optimizer{
     public:
-    const double K_MIN = 1e-6;
 
     virtual ~Optimizer() = default;
 
@@ -82,19 +98,14 @@ class Optimizer{
     inline const std::vector<double>& get_stresses() const{
         return this->stresses;
     }
-    inline const std::vector<double>& get_filtered_densities() const{
-        return this->filtered_densities;
-    }
 
     protected:
     size_t number_of_elements;
     std::vector<double> volumes;
     std::vector<double> stresses;
-    std::vector<double> filtered_densities;
 
     void initialize_optimizer(const Meshing* const mesh);
 
-    TopoDS_Shape make_shape(const std::vector<double>& x, const std::vector<Geometry*>& geometries, const double result_threshold, const utils::ProblemType type) const;
     void get_stresses(const std::vector<Geometry*> geometries, const std::vector<double>& u, const std::vector<std::vector<double>>& D_cache, std::vector<double>& stresses) const;
     void get_volumes(const std::vector<Geometry*> geometries, const double thickness, std::vector<double>& volumes) const;
     size_t get_number_of_elements(const std::vector<Geometry*> geometries) const;
@@ -104,7 +115,31 @@ class Optimizer{
     // back into TopoDS_Shape.
     TopoDS_Shape STEP_workaround(const TopoDS_Shape& s) const;
 
+};
+
+class DensityBasedOptimizer : public Optimizer{
+    public:
+    virtual ~DensityBasedOptimizer() = default;
+
+    inline const std::vector<double>& get_filtered_densities() const{
+        return this->filtered_densities;
+    }
+
+    protected:
+    std::vector<double> filtered_densities;
+
+    TopoDS_Shape make_shape(const std::vector<double>& x, const std::vector<Geometry*>& geometries, const double result_threshold, const utils::ProblemType type) const;
+
     void apply_densities(const std::vector<Geometry*> geometries, const std::vector<double>& x, std::vector<double>& vals, const double pc = 1.0) const;
+};
+
+class NodeShapeBasedOptimizer : public Optimizer{
+    public:
+    virtual ~NodeShapeBasedOptimizer() = default;
+
+    protected:
+
+    TopoDS_Shape make_shape(const std::vector<Geometry*>& geometries, const utils::ProblemType type) const;
 };
 
 

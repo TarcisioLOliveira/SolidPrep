@@ -33,8 +33,8 @@ class GlobalStressHeaviside : public DensityBasedFunction{
 
     virtual ~GlobalStressHeaviside() = default;
 
-    virtual double calculate(const Optimizer* const op, const std::vector<double>& u, const std::vector<double>& x) override;
-    virtual double calculate_with_gradient(const Optimizer* const op, const std::vector<double>& u, const std::vector<double>& x, std::vector<double>& grad) override;
+    virtual double calculate(const DensityBasedOptimizer* const op, const std::vector<double>& u, const std::vector<double>& x) override;
+    virtual double calculate_with_gradient(const DensityBasedOptimizer* const op, const std::vector<double>& u, const std::vector<double>& x, std::vector<double>& grad) override;
 
     private:
     const Meshing* const mesh;

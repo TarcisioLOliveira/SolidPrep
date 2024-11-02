@@ -41,7 +41,7 @@ void GlobalStressPnormNormalized::update(){
     this->alpha = std::min({std::pow(old_c/new_c,T), std::pow(new_c/old_c, T)});
 }
 
-double GlobalStressPnormNormalized::calculate(const Optimizer* const op, const std::vector<double>& u, const std::vector<double>& x){
+double GlobalStressPnormNormalized::calculate(const DensityBasedOptimizer* const op, const std::vector<double>& u, const std::vector<double>& x){
     auto grad_V = op->get_volumes();
     //auto stresses = op->get_stresses();
     std::vector<double> stresses(grad_V.size());
@@ -73,7 +73,7 @@ double GlobalStressPnormNormalized::calculate(const Optimizer* const op, const s
 
     return result;
 }
-double GlobalStressPnormNormalized::calculate_with_gradient(const Optimizer* const op, const std::vector<double>& u, const std::vector<double>& x, std::vector<double>& grad){
+double GlobalStressPnormNormalized::calculate_with_gradient(const DensityBasedOptimizer* const op, const std::vector<double>& u, const std::vector<double>& x, std::vector<double>& grad){
     int mpi_id = 0;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi_id);
 

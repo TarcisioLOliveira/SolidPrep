@@ -29,7 +29,7 @@
 
 namespace optimizer{
 
-class MMA : public Optimizer{
+class MMA : public DensityBasedOptimizer{
     public:
     MMA(DensityFilter* filter, Projection* projection, ProjectData* data, std::vector<std::unique_ptr<DensityBasedFunction>> objective, std::vector<double> objective_weights, std::vector<DensityBasedConstraint> constraints, double asyminit, double asymdec, double asyminc, double minfac, double maxfac, double c, double pc, double psi, double rho_init, double xtol_abs, double ftol_rel, double result_threshold, bool save);
 
