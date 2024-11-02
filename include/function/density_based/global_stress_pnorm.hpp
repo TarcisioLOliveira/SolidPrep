@@ -25,7 +25,7 @@
 #include "meshing.hpp"
 #include "solver_manager.hpp"
 
-namespace function{
+namespace function::density_based{
 
 class GlobalStressPnorm : public DensityBasedFunction{
     public:

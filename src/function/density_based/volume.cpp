@@ -23,7 +23,7 @@
 #include "function/density_based/volume.hpp"
 #include "optimizer.hpp"
 
-namespace function{
+namespace function::density_based{
 
 Volume::Volume(const Meshing* const mesh):
     mesh(mesh){}

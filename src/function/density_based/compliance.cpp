@@ -22,7 +22,7 @@
 #include <mpich-x86_64/mpi.h>
 #include "function/density_based/compliance.hpp"
 
-namespace function{
+namespace function::density_based{
 
 Compliance::Compliance(const Meshing* const mesh, double pc, double psi):
     pc(pc), psi(psi), mesh(mesh){}

@@ -23,7 +23,7 @@
 #include "logger.hpp"
 #include "optimizer.hpp"
 
-namespace function{
+namespace function::density_based{
 
 MassFirstMaterial::MassFirstMaterial(const Meshing* const mesh):
     mesh(mesh){}

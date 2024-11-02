@@ -30,7 +30,7 @@
 #include "projection/heaviside.hpp"
 #include "projection/threshold.hpp"
 
-namespace function{
+namespace function::density_based{
 
 class OmniMachining : public DensityBasedFunction{
     public:

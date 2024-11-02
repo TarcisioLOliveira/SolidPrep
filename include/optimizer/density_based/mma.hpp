@@ -27,7 +27,7 @@
 #include "function.hpp"
 #include <memory>
 
-namespace optimizer{
+namespace optimizer::density_based{
 
 class MMA : public DensityBasedOptimizer{
     public:

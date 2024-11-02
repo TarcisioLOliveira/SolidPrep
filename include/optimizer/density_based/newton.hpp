@@ -27,7 +27,7 @@
 #include "function.hpp"
 #include <memory>
 
-namespace optimizer{
+namespace optimizer::density_based{
 
 class Newton : public DensityBasedOptimizer{
     public:

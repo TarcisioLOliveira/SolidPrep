@@ -818,7 +818,7 @@ std::unique_ptr<DensityBasedOptimizer> ProjectData::load_topopt_optimizer(const 
         std::vector<DensityBasedConstraint> constraints;
         this->get_topopt_constraints(to["constraints"], pc, psi, constraints);
 
-        return std::make_unique<optimizer::MMA>(this->density_filter.get(), this->projection.get(), this, std::move(objective), std::move(weights), std::move(constraints), asyminit, asymdec, asyminc, minfac, maxfac, c, pc, psi, rho_init, xtol_abs, ftol_rel, result_threshold, save_result);
+        return std::make_unique<optimizer::density_based::MMA>(this->density_filter.get(), this->projection.get(), this, std::move(objective), std::move(weights), std::move(constraints), asyminit, asymdec, asyminc, minfac, maxfac, c, pc, psi, rho_init, xtol_abs, ftol_rel, result_threshold, save_result);
     } else if(to["type"] == "newton"){
         this->log_data(to, "rho_init", TYPE_DOUBLE, true);
         this->log_data(to, "xtol_abs", TYPE_DOUBLE, true);
@@ -848,7 +848,7 @@ std::unique_ptr<DensityBasedOptimizer> ProjectData::load_topopt_optimizer(const 
         std::vector<DensityBasedConstraint> constraints;
         this->get_topopt_constraints(to["constraints"], pc, psi, constraints);
 
-        return std::make_unique<optimizer::Newton>(this->density_filter.get(), this->projection.get(), this, std::move(objective), std::move(weights), std::move(constraints), pc, psi, rho_init, xtol_abs, ftol_rel, result_threshold, save_result);
+        return std::make_unique<optimizer::density_based::Newton>(this->density_filter.get(), this->projection.get(), this, std::move(objective), std::move(weights), std::move(constraints), pc, psi, rho_init, xtol_abs, ftol_rel, result_threshold, save_result);
     }
 
     return nullptr;
@@ -865,13 +865,13 @@ std::unique_ptr<DensityBasedFunction> ProjectData::get_topopt_function(const rap
     this->log_data(doc, "type", TYPE_STRING, true);
     std::string type = doc["type"].GetString();
     if(type == "compliance"){
-        return std::make_unique<function::Compliance>(this->topopt_mesher.get(), pc, psiK);
+        return std::make_unique<function::density_based::Compliance>(this->topopt_mesher.get(), pc, psiK);
     } else if(type == "volume"){
-        return std::make_unique<function::Volume>(this->topopt_mesher.get());
+        return std::make_unique<function::density_based::Volume>(this->topopt_mesher.get());
     } else if(type == "mass"){
-        return std::make_unique<function::Mass>(this->topopt_mesher.get());
+        return std::make_unique<function::density_based::Mass>(this->topopt_mesher.get());
     } else if(type == "mass_first_material"){
-        return std::make_unique<function::MassFirstMaterial>(this->topopt_mesher.get());
+        return std::make_unique<function::density_based::MassFirstMaterial>(this->topopt_mesher.get());
     } else if(type == "global_stress_pnorm_normalized"){
         this->log_data(doc, "P", TYPE_DOUBLE, true);
         this->log_data(doc, "pt", TYPE_DOUBLE, true);
@@ -879,7 +879,7 @@ std::unique_ptr<DensityBasedFunction> ProjectData::get_topopt_function(const rap
         double P = doc["P"].GetDouble();
         double pt = doc["pt"].GetDouble();
         double psiS = doc["psi"].GetDouble();
-        return std::make_unique<function::GlobalStressPnormNormalized>(this->topopt_mesher.get(), this->topopt_fea.get(), pc, P, pt, psiK, -psiS);
+        return std::make_unique<function::density_based::GlobalStressPnormNormalized>(this->topopt_mesher.get(), this->topopt_fea.get(), pc, P, pt, psiK, -psiS);
     } else if(type == "global_stress_pnorm"){
         this->log_data(doc, "P", TYPE_DOUBLE, true);
         this->log_data(doc, "pt", TYPE_DOUBLE, true);
@@ -887,7 +887,7 @@ std::unique_ptr<DensityBasedFunction> ProjectData::get_topopt_function(const rap
         double P = doc["P"].GetDouble();
         double pt = doc["pt"].GetDouble();
         double psiS = doc["psi"].GetDouble();
-        return std::make_unique<function::GlobalStressPnorm>(this->topopt_mesher.get(), this->topopt_fea.get(), pc, P, pt, psiK, -psiS);
+        return std::make_unique<function::density_based::GlobalStressPnorm>(this->topopt_mesher.get(), this->topopt_fea.get(), pc, P, pt, psiK, -psiS);
     } else if(type == "global_stress_heaviside"){
         this->log_data(doc, "max_stress", TYPE_DOUBLE, true);
         this->log_data(doc, "C", TYPE_DOUBLE, true);
@@ -897,7 +897,7 @@ std::unique_ptr<DensityBasedFunction> ProjectData::get_topopt_function(const rap
         double max_stress = doc["max_stress"].GetDouble();
         double pt = doc["pt"].GetDouble();
         double psiS = doc["psi"].GetDouble();
-        return std::make_unique<function::GlobalStressHeaviside>(this->topopt_mesher.get(), this->topopt_fea.get(), max_stress, C, pc, pt, psiK, -psiS);
+        return std::make_unique<function::density_based::GlobalStressHeaviside>(this->topopt_mesher.get(), this->topopt_fea.get(), max_stress, C, pc, pt, psiK, -psiS);
     } else if(type == "omni_machining"){
         this->log_data(doc, "beta1", TYPE_DOUBLE, true);
         this->log_data(doc, "beta2", TYPE_DOUBLE, true);
@@ -915,7 +915,7 @@ std::unique_ptr<DensityBasedFunction> ProjectData::get_topopt_function(const rap
         auto aa = doc["axis"].GetArray();
         gp_Dir a(aa[0].GetDouble(), aa[1].GetDouble(), aa[2].GetDouble());
 
-        return std::make_unique<function::OmniMachining>(this->topopt_mesher.get(), this->density_filter.get(), c, a, v, beta1, beta2, L);
+        return std::make_unique<function::density_based::OmniMachining>(this->topopt_mesher.get(), this->density_filter.get(), c, a, v, beta1, beta2, L);
     } else if(type == "am_support"){
         this->log_data(doc, "beta", TYPE_DOUBLE, true);
         this->log_data(doc, "L", TYPE_DOUBLE, true);
@@ -930,7 +930,7 @@ std::unique_ptr<DensityBasedFunction> ProjectData::get_topopt_function(const rap
         auto aa = doc["axis"].GetArray();
         gp_Dir a(aa[0].GetDouble(), aa[1].GetDouble(), aa[2].GetDouble());
 
-        return std::make_unique<function::AMSupport>(this->topopt_mesher.get(), this->density_filter.get(), this->projection.get(), a, v, L, beta, angle*M_PI/180);
+        return std::make_unique<function::density_based::AMSupport>(this->topopt_mesher.get(), this->density_filter.get(), this->projection.get(), a, v, L, beta, angle*M_PI/180);
     } else if(type == "mechanostat"){
         this->log_data(doc, "beta", TYPE_DOUBLE, true);
         this->log_data(doc, "traction", TYPE_ARRAY, true);
@@ -943,10 +943,10 @@ std::unique_ptr<DensityBasedFunction> ProjectData::get_topopt_function(const rap
         logger::log_assert(traction.Size() == 2, logger::ERROR, "\"traction\" item must have size 2.");
         logger::log_assert(compression.Size() == 2, logger::ERROR, "\"compression\" item must have size 2.");
         logger::log_assert(shear.Size() == 2, logger::ERROR, "\"shear\" item must have size 2.");
-        function::Mechanostat::Range t{traction[0].GetDouble(), traction[1].GetDouble()};
-        function::Mechanostat::Range c{compression[0].GetDouble(), compression[1].GetDouble()};
-        function::Mechanostat::Range s{shear[0].GetDouble(), shear[1].GetDouble()};
-        return std::make_unique<function::Mechanostat>(this->topopt_mesher.get(), this->topopt_fea.get(), pc, psiK, beta, t, c, s, this->type);
+        function::density_based::Mechanostat::Range t{traction[0].GetDouble(), traction[1].GetDouble()};
+        function::density_based::Mechanostat::Range c{compression[0].GetDouble(), compression[1].GetDouble()};
+        function::density_based::Mechanostat::Range s{shear[0].GetDouble(), shear[1].GetDouble()};
+        return std::make_unique<function::density_based::Mechanostat>(this->topopt_mesher.get(), this->topopt_fea.get(), pc, psiK, beta, t, c, s, this->type);
     }
     logger::log_assert(false, logger::ERROR, "function \"{}\" not found.", type);
 

@@ -23,7 +23,7 @@
 #include "function/density_based/global_stress_pnorm_normalized.hpp"
 #include "optimizer.hpp"
 
-namespace function{
+namespace function::density_based{
 
 GlobalStressPnormNormalized::GlobalStressPnormNormalized(const Meshing* const mesh, SolverManager* fem, double pc, double P, double pt, double psiK, double psiS):
     mesh(mesh), fem(fem), pc(pc), P(P), pt(pt), psiK(psiK), psiS(psiS){}
