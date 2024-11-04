@@ -23,6 +23,7 @@ set(SOURCES
     curvature.cpp
     internal_loads.cpp
     solver_manager.cpp
+    shape_handler.cpp
 )
 
 add_subdirectory(pathfinding)
