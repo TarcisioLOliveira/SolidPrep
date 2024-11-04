@@ -779,6 +779,29 @@ class MeshElementCommon3DTet : public MeshElementCommon3D<T>{
         return std::abs(v0.DotCross(v1, v2))/6;
     }
 
+    virtual double get_dV_sh(const double t, const size_t n, const size_t dof) const override{
+        (void)t;
+        const gp_Pnt p0 = this->nodes[0]->point;
+        const gp_Pnt p1 = this->nodes[1]->point;
+        const gp_Pnt p2 = this->nodes[2]->point;
+        const gp_Pnt p3 = this->nodes[3]->point;
+
+        const gp_Vec v0(p0, p1);
+        const gp_Vec v1(p0, p2);
+        const gp_Vec v2(p0, p3);
+
+        std::vector<gp_Pnt> dp(4, gp_Pnt(0,0,0));
+        dp[n].SetCoord(1+dof, 1);
+
+        const double mult = (v0.DotCross(v1, v2) > 0) ? 1 : -1;
+
+        const gp_Vec dv0(dp[0], dp[1]);
+        const gp_Vec dv1(dp[0], dp[2]);
+        const gp_Vec dv2(dp[0], dp[3]);
+
+        return mult*(dv0.DotCross(v1, v2) + v0.Dot(dv1.Crossed(v2) + v1.Crossed(dv2)))/6;
+    }
+
     virtual TopoDS_Shape get_shape() const override{
         const gp_Pnt p1 = this->nodes[0]->point;
         const gp_Pnt p2 = this->nodes[1]->point;

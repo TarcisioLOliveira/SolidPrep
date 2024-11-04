@@ -22,13 +22,13 @@
 #define TET4_HPP
 
 #include <Eigen/Core>
+#include <vector>
+#include <array>
 #include "element.hpp"
 #include "material.hpp"
-#include <vector>
 #include "utils.hpp"
 #include "element_factory.hpp"
 #include "element_common.hpp"
-#include <array>
 
 namespace element{
 
@@ -55,6 +55,8 @@ class TET4 : public MeshElementCommon3DTet<TET4>{
     virtual std::vector<double> get_Rf(const std::vector<double>& S, const std::vector<double>& F, const gp_Pnt& C, const double t, const std::vector<gp_Pnt>& points) const override;
     virtual std::vector<double> get_B(const gp_Pnt& point) const override;
 
+    virtual std::vector<double> get_dk_sh(const std::vector<double>& D, const double t, const size_t n, const size_t dof) const override;
+
     virtual Eigen::MatrixXd diffusion_1dof(const double t, const std::vector<double>& A) const override;
     virtual Eigen::MatrixXd advection_1dof(const double t, const std::vector<double>& v) const override;
     virtual Eigen::MatrixXd absorption_1dof(const double t) const override;
@@ -73,11 +75,13 @@ class TET4 : public MeshElementCommon3DTet<TET4>{
 
     void get_coeffs();
 
-    std::array<double, NODES_PER_ELEM*NODES_PER_ELEM> C;
+    typedef std::array<double, NODES_PER_ELEM*NODES_PER_ELEM> CoeffMat;
+
+    CoeffMat C;
     double V;
 
-    inline double N(double x, double y, double z, size_t i) const{
-        const double* const a = C.data();
+    inline double N(double x, double y, double z, size_t i, const CoeffMat& M) const{
+        const double* const a = M.data();
         const double* const b = a + NODES_PER_ELEM;
         const double* const c = b + NODES_PER_ELEM;
         const double* const d = c + NODES_PER_ELEM;
@@ -98,19 +102,19 @@ class TET4 : public MeshElementCommon3DTet<TET4>{
         return 0;
     }
 
-    inline Eigen::Matrix<double, DIM, K_DIM> N_mat(double x, double y, double z) const{
-        const double Ni[NODES_PER_ELEM] = {N(x, y, z, 0), N(x, y, z, 1), N(x, y, z, 2), N(x, y, z, 3)};
+    inline Eigen::Matrix<double, DIM, K_DIM> N_mat(double x, double y, double z, const CoeffMat& M) const{
+        const double Ni[NODES_PER_ELEM] = {N(x, y, z, 0, M), N(x, y, z, 1, M), N(x, y, z, 2, M), N(x, y, z, 3, M)};
 
         return Eigen::Matrix<double, DIM, K_DIM>{{Ni[0], 0, 0, Ni[1], 0, 0, Ni[2], 0, 0, Ni[3], 0, 0},
                                                  {0, Ni[0], 0, 0, Ni[1], 0, 0, Ni[2], 0, 0, Ni[3], 0},
                                                  {0, 0, Ni[0], 0, 0, Ni[1], 0, 0, Ni[2], 0, 0, Ni[3]}};
     }
 
-    inline Eigen::Vector<double, 4> N_mat_1dof(double x, double y, double z) const{
-        return Eigen::Vector<double, 4>(N(x, y, z, 0), N(x, y, z, 1), N(x, y, z, 2), N(x, y, z, 3));
+    inline Eigen::Vector<double, 4> N_mat_1dof(double x, double y, double z, const CoeffMat& M) const{
+        return Eigen::Vector<double, 4>(N(x, y, z, 0, M), N(x, y, z, 1, M), N(x, y, z, 2, M), N(x, y, z, 3, M));
     }
-    inline Eigen::Matrix<double, 3, 4> dN_mat_1dof() const{
-        const double* const a = C.data();
+    inline Eigen::Matrix<double, 3, 4> dN_mat_1dof(const CoeffMat& M) const{
+        const double* const a = M.data();
         const double* const b = a + NODES_PER_ELEM;
         const double* const c = b + NODES_PER_ELEM;
         const double* const d = c + NODES_PER_ELEM;
@@ -158,6 +162,25 @@ class TET4 : public MeshElementCommon3DTet<TET4>{
 
         return Eigen::Vector<double, NODE_DOF>{X, Y, Z};
     }
+
+
+    Eigen::Matrix<double, S_SIZE, K_DIM> B(const CoeffMat& M) const{
+        const double* const a = M.data();
+        const double* const b = a + NODES_PER_ELEM;
+        const double* const c = b + NODES_PER_ELEM;
+        const double* const d = c + NODES_PER_ELEM;
+        Eigen::Matrix<double, S_SIZE, K_DIM>  B{
+            {b[0]/(6*V), 0, 0, b[1]/(6*V), 0, 0, b[2]/(6*V), 0, 0, b[3]/(6*V), 0, 0},
+            {0, c[0]/(6*V), 0, 0, c[1]/(6*V), 0, 0, c[2]/(6*V), 0, 0, c[3]/(6*V), 0},
+            {0, 0, d[0]/(6*V), 0, 0, d[1]/(6*V), 0, 0, d[2]/(6*V), 0, 0, d[3]/(6*V)},
+            {c[0]/(6*V), b[0]/(6*V), 0, c[1]/(6*V), b[1]/(6*V), 0, c[2]/(6*V), b[2]/(6*V), 0, c[3]/(6*V), b[3]/(6*V), 0},
+            {d[0]/(6*V), 0, b[0]/(6*V), d[1]/(6*V), 0, b[1]/(6*V), d[2]/(6*V), 0, b[2]/(6*V), d[3]/(6*V), 0, b[3]/(6*V)},
+            {0, d[0]/(6*V), c[0]/(6*V), 0, d[1]/(6*V), c[1]/(6*V), 0, d[2]/(6*V), c[2]/(6*V), 0, d[3]/(6*V), c[3]/(6*V)}
+        }; 
+        return B;
+    }
+
+    CoeffMat get_C_derivative(const size_t n, const size_t dof) const;
 };
 
 }

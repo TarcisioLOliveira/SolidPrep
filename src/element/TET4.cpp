@@ -760,7 +760,7 @@ std::vector<double> TET4::get_R(const std::vector<double>& K, const double t, co
         const double xi = GL[i][0]*p[0].X() + GL[i][1]*p[1].X() + GL[i][2]*p[2].X();
         const double eta = GL[i][0]*p[0].Y() + GL[i][1]*p[1].Y() + GL[i][2]*p[2].Y();
         const double zeta = GL[i][0]*p[0].Z() + GL[i][1]*p[1].Z() + GL[i][2]*p[2].Z();
-        const auto NN = N_mat(xi, eta, zeta);
+        const auto NN = N_mat(xi, eta, zeta, this->C);
         R += (drnorm*NN.transpose()*Km*NN)/3.0;
     }
     std::vector<double> R_vec(K_DIM*K_DIM);
@@ -792,7 +792,7 @@ std::vector<double> TET4::get_Rf(const std::vector<double>& S, const std::vector
         x_vec[0] = xi - C.X();
         x_vec[1] = eta - C.Y();
         x_vec[2] = zeta - C.Z();
-        const auto NN = N_mat(xi, eta, zeta);
+        const auto NN = N_mat(xi, eta, zeta, this->C);
         Rf += (drnorm*NN.transpose()*(Sm*x_vec + Fv))/3.0;
     }
     std::vector<double> Rf_vec(K_DIM);
@@ -968,7 +968,7 @@ Eigen::VectorXd TET4::flow_1dof(const double t, const MeshNode** nodes) const{
 }
 
 std::vector<double> TET4::get_Ni(const gp_Pnt& p) const{
-    const auto Nm = this->N_mat(p.X(), p.Y(), p.Z());
+    const auto Nm = this->N_mat(p.X(), p.Y(), p.Z(), this->C);
 
     std::vector<double> Ni(DIM*K_DIM);
     for(size_t i = 0; i < DIM; ++i){
@@ -978,6 +978,41 @@ std::vector<double> TET4::get_Ni(const gp_Pnt& p) const{
     }
 
     return Ni;
+}
+
+std::vector<double> TET4::get_dk_sh(const std::vector<double>& D, const double t, const size_t n, const size_t dof) const{
+    (void)t;
+    Eigen::Matrix<double, S_SIZE, S_SIZE> Dm = Eigen::Map<const Eigen::Matrix<double, S_SIZE, S_SIZE>>(D.data(), S_SIZE, S_SIZE);
+
+    const auto C2 = this->get_C_derivative(n, dof);
+
+    const auto B1 = this->B(this->C);
+    const auto B2 = this->B(C2);
+
+    Eigen::Matrix<double, K_DIM, K_DIM> Km = this->V*(B2.transpose()*Dm*B1 + B1.transpose()*Dm*B2);
+
+    std::vector<double> K(K_DIM*K_DIM);
+    for(size_t i = 0; i < K_DIM; ++i){
+        for(size_t j = 0; j < K_DIM; ++j){
+            K[K_DIM*i + j] = Km(i,j);
+        }
+    }
+
+    return K;
+}
+
+TET4::CoeffMat TET4::get_C_derivative(const size_t n, const size_t dof) const{
+    constexpr size_t N = TET4::NODES_PER_ELEM;
+    CoeffMat C2;
+    C2.fill(0);
+    C2[NODES_PER_ELEM*n + (dof + 1)] = 1;
+
+    std::vector<double> Ctmp(N*N, 0);
+    cblas_dgemm(CblasRowMajor, CblasTrans, CblasTrans, N, N, N, 1, C2.data(), N, C.data(), N, 0, Ctmp.data(), N);
+    cblas_dgemm(CblasRowMajor, CblasTrans, CblasNoTrans, N, N, N, 1, C.data(), N, Ctmp.data(), N, 0, C2.data(), N);
+    cblas_dscal(N*N, -1, C2.data(), 1);
+
+    return C2;
 }
 
 }
