@@ -1,5 +1,5 @@
 /*
- *   Copyright (C) 2023 Tarcísio Ladeia de Oliveira.
+ *   Copyright (C) 2024 Tarcísio Ladeia de Oliveira.
  *
  *   This file is part of SolidPrep
  *
@@ -18,46 +18,37 @@
  *
  */
 
-#ifndef OPTIMIZER_DENSITY_BASED_MMA_HPP
-#define OPTIMIZER_DENSITY_BASED_MMA_HPP
+#ifndef OPTIMIZER_NODE_SHAPE_BASED_MMA_HPP
+#define OPTIMIZER_NODE_SHAPE_BASED_MMA_HPP
 
 #include <memory>
-#include "density_filter.hpp"
-#include "projection.hpp"
 #include "optimizer.hpp"
 #include "function.hpp"
 
-namespace optimizer::density_based{
+namespace optimizer::node_shape_based{
 
-class MMA : public DensityBasedOptimizer{
+class MMA : public NodeShapeBasedOptimizer{
     public:
-    MMA(DensityFilter* filter, Projection* projection, ProjectData* data, std::vector<std::unique_ptr<DensityBasedFunction>> objective, std::vector<double> objective_weights, std::vector<DensityBasedConstraint> constraints, double asyminit, double asymdec, double asyminc, double minfac, double maxfac, double c, double pc, double psi, double rho_init, double xtol_abs, double ftol_rel, double result_threshold, bool save);
+    MMA(ShapeHandler sh, ProjectData* data, std::vector<std::unique_ptr<NodeShapeBasedFunction>> objective, std::vector<double> objective_weights, std::vector<NodeShapeBasedConstraint> constraints, double asyminit, double asymdec, double asyminc, double minfac, double maxfac, double c, double xtol_abs, double ftol_rel, bool save);
 
     virtual void initialize_views(Visualization* viz) override;
     virtual TopoDS_Shape optimize(SolverManager* fem, Meshing* mesh) override;
 
     private:
     ProjectData* data;
-    const double rho_init;
     const double xtol_abs;
     const double ftol_rel;
-    const double pc;
-    const double psi;
-    const double result_threshold;
     const double asyminit, asymdec, asyminc;
     const double minfac, maxfac;
     const double c;
     const bool save_result;
-    std::vector<std::unique_ptr<DensityBasedFunction>> objective;
+    std::vector<std::unique_ptr<NodeShapeBasedFunction>> objective;
     std::vector<double> objective_weights;
-    std::vector<DensityBasedConstraint> constraints;
+    std::vector<NodeShapeBasedConstraint> constraints;
 
-    DensityFilter* filter;
-    Projection* projection;
     Visualization* viz;
 
     ViewHandler* stress_view = nullptr;
-    ViewHandler* density_view = nullptr;
 };
 
 }

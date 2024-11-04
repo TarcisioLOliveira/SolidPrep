@@ -360,8 +360,6 @@ int main(int argc, char* argv[]){
     }
     if(proj->do_shape_opt){
 
-        logger::quick_log("OPTIMIZER FUNCTION NOT YET IMPLEMENTED FOR SHAPE OPTIMIZATION!");
-        exit(0);
         if(mpi_id == 0){
             // Display progress
             v->load_mesh(proj->topopt_mesher.get(), proj->type);

@@ -139,10 +139,11 @@ class NodeShapeBasedOptimizer : public Optimizer{
     NodeShapeBasedOptimizer(ShapeHandler sh):
         shape_handler(std::move(sh)){}
 
+    ShapeHandler shape_handler;
+
     virtual ~NodeShapeBasedOptimizer() = default;
 
     protected:
-    ShapeHandler shape_handler;
 
     TopoDS_Shape make_shape(const std::vector<Geometry*>& geometries, const utils::ProblemType type) const;
 };

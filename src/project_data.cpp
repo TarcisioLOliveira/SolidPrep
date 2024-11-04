@@ -68,6 +68,7 @@
 #include "projection/heaviside.hpp"
 #include "optimizer/density_based/mma.hpp"
 #include "optimizer/density_based/newton.hpp"
+#include "optimizer/node_shape_based/mma.hpp"
 #include "function/density_based/compliance.hpp"
 #include "function/density_based/volume.hpp"
 #include "function/density_based/global_stress_pnorm_normalized.hpp"
@@ -850,13 +851,56 @@ std::unique_ptr<DensityBasedOptimizer> ProjectData::load_topopt_optimizer(const 
 
         return std::make_unique<optimizer::density_based::Newton>(this->density_filter.get(), this->projection.get(), this, std::move(objective), std::move(weights), std::move(constraints), pc, psi, rho_init, xtol_abs, ftol_rel, result_threshold, save_result);
     }
+    logger::log_assert(false, logger::ERROR, "optimization method \"{}\" not found.", type);
 
     return nullptr;
 }
 
 std::unique_ptr<NodeShapeBasedOptimizer> ProjectData::load_shopt_optimizer(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc){
-    auto& to = doc["topopt"];
+    auto& to = doc["shape_opt"];
     this->log_data(to, "type", TYPE_STRING, true);
+    if(to["type"] == "mma"){
+        this->log_data(to, "xtol_abs", TYPE_DOUBLE, true);
+        this->log_data(to, "ftol_rel", TYPE_DOUBLE, true);
+        this->log_data(to, "save_result", TYPE_BOOL, true);
+        this->log_data(to, "objective", TYPE_ARRAY, true);
+        this->log_data(to, "constraints", TYPE_ARRAY, true);
+        this->log_data(to, "asyminit", TYPE_DOUBLE, true);
+        this->log_data(to, "asymdec", TYPE_DOUBLE, true);
+        this->log_data(to, "asyminc", TYPE_DOUBLE, true);
+        this->log_data(to, "minfac", TYPE_DOUBLE, true);
+        this->log_data(to, "maxfac", TYPE_DOUBLE, true);
+        this->log_data(to, "c", TYPE_DOUBLE, true);
+
+        double xtol_abs = to["xtol_abs"].GetDouble();
+        double ftol_rel = to["ftol_rel"].GetDouble();
+        bool save_result = to["save_result"].GetBool();
+
+        double asyminit = to["asyminit"].GetDouble();
+        double asymdec = to["asymdec"].GetDouble();
+        double asyminc = to["asyminc"].GetDouble();
+        double minfac = to["minfac"].GetDouble();
+        double maxfac = to["maxfac"].GetDouble();
+        double c = to["c"].GetDouble();
+
+        std::vector<std::unique_ptr<NodeShapeBasedFunction>> objective;
+        std::vector<double> weights;
+        this->get_shopt_objective_functions(to["objective"], objective, weights);
+
+        std::vector<NodeShapeBasedConstraint> constraints;
+        this->get_shopt_constraints(to["constraints"], constraints);
+
+        std::vector<Geometry*> geoms;
+        geoms.reserve(this->geometries.size());
+        for(auto& g:this->geometries){
+            geoms.push_back(g.get());
+        }
+
+        ShapeHandler sh(this->topopt_mesher.get(), geoms);
+
+        return std::make_unique<optimizer::node_shape_based::MMA>(std::move(sh), this, std::move(objective), std::move(weights), std::move(constraints), asyminit, asymdec, asyminc, minfac, maxfac, c, xtol_abs, ftol_rel, save_result);
+    }
+    logger::log_assert(false, logger::ERROR, "optimization method \"{}\" not found.", type);
 
     return nullptr;
 }

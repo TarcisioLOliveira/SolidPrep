@@ -51,7 +51,7 @@ add_executable(${PROJECT_NAME} ${SOURCES})
 
 target_link_libraries(${PROJECT_NAME} PUBLIC sizing pathfinding 
 #    topology_optimization 
-    finite_element nonlinear_solver meshing element boundary_element contact_element material field density_filter projection global_stiffness_matrix density_based_function density_based_optimizer optimization general_solver general_global_matrix utils spview ${GMSH_LIB} ${OpenCASCADE_LIBRARIES} ${LAPACKE_LIBRARIES} cblas ${BLAS_LIBRARIES} ${LAPACKE_LIBRARIES} ${PETSC_LINK_LIBRARIES} ${MPI_LIBRARIES} MUMPS::MUMPS Eigen3::Eigen Threads::Threads ${GSL_LIBRARIES})
+    finite_element nonlinear_solver meshing element boundary_element contact_element material field density_filter projection global_stiffness_matrix density_based_function density_based_optimizer node_shape_based_optimizer optimization general_solver general_global_matrix utils spview ${GMSH_LIB} ${OpenCASCADE_LIBRARIES} ${LAPACKE_LIBRARIES} cblas ${BLAS_LIBRARIES} ${LAPACKE_LIBRARIES} ${PETSC_LINK_LIBRARIES} ${MPI_LIBRARIES} MUMPS::MUMPS Eigen3::Eigen Threads::Threads ${GSL_LIBRARIES})
 
 if(OpenMP_CXX_FOUND)
     target_link_libraries(${PROJECT_NAME} PUBLIC OpenMP::OpenMP_CXX OpenMP::OpenMP_C OpenMP::OpenMP_Fortran)
