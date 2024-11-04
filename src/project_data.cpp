@@ -1104,6 +1104,7 @@ std::unique_ptr<MeshElementFactory> ProjectData::get_element_type(const std::str
                     new MeshElementFactoryImpl<element::Q4>()
                 ));
     } else if(name == "Q4S"){
+        logger::log_assert(!this->do_shape_opt, logger::ERROR, "Q4S not supported for shape optimization, as it assumes element shapes are rectangular");
         return std::unique_ptr<MeshElementFactory>(static_cast<MeshElementFactory*>(
                     new MeshElementFactoryImpl<element::Q4S>()
                 ));
