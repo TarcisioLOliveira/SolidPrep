@@ -80,18 +80,18 @@ void TET4::get_coeffs(){
     logger::log_assert(info == 0, logger::ERROR, "LAPACKE returned {} while calculating computing inverse from LU in TET4.", info);
 
     this->V = this->get_volume(1.0);
-    for(auto& m:M){
-        m *= 6*V;
-    }
 
-    std::copy(M.begin(), M.begin()+4, a);
-    std::copy(M.begin()+4, M.begin()+8, b);
-    std::copy(M.begin()+8, M.begin()+12, c);
-    std::copy(M.begin()+12, M.begin()+16, d);
+    cblas_dscal(N*N, 6*V, M.data(), 1);
+
+    this->C = std::move(M);
 }
 
 std::vector<double> TET4::get_k(const std::vector<double>& D, const double t) const{
     (void)t;
+    const double* const a = C.data();
+    const double* const b = a + NODES_PER_ELEM;
+    const double* const c = b + NODES_PER_ELEM;
+    const double* const d = c + NODES_PER_ELEM;
 
     std::vector<double> k{
     (D[0]*b[0]*b[0] + D[18]*b[0]*c[0] + D[21]*c[0]*c[0] + D[22]*c[0]*d[0] + D[24]*b[0]*d[0] + D[27]*c[0]*d[0] + D[28]*d[0]*d[0] + D[3]*b[0]*c[0] + D[4]*b[0]*d[0])/(36*V)
@@ -387,6 +387,10 @@ std::vector<double> TET4::get_k(const std::vector<double>& D, const double t) co
 }
 std::vector<double> TET4::get_B(const gp_Pnt& point) const{
     (void)point;
+    const double* const a = C.data();
+    const double* const b = a + NODES_PER_ELEM;
+    const double* const c = b + NODES_PER_ELEM;
+    const double* const d = c + NODES_PER_ELEM;
     std::vector<double> B{
     b[0]/(6*V)
     ,
@@ -537,6 +541,10 @@ std::vector<double> TET4::get_B(const gp_Pnt& point) const{
 
 std::vector<double> TET4::get_DB(const std::vector<double>& D, const gp_Pnt& point) const{
     (void)point;
+    const double* const a = C.data();
+    const double* const b = a + NODES_PER_ELEM;
+    const double* const c = b + NODES_PER_ELEM;
+    const double* const d = c + NODES_PER_ELEM;
     
     std::vector<double> DB{
     (D[0]*b[0] + D[3]*c[0] + D[4]*d[0])/(6*V)
@@ -724,6 +732,10 @@ std::vector<double> TET4::get_Nf(const double t, const std::vector<gp_Pnt>& poin
 
 std::vector<double> TET4::get_nodal_density_gradient(gp_Pnt p) const{
     (void)p;
+    const double* const a = C.data();
+    const double* const b = a + NODES_PER_ELEM;
+    const double* const c = b + NODES_PER_ELEM;
+    const double* const d = c + NODES_PER_ELEM;
     
     return std::vector<double>{b[0]/(6*V), b[1]/(6*V), b[2]/(6*V), b[3]/(6*V),
                                c[0]/(6*V), c[1]/(6*V), c[2]/(6*V), c[3]/(6*V),
@@ -791,6 +803,10 @@ std::vector<double> TET4::get_Rf(const std::vector<double>& S, const std::vector
 
 Eigen::MatrixXd TET4::diffusion_1dof(const double t, const std::vector<double>& A) const{
     (void)t;
+    const double* const a = C.data();
+    const double* const b = a + NODES_PER_ELEM;
+    const double* const c = b + NODES_PER_ELEM;
+    const double* const d = c + NODES_PER_ELEM;
     Eigen::MatrixXd M{{
         b[0]*(A[0]*b[0]/6 + A[3]*c[0]/6 + A[6]*d[0]/6)/(6*V) + c[0]*(A[1]*b[0]/6 + A[4]*c[0]/6 + A[7]*d[0]/6)/(6*V) + d[0]*(A[2]*b[0]/6 + A[5]*c[0]/6 + A[8]*d[0]/6)/(6*V)
         ,
@@ -829,6 +845,10 @@ Eigen::MatrixXd TET4::diffusion_1dof(const double t, const std::vector<double>& 
 }
 Eigen::MatrixXd TET4::advection_1dof(const double t, const std::vector<double>& v) const{
     (void)t;
+    const double* const a = C.data();
+    const double* const b = a + NODES_PER_ELEM;
+    const double* const c = b + NODES_PER_ELEM;
+    const double* const d = c + NODES_PER_ELEM;
     Eigen::MatrixXd M{{
         b[0]*v[0]/24 + c[0]*v[1]/24 + d[0]*v[2]/24
         ,

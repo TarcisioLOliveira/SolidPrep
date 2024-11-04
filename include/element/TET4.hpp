@@ -73,9 +73,14 @@ class TET4 : public MeshElementCommon3DTet<TET4>{
 
     void get_coeffs();
 
-    double a[4], b[4], c[4], d[4], V;
+    std::array<double, NODES_PER_ELEM*NODES_PER_ELEM> C;
+    double V;
 
     inline double N(double x, double y, double z, size_t i) const{
+        const double* const a = C.data();
+        const double* const b = a + NODES_PER_ELEM;
+        const double* const c = b + NODES_PER_ELEM;
+        const double* const d = c + NODES_PER_ELEM;
         return (a[i] + b[i]*x + c[i]*y + d[i]*z)/(6*V);
     }
 
@@ -105,6 +110,10 @@ class TET4 : public MeshElementCommon3DTet<TET4>{
         return Eigen::Vector<double, 4>(N(x, y, z, 0), N(x, y, z, 1), N(x, y, z, 2), N(x, y, z, 3));
     }
     inline Eigen::Matrix<double, 3, 4> dN_mat_1dof() const{
+        const double* const a = C.data();
+        const double* const b = a + NODES_PER_ELEM;
+        const double* const c = b + NODES_PER_ELEM;
+        const double* const d = c + NODES_PER_ELEM;
         return Eigen::Matrix<double, 3, 4>{{b[0], b[1], b[2], b[3]},
                                            {c[0], c[1], c[2], c[3]},
                                            {d[0], d[1], d[2], d[3]}}/(6*V);
