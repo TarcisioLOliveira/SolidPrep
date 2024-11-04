@@ -24,6 +24,7 @@
 #include <BRepBuilderAPI_Copy.hxx>
 #include <TopoDS_Shape.hxx>
 #include "finite_element.hpp"
+#include "shape_handler.hpp"
 #include "utils.hpp"
 #include "visualization.hpp"
 #include "solver_manager.hpp"
@@ -135,9 +136,13 @@ class DensityBasedOptimizer : public Optimizer{
 
 class NodeShapeBasedOptimizer : public Optimizer{
     public:
+    NodeShapeBasedOptimizer(ShapeHandler sh):
+        shape_handler(std::move(sh)){}
+
     virtual ~NodeShapeBasedOptimizer() = default;
 
     protected:
+    ShapeHandler shape_handler;
 
     TopoDS_Shape make_shape(const std::vector<Geometry*>& geometries, const utils::ProblemType type) const;
 };
