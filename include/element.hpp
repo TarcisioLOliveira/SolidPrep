@@ -23,8 +23,6 @@
 
 #include <Eigen/Core>
 #include "material.hpp"
-#include "utils.hpp"
-#include <cmath>
 #include <gp_Pnt.hxx>
 #include <vector>
 #include <TopoDS_Shape.hxx>
@@ -473,6 +471,20 @@ class MeshElement : public Element{
      */
     virtual std::vector<double> get_B(const gp_Pnt& point) const = 0;
 
+    virtual std::vector<double> get_dk_sh(const std::vector<double>& D, const double t, const size_t n, const size_t dof) const {
+       (void) D;
+       (void) t;
+       (void) n;
+       (void) dof;
+       return std::vector<double>();
+    }
+    virtual double get_dV_sh(const double t, const size_t n, const size_t dof) const{
+       (void) t;
+       (void) n;
+       (void) dof;
+
+       return 0;
+    }
     /**
      * Returns a 1 degree of freedom diffusion matrix.
      * 
