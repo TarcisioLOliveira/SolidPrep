@@ -35,13 +35,15 @@ class ShapeHandler{
         const std::vector<size_t> node_ids;
         const std::vector<AffectedElement> elements;
     };
-    const std::vector<AffectedNode>& nodes = this->optimized_nodes;
 
     ShapeHandler(Meshing* mesh, std::vector<Geometry*> geometries);
 
     void obtain_affected_nodes();
     void update_nodes(const std::vector<double>& dx);
 
+    inline const std::vector<AffectedNode>& get_nodes() const{
+        return this->optimized_nodes;
+    }
     inline size_t get_number_of_nodes() const{
         return this->optimized_nodes.size();
     }
