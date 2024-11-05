@@ -79,6 +79,8 @@
 #include "function/density_based/mass.hpp"
 #include "function/density_based/mass_first_material.hpp"
 #include "function/density_based/mechanostat.hpp"
+#include "function/node_shape_based/compliance.hpp"
+#include "function/node_shape_based/volume.hpp"
 #include "field/orthotropic_flow.hpp"
 
 ProjectData::ProjectData(std::string project_file){
@@ -1000,6 +1002,12 @@ std::unique_ptr<DensityBasedFunction> ProjectData::get_topopt_function(const rap
 std::unique_ptr<NodeShapeBasedFunction> ProjectData::get_shopt_function(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc){
     this->log_data(doc, "type", TYPE_STRING, true);
     std::string type = doc["type"].GetString();
+
+    if(type == "compliance"){
+        return std::make_unique<function::node_shape_based::Compliance>(this->topopt_mesher.get());
+    } else if(type == "volume"){
+        return std::make_unique<function::node_shape_based::Volume>(this->topopt_mesher.get());
+    }
 
     logger::log_assert(false, logger::ERROR, "function \"{}\" not found.", type);
 
