@@ -212,6 +212,9 @@ TopoDS_Shape MMA::optimize(SolverManager* fem, Meshing* mesh){
 
             this->shape_handler.update_nodes(x);
 
+            // Update volumes after resizing elements
+            this->get_volumes(mesh->geometries, mesh->thickness, this->volumes);
+
             ch = 0.0;
             for (size_t i = 0; i < x.size(); ++i) {
                 ch = std::max(ch, std::abs(x[i]));
