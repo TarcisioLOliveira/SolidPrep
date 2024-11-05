@@ -32,6 +32,7 @@
 #include "sub_problem.hpp"
 #include "element_factory.hpp"
 #include "geometry.hpp"
+#include "utils.hpp"
 
 class ProjectData;
 class MeshFile;
@@ -40,16 +41,16 @@ class BoundaryElement{
     public:
     const MeshNode** const nodes;
     const MeshElement* const parent;
-    const gp_Dir normal;
+    const gp_Dir& normal = normal_internal;
     const size_t geom_id;
     
     ~BoundaryElement(){
         delete[] nodes;
     }
     BoundaryElement(const std::vector<MeshNode*>& n, const MeshElement* const parent, gp_Dir normal, size_t geom_id):
-        nodes(allocate_nodes(n)), parent(parent), normal(std::move(normal)), geom_id(geom_id){}
+        nodes(allocate_nodes(n)), parent(parent), geom_id(geom_id), normal_internal(std::move(normal)){}
     BoundaryElement(const std::vector<const MeshNode*>& n, const MeshElement* const parent, gp_Dir normal, size_t geom_id):
-        nodes(allocate_nodes(n)), parent(parent), normal(std::move(normal)), geom_id(geom_id){}
+        nodes(allocate_nodes(n)), parent(parent), geom_id(geom_id), normal_internal(std::move(normal)){}
 
     inline gp_Pnt get_centroid(const size_t N) const{
         double x = 0, y = 0, z = 0;
@@ -61,7 +62,10 @@ class BoundaryElement{
         return gp_Pnt(x/N, y/N, z/N);
     }
 
+    void update_normal(const size_t N, const utils::ProblemType prob_type);
+
     private:
+    gp_Dir normal_internal;
     /**
      * Sets the elements from the element vector.
      *

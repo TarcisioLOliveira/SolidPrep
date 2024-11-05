@@ -99,6 +99,7 @@ void ShapeHandler::obtain_affected_nodes(){
     
 void ShapeHandler::update_nodes(const std::vector<double>& dx){
     const size_t dof = this->mesh->elem_info->get_dof_per_node();
+    const size_t bnum = this->mesh->elem_info->get_boundary_nodes_per_element();
 
     for(size_t i = 0; i < this->optimized_nodes.size(); ++i){
         auto& nids = this->optimized_nodes[i].node_ids;
@@ -108,5 +109,8 @@ void ShapeHandler::update_nodes(const std::vector<double>& dx){
                 n->point.SetCoord(1+d, n->point.Coord(1+d) + dx[i*dof + d]);
             }
         }
+    }
+    for(auto& b:this->mesh->boundary_elements){
+        b.update_normal(bnum, this->mesh->proj_data->type);
     }
 }
