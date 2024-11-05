@@ -152,7 +152,7 @@ TopoDS_Shape MMA::optimize(SolverManager* fem, Meshing* mesh){
         }
         fem->calculate_displacements_global(mesh, loads, u);
         if(mpi_id == 0){
-            this->get_stresses(mesh->geometries, u, fem->D_vec, this->stresses);
+            this->get_stresses(mesh->geometries, false, u, fem->D_vec, this->stresses);
             std::copy(stresses.begin(), stresses.end(), stress_render.begin());
             auto xit = new_x.cbegin();
             auto xvit = x_view.begin();
