@@ -115,6 +115,12 @@ void Meshing::generate_elements(const std::vector<size_t>& geom_elem_mapping,
         populate_inverse_mesh(elements);
         this->distribute_elements(geom_elem_mapping, elements);
         elements.clear();
+        // Populate elem/geom mapping
+        for(const auto& g:this->geometries){
+            for(const auto& e:g->mesh){
+                this->elem_geom_mapping[e.get()] = g;
+            }
+        }
         // Generate element ids
         size_t e_id = 0;
         for(auto& g:this->geometries){
