@@ -36,6 +36,26 @@
 #include <BRepBuilderAPI_Copy.hxx>
 #include <vector>
 
+void BoundaryElement::update_normal(const size_t N, const utils::ProblemType prob_type){
+    if(prob_type == utils::PROBLEM_TYPE_2D){
+        gp_Pnt p0 = this->nodes[0]->point;
+        gp_Pnt p1 = this->nodes[1]->point;
+        gp_Dir n(gp_Vec(p0, p1));
+        n.Cross(gp_Dir(0,0,1));
+        this->normal_internal = std::move(n);
+    } else {
+        gp_Pnt p0 = this->nodes[0]->point;
+        gp_Pnt p1 = this->nodes[1]->point;
+        gp_Pnt p2 = this->nodes[2]->point;
+        gp_Dir n0(gp_Vec(p1, p0));
+        gp_Dir n1(gp_Vec(p1, p2));
+        this->normal_internal = n0.Crossed(n1);
+    }
+    gp_Pnt bc = this->get_centroid(N);
+    gp_Pnt ec = this->parent->get_centroid();
+    gp_Dir d(gp_Vec(bc, ec));
+    this->normal_internal = (d.Dot(this->normal) < 0) ? this->normal : -this->normal;
+}
 
 void Meshing::generate_elements(const std::vector<size_t>& geom_elem_mapping, 
                                 const std::vector<size_t>& elem_node_tags, 
