@@ -29,7 +29,7 @@ ShapeHandler::ShapeHandler(Meshing* mesh, std::vector<Geometry*> geometries):
 void ShapeHandler::obtain_affected_nodes(){
     const size_t node_num = this->mesh->elem_info->get_nodes_per_element();
 
-    std::vector<bool> affected(this->mesh->boundary_node_list.size(), false);
+    std::vector<bool> affected(this->mesh->boundary_node_list.size(), true);
     size_t affected_num = 0;
     // This is quite slow, so it's better to parallelize it
     #pragma omp parallel for reduction(+:affected_num)
@@ -37,30 +37,30 @@ void ShapeHandler::obtain_affected_nodes(){
         const auto& b = this->mesh->boundary_node_list[i];
         for(const auto& f:this->mesh->proj_data->forces){
             if(f.S.is_inside(b->point)){
-                affected[i] = true;
+                affected[i] = false;
                 break;
             }
         }
-        if(!affected[i]){
+        if(affected[i]){
             for(const auto& f:this->mesh->proj_data->supports){
                 if(f.S.is_inside(b->point)){
-                    affected[i] = true;
+                    affected[i] = false;
                     break;
                 }
             }
         }
-        if(!affected[i]){
+        if(affected[i]){
             for(const auto& f:this->mesh->proj_data->springs){
                 if(f.S.is_inside(b->point)){
-                    affected[i] = true;
+                    affected[i] = false;
                     break;
                 }
             }
         }
-        if(!affected[i]){
+        if(affected[i]){
             for(const auto& f:this->mesh->proj_data->internal_loads){
                 if(f.S.is_inside(b->point)){
-                    affected[i] = true;
+                    affected[i] = false;
                     break;
                 }
             }
