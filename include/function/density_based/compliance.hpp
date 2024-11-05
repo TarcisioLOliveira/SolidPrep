@@ -18,8 +18,8 @@
  *
  */
 
-#ifndef FUNCTION_COMPLIANCE_HPP
-#define FUNCTION_COMPLIANCE_HPP
+#ifndef DENSITY_BASED_FUNCTION_COMPLIANCE_HPP
+#define DENSITY_BASED_FUNCTION_COMPLIANCE_HPP
 
 #include "function.hpp"
 #include "meshing.hpp"

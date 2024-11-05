@@ -18,8 +18,8 @@
  *
  */
 
-#ifndef FUNCTION_VOLUME_HPP
-#define FUNCTION_VOLUME_HPP
+#ifndef DENSITY_BASED_FUNCTION_VOLUME_HPP
+#define DENSITY_BASED_FUNCTION_VOLUME_HPP
 
 #include "function.hpp"
 #include "meshing.hpp"
