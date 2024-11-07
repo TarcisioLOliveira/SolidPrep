@@ -41,6 +41,9 @@ class ShapeHandler{
     void obtain_affected_nodes();
     void update_nodes(const std::vector<double>& dx);
 
+    inline const std::vector<double>& get_shape_displacement() const{
+        return this->shape_displacement;
+    }
     inline const std::vector<AffectedNode>& get_nodes() const{
         return this->optimized_nodes;
     }
@@ -56,6 +59,10 @@ class ShapeHandler{
     std::vector<Geometry*> geometries;
 
     std::vector<AffectedNode> optimized_nodes;
+    std::vector<MeshElement*> affected_elements;
+
+    std::vector<double> original_points;
+    std::vector<double> shape_displacement;
 };
 
 #endif
