@@ -20,6 +20,7 @@
 
 #include <mpi.h>
 #include "optimizer/node_shape_based/mma.hpp"
+#include "logger.hpp"
 #include "optimization/MMASolver.hpp"
 #include "project_data.hpp"
 
@@ -32,6 +33,7 @@ MMA::MMA(ShapeHandler sh, ProjectData* data, std::vector<std::unique_ptr<NodeSha
 void MMA::initialize_views(Visualization* viz){
     this->viz = viz;
 
+    this->node_view = viz->add_view("Shape Displacement", spview::defs::ViewType::VECTOR, spview::defs::DataType::DISPLACEMENT);
     this->stress_view = viz->add_view("Von Mises Stress", spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::STRESS);
 
     for(auto& f:this->objective){
@@ -211,6 +213,8 @@ TopoDS_Shape MMA::optimize(SolverManager* fem, Meshing* mesh){
             mma.Update(x.data(), df.data(), g.data(), dg.data(), xmin.data(), xmax.data());
 
             this->shape_handler.update_nodes(x);
+
+            this->node_view->update_view(this->shape_handler.get_shape_displacement());
 
             // Update volumes after resizing elements
             this->get_volumes(mesh->geometries, mesh->thickness, this->volumes);
