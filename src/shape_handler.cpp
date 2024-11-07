@@ -20,6 +20,7 @@
 
 #include "shape_handler.hpp"
 #include "project_data.hpp"
+#include <set>
 
 ShapeHandler::ShapeHandler(Meshing* mesh, std::vector<Geometry*> geometries):
     mesh(mesh), geometries(std::move(geometries)){
@@ -28,6 +29,9 @@ ShapeHandler::ShapeHandler(Meshing* mesh, std::vector<Geometry*> geometries):
 
 void ShapeHandler::obtain_affected_nodes(){
     const size_t node_num = this->mesh->elem_info->get_nodes_per_element();
+
+    this->original_points.resize(this->mesh->node_list.size()*3, 0);
+    this->shape_displacement.resize(this->original_points.size(), 0);
 
     std::vector<bool> affected(this->mesh->boundary_node_list.size(), true);
     size_t affected_num = 0;
@@ -72,6 +76,7 @@ void ShapeHandler::obtain_affected_nodes(){
 
     // TODO deduplicate superimposed nodes
     this->optimized_nodes.reserve(affected_num);
+    std::set<MeshElement*> elem_set;
     for(size_t i = 0; i < affected.size(); ++i){
         if(affected[i]){
             std::vector<size_t> node_ids{i};
@@ -84,6 +89,7 @@ void ShapeHandler::obtain_affected_nodes(){
             elems.reserve(e_size);
             for(auto it = range.first; it != range.second; ++it){
                 auto e = it->second;
+                elem_set.insert(e);
                 size_t n;
                 for(n = 0; n < node_num; ++n){
                     if(e->nodes[n]->id == i){
@@ -93,6 +99,15 @@ void ShapeHandler::obtain_affected_nodes(){
                 elems.push_back(AffectedElement{e, n});
             }
             this->optimized_nodes.push_back(AffectedNode{std::move(node_ids), std::move(elems)});
+        }
+    }
+    this->affected_elements.reserve(elem_set.size());
+    this->affected_elements.insert(this->affected_elements.begin(), elem_set.begin(), elem_set.end());
+
+    for(size_t i = 0; i < this->mesh->node_list.size(); ++i){
+        const auto& n = this->mesh->node_list[i];
+        for(size_t j = 0; j < 3; ++j){
+            this->original_points[3*i + j] = n->point.Coord(1+j);
         }
     }
 }
@@ -115,5 +130,11 @@ void ShapeHandler::update_nodes(const std::vector<double>& dx){
     }
     for(auto& b:this->mesh->boundary_elements){
         b.update_normal(bnum, this->mesh->proj_data->type);
+    }
+    for(size_t i = 0; i < this->mesh->node_list.size(); ++i){
+        const auto& n = this->mesh->node_list[i];
+        for(size_t j = 0; j < 3; ++j){
+            this->shape_displacement[3*i + j] = n->point.Coord(1+j) - this->original_points[3*i + j];
+        }
     }
 }
