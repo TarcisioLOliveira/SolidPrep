@@ -110,6 +110,9 @@ void ShapeHandler::update_nodes(const std::vector<double>& dx){
             }
         }
     }
+    for(auto& e:this->affected_elements){
+        e->calculate_coefficients();
+    }
     for(auto& b:this->mesh->boundary_elements){
         b.update_normal(bnum, this->mesh->proj_data->type);
     }
