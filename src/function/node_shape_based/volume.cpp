@@ -82,6 +82,9 @@ double Volume::calculate_with_gradient(const NodeShapeBasedOptimizer* const op, 
             }
         }
     }
+    for(auto& gi:grad){
+        gi /= this->max_V;
+    }
 
     return this->calculate(op, u);
 }
