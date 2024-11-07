@@ -56,6 +56,7 @@ class TET4 : public MeshElementCommon3DTet<TET4>{
     virtual std::vector<double> get_B(const gp_Pnt& point) const override;
 
     virtual std::vector<double> get_dk_sh(const std::vector<double>& D, const double t, const size_t n, const size_t dof) const override;
+    virtual void calculate_coefficients() override;
 
     virtual Eigen::MatrixXd diffusion_1dof(const double t, const std::vector<double>& A) const override;
     virtual Eigen::MatrixXd advection_1dof(const double t, const std::vector<double>& v) const override;
@@ -72,8 +73,6 @@ class TET4 : public MeshElementCommon3DTet<TET4>{
     private:
     virtual std::vector<double> get_DB(const std::vector<double>& D, const gp_Pnt& point) const override;
     virtual std::vector<double> get_Nf(const double t, const std::vector<gp_Pnt>& points) const override;
-
-    void get_coeffs();
 
     typedef std::array<double, NODES_PER_ELEM*NODES_PER_ELEM> CoeffMat;
 

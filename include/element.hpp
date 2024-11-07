@@ -485,6 +485,9 @@ class MeshElement : public Element{
 
        return 0;
     }
+    virtual void calculate_coefficients(){
+
+    }
     /**
      * Returns a 1 degree of freedom diffusion matrix.
      * 
