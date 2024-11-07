@@ -49,6 +49,7 @@ class MMA : public NodeShapeBasedOptimizer{
     Visualization* viz;
 
     ViewHandler* stress_view = nullptr;
+    ViewHandler* node_view = nullptr;
 };
 
 }
