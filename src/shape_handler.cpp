@@ -79,9 +79,10 @@ void ShapeHandler::obtain_affected_nodes(){
     std::set<MeshElement*> elem_set;
     for(size_t i = 0; i < affected.size(); ++i){
         if(affected[i]){
-            std::vector<size_t> node_ids{i};
+            const size_t curr_id = this->mesh->boundary_node_list[i]->id;
+            std::vector<size_t> node_ids{curr_id};
             std::vector<AffectedElement> elems;
-            const auto& range = this->mesh->inverse_mesh.equal_range(i);
+            const auto& range = this->mesh->inverse_mesh.equal_range(curr_id);
             size_t e_size = 0;
             for(auto it = range.first; it != range.second; ++it){
                 ++e_size;
@@ -92,7 +93,7 @@ void ShapeHandler::obtain_affected_nodes(){
                 elem_set.insert(e);
                 size_t n;
                 for(n = 0; n < node_num; ++n){
-                    if(e->nodes[n]->id == i){
+                    if(e->nodes[n]->id == curr_id){
                         break;
                     }
                 }
