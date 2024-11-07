@@ -41,7 +41,7 @@ namespace element{
 TET4::TET4(ElementShape s):
     MeshElementCommon3DTet<TET4>(s.nodes){
 
-    this->get_coeffs();    
+    this->calculate_coefficients();    
 }
 
 std::unique_ptr<BoundaryMeshElementFactory> TET4::get_boundary_element_info() {
@@ -52,20 +52,15 @@ std::unique_ptr<ContactMeshElementFactory> TET4::get_contact_element_info() {
     return std::unique_ptr<ContactMeshElementFactory>(new ContactMeshElementFactoryImpl<contact_element::CTRI3>());
 }
 
-void TET4::get_coeffs(){
+void TET4::calculate_coefficients(){
     constexpr size_t N = TET4::NODES_PER_ELEM;
-    std::array<double, N> x, y, z;
-    for(size_t i = 0; i < N; ++i){
-        x[i] = this->nodes[i]->point.X();
-        y[i] = this->nodes[i]->point.Y();
-        z[i] = this->nodes[i]->point.Z();
-    }
 
-    std::array<double, N*N> M = 
-        {1, x[0], y[0], z[0],
-         1, x[1], y[1], z[1],
-         1, x[2], y[2], z[2],
-         1, x[3], y[3], z[3]};
+    for(size_t i = 0; i < N; ++i){
+        this->C[i*N + 0] = 1;
+        this->C[i*N + 1] = this->nodes[i]->point.X();
+        this->C[i*N + 2] = this->nodes[i]->point.Y();
+        this->C[i*N + 3] = this->nodes[i]->point.Z();
+    }
 
     std::array<int, N> ipiv;
 
@@ -74,16 +69,14 @@ void TET4::get_coeffs(){
     //      b[0], b[1], b[2], b[3],
     //      c[0], c[1], c[2], c[3],
     //      d[0], d[1], d[2], d[3]}
-    int info = LAPACKE_dgetrf(LAPACK_COL_MAJOR, N, N, M.data(), N, ipiv.data());
+    int info = LAPACKE_dgetrf(LAPACK_COL_MAJOR, N, N, this->C.data(), N, ipiv.data());
     logger::log_assert(info == 0, logger::ERROR, "LAPACKE returned {} while calculating LU in TET4.", info);
-    info = LAPACKE_dgetri(LAPACK_COL_MAJOR, N, M.data(), N, ipiv.data());
+    info = LAPACKE_dgetri(LAPACK_COL_MAJOR, N, this->C.data(), N, ipiv.data());
     logger::log_assert(info == 0, logger::ERROR, "LAPACKE returned {} while calculating computing inverse from LU in TET4.", info);
 
     this->V = this->get_volume(1.0);
 
-    cblas_dscal(N*N, 6*V, M.data(), 1);
-
-    this->C = std::move(M);
+    cblas_dscal(N*N, 6*V, this->C.data(), 1);
 }
 
 std::vector<double> TET4::get_k(const std::vector<double>& D, const double t) const{
