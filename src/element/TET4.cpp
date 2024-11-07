@@ -998,11 +998,11 @@ TET4::CoeffMat TET4::get_C_derivative(const size_t n, const size_t dof) const{
     constexpr size_t N = TET4::NODES_PER_ELEM;
     CoeffMat C2;
     C2.fill(0);
-    C2[NODES_PER_ELEM*n + (dof + 1)] = 1;
+    C2[N*n + (dof + 1)] = 1;
 
     std::vector<double> Ctmp(N*N, 0);
-    cblas_dgemm(CblasRowMajor, CblasTrans, CblasTrans, N, N, N, 1, C2.data(), N, C.data(), N, 0, Ctmp.data(), N);
-    cblas_dgemm(CblasRowMajor, CblasTrans, CblasNoTrans, N, N, N, 1, C.data(), N, Ctmp.data(), N, 0, C2.data(), N);
+    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, N, N, N, 1, C2.data(), N, C.data(), N, 0, Ctmp.data(), N);
+    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, N, N, N, 1, C.data(), N, Ctmp.data(), N, 0, C2.data(), N);
     cblas_dscal(N*N, -1, C2.data(), 1);
 
     return C2;
