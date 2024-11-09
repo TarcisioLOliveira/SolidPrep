@@ -32,10 +32,7 @@ void Volume::initialize(const NodeShapeBasedOptimizer* const op){
     auto v = op->get_volumes();
     auto v_it = v.cbegin();
     for(auto& g:this->mesh->geometries){
-        if(g->do_topopt){
-            this->max_V += std::accumulate(v_it, v_it + g->mesh.size(), 0.0);
-        }
-        v_it += g->mesh.size();
+        this->max_V += std::accumulate(v_it, v_it + g->mesh.size(), 0.0);
     }
 }
 
