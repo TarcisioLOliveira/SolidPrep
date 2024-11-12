@@ -1008,4 +1008,23 @@ TET4::CoeffMat TET4::get_C_derivative(const size_t n, const size_t dof) const{
     return C2;
 }
 
+std::vector<double> TET4::get_dB_sh(const gp_Pnt& p, const size_t n, const size_t dof) const{
+    const auto C2 = this->get_C_derivative(n, dof);
+
+    const double* const a = C2.data();
+    const double* const b = a + NODES_PER_ELEM;
+    const double* const c = b + NODES_PER_ELEM;
+    const double* const d = c + NODES_PER_ELEM;
+    std::vector<double> B{
+        b[0]/(6*V), 0, 0, b[1]/(6*V), 0, 0, b[2]/(6*V), 0, 0, b[3]/(6*V), 0, 0,
+        0, c[0]/(6*V), 0, 0, c[1]/(6*V), 0, 0, c[2]/(6*V), 0, 0, c[3]/(6*V), 0,
+        0, 0, d[0]/(6*V), 0, 0, d[1]/(6*V), 0, 0, d[2]/(6*V), 0, 0, d[3]/(6*V),
+        c[0]/(6*V), b[0]/(6*V), 0, c[1]/(6*V), b[1]/(6*V), 0, c[2]/(6*V), b[2]/(6*V), 0, c[3]/(6*V), b[3]/(6*V), 0,
+        d[0]/(6*V), 0, b[0]/(6*V), d[1]/(6*V), 0, b[1]/(6*V), d[2]/(6*V), 0, b[2]/(6*V), d[3]/(6*V), 0, b[3]/(6*V),
+        0, d[0]/(6*V), c[0]/(6*V), 0, d[1]/(6*V), c[1]/(6*V), 0, d[2]/(6*V), c[2]/(6*V), 0, d[3]/(6*V), c[3]/(6*V)
+    }; 
+
+    return B;
+}
+
 }

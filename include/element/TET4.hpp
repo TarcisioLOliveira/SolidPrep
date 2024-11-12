@@ -56,6 +56,7 @@ class TET4 : public MeshElementCommon3DTet<TET4>{
     virtual std::vector<double> get_B(const gp_Pnt& point) const override;
 
     virtual std::vector<double> get_dk_sh(const std::vector<double>& D, const double t, const size_t n, const size_t dof) const override;
+    virtual std::vector<double> get_dB_sh(const gp_Pnt& p, const size_t n, const size_t dof) const override;
     virtual void calculate_coefficients() override;
 
     virtual Eigen::MatrixXd diffusion_1dof(const double t, const std::vector<double>& A) const override;
