@@ -472,22 +472,40 @@ class MeshElement : public Element{
     virtual std::vector<double> get_B(const gp_Pnt& point) const = 0;
 
     virtual std::vector<double> get_dk_sh(const std::vector<double>& D, const double t, const size_t n, const size_t dof) const {
-       (void) D;
-       (void) t;
-       (void) n;
-       (void) dof;
-       return std::vector<double>();
+        (void) D;
+        (void) t;
+        (void) n;
+        (void) dof;
+        return std::vector<double>();
     }
     virtual double get_dV_sh(const double t, const size_t n, const size_t dof) const{
-       (void) t;
-       (void) n;
-       (void) dof;
+        (void) t;
+        (void) n;
+        (void) dof;
 
-       return 0;
+        return 0;
+    }
+    virtual std::vector<double> get_dB_sh(const gp_Pnt& p, const size_t n, const size_t dof) const{
+        (void) p;
+        (void) n;
+        (void) dof;
+
+        return std::vector<double>();
     }
     virtual void calculate_coefficients(){
 
     }
+    /**
+     * Calculates the shape derivative of von Mises stress.
+     *
+     * @param D Constitutive matrix.
+     * @param mult Value to be multiplied to the result.
+     * @param point Point to measure stress.
+     * @param u Displacement vector.
+     * @param n Element's node id.
+     * @param dof Analyzed degree of freedom.
+     */
+    virtual double von_Mises_derivative_sh(const std::vector<double>& D, double mult, const gp_Pnt& point, const std::vector<double>& u, const size_t n, const size_t dof) const = 0;
     /**
      * Returns a 1 degree of freedom diffusion matrix.
      * 

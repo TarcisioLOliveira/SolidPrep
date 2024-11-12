@@ -81,6 +81,7 @@
 #include "function/density_based/mechanostat.hpp"
 #include "function/node_shape_based/compliance.hpp"
 #include "function/node_shape_based/volume.hpp"
+#include "function/node_shape_based/global_stress_heaviside.hpp"
 #include "field/orthotropic_flow.hpp"
 
 ProjectData::ProjectData(std::string project_file){
@@ -1007,6 +1008,12 @@ std::unique_ptr<NodeShapeBasedFunction> ProjectData::get_shopt_function(const ra
         return std::make_unique<function::node_shape_based::Compliance>(this->topopt_mesher.get());
     } else if(type == "volume"){
         return std::make_unique<function::node_shape_based::Volume>(this->topopt_mesher.get());
+    } else if(type == "global_stress_heaviside"){
+        this->log_data(doc, "max_stress", TYPE_DOUBLE, true);
+        this->log_data(doc, "C", TYPE_DOUBLE, true);
+        double C = doc["C"].GetDouble();
+        double max_stress = doc["max_stress"].GetDouble();
+        return std::make_unique<function::node_shape_based::GlobalStressHeaviside>(this->topopt_mesher.get(), this->topopt_fea.get(), max_stress, C);
     }
 
     logger::log_assert(false, logger::ERROR, "function \"{}\" not found.", type);
