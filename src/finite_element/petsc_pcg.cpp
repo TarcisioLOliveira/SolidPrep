@@ -89,7 +89,9 @@ void PETScPCG::solve(std::vector<double>& load){
         //KSPSetType(this->ksp, KSPMINRES);
         //KSPSetType(this->ksp, KSPPREONLY);
         KSPCGSetType(this->ksp, KSP_CG_HERMITIAN);
-        KSPSetInitialGuessNonzero(this->ksp, PETSC_TRUE);
+
+        // Setting this to true may make the solver diverge
+        KSPSetInitialGuessNonzero(this->ksp, PETSC_FALSE);
 
         KSPGetPC(this->ksp, &this->pc);
         //KSPSetNormType(this->ksp, KSP_NORM_UNPRECONDITIONED);
