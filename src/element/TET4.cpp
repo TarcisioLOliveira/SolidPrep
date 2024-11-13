@@ -1009,6 +1009,7 @@ TET4::CoeffMat TET4::get_C_derivative(const size_t n, const size_t dof) const{
 }
 
 std::vector<double> TET4::get_dB_sh(const gp_Pnt& p, const size_t n, const size_t dof) const{
+    (void) p;
     const auto C2 = this->get_C_derivative(n, dof);
 
     const double* const a = C2.data();
