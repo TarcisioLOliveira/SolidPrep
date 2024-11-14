@@ -80,12 +80,20 @@ class TET4 : public MeshElementCommon3DTet<TET4>{
     CoeffMat C;
     double V;
 
+    inline gp_Pnt GL_point(double c1, double c2, double c3, double c4) const{
+        return gp_Pnt(
+            c1*this->nodes[0]->point.X() + c2*this->nodes[1]->point.X() + c3*this->nodes[2]->point.X() + c4*this->nodes[3]->point.X(),
+            c1*this->nodes[0]->point.Y() + c2*this->nodes[1]->point.Y() + c3*this->nodes[2]->point.Y() + c4*this->nodes[3]->point.Y(),
+            c1*this->nodes[0]->point.Z() + c2*this->nodes[1]->point.Z() + c3*this->nodes[2]->point.Z() + c4*this->nodes[3]->point.Z()
+        );
+    }
+
     inline double N(double x, double y, double z, size_t i, const CoeffMat& M) const{
         const double* const a = M.data();
         const double* const b = a + NODES_PER_ELEM;
         const double* const c = b + NODES_PER_ELEM;
         const double* const d = c + NODES_PER_ELEM;
-        return (a[i] + b[i]*x + c[i]*y + d[i]*z)/(6*V);
+        return a[i] + b[i]*x + c[i]*y + d[i]*z;
     }
 
     inline double N_norm(double x, double y, double z, size_t i) const{
@@ -120,7 +128,7 @@ class TET4 : public MeshElementCommon3DTet<TET4>{
         const double* const d = c + NODES_PER_ELEM;
         return Eigen::Matrix<double, 3, 4>{{b[0], b[1], b[2], b[3]},
                                            {c[0], c[1], c[2], c[3]},
-                                           {d[0], d[1], d[2], d[3]}}/(6*V);
+                                           {d[0], d[1], d[2], d[3]}};
     }
     inline double dNdx_norm_surface(double x, double y, size_t i) const{
         (void)x;
@@ -170,12 +178,12 @@ class TET4 : public MeshElementCommon3DTet<TET4>{
         const double* const c = b + NODES_PER_ELEM;
         const double* const d = c + NODES_PER_ELEM;
         Eigen::Matrix<double, S_SIZE, K_DIM>  B{
-            {b[0]/(6*V), 0, 0, b[1]/(6*V), 0, 0, b[2]/(6*V), 0, 0, b[3]/(6*V), 0, 0},
-            {0, c[0]/(6*V), 0, 0, c[1]/(6*V), 0, 0, c[2]/(6*V), 0, 0, c[3]/(6*V), 0},
-            {0, 0, d[0]/(6*V), 0, 0, d[1]/(6*V), 0, 0, d[2]/(6*V), 0, 0, d[3]/(6*V)},
-            {c[0]/(6*V), b[0]/(6*V), 0, c[1]/(6*V), b[1]/(6*V), 0, c[2]/(6*V), b[2]/(6*V), 0, c[3]/(6*V), b[3]/(6*V), 0},
-            {d[0]/(6*V), 0, b[0]/(6*V), d[1]/(6*V), 0, b[1]/(6*V), d[2]/(6*V), 0, b[2]/(6*V), d[3]/(6*V), 0, b[3]/(6*V)},
-            {0, d[0]/(6*V), c[0]/(6*V), 0, d[1]/(6*V), c[1]/(6*V), 0, d[2]/(6*V), c[2]/(6*V), 0, d[3]/(6*V), c[3]/(6*V)}
+            {b[0], 0, 0, b[1], 0, 0, b[2], 0, 0, b[3], 0, 0},
+            {0, c[0], 0, 0, c[1], 0, 0, c[2], 0, 0, c[3], 0},
+            {0, 0, d[0], 0, 0, d[1], 0, 0, d[2], 0, 0, d[3]},
+            {c[0], b[0], 0, c[1], b[1], 0, c[2], b[2], 0, c[3], b[3], 0},
+            {d[0], 0, b[0], d[1], 0, b[1], d[2], 0, b[2], d[3], 0, b[3]},
+            {0, d[0], c[0], 0, d[1], c[1], 0, d[2], c[2], 0, d[3], c[3]}
         }; 
         return B;
     }
