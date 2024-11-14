@@ -94,11 +94,8 @@ TopoDS_Shape MMA::optimize(SolverManager* fem, Meshing* mesh){
     std::vector<double> dg(x.size()*M);
     std::vector<double> g(M);
 
-    std::vector<double> xmin;
-    std::vector<double> xmax;
-
-    xmin = std::vector<double>(x.size(), -1.0);
-    xmax = std::vector<double>(x.size(),  1.0);
+    std::vector<double> xmin(x.size(), -1.0);
+    std::vector<double> xmax(x.size(),  1.0);
 
     if(mpi_id == 0){
         logger::quick_log("Done.");
