@@ -45,10 +45,12 @@ add_subdirectory(boundary_element)
 add_subdirectory(contact_element)
 add_subdirectory(field)
 add_subdirectory(nonlinear_solver)
+add_subdirectory(math)
 
 add_executable(${PROJECT_NAME} ${SOURCES})
 
 target_link_libraries(${PROJECT_NAME} PUBLIC
+    math
     sizing
     pathfinding 
     finite_element
