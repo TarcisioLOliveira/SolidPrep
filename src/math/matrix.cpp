@@ -63,10 +63,10 @@ Matrix::Matrix(const Matrix& m):
 }
 
 Matrix::Matrix(const MatrixTransposeView& m):
-    W(m.H), H(m.W), M(new Scalar[W*H]){
+    W(m.W), H(m.H), M(new Scalar[W*H]){
     
-    for(size_t i = 0; i < W; ++i){
-        for(size_t j = 0; j < H; ++j){
+    for(size_t i = 0; i < H; ++i){
+        for(size_t j = 0; j < W; ++j){
             this->at(i,j) = m(i, j);
         }
     }
@@ -142,13 +142,13 @@ Matrix& Matrix::operator=(Matrix&& m){
 }
 
 Matrix& Matrix::operator=(const MatrixTransposeView& m){
-    W = m.H;
-    H = m.W;
+    W = m.W;
+    H = m.H;
     delete[] this->M;
     this->M = new Scalar[W*H];
 
-    for(size_t i = 0; i < W; ++i){
-        for(size_t j = 0; j < H; ++j){
+    for(size_t i = 0; i < H; ++i){
+        for(size_t j = 0; j < W; ++j){
             this->at(i,j) = m(i, j);
         }
     }
@@ -208,8 +208,8 @@ Matrix& Matrix::operator+=(const MatrixTransposeView& m){
                        "incompatible dimensions in matrix sum: ({}, {}) and ({}, {})",
                        H, W, m.H, m.W);
 
-    for(size_t i = 0; i < W; ++i){
-        for(size_t j = 0; j < H; ++j){
+    for(size_t i = 0; i < H; ++i){
+        for(size_t j = 0; j < W; ++j){
             this->at(i,j) += m(i, j);
         }
     }
@@ -222,8 +222,8 @@ Matrix& Matrix::operator-=(const MatrixTransposeView& m){
                        "incompatible dimensions in matrix sum: ({}, {}) and ({}, {})",
                        H, W, m.H, m.W);
 
-    for(size_t i = 0; i < W; ++i){
-        for(size_t j = 0; j < H; ++j){
+    for(size_t i = 0; i < H; ++i){
+        for(size_t j = 0; j < W; ++j){
             this->at(i,j) -= m(i, j);
         }
     }
@@ -264,7 +264,7 @@ Matrix Matrix::operator*(const Matrix& m) const{
                        "incompatible dimensions in matrix sum: ({}, {}) and ({}, {})",
                        H, W, m.H, m.W);
 
-    Matrix r(H, m.W);
+    Matrix r(m.W, H);
 
     for(size_t i = 0; i < r.H; ++i){
         for(size_t k = 0; k < this->W; ++k){
@@ -313,8 +313,8 @@ Matrix operator*(Scalar s, const Matrix& m){
 }
 
 std::ostream& operator<<(std::ostream& output, const Matrix& m){
-    for(size_t i = 0; i < m.W; ++i){
-        for(size_t j = 0; j < m.H; ++j){
+    for(size_t i = 0; i < m.get_H(); ++i){
+        for(size_t j = 0; j < m.get_W(); ++j){
             output << m(i,j) << " ";
         }
         output << std::endl;
@@ -351,8 +351,8 @@ Matrix MatrixTransposeView::operator-(const Matrix& m) const{
                        "incompatible dimensions in matrix sum: ({}, {}) and ({}, {})",
                        H, W, mH, mW);
     Matrix m2(W, H);
-    for(size_t i = 0; i < W; ++i){
-        for(size_t j = 0; j < H; ++j){
+    for(size_t i = 0; i < H; ++i){
+        for(size_t j = 0; j < W; ++j){
             m2(i,j) = this->at(i,j) -  m(i, j);
         }
     }
