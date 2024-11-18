@@ -327,6 +327,23 @@ MatrixTransposeView Matrix::T() const{
     return MatrixTransposeView(W, H, M);
 }
 
+bool Matrix::operator==(const MatrixTransposeView&& m) const{
+    if(W != m.W) return false;
+    if(H != m.H) return false;
+
+    for(size_t i = 0; i < H; ++i){
+        for(size_t j = 0; j < W; ++j){
+            if(this->at(i,j) != m(i, j)){
+                return false;
+            }
+        }
+    }
+    return true;
+}
+bool Matrix::operator!=(const MatrixTransposeView&& m) const{
+    return !(*this == m);
+}
+
 
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////// MATRIX TRANSPOSE VIEW ///////////////////////////////////
@@ -392,6 +409,28 @@ Matrix MatrixTransposeView::operator/(Scalar s) const{
     m /= s;
 
     return m;
+}
+
+bool MatrixTransposeView::operator==(const MatrixTransposeView&& m) const{
+    if(W != m.W) return false;
+    if(H != m.H) return false;
+    for(size_t i = 0; i < W*H; ++i){
+        if(M[i] != m.M[i]) return false;
+    }
+    return true;
+}
+bool MatrixTransposeView::operator!=(const MatrixTransposeView&& m) const{
+    return !(*this == m);
+}
+
+std::ostream& operator<<(std::ostream& output, const MatrixTransposeView& m){
+    for(size_t i = 0; i < m.get_H(); ++i){
+        for(size_t j = 0; j < m.get_W(); ++j){
+            output << m(i,j) << " ";
+        }
+        output << std::endl;
+    }
+    return output;
 }
 
 }
