@@ -25,6 +25,10 @@
 
 namespace math{
 
+///////////////////////////////////////////////////////////////////////////////
+//////////////////////////////// MATRIX ///////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
 Matrix::Matrix(size_t H, size_t W, Scalar s):
     H(H), W(W), M(new Scalar[W*H]){
 
@@ -285,6 +289,25 @@ Matrix Matrix::operator*(const Matrix& m) const{
 
     return r;
 }
+Matrix Matrix::operator*(const MatrixTransposeView& m) const{
+    logger::log_assert(W == m.H,
+                       logger::ERROR,
+                       "incompatible dimensions in matrix multiplication: ({}, {}) and ({}, {})",
+                       H, W, m.H, m.W);
+
+    Matrix r(H, m.W);
+
+    for(size_t i = 0; i < r.H; ++i){
+        for(size_t k = 0; k < this->W; ++k){
+            const double tmp = this->at(i,k);
+            for(size_t j = 0; j < r.W; ++j){
+                r(i,j) += tmp*m(k,j);
+            }
+        }
+    }
+
+    return r;
+}
 
 Matrix Matrix::operator*(Scalar s) const{
     Matrix m(*this);
@@ -314,10 +337,6 @@ bool Matrix::operator!=(const Matrix& m) const{
 
 Matrix Matrix::operator-() const{
     return -1*(*this);
-}
-
-Matrix operator*(Scalar s, const Matrix& m){
-    return m*s;
 }
 
 std::ostream& operator<<(std::ostream& output, const Matrix& m){
