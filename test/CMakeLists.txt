@@ -4,6 +4,7 @@ set(TEST_EXEC_NAME ${PROJECT_NAME}_tests)
 set(SOURCE_TESTS 
     main.cpp
     matrix.cpp
+    matrix_transpose.cpp
 )
 
 add_executable(${TEST_EXEC_NAME} ${SOURCE_TESTS})
