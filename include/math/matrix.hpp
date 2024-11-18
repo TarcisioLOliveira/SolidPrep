@@ -98,13 +98,17 @@ class Matrix{
 
     bool operator==(const Matrix& m) const;
     bool operator!=(const Matrix& m) const;
+    bool operator==(const MatrixTransposeView&& m) const;
+    bool operator!=(const MatrixTransposeView&& m) const;
 
-    friend std::ostream& operator<<(std::ostream& output, const Matrix& m);
 
     private:
     size_t W = 0, H = 0;
     Scalar* M = nullptr;
 };
+
+std::ostream& operator<<(std::ostream& output, const Matrix& m);
+std::ostream& operator<<(std::ostream& output, const MatrixTransposeView& m);
 
 Matrix operator*(Scalar s, const Matrix& m);
 
@@ -137,6 +141,15 @@ class MatrixTransposeView{
 
     Matrix operator*(Scalar s) const;
     Matrix operator/(Scalar s) const;
+
+    inline bool operator==(const Matrix& m) const{
+        return m == *this;
+    }
+    inline bool operator!=(const Matrix& m) const{
+        return m != *this;
+    }
+    bool operator==(const MatrixTransposeView&& m) const;
+    bool operator!=(const MatrixTransposeView&& m) const;
 
     private:
     MatrixTransposeView() = default;
