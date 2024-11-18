@@ -71,7 +71,7 @@ class Matrix{
     bool is_equal(const Matrix& m, Scalar eps = 1e-7) const;
     Scalar determinant() const;
 
-    MatrixTransposeView T();
+    MatrixTransposeView T() const;
     
     Matrix& operator=(const Matrix& m);
     Matrix& operator=(Matrix&& m);
