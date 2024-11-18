@@ -33,6 +33,7 @@ Dependencies:
 - [Eigen](https://eigen.tuxfamily.org/)
 - [PETSc](https://petsc.org/release/)
 - [GNU Scientific Library](https://www.gnu.org/software/gsl/doc/html/index.html)
+- [Catch2 v2](https://github.com/catchorg/Catch2/tree/v2.x) (for tests)
 
 Also includes code from [jdumas/mma](https://github.com/jdumas/mma).
 
