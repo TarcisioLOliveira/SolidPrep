@@ -117,8 +117,8 @@ class MatrixTransposeView{
     ~MatrixTransposeView() = default;
     MatrixTransposeView(const MatrixTransposeView&) = delete;
     MatrixTransposeView(MatrixTransposeView&&) = delete;
-    MatrixTransposeView& operator=(const MatrixTransposeView& m);
-    MatrixTransposeView& operator=(MatrixTransposeView&& m);
+    MatrixTransposeView& operator=(const MatrixTransposeView& m) = delete;
+    MatrixTransposeView& operator=(MatrixTransposeView&& m) = delete;
 
     inline size_t get_H() const{
         return this->H;
