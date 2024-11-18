@@ -13,6 +13,7 @@ enable_language(C)
 enable_language(Fortran)
 set(CMAKE_CXX_STANDARD 17)
 
+set(BUILD_TESTS OFF CACHE BOOL "Compile tests (requires Catch2 v3)")
 set(NO_OPENMP OFF CACHE BOOL "Compile without OpenMP support")
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 set(USE_BLIS OFF CACHE BOOL "Use BLIS as BLAS library")
@@ -128,3 +129,11 @@ if(USE_CUDA)
 endif()
 
 add_subdirectory(src)
+
+if(BUILD_TESTS)
+    include(CTest)
+    find_package(Catch2 2 REQUIRED)
+    set(CMAKE_CTEST_ARGUMENTS "--output-on-failure")
+
+    add_subdirectory(test)
+endif()
