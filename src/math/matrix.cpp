@@ -40,10 +40,18 @@ Matrix::Matrix(Scalar* m, size_t W, size_t H):
 Matrix::Matrix(std::vector<Scalar> m, size_t W, size_t H):
     W(W), H(H), M(new Scalar[W*H]){
 
+    logger::log_assert(W*H == m.size(),
+            logger::ERROR,
+            "incorrect dimensions for Matrix");
+
     std::copy(m.begin(), m.end(), this->M);
 }
 Matrix::Matrix(std::initializer_list<Scalar> m, size_t W, size_t H):
     W(W), H(H), M(new Scalar[W*H]){
+
+    logger::log_assert(W*H == m.size(),
+            logger::ERROR,
+            "incorrect dimensions for Matrix");
 
     std::copy(m.begin(), m.end(), this->M);
 }
@@ -193,7 +201,7 @@ Matrix& Matrix::operator+=(const Matrix& m){
 Matrix& Matrix::operator-=(const Matrix& m){
     logger::log_assert(W == m.W && H == m.H,
                        logger::ERROR,
-                       "incompatible dimensions in matrix sum: ({}, {}) and ({}, {})",
+                       "incompatible dimensions in matrix difference: ({}, {}) and ({}, {})",
                        H, W, m.H, m.W);
 
     for(size_t i = 0; i < W*H; ++i){
@@ -219,7 +227,7 @@ Matrix& Matrix::operator+=(const MatrixTransposeView& m){
 Matrix& Matrix::operator-=(const MatrixTransposeView& m){
     logger::log_assert(W == m.W && H == m.H,
                        logger::ERROR,
-                       "incompatible dimensions in matrix sum: ({}, {}) and ({}, {})",
+                       "incompatible dimensions in matrix difference: ({}, {}) and ({}, {})",
                        H, W, m.H, m.W);
 
     for(size_t i = 0; i < H; ++i){
@@ -261,7 +269,7 @@ Matrix Matrix::operator-(const Matrix& m) const{
 Matrix Matrix::operator*(const Matrix& m) const{
     logger::log_assert(W == m.H,
                        logger::ERROR,
-                       "incompatible dimensions in matrix sum: ({}, {}) and ({}, {})",
+                       "incompatible dimensions in matrix multiplication: ({}, {}) and ({}, {})",
                        H, W, m.H, m.W);
 
     Matrix r(m.W, H);
@@ -365,7 +373,7 @@ Matrix MatrixTransposeView::operator-(const Matrix& m) const{
     const size_t mH = m.get_H();
     logger::log_assert(W == mW && H == mH,
                        logger::ERROR,
-                       "incompatible dimensions in matrix sum: ({}, {}) and ({}, {})",
+                       "incompatible dimensions in matrix difference: ({}, {}) and ({}, {})",
                        H, W, mH, mW);
     Matrix m2(W, H);
     for(size_t i = 0; i < H; ++i){
@@ -381,10 +389,10 @@ Matrix MatrixTransposeView::operator*(const Matrix& m) const{
     const size_t mH = m.get_H();
     logger::log_assert(W == mH,
                        logger::ERROR,
-                       "incompatible dimensions in matrix sum: ({}, {}) and ({}, {})",
+                       "incompatible dimensions in matrix multiplication: ({}, {}) and ({}, {})",
                        H, W, mH, mW);
 
-    Matrix r(H, mW);
+    Matrix r(mW, H);
 
     for(size_t i = 0; i < H; ++i){
         for(size_t k = 0; k < this->W; ++k){
