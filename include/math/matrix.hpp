@@ -140,10 +140,10 @@ class MatrixTransposeView{
 
     private:
     MatrixTransposeView() = default;
-    MatrixTransposeView(size_t non_T_W, size_t non_T_H, Scalar* M);
+    MatrixTransposeView(const size_t non_T_W, const size_t non_T_H, const Scalar* const M);
 
-    size_t W = 0, H = 0;
-    Scalar* M = nullptr;
+    const size_t W = 0, H = 0;
+    const Scalar* M = nullptr;
 };
 
 
