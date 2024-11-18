@@ -90,6 +90,7 @@ class Matrix{
     Matrix operator+(const Matrix& m) const;
     Matrix operator-(const Matrix& m) const;
     Matrix operator*(const Matrix& m) const;
+    Matrix operator*(const MatrixTransposeView& m) const;
 
     Matrix& operator*=(Scalar s);
     Matrix& operator/=(Scalar s);
@@ -109,8 +110,6 @@ class Matrix{
 
 std::ostream& operator<<(std::ostream& output, const Matrix& m);
 std::ostream& operator<<(std::ostream& output, const MatrixTransposeView& m);
-
-Matrix operator*(Scalar s, const Matrix& m);
 
 class MatrixTransposeView{
     friend class Matrix;
@@ -159,6 +158,12 @@ class MatrixTransposeView{
     const Scalar* M = nullptr;
 };
 
+inline Matrix operator*(Scalar s, const Matrix& m){
+    return m*s;
+}
+inline Matrix operator*(Scalar s, const MatrixTransposeView& m){
+    return m*s;
+}
 
 }
 
