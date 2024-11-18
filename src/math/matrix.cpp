@@ -327,7 +327,7 @@ std::ostream& operator<<(std::ostream& output, const Matrix& m){
 ///////////////////// MATRIX TRANSPOSE VIEW ///////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-MatrixTransposeView::MatrixTransposeView(size_t non_T_W, size_t non_T_H, Scalar* M):
+MatrixTransposeView::MatrixTransposeView(const size_t non_T_W, const size_t non_T_H, const Scalar* const M):
     W(non_T_H), H(non_T_W), M(M){
 
 }
