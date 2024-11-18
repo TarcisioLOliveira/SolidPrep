@@ -34,10 +34,10 @@ class MatrixTransposeView;
 class Matrix{
     public:
     Matrix() = default;
-    Matrix(Scalar* m, size_t W, size_t H);
-    Matrix(std::vector<Scalar> m, size_t W, size_t H);
-    Matrix(std::initializer_list<Scalar> m, size_t W, size_t H);
-    Matrix(size_t W, size_t H, Scalar s = 0);
+    Matrix(Scalar* m, size_t H, size_t W);
+    Matrix(std::vector<Scalar> m, size_t H, size_t W);
+    Matrix(std::initializer_list<Scalar> m, size_t H, size_t W);
+    Matrix(size_t H, size_t W, Scalar s = 0);
     ~Matrix();
     Matrix(const Matrix& m);
     Matrix(Matrix&& m);
@@ -103,7 +103,7 @@ class Matrix{
 
 
     private:
-    size_t W = 0, H = 0;
+    size_t H = 0, W = 0;
     Scalar* M = nullptr;
 };
 
@@ -153,9 +153,9 @@ class MatrixTransposeView{
 
     private:
     MatrixTransposeView() = default;
-    MatrixTransposeView(const size_t non_T_W, const size_t non_T_H, const Scalar* const M);
+    MatrixTransposeView(const size_t non_T_H, const size_t non_T_W, const Scalar* const M);
 
-    const size_t W = 0, H = 0;
+    const size_t H = 0, W = 0;
     const Scalar* M = nullptr;
 };
 

@@ -25,7 +25,7 @@
 TEST_CASE( "Matrix Transpose: check individual values" ) {
     math::Matrix m({0, 1,
                     2, 3,
-                    4, 5}, 2, 3);
+                    4, 5}, 3, 2);
     REQUIRE( m(0,0) == 0 );
     REQUIRE( m(0,1) == 1 );
     REQUIRE( m(1,0) == 2 );
@@ -43,12 +43,12 @@ TEST_CASE( "Matrix Transpose: check individual values" ) {
 TEST_CASE( "Matrix Transpose: equalities" ) {
     math::Matrix m({0, 1,
                     2, 3,
-                    4, 5}, 2, 3);
+                    4, 5}, 3, 2);
     math::Matrix m2 = m.T();
     math::Matrix m3 = m2.T();
     math::Matrix mT({0, 2, 4,
                      1, 3, 5},
-                     3, 2);
+                     2, 3);
     math::Matrix m4({1, 2,
                      3, 4},
                      2, 2); 
@@ -73,9 +73,9 @@ TEST_CASE( "Matrix Transpose: equalities" ) {
 TEST_CASE( "Matrix Transpose: operations" ) {
     math::Matrix m1({0, 1,
                      2, 3,
-                     4, 5}, 2, 3);
+                     4, 5}, 3, 2);
     math::Matrix m2({0, 1, 2,
-                     3, 4, 5}, 3, 2);
+                     3, 4, 5}, 2, 3);
     math::Matrix m3({1, 2,
                      3, 4},
                      2, 2); 
@@ -88,22 +88,22 @@ TEST_CASE( "Matrix Transpose: operations" ) {
             0, 4,
             3, 7,
             6, 10,
-            }, 2, 3));
+            }, 3, 2));
     REQUIRE( m1.T() - m2 ==
             math::Matrix({
             0, 1, 2,
             -2, -1, 0,
-            }, 3, 2));
+            }, 2, 3));
     REQUIRE( 5*m1.T() + m2 ==
             math::Matrix({
             0, 11, 22,
             8, 19, 30,
-            }, 3, 2));
+            }, 2, 3));
     REQUIRE( 5*(m1.T() - m2) ==
             math::Matrix({
             0, 5, 10,
             -10, -5, 0,
-            }, 3, 2));
+            }, 2, 3));
     REQUIRE( m1*m2 ==
             math::Matrix({
             3, 4, 5,
