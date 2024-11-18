@@ -78,6 +78,50 @@ Matrix::Matrix(Matrix&& m):
     m.M = nullptr;
 }
 
+
+Matrix Matrix::identity(size_t N){
+    Matrix I(N, N);
+    for(size_t i = 0; i < N; ++i){
+        I(i, i) = 1;
+    }
+    return I;
+}
+
+bool Matrix::is_equal(const Matrix& m, Scalar eps) const{
+    if(W != m.W) return false;
+    if(H != m.H) return false;
+    for(size_t i = 0; i < W*H; ++i){
+        if(std::abs(M[i] - m.M[i]) >= eps) return false;
+    }
+    return true;
+}
+
+Scalar Matrix::determinant() const{
+    logger::log_assert(W == H,
+                       logger::ERROR,
+                       "unable to calculate determinant, matrix is not square");
+    std::vector<double> tmp(M, M + W*H);
+    const size_t N = W;
+
+    std::vector<int> ipiv(W);
+    int info = LAPACKE_dgetrf(LAPACK_COL_MAJOR, N, N, tmp.data(), N, ipiv.data());
+    logger::log_assert(info >= 0, logger::ERROR, "LAPACKE returned {} while calculating LU.", info);
+
+    if(info > 0) return 0;
+
+    Scalar det = 1;
+    for(size_t i = 0; i < N; ++i){
+        det *= tmp[i*N + i];
+    }
+    for(int i = 0; static_cast<size_t>(i) < N; i++){
+        if(i+1 != ipiv[i]){
+            det *= -1;
+        }
+    }
+    
+    return det;
+}
+
 Matrix& Matrix::operator=(const Matrix& m){
     W = m.W;
     H = m.H;
@@ -195,7 +239,7 @@ Matrix& Matrix::operator*=(Scalar s){
 }
 Matrix& Matrix::operator/=(Scalar s){
     for(Scalar* mi = M; mi < M + W*H; ++mi){
-        *mi *= s;
+        *mi /= s;
     }
     return *this;
 }
@@ -266,6 +310,16 @@ Matrix Matrix::operator-() const{
 
 Matrix operator*(Scalar s, const Matrix& m){
     return m*s;
+}
+
+std::ostream& operator<<(std::ostream& output, const Matrix& m){
+    for(size_t i = 0; i < m.W; ++i){
+        for(size_t j = 0; j < m.H; ++j){
+            output << m(i,j) << " ";
+        }
+        output << std::endl;
+    }
+    return output;
 }
 
 

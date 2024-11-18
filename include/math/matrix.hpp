@@ -23,6 +23,7 @@
 
 #include <cstddef>
 #include <initializer_list>
+#include <ostream>
 #include <vector>
 
 namespace math{
@@ -41,6 +42,8 @@ class Matrix{
     Matrix(const Matrix& m);
     Matrix(Matrix&& m);
     Matrix(const MatrixTransposeView& m);
+
+    static Matrix identity(size_t N);
 
     inline size_t get_H() const{
         return this->H;
@@ -65,6 +68,8 @@ class Matrix{
     void fill(Scalar s);
     Matrix get_inverted() const;
     void invert();
+    bool is_equal(const Matrix& m, Scalar eps = 1e-7) const;
+    Scalar determinant() const;
 
     MatrixTransposeView T();
     
@@ -93,6 +98,8 @@ class Matrix{
 
     bool operator==(const Matrix& m) const;
     bool operator!=(const Matrix& m) const;
+
+    friend std::ostream& operator<<(std::ostream& output, const Matrix& m);
 
     private:
     size_t W = 0, H = 0;
@@ -138,6 +145,7 @@ class MatrixTransposeView{
     size_t W = 0, H = 0;
     Scalar* M = nullptr;
 };
+
 
 }
 
