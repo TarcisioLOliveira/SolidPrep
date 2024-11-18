@@ -25,20 +25,20 @@
 
 namespace math{
 
-Matrix::Matrix(size_t W, size_t H, Scalar s):
-    W(W), H(H), M(new Scalar[W*H]){
+Matrix::Matrix(size_t H, size_t W, Scalar s):
+    H(H), W(W), M(new Scalar[W*H]){
 
     this->fill(s);
 }
 
-Matrix::Matrix(Scalar* m, size_t W, size_t H):
-    W(W), H(H), M(new Scalar[W*H]){
+Matrix::Matrix(Scalar* m, size_t H, size_t W):
+    H(H), W(W), M(new Scalar[W*H]){
 
     std::copy(m, m + W*H, this->M);
 
 }
-Matrix::Matrix(std::vector<Scalar> m, size_t W, size_t H):
-    W(W), H(H), M(new Scalar[W*H]){
+Matrix::Matrix(std::vector<Scalar> m, size_t H, size_t W):
+    H(H), W(W), M(new Scalar[W*H]){
 
     logger::log_assert(W*H == m.size(),
             logger::ERROR,
@@ -46,8 +46,8 @@ Matrix::Matrix(std::vector<Scalar> m, size_t W, size_t H):
 
     std::copy(m.begin(), m.end(), this->M);
 }
-Matrix::Matrix(std::initializer_list<Scalar> m, size_t W, size_t H):
-    W(W), H(H), M(new Scalar[W*H]){
+Matrix::Matrix(std::initializer_list<Scalar> m, size_t H, size_t W):
+    H(H), W(W), M(new Scalar[W*H]){
 
     logger::log_assert(W*H == m.size(),
             logger::ERROR,
@@ -65,13 +65,13 @@ Matrix::~Matrix(){
 }
 
 Matrix::Matrix(const Matrix& m):
-    W(m.W), H(m.H), M(new Scalar[W*H]){
+    H(m.H), W(m.W), M(new Scalar[W*H]){
     
     std::copy(m.M, m.M+W*H, this->M);
 }
 
 Matrix::Matrix(const MatrixTransposeView& m):
-    W(m.W), H(m.H), M(new Scalar[W*H]){
+    H(m.H), W(m.W), M(new Scalar[W*H]){
     
     for(size_t i = 0; i < H; ++i){
         for(size_t j = 0; j < W; ++j){
@@ -81,7 +81,7 @@ Matrix::Matrix(const MatrixTransposeView& m):
 }
 
 Matrix::Matrix(Matrix&& m):
-    W(m.W), H(m.H), M(m.M){
+    H(m.H), W(m.W), M(m.M){
 
     m.M = nullptr;
 }
@@ -272,7 +272,7 @@ Matrix Matrix::operator*(const Matrix& m) const{
                        "incompatible dimensions in matrix multiplication: ({}, {}) and ({}, {})",
                        H, W, m.H, m.W);
 
-    Matrix r(m.W, H);
+    Matrix r(H, m.W);
 
     for(size_t i = 0; i < r.H; ++i){
         for(size_t k = 0; k < this->W; ++k){
@@ -332,7 +332,7 @@ std::ostream& operator<<(std::ostream& output, const Matrix& m){
 
 
 MatrixTransposeView Matrix::T() const{
-    return MatrixTransposeView(W, H, M);
+    return MatrixTransposeView(H, W, M);
 }
 
 bool Matrix::operator==(const MatrixTransposeView&& m) const{
@@ -357,8 +357,8 @@ bool Matrix::operator!=(const MatrixTransposeView&& m) const{
 ///////////////////// MATRIX TRANSPOSE VIEW ///////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-MatrixTransposeView::MatrixTransposeView(const size_t non_T_W, const size_t non_T_H, const Scalar* const M):
-    W(non_T_H), H(non_T_W), M(M){
+MatrixTransposeView::MatrixTransposeView(const size_t non_T_H, const size_t non_T_W, const Scalar* const M):
+    H(non_T_W), W(non_T_H), M(M){
 
 }
 
@@ -375,7 +375,7 @@ Matrix MatrixTransposeView::operator-(const Matrix& m) const{
                        logger::ERROR,
                        "incompatible dimensions in matrix difference: ({}, {}) and ({}, {})",
                        H, W, mH, mW);
-    Matrix m2(W, H);
+    Matrix m2(H, W);
     for(size_t i = 0; i < H; ++i){
         for(size_t j = 0; j < W; ++j){
             m2(i,j) = this->at(i,j) -  m(i, j);
@@ -392,7 +392,7 @@ Matrix MatrixTransposeView::operator*(const Matrix& m) const{
                        "incompatible dimensions in matrix multiplication: ({}, {}) and ({}, {})",
                        H, W, mH, mW);
 
-    Matrix r(mW, H);
+    Matrix r(H, mW);
 
     for(size_t i = 0; i < H; ++i){
         for(size_t k = 0; k < this->W; ++k){
