@@ -20,6 +20,7 @@
 
 #include <algorithm>
 #include <lapacke.h>
+#include <utility>
 #include "math/matrix.hpp"
 #include "logger.hpp"
 
@@ -104,6 +105,16 @@ bool Matrix::is_equal(const Matrix& m, Scalar eps) const{
     if(H != m.H) return false;
     for(size_t i = 0; i < W*H; ++i){
         if(std::abs(M[i] - m.M[i]) >= eps) return false;
+    }
+    return true;
+}
+bool Matrix::is_equal(const MatrixTransposeView& m, Scalar eps) const{
+    if(W != m.W) return false;
+    if(H != m.H) return false;
+    for(size_t i = 0; i < H; ++i){
+        for(size_t j = 0; j < W; ++j){
+            if(std::abs(this->at(i,j) - m(i,j)) >= eps) return false;
+        }
     }
     return true;
 }
@@ -379,6 +390,15 @@ bool Matrix::operator!=(const MatrixTransposeView&& m) const{
 MatrixTransposeView::MatrixTransposeView(const size_t non_T_H, const size_t non_T_W, const Scalar* const M):
     H(non_T_W), W(non_T_H), M(M){
 
+}
+
+bool MatrixTransposeView::is_equal(const MatrixTransposeView& m, Scalar eps) const{
+    if(W != m.W) return false;
+    if(H != m.H) return false;
+    for(size_t i = 0; i < W*H; ++i){
+        if(std::abs(M[i] - m.M[i]) >= eps) return false;
+    }
+    return true;
 }
 
 Matrix MatrixTransposeView::operator+(const Matrix& m) const{

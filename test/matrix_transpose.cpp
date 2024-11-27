@@ -55,6 +55,7 @@ TEST_CASE( "Matrix Transpose: equalities" ) {
     math::Matrix m5({1, 2,
                      2, 4},
                      2, 2); 
+    auto m6 = m4;
     REQUIRE( m.T() == m2 );
     REQUIRE( m2 == m.T() );
     REQUIRE( m2.T() == m3 );
@@ -69,6 +70,28 @@ TEST_CASE( "Matrix Transpose: equalities" ) {
     REQUIRE( mT == m.T() );
     REQUIRE( m4 != m4.T() );
     REQUIRE( m5 == m5.T() );
+
+    REQUIRE( m.T().is_equal(m2) );
+    REQUIRE( m2.is_equal(m.T()) );
+    REQUIRE( m2.T().is_equal(m3) );
+    REQUIRE( m3.is_equal(m2.T()) );
+    REQUIRE( m3.is_equal(m) );
+    REQUIRE( m.is_equal(m3) );
+    REQUIRE( m != m.T() );
+    REQUIRE( m != m2 );
+    REQUIRE( m2 != m3 );
+    REQUIRE( m.T() != m3 );
+    REQUIRE( m.T().is_equal(mT) );
+    REQUIRE( mT.is_equal(m.T()) );
+    REQUIRE( m4 != m4.T() );
+    REQUIRE( m5.is_equal(m5.T()) );
+
+    REQUIRE(m.T().is_equal(m.T()));
+    REQUIRE(m2.T().is_equal(m2.T()));
+    REQUIRE(m3.T().is_equal(m3.T()));
+    REQUIRE(m4.T().is_equal(m4.T()));
+    REQUIRE(m5.T().is_equal(m5.T()));
+    REQUIRE(m4.T().is_equal(m6.T()));
 }
 TEST_CASE( "Matrix Transpose: operations" ) {
     math::Matrix m1({0, 1,
