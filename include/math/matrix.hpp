@@ -21,9 +21,11 @@
 #ifndef MATH_MATRIX_HPP
 #define MATH_MATRIX_HPP
 
+#include "logger.hpp"
 #include <cstddef>
 #include <initializer_list>
 #include <ostream>
+#include <utility>
 #include <vector>
 
 namespace math{
@@ -64,11 +66,18 @@ class Matrix{
     inline Scalar& operator()(const size_t i, const size_t j){
         return this->M[i*W + j];
     }
+    inline Scalar* data(){
+        return this->M;
+    }
+    inline const Scalar* data() const{
+        return this->M;
+    }
 
     void fill(Scalar s);
     Matrix get_inverted() const;
     void invert();
     bool is_equal(const Matrix& m, Scalar eps = 1e-7) const;
+    bool is_equal(const MatrixTransposeView& m, Scalar eps = 1e-7) const;
     Scalar determinant() const;
 
     MatrixTransposeView T() const;
@@ -133,6 +142,13 @@ class MatrixTransposeView{
     inline Scalar operator()(const size_t i, const size_t j) const{
         return this->M[j*H + i];
     }
+    inline const Scalar* data() const{
+        return this->M;
+    }
+    inline bool is_equal(const Matrix& m, Scalar eps = 1e-7) const{
+        return m.is_equal(*this, eps);
+    }
+    bool is_equal(const MatrixTransposeView& m, Scalar eps = 1e-7) const;
 
     Matrix operator+(const Matrix& m) const;
     Matrix operator-(const Matrix& m) const;
@@ -162,6 +178,14 @@ inline Matrix operator*(Scalar s, const Matrix& m){
     return m*s;
 }
 inline Matrix operator*(Scalar s, const MatrixTransposeView& m){
+    return m*s;
+}
+
+inline Matrix&& operator*(Scalar s, Matrix&& m){
+    m *= s;
+    return std::forward<Matrix>(m);
+}
+inline Matrix operator*(Scalar s, MatrixTransposeView&& m){
     return m*s;
 }
 
