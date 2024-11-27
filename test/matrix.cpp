@@ -21,7 +21,7 @@
 #include "catch2/catch.hpp"
 #include "math/matrix.hpp"
 
-bool equals(double a, double b, double eps = 1e-7){
+inline bool equals(double a, double b, double eps = 1e-7){
     return std::abs(a - b) < eps;
 }
 
