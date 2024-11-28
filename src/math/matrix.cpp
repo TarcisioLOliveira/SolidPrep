@@ -511,6 +511,72 @@ std::ostream& operator<<(std::ostream& output, const MatrixTransposeView& m){
 }
 
 ///////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////// LU ///////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+LU::LU(Matrix& m, bool copy):
+    N((m.get_W() == m.get_H()) ? m.get_W() : 0),
+    M((copy) ? ((N > 0) ? new Scalar[N] : nullptr) : m.data()),
+    ipiv(N, 0),
+    copy(copy){
+
+    logger::log_assert(N > 0 && M != nullptr, logger::ERROR,
+        "unable to factorize matrix, not square");
+
+    int info = LAPACKE_dgetrf(LAPACK_ROW_MAJOR, N, N, M, N, ipiv.data());
+    logger::log_assert(info == 0, logger::ERROR, "LAPACKE returned {} while calculating LU.", info);
+}
+
+LU::~LU(){
+    if(copy) delete[] M;
+}
+
+Scalar LU::determinant() const{
+    Scalar det = 1;
+    for(size_t i = 0; i < N; ++i){
+        det *= M[i*N + i];
+    }
+    for(int i = 0; static_cast<size_t>(i) < N; i++){
+        if(i+1 != ipiv[i]){
+            det *= -1;
+        }
+    }
+    
+    return det;
+}
+
+void LU::solve(Vector& v) const{
+    logger::log_assert(v.get_N() == N,
+            logger::ERROR,
+            "unable to solve problem, different dimensions: {} (matrix) and {} (vector)",
+            N, v.get_N());
+    LAPACKE_dgetrs(LAPACK_ROW_MAJOR, 'N', N, 1, M, N, ipiv.data(), v.data(), 1);
+}
+void LU::solve(Matrix& m) const{
+    logger::log_assert(m.get_H() == N,
+            logger::ERROR,
+            "unable to solve problem, different dimensions: {} (LU matrix) and ({}, {})  (RHS)",
+            N, m.get_H(), m.get_W());
+    const size_t W = m.get_W();
+    LAPACKE_dgetrs(LAPACK_ROW_MAJOR, 'N', N, m.get_W(), M, N, ipiv.data(), m.data(), W);
+}
+void LU::solve_transposed(Vector& v) const{
+    logger::log_assert(v.get_N() == N,
+            logger::ERROR,
+            "unable to solve_transposed problem, different dimensions: {} (matrix) and {} (vector)",
+            N, v.get_N());
+    LAPACKE_dgetrs(LAPACK_ROW_MAJOR, 'T', N, 1, M, N, ipiv.data(), v.data(), 1);
+}
+void LU::solve_transposed(Matrix& m) const{
+    logger::log_assert(m.get_H() == N,
+            logger::ERROR,
+            "unable to solve_transposed problem, different dimensions: {} (LU matrix) and ({}, {})  (RHS)",
+            N, m.get_H(), m.get_W());
+    const size_t W = m.get_W();
+    LAPACKE_dgetrs(LAPACK_ROW_MAJOR, 'T', N, m.get_W(), M, N, ipiv.data(), m.data(), W);
+}
+
+///////////////////////////////////////////////////////////////////////////////
 ////////////////////////////// VECTOR AGNOSTIC ////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 

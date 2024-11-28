@@ -183,6 +183,25 @@ class MatrixTransposeView{
     const Scalar* M = nullptr;
 };
 
+class LU{
+    public:
+    // MODIFIES VALUE OF MATRIX IF copy == false !!!!!!!
+    LU(Matrix& m, bool copy = false);
+    ~LU();
+
+    Scalar determinant() const;
+    void solve(Vector& v) const;
+    void solve(Matrix& m) const;
+    void solve_transposed(Vector& v) const;
+    void solve_transposed(Matrix& m) const;
+
+    private:
+    size_t N;
+    Scalar* M;
+    std::vector<int> ipiv;
+    bool copy;
+};
+
 inline Matrix operator*(Scalar s, const Matrix& m){
     return m*s;
 }
