@@ -246,3 +246,43 @@ TEST_CASE( "Vector: operations" ) {
     REQUIRE( m4.T() * m5.T() * m3 * m5 * m4 == 14364 );
     REQUIRE( m1.T() * m5 * m5.T() * m2 == 7781 );
 }
+
+TEST_CASE( "LU" ) {
+    auto v1 = math::Vector({10, 9, 5});
+    math::Matrix m1({2, 4, 8,
+                     4, 7, 6,
+                     1, 7, 8},
+                     3, 3);
+    math::Matrix m2(m1);
+    math::Matrix m3({
+        1, 2, 3,
+        4, 5, 6,
+        7, 8, 9,
+        }, 3, 3);
+
+    auto v2 = v1;
+    auto m4 = m3;
+
+    math::LU lu1(m1);
+    REQUIRE( m2.determinant() != 0 );
+    REQUIRE( equals(lu1.determinant(), m2.determinant()) );
+    lu1.solve(v1);
+    lu1.solve(m2);
+    lu1.solve(m3);
+    lu1.solve_transposed(v2);
+    lu1.solve_transposed(m4);
+    REQUIRE( v1.is_equal(math::Vector({2.13043478, -0.95652174, 1.19565217})) );
+    REQUIRE( m2 == math::Matrix::identity(3) );
+    REQUIRE( m3.is_equal(
+        math::Matrix(
+        {-1.23913043, -1.17391304, -1.10869565,
+          1.58695652,  1.60869565,  1.63043478,
+         -0.35869565, -0.26086957, -0.16304348}, 3, 3)) );
+    REQUIRE( v2.is_equal(math::Vector({0.11956522, 2.84782609, -1.63043478})) );
+    REQUIRE( m4.is_equal(
+            math::Matrix(
+        {0.61956522,  0.7173913 ,  0.81521739,
+        -0.15217391,  0.08695652,  0.32608696,
+         0.36956522,  0.2173913 ,  0.06521739}, 3, 3)) );
+
+}
