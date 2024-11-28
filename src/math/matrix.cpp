@@ -320,6 +320,21 @@ Matrix Matrix::operator*(const MatrixTransposeView& m) const{
     return r;
 }
 
+Vector Matrix::operator*(const VectorNonTransposed& v) const{
+    logger::log_assert(W == v.get_N(), logger::ERROR,
+            "matrix and vector have incompatible dimensions: ({}, {}), ({}, 1)",
+            H, W, v.get_N());
+    Vector v2(H);
+    for(size_t j = 0; j < W; ++j){
+        const double tmp = v[j];
+        for(size_t i = 0; i < H; ++i){
+            v2[i] += this->at(i,j)*tmp;
+        }
+    }
+
+    return v2;
+}
+
 Matrix Matrix::operator*(Scalar s) const{
     Matrix m(*this);
     m *= s;
@@ -445,6 +460,21 @@ Matrix MatrixTransposeView::operator*(const Matrix& m) const{
     return r;
 }
 
+Vector MatrixTransposeView::operator*(const VectorNonTransposed& v) const{
+    logger::log_assert(W == v.get_N(), logger::ERROR,
+            "matrix and vector have incompatible dimensions: ({}, {}), ({}, 1)",
+            H, W, v.get_N());
+    Vector v2(H);
+    for(size_t j = 0; j < W; ++j){
+        const double tmp = v[j];
+        for(size_t i = 0; i < H; ++i){
+            v2[i] += this->at(i,j)*tmp;
+        }
+    }
+
+    return v2;
+}
+
 Matrix MatrixTransposeView::operator*(Scalar s) const{
     Matrix m(*this);
     m *= s;
@@ -477,6 +507,451 @@ std::ostream& operator<<(std::ostream& output, const MatrixTransposeView& m){
         }
         output << std::endl;
     }
+    return output;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+////////////////////////////// VECTOR AGNOSTIC ////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+VectorAgnostic::VectorAgnostic(const Vector& v):
+        N(v.get_N()), V(v.data()){}
+VectorAgnostic::VectorAgnostic(const VectorView& v):
+        N(v.get_N()), V(v.data()){}
+VectorAgnostic::VectorAgnostic(const VectorTranspose& v):
+        N(v.get_N()), V(v.data()){}
+VectorAgnostic::VectorAgnostic(const VectorTransposeView& v):
+        N(v.get_N()), V(v.data()){}
+VectorAgnostic::VectorAgnostic(const VectorTransposed& v):
+        N(v.get_N()), V(v.V){}
+VectorAgnostic::VectorAgnostic(const VectorNonTransposed& v):
+        N(v.get_N()), V(v.V){}
+
+VectorNonTransposed::VectorNonTransposed(const Vector& v):
+        N(v.get_N()), V(v.data()){}
+VectorNonTransposed::VectorNonTransposed(const VectorView& v):
+        N(v.get_N()), V(v.data()){}
+
+VectorTransposed::VectorTransposed(const VectorTranspose& v):
+        N(v.get_N()), V(v.data()){}
+VectorTransposed::VectorTransposed(const VectorTransposeView& v):
+        N(v.get_N()), V(v.data()){}
+
+///////////////////////////////////////////////////////////////////////////////
+//////////////////////////////// VECTOR ///////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+Vector::Vector(Scalar* v, size_t N):
+    VectorMut(N, new Scalar[N]){
+
+    std::copy(v, v + N, this->V);
+}
+Vector::Vector(std::vector<Scalar> v):
+    VectorMut(v.size(), new Scalar[v.size()]){
+
+    std::copy(v.begin(), v.begin() + N, this->V);
+}
+Vector::Vector(std::initializer_list<Scalar> v):
+    VectorMut(v.size(), new Scalar[v.size()]){
+
+    std::copy(v.begin(), v.begin() + N, this->V);
+}
+Vector::Vector(size_t N, Scalar s):
+    VectorMut(N, new Scalar[N]){
+
+    this->fill(s);
+}
+Vector::~Vector(){
+    delete[] this->V;
+}
+Vector::Vector(const VectorAgnostic& v):
+    VectorMut(v.N, new Scalar[v.N]){
+
+    std::copy(v.V, v.V + N, this->V);
+}
+Vector::Vector(const Vector& v):
+    VectorMut(v.N, new Scalar[v.N]){
+
+    std::copy(v.V, v.V + N, this->V);
+}
+Vector::Vector(Vector&& v):
+    VectorMut(v.N, v.V){
+    
+    v.V = nullptr;
+}
+Vector::Vector(const VectorMut<Vector>& v):
+    VectorMut(v){
+}
+Vector::Vector(VectorMut<Vector>&& v):
+    VectorMut(std::forward<VectorMut<Vector>>(v)){
+}
+
+
+VectorTransposeView Vector::T() const{
+    return VectorTransposeView(N, V);
+}
+
+Vector Vector::operator*(Scalar s) const{
+    Vector v(*this);
+    v *= s;
+
+    return v;
+}
+Vector Vector::operator/(Scalar s) const{
+    Vector v(*this);
+    v /= s;
+
+    return v;
+}
+
+Vector Vector::operator+(const VectorNonTransposed& v) const{
+    Vector v2(*this);
+    v2 += v;
+
+    return v2;
+}
+Vector Vector::operator-(const VectorNonTransposed& v) const{
+    Vector v2(*this);
+    v2 -= v;
+
+    return v2;
+}
+
+Vector& Vector::operator*=(Scalar s){
+    for(size_t i = 0; i < N; ++i){
+        V[i] *= s;
+    }
+    return *this;
+}
+Vector& Vector::operator/=(Scalar s){
+    for(size_t i = 0; i < N; ++i){
+        V[i] /= s;
+    }
+    return *this;
+}
+
+Vector& Vector::operator+=(const VectorNonTransposed& v){
+    logger::log_assert(N == v.N, logger::ERROR,
+            "vectors have different sizes: {}, {}",
+            N, v.N);
+
+    for(size_t i = 0; i < N; ++i){
+        V[i] += v[i];
+    }
+    return *this;
+}
+Vector& Vector::operator-=(const VectorNonTransposed& v){
+    logger::log_assert(N == v.N, logger::ERROR,
+            "vectors have different sizes: {}, {}",
+            N, v.N);
+    for(size_t i = 0; i < N; ++i){
+        V[i] -= v[i];
+    }
+    return *this;
+}
+
+Matrix Vector::operator*(const VectorTransposed& v) const{
+    Matrix m(N, v.N);
+    for(size_t i = 0; i < N; ++i){
+        double tmp = V[i];
+        for(size_t j = 0; j < v.N; ++j){
+            m(i, j) = tmp*v[j];
+        }
+    }
+
+    return m;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+//////////////////////////// VECTOR TRANSPOSE /////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+VectorTranspose::VectorTranspose(const VectorMut<VectorTranspose>& v):
+    VectorMut(v){}
+VectorTranspose::VectorTranspose(VectorMut<VectorTranspose>&& v):
+    VectorMut(std::forward<VectorMut<VectorTranspose>>(v)){}
+
+VectorTranspose::VectorTranspose(const VectorAgnostic& v):
+    VectorMut(v.N, new Scalar[v.N]){
+
+    std::copy(v.V, v.V + N, this->V);
+}
+VectorTranspose::VectorTranspose(const VectorTranspose& v):
+    VectorMut(v.N, new Scalar[v.N]){
+
+    std::copy(v.V, v.V + N, this->V);
+}
+VectorTranspose::VectorTranspose(VectorTranspose&& v):
+    VectorMut(v.N, v.V){
+    
+    v.V = nullptr;
+}
+VectorTranspose::VectorTranspose(size_t N, Scalar s):
+    VectorMut(N, new Scalar[N]){
+
+    this->fill(s);
+}
+VectorTranspose::~VectorTranspose(){
+    delete[] this->V;
+}
+VectorTranspose& VectorTranspose::operator=(const VectorTranspose& v){
+    this->N = v.N;
+    delete[] this->V;
+    this->V = new Scalar[N];
+
+    std::copy(v.V, v.V + N, this->V);
+
+    return *this;
+}
+VectorTranspose& VectorTranspose::operator=(VectorTranspose&& v){
+    this->N = v.N;
+    delete[] this->V;
+    this->V = v.V;
+
+    v.V = nullptr;
+
+    return *this;
+}
+VectorTranspose VectorTranspose::operator*(Scalar s) const{
+    VectorTranspose v(*this);
+    v *= s;
+
+    return v;
+}
+VectorTranspose VectorTranspose::operator/(Scalar s) const{
+    VectorTranspose v(*this);
+    v /= s;
+
+    return v;
+}
+
+VectorTranspose VectorTranspose::operator+(const VectorTransposed& v) const{
+    VectorTranspose v2(*this);
+    v2 += v;
+
+    return v2;
+}
+VectorTranspose VectorTranspose::operator-(const VectorTransposed& v) const{
+    VectorTranspose v2(*this);
+    v2 -= v;
+
+    return v2;
+}
+
+VectorTranspose& VectorTranspose::operator+=(const VectorTransposed& v){
+    logger::log_assert(N == v.N, logger::ERROR,
+            "vectors have different sizes: {}, {}",
+            N, v.N);
+
+    for(size_t i = 0; i < N; ++i){
+        V[i] += v[i];
+    }
+    return *this;
+}
+VectorTranspose& VectorTranspose::operator-=(const VectorTransposed& v){
+    logger::log_assert(N == v.N, logger::ERROR,
+            "vectors have different sizes: {}, {}",
+            N, v.N);
+    for(size_t i = 0; i < N; ++i){
+        V[i] -= v[i];
+    }
+    return *this;
+}
+VectorTranspose& VectorTranspose::operator*=(Scalar s){
+    for(size_t i = 0; i < N; ++i){
+        V[i] *= s;
+    }
+    return *this;
+}
+VectorTranspose& VectorTranspose::operator/=(Scalar s){
+    for(size_t i = 0; i < N; ++i){
+        V[i] /= s;
+    }
+    return *this;
+}
+VectorTranspose VectorTranspose::operator*(const Matrix& m) const{
+    const size_t H = m.get_H();
+    const size_t W = m.get_W();
+    logger::log_assert(N == m.get_H(), logger::ERROR,
+            "vector and matrix have incompatible dimensions: (1, {}), ({}, {})",
+            N, H, W);
+    VectorTranspose v(W);
+    for(size_t i = 0; i < H; ++i){
+        const double tmp = V[i];
+        for(size_t j = 0; j < W; ++j){
+            v[j] += tmp*m(i,j);
+        }
+    }
+
+    return v;
+}
+VectorTranspose VectorTranspose::operator*(const MatrixTransposeView& m) const{
+    const size_t H = m.get_H();
+    const size_t W = m.get_W();
+    logger::log_assert(N == m.get_H(), logger::ERROR,
+            "vector and matrix have incompatible dimensions: (1, {}), ({}, {})",
+            N, H, W);
+    VectorTranspose v(W);
+    for(size_t i = 0; i < H; ++i){
+        const double tmp = V[i];
+        for(size_t j = 0; j < W; ++j){
+            v[j] += tmp*m(i,j);
+        }
+    }
+
+    return v;
+}
+double VectorTranspose::operator*(const VectorNonTransposed& v) const{
+    return this->dot(v);
+}
+
+VectorView VectorTranspose::T() const{
+    return VectorView(N, V);
+}
+
+///////////////////////////////////////////////////////////////////////////////
+////////////////////////////// VECTOR VIEW ////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+
+VectorView::VectorView(const VectorConst<VectorView>& v):
+    VectorConst(v){}
+VectorView::VectorView(VectorConst<VectorView>&& v):
+    VectorConst(std::forward<VectorConst<VectorView>>(v)){}
+
+VectorView::VectorView(const size_t N, const Scalar* const V):
+    VectorConst(N, V){}
+
+Vector VectorView::operator*(Scalar s) const{
+    Vector v(*this);
+    v *= s;
+
+    return v;
+}
+Vector VectorView::operator/(Scalar s) const{
+    Vector v(*this);
+    v /= s;
+
+    return v;
+}
+
+Vector VectorView::operator+(const VectorNonTransposed& v) const{
+    Vector v2(*this);
+    v2 += v;
+
+    return v2;
+}
+Vector VectorView::operator-(const VectorNonTransposed& v) const{
+    Vector v2(*this);
+    v2 -= v;
+
+    return v2;
+}
+
+Matrix VectorView::operator*(const VectorTransposed& v) const{
+    Matrix m(N, v.N);
+    for(size_t i = 0; i < N; ++i){
+        double tmp = V[i];
+        for(size_t j = 0; j < v.N; ++j){
+            m(i, j) = tmp*v[j];
+        }
+    }
+
+    return m;
+}
+
+VectorTransposeView VectorView::T() const{
+    return VectorTransposeView(N, V);
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////// VECTOR TRANSPOSE VIEW ///////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+
+VectorTransposeView::VectorTransposeView(const VectorConst<VectorTransposeView>& v):
+    VectorConst(v){}
+VectorTransposeView::VectorTransposeView(VectorConst<VectorTransposeView>&& v):
+    VectorConst(std::forward<VectorConst<VectorTransposeView>>(v)){}
+
+VectorTransposeView::VectorTransposeView(const size_t N, const Scalar* const V):
+    VectorConst(N, V){}
+
+VectorTranspose VectorTransposeView::operator*(Scalar s) const{
+    VectorTranspose v(*this);
+    v *= s;
+
+    return v;
+}
+VectorTranspose VectorTransposeView::operator/(Scalar s) const{
+    VectorTranspose v(*this);
+    v /= s;
+
+    return v;
+}
+
+VectorTranspose VectorTransposeView::operator+(const VectorTransposed& v) const{
+    VectorTranspose v2(*this);
+    v2 += v;
+
+    return v2;
+}
+VectorTranspose VectorTransposeView::operator-(const VectorTransposed& v) const{
+    VectorTranspose v2(*this);
+    v2 -= v;
+
+    return v2;
+}
+
+VectorTranspose VectorTransposeView::operator*(const Matrix& m) const{
+    const size_t H = m.get_H();
+    const size_t W = m.get_W();
+    logger::log_assert(N == m.get_H(), logger::ERROR,
+            "vector and matrix have incompatible dimensions: (1, {}), ({}, {})",
+            N, H, W);
+    VectorTranspose v(W);
+    for(size_t i = 0; i < H; ++i){
+        const double tmp = V[i];
+        for(size_t j = 0; j < W; ++j){
+            v[j] += tmp*m(i,j);
+        }
+    }
+
+    return v;
+}
+
+VectorTranspose VectorTransposeView::operator*(const MatrixTransposeView& m) const{
+    const size_t H = m.get_H();
+    const size_t W = m.get_W();
+    logger::log_assert(N == m.get_H(), logger::ERROR,
+            "vector and matrix have incompatible dimensions: (1, {}), ({}, {})",
+            N, H, W);
+    VectorTranspose v(W);
+    for(size_t i = 0; i < H; ++i){
+        const double tmp = V[i];
+        for(size_t j = 0; j < W; ++j){
+            v[j] += tmp*m(i,j);
+        }
+    }
+
+    return v;
+}
+
+double VectorTransposeView::operator*(const VectorNonTransposed& v) const{
+    return this->dot(v);
+}
+
+VectorView VectorTransposeView::T() const{
+    return VectorView(N, V);
+}
+
+std::ostream& operator<<(std::ostream& output, const VectorAgnostic& v){
+    const size_t N = v.get_N();
+    for(size_t i = 0; i < N; ++i){
+        output << v[i] << " ";
+    }
+    output << std::endl;
+
     return output;
 }
 
