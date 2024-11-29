@@ -178,12 +178,29 @@ TEST_CASE( "Matrix: inverse" ) {
                      4, 7, 6,
                      1, 7, 8},
                      3, 3);
-    auto m3 = m2.get_inverted();
+    auto m3 = m2.get_inverted_LU();
     auto m4 = m3*m2;
     math::Matrix minv({
              0.15217391304347826081,  0.26086956521739130436 , -0.34782608695652173909,
             -0.28260869565217391305,  0.086956521739130434773,  0.21739130434782608695,
              0.22826086956521739132, -0.10869565217391304348 , -0.021739130434782608698,
+        }, 3, 3);
+    REQUIRE( m4.is_equal(I) );
+    REQUIRE( (m3*m2).is_equal(I) );
+    REQUIRE( (m2*m3).is_equal(I) );
+    REQUIRE( equals(m2.determinant(), 1.0/m3.determinant()) );
+    REQUIRE( m3.is_equal(minv) );
+
+    m2 = math::Matrix({10, 3, 1,
+                       3, 10, 3,
+                       1, 3, 10},
+                       3, 3);
+    m3 = m2.get_inverted_cholesky();
+    m4 = m3*m2;
+    minv = math::Matrix({
+              0.10990338, -0.0326087 , -0.00120773,
+             -0.0326087 ,  0.11956522, -0.0326087 ,
+             -0.00120773, -0.0326087 ,  0.10990338
         }, 3, 3);
     REQUIRE( m4.is_equal(I) );
     REQUIRE( (m3*m2).is_equal(I) );

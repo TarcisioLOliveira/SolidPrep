@@ -179,13 +179,13 @@ Matrix& Matrix::operator=(const MatrixTransposeView& m){
     return *this;
 }
 
-Matrix Matrix::get_inverted() const{
+Matrix Matrix::get_inverted_LU() const{
     Matrix m(*this);
-    m.invert();
+    m.invert_LU();
 
     return m;
 }
-void Matrix::invert(){
+void Matrix::invert_LU(){
     logger::log_assert(W == H,
                        logger::ERROR,
                        "unable to invert matrix, it is not square");
@@ -199,6 +199,33 @@ void Matrix::invert(){
     logger::log_assert(info == 0, logger::ERROR, "LAPACKE returned {} while calculating LU.", info);
     info = LAPACKE_dgetri(LAPACK_COL_MAJOR, N, this->M, N, ipiv.data());
     logger::log_assert(info == 0, logger::ERROR, "LAPACKE returned {} while calculating computing inverse from LU.", info);
+}
+
+Matrix Matrix::get_inverted_cholesky() const{
+    Matrix m(*this);
+    m.invert_cholesky();
+
+    return m;
+}
+void Matrix::invert_cholesky(){
+    logger::log_assert(W == H,
+                       logger::ERROR,
+                       "unable to invert matrix, it is not square");
+
+    const size_t N = W;
+
+    // This works correctly even without the matrix being column major and
+    // symmetric
+    int info = LAPACKE_dpotrf(LAPACK_COL_MAJOR, 'L', N, this->M, N);
+    logger::log_assert(info == 0, logger::ERROR, "LAPACKE returned {} while calculating Cholesky.", info);
+    info = LAPACKE_dpotri(LAPACK_COL_MAJOR, 'L', N, this->M, N);
+    logger::log_assert(info == 0, logger::ERROR, "LAPACKE returned {} while calculating computing inverse from Cholesky.", info);
+
+    for(size_t i = 0; i < N; ++i){
+        for(size_t j = i+1; j < N; ++j){
+            M[j*N + i] = M[i*N + j];
+        }
+    }
 }
 
 Matrix& Matrix::operator+=(const Matrix& m){
