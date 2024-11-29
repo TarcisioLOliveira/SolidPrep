@@ -81,8 +81,10 @@ class Matrix{
     }
 
     void fill(Scalar s);
-    Matrix get_inverted() const;
-    void invert();
+    Matrix get_inverted_LU() const;
+    void invert_LU();
+    Matrix get_inverted_cholesky() const;
+    void invert_cholesky();
     bool is_equal(const Matrix& m, Scalar eps = 1e-7) const;
     bool is_equal(const MatrixTransposeView& m, Scalar eps = 1e-7) const;
     Scalar determinant() const;
