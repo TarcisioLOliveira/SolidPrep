@@ -286,3 +286,31 @@ TEST_CASE( "LU" ) {
          0.36956522,  0.2173913 ,  0.06521739}, 3, 3)) );
 
 }
+
+TEST_CASE( "Cholesky" ) {
+    auto v1 = math::Vector({10, 9, 5});
+    math::Matrix m1({10, 3, 1,
+                     3, 10, 3,
+                     1, 3, 10},
+                     3, 3);
+    math::Matrix m2(m1);
+    math::Matrix m3({
+        5, -1, 0,
+        -1, 10, -1,
+        0, -1, 5,
+        }, 3, 3);
+
+    math::Cholesky ch1(m1);
+    REQUIRE( m2.determinant() != 0 );
+    REQUIRE( equals(ch1.determinant(), m2.determinant()) );
+    ch1.solve(v1);
+    ch1.solve(m2);
+    ch1.solve(m3);
+    REQUIRE( v1.is_equal(math::Vector({0.79951691, 0.58695652, 0.24396135})) );
+    REQUIRE( m2 == math::Matrix::identity(3) );
+    REQUIRE( m3.is_equal(
+        math::Matrix(
+        { 0.5821256 , -0.43478261,  0.02657005,
+         -0.2826087 ,  1.26086957, -0.2826087 ,
+          0.02657005, -0.43478261,  0.5821256 }, 3, 3)) );
+}
