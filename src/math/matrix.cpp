@@ -604,6 +604,57 @@ void LU::solve_transposed(Matrix& m) const{
 }
 
 ///////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////// Cholesky ///////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+Cholesky::Cholesky(Matrix& m, bool copy):
+    N((m.get_W() == m.get_H()) ? m.get_W() : 0),
+    M((copy) ? ((N > 0) ? new Scalar[N] : nullptr) : m.data()),
+    ipiv(N, 0),
+    copy(copy){
+
+    logger::log_assert(N > 0 && M != nullptr, logger::ERROR,
+        "unable to factorize matrix, not square");
+
+    int info = LAPACKE_dpotrf(LAPACK_COL_MAJOR, 'L', N, this->M, N);
+    logger::log_assert(info == 0, logger::ERROR, "LAPACKE returned {} while calculating Cholesky.", info);
+}
+
+Cholesky::~Cholesky(){
+    if(copy) delete[] M;
+}
+
+Scalar Cholesky::determinant() const{
+    Scalar det = 1;
+    for(size_t i = 0; i < N; ++i){
+        det *= M[i*N + i];
+    }
+    for(int i = 0; static_cast<size_t>(i) < N; i++){
+        if(i+1 != ipiv[i]){
+            det *= -1;
+        }
+    }
+    
+    return det*det;
+}
+
+void Cholesky::solve(Vector& v) const{
+    logger::log_assert(v.get_N() == N,
+            logger::ERROR,
+            "unable to solve problem, different dimensions: {} (matrix) and {} (vector)",
+            N, v.get_N());
+    LAPACKE_dpotrs(LAPACK_COL_MAJOR, 'L', N, 1, M, N, v.data(), 1);
+}
+void Cholesky::solve(Matrix& m) const{
+    logger::log_assert(m.get_H() == N,
+            logger::ERROR,
+            "unable to solve problem, different dimensions: {} (Cholesky matrix) and ({}, {})  (RHS)",
+            N, m.get_H(), m.get_W());
+    const size_t W = m.get_W();
+    LAPACKE_dpotrs(LAPACK_COL_MAJOR, 'L', N, W, M, N, m.data(), 1);
+}
+
+///////////////////////////////////////////////////////////////////////////////
 ////////////////////////////// VECTOR AGNOSTIC ////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 

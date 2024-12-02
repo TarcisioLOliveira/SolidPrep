@@ -204,6 +204,23 @@ class LU{
     bool copy;
 };
 
+class Cholesky{
+    public:
+    // MODIFIES VALUE OF MATRIX IF copy == false !!!!!!!
+    Cholesky(Matrix& m, bool copy = false);
+    ~Cholesky();
+
+    Scalar determinant() const;
+    void solve(Vector& v) const;
+    void solve(Matrix& m) const;
+
+    private:
+    size_t N;
+    Scalar* M;
+    std::vector<int> ipiv;
+    bool copy;
+};
+
 inline Matrix operator*(Scalar s, const Matrix& m){
     return m*s;
 }
