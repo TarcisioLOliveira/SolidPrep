@@ -53,6 +53,7 @@ class Matrix{
     Matrix(const MatrixTransposeView& m);
 
     static Matrix identity(size_t N);
+    static Matrix diag(const Vector& v);
 
     inline size_t get_H() const{
         return this->H;
@@ -649,6 +650,17 @@ inline VectorTranspose&& operator*(Scalar s, VectorTranspose&& v){
 inline VectorTranspose operator*(Scalar s, VectorTransposeView&& v){
     return v*s;
 }
+
+
+class Eigen{
+    public:
+    Eigen(Matrix A);
+
+    Matrix square_root() const;
+
+    Matrix eigenvectors;
+    Vector eigenvalues;
+};
 
 }
 

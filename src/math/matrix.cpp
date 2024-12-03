@@ -100,6 +100,16 @@ Matrix Matrix::identity(size_t N){
     return I;
 }
 
+Matrix Matrix::diag(const Vector& v){
+    const size_t N = v.get_N();
+    Matrix d(N, N);
+    for(size_t i = 0; i < N; ++i){
+        d(i, i) = v[i];
+    }
+
+    return d;
+}
+
 bool Matrix::is_equal(const Matrix& m, Scalar eps) const{
     if(W != m.W) return false;
     if(H != m.H) return false;
@@ -604,7 +614,7 @@ void LU::solve_transposed(Matrix& m) const{
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////// Cholesky ///////////////////////////////////////
+///////////////////////////////// Cholesky ////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
 Cholesky::Cholesky(Matrix& m, bool copy):
@@ -1097,6 +1107,43 @@ std::ostream& operator<<(std::ostream& output, const VectorAgnostic& v){
     output << std::endl;
 
     return output;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////// EIGEN /////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+Eigen::Eigen(Matrix A):
+    eigenvectors(A.get_H(), A.get_W()), eigenvalues(A.get_W()){
+
+    logger::log_assert(A.get_H() == A.get_W(), logger::ERROR,
+            "unable to calculate eigenvectors and eigenvalues: matrix is not square");
+
+    const size_t N = A.get_W();
+
+    std::vector<int> ISUPPZ(2*N);
+    // std::vector<double> WORK(26*N);
+    // std::vector<int> IWORK(10*N);
+    int M;
+
+    int info = LAPACKE_dsyevr(LAPACK_ROW_MAJOR, 'V', 'A', 'L', N, A.data(), N, 0, 0, 0, 0, 1e-7, &M,
+         eigenvalues.data(), eigenvectors.data(), N, ISUPPZ.data());
+
+    logger::log_assert(info == 0, logger::ERROR,
+            "LAPACK returned {} while calculating eigenvalues and eigenvectors", info);
+}
+
+Matrix Eigen::square_root() const{
+    const size_t N = this->eigenvalues.get_N();
+    Matrix D(Matrix::diag(this->eigenvalues));
+
+    for(size_t i = 0; i < N; ++i){
+        D(i,i) = std::sqrt(D(i,i));
+    }
+
+    const Matrix& Z = this->eigenvectors;
+
+    return Z*D*Z.T();
 }
 
 }

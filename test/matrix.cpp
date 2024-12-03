@@ -297,3 +297,76 @@ TEST_CASE( "Matrix: operations" ) {
                 }, 3, 3))
             );
 }
+
+TEST_CASE( "Matrix: eigen" ) {
+    math::Matrix m1({10, 3, 1,
+                     3, 10, 3,
+                     1, 3, 10},
+                     3, 3);
+    math::Matrix m2({
+        5, -1, 0,
+        -1, 10, -1,
+        0, -1, 5,
+        }, 3, 3);
+
+    math::Matrix P({
+        0, 0, 1,
+        0, 1, 0,
+        1, 0, 0,
+        }, 3, 3);
+
+    math::Eigen e1(m1);
+    math::Eigen e2(m2);
+
+    REQUIRE( e1.eigenvalues.is_equal(
+        P*math::Vector({
+            14.77200187,  9, 6.22799813
+        }))
+    );
+
+    REQUIRE( e1.eigenvectors.is_equal(
+        P*math::Matrix({
+            -5.28450837e-01, -7.07106781e-01,  4.69829451e-01,
+            -6.64439182e-01, -9.99640728e-17, -7.47342340e-01,
+            -5.28450837e-01,  7.07106781e-01,  4.69829451e-01
+        }, 3, 3)*P)
+    );
+
+    REQUIRE( e2.eigenvalues.is_equal(
+        P*math::Vector({
+            10.37228132, 5, 4.62771868
+        }))
+    );
+
+    REQUIRE( e2.eigenvectors.is_equal(
+        P*math::Matrix({
+            -1.80008139e-01, -7.07106781e-01,  6.83810697e-01,
+             9.67054362e-01, -4.36107634e-16,  2.54569951e-01,
+            -1.80008139e-01,  7.07106781e-01,  6.83810697e-01
+        }, 3, 3)*P)
+    );
+
+    const auto e1sqrt = e1.square_root();
+    const auto e2sqrt = e2.square_root();
+
+    REQUIRE( m1.is_equal(e1sqrt*e1sqrt) );
+    REQUIRE( m2.is_equal(e2sqrt*e2sqrt) );
+
+    REQUIRE( e1sqrt.is_equal(
+        math::Matrix({
+            3.12419619, 0.47325838, 0.12419619,
+            0.47325838, 3.09063958, 0.47325838,
+            0.12419619, 0.47325838, 3.12419619
+        }, 3, 3))
+    );
+
+    REQUIRE( e2sqrt.is_equal(
+        math::Matrix({
+             2.22829199, -0.18615679, -0.00777599,
+            -0.18615679,  3.15129994, -0.18615679,
+            -0.00777599, -0.18615679,  2.22829199
+        }, 3, 3))
+    );
+        
+
+}
