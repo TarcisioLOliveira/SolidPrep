@@ -21,6 +21,7 @@
 #include <cblas.h>
 #include <mpich-x86_64/mpi.h>
 #include "function/density_based/compliance.hpp"
+#include "math/matrix.hpp"
 
 namespace function::density_based{
 
@@ -49,7 +50,7 @@ double Compliance::calculate_with_gradient(const DensityBasedOptimizer* const op
     for(const auto& g:this->mesh->geometries){
         const size_t num_den = g->number_of_densities_needed();
         if(g->do_topopt){
-            std::vector<std::vector<double>> gradD(num_den, std::vector<double>(s_size*s_size));
+            std::vector<math::Matrix> gradD(num_den, math::Matrix(s_size, s_size));
             if(g->with_void){
                 for(const auto& e:g->mesh){
                     const auto p = e->get_centroid();

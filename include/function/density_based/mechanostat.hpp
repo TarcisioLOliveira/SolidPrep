@@ -21,9 +21,8 @@
 #ifndef FUNCTION_MECHANOSTAT_HPP
 #define FUNCTION_MECHANOSTAT_HPP
 
-#include <Eigen/Core>
-#include <Eigen/Dense>
 #include "function.hpp"
+#include "math/matrix.hpp"
 #include "meshing.hpp"
 #include "solver_manager.hpp"
 #include "utils.hpp"
@@ -57,8 +56,8 @@ class Mechanostat : public DensityBasedFunction{
     ViewHandler* shadow_view = nullptr;
     ViewHandler* gradient_view = nullptr;
 
-    typedef Eigen::Vector<double, 3> StrainVector2D;
-    typedef Eigen::Vector<double, 6> StrainVector3D;
+    typedef math::Vector StrainVector2D;
+    typedef math::Vector StrainVector3D;
 
     inline double Hp(const double x, const double eta = 1.0) const{
         return std::atan(beta*(x - eta))/M_PI + 0.5;

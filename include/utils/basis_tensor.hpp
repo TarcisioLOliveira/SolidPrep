@@ -21,16 +21,17 @@
 #ifndef BASIS_TENSOR_HPP
 #define BASIS_TENSOR_HPP
 
-#include <vector>
 #include <Eigen/Core>
+#include <vector>
+#include "math/matrix.hpp"
 
 namespace utils{
 
-std::vector<double> basis_tensor_2D(const Eigen::Matrix<double, 2, 2>& R);
-std::vector<double> basis_tensor_2D_inv_T(const Eigen::Matrix<double, 2, 2>& R);
+math::Matrix basis_tensor_2D(const math::Matrix& R);
+math::Matrix basis_tensor_2D_inv_T(const math::Matrix& R);
 
-std::vector<double> basis_tensor_3D(const Eigen::Matrix<double, 3, 3>& R);
-std::vector<double> basis_tensor_3D_inv_T(const Eigen::Matrix<double, 3, 3>& R);
+math::Matrix basis_tensor_3D(const math::Matrix& R);
+math::Matrix basis_tensor_3D_inv_T(const math::Matrix& R);
 
 }
 

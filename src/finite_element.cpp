@@ -23,19 +23,20 @@
 #include "finite_element.hpp"
 #include "logger.hpp"
 #include "global_stiffness_matrix.hpp"
+#include "math/matrix.hpp"
 
 FiniteElement::FiniteElement(ContactType contact_type, double rtol_abs, GlobalStiffnessMatrix* m)
     :contact_type(contact_type), rtol_abs(rtol_abs), matrix(m){
 
 }
 
-void FiniteElement::generate_matrix(const Meshing* const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const std::vector<double>& u_ext){
+void FiniteElement::generate_matrix(const Meshing* const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<math::Matrix>& D_cache, const std::vector<double>& u_ext){
     this->u_size = u_size;
     this->l_num = l_num;
     this->generate_matrix_base(mesh, u_size, l_num, node_positions, topopt, D_cache, u_ext, this->contact_type);
 }
 
-void FiniteElement::calculate_displacements(const Meshing* const mesh, std::vector<double>& load, const std::vector<double>& u0, std::vector<double>& lambda, const bool topopt, const std::vector<std::vector<double>>& D_cache){
+void FiniteElement::calculate_displacements(const Meshing* const mesh, std::vector<double>& load, const std::vector<double>& u0, std::vector<double>& lambda, const bool topopt, const std::vector<math::Matrix>& D_cache){
     switch(this->contact_type){
         case RIGID:
             this->solve_rigid(load);
@@ -241,7 +242,7 @@ void FiniteElement::solve_frictionless_displ(const Meshing* const mesh, std::vec
 
     std::copy(u.begin(), u.begin() + u_size, load.begin());
 }
-void FiniteElement::solve_frictionless_penalty(const Meshing* const mesh, std::vector<double>& load, const bool topopt, const std::vector<std::vector<double>>& D_cache, const std::vector<double>& u0){
+void FiniteElement::solve_frictionless_penalty(const Meshing* const mesh, std::vector<double>& load, const bool topopt, const std::vector<math::Matrix>& D_cache, const std::vector<double>& u0){
     const size_t vec_size = this->u_size;
 
     double E = 0;

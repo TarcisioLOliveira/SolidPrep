@@ -19,11 +19,12 @@
  */
 
 #include "logger.hpp"
+#include "math/matrix.hpp"
 #include "global_stiffness_matrix/mumps_sparse_symmetric.hpp"
 
 namespace global_stiffness_matrix{
 
-void MUMPSSparseSymmetric::generate(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const std::vector<double>& u_ext, const FiniteElement::ContactType type){
+void MUMPSSparseSymmetric::generate(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<math::Matrix>& D_cache, const std::vector<double>& u_ext, const FiniteElement::ContactType type){
     logger::quick_log("Generating stiffness matrix...");
     this->u_size = u_size;
     this->l_num = l_num;

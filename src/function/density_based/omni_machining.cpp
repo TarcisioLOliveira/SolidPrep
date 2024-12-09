@@ -22,10 +22,11 @@
 #include <numeric>
 #include "function/density_based/omni_machining.hpp"
 #include "logger.hpp"
+#include "math/matrix.hpp"
 #include "projection/threshold.hpp"
 #include "optimizer.hpp"
 
-namespace function{
+namespace function::density_based{
 
 OmniMachining::OmniMachining(const Meshing* const mesh, const DensityFilter* const filter, gp_Pnt center, gp_Dir axis, double v_norm, double beta1, double beta2, double L)
         : mesh(mesh), filter(filter), center(center), axis(axis), v_norm(v_norm), beta1(beta1), beta2(beta2), L(L), proj(Projection::Parameter{20, 20, 0, 0}, 0.5){}
@@ -123,19 +124,19 @@ double OmniMachining::calculate(const DensityBasedOptimizer* const op, const std
             for(const auto& e:g->mesh){
                 const double Hx = this->heaviside(*x_it, BETA_RHO, HX_ETA);
                 const auto p = e->get_centroid();
-                std::vector<double> v{C[0] - p.X(), C[1] - p.Y(), C[2] - p.Z()};
+                math::Vector v{C[0] - p.X(), C[1] - p.Y(), C[2] - p.Z()};
                 const double vnorm = std::sqrt(v[0]*v[0] + v[1]*v[1] + v[2]*v[2] + 1e-14);
                 v[0] = v[0]/vnorm;
                 v[1] = v[1]/vnorm;
                 v[2] = v[2]/vnorm;
-                const std::vector<double> a{std::sqrt(v[0]*v[0] + 1e-14), 0.0, 0.0,
-                                            0.0, std::sqrt(v[1]*v[1] + 1e-14), 0.0,
-                                            0.0, 0.0, std::sqrt(v[2]*v[2] + 1e-14)};
+                const math::Matrix a({std::sqrt(v[0]*v[0] + 1e-14), 0.0, 0.0,
+                                      0.0, std::sqrt(v[1]*v[1] + 1e-14), 0.0,
+                                      0.0, 0.0, std::sqrt(v[2]*v[2] + 1e-14)}, 3, 3);
 
-                const Eigen::VectorXd N = Hx*beta2*e->source_1dof(this->mesh->thickness);
-                const Eigen::MatrixXd phi_e = (beta1*(1.0-Hx) + beta2*Hx)*e->absorption_1dof(this->mesh->thickness) +
-                                              L*L*e->diffusion_1dof(this->mesh->thickness, a) +
-                                              v_norm*L*e->advection_1dof(this->mesh->thickness, v).transpose();
+                const math::Vector N((Hx*beta2)*e->source_1dof(this->mesh->thickness));
+                const math::Matrix phi_e((beta1*(1.0-Hx) + beta2*Hx)*e->absorption_1dof(this->mesh->thickness) +
+                                         (L*L)*e->diffusion_1dof(this->mesh->thickness, a) +
+                                         (v_norm*L)*e->advection_1dof(this->mesh->thickness, v).T());
                 for(size_t i = 0; i < num_nodes; ++i){
                     const long id1 = *(id_it + i);
                     if(id1 < 0){
@@ -233,19 +234,19 @@ double OmniMachining::calculate_with_gradient(const DensityBasedOptimizer* const
             for(const auto& e:g->mesh){
                 const double Hx = this->heaviside(*x_it, BETA_RHO, HX_ETA);
                 const auto p = e->get_centroid();
-                std::vector<double> v{C[0] - p.X(), C[1] - p.Y(), C[2] - p.Z()};
+                math::Vector v{C[0] - p.X(), C[1] - p.Y(), C[2] - p.Z()};
                 const double vnorm = std::sqrt(v[0]*v[0] + v[1]*v[1] + v[2]*v[2] + 1e-14);
                 v[0] = v[0]/vnorm;
                 v[1] = v[1]/vnorm;
                 v[2] = v[2]/vnorm;
-                const std::vector<double> a{std::sqrt(v[0]*v[0] + 1e-14), 0.0, 0.0,
-                                            0.0, std::sqrt(v[1]*v[1] + 1e-14), 0.0,
-                                            0.0, 0.0, std::sqrt(v[2]*v[2] + 1e-14)};
+                const math::Matrix a({std::sqrt(v[0]*v[0] + 1e-14), 0.0, 0.0,
+                                      0.0, std::sqrt(v[1]*v[1] + 1e-14), 0.0,
+                                      0.0, 0.0, std::sqrt(v[2]*v[2] + 1e-14)}, 3, 3);
 
-                const Eigen::VectorXd N = Hx*beta2*e->source_1dof(this->mesh->thickness);
-                const Eigen::MatrixXd phi_e = (beta1*(1.0-Hx) + beta2*Hx)*e->absorption_1dof(this->mesh->thickness) +
-                                              L*L*e->diffusion_1dof(this->mesh->thickness, a) +
-                                              v_norm*L*e->advection_1dof(this->mesh->thickness, v).transpose();
+                const math::Vector N(Hx*beta2*e->source_1dof(this->mesh->thickness));
+                const math::Matrix phi_e((beta1*(1.0-Hx) + beta2*Hx)*e->absorption_1dof(this->mesh->thickness) +
+                                         (L*L)*e->diffusion_1dof(this->mesh->thickness, a) +
+                                         (v_norm*L)*e->advection_1dof(this->mesh->thickness, v).T());
                 for(size_t i = 0; i < num_nodes; ++i){
                     const long id1 = *(id_it + i);
                     if(id1 < 0){
@@ -347,8 +348,8 @@ double OmniMachining::calculate_with_gradient(const DensityBasedOptimizer* const
             const size_t num_den = g->number_of_densities_needed();
             for(const auto& e:g->mesh){
                 const double dHx = this->heaviside_grad(*x_it, BETA_RHO, HX_ETA);
-                const Eigen::VectorXd  b_e = dHx*beta2*e->source_1dof(this->mesh->thickness);
-                const Eigen::MatrixXd phi_e = ((beta1*(1.0-dHx)/10 + beta2*dHx)*e->absorption_1dof(this->mesh->thickness));
+                const math::Vector b_e(dHx*beta2*e->source_1dof(this->mesh->thickness));
+                const math::Matrix phi_e((beta1*(1.0-dHx)/10 + beta2*dHx)*e->absorption_1dof(this->mesh->thickness));
                 *g_it = 0;
                 double psi_tmp = 0;
                 for(size_t i = 0; i < num_nodes; ++i){

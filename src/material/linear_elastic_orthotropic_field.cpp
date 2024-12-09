@@ -27,7 +27,8 @@
 namespace material{
 
 LinearElasticOrthotropicField::LinearElasticOrthotropicField(const std::string& name, const double density, std::vector<double> E, std::vector<double> nu, std::vector<bool> nu_lower_half, std::vector<double> G, std::vector<double> Smax, std::vector<double> Tmax, const CoordinateField* field):
-    Material(name, std::move(Smax), std::move(Tmax)), density(density), field(field){
+    Material(name, std::move(Smax), std::move(Tmax)), density(density), field(field),
+    D_2D(), D_3D(), S_2D(3,3), S_3D(6,6){
 
     logger::log_assert(field->get_sub_type() == Field::SubType::DOMAIN || field->get_sub_type() == Field::SubType::PROJECTION, logger::ERROR, "field subtype for orthotropic field material must be DOMAIN or PROJECTION");
 
@@ -47,115 +48,87 @@ LinearElasticOrthotropicField::LinearElasticOrthotropicField(const std::string& 
     } else {
         Syz = -nu[2]/E[2];
     }
-   
-    this->S_2D.resize(9,0);
-    S_2D[0] = 1/E[0]; S_2D[1] = Sxy;
-    S_2D[3] = Sxy; S_2D[4] = 1/E[1];
-    S_2D[4] = 1/E[1];
-    S_2D[8] = 1/G[0];
-    this->D_2D = utils::D_op::invert_2D(S_2D);
 
-    this->S_3D.resize(36,0);
-    S_3D[ 0] = 1/E[0]; S_3D[ 1] = Sxy; S_3D[ 2] = Sxz;
-    S_3D[ 6] = Sxy; S_3D[ 7] = 1/E[1]; S_3D[ 8] = Syz;
-    S_3D[12] = Sxz; S_3D[13] = Syz; S_3D[14] = 1/E[2];
-    S_3D[21] = 1/G[0];
-    S_3D[28] = 1/G[1];
-    S_3D[35] = 1/G[2];
-    this->D_3D = utils::D_op::invert_3D(S_3D);
+    S_2D.data()[0] = 1/E[0]; S_2D.data()[1] = Sxy;
+    S_2D.data()[3] = Sxy; S_2D.data()[4] = 1/E[1];
+    S_2D.data()[8] = 1/G[0];
+    this->D_2D = S_2D.get_inverted_cholesky();
+
+    S_3D.data()[ 0] = 1/E[0]; S_3D.data()[ 1] = Sxy; S_3D.data()[ 2] = Sxz;
+    S_3D.data()[ 6] = Sxy; S_3D.data()[ 7] = 1/E[1]; S_3D.data()[ 8] = Syz;
+    S_3D.data()[12] = Sxz; S_3D.data()[13] = Syz; S_3D.data()[14] = 1/E[2];
+    S_3D.data()[21] = 1/G[0];
+    S_3D.data()[28] = 1/G[1];
+    S_3D.data()[35] = 1/G[2];
+    this->D_3D = S_3D.get_inverted_cholesky();
 }
 
-std::vector<double> LinearElasticOrthotropicField::stiffness_2D(const MeshElement* const e, const gp_Pnt& p) const{
+math::Matrix LinearElasticOrthotropicField::stiffness_2D(const MeshElement* const e, const gp_Pnt& p) const{
     const auto M = this->field->get_matrix(e, p);
-    const auto R = utils::basis_tensor_2D(M({0,1},{0,1}));
-    auto D = this->D_2D;
-    this->rotate_D_2D(D, R);
+    const auto R = utils::basis_tensor_2D(M);
+    const auto& D = this->D_2D;
 
-    return D;
+    return R*D*R.T();
 }
-std::vector<double> LinearElasticOrthotropicField::stiffness_3D(const MeshElement* const e, const gp_Pnt& p) const{
+math::Matrix LinearElasticOrthotropicField::stiffness_3D(const MeshElement* const e, const gp_Pnt& p) const{
     const auto M = this->field->get_matrix(e, p);
     const auto R = utils::basis_tensor_3D(M);
-    auto D = this->D_3D;
-    this->rotate_D_3D(D, R);
+    const auto& D = this->D_3D;
 
-    return D;
+    return R*D*R.T();
 }
-std::vector<double> LinearElasticOrthotropicField::stiffness_inverse_2D(const MeshElement* const e, const gp_Pnt& p) const{
+math::Matrix LinearElasticOrthotropicField::stiffness_inverse_2D(const MeshElement* const e, const gp_Pnt& p) const{
     const auto M = this->field->get_matrix(e, p);
-    const auto R = utils::basis_tensor_2D_inv_T(M({0,1},{0,1}));
-    auto S = this->S_2D;
-    this->rotate_S_2D(S, R);
+    const auto R = utils::basis_tensor_2D_inv_T(M);
+    const auto& S = this->S_2D;
 
-    return S;
+    return R*S*R.T();
 }
-std::vector<double> LinearElasticOrthotropicField::stiffness_inverse_3D(const MeshElement* const e, const gp_Pnt& p) const{
+math::Matrix LinearElasticOrthotropicField::stiffness_inverse_3D(const MeshElement* const e, const gp_Pnt& p) const{
     const auto M = this->field->get_matrix(e, p);
     const auto R = utils::basis_tensor_3D_inv_T(M);
-    auto S = this->S_3D;
-    this->rotate_S_3D(S, R);
+    const auto& S = this->S_3D;
 
-    return S;
+    return R*S*R.T();
 }
 
-double LinearElasticOrthotropicField::beam_E_2D(const MeshElement* const e, const gp_Pnt& p, const Eigen::Matrix<double, 2, 2>& R) const{
+double LinearElasticOrthotropicField::beam_E_2D(const MeshElement* const e, const gp_Pnt& p, const math::Matrix& R) const{
     // Anisotropic Elasticity: Theory and Applications
     // (Ting, 1996)
 
-    auto S = this->stiffness_inverse_2D(e, p);
+    const auto S = this->stiffness_inverse_2D(e, p);
     const auto Rt = utils::basis_tensor_2D_inv_T(R);
-    this->rotate_S_2D(S, Rt);
 
-    return 1/S[0];
+    return 1.0/(Rt*S*Rt.T())(0,0);
 }
-double LinearElasticOrthotropicField::beam_E_3D(const MeshElement* const e, const gp_Pnt& p, const Eigen::Matrix<double, 3, 3>& R) const{
+double LinearElasticOrthotropicField::beam_E_3D(const MeshElement* const e, const gp_Pnt& p, const math::Matrix& R) const{
     // Anisotropic Elasticity: Theory and Applications
     // (Ting, 1996)
 
     auto S = this->stiffness_inverse_3D(e, p);
     const auto Rt = utils::basis_tensor_3D_inv_T(R);
-    this->rotate_S_3D(S, Rt);
 
-    return 1.0/S[0];
+    return 1.0/(Rt*S*Rt.T())(0,0);
 }
-std::array<double, 2> LinearElasticOrthotropicField::beam_EG_2D(const MeshElement* const e, const gp_Pnt& p, const Eigen::Matrix<double, 2, 2>& R) const{
+std::array<double, 2> LinearElasticOrthotropicField::beam_EG_2D(const MeshElement* const e, const gp_Pnt& p, const math::Matrix& R) const{
     // Anisotropic Elasticity: Theory and Applications
     // (Ting, 1996)
 
     auto S = this->stiffness_inverse_2D(e, p);
     const auto Rt = utils::basis_tensor_2D_inv_T(R);
-    this->rotate_S_2D(S, Rt);
+    const auto Sr = Rt*S*Rt.T();
 
-    return {1.0/S[0], 1.0/S[8]};
+    return {1.0/Sr(0,0), 1.0/S(2,2)};
 }
-std::array<double, 4> LinearElasticOrthotropicField::beam_EG_3D(const MeshElement* const e, const gp_Pnt& p, const Eigen::Matrix<double, 3, 3>& R) const{
+std::array<double, 4> LinearElasticOrthotropicField::beam_EG_3D(const MeshElement* const e, const gp_Pnt& p, const math::Matrix& R) const{
     // Anisotropic Elasticity: Theory and Applications
     // (Ting, 1996)
 
     auto S = this->stiffness_inverse_3D(e, p);
     const auto Rt = utils::basis_tensor_3D_inv_T(R);
-    this->rotate_S_3D(S, Rt);
+    const auto Sr = Rt*S*Rt.T();
 
-    return {1.0/S[0], 1.0/S[21], 1.0/S[28], 1.0/S[35]};
-}
-
-double LinearElasticOrthotropicField::S12_2D(const MeshElement* const e, const gp_Pnt& p, const Eigen::Matrix<double, 2, 2>& R) const{
-    auto s = this->stiffness_inverse_2D(e, p);
-
-    const auto Rt = utils::basis_tensor_2D_inv_T(R);
-    this->rotate_S_2D(s, Rt);
-
-    return s[1];
-}
-
-std::array<double, 2> LinearElasticOrthotropicField::S12_S13_3D(const MeshElement* const e, const gp_Pnt& p, const Eigen::Matrix<double, 3, 3>& R) const{
-
-    auto s = this->stiffness_inverse_3D(e, p);
-
-    const auto Rt = utils::basis_tensor_3D_inv_T(R);
-    this->rotate_S_3D(s, Rt);
-
-    return {s[1], s[2]};
+    return {1.0/S(0,0), 1.0/S(3,3), 1.0/S(4,4), 1.0/S(5,5)};
 }
 
 std::vector<double> LinearElasticOrthotropicField::get_max_stresses(gp_Dir d) const{

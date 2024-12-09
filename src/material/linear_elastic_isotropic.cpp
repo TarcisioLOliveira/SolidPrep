@@ -20,54 +20,44 @@
 
 #include "material/linear_elastic_isotropic.hpp"
 #include "logger.hpp"
-#include <cmath>
 #include <lapacke.h>
 #include <cblas.h>
 
 namespace material{
 
 LinearElasticIsotropic::LinearElasticIsotropic(const std::string& name, const double density, double E, double nu, double Smax, double Tmax, bool plane_stress):
-    Material(name, {Smax}, {Tmax}), E(E), G(E/(2*(1 + nu))), nu(nu), density(density){
+    Material(name, {Smax}, {Tmax}), E(E), G(E/(2*(1 + nu))), nu(nu), density(density),
+    D_2D(3,3), D_3D(6,6), S_2D(), S_3D(){
 
-    this->D_2D.resize(9);
     if(plane_stress){
-        this->D_2D[0] = E/(1-nu*nu);
-        this->D_2D[1] = (E/(1-nu*nu))*nu;
-        this->D_2D[3] = (E/(1-nu*nu))*nu;
-        this->D_2D[4] = E/(1-nu*nu);
-        this->D_2D[8] = (E/(1-nu*nu))*(1-nu)/2;
+        this->D_2D.data()[0] = E/(1-nu*nu);
+        this->D_2D.data()[1] = (E/(1-nu*nu))*nu;
+        this->D_2D.data()[3] = (E/(1-nu*nu))*nu;
+        this->D_2D.data()[4] = E/(1-nu*nu);
+        this->D_2D.data()[8] = (E/(1-nu*nu))*(1-nu)/2;
     } else {
-        this->D_2D[0] = (E/((1+nu)*(1-2*nu)))*(1-nu);
-        this->D_2D[1] = (E/((1+nu)*(1-2*nu)))*(nu);
-        this->D_2D[3] = (E/((1+nu)*(1-2*nu)))*(nu);
-        this->D_2D[4] = (E/((1+nu)*(1-2*nu)))*(1-nu);
-        this->D_2D[8] = E/(2*(1+nu));
+        this->D_2D.data()[0] = (E/((1+nu)*(1-2*nu)))*(1-nu);
+        this->D_2D.data()[1] = (E/((1+nu)*(1-2*nu)))*(nu);
+        this->D_2D.data()[3] = (E/((1+nu)*(1-2*nu)))*(nu);
+        this->D_2D.data()[4] = (E/((1+nu)*(1-2*nu)))*(1-nu);
+        this->D_2D.data()[8] = E/(2*(1+nu));
     }
-    std::vector<int> ipiv(9);
-    std::vector<double> D_2D_tmp = D_2D;
-    LAPACKE_dgetrf(LAPACK_ROW_MAJOR, 3, 3, D_2D_tmp.data(), 3, ipiv.data());
-    LAPACKE_dgetri(LAPACK_ROW_MAJOR, 3, D_2D_tmp.data(), 3, ipiv.data());
-    this->S_2D = std::move(D_2D_tmp);
+    this->S_2D = D_2D.get_inverted_cholesky();
 
-    this->D_3D.resize(36);
-    this->D_3D[ 0] = (E/((1+nu)*(1-2*nu)))*(1-nu);
-    this->D_3D[ 1] = (E/((1+nu)*(1-2*nu)))*(nu);
-    this->D_3D[ 2] = (E/((1+nu)*(1-2*nu)))*(nu);
-    this->D_3D[ 6] = (E/((1+nu)*(1-2*nu)))*(nu);
-    this->D_3D[ 7] = (E/((1+nu)*(1-2*nu)))*(1-nu);
-    this->D_3D[ 8] = (E/((1+nu)*(1-2*nu)))*(nu);
-    this->D_3D[12] = (E/((1+nu)*(1-2*nu)))*(nu);
-    this->D_3D[13] = (E/((1+nu)*(1-2*nu)))*(nu);
-    this->D_3D[14] = (E/((1+nu)*(1-2*nu)))*(1-nu);
-    this->D_3D[21] = E/(2*(1+nu));
-    this->D_3D[28] = E/(2*(1+nu));
-    this->D_3D[35] = E/(2*(1+nu));
+    this->D_3D.data()[ 0] = (E/((1+nu)*(1-2*nu)))*(1-nu);
+    this->D_3D.data()[ 1] = (E/((1+nu)*(1-2*nu)))*(nu);
+    this->D_3D.data()[ 2] = (E/((1+nu)*(1-2*nu)))*(nu);
+    this->D_3D.data()[ 6] = (E/((1+nu)*(1-2*nu)))*(nu);
+    this->D_3D.data()[ 7] = (E/((1+nu)*(1-2*nu)))*(1-nu);
+    this->D_3D.data()[ 8] = (E/((1+nu)*(1-2*nu)))*(nu);
+    this->D_3D.data()[12] = (E/((1+nu)*(1-2*nu)))*(nu);
+    this->D_3D.data()[13] = (E/((1+nu)*(1-2*nu)))*(nu);
+    this->D_3D.data()[14] = (E/((1+nu)*(1-2*nu)))*(1-nu);
+    this->D_3D.data()[21] = E/(2*(1+nu));
+    this->D_3D.data()[28] = E/(2*(1+nu));
+    this->D_3D.data()[35] = E/(2*(1+nu));
 
-    ipiv.resize(36);
-    std::vector<double> D_3D_tmp = D_3D;
-    LAPACKE_dgetrf(LAPACK_ROW_MAJOR, 6, 6, D_3D_tmp.data(), 6, ipiv.data());
-    LAPACKE_dgetri(LAPACK_ROW_MAJOR, 6, D_3D_tmp.data(), 6, ipiv.data());
-    this->S_3D = std::move(D_3D_tmp);
+    this->S_3D = D_3D.get_inverted_cholesky();
 }
 
 std::vector<double> LinearElasticIsotropic::get_max_stresses(gp_Dir d) const{

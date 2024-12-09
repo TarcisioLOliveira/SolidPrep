@@ -23,7 +23,6 @@
 
 #include "sizing.hpp"
 #include "finite_element.hpp"
-#include "beam_meshing.hpp"
 #include "meshing/standard_beam_mesher.hpp"
 #include <vector>
 

@@ -22,6 +22,7 @@
 #include <mpich-x86_64/mpi.h>
 #include <vector>
 #include "finite_element/petsc_pcg.hpp"
+#include "math/matrix.hpp"
 #include "project_data.hpp"
 #include "logger.hpp"
 
@@ -48,7 +49,7 @@ PETScPCG::~PETScPCG(){
     KSPDestroy(&this->ksp);
 }
 
-void PETScPCG::generate_matrix_base(const Meshing* const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const std::vector<double>& u_ext, const ContactType type){
+void PETScPCG::generate_matrix_base(const Meshing* const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<math::Matrix>& D_cache, const std::vector<double>& u_ext, const ContactType type){
     this->gsm->generate(mesh, u_size, l_num, node_positions, topopt, D_cache, u_ext, type);
     this->setup = false;
 }

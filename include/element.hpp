@@ -21,8 +21,8 @@
 #ifndef ELEMENT_HPP
 #define ELEMENT_HPP
 
-#include <Eigen/Core>
 #include "material.hpp"
+#include "math/matrix.hpp"
 #include <gp_Pnt.hxx>
 #include <vector>
 #include <TopoDS_Shape.hxx>
@@ -251,11 +251,11 @@ class MeshElement : public Element{
 
     virtual ~MeshElement() = default;
 
-    virtual std::vector<double> get_uu(const MeshElement* const e2, const std::vector<gp_Pnt>& bounds, const gp_Dir n) const = 0;
+    virtual math::Matrix get_uu(const MeshElement* const e2, const std::vector<gp_Pnt>& bounds, const gp_Dir n) const = 0;
 
-    virtual std::vector<double> get_MnMn(const MeshElement* const e2, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds, const gp_Dir n) const = 0;
+    virtual math::Matrix get_MnMn(const MeshElement* const e2, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds, const gp_Dir n) const = 0;
 
-    virtual std::vector<double> get_Ni(const gp_Pnt& p) const = 0;
+    virtual math::Matrix get_Ni(const gp_Pnt& p) const = 0;
 
     /**
      * Creates and returns the elemental stiffness matrix.
@@ -265,7 +265,7 @@ class MeshElement : public Element{
      *
      * @return The element stiffness matrix.
      */
-    virtual std::vector<double> get_k(const std::vector<double>& D, const double t) const = 0;
+    virtual math::Matrix get_k(const math::Matrix& D, const double t) const = 0;
     /**
      * Creates and returns the elemental Robin matrix.
      *
@@ -275,19 +275,7 @@ class MeshElement : public Element{
      *
      * @return The element stiffness matrix.
      */
-    virtual std::vector<double> get_R(const std::vector<double>& K, const double t, const std::vector<gp_Pnt>& points) const = 0;
-    /**
-     * Creates and returns the elemental Robin vector.
-     *
-     * @param S Changed-basis stress matrix.
-     * @param F Changed-basis force vector.
-     * @param C Neutral axis intersection point.
-     * @param t Geometry thickness.
-     * @param points Points that define the boundary.
-     *
-     * @return The element stiffness matrix.
-     */
-    virtual std::vector<double> get_Rf(const std::vector<double>& S, const std::vector<double>& F, const gp_Pnt& C, const double t, const std::vector<gp_Pnt>& points) const = 0;
+    virtual math::Matrix get_R(const math::Matrix& K, const double t, const std::vector<gp_Pnt>& points) const = 0;
     /**
      * Calculates the internal load vector of the element.
      *
@@ -297,7 +285,7 @@ class MeshElement : public Element{
      *
      * @return Internal loads at node.
      */
-    virtual std::vector<double> get_internal_loads(const std::vector<double>& D, const double t, const std::vector<double>& u) const = 0;
+    virtual math::Vector get_internal_loads(const math::Matrix& D, const double t, const std::vector<double>& u) const = 0;
     /** 
      * Calculates the Von Mises stresses at a point within the element.
      *
@@ -307,7 +295,7 @@ class MeshElement : public Element{
      *
      * @return Von Mises stress at point p.
      */
-    virtual double get_stress_at(const std::vector<double>& D, const gp_Pnt& p, const std::vector<double>& u, const double eps = 0) const = 0;
+    virtual double get_stress_at(const math::Matrix& D, const gp_Pnt& p, const std::vector<double>& u, const double eps = 0) const = 0;
     /** 
      * Calculates the Von Mises strain at a point within the element.
      *
@@ -317,7 +305,7 @@ class MeshElement : public Element{
      * @return Von Mises stress at point p.
      */
     virtual double get_strain_VM(const gp_Pnt& p, const std::vector<double>& u, const double eps = 0) const = 0;
-    virtual std::vector<double> get_principal_strains(const gp_Pnt& p, const std::vector<double>& u) const = 0;
+    virtual math::Vector get_principal_strains(const gp_Pnt& p, const std::vector<double>& u) const = 0;
     /**
      * Calculates the derivative of von Mises stress with D(rho).
      *
@@ -327,7 +315,7 @@ class MeshElement : public Element{
      * @param point Point to measure stress.
      * @param u Displacement vector.
      */
-    virtual double von_Mises_derivative(const std::vector<double>& D, const std::vector<double>& dD, double mult, const gp_Pnt& point, const std::vector<double>& u) const = 0;
+    virtual double von_Mises_derivative(const math::Matrix& D, const math::Matrix& dD, double mult, const gp_Pnt& point, const std::vector<double>& u) const = 0;
     /**
      * Calculates the Cauchy stress tensor at a point within the element.
      *
@@ -337,7 +325,7 @@ class MeshElement : public Element{
      *
      * @return Stress tensor at point p.
      */
-    virtual std::vector<double> get_stress_tensor(const std::vector<double>& D, const gp_Pnt& p, const std::vector<double>& u) const = 0;
+    virtual math::Matrix get_stress_tensor(const math::Matrix& D, const gp_Pnt& p, const std::vector<double>& u) const = 0;
 
     /**
      * Calculates the Cauchy strain tensor at a point within the element.
@@ -347,7 +335,7 @@ class MeshElement : public Element{
      *
      * @return Strain tensor at point p.
      */
-    virtual std::vector<double> get_strain_tensor(const gp_Pnt& p, const std::vector<double>& u) const = 0;
+    virtual math::Matrix get_strain_tensor(const gp_Pnt& p, const std::vector<double>& u) const = 0;
     /**
      * Calculates the strain vector at a point within the element.
      *
@@ -356,7 +344,7 @@ class MeshElement : public Element{
      *
      * @return Strain vector at point p.
      */
-    virtual std::vector<double> get_strain_vector(const gp_Pnt& p, const std::vector<double>& u) const = 0;
+    virtual math::Vector get_strain_vector(const gp_Pnt& p, const std::vector<double>& u) const = 0;
     /** 
      * Calculates the intersection points between a shape (edge for 2D, face
      * for 3D) and the boundaries of the element.
@@ -383,7 +371,7 @@ class MeshElement : public Element{
      *
      * @return The compliance.
      */
-    virtual double get_compliance(const std::vector<double>& D, const double t, const std::vector<double>& u) const = 0;
+    virtual double get_compliance(const math::Matrix& D, const double t, const std::vector<double>& u) const = 0;
     /**
      * Calculates the element's compliance with a virtual displacement vector.
      *
@@ -394,7 +382,7 @@ class MeshElement : public Element{
      *
      * @return The compliance.
      */
-    virtual double get_compliance(const std::vector<double>& D, const double t, const std::vector<double>& u, const std::vector<double>& l) const = 0;
+    virtual double get_compliance(const math::Matrix& D, const double t, const std::vector<double>& u, const std::vector<double>& l) const = 0;
     /**
      * Calculates the elemental contribution to the virtual load, for a p-norm
      * global stress aggregation function.
@@ -406,7 +394,7 @@ class MeshElement : public Element{
      * @param u Displacement vector.
      * @param l Global virtual load vector.
      */
-    virtual void get_virtual_load(const std::vector<double>& D, double mult, const gp_Pnt& point, const std::vector<double>& u, std::vector<double>& l) const = 0;
+    virtual void get_virtual_load(const math::Matrix& D, double mult, const gp_Pnt& point, const std::vector<double>& u, std::vector<double>& l) const = 0;
     /**
      * Calculates the force vector for a distributed load.
      *
@@ -415,7 +403,7 @@ class MeshElement : public Element{
      * @param points Delimiting points.
      * @return Force vector.
      */
-    virtual std::vector<double> get_f(const double t, const gp_Vec& vec, const std::vector<gp_Pnt>& points) const = 0;
+    virtual math::Vector get_f(const double t, const math::Vector& vec, const std::vector<gp_Pnt>& points) const = 0;
     /**
      * Returns the geometry of the element.
      *
@@ -460,7 +448,7 @@ class MeshElement : public Element{
      *
      * @return Gradient matrix (2xN for 2D, 3xN for 3D)
      */
-    virtual std::vector<double> get_nodal_density_gradient(gp_Pnt p) const = 0;
+    virtual math::Matrix get_nodal_density_gradient(gp_Pnt p) const = 0;
 
     /**
      * Gets the linear displacement matrix (B).
@@ -469,14 +457,14 @@ class MeshElement : public Element{
      *
      * @return B matrix.
      */
-    virtual std::vector<double> get_B(const gp_Pnt& point) const = 0;
+    virtual math::Matrix get_B(const gp_Pnt& point) const = 0;
 
-    virtual std::vector<double> get_dk_sh(const std::vector<double>& D, const double t, const size_t n, const size_t dof) const {
+    virtual math::Matrix get_dk_sh(const math::Matrix& D, const double t, const size_t n, const size_t dof) const{
         (void) D;
         (void) t;
         (void) n;
         (void) dof;
-        return std::vector<double>();
+        return math::Matrix();
     }
     virtual double get_dV_sh(const double t, const size_t n, const size_t dof) const{
         (void) t;
@@ -485,12 +473,12 @@ class MeshElement : public Element{
 
         return 0;
     }
-    virtual std::vector<double> get_dB_sh(const gp_Pnt& p, const size_t n, const size_t dof) const{
+    virtual math::Matrix get_dB_sh(const gp_Pnt& p, const size_t n, const size_t dof) const{
         (void) p;
         (void) n;
         (void) dof;
 
-        return std::vector<double>();
+        return math::Matrix();
     }
     virtual void calculate_coefficients(){
 
@@ -505,7 +493,7 @@ class MeshElement : public Element{
      * @param n Element's node id.
      * @param dof Analyzed degree of freedom.
      */
-    virtual double von_Mises_derivative_sh(const std::vector<double>& D, double mult, const gp_Pnt& point, const std::vector<double>& u, const size_t n, const size_t dof) const = 0;
+    virtual double von_Mises_derivative_sh(const math::Matrix& D, double mult, const gp_Pnt& point, const std::vector<double>& u, const size_t n, const size_t dof) const = 0;
     /**
      * Returns a 1 degree of freedom diffusion matrix.
      * 
@@ -514,7 +502,7 @@ class MeshElement : public Element{
      *
      * @return Diffusion matrix.
      */
-    virtual Eigen::MatrixXd diffusion_1dof(const double t, const std::vector<double>& A) const = 0;
+    virtual math::Matrix diffusion_1dof(const double t, const math::Matrix& A) const = 0;
 
     /**
      * Returns a 1 degree of freedom advection matrix.
@@ -524,7 +512,7 @@ class MeshElement : public Element{
      *
      * @return Advection matrix.
      */
-    virtual Eigen::MatrixXd advection_1dof(const double t, const std::vector<double>& v) const = 0;
+    virtual math::Matrix advection_1dof(const double t, const math::Vector& v) const = 0;
 
     /**
      * Returns a 1 degree of freedom absorption matrix.
@@ -533,7 +521,7 @@ class MeshElement : public Element{
      *
      * @return Absorption matrix.
      */
-    virtual Eigen::MatrixXd absorption_1dof(const double t) const = 0;
+    virtual math::Matrix absorption_1dof(const double t) const = 0;
 
     /**
      * Returns a 1 degree of freedom source vector.
@@ -542,7 +530,7 @@ class MeshElement : public Element{
      *
      * @return source matrix.
      */
-    virtual Eigen::VectorXd source_1dof(const double t) const = 0;
+    virtual math::Vector source_1dof(const double t) const = 0;
 
     /**
      * Returns a 1 degree of freedom flow vector.
@@ -552,7 +540,7 @@ class MeshElement : public Element{
      *
      * @return Flow vector.
      */
-    virtual Eigen::VectorXd flow_1dof(const double t, const MeshNode** nodes) const = 0;
+    virtual math::Vector flow_1dof(const double t, const MeshNode** nodes) const = 0;
 
     /**
      * Returns an element node.
@@ -574,17 +562,6 @@ class MeshElement : public Element{
         {}
 
     /**
-     * Gets the multiplication of the constitutive matrix (D or C) and the linear
-     * displacement matrix (B). Used to calculate stress at a point.
-     *
-     * @param D constitutive matrix.
-     * @param point Point where it's measured at.
-     *
-     * @return DB matrix.
-     */
-    virtual std::vector<double> get_DB(const std::vector<double>& D, const gp_Pnt& point) const = 0;
-
-    /**
      * Gets the matrix used to calculate the nodal force vector. Calculated
      * from the boundary integral of the interpolation matrix.
      *
@@ -593,7 +570,7 @@ class MeshElement : public Element{
      *
      * @return The interpolation matrix for nodal forces, Nf.
      */
-    virtual std::vector<double> get_Nf(const double t, const std::vector<gp_Pnt>& points) const = 0;
+    virtual math::Matrix get_Nf(const double t, const std::vector<gp_Pnt>& points) const = 0;
 };
 
 namespace utils{
@@ -605,12 +582,12 @@ class BoundaryMeshElement : public Element{
     public:
     const MeshElement* const parent;
 
-    virtual std::vector<double> get_K_ext(const Eigen::MatrixXd& D, const gp_Pnt& center) const = 0;
-    virtual std::vector<double> get_normal_stresses(const Eigen::MatrixXd& D, const std::vector<double>& u, const gp_Pnt& p, const gp_Pnt& center) const = 0;
-    virtual std::vector<double> get_stress_integrals(const Eigen::MatrixXd& D, const gp_Pnt& center) const = 0;
-    virtual std::vector<double> get_equilibrium_partial(const Eigen::MatrixXd& D, const gp_Pnt& center, const std::vector<size_t>& stresses) const = 0;
-    virtual std::vector<double> get_dz_vector(const Eigen::MatrixXd& S, const Eigen::MatrixXd& D, const double Az, const double Bz, const gp_Pnt& center) const = 0;
-    virtual std::vector<double> get_force_vector(const Eigen::MatrixXd& D, const std::vector<double>& u, const gp_Pnt& center, const Eigen::MatrixXd& rot) const = 0;
+    virtual math::Matrix get_K_ext(const math::Matrix& D, const gp_Pnt& center) const = 0;
+    virtual math::Vector get_normal_stresses(const math::Matrix& D, const std::vector<double>& u, const gp_Pnt& p, const gp_Pnt& center) const = 0;
+    virtual math::Matrix get_stress_integrals(const math::Matrix& D, const gp_Pnt& center) const = 0;
+    virtual math::Matrix get_equilibrium_partial(const math::Matrix& D, const gp_Pnt& center, const std::vector<size_t>& stresses) const = 0;
+    virtual math::Vector get_dz_vector(const math::Matrix& S, const math::Matrix& D, const double Az, const double Bz, const gp_Pnt& center) const = 0;
+    virtual math::Vector get_force_vector(const math::Matrix& D, const std::vector<double>& u, const gp_Pnt& center, const math::Matrix& rot) const = 0;
 
     /**
      * Returns a 1 degree of freedom diffusion matrix.
@@ -619,7 +596,7 @@ class BoundaryMeshElement : public Element{
      *
      * @return Diffusion matrix.
      */
-    virtual Eigen::MatrixXd diffusion_1dof(const Eigen::MatrixXd& A) const = 0;
+    virtual math::Matrix diffusion_1dof(const math::Matrix& A) const = 0;
 
     /**
      * Returns a 1 degree of freedom advection matrix.
@@ -628,22 +605,22 @@ class BoundaryMeshElement : public Element{
      *
      * @return Advection matrix.
      */
-    virtual Eigen::MatrixXd advection_1dof(const Eigen::VectorXd& v) const = 0;
+    virtual math::Matrix advection_1dof(const math::Vector& v) const = 0;
 
     /**
      * Returns a 1 degree of freedom absorption matrix.
      *
      * @return Absorption matrix.
      */
-    virtual Eigen::MatrixXd absorption_1dof() const = 0;
+    virtual math::Matrix absorption_1dof() const = 0;
 
     /**
      * Returns a 1 degree of freedom source vector.
      *
      * @return source matrix.
      */
-    virtual Eigen::VectorXd source_1dof() const = 0;
-    virtual Eigen::VectorXd flow_1dof(const std::array<const Node*, 2>& nodes) const = 0;
+    virtual math::Vector source_1dof() const = 0;
+    virtual math::Vector flow_1dof(const std::array<const Node*, 2>& nodes) const = 0;
 
     virtual double get_area() const = 0;
 
@@ -676,16 +653,16 @@ class ContactMeshElement : public Element{
     const MeshElement* const e1;
     const MeshElement* const e2;
 
-    virtual std::vector<double> get_frictionless_Ge() const = 0;
+    virtual math::Matrix get_frictionless_Ge() const = 0;
 
-    virtual std::vector<double> fl_uLne(const std::vector<double>& D, const std::vector<double>& ln_e) const = 0;
-    virtual std::vector<double> fl_LnLne(const std::vector<double>& D, const std::vector<double>& ln_e) const = 0;
-    virtual std::vector<double> fl_LtLne(const std::vector<double>& D, const std::vector<double>& ln_e, size_t ti) const = 0;
-    virtual std::vector<double> fl_uLte(const std::vector<double>& D, size_t ti) const = 0;
-    virtual std::vector<double> fl_LtLte(const std::vector<double>& D, size_t t1, size_t t2) const = 0;
+    virtual math::Matrix fl_uLne(const math::Matrix& D, const math::Vector& ln_e) const = 0;
+    virtual math::Matrix fl_LnLne(const math::Matrix& D, const math::Vector& ln_e) const = 0;
+    virtual math::Matrix fl_LtLne(const math::Matrix& D, const math::Vector& ln_e, size_t ti) const = 0;
+    virtual math::Matrix fl_uLte(const math::Matrix& D, size_t ti) const = 0;
+    virtual math::Matrix fl_LtLte(const math::Matrix& D, size_t t1, size_t t2) const = 0;
 
-    virtual std::vector<double> fl2_uL(const std::vector<double>& l_e) const = 0;
-    virtual std::vector<double> fl2_LL(const std::vector<double>& l_e, const std::vector<double>& u1, const std::vector<double>& u2) const = 0;
+    virtual math::Matrix fl2_uL(const math::Vector& l_e) const = 0;
+    virtual math::Matrix fl2_LL(const math::Vector& l_e, const math::Vector& u1, const math::Vector& u2) const = 0;
 
     virtual void fl2_Ku_lambda(const double EPS, const std::vector<long> u1_pos, const std::vector<long> u2_pos, const std::vector<long>& lu_pos, const std::vector<double>& u, std::vector<double>& Ku) const = 0;
 

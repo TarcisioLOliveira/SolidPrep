@@ -22,6 +22,7 @@
 #define MULTIMATERIAL_HPP
 
 #include "material.hpp"
+#include "math/matrix.hpp"
 #include "utils.hpp"
 
 class MultiMaterial{
@@ -29,18 +30,18 @@ class MultiMaterial{
     MultiMaterial() = default;
     MultiMaterial(std::vector<Material*> materials, utils::ProblemType type, bool has_void);
 
-    inline std::vector<double> get_D(const MeshElement* e, const gp_Pnt& p) const{
+    inline math::Matrix get_D(const MeshElement* e, const gp_Pnt& p) const{
         if(this->problem_type == utils::PROBLEM_TYPE_2D){
             return this->materials[0]->stiffness_2D(e, p);
         } else if(this->problem_type == utils::PROBLEM_TYPE_3D){
             return this->materials[0]->stiffness_3D(e, p);
         }
-        return std::vector<double>();
+        return math::Matrix();
     }
 
-    void get_D(std::vector<double>::const_iterator rho, const double mix, const MeshElement* e, const gp_Pnt& p, std::vector<double>& D) const;
+    void get_D(std::vector<double>::const_iterator rho, const double mix, const MeshElement* e, const gp_Pnt& p, math::Matrix& D) const;
 
-    void get_gradD(std::vector<double>::const_iterator rho, const double mix, const MeshElement* e, const gp_Pnt& p, std::vector<std::vector<double>>& gradD) const;
+    void get_gradD(std::vector<double>::const_iterator rho, const double mix, const MeshElement* e, const gp_Pnt& p, std::vector<math::Matrix>& gradD) const;
 
     double get_density(std::vector<double>::const_iterator rho, const MeshElement* e, const gp_Pnt& p) const;
 
@@ -60,8 +61,8 @@ class MultiMaterial{
     bool has_void;
     bool is_homogeneous = true;
 
-    void get_D_internal(std::vector<double>::const_iterator& rho, const double mix, const MeshElement* e, const gp_Pnt& p, std::vector<double>& D) const;
-    void get_gradD_internal(std::vector<double>::const_iterator& rho, const double mix, const MeshElement* e, const gp_Pnt& p, std::vector<std::vector<double>>& gradD) const;
+    void get_D_internal(std::vector<double>::const_iterator& rho, const double mix, const MeshElement* e, const gp_Pnt& p, math::Matrix& D) const;
+    void get_gradD_internal(std::vector<double>::const_iterator& rho, const double mix, const MeshElement* e, const gp_Pnt& p, std::vector<math::Matrix>& gradD) const;
 };
 
 #endif

@@ -229,7 +229,7 @@ void Averaging::get_gradient(std::vector<double>& gradx) const{
                     }
                     for(size_t i = 0; i < N; ++i){
                         for(size_t k = 0; k < num_nodes; ++k){
-                            *g_it += grad[i*num_nodes + k]*nx[k];
+                            *g_it += grad(i, k)*nx[k];
                         }
                         ++g_it;
                     }

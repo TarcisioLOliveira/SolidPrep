@@ -22,13 +22,14 @@
 #include <mpich-x86_64/mpi.h>
 #include "finite_element/eigen_pcg.hpp"
 #include "logger.hpp"
+#include "math/matrix.hpp"
 
 namespace finite_element{
 
 EigenPCG::EigenPCG(ContactType contact_type, double rtol_abs):
     FiniteElement(contact_type, rtol_abs, &this->gsm), gsm(){}
 
-void EigenPCG::generate_matrix_base(const Meshing* const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const std::vector<double>& u_ext, const ContactType type){
+void EigenPCG::generate_matrix_base(const Meshing* const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<math::Matrix>& D_cache, const std::vector<double>& u_ext, const ContactType type){
 
     this->l_num = l_num;
     this->u_size = u_size;

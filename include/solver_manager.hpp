@@ -22,6 +22,7 @@
 #define SOLVER_MANAGER_HPP
 
 #include "finite_element.hpp"
+#include "math/matrix.hpp"
 
 class SolverManager{
     public:
@@ -38,7 +39,7 @@ class SolverManager{
     std::vector<double> calculate_reactions(const Meshing* const mesh, const std::vector<double>& u) const;
 
     const std::vector<std::vector<double>>& sub_u = this->split_u;
-    const std::vector<std::vector<double>>& D_vec = this->D_matrices;
+    const std::vector<math::Matrix>& D_vec = this->D_matrices;
 
     private:
     size_t iteration = 0;
@@ -46,7 +47,7 @@ class SolverManager{
     std::vector<std::vector<double>> split_u;
     std::vector<std::unique_ptr<FiniteElement>> solvers;
     std::vector<double> old_densities;
-    std::vector<std::vector<double>> D_matrices;
+    std::vector<math::Matrix> D_matrices;
     bool topopt = false;
     // Sorry
     // One vector per calculate_* called per subproblem

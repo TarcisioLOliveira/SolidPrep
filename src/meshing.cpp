@@ -20,6 +20,7 @@
 
 #include "meshing.hpp"
 #include "logger.hpp"
+#include "math/matrix.hpp"
 #include "utils.hpp"
 #include "project_data.hpp"
 #include <BRepBuilderAPI_Transform.hxx>
@@ -702,8 +703,10 @@ void Meshing::distribute_boundary_elements(){
 void Meshing::generate_load_vector(){
     const size_t N = this->elem_info->get_nodes_per_element();
     const size_t Nb = this->elem_info->get_boundary_nodes_per_element();
-    size_t dof = this->elem_info->get_dof_per_node();
+    const size_t dof = this->elem_info->get_dof_per_node();
+    const size_t dim = (this->elem_info->get_problem_type() == utils::ProblemType::PROBLEM_TYPE_2D) ? 2 : 3;
 
+    math::Vector vec(dim);
     if(this->elem_info->get_problem_type() == utils::PROBLEM_TYPE_2D){
         auto is_between_points = [](gp_Pnt p1, gp_Pnt p2, gp_Pnt p)->bool{
             gp_Mat M(1, p1.X(), p1.Y(), 1, p2.X(), p2.Y(), 1, p.X(), p.Y());
@@ -738,7 +741,10 @@ void Meshing::generate_load_vector(){
             const auto& node_pos = this->node_positions[spid];
             auto& load_vec = this->load_vector[spid];
             for(auto& f : p.forces){
-                gp_Vec vec(f->vec/(thickness*f->S.get_dimension()));
+                gp_Vec vec_tmp(f->vec/(thickness*f->S.get_dimension()));
+                for(size_t i = 0; i < dim; ++i){
+                    vec[i] = vec_tmp.Coord(i+1);
+                }
 
                 gp_Dir Snormal = f->S.get_normal();
                 double Ssize = f->S.get_dimension();
@@ -758,7 +764,7 @@ void Meshing::generate_load_vector(){
                             list.push_back(n->point);
                         }
                     }
-                    std::vector<double> fe;
+                    math::Vector fe;
                     if(list.size() >= 2){
                         fe = e.parent->get_f(thickness, vec, list);
                     } else if(list.size() > 1) {
@@ -780,10 +786,10 @@ void Meshing::generate_load_vector(){
                         }
                         fe = e.parent->get_f(thickness, vec, list);
                     }
-                    if(fe.size() > 0){
+                    if(fe.get_N() > 0){
                         //logger::quick_log(fe);
-                        for(auto& ff:fe){
-                            F += ff;
+                        for(size_t i = 0; i < fe.get_N(); ++i){
+                            F += fe[i];
                         }
                         for(size_t i = 0; i < N; ++i){
                             for(size_t j = 0; j < dof; ++j){
@@ -847,7 +853,10 @@ void Meshing::generate_load_vector(){
                     }
                 }
 
-                gp_Vec vec(f->vec/A);
+                gp_Vec vec_tmp(f->vec/A);
+                for(size_t i = 0; i < dim; ++i){
+                    vec[i] = vec_tmp.Coord(i+1);
+                }
 
                 for(size_t i = 0; i < apply_force.size(); ++i){
                     if(apply_force[i]){
@@ -858,8 +867,8 @@ void Meshing::generate_load_vector(){
                         }
                         const auto fe = e.parent->get_f(1, vec, points);
                         //logger::quick_log(fe);
-                        for(auto& ff:fe){
-                            F += ff;
+                        for(size_t i = 0; i < fe.get_N(); ++i){
+                            F += fe[i];
                         }
                         for(size_t i = 0; i < N; ++i){
                             for(size_t j = 0; j < dof; ++j){
@@ -892,6 +901,9 @@ void Meshing::prepare_for_FEM(const TopoDS_Shape& shape,
     std::sort(this->node_list.begin(), this->node_list.end(), comp);
 
     size_t dof = this->elem_info->get_dof_per_node();
+    const size_t dim = (this->elem_info->get_problem_type() == utils::ProblemType::PROBLEM_TYPE_2D) ? 2 : 3;
+
+    math::Vector vec(dim);
 
     size_t current = 0;
     for(size_t i = 0; i < this->node_list.size(); ++i){
@@ -938,7 +950,10 @@ void Meshing::prepare_for_FEM(const TopoDS_Shape& shape,
 
     if(this->elem_info->get_problem_type() == utils::PROBLEM_TYPE_2D){
         for(auto& f : forces){
-            gp_Vec vec(f.vec/(thickness*f.S.get_dimension()));
+            gp_Vec vec_tmp(f.vec/(thickness*f.S.get_dimension()));
+            for(size_t i = 0; i < dim; ++i){
+                vec[i] = vec_tmp.Coord(i+1);
+            }
 
             gp_Dir Snormal = f.S.get_normal();
             double Ssize = f.S.get_dimension();
@@ -986,7 +1001,7 @@ void Meshing::prepare_for_FEM(const TopoDS_Shape& shape,
                         }
                     }
                 }
-                std::vector<double> fe;
+                math::Vector fe;
                 if(list.size() == 2){
                     fe = e->get_f(thickness, vec, {list[0]->point, list[1]->point});
                 } else if(list.size() == 1){
@@ -1017,7 +1032,7 @@ void Meshing::prepare_for_FEM(const TopoDS_Shape& shape,
                 //         fe = e->get_f(dir, norm, {points[0], points[1]});
                 //     }
                 // }
-                if(fe.size() > 0){
+                if(fe.get_N() > 0){
                     logger::quick_log(fe);
                     for(size_t i = 0; i < N; ++i){
                         for(size_t j = 0; j < dof; ++j){
@@ -1032,7 +1047,10 @@ void Meshing::prepare_for_FEM(const TopoDS_Shape& shape,
         }
     } else if(this->elem_info->get_problem_type() == utils::PROBLEM_TYPE_3D){
         for(auto& f : forces){
-            gp_Vec vec(f.vec/f.S.get_dimension());
+            gp_Vec vec_tmp(f.vec/f.S.get_dimension());
+            for(size_t i = 0; i < dim; ++i){
+                vec[i] = vec_tmp.Coord(i+1);
+            }
 
             // TODO: generalize this and make it faster
             for(auto& e : element_list){

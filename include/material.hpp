@@ -21,11 +21,11 @@
 #ifndef MATERIAL_HPP
 #define MATERIAL_HPP
 
-#include <Eigen/Core>
 #include <vector>
 #include <array>
 #include <cblas.h>
 #include <gp_Dir.hxx>
+#include "math/matrix.hpp"
 
 class MeshElement;
 
@@ -52,18 +52,16 @@ class Material{
      */
     Material(const std::string& name, std::vector<double> Smax, std::vector<double> Tmax);
 
-    virtual std::vector<double> stiffness_2D(const MeshElement* const e, const gp_Pnt& p) const = 0;
-    virtual std::vector<double> stiffness_3D(const MeshElement* const e, const gp_Pnt& p) const = 0;
-    virtual std::vector<double> stiffness_inverse_2D(const MeshElement* const e, const gp_Pnt& p) const = 0;
-    virtual std::vector<double> stiffness_inverse_3D(const MeshElement* const e, const gp_Pnt& p) const = 0;
+    virtual math::Matrix stiffness_2D(const MeshElement* const e, const gp_Pnt& p) const = 0;
+    virtual math::Matrix stiffness_3D(const MeshElement* const e, const gp_Pnt& p) const = 0;
+    virtual math::Matrix stiffness_inverse_2D(const MeshElement* const e, const gp_Pnt& p) const = 0;
+    virtual math::Matrix stiffness_inverse_3D(const MeshElement* const e, const gp_Pnt& p) const = 0;
     virtual double get_density(const MeshElement* const e, const gp_Pnt& p) const = 0;
 
-    virtual double beam_E_2D(const MeshElement* const e, const gp_Pnt& p, const Eigen::Matrix<double, 2, 2>& R) const = 0;
-    virtual double beam_E_3D(const MeshElement* const e, const gp_Pnt& p, const Eigen::Matrix<double, 3, 3>& R) const = 0;
-    virtual std::array<double, 2> beam_EG_2D(const MeshElement* const e, const gp_Pnt& p, const Eigen::Matrix<double, 2, 2>& R) const = 0;
-    virtual std::array<double, 4> beam_EG_3D(const MeshElement* const e, const gp_Pnt& p, const Eigen::Matrix<double, 3, 3>& R) const = 0;
-    virtual double S12_2D(const MeshElement* const e, const gp_Pnt& p, const Eigen::Matrix<double, 2, 2>& R) const = 0;
-    virtual std::array<double, 2> S12_S13_3D(const MeshElement* const e, const gp_Pnt& p, const Eigen::Matrix<double, 3, 3>& R) const = 0;
+    virtual double beam_E_2D(const MeshElement* const e, const gp_Pnt& p, const math::Matrix& R) const = 0;
+    virtual double beam_E_3D(const MeshElement* const e, const gp_Pnt& p, const math::Matrix& R) const = 0;
+    virtual std::array<double, 2> beam_EG_2D(const MeshElement* const e, const gp_Pnt& p, const math::Matrix& R) const = 0;
+    virtual std::array<double, 4> beam_EG_3D(const MeshElement* const e, const gp_Pnt& p, const math::Matrix& R) const = 0;
 
     virtual Type get_type() const{ return this->NONE; }
     virtual bool is_homogeneous() const{ return true; }
@@ -82,28 +80,11 @@ class Material{
     virtual double get_max_Von_Mises_2D() const;
     virtual double get_max_Von_Mises_3D() const;
     
-    inline void rotate_D_base(std::vector<double>& D, const std::vector<double>& R, const size_t N) const{
-        std::vector<double> Dtmp(N*N, 0);
-        cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasTrans, N, N, N, 1, D.data(), N, R.data(), N, 0, Dtmp.data(), N);
-        cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, N, N, N, 1, R.data(), N, Dtmp.data(), N, 0, D.data(), N);
+    inline void rotate_D(math::Matrix& D, const math::Matrix& R) const{
+        D = R*D*R.T();
     }
-    inline void rotate_D_2D(std::vector<double>& D, const std::vector<double>& R) const{
-        return rotate_D_base(D, R, 3);
-    }
-    inline void rotate_D_3D(std::vector<double>& D, const std::vector<double>& R) const{
-        return rotate_D_base(D, R, 6);
-    }
-
-    inline void rotate_S_base(std::vector<double>& S, const std::vector<double>& R, const size_t N) const{
-        std::vector<double> Stmp(N*N, 0);
-        cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasTrans, N, N, N, 1, S.data(), N, R.data(), N, 0, Stmp.data(), N);
-        cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, N, N, N, 1, R.data(), N, Stmp.data(), N, 0, S.data(), N);
-    }
-    inline void rotate_S_2D(std::vector<double>& S, const std::vector<double>& R) const{
-        return rotate_S_base(S, R, 3);
-    }
-    inline void rotate_S_3D(std::vector<double>& S, const std::vector<double>& R) const{
-        return rotate_S_base(S, R, 6);
+    inline void rotate_S(math::Matrix& S, const math::Matrix& R) const{
+        S = R*S*R.T();
     }
 
     const std::string name;

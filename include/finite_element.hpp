@@ -22,7 +22,7 @@
 #define FINITE_ELEMENT_HPP
 
 #include <vector>
-#include "element.hpp"
+#include "math/matrix.hpp"
 #include "meshing.hpp"
 #include "geometry.hpp"
 
@@ -42,9 +42,9 @@ class FiniteElement{
 
     virtual ~FiniteElement() = default;
 
-    void generate_matrix(const Meshing* const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const std::vector<double>& u_ext);
+    void generate_matrix(const Meshing* const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<math::Matrix>& D_cache, const std::vector<double>& u_ext);
 
-    void calculate_displacements(const Meshing* const mesh, std::vector<double>& load, const std::vector<double>& u0, std::vector<double>& lambda, const bool topopt, const std::vector<std::vector<double>>& D_cache);
+    void calculate_displacements(const Meshing* const mesh, std::vector<double>& load, const std::vector<double>& u0, std::vector<double>& lambda, const bool topopt, const std::vector<math::Matrix>& D_cache);
 
     virtual std::vector<double> calculate_forces(const Meshing* const mesh, const std::vector<double>& displacements) const;
 
@@ -54,7 +54,7 @@ class FiniteElement{
     GlobalStiffnessMatrix* matrix = nullptr;
     size_t u_size, l_num;
 
-    virtual void generate_matrix_base(const Meshing* const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const std::vector<double>& u_ext, const ContactType type) = 0;
+    virtual void generate_matrix_base(const Meshing* const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<math::Matrix>& D_cache, const std::vector<double>& u_ext, const ContactType type) = 0;
 
     virtual void solve(std::vector<double>& load) = 0;
     virtual void reset_hessian() = 0;
@@ -62,7 +62,7 @@ class FiniteElement{
     void solve_rigid(std::vector<double>& load);
     void solve_frictionless_displ(const Meshing* const mesh, std::vector<double>& load, std::vector<double>& lambda);
 
-    void solve_frictionless_penalty(const Meshing* const mesh, std::vector<double>& load, const bool topopt, const std::vector<std::vector<double>>& D_cache, const std::vector<double>& u0);
+    void solve_frictionless_penalty(const Meshing* const mesh, std::vector<double>& load, const bool topopt, const std::vector<math::Matrix>& D_cache, const std::vector<double>& u0);
 
     private:
 };

@@ -21,14 +21,12 @@
 #ifndef SPRING_HPP
 #define SPRING_HPP
 
-#include <algorithm>
 #include <array>
-#include <Eigen/Core>
 #include "element_factory.hpp"
 #include "material.hpp"
+#include "math/matrix.hpp"
 #include "utils.hpp"
 #include "cross_section.hpp"
-#include "curvature.hpp"
 
 class BoundaryElement;
 
@@ -42,13 +40,13 @@ class Spring{
     Spring(Spring&&) = default;
     void generate_mesh(std::vector<BoundaryElement>& boundary_elements);
 
-    std::vector<double> get_K(const MeshElement* const e, const gp_Pnt& p) const;
+    math::Matrix get_K(const MeshElement* const e, const gp_Pnt& p) const;
 
     const CrossSection S;
     const double A;
     const double thickness;
-    const Eigen::Matrix<double, 2, 2> rot2D;
-    const Eigen::Matrix<double, 3, 3> rot3D;
+    const math::Matrix rot2D;
+    const math::Matrix rot3D;
     const Material* mat;
     const gp_Dir normal;
     const MeshElementFactory* elem_info;

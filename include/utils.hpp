@@ -21,7 +21,6 @@
 #ifndef UTILS_HPP
 #define UTILS_HPP
 
-#include <Eigen/Core>
 #include <string>
 #include <utility>
 #include <gp_Pnt.hxx>
@@ -30,6 +29,11 @@
 #include <TopoDS_Wire.hxx>
 #include <vector>
 #include <memory>
+
+namespace math{
+    class Matrix;
+    class MatrixTransposeView;
+}
 
 namespace utils{
 
@@ -46,11 +50,16 @@ namespace utils{
      *
      * @return Changed point
      */
-    inline gp_Pnt change_point(const gp_Pnt& p, const Eigen::Matrix<double, 3, 3>& R){
-        Eigen::Vector<double, 3> pv{p.X(), p.Y(), p.Z()};
-        pv = R*pv;
-        return gp_Pnt(pv[0], pv[1], pv[2]);
-    }
+    gp_Pnt change_point(const gp_Pnt& p, const math::Matrix& R);
+    /**
+     * Change of basis for gp_Pnt instances.
+     *
+     * @param p Point.
+     * @param R Change-of-basis matrix.
+     *
+     * @return Changed point
+     */
+    gp_Pnt change_point(const gp_Pnt& p, const math::MatrixTransposeView& R);
 
     /**
      * Simple dynamic array that manages its own lifetime.

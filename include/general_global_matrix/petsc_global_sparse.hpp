@@ -21,6 +21,7 @@
 #ifndef PETSC_GLOBAL_SPARSE_HPP
 #define PETSC_GLOBAL_SPARSE_HPP
 
+#include "math/matrix.hpp"
 #include <vector>
 #include <petsc.h>
 
@@ -36,7 +37,7 @@ class PETScGlobalSparse{
 
     void end_preallocation();
 
-    inline void add_element(const std::vector<double> matrix, const std::vector<long> pos){
+    inline void add_element(const math::Matrix& matrix, const std::vector<long> pos){
         MatSetValues(this->M, pos.size(), pos.data(), pos.size(), pos.data(), matrix.data(), ADD_VALUES);
     }
 

@@ -21,7 +21,6 @@
 #ifndef BTRI3_HPP
 #define BTRI3_HPP
 
-#include <Eigen/Core>
 #include "element.hpp"
 #include "material.hpp"
 #include <vector>
@@ -48,18 +47,18 @@ class BTRI3 : public BoundaryMeshElement{
 
     BTRI3(ElementShape s, const MeshElement* const parent);
 
-    virtual std::vector<double> get_K_ext(const Eigen::MatrixXd& D, const gp_Pnt& center) const override;
-    virtual std::vector<double> get_normal_stresses(const Eigen::MatrixXd& D, const std::vector<double>& u, const gp_Pnt& p, const gp_Pnt& center) const override;
-    virtual std::vector<double> get_stress_integrals(const Eigen::MatrixXd& D, const gp_Pnt& center) const override;
-    virtual std::vector<double> get_equilibrium_partial(const Eigen::MatrixXd& D, const gp_Pnt& center, const std::vector<size_t>& stresses) const override;
-    virtual std::vector<double> get_dz_vector(const Eigen::MatrixXd& S, const Eigen::MatrixXd& D, const double Az, const double Bz, const gp_Pnt& center) const override;
-    virtual std::vector<double> get_force_vector(const Eigen::MatrixXd& D, const std::vector<double>& u, const gp_Pnt& center, const Eigen::MatrixXd& rot) const override;
+    virtual math::Matrix get_K_ext(const math::Matrix& D, const gp_Pnt& center) const override;
+    virtual math::Vector get_normal_stresses(const math::Matrix& D, const std::vector<double>& u, const gp_Pnt& p, const gp_Pnt& center) const override;
+    virtual math::Matrix get_stress_integrals(const math::Matrix& D, const gp_Pnt& center) const override;
+    virtual math::Matrix get_equilibrium_partial(const math::Matrix& D, const gp_Pnt& center, const std::vector<size_t>& stresses) const override;
+    virtual math::Vector get_dz_vector(const math::Matrix& S, const math::Matrix& D, const double Az, const double Bz, const gp_Pnt& center) const override;
+    virtual math::Vector get_force_vector(const math::Matrix& D, const std::vector<double>& u, const gp_Pnt& center, const math::Matrix& rot) const override;
 
-    virtual Eigen::MatrixXd diffusion_1dof(const Eigen::MatrixXd& A) const override;
-    virtual Eigen::MatrixXd advection_1dof(const Eigen::VectorXd& v) const override;
-    virtual Eigen::MatrixXd absorption_1dof() const override;
-    virtual Eigen::VectorXd source_1dof() const override;
-    virtual Eigen::VectorXd flow_1dof(const std::array<const Node*, 2>& nodes) const override;
+    virtual math::Matrix diffusion_1dof(const math::Matrix& A) const override;
+    virtual math::Matrix advection_1dof(const math::Vector& v) const override;
+    virtual math::Matrix absorption_1dof() const override;
+    virtual math::Vector source_1dof() const override;
+    virtual math::Vector flow_1dof(const std::array<const Node*, 2>& nodes) const override;
 
     virtual double get_area() const override{
         return this->delta;
@@ -100,33 +99,32 @@ class BTRI3 : public BoundaryMeshElement{
     inline double N(const gp_Pnt& p, size_t i) const{
         return a[i] + b[i]*p.X() + c[i]*p.Y();
     }
-    inline Eigen::Vector<double, 3> N_mat_1dof(const gp_Pnt& p) const{
-        return Eigen::Vector<double, 3>(N(p, 0), N(p, 1), N(p, 2));
+    inline math::Vector N_mat_1dof(const gp_Pnt& p) const{
+        return math::Vector({N(p, 0), N(p, 1), N(p, 2)});
     }
-    inline Eigen::Matrix<double, 2, 3> dN_mat_1dof() const{
-        return Eigen::Matrix<double, 2, 3>{{b[0], b[1], b[2]},
-                                           {c[0], c[1], c[2]}};
+    inline math::Matrix dN_mat_1dof() const{
+        return math::Matrix({b[0], b[1], b[2],
+                             c[0], c[1], c[2]}, 2, 3);
     }
-    inline Eigen::Matrix<double, S_SIZE, K_DIM + 6> get_eps(const gp_Pnt& p, const gp_Pnt& center) const{
+    inline math::Matrix get_eps(const gp_Pnt& p, const gp_Pnt& center) const{
         const double x = p.X() - center.X();
         const double y = p.Y() - center.Y();
-        return Eigen::Matrix<double, S_SIZE, K_DIM + 6>
-            {{b[0], 0, 0, b[1], 0, 0, b[2], 0, 0, 0, 0, 0, 0, 0, 0},
-             {0, c[0], 0, 0, c[1], 0, 0, c[2], 0, 0, 0, 0, 0, 0, 0},
-             {0, 0, 0, 0, 0, 0, 0, 0, 0, x, y, 1, 0, 0, 0},
-             {0, 0, c[0], 0, 0, c[1], 0, 0, c[2], 0, 0, 0, -x, 1, 0},
-             {0, 0, b[0], 0, 0, b[1], 0, 0, b[2], 0, 0, 0, y, 0, 1},
-             {c[0], b[0], 0, c[1], b[1], 0, c[2], c[2], 0, 0, 0, 0, 0, 0, 0}};
-
+        return math::Matrix(
+            {b[0], 0, 0, b[1], 0, 0, b[2], 0, 0, 0, 0, 0, 0, 0, 0,
+             0, c[0], 0, 0, c[1], 0, 0, c[2], 0, 0, 0, 0, 0, 0, 0,
+             0, 0, 0, 0, 0, 0, 0, 0, 0, x, y, 1, 0, 0, 0,
+             0, 0, c[0], 0, 0, c[1], 0, 0, c[2], 0, 0, 0, -x, 1, 0,
+             0, 0, b[0], 0, 0, b[1], 0, 0, b[2], 0, 0, 0, y, 0, 1,
+             c[0], b[0], 0, c[1], b[1], 0, c[2], c[2], 0, 0, 0, 0, 0, 0, 0}, S_SIZE, K_DIM + 6);
     };
-    inline Eigen::Matrix<double, S_SIZE, K_DIM> get_deps() const{
-        return Eigen::Matrix<double, S_SIZE, K_DIM>
-            {{b[0], 0, 0, b[1], 0, 0, b[2], 0, 0},
-             {0, c[0], 0, 0, c[1], 0, 0, c[2], 0},
-             {0, 0, 0, 0, 0, 0, 0, 0, 0},
-             {0, 0, c[0], 0, 0, c[1], 0, 0, c[2]},
-             {0, 0, b[0], 0, 0, b[1], 0, 0, b[2]},
-             {c[0], b[0], 0, c[1], b[1], 0, c[2], c[2], 0}};
+    inline math::Matrix get_deps() const{
+        return math::Matrix(
+            {b[0], 0, 0, b[1], 0, 0, b[2], 0, 0,
+             0, c[0], 0, 0, c[1], 0, 0, c[2], 0,
+             0, 0, 0, 0, 0, 0, 0, 0, 0,
+             0, 0, c[0], 0, 0, c[1], 0, 0, c[2],
+             0, 0, b[0], 0, 0, b[1], 0, 0, b[2],
+             c[0], b[0], 0, c[1], b[1], 0, c[2], c[2], 0}, S_SIZE, K_DIM);
     };
 };
 

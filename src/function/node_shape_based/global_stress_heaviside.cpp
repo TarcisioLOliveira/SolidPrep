@@ -65,7 +65,7 @@ double GlobalStressHeaviside::calculate_with_gradient(const NodeShapeBasedOptimi
     const size_t kw = this->mesh->elem_info->get_k_dimension();
     const size_t dof = this->mesh->elem_info->get_dof_per_node();
     std::fill(grad.begin(), grad.end(), 0);
-    std::vector<double> D;
+    math::Matrix D;
 
     double result = 0;
 

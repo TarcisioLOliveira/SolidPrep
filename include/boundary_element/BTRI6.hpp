@@ -21,7 +21,6 @@
 #ifndef BTRI6_HPP
 #define BTRI6_HPP
 
-#include <Eigen/Core>
 #include "element.hpp"
 #include "material.hpp"
 #include <vector>
@@ -48,18 +47,18 @@ class BTRI6 : public BoundaryMeshElement{
 
     BTRI6(ElementShape s, const MeshElement* const parent);
 
-    virtual std::vector<double> get_K_ext(const Eigen::MatrixXd& D, const gp_Pnt& center) const override;
-    virtual std::vector<double> get_normal_stresses(const Eigen::MatrixXd& D, const std::vector<double>& u, const gp_Pnt& p, const gp_Pnt& center) const override;
-    virtual std::vector<double> get_stress_integrals(const Eigen::MatrixXd& D, const gp_Pnt& center) const override;
-    virtual std::vector<double> get_equilibrium_partial(const Eigen::MatrixXd& D, const gp_Pnt& center, const std::vector<size_t>& stresses) const override;
-    virtual std::vector<double> get_dz_vector(const Eigen::MatrixXd& S, const Eigen::MatrixXd& D, const double Az, const double Bz, const gp_Pnt& center) const override;
-    virtual std::vector<double> get_force_vector(const Eigen::MatrixXd& D, const std::vector<double>& u, const gp_Pnt& center, const Eigen::MatrixXd& rot) const override;
+    virtual math::Matrix get_K_ext(const math::Matrix& D, const gp_Pnt& center) const override;
+    virtual math::Vector get_normal_stresses(const math::Matrix& D, const std::vector<double>& u, const gp_Pnt& p, const gp_Pnt& center) const override;
+    virtual math::Matrix get_stress_integrals(const math::Matrix& D, const gp_Pnt& center) const override;
+    virtual math::Matrix get_equilibrium_partial(const math::Matrix& D, const gp_Pnt& center, const std::vector<size_t>& stresses) const override;
+    virtual math::Vector get_dz_vector(const math::Matrix& S, const math::Matrix& D, const double Az, const double Bz, const gp_Pnt& center) const override;
+    virtual math::Vector get_force_vector(const math::Matrix& D, const std::vector<double>& u, const gp_Pnt& center, const math::Matrix& rot) const override;
 
-    virtual Eigen::MatrixXd diffusion_1dof(const Eigen::MatrixXd& A) const override;
-    virtual Eigen::MatrixXd advection_1dof(const Eigen::VectorXd& v) const override;
-    virtual Eigen::MatrixXd absorption_1dof() const override;
-    virtual Eigen::VectorXd source_1dof() const override;
-    virtual Eigen::VectorXd flow_1dof(const std::array<const Node*, 2>& nodes) const override;
+    virtual math::Matrix diffusion_1dof(const math::Matrix& A) const override;
+    virtual math::Matrix advection_1dof(const math::Vector& v) const override;
+    virtual math::Matrix absorption_1dof() const override;
+    virtual math::Vector source_1dof() const override;
+    virtual math::Vector flow_1dof(const std::array<const Node*, 2>& nodes) const override;
 
     virtual double get_area() const override{
         return this->delta;
@@ -106,20 +105,19 @@ class BTRI6 : public BoundaryMeshElement{
     inline double dNdy(const gp_Pnt& p, size_t i) const{
         return c[i] + d[i]*p.X() + 2*f[i]*p.Y();
     }
-    inline Eigen::Vector<double, 6> N_mat_1dof(const gp_Pnt& p) const{
-        return Eigen::Vector<double, 6>(N(p, 0), N(p, 1), N(p, 2), N(p, 3), N(p, 4), N(p, 5));
+    inline math::Vector N_mat_1dof(const gp_Pnt& p) const{
+        return math::Vector{N(p, 0), N(p, 1), N(p, 2), N(p, 3), N(p, 4), N(p, 5)};
     }
-    inline Eigen::Matrix<double, 2, 6> dN_mat_1dof(const gp_Pnt& p) const{
-        return Eigen::Matrix<double, 2, 6>{{dNdx(p, 0), dNdx(p, 1), dNdx(p, 2), dNdx(p, 3), dNdx(p, 4), dNdx(p, 5)},
-                                           {dNdy(p, 0), dNdy(p, 1), dNdy(p, 2), dNdy(p, 3), dNdy(p, 4), dNdy(p, 5)}};
+    inline math::Matrix dN_mat_1dof(const gp_Pnt& p) const{
+        return math::Matrix({dNdx(p, 0), dNdx(p, 1), dNdx(p, 2), dNdx(p, 3), dNdx(p, 4), dNdx(p, 5),
+                             dNdy(p, 0), dNdy(p, 1), dNdy(p, 2), dNdy(p, 3), dNdy(p, 4), dNdy(p, 5)}, 2, 6);
     }
 
-    inline Eigen::Matrix<double, S_SIZE, K_DIM + 6> get_eps(const gp_Pnt& p, const gp_Pnt& center) const{
+    inline math::Matrix get_eps(const gp_Pnt& p, const gp_Pnt& center) const{
         const auto dN = this->dN_mat_1dof(p);
         const double x = p.X() - center.X();
         const double y = p.Y() - center.Y();
-        Eigen::Matrix<double, S_SIZE, K_DIM + 6> M;
-        M.fill(0);
+        math::Matrix M(S_SIZE, K_DIM + 6);
 
         /*
             {{dN(0,i),       0,       0, 0, 0, 0,  0, 0, 0},
@@ -152,11 +150,10 @@ class BTRI6 : public BoundaryMeshElement{
         }
 
         return M;
-
     };
-    inline Eigen::Matrix<double, S_SIZE, K_DIM> get_deps(const gp_Pnt& p) const{
+    inline math::Matrix get_deps(const gp_Pnt& p) const{
         const auto dN = this->dN_mat_1dof(p);
-        Eigen::Matrix<double, S_SIZE, K_DIM> M;
+        math::Matrix M(S_SIZE, K_DIM);
         M.fill(0);
         for(size_t i = 0; i < NODES_PER_ELEM; ++i){
             M(0, i*NODE_DOF + 0) = dN(0, i);

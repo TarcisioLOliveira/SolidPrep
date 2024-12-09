@@ -36,7 +36,7 @@ class OrthotropicFlow : public CoordinateField {
     virtual void display_views() const override;
 
     virtual std::array<gp_Dir, 3> get_array(const MeshElement* e, const gp_Pnt& p) const override;
-    virtual Eigen::Matrix<double, 3, 3> get_matrix(const MeshElement* e, const gp_Pnt& p) const override;
+    virtual math::Matrix get_matrix(const MeshElement* e, const gp_Pnt& p) const override;
 
     inline virtual Class get_class() const override{
         return Class::ORTHOTROPIC_FLOW;

@@ -20,6 +20,7 @@
 
 #include "global_stiffness_matrix/eigen_sparse_asymmetric.hpp"
 #include "logger.hpp"
+#include "math/matrix.hpp"
 #include "utils/sparse_matrix.hpp"
 
 namespace global_stiffness_matrix{
@@ -32,7 +33,7 @@ class EigenSparseAsymmetricTriplets : public GlobalStiffnessMatrix{
 
     virtual ~EigenSparseAsymmetricTriplets() = default;
 
-    virtual void generate(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const std::vector<double>& u_ext, const FiniteElement::ContactType type) override;
+    virtual void generate(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<math::Matrix>& D_cache, const std::vector<double>& u_ext, const FiniteElement::ContactType type) override;
 
     inline virtual void dot_vector(const std::vector<double>& v, std::vector<double>& v_out) const override{
         (void)v;
@@ -49,11 +50,11 @@ class EigenSparseAsymmetricTriplets : public GlobalStiffnessMatrix{
     bool first_time = true;
     utils::SparseMatrix K;
 
-    inline virtual void insert_block_symmetric(const std::vector<double>& k, const std::vector<long>& posi, const std::vector<long>& posj) override{
+    inline virtual void insert_block_symmetric(const math::Matrix& k, const std::vector<long>& posi, const std::vector<long>& posj) override{
         this->K.insert_block(k, posi, posj, false);
         this->K.insert_block(k, posi, posj, true);
     }
-    virtual inline void insert_element_matrix(const std::vector<double>& k, const std::vector<long>& pos) override{
+    virtual inline void insert_element_matrix(const math::Matrix& k, const std::vector<long>& pos) override{
         this->K.insert_matrix_general_mumps(k, pos);
     }
     inline virtual void add_to_matrix(size_t i, size_t j, double val) override{
@@ -61,7 +62,7 @@ class EigenSparseAsymmetricTriplets : public GlobalStiffnessMatrix{
     }
 };
 
-void EigenSparseAsymmetricTriplets::generate(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const std::vector<double>& u_ext, const FiniteElement::ContactType type){
+void EigenSparseAsymmetricTriplets::generate(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<math::Matrix>& D_cache, const std::vector<double>& u_ext, const FiniteElement::ContactType type){
     (void) u_size;
     (void) l_num;
     this->generate_base(mesh, u_size, l_num, node_positions, topopt, D_cache, u_ext, type);
@@ -71,7 +72,7 @@ void EigenSparseAsymmetricTriplets::generate(const Meshing * const mesh, const s
 
 }
 
-void EigenSparseAsymmetric::generate(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const std::vector<double>& u_ext, const FiniteElement::ContactType type){
+void EigenSparseAsymmetric::generate(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<math::Matrix>& D_cache, const std::vector<double>& u_ext, const FiniteElement::ContactType type){
     logger::quick_log("Generating stiffness matrix...");
     this->u_size = u_size;
     this->l_num = l_num;

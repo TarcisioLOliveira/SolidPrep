@@ -20,12 +20,12 @@
 
 #include "element/TRI3.hpp"
 #include "cblas.h"
-#include "logger.hpp"
+#include "math/matrix.hpp"
+#include "utils.hpp"
 #include <BRepBuilderAPI_MakeVertex.hxx>
 #include <BRepBuilderAPI_MakeEdge.hxx>
 #include <BRepBuilderAPI_MakeWire.hxx>
 #include <BRepBuilderAPI_MakeFace.hxx>
-#include <Eigen/src/Core/Matrix.h>
 #include <TopoDS_Wire.hxx>
 #include <TopoDS_Face.hxx>
 #include <TopoDS.hxx>
@@ -56,57 +56,15 @@ TRI3::TRI3(ElementShape s):
     this->delta = 0.5*std::abs(deltaM.Determinant());
 }
 
-std::vector<double> TRI3::get_k(const std::vector<double>& D, const double t) const{
-    const size_t N = this->NODES_PER_ELEM;
+math::Matrix TRI3::get_k(const math::Matrix& D, const double t) const{
+    math::Matrix B(this->get_B(gp_Pnt(0,0,0)));
 
-    std::vector<double> B(3*2*N, 0);
-
-    for(size_t i = 0; i < N; ++i){
-        B[i*2 + 0*2*N] = b[i]/(2*delta);
-        B[i*2 + 1*2*N] = 0;
-        B[i*2 + 2*2*N] = c[i]/(2*delta);
-        B[i*2 + 0*2*N + 1] = 0;
-        B[i*2 + 1*2*N + 1] = c[i]/(2*delta);
-        B[i*2 + 2*2*N + 1] = b[i]/(2*delta);
-    }
-
-    std::vector<double> DB(3*2*N, 0);
-
-    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 3, 2*N, 3, 1, D.data(), 3, B.data(), 2*N, 0, DB.data(), 2*N);
-
-    std::vector<double> K(2*N*2*N, 0);
-    cblas_dgemm(CblasRowMajor, CblasTrans, CblasNoTrans, 2*N, 2*N, 3, 1, B.data(), 2*N, DB.data(), 2*N, 0, K.data(), 2*N);
-
-    cblas_dscal(K.size(), t*delta, K.data(), 1);
-
-    return K;
+    return (t*delta)*(B.T()*D*B);
 }
 
-std::vector<double> TRI3::get_DB(const std::vector<double>& D, const gp_Pnt& point) const{
+math::Matrix TRI3::get_B(const gp_Pnt& point) const{
     (void)point;
-    const size_t N = this->NODES_PER_ELEM;
-
-    std::vector<double> B(3*2*N, 0);
-
-    for(size_t i = 0; i < N; ++i){
-        B[i*2 + 0*2*N] = b[i]/(2*delta);
-        B[i*2 + 1*2*N] = 0;
-        B[i*2 + 2*2*N] = c[i]/(2*delta);
-        B[i*2 + 0*2*N + 1] = 0;
-        B[i*2 + 1*2*N + 1] = c[i]/(2*delta);
-        B[i*2 + 2*2*N + 1] = b[i]/(2*delta);
-    }
-
-    std::vector<double> DB(3*2*N, 0);
-
-    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 3, 2*N, 3, 1, D.data(), 3, B.data(), 2*N, 0, DB.data(), 2*N);
-
-    return DB;
-}
-
-std::vector<double> TRI3::get_B(const gp_Pnt& point) const{
-    (void)point;
-    std::vector<double> B{
+    math::Matrix B({
     b[0]/(2*delta)
     ,
     0
@@ -142,15 +100,15 @@ std::vector<double> TRI3::get_B(const gp_Pnt& point) const{
     c[2]/(2*delta)
     ,
     b[2]/(2*delta)
-    };
+    }, S_SIZE, K_DIM);
     return B;
 }
 
-std::vector<double> TRI3::get_Nf(const double t, const std::vector<gp_Pnt>& points) const{
+math::Matrix TRI3::get_Nf(const double t, const std::vector<gp_Pnt>& points) const{
     const double x[]{points[0].X(), points[1].X()};
     const double y[]{points[0].Y(), points[1].Y()};
 
-    std::vector<double> Nf({
+    math::Matrix Nf({
     t*(2*a[0] + b[0]*x[0] + b[0]*x[1] + c[0]*y[0] + c[0]*y[1])*std::sqrt(x[0]*x[0] - 2*x[0]*x[1] + x[1]*x[1] + y[0]*y[0] - 2*y[0]*y[1] + y[1]*y[1])/(4*delta)
     ,
     0
@@ -174,24 +132,25 @@ std::vector<double> TRI3::get_Nf(const double t, const std::vector<gp_Pnt>& poin
     0
     ,
     t*(2*a[2] + b[2]*x[0] + b[2]*x[1] + c[2]*y[0] + c[2]*y[1])*std::sqrt(x[0]*x[0] - 2*x[0]*x[1] + x[1]*x[1] + y[0]*y[0] - 2*y[0]*y[1] + y[1]*y[1])/(4*delta)
-    });
+    }, K_DIM, DIM);
     
     return Nf;
 }
 
-std::vector<double> TRI3::get_nodal_density_gradient(gp_Pnt p) const{
+math::Matrix TRI3::get_nodal_density_gradient(gp_Pnt p) const{
     (void)p;
     
-    return std::vector<double>{b[0]/(2*delta), b[1]/(2*delta), b[2]/(2*delta),
-                               c[0]/(2*delta), c[1]/(2*delta), c[2]/(2*delta)};
+    return this->dN_mat_1dof();
 }
 
 
-std::vector<double> TRI3::get_R(const std::vector<double>& K, const double t, const std::vector<gp_Pnt>& points) const{
+math::Matrix TRI3::get_R(const math::Matrix& Km, const double t, const std::vector<gp_Pnt>& points) const{
     const double x[]{points[0].X(), points[1].X()};
     const double y[]{points[0].Y(), points[1].Y()};
 
-    std::vector<double> R{
+    const double* K = Km.data();
+
+    math::Matrix R({
     K[0]*t*std::sqrt(x[0]*x[0] - 2*x[0]*x[1] + x[1]*x[1] + y[0]*y[0] - 2*y[0]*y[1] + y[1]*y[1])*(3*a[0]*a[0] + 3*a[0]*b[0]*x[0] + 3*a[0]*b[0]*x[1] + 3*a[0]*c[0]*y[0] + 3*a[0]*c[0]*y[1] + b[0]*b[0]*x[0]*x[0] + b[0]*b[0]*x[0]*x[1] + b[0]*b[0]*x[1]*x[1] + 2*b[0]*c[0]*x[0]*y[0] + b[0]*c[0]*x[0]*y[1] + b[0]*c[0]*x[1]*y[0] + 2*b[0]*c[0]*x[1]*y[1] + c[0]*c[0]*y[0]*y[0] + c[0]*c[0]*y[0]*y[1] + c[0]*c[0]*y[1]*y[1])/(12*delta*delta)
     ,
     K[1]*t*std::sqrt(x[0]*x[0] - 2*x[0]*x[1] + x[1]*x[1] + y[0]*y[0] - 2*y[0]*y[1] + y[1]*y[1])*(3*a[0]*a[0] + 3*a[0]*b[0]*x[0] + 3*a[0]*b[0]*x[1] + 3*a[0]*c[0]*y[0] + 3*a[0]*c[0]*y[1] + b[0]*b[0]*x[0]*x[0] + b[0]*b[0]*x[0]*x[1] + b[0]*b[0]*x[1]*x[1] + 2*b[0]*c[0]*x[0]*y[0] + b[0]*c[0]*x[0]*y[1] + b[0]*c[0]*x[1]*y[0] + 2*b[0]*c[0]*x[1]*y[1] + c[0]*c[0]*y[0]*y[0] + c[0]*c[0]*y[0]*y[1] + c[0]*c[0]*y[1]*y[1])/(12*delta*delta)
@@ -263,107 +222,83 @@ std::vector<double> TRI3::get_R(const std::vector<double>& K, const double t, co
     K[2]*t*std::sqrt(x[0]*x[0] - 2*x[0]*x[1] + x[1]*x[1] + y[0]*y[0] - 2*y[0]*y[1] + y[1]*y[1])*(3*a[2]*a[2] + 3*a[2]*b[2]*x[0] + 3*a[2]*b[2]*x[1] + 3*a[2]*c[2]*y[0] + 3*a[2]*c[2]*y[1] + b[2]*b[2]*x[0]*x[0] + b[2]*b[2]*x[0]*x[1] + b[2]*b[2]*x[1]*x[1] + 2*b[2]*c[2]*x[0]*y[0] + b[2]*c[2]*x[0]*y[1] + b[2]*c[2]*x[1]*y[0] + 2*b[2]*c[2]*x[1]*y[1] + c[2]*c[2]*y[0]*y[0] + c[2]*c[2]*y[0]*y[1] + c[2]*c[2]*y[1]*y[1])/(12*delta*delta)
     ,
     K[3]*t*std::sqrt(x[0]*x[0] - 2*x[0]*x[1] + x[1]*x[1] + y[0]*y[0] - 2*y[0]*y[1] + y[1]*y[1])*(3*a[2]*a[2] + 3*a[2]*b[2]*x[0] + 3*a[2]*b[2]*x[1] + 3*a[2]*c[2]*y[0] + 3*a[2]*c[2]*y[1] + b[2]*b[2]*x[0]*x[0] + b[2]*b[2]*x[0]*x[1] + b[2]*b[2]*x[1]*x[1] + 2*b[2]*c[2]*x[0]*y[0] + b[2]*c[2]*x[0]*y[1] + b[2]*c[2]*x[1]*y[0] + 2*b[2]*c[2]*x[1]*y[1] + c[2]*c[2]*y[0]*y[0] + c[2]*c[2]*y[0]*y[1] + c[2]*c[2]*y[1]*y[1])/(12*delta*delta)
-    };
+    }, K_DIM, K_DIM);
 
     return R;
 }
-std::vector<double> TRI3::get_Rf(const std::vector<double>& S, const std::vector<double>& F, const gp_Pnt& C, const double t, const std::vector<gp_Pnt>& points) const{
-    const double x[]{points[0].X(), points[1].X()};
-    const double y[]{points[0].Y(), points[1].Y()};
-    const double cx = C.X();
-    const double cy = C.Y();
 
-    std::vector<double> Rf{
-    t*std::sqrt(x[0]*x[0] - 2*x[0]*x[1] + x[1]*x[1] + y[0]*y[0] - 2*y[0]*y[1] + y[1]*y[1])*(6*F[0]*a[0] + 3*F[0]*b[0]*x[0] + 3*F[0]*b[0]*x[1] + 3*F[0]*c[0]*y[0] + 3*F[0]*c[0]*y[1] - 6*S[0]*a[0]*cx + 3*S[0]*a[0]*x[0] + 3*S[0]*a[0]*x[1] - 3*S[0]*b[0]*cx*x[0] - 3*S[0]*b[0]*cx*x[1] + 2*S[0]*b[0]*x[0]*x[0] + 2*S[0]*b[0]*x[0]*x[1] + 2*S[0]*b[0]*x[1]*x[1] - 3*S[0]*c[0]*cx*y[0] - 3*S[0]*c[0]*cx*y[1] + 2*S[0]*c[0]*x[0]*y[0] + S[0]*c[0]*x[0]*y[1] + S[0]*c[0]*x[1]*y[0] + 2*S[0]*c[0]*x[1]*y[1] - 6*S[1]*a[0]*cy + 3*S[1]*a[0]*y[0] + 3*S[1]*a[0]*y[1] - 3*S[1]*b[0]*cy*x[0] - 3*S[1]*b[0]*cy*x[1] + 2*S[1]*b[0]*x[0]*y[0] + S[1]*b[0]*x[0]*y[1] + S[1]*b[0]*x[1]*y[0] + 2*S[1]*b[0]*x[1]*y[1] - 3*S[1]*c[0]*cy*y[0] - 3*S[1]*c[0]*cy*y[1] + 2*S[1]*c[0]*y[0]*y[0] + 2*S[1]*c[0]*y[0]*y[1] + 2*S[1]*c[0]*y[1]*y[1])/(12*delta)
-    ,
-    t*std::sqrt(x[0]*x[0] - 2*x[0]*x[1] + x[1]*x[1] + y[0]*y[0] - 2*y[0]*y[1] + y[1]*y[1])*(6*F[1]*a[0] + 3*F[1]*b[0]*x[0] + 3*F[1]*b[0]*x[1] + 3*F[1]*c[0]*y[0] + 3*F[1]*c[0]*y[1] - 6*S[2]*a[0]*cx + 3*S[2]*a[0]*x[0] + 3*S[2]*a[0]*x[1] - 3*S[2]*b[0]*cx*x[0] - 3*S[2]*b[0]*cx*x[1] + 2*S[2]*b[0]*x[0]*x[0] + 2*S[2]*b[0]*x[0]*x[1] + 2*S[2]*b[0]*x[1]*x[1] - 3*S[2]*c[0]*cx*y[0] - 3*S[2]*c[0]*cx*y[1] + 2*S[2]*c[0]*x[0]*y[0] + S[2]*c[0]*x[0]*y[1] + S[2]*c[0]*x[1]*y[0] + 2*S[2]*c[0]*x[1]*y[1] - 6*S[3]*a[0]*cy + 3*S[3]*a[0]*y[0] + 3*S[3]*a[0]*y[1] - 3*S[3]*b[0]*cy*x[0] - 3*S[3]*b[0]*cy*x[1] + 2*S[3]*b[0]*x[0]*y[0] + S[3]*b[0]*x[0]*y[1] + S[3]*b[0]*x[1]*y[0] + 2*S[3]*b[0]*x[1]*y[1] - 3*S[3]*c[0]*cy*y[0] - 3*S[3]*c[0]*cy*y[1] + 2*S[3]*c[0]*y[0]*y[0] + 2*S[3]*c[0]*y[0]*y[1] + 2*S[3]*c[0]*y[1]*y[1])/(12*delta)
-    ,
-    t*std::sqrt(x[0]*x[0] - 2*x[0]*x[1] + x[1]*x[1] + y[0]*y[0] - 2*y[0]*y[1] + y[1]*y[1])*(6*F[0]*a[1] + 3*F[0]*b[1]*x[0] + 3*F[0]*b[1]*x[1] + 3*F[0]*c[1]*y[0] + 3*F[0]*c[1]*y[1] - 6*S[0]*a[1]*cx + 3*S[0]*a[1]*x[0] + 3*S[0]*a[1]*x[1] - 3*S[0]*b[1]*cx*x[0] - 3*S[0]*b[1]*cx*x[1] + 2*S[0]*b[1]*x[0]*x[0] + 2*S[0]*b[1]*x[0]*x[1] + 2*S[0]*b[1]*x[1]*x[1] - 3*S[0]*c[1]*cx*y[0] - 3*S[0]*c[1]*cx*y[1] + 2*S[0]*c[1]*x[0]*y[0] + S[0]*c[1]*x[0]*y[1] + S[0]*c[1]*x[1]*y[0] + 2*S[0]*c[1]*x[1]*y[1] - 6*S[1]*a[1]*cy + 3*S[1]*a[1]*y[0] + 3*S[1]*a[1]*y[1] - 3*S[1]*b[1]*cy*x[0] - 3*S[1]*b[1]*cy*x[1] + 2*S[1]*b[1]*x[0]*y[0] + S[1]*b[1]*x[0]*y[1] + S[1]*b[1]*x[1]*y[0] + 2*S[1]*b[1]*x[1]*y[1] - 3*S[1]*c[1]*cy*y[0] - 3*S[1]*c[1]*cy*y[1] + 2*S[1]*c[1]*y[0]*y[0] + 2*S[1]*c[1]*y[0]*y[1] + 2*S[1]*c[1]*y[1]*y[1])/(12*delta)
-    ,
-    t*std::sqrt(x[0]*x[0] - 2*x[0]*x[1] + x[1]*x[1] + y[0]*y[0] - 2*y[0]*y[1] + y[1]*y[1])*(6*F[1]*a[1] + 3*F[1]*b[1]*x[0] + 3*F[1]*b[1]*x[1] + 3*F[1]*c[1]*y[0] + 3*F[1]*c[1]*y[1] - 6*S[2]*a[1]*cx + 3*S[2]*a[1]*x[0] + 3*S[2]*a[1]*x[1] - 3*S[2]*b[1]*cx*x[0] - 3*S[2]*b[1]*cx*x[1] + 2*S[2]*b[1]*x[0]*x[0] + 2*S[2]*b[1]*x[0]*x[1] + 2*S[2]*b[1]*x[1]*x[1] - 3*S[2]*c[1]*cx*y[0] - 3*S[2]*c[1]*cx*y[1] + 2*S[2]*c[1]*x[0]*y[0] + S[2]*c[1]*x[0]*y[1] + S[2]*c[1]*x[1]*y[0] + 2*S[2]*c[1]*x[1]*y[1] - 6*S[3]*a[1]*cy + 3*S[3]*a[1]*y[0] + 3*S[3]*a[1]*y[1] - 3*S[3]*b[1]*cy*x[0] - 3*S[3]*b[1]*cy*x[1] + 2*S[3]*b[1]*x[0]*y[0] + S[3]*b[1]*x[0]*y[1] + S[3]*b[1]*x[1]*y[0] + 2*S[3]*b[1]*x[1]*y[1] - 3*S[3]*c[1]*cy*y[0] - 3*S[3]*c[1]*cy*y[1] + 2*S[3]*c[1]*y[0]*y[0] + 2*S[3]*c[1]*y[0]*y[1] + 2*S[3]*c[1]*y[1]*y[1])/(12*delta)
-    ,
-    t*std::sqrt(x[0]*x[0] - 2*x[0]*x[1] + x[1]*x[1] + y[0]*y[0] - 2*y[0]*y[1] + y[1]*y[1])*(6*F[0]*a[2] + 3*F[0]*b[2]*x[0] + 3*F[0]*b[2]*x[1] + 3*F[0]*c[2]*y[0] + 3*F[0]*c[2]*y[1] - 6*S[0]*a[2]*cx + 3*S[0]*a[2]*x[0] + 3*S[0]*a[2]*x[1] - 3*S[0]*b[2]*cx*x[0] - 3*S[0]*b[2]*cx*x[1] + 2*S[0]*b[2]*x[0]*x[0] + 2*S[0]*b[2]*x[0]*x[1] + 2*S[0]*b[2]*x[1]*x[1] - 3*S[0]*c[2]*cx*y[0] - 3*S[0]*c[2]*cx*y[1] + 2*S[0]*c[2]*x[0]*y[0] + S[0]*c[2]*x[0]*y[1] + S[0]*c[2]*x[1]*y[0] + 2*S[0]*c[2]*x[1]*y[1] - 6*S[1]*a[2]*cy + 3*S[1]*a[2]*y[0] + 3*S[1]*a[2]*y[1] - 3*S[1]*b[2]*cy*x[0] - 3*S[1]*b[2]*cy*x[1] + 2*S[1]*b[2]*x[0]*y[0] + S[1]*b[2]*x[0]*y[1] + S[1]*b[2]*x[1]*y[0] + 2*S[1]*b[2]*x[1]*y[1] - 3*S[1]*c[2]*cy*y[0] - 3*S[1]*c[2]*cy*y[1] + 2*S[1]*c[2]*y[0]*y[0] + 2*S[1]*c[2]*y[0]*y[1] + 2*S[1]*c[2]*y[1]*y[1])/(12*delta)
-    ,
-    t*std::sqrt(x[0]*x[0] - 2*x[0]*x[1] + x[1]*x[1] + y[0]*y[0] - 2*y[0]*y[1] + y[1]*y[1])*(6*F[1]*a[2] + 3*F[1]*b[2]*x[0] + 3*F[1]*b[2]*x[1] + 3*F[1]*c[2]*y[0] + 3*F[1]*c[2]*y[1] - 6*S[2]*a[2]*cx + 3*S[2]*a[2]*x[0] + 3*S[2]*a[2]*x[1] - 3*S[2]*b[2]*cx*x[0] - 3*S[2]*b[2]*cx*x[1] + 2*S[2]*b[2]*x[0]*x[0] + 2*S[2]*b[2]*x[0]*x[1] + 2*S[2]*b[2]*x[1]*x[1] - 3*S[2]*c[2]*cx*y[0] - 3*S[2]*c[2]*cx*y[1] + 2*S[2]*c[2]*x[0]*y[0] + S[2]*c[2]*x[0]*y[1] + S[2]*c[2]*x[1]*y[0] + 2*S[2]*c[2]*x[1]*y[1] - 6*S[3]*a[2]*cy + 3*S[3]*a[2]*y[0] + 3*S[3]*a[2]*y[1] - 3*S[3]*b[2]*cy*x[0] - 3*S[3]*b[2]*cy*x[1] + 2*S[3]*b[2]*x[0]*y[0] + S[3]*b[2]*x[0]*y[1] + S[3]*b[2]*x[1]*y[0] + 2*S[3]*b[2]*x[1]*y[1] - 3*S[3]*c[2]*cy*y[0] - 3*S[3]*c[2]*cy*y[1] + 2*S[3]*c[2]*y[0]*y[0] + 2*S[3]*c[2]*y[0]*y[1] + 2*S[3]*c[2]*y[1]*y[1])/(12*delta)
-    };
-
-    return Rf;
-}
-
-Eigen::MatrixXd TRI3::diffusion_1dof(const double t, const std::vector<double>& A) const{
-    Eigen::MatrixXd M{{
+math::Matrix TRI3::diffusion_1dof(const double t, const math::Matrix& Am) const{
+    const double* A = Am.data();
+    math::Matrix M({
         b[0]*(A[0]*b[0]*t/2 + A[3]*c[0]*t/2)/(2*delta) + c[0]*(A[1]*b[0]*t/2 + A[4]*c[0]*t/2)/(2*delta)
         ,
         b[1]*(A[0]*b[0]*t/2 + A[3]*c[0]*t/2)/(2*delta) + c[1]*(A[1]*b[0]*t/2 + A[4]*c[0]*t/2)/(2*delta)
         ,
         b[2]*(A[0]*b[0]*t/2 + A[3]*c[0]*t/2)/(2*delta) + c[2]*(A[1]*b[0]*t/2 + A[4]*c[0]*t/2)/(2*delta)
-        },{
+        ,
         b[0]*(A[0]*b[1]*t/2 + A[3]*c[1]*t/2)/(2*delta) + c[0]*(A[1]*b[1]*t/2 + A[4]*c[1]*t/2)/(2*delta)
         ,
         b[1]*(A[0]*b[1]*t/2 + A[3]*c[1]*t/2)/(2*delta) + c[1]*(A[1]*b[1]*t/2 + A[4]*c[1]*t/2)/(2*delta)
         ,
         b[2]*(A[0]*b[1]*t/2 + A[3]*c[1]*t/2)/(2*delta) + c[2]*(A[1]*b[1]*t/2 + A[4]*c[1]*t/2)/(2*delta)
-        },{
+        ,
         b[0]*(A[0]*b[2]*t/2 + A[3]*c[2]*t/2)/(2*delta) + c[0]*(A[1]*b[2]*t/2 + A[4]*c[2]*t/2)/(2*delta)
         ,
         b[1]*(A[0]*b[2]*t/2 + A[3]*c[2]*t/2)/(2*delta) + c[1]*(A[1]*b[2]*t/2 + A[4]*c[2]*t/2)/(2*delta)
         ,
         b[2]*(A[0]*b[2]*t/2 + A[3]*c[2]*t/2)/(2*delta) + c[2]*(A[1]*b[2]*t/2 + A[4]*c[2]*t/2)/(2*delta)
-        }
-    };
+    }, NODES_PER_ELEM, NODES_PER_ELEM);
 
     return M;
 }
-Eigen::MatrixXd TRI3::advection_1dof(const double t, const std::vector<double>& v) const{
-    Eigen::MatrixXd M{{
+math::Matrix TRI3::advection_1dof(const double t, const math::Vector& v) const{
+    math::Matrix M({
         t*(b[0]*v[0] + c[0]*v[1])/6
         ,
         t*(b[0]*v[0] + c[0]*v[1])/6
         ,
         t*(b[0]*v[0] + c[0]*v[1])/6
-        },{
-        t*(b[1]*v[0] + c[1]*v[1])/6
         ,
         t*(b[1]*v[0] + c[1]*v[1])/6
         ,
         t*(b[1]*v[0] + c[1]*v[1])/6
-        },{
+        ,
+        t*(b[1]*v[0] + c[1]*v[1])/6
+        ,
         t*(b[2]*v[0] + c[2]*v[1])/6
         ,
         t*(b[2]*v[0] + c[2]*v[1])/6
         ,
         t*(b[2]*v[0] + c[2]*v[1])/6
-        }
-    };
+    }, NODES_PER_ELEM, NODES_PER_ELEM);
 
     return M;
 }
-Eigen::MatrixXd TRI3::absorption_1dof(const double t) const{
-    Eigen::MatrixXd M{{
+math::Matrix TRI3::absorption_1dof(const double t) const{
+    math::Matrix M({
         delta*t/6
         ,
         delta*t/12
         ,
         delta*t/12
-        },{
-        delta*t/12
-        ,
-        delta*t/6
-        ,
-        delta*t/12
-        },{
-        delta*t/12
         ,
         delta*t/12
         ,
         delta*t/6
-        }
-    };
+        ,
+        delta*t/12
+        ,
+        delta*t/12
+        ,
+        delta*t/12
+        ,
+        delta*t/6
+    }, NODES_PER_ELEM, NODES_PER_ELEM);
 
     return M;
 }
-Eigen::VectorXd TRI3::source_1dof(const double t) const{
-    Eigen::Vector<double, 3> M{
+math::Vector TRI3::source_1dof(const double t) const{
+    math::Vector M{
         delta*t/3
         ,
         delta*t/3
@@ -373,11 +308,11 @@ Eigen::VectorXd TRI3::source_1dof(const double t) const{
 
     return M;
 }
-Eigen::VectorXd TRI3::flow_1dof(const double t, const MeshNode** nodes) const{
+math::Vector TRI3::flow_1dof(const double t, const MeshNode** nodes) const{
     std::array<double, 2> x{nodes[0]->point.X(), nodes[1]->point.X()};
     std::array<double, 2> y{nodes[0]->point.Y(), nodes[1]->point.Y()};
 
-    Eigen::Vector<double, 3> M{
+    math::Vector M{
     t*(2*a[0] + b[0]*x[0] + b[0]*x[1] + c[0]*y[0] + c[0]*y[1])*std::sqrt(x[0]*x[0] - 2*x[0]*x[1] + x[1]*x[1] + y[0]*y[0] - 2*y[0]*y[1] + y[1]*y[1])/(4*delta)
     ,
     t*(2*a[1] + b[1]*x[0] + b[1]*x[1] + c[1]*y[0] + c[1]*y[1])*std::sqrt(x[0]*x[0] - 2*x[0]*x[1] + x[1]*x[1] + y[0]*y[0] - 2*y[0]*y[1] + y[1]*y[1])/(4*delta)
@@ -388,12 +323,12 @@ Eigen::VectorXd TRI3::flow_1dof(const double t, const MeshNode** nodes) const{
     return M;
 }
 
-std::vector<double> TRI3::get_Ni(const gp_Pnt& p) const{
+math::Matrix TRI3::get_Ni(const gp_Pnt& p) const{
     const auto Ni = this->N_mat_1dof(p.X(), p.Y());
-    std::vector<double> Nv(NODE_DOF*K_DIM, 0);
+    math::Matrix Nv(NODE_DOF, K_DIM);
     for(size_t i = 0; i < NODES_PER_ELEM; ++i){
-        Nv[0*K_DIM + NODE_DOF*(i+0)] = Ni[i];
-        Nv[1*K_DIM + NODE_DOF*(i+1)] = Ni[i];
+        Nv(0, NODE_DOF*(i+0)) = Ni[i];
+        Nv(1, NODE_DOF*(i+1)) = Ni[i];
     }
     return Nv;
 }

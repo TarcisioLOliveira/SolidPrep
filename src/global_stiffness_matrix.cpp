@@ -21,10 +21,10 @@
 #include "global_stiffness_matrix.hpp"
 #include "cblas.h"
 #include "logger.hpp"
-#include "project_data.hpp"
+#include "math/matrix.hpp"
 #include <limits>
 
-void GlobalStiffnessMatrix::generate_base(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const std::vector<double>& u_ext, const FiniteElement::ContactType type){
+void GlobalStiffnessMatrix::generate_base(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<math::Matrix>& D_cache, const std::vector<double>& u_ext, const FiniteElement::ContactType type){
     size_t D_offset = 0;
     size_t L = u_size;
     if(type != FiniteElement::ContactType::RIGID){
@@ -73,12 +73,12 @@ void GlobalStiffnessMatrix::add_geometry(const Meshing* const mesh, const std::v
                 u_pos[i*dof + j] = node_positions[p];
             }
         }
-        const std::vector<double> k = e->get_k(D, t);
+        const math::Matrix k(e->get_k(D, t));
         this->insert_element_matrix(k, u_pos);
     }
 }
 
-void GlobalStiffnessMatrix::add_geometry(const Meshing* const mesh, const std::vector<long>& node_positions, const Geometry* const g, const size_t D_offset, const std::vector<std::vector<double>>& D_cache){
+void GlobalStiffnessMatrix::add_geometry(const Meshing* const mesh, const std::vector<long>& node_positions, const Geometry* const g, const size_t D_offset, const std::vector<math::Matrix>& D_cache){
     const double t = mesh->thickness;
     const size_t dof      = mesh->elem_info->get_dof_per_node();
     const size_t node_num = mesh->elem_info->get_nodes_per_element();
@@ -94,7 +94,7 @@ void GlobalStiffnessMatrix::add_geometry(const Meshing* const mesh, const std::v
             }
         }
         const auto& D = D_cache[D_offset + it];
-        std::vector<double> k = e->get_k(D, t);
+        const math::Matrix k(e->get_k(D, t));
         this->insert_element_matrix(k, u_pos);
         ++it;
     }
@@ -124,7 +124,7 @@ void GlobalStiffnessMatrix::add_springs(const Meshing * const mesh, const std::v
                     u_pos[i*dof + j] = node_positions[p];
                 }
             }
-            const std::vector<double> R = e->get_R(K, t, points);
+            const math::Matrix R(e->get_R(K, t, points));
             this->insert_element_matrix(R, u_pos);
         }
     }
@@ -195,10 +195,9 @@ void GlobalStiffnessMatrix::add_contacts(const Meshing * const mesh, const std::
             }
         }
         //logger::quick_log(e.b1->geom_id, e.b2->geom_id);
-        auto MM = e.b1->parent->get_MnMn(e.b2->parent, u_ext, points, e.b1->normal);
-        cblas_dscal(MM.size(), EPS_PENALTY, MM.data(), 1);
+        const auto MM(EPS_PENALTY*e.b1->parent->get_MnMn(e.b2->parent, u_ext, points, e.b1->normal));
         for(size_t i = 0; i < 2*kw; ++i){
-            if(std::abs(MM[i*2*kw + i]) > 1e-7){
+            if(std::abs(MM(i, i)) > 1e-7){
                 ++added;
                 break;
             }
@@ -228,8 +227,7 @@ void GlobalStiffnessMatrix::add_frictionless_part1(const Meshing * const mesh, c
                 u_pos[dof*(node_num + i) + j] = node_positions[n2->u_pos[j]];
             }
         }
-        auto uu = e.b1->parent->get_uu(e.b2->parent, points, e.b1->normal);
-        cblas_dscal(uu.size(), this->EPS_DISPL, uu.data(), 1);
+        const auto uu(this->EPS_DISPL*e.b1->parent->get_uu(e.b2->parent, points, e.b1->normal));
         this->insert_element_matrix(uu, u_pos);
     }
 }
@@ -261,11 +259,8 @@ void GlobalStiffnessMatrix::add_frictionless_part2(const Meshing * const mesh, c
                 u2[dof*i + j] = u_ext[n2->u_pos[j]];
             }
         }
-        auto LL = e.elem->fl2_LL(l_e, u1, u2);
-        auto uL = e.elem->fl2_uL(l_e);
-
-        cblas_dscal(uL.size(), this->EPS_DISPL, uL.data(), 1);
-        cblas_dscal(LL.size(), this->EPS_DISPL, LL.data(), 1);
+        const auto LL(this->EPS_DISPL*e.elem->fl2_LL(l_e, u1, u2));
+        const auto uL(this->EPS_DISPL*e.elem->fl2_uL(l_e));
 
         this->insert_block_symmetric(uL, u_pos, l_pos);
         this->insert_element_matrix(LL, l_pos);

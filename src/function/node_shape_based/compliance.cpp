@@ -21,6 +21,7 @@
 #include <cblas.h>
 #include <mpich-x86_64/mpi.h>
 #include "function/node_shape_based/compliance.hpp"
+#include "math/matrix.hpp"
 #include "optimizer.hpp"
 
 namespace function::node_shape_based{
@@ -46,7 +47,7 @@ double Compliance::calculate_with_gradient(const NodeShapeBasedOptimizer* const 
     const size_t dof = this->mesh->elem_info->get_dof_per_node();
     const size_t node_num = this->mesh->elem_info->get_nodes_per_element();
     const size_t kw = this->mesh->elem_info->get_k_dimension();
-    std::vector<double> D;
+    math::Matrix D;
     std::fill(grad.begin(), grad.end(), 0);
 
     std::vector<double> ue(kw, 0);

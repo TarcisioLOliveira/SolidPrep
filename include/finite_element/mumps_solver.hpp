@@ -24,6 +24,7 @@
 #include <dmumps_c.h>
 #include "finite_element.hpp"
 #include "global_stiffness_matrix/mumps_sparse_symmetric.hpp"
+#include "math/matrix.hpp"
 
 // Recommended by the documentation
 #define ICNTL( i ) icntl[ (i) - 1 ]
@@ -37,7 +38,7 @@ class MUMPSSolver : public FiniteElement{
     virtual ~MUMPSSolver();
 
     private:
-    virtual void generate_matrix_base(const Meshing* const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const std::vector<double>& u_ext, const ContactType type) override;
+    virtual void generate_matrix_base(const Meshing* const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<math::Matrix>& D_cache, const std::vector<double>& u_ext, const ContactType type) override;
 
     virtual void solve(std::vector<double>& load) override;
     virtual void reset_hessian() override;

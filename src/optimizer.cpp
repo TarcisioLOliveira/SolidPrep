@@ -21,6 +21,7 @@
 #include "optimizer.hpp"
 #include "function.hpp"
 #include "logger.hpp"
+#include "math/matrix.hpp"
 #include "utils.hpp"
 #include <BRepBuilderAPI_Transform.hxx>
 #include <GProp_GProps.hxx>
@@ -70,7 +71,7 @@ TopoDS_Shape Optimizer::STEP_workaround(const TopoDS_Shape& s) const{
     return reader.OneShape();
 }
 
-void Optimizer::get_stresses(const std::vector<Geometry*> geometries, const bool is_topopt, const std::vector<double>& u, const std::vector<std::vector<double>>& D_cache, std::vector<double>& stresses) const{
+void Optimizer::get_stresses(const std::vector<Geometry*> geometries, const bool is_topopt, const std::vector<double>& u, const std::vector<math::Matrix>& D_cache, std::vector<double>& stresses) const{
     auto stress_it = stresses.begin();
     size_t D_offset = 0;
     for(const auto& g:geometries){
