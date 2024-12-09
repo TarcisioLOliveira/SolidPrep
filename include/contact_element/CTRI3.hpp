@@ -21,12 +21,10 @@
 #ifndef CTRI3_HPP
 #define CTRI3_HPP
 
-#include <Eigen/Core>
-#include <Eigen/Dense>
 #include "element.hpp"
 #include "material.hpp"
-#include <Eigen/src/Core/Matrix.h>
 #include <vector>
+#include "math/matrix.hpp"
 #include "utils.hpp"
 
 namespace contact_element{
@@ -45,16 +43,16 @@ class CTRI3 : public ContactMeshElement{
 
     CTRI3(ElementShape s, const MeshElement* const e1, const MeshElement* const e2);
 
-    virtual std::vector<double> get_frictionless_Ge() const override;
+    virtual math::Matrix get_frictionless_Ge() const override;
 
-    virtual std::vector<double> fl_uLne(const std::vector<double>& D, const std::vector<double>& ln_e) const override;
-    virtual std::vector<double> fl_LnLne(const std::vector<double>& D, const std::vector<double>& ln_e) const override;
-    virtual std::vector<double> fl_LtLne(const std::vector<double>& D, const std::vector<double>& ln_e, size_t ti) const override;
-    virtual std::vector<double> fl_uLte(const std::vector<double>& D, size_t ti) const override;
-    virtual std::vector<double> fl_LtLte(const std::vector<double>& D, size_t t1, size_t t2) const override;
+    virtual math::Matrix fl_uLne(const math::Matrix& D, const math::Vector& ln_e) const override;
+    virtual math::Matrix fl_LnLne(const math::Matrix& D, const math::Vector& ln_e) const override;
+    virtual math::Matrix fl_LtLne(const math::Matrix& D, const math::Vector& ln_e, size_t ti) const override;
+    virtual math::Matrix fl_uLte(const math::Matrix& D, size_t ti) const override;
+    virtual math::Matrix fl_LtLte(const math::Matrix& D, size_t t1, size_t t2) const override;
 
-    virtual std::vector<double> fl2_uL(const std::vector<double>& l_e) const override;
-    virtual std::vector<double> fl2_LL(const std::vector<double>& l_e, const std::vector<double>& u1, const std::vector<double>& u2) const override;
+    virtual math::Matrix fl2_uL(const math::Vector& l_e) const override;
+    virtual math::Matrix fl2_LL(const math::Vector& l_e, const math::Vector& u1, const math::Vector& u2) const override;
 
     virtual void fl2_Ku_lambda(const double EPS, const std::vector<long> u1_pos, const std::vector<long> u2_pos, const std::vector<long>& lu_pos, const std::vector<double>& u, std::vector<double>& Ku) const override;
 
@@ -84,7 +82,7 @@ class CTRI3 : public ContactMeshElement{
     protected:
     double a[3], b[3], c[3], delta;
     size_t E_KW;
-    Eigen::Matrix<double, 3, 3> R;
+    math::Matrix R;
 
     virtual gp_Dir get_d1() const{
         return gp_Dir(R(0,1), R(1,1), R(2,1));
@@ -128,36 +126,36 @@ class CTRI3 : public ContactMeshElement{
     inline double dNdy(size_t i) const{
         return c[i];
     }
-    inline Eigen::Vector<double, 3> N_mat_1dof(const gp_Pnt& p) const{
-        return Eigen::Vector<double, 3>(N(p, 0), N(p, 1), N(p, 2));
+    inline math::Vector N_mat_1dof(const gp_Pnt& p) const{
+        return math::Vector{N(p, 0), N(p, 1), N(p, 2)};
     }
-    inline Eigen::Vector<double, 3> dNdx_mat_1dof() const{
-        return Eigen::Vector<double, 3>(dNdx(0), dNdx(1), dNdx(2));
+    inline math::Vector dNdx_mat_1dof() const{
+        return math::Vector{dNdx(0), dNdx(1), dNdx(2)};
     }
-    inline Eigen::Vector<double, 3> dNdy_mat_1dof() const{
-        return Eigen::Vector<double, 3>(dNdy(0), dNdy(1), dNdy(2));
+    inline math::Vector dNdy_mat_1dof() const{
+        return math::Vector{dNdy(0), dNdy(1), dNdy(2)};
     }
-    inline Eigen::Matrix<double, 2, 3> gradN_1dof() const{
-        return Eigen::Matrix<double, 2, 3>
-            {{dNdx(0), dNdx(1), dNdx(2)},
-             {dNdy(0), dNdy(1), dNdy(2)}};
+    inline math::Matrix gradN_1dof() const{
+        return math::Matrix(
+            {dNdx(0), dNdx(1), dNdx(2),
+             dNdy(0), dNdy(1), dNdy(2)}, 2, 3);
     }
-    inline Eigen::Vector<double, 3> gradN_1dof_vec(const Eigen::Vector<double, 3>& dXI) const{
-        return Eigen::Vector<double, 3>
-            {dNdx(0)*dXI(0) + dNdy(0)*dXI(1),
-             dNdx(1)*dXI(0) + dNdy(1)*dXI(1),
-             dNdx(2)*dXI(0) + dNdy(2)*dXI(1)};
+    inline math::Vector gradN_1dof_vec(const math::Vector& dXI) const{
+        return math::Vector
+            {dNdx(0)*dXI[0] + dNdy(0)*dXI[1],
+             dNdx(1)*dXI[0] + dNdy(1)*dXI[1],
+             dNdx(2)*dXI[0] + dNdy(2)*dXI[1]};
     }
-    inline Eigen::Matrix<double, S_SIZE, NODES_PER_ELEM> eps_mat_lambda(const gp_Dir& n) const
+    inline math::Matrix eps_mat_lambda(const gp_Dir& n) const
     {
-        Eigen::Matrix<double, S_SIZE, NODES_PER_ELEM> eps;
+        math::Matrix eps(S_SIZE, NODES_PER_ELEM);
         std::vector<double> didj(NODE_DOF*NODE_DOF*NODES_PER_ELEM);
 
-        Eigen::Vector<double, 3> dXIdx{R(0,0), R(1,0), R(2,0)};
-        Eigen::Vector<double, 3> dXIdy{R(0,1), R(1,1), R(2,1)};
-        Eigen::Vector<double, 3> dXIdz{R(0,2), R(1,2), R(2,2)};
+        math::Vector dXIdx{R(0,0), R(1,0), R(2,0)};
+        math::Vector dXIdy{R(0,1), R(1,1), R(2,1)};
+        math::Vector dXIdz{R(0,2), R(1,2), R(2,2)};
 
-        std::vector<Eigen::Vector<double, 3>> gradN
+        std::vector<math::Vector> gradN
         {
             this->gradN_1dof_vec(dXIdx),
             this->gradN_1dof_vec(dXIdy),
@@ -165,7 +163,7 @@ class CTRI3 : public ContactMeshElement{
         };
         for(size_t i = 0; i < NODE_DOF; ++i){
             for(size_t j = 0; j < NODE_DOF; ++j){
-                Eigen::Vector<double, NODES_PER_ELEM> m = n.Coord(1+i)*gradN[j];
+                const math::Vector m(n.Coord(1+i)*gradN[j]);
                 for(size_t k = 0; k < NODES_PER_ELEM; ++k){
                     didj[i*NODE_DOF*NODES_PER_ELEM + j*NODES_PER_ELEM + k] = m[k];
                 }

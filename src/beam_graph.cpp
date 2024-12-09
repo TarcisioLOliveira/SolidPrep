@@ -21,6 +21,7 @@
 #include "beam_graph.hpp"
 #include "element_factory.hpp"
 #include "logger.hpp"
+#include "math/matrix.hpp"
 #include "utils.hpp"
 
 std::vector<double> BeamGraph::run(){
@@ -98,9 +99,9 @@ std::vector<double> BeamGraph::run(){
             }
             double E = 0;
             if(data->type == utils::PROBLEM_TYPE_2D){
-                Eigen::Matrix<double, 2, 2> R
-                    {{v1.X(), -v1.Y()},
-                     {v1.Y(), v1.X()}};
+                math::Matrix R(
+                    {v1.X(), -v1.Y(),
+                     v1.Y(), v1.X()}, 2, 2);
                 E = this->data->materials[0]->beam_E_2D(nullptr, gp_Pnt(), R);
             } else {
                 logger::log_assert(false, logger::ERROR, "3D beam graph not fully implemented");
@@ -134,9 +135,9 @@ std::vector<double> BeamGraph::run(){
             }
             double E = 0;
             if(data->type == utils::PROBLEM_TYPE_2D){
-                Eigen::Matrix<double, 2, 2> R
-                    {{v.X(), -v.Y()},
-                     {v.Y(), v.X()}};
+                math::Matrix R(
+                    {v.X(), -v.Y(),
+                     v.Y(), v.X()}, 2, 2);
                 E = this->data->materials[0]->beam_E_2D(nullptr, gp_Pnt(), R);
             } else {
                 logger::log_assert(false, logger::ERROR, "3D beam graph not fully implemented");

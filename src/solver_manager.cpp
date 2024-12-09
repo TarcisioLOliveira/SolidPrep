@@ -19,6 +19,7 @@
  */
 
 #include "solver_manager.hpp"
+#include "math/matrix.hpp"
 #include "project_data.hpp"
 #include "logger.hpp"
 
@@ -140,7 +141,6 @@ void SolverManager::update_D_matrices(const Meshing* const mesh, const std::vect
     } else if(this->old_densities.size() == 0){
         // Cache non-homogeneous materials and multimaterial elements 
         const size_t s_size = mesh->elem_info->get_D_dimension();
-        const size_t DN = s_size*s_size;
         size_t cache_size = 0;
         for(const auto& g:mesh->geometries){
             const auto& mat = g->materials.get_materials()[0];
@@ -148,7 +148,7 @@ void SolverManager::update_D_matrices(const Meshing* const mesh, const std::vect
                 cache_size += g->mesh.size();
             }
         }
-        this->D_matrices.resize(cache_size);
+        this->D_matrices.resize(cache_size, math::Matrix(s_size, s_size));
         size_t D_offset = 0;
         size_t x_offset = 0;
         for(const auto& g:mesh->geometries){
@@ -161,18 +161,16 @@ void SolverManager::update_D_matrices(const Meshing* const mesh, const std::vect
                         for(size_t i = 0; i < g->mesh.size(); ++i){
                             const auto& e = g->mesh[i];
                             const auto c = e->get_centroid();
-                            this->D_matrices[D_offset+i].resize(DN);
                             auto xv = density[x_offset+i];
                             auto rho = density.cbegin() + x_offset + i;
                             g->materials.get_D(rho, psi, e.get(), c, this->D_matrices[D_offset+i]);
-                            cblas_dscal(DN, std::pow(xv, pc), this->D_matrices[D_offset+i].data(), 1);
+                            this->D_matrices[D_offset+i] *= std::pow(xv, pc);
                         }
                     } else {
                         #pragma omp parallel for
                         for(size_t i = 0; i < g->mesh.size(); ++i){
                             const auto& e = g->mesh[i];
                             const auto c = e->get_centroid();
-                            this->D_matrices[D_offset+i].resize(DN);
                             auto rho = density.cbegin() + x_offset + i;
                             g->materials.get_D(rho, psi, e.get(), c, this->D_matrices[D_offset+i]);
                         }
@@ -192,8 +190,6 @@ void SolverManager::update_D_matrices(const Meshing* const mesh, const std::vect
         this->old_densities = density;
     } else {
         // Only update elements whose densities were modified.
-        const size_t s_size = mesh->elem_info->get_D_dimension();
-        const size_t DN = s_size*s_size;
         size_t D_offset = 0;
         size_t x_offset = 0;
         for(const auto& g:mesh->geometries){
@@ -210,7 +206,7 @@ void SolverManager::update_D_matrices(const Meshing* const mesh, const std::vect
                                 auto xv = density[x_offset+i];
                                 auto rho = density.cbegin() + x_offset + i;
                                 g->materials.get_D(rho, psi, e.get(), c, this->D_matrices[D_offset+i]);
-                                cblas_dscal(DN, std::pow(xv, pc), this->D_matrices[D_offset+i].data(), 1);
+                                this->D_matrices[D_offset+i] *= std::pow(xv, pc);
                                 this->update_densities(density, x_offset+i, num_den);
                             }
                         }
@@ -256,12 +252,12 @@ std::vector<double> SolverManager::calculate_reactions(const Meshing* const mesh
                     }
                 }
                 const auto& D = this->D_matrices[D_offset + it];
-                std::vector<double> k = e->get_k(D, t);
+                const math::Matrix k = e->get_k(D, t);
                 ++it;
                 for(size_t i = 0; i < k_size; ++i){
                     for(size_t j = 0; j < k_size; ++j){
                         if(u_pos[i] > -1 && u_pos[j] > -1){
-                            const double val = k[i*k_size + j]*u[u_pos[j]];
+                            const double val = k(i, j)*u[u_pos[j]];
                             f[u_pos[i]] += val;
                             F[i % dof] += val;
                         }
@@ -278,11 +274,11 @@ std::vector<double> SolverManager::calculate_reactions(const Meshing* const mesh
                         u_pos[i*dof + j] = n->u_pos[j];
                     }
                 }
-                const std::vector<double> k = e->get_k(D, t);
+                const math::Matrix k = e->get_k(D, t);
                 for(size_t i = 0; i < k_size; ++i){
                     for(size_t j = 0; j < k_size; ++j){
                         if(u_pos[i] > -1 && u_pos[j] > -1){
-                            const double val = k[i*k_size + j]*u[u_pos[j]];
+                            const double val = k(i, j)*u[u_pos[j]];
                             f[u_pos[i]] += val;
                             F[i % dof] += val;
                         }

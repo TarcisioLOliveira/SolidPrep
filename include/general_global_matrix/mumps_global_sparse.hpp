@@ -23,6 +23,7 @@
 
 #include <vector>
 #include "logger.hpp"
+#include "math/matrix.hpp"
 #include "utils/coo.hpp"
 
 namespace general_global_matrix{
@@ -60,14 +61,14 @@ class MUMPSGlobalSparse{
         }
     }
 
-    inline void add_element(const std::vector<double>& matrix, const std::vector<long>& pos){
+    inline void add_element(const math::Matrix& matrix, const std::vector<long>& pos){
         if(spd){
             this->M.insert_matrix_symmetric(matrix, pos);
         } else {
             this->M.insert_matrix_general(matrix, pos);
         }
     }
-    inline void add_element(const std::vector<double>& matrix, const std::vector<long>& pos_i, const std::vector<long>& pos_j){
+    inline void add_element(const math::Matrix& matrix, const std::vector<long>& pos_i, const std::vector<long>& pos_j){
         this->M.insert_block(matrix, pos_i, pos_j, false);
     }
     inline void add_value(size_t i, size_t j, double val){

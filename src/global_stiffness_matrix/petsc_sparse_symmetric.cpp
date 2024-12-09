@@ -29,7 +29,7 @@ PETScSparseSymmetric::~PETScSparseSymmetric(){
     MatDestroy(&this->K);
 }
 
-void PETScSparseSymmetric::generate(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const std::vector<double>& u_ext, const FiniteElement::ContactType type){
+void PETScSparseSymmetric::generate(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<math::Matrix>& D_cache, const std::vector<double>& u_ext, const FiniteElement::ContactType type){
     int mpi_id = 0;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi_id);
     this->u_size = u_size;
@@ -53,7 +53,7 @@ void PETScSparseSymmetric::generate(const Meshing * const mesh, const size_t u_s
     }
 }
 
-void PETScSparseSymmetricCPU::preallocate(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const std::vector<double>& u_ext, const FiniteElement::ContactType type, const size_t mpi_id){
+void PETScSparseSymmetricCPU::preallocate(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<math::Matrix>& D_cache, const std::vector<double>& u_ext, const FiniteElement::ContactType type, const size_t mpi_id){
     MatCreate(PETSC_COMM_WORLD, &this->K);
     MatSetType(this->K, MATAIJ);
 
@@ -95,7 +95,7 @@ void PETScSparseSymmetricCPU::preallocate(const Meshing * const mesh, const size
     MatDestroy(&tmp);
 }
 
-void PETScSparseSymmetricCPU::assemble_matrix(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const std::vector<double>& u_ext, const FiniteElement::ContactType type, const size_t mpi_id){
+void PETScSparseSymmetricCPU::assemble_matrix(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<math::Matrix>& D_cache, const std::vector<double>& u_ext, const FiniteElement::ContactType type, const size_t mpi_id){
     if(mpi_id == 0){
         this->generate_base(mesh, u_size, l_num, node_positions, topopt, D_cache, u_ext, type);
     }
@@ -163,7 +163,7 @@ void PETScSparseSymmetricCPU::dot_vector(const std::vector<double>& v, std::vect
     VecRestoreArrayRead(v2, &v_out_data);
 }
 
-void PETScSparseSymmetricCUDA::preallocate(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const std::vector<double>& u_ext, const FiniteElement::ContactType type, const size_t mpi_id){
+void PETScSparseSymmetricCUDA::preallocate(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<math::Matrix>& D_cache, const std::vector<double>& u_ext, const FiniteElement::ContactType type, const size_t mpi_id){
     MatCreate(PETSC_COMM_WORLD, &this->K);
     MatSetType(this->K, MATAIJCUSPARSE);
 
@@ -188,7 +188,7 @@ void PETScSparseSymmetricCUDA::preallocate(const Meshing * const mesh, const siz
 
     MatSetUp(this->K);
 }
-void PETScSparseSymmetricCUDA::assemble_matrix(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const std::vector<double>& u_ext, const FiniteElement::ContactType type, const size_t mpi_id){
+void PETScSparseSymmetricCUDA::assemble_matrix(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<math::Matrix>& D_cache, const std::vector<double>& u_ext, const FiniteElement::ContactType type, const size_t mpi_id){
 
     if(mpi_id == 0){
         if(!this->first_time){

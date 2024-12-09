@@ -20,6 +20,7 @@
 
 #include "logger.hpp"
 #include "spring.hpp"
+#include "math/matrix.hpp"
 #include "utils.hpp"
 #include "meshing.hpp"
 #include <memory>
@@ -29,11 +30,11 @@ Spring::Spring(CrossSection cross_section, double thickness, gp_Dir normal, gp_D
     S(std::move(cross_section)), 
     A(S.get_area()),
     thickness(thickness),
-    rot2D{{normal.X(), v.X()},
-          {normal.Y(), v.Y()}},
-    rot3D{{normal.X(), v.X(), w.X()},
-         {normal.Y(), v.Y(), w.Y()},
-         {normal.Z(), v.Z(), w.Z()}},
+    rot2D({normal.X(), v.X(),
+           normal.Y(), v.Y()}, 2, 2),
+    rot3D({normal.X(), v.X(), w.X(),
+           normal.Y(), v.Y(), w.Y(),
+           normal.Z(), v.Z(), w.Z()}, 3, 3),
     mat(mat),
     normal(normal),
     elem_info(elem),
@@ -42,37 +43,27 @@ Spring::Spring(CrossSection cross_section, double thickness, gp_Dir normal, gp_D
 
 }
 
-std::vector<double> Spring::get_K(const MeshElement* const e, const gp_Pnt& p) const{
+math::Matrix Spring::get_K(const MeshElement* const e, const gp_Pnt& p) const{
     if(type == utils::PROBLEM_TYPE_2D){
 
         auto EG = mat->beam_EG_2D(e, p, this->rot2D);
 
-        Eigen::Matrix<double, 2, 2> Korig{{EG[0]/L[0], 0},
-                                          {0, EG[1]/L[1]}};
+        math::Matrix Korig({EG[0]/L[0], 0,
+                            0, EG[1]/L[1]}, 2, 2);
 
-        Eigen::Matrix<double, 2, 2> Ktmp = rot2D*Korig*rot2D.transpose();
-
-        std::vector<double> K(4);
-        std::copy(Ktmp.data(), Ktmp.data()+4, K.begin());
-
-        return K;
+        return rot2D*Korig*rot2D.T();
     } else if(type == utils::PROBLEM_TYPE_3D){
 
         auto EG = mat->beam_EG_3D(e, p, this->rot3D);
 
-        Eigen::Matrix<double, 3, 3> Korig{{EG[0]/L[0], 0, 0},
-                                          {0, EG[1]/L[1], 0},
-                                          {0, 0, EG[2]/L[2]}};
+        math::Matrix Korig({EG[0]/L[0], 0, 0,
+                            0, EG[1]/L[1], 0,
+                            0, 0, EG[2]/L[2]}, 3, 3);
 
-        Eigen::Matrix<double, 3, 3> Ktmp = rot3D*Korig*rot3D.transpose();
-
-        std::vector<double> K(9);
-        std::copy(Ktmp.data(), Ktmp.data()+9, K.begin());
-
-        return K;
+        return rot3D*Korig*rot3D.T();
     }
 
-    return std::vector<double>();
+    return math::Matrix();
 }
 
 class PointSort{
@@ -120,7 +111,7 @@ void Spring::generate_mesh(std::vector<BoundaryElement>& boundary_elements){
             const auto& b = boundary_elements[i];
             for(size_t j = 0; j < bound_nodes_per_elem; ++j){
                 const auto& n = b.nodes[j];
-                gp_Pnt p = utils::change_point(n->point, this->rot3D.transpose());
+                gp_Pnt p = utils::change_point(n->point, this->rot3D.T());
                 std::unique_ptr<MeshNode> node(std::make_unique<MeshNode>(p, 0, 1));
                 nodes.insert(std::move(node));
             }

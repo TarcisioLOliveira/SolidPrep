@@ -19,9 +19,7 @@
  */
 
 #include "material/linear_elastic_orthotropic.hpp"
-#include "logger.hpp"
 #include "utils/basis_tensor.hpp"
-#include "utils/D_operations.hpp"
 #include <cmath>
 #include <lapacke.h>
 #include <cblas.h>
@@ -29,7 +27,8 @@
 namespace material{
 
 LinearElasticOrthotropic::LinearElasticOrthotropic(const std::string& name, const double density, std::vector<double> E, std::vector<double> nu, std::vector<bool> nu_lower_half, std::vector<double> G, std::vector<double> Smax, std::vector<double> Tmax):
-    Material(name, std::move(Smax), std::move(Tmax)), density(density){
+    Material(name, std::move(Smax), std::move(Tmax)), density(density),
+    D_2D(), D_3D(), S_2D(3,3), S_3D(6,6){
    
     double Sxy = 0, Sxz = 0, Syz = 0;
     if(nu_lower_half[0]){
@@ -48,69 +47,65 @@ LinearElasticOrthotropic::LinearElasticOrthotropic(const std::string& name, cons
         Syz = -nu[2]/E[2];
     }
 
-    this->S_2D.resize(9,0);
-    S_2D[0] = 1/E[0]; S_2D[1] = Sxy;
-    S_2D[3] = Sxy; S_2D[4] = 1/E[1];
-    S_2D[8] = 1/G[0];
-    this->D_2D = utils::D_op::invert_2D(S_2D);
+    S_2D.data()[0] = 1/E[0]; S_2D.data()[1] = Sxy;
+    S_2D.data()[3] = Sxy; S_2D.data()[4] = 1/E[1];
+    S_2D.data()[8] = 1/G[0];
+    this->D_2D = S_2D.get_inverted_cholesky();
 
-    this->S_3D.resize(36,0);
-    S_3D[ 0] = 1/E[0]; S_3D[ 1] = Sxy; S_3D[ 2] = Sxz;
-    S_3D[ 6] = Sxy; S_3D[ 7] = 1/E[1]; S_3D[ 8] = Syz;
-    S_3D[12] = Sxz; S_3D[13] = Syz; S_3D[14] = 1/E[2];
-    S_3D[21] = 1/G[0];
-    S_3D[28] = 1/G[1];
-    S_3D[35] = 1/G[2];
-    this->D_3D = utils::D_op::invert_3D(S_3D);
+    S_3D.data()[ 0] = 1/E[0]; S_3D.data()[ 1] = Sxy; S_3D.data()[ 2] = Sxz;
+    S_3D.data()[ 6] = Sxy; S_3D.data()[ 7] = 1/E[1]; S_3D.data()[ 8] = Syz;
+    S_3D.data()[12] = Sxz; S_3D.data()[13] = Syz; S_3D.data()[14] = 1/E[2];
+    S_3D.data()[21] = 1/G[0];
+    S_3D.data()[28] = 1/G[1];
+    S_3D.data()[35] = 1/G[2];
+    this->D_3D = S_3D.get_inverted_cholesky();
 }
 
-double LinearElasticOrthotropic::beam_E_2D(const MeshElement* const e, const gp_Pnt& p, const Eigen::Matrix<double, 2, 2>& R) const{
+double LinearElasticOrthotropic::beam_E_2D(const MeshElement* const e, const gp_Pnt& p, const math::Matrix& R) const{
     // Anisotropic Elasticity: Theory and Applications
     // (Ting, 1996)
     (void)p;
     (void)e;
 
     const auto Rt = utils::basis_tensor_2D(R);
-    auto S = this->S_2D;
-    this->rotate_S_2D(S, Rt);
+    const auto& S = this->S_2D;
 
-    return 1.0/S[0];
+    return 1.0/(Rt*S*Rt.T())(0,0);
 }
-double LinearElasticOrthotropic::beam_E_3D(const MeshElement* const e, const gp_Pnt& p, const Eigen::Matrix<double, 3, 3>& R) const{
+double LinearElasticOrthotropic::beam_E_3D(const MeshElement* const e, const gp_Pnt& p, const math::Matrix& R) const{
     // Anisotropic Elasticity: Theory and Applications
     // (Ting, 1996)
     (void)p;
     (void)e;
 
     const auto Rt = utils::basis_tensor_3D(R);
-    auto S = this->S_3D;
-    this->rotate_S_3D(S, Rt);
+    const auto& S = this->S_3D;
 
-    return 1.0/S[0];
+    return 1.0/(Rt*S*Rt.T())(0,0);
 }
-std::array<double, 2> LinearElasticOrthotropic::beam_EG_2D(const MeshElement* const e, const gp_Pnt& p, const Eigen::Matrix<double, 2, 2>& R) const{
+std::array<double, 2> LinearElasticOrthotropic::beam_EG_2D(const MeshElement* const e, const gp_Pnt& p, const math::Matrix& R) const{
     // Anisotropic Elasticity: Theory and Applications
     // (Ting, 1996)
     (void)p;
     (void)e;
 
     const auto Rt = utils::basis_tensor_2D(R);
-    auto S = this->S_2D;
-    this->rotate_S_2D(S, Rt);
+    const auto& S = this->S_2D;
+    const auto Sr = Rt*S*Rt.T();
 
-    return {1.0/S[0], 1.0/S[8]};
+    return {1.0/Sr(0,0), 1.0/S(2,2)};
 }
-std::array<double, 4> LinearElasticOrthotropic::beam_EG_3D(const MeshElement* const e, const gp_Pnt& p, const Eigen::Matrix<double, 3, 3>& R) const{
+std::array<double, 4> LinearElasticOrthotropic::beam_EG_3D(const MeshElement* const e, const gp_Pnt& p, const math::Matrix& R) const{
     // Anisotropic Elasticity: Theory and Applications
     // (Ting, 1996)
     (void)p;
     (void)e;
 
     const auto Rt = utils::basis_tensor_3D(R);
-    auto S = this->S_3D;
-    this->rotate_S_3D(S, Rt);
+    const auto& S = this->S_3D;
+    const auto Sr = Rt*S*Rt.T();
 
-    return {1.0/S[0], 1.0/S[21], 1.0/S[28], 1.0/S[35]};
+    return {1.0/S(0,0), 1.0/S(3,3), 1.0/S(4,4), 1.0/S(5,5)};
 }
 
 std::vector<double> LinearElasticOrthotropic::get_max_stresses(gp_Dir d) const{
@@ -174,29 +169,6 @@ std::vector<double> LinearElasticOrthotropic::get_max_stresses(gp_Dir d) const{
     }
 
     return std::vector<double>();
-}
-
-
-double LinearElasticOrthotropic::S12_2D(const MeshElement* const e, const gp_Pnt& p, const Eigen::Matrix<double, 2, 2>& R) const{
-    (void)p;
-    (void)e;
-
-    const auto Rt = utils::basis_tensor_2D_inv_T(R.transpose());
-    auto s = this->S_2D;
-    this->rotate_S_2D(s, Rt);
-
-    return s[1];
-}
-
-std::array<double, 2> LinearElasticOrthotropic::S12_S13_3D(const MeshElement* const e, const gp_Pnt& p, const Eigen::Matrix<double, 3, 3>& R) const{
-    (void)p;
-    (void)e;
-
-    const auto Rt = utils::basis_tensor_3D_inv_T(R);
-    auto s = this->S_3D;
-    this->rotate_S_3D(s, Rt);
-
-    return {s[1], s[2]};
 }
 
 }

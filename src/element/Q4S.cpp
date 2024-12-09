@@ -21,6 +21,8 @@
 #include "element/Q4S.hpp"
 #include "cblas.h"
 #include "logger.hpp"
+#include "math/matrix.hpp"
+#include "utils.hpp"
 #include <vector>
 #include <lapacke.h>
 
@@ -83,9 +85,10 @@ Q4S::Q4S(ElementShape s):
     // }  
 }
 
-std::vector<double> Q4S::get_k(const std::vector<double>& D, const double t) const{
+math::Matrix Q4S::get_k(const math::Matrix& Dm, const double t) const{
+    const double* D = Dm.data();
 
-    std::vector<double> k{
+    math::Matrix k({
     D[2]*t/4 + D[6]*t/4 + (D[0]*b*b*t + D[8]*a*a*t)/(3*a*b)
     ,
     D[1]*t/4 + D[8]*t/4 + (D[2]*b*b*t + D[7]*a*a*t)/(3*a*b)
@@ -213,19 +216,19 @@ std::vector<double> Q4S::get_k(const std::vector<double>& D, const double t) con
     -D[3]*t/4 - D[8]*t/4 + (D[5]*a*a*t + D[6]*b*b*t)/(3*a*b)
     ,
     -D[5]*t/4 - D[7]*t/4 + (D[4]*a*a*t + D[8]*b*b*t)/(3*a*b)
-    };
+    }, K_DIM, K_DIM);
 
     return k;
 }
 
-std::vector<double> Q4S::get_B(const gp_Pnt& point) const{
+math::Matrix Q4S::get_B(const gp_Pnt& point) const{
 
     const gp_Pnt p = this->normalize(point);
 
     const double xi = p.X();
     const double eta = p.Y();
 
-    std::vector<double> B{
+    math::Matrix B({
     (-b + eta)/(4*a*b)
     ,
     0
@@ -273,71 +276,11 @@ std::vector<double> Q4S::get_B(const gp_Pnt& point) const{
     (a - xi)/(4*a*b)
     ,
     (-b - eta)/(4*a*b)
-    };
+    }, S_SIZE, K_DIM);
     return B;
 }
 
-std::vector<double> Q4S::get_DB(const std::vector<double>& D, const gp_Pnt& point) const{
-
-    const gp_Pnt p = this->normalize(point);
-
-    const double xi = p.X();
-    const double eta = p.Y();
-
-    std::vector<double> DB{
-    (-D[0]*b + D[0]*eta - D[2]*a + D[2]*xi)/(4*a*b)
-    ,
-    (-D[1]*a + D[1]*xi - D[2]*b + D[2]*eta)/(4*a*b)
-    ,
-    (D[0]*b - D[0]*eta - D[2]*a - D[2]*xi)/(4*a*b)
-    ,
-    (-D[1]*a - D[1]*xi + D[2]*b - D[2]*eta)/(4*a*b)
-    ,
-    (D[0]*b + D[0]*eta + D[2]*a + D[2]*xi)/(4*a*b)
-    ,
-    (D[1]*a + D[1]*xi + D[2]*b + D[2]*eta)/(4*a*b)
-    ,
-    (-D[0]*b - D[0]*eta + D[2]*a - D[2]*xi)/(4*a*b)
-    ,
-    (D[1]*a - D[1]*xi - D[2]*b - D[2]*eta)/(4*a*b)
-    ,
-    (-D[3]*b + D[3]*eta - D[5]*a + D[5]*xi)/(4*a*b)
-    ,
-    (-D[4]*a + D[4]*xi - D[5]*b + D[5]*eta)/(4*a*b)
-    ,
-    (D[3]*b - D[3]*eta - D[5]*a - D[5]*xi)/(4*a*b)
-    ,
-    (-D[4]*a - D[4]*xi + D[5]*b - D[5]*eta)/(4*a*b)
-    ,
-    (D[3]*b + D[3]*eta + D[5]*a + D[5]*xi)/(4*a*b)
-    ,
-    (D[4]*a + D[4]*xi + D[5]*b + D[5]*eta)/(4*a*b)
-    ,
-    (-D[3]*b - D[3]*eta + D[5]*a - D[5]*xi)/(4*a*b)
-    ,
-    (D[4]*a - D[4]*xi - D[5]*b - D[5]*eta)/(4*a*b)
-    ,
-    (-D[6]*b + D[6]*eta - D[8]*a + D[8]*xi)/(4*a*b)
-    ,
-    (-D[7]*a + D[7]*xi - D[8]*b + D[8]*eta)/(4*a*b)
-    ,
-    (D[6]*b - D[6]*eta - D[8]*a - D[8]*xi)/(4*a*b)
-    ,
-    (-D[7]*a - D[7]*xi + D[8]*b - D[8]*eta)/(4*a*b)
-    ,
-    (D[6]*b + D[6]*eta + D[8]*a + D[8]*xi)/(4*a*b)
-    ,
-    (D[7]*a + D[7]*xi + D[8]*b + D[8]*eta)/(4*a*b)
-    ,
-    (-D[6]*b - D[6]*eta + D[8]*a - D[8]*xi)/(4*a*b)
-    ,
-    (D[7]*a - D[7]*xi - D[8]*b - D[8]*eta)/(4*a*b)
-    };
-     
-    return DB;
-}
-
-std::vector<double> Q4S::get_Nf(const double t, const std::vector<gp_Pnt>& points) const{
+math::Matrix Q4S::get_Nf(const double t, const std::vector<gp_Pnt>& points) const{
 
     const gp_Pnt p0 = this->normalize(points[0]);
     const gp_Pnt p1 = this->normalize(points[1]);
@@ -345,7 +288,7 @@ std::vector<double> Q4S::get_Nf(const double t, const std::vector<gp_Pnt>& point
     const std::array<double, 2> x{p0.X(), p1.X()};
     const std::array<double, 2> y{p0.Y(), p1.Y()};
 
-    std::vector<double> Nf{
+    math::Matrix Nf({
     t*std::sqrt(x[0]*x[0] - 2*x[0]*x[1] + x[1]*x[1] + y[0]*y[0] - 2*y[0]*y[1] + y[1]*y[1])*(6*a*b - 3*a*(y[0] + y[1]) - 3*b*(x[0] + x[1]) + 2*x[0]*y[0] + x[0]*y[1] + x[1]*y[0] + 2*x[1]*y[1])/(24*a*b)
     ,
     0
@@ -377,29 +320,32 @@ std::vector<double> Q4S::get_Nf(const double t, const std::vector<gp_Pnt>& point
     0
     ,
     t*std::sqrt(x[0]*x[0] - 2*x[0]*x[1] + x[1]*x[1] + y[0]*y[0] - 2*y[0]*y[1] + y[1]*y[1])*(6*a*b + 3*a*(y[0] + y[1]) - 3*b*(x[0] + x[1]) - 2*x[0]*y[0] - x[0]*y[1] - x[1]*y[0] - 2*x[1]*y[1])/(24*a*b)
-    };
+    }, K_DIM, DIM);
 
     return Nf;
 }
 
-std::vector<double> Q4S::get_nodal_density_gradient(gp_Pnt p) const{
+math::Matrix Q4S::get_nodal_density_gradient(gp_Pnt p) const{
     const gp_Pnt pnorm = this->normalize(p);
 
     const double xi = pnorm.X();
     const double eta = pnorm.Y();
 
-    return std::vector<double>{-(b-eta)/(4*a*b), (b-eta)/(4*a*b), (b+eta)/(4*a*b), -(b+eta)/(4*a*b),
-                               -(a-xi)/(4*a*b), -(a-xi)/(4*a*b), (a+xi)/(4*a*b), -(b+eta)/(4*a*b)};
+    return math::Matrix({-(b-eta)/(4*a*b), (b-eta)/(4*a*b), (b+eta)/(4*a*b), -(b+eta)/(4*a*b),
+                         -(a-xi)/(4*a*b), -(a-xi)/(4*a*b), (a+xi)/(4*a*b), -(b+eta)/(4*a*b)},
+                         DIM, NODES_PER_ELEM);
 }
 
-std::vector<double> Q4S::get_R(const std::vector<double>& K, const double t, const std::vector<gp_Pnt>& points) const{
+math::Matrix Q4S::get_R(const math::Matrix& Km, const double t, const std::vector<gp_Pnt>& points) const{
     const gp_Pnt p0 = this->normalize(points[0]);
     const gp_Pnt p1 = this->normalize(points[1]);
 
     const std::array<double, 2> x{p0.X(), p1.X()};
     const std::array<double, 2> y{p0.Y(), p1.Y()};
 
-    std::vector<double> R{
+    const double* K = Km.data();
+
+    math::Matrix R({
     K[0]*t*std::sqrt(x[0]*x[0] - 2*x[0]*x[1] + x[1]*x[1] + y[0]*y[0] - 2*y[0]*y[1] + y[1]*y[1])*(30*a*a*b*b - 30*a*a*b*(y[0] + y[1]) + 10*a*a*(y[0]*y[0] + y[0]*y[1] + y[1]*y[1]) - 30*a*b*b*(x[0] + x[1]) + 20*a*b*(2*x[0]*y[0] + x[0]*y[1] + x[1]*y[0] + 2*x[1]*y[1]) - 5*a*(3*x[0]*y[0]*y[0] + 2*x[0]*y[0]*y[1] + x[0]*y[1]*y[1] + x[1]*y[0]*y[0] + 2*x[1]*y[0]*y[1] + 3*x[1]*y[1]*y[1]) + 10*b*b*(x[0]*x[0] + x[0]*x[1] + x[1]*x[1]) - 5*b*(3*x[0]*x[0]*y[0] + x[0]*x[0]*y[1] + 2*x[0]*x[1]*y[0] + 2*x[0]*x[1]*y[1] + x[1]*x[1]*y[0] + 3*x[1]*x[1]*y[1]) + 6*x[0]*x[0]*y[0]*y[0] + 3*x[0]*x[0]*y[0]*y[1] + x[0]*x[0]*y[1]*y[1] + 3*x[0]*x[1]*y[0]*y[0] + 4*x[0]*x[1]*y[0]*y[1] + 3*x[0]*x[1]*y[1]*y[1] + x[1]*x[1]*y[0]*y[0] + 3*x[1]*x[1]*y[0]*y[1] + 6*x[1]*x[1]*y[1]*y[1])/(480*a*a*b*b)
     ,
     K[1]*t*std::sqrt(x[0]*x[0] - 2*x[0]*x[1] + x[1]*x[1] + y[0]*y[0] - 2*y[0]*y[1] + y[1]*y[1])*(30*a*a*b*b - 30*a*a*b*(y[0] + y[1]) + 10*a*a*(y[0]*y[0] + y[0]*y[1] + y[1]*y[1]) - 30*a*b*b*(x[0] + x[1]) + 20*a*b*(2*x[0]*y[0] + x[0]*y[1] + x[1]*y[0] + 2*x[1]*y[1]) - 5*a*(3*x[0]*y[0]*y[0] + 2*x[0]*y[0]*y[1] + x[0]*y[1]*y[1] + x[1]*y[0]*y[0] + 2*x[1]*y[0]*y[1] + 3*x[1]*y[1]*y[1]) + 10*b*b*(x[0]*x[0] + x[0]*x[1] + x[1]*x[1]) - 5*b*(3*x[0]*x[0]*y[0] + x[0]*x[0]*y[1] + 2*x[0]*x[1]*y[0] + 2*x[0]*x[1]*y[1] + x[1]*x[1]*y[0] + 3*x[1]*x[1]*y[1]) + 6*x[0]*x[0]*y[0]*y[0] + 3*x[0]*x[0]*y[0]*y[1] + x[0]*x[0]*y[1]*y[1] + 3*x[0]*x[1]*y[0]*y[0] + 4*x[0]*x[1]*y[0]*y[1] + 3*x[0]*x[1]*y[1]*y[1] + x[1]*x[1]*y[0]*y[0] + 3*x[1]*x[1]*y[0]*y[1] + 6*x[1]*x[1]*y[1]*y[1])/(480*a*a*b*b)
@@ -527,45 +473,15 @@ std::vector<double> Q4S::get_R(const std::vector<double>& K, const double t, con
     K[2]*t*std::sqrt(x[0]*x[0] - 2*x[0]*x[1] + x[1]*x[1] + y[0]*y[0] - 2*y[0]*y[1] + y[1]*y[1])*(30*a*a*b*b + 30*a*a*b*(y[0] + y[1]) + 10*a*a*(y[0]*y[0] + y[0]*y[1] + y[1]*y[1]) - 30*a*b*b*(x[0] + x[1]) - 20*a*b*(2*x[0]*y[0] + x[0]*y[1] + x[1]*y[0] + 2*x[1]*y[1]) - 5*a*(3*x[0]*y[0]*y[0] + 2*x[0]*y[0]*y[1] + x[0]*y[1]*y[1] + x[1]*y[0]*y[0] + 2*x[1]*y[0]*y[1] + 3*x[1]*y[1]*y[1]) + 10*b*b*(x[0]*x[0] + x[0]*x[1] + x[1]*x[1]) + 5*b*(3*x[0]*x[0]*y[0] + x[0]*x[0]*y[1] + 2*x[0]*x[1]*y[0] + 2*x[0]*x[1]*y[1] + x[1]*x[1]*y[0] + 3*x[1]*x[1]*y[1]) + 6*x[0]*x[0]*y[0]*y[0] + 3*x[0]*x[0]*y[0]*y[1] + x[0]*x[0]*y[1]*y[1] + 3*x[0]*x[1]*y[0]*y[0] + 4*x[0]*x[1]*y[0]*y[1] + 3*x[0]*x[1]*y[1]*y[1] + x[1]*x[1]*y[0]*y[0] + 3*x[1]*x[1]*y[0]*y[1] + 6*x[1]*x[1]*y[1]*y[1])/(480*a*a*b*b)
     ,
     K[3]*t*std::sqrt(x[0]*x[0] - 2*x[0]*x[1] + x[1]*x[1] + y[0]*y[0] - 2*y[0]*y[1] + y[1]*y[1])*(30*a*a*b*b + 30*a*a*b*(y[0] + y[1]) + 10*a*a*(y[0]*y[0] + y[0]*y[1] + y[1]*y[1]) - 30*a*b*b*(x[0] + x[1]) - 20*a*b*(2*x[0]*y[0] + x[0]*y[1] + x[1]*y[0] + 2*x[1]*y[1]) - 5*a*(3*x[0]*y[0]*y[0] + 2*x[0]*y[0]*y[1] + x[0]*y[1]*y[1] + x[1]*y[0]*y[0] + 2*x[1]*y[0]*y[1] + 3*x[1]*y[1]*y[1]) + 10*b*b*(x[0]*x[0] + x[0]*x[1] + x[1]*x[1]) + 5*b*(3*x[0]*x[0]*y[0] + x[0]*x[0]*y[1] + 2*x[0]*x[1]*y[0] + 2*x[0]*x[1]*y[1] + x[1]*x[1]*y[0] + 3*x[1]*x[1]*y[1]) + 6*x[0]*x[0]*y[0]*y[0] + 3*x[0]*x[0]*y[0]*y[1] + x[0]*x[0]*y[1]*y[1] + 3*x[0]*x[1]*y[0]*y[0] + 4*x[0]*x[1]*y[0]*y[1] + 3*x[0]*x[1]*y[1]*y[1] + x[1]*x[1]*y[0]*y[0] + 3*x[1]*x[1]*y[0]*y[1] + 6*x[1]*x[1]*y[1]*y[1])/(480*a*a*b*b)
-    };
+    }, K_DIM, K_DIM);
 
     return R;
 }
 
-std::vector<double> Q4S::get_Rf(const std::vector<double>& S, const std::vector<double>& F, const gp_Pnt& C, const double t, const std::vector<gp_Pnt>& points) const{
-    const gp_Pnt p0 = this->normalize(points[0]);
-    const gp_Pnt p1 = this->normalize(points[1]);
-    const gp_Pnt cn = this->normalize(C);
 
-    const double cx = cn.X();
-    const double cy = cn.Y();
-
-    const std::array<double, 2> x{p0.X(), p1.X()};
-    const std::array<double, 2> y{p0.Y(), p1.Y()};
-
-    std::vector<double> Rf{
-    t*std::sqrt(x[0]*x[0] - 2*x[0]*x[1] + x[1]*x[1] + y[0]*y[0] - 2*y[0]*y[1] + y[1]*y[1])*(4*F[0]*x[0]*y[0] + 2*F[0]*x[0]*y[1] + 2*F[0]*x[1]*y[0] + 4*F[0]*x[1]*y[1] - 4*S[0]*cx*x[0]*y[0] - 2*S[0]*cx*x[0]*y[1] - 2*S[0]*cx*x[1]*y[0] - 4*S[0]*cx*x[1]*y[1] + 3*S[0]*x[0]*x[0]*y[0] + S[0]*x[0]*x[0]*y[1] + 2*S[0]*x[0]*x[1]*y[0] + 2*S[0]*x[0]*x[1]*y[1] + S[0]*x[1]*x[1]*y[0] + 3*S[0]*x[1]*x[1]*y[1] - 4*S[1]*cy*x[0]*y[0] - 2*S[1]*cy*x[0]*y[1] - 2*S[1]*cy*x[1]*y[0] - 4*S[1]*cy*x[1]*y[1] + 3*S[1]*x[0]*y[0]*y[0] + 2*S[1]*x[0]*y[0]*y[1] + S[1]*x[0]*y[1]*y[1] + S[1]*x[1]*y[0]*y[0] + 2*S[1]*x[1]*y[0]*y[1] + 3*S[1]*x[1]*y[1]*y[1] + 6*a*b*(2*F[0] - 2*S[0]*cx + S[0]*x[0] + S[0]*x[1] - 2*S[1]*cy + S[1]*y[0] + S[1]*y[1]) +2*a*(-3*F[0]*y[0] - 3*F[0]*y[1] + 3*S[0]*cx*y[0] + 3*S[0]*cx*y[1] - 2*S[0]*x[0]*y[0] - S[0]*x[0]*y[1] - S[0]*x[1]*y[0] - 2*S[0]*x[1]*y[1] + 3*S[1]*cy*y[0] + 3*S[1]*cy*y[1] - 2*S[1]*y[0]*y[0] - 2*S[1]*y[0]*y[1] - 2*S[1]*y[1]*y[1]) + 2*b*(-3*F[0]*x[0] - 3*F[0]*x[1] + 3*S[0]*cx*x[0] + 3*S[0]*cx*x[1] - 2*S[0]*x[0]*x[0] - 2*S[0]*x[0]*x[1] - 2*S[0]*x[1]*x[1] + 3*S[1]*cy*x[0] + 3*S[1]*cy*x[1] - 2*S[1]*x[0]*y[0] - S[1]*x[0]*y[1] - S[1]*x[1]*y[0] - 2*S[1]*x[1]*y[1]))/(48*a*b)
-    ,
-    t*std::sqrt(x[0]*x[0] - 2*x[0]*x[1] + x[1]*x[1] + y[0]*y[0] - 2*y[0]*y[1] + y[1]*y[1])*(4*F[1]*x[0]*y[0] + 2*F[1]*x[0]*y[1] + 2*F[1]*x[1]*y[0] + 4*F[1]*x[1]*y[1] - 4*S[2]*cx*x[0]*y[0] - 2*S[2]*cx*x[0]*y[1] - 2*S[2]*cx*x[1]*y[0] - 4*S[2]*cx*x[1]*y[1] + 3*S[2]*x[0]*x[0]*y[0] + S[2]*x[0]*x[0]*y[1] + 2*S[2]*x[0]*x[1]*y[0] + 2*S[2]*x[0]*x[1]*y[1] + S[2]*x[1]*x[1]*y[0] + 3*S[2]*x[1]*x[1]*y[1] - 4*S[3]*cy*x[0]*y[0] - 2*S[3]*cy*x[0]*y[1] - 2*S[3]*cy*x[1]*y[0] - 4*S[3]*cy*x[1]*y[1] + 3*S[3]*x[0]*y[0]*y[0] + 2*S[3]*x[0]*y[0]*y[1] + S[3]*x[0]*y[1]*y[1] + S[3]*x[1]*y[0]*y[0] + 2*S[3]*x[1]*y[0]*y[1] + 3*S[3]*x[1]*y[1]*y[1] + 6*a*b*(2*F[1] - 2*S[2]*cx + S[2]*x[0] + S[2]*x[1] - 2*S[3]*cy + S[3]*y[0] + S[3]*y[1]) +2*a*(-3*F[1]*y[0] - 3*F[1]*y[1] + 3*S[2]*cx*y[0] + 3*S[2]*cx*y[1] - 2*S[2]*x[0]*y[0] - S[2]*x[0]*y[1] - S[2]*x[1]*y[0] - 2*S[2]*x[1]*y[1] + 3*S[3]*cy*y[0] + 3*S[3]*cy*y[1] - 2*S[3]*y[0]*y[0] - 2*S[3]*y[0]*y[1] - 2*S[3]*y[1]*y[1]) + 2*b*(-3*F[1]*x[0] - 3*F[1]*x[1] + 3*S[2]*cx*x[0] + 3*S[2]*cx*x[1] - 2*S[2]*x[0]*x[0] - 2*S[2]*x[0]*x[1] - 2*S[2]*x[1]*x[1] + 3*S[3]*cy*x[0] + 3*S[3]*cy*x[1] - 2*S[3]*x[0]*y[0] - S[3]*x[0]*y[1] - S[3]*x[1]*y[0] - 2*S[3]*x[1]*y[1]))/(48*a*b)
-    ,
-    t*std::sqrt(x[0]*x[0] - 2*x[0]*x[1] + x[1]*x[1] + y[0]*y[0] - 2*y[0]*y[1] + y[1]*y[1])*(-4*F[0]*x[0]*y[0] - 2*F[0]*x[0]*y[1] - 2*F[0]*x[1]*y[0] - 4*F[0]*x[1]*y[1] + 4*S[0]*cx*x[0]*y[0] + 2*S[0]*cx*x[0]*y[1] + 2*S[0]*cx*x[1]*y[0] + 4*S[0]*cx*x[1]*y[1] - 3*S[0]*x[0]*x[0]*y[0] - S[0]*x[0]*x[0]*y[1] - 2*S[0]*x[0]*x[1]*y[0] - 2*S[0]*x[0]*x[1]*y[1] - S[0]*x[1]*x[1]*y[0] - 3*S[0]*x[1]*x[1]*y[1] + 4*S[1]*cy*x[0]*y[0] + 2*S[1]*cy*x[0]*y[1] + 2*S[1]*cy*x[1]*y[0] + 4*S[1]*cy*x[1]*y[1] - 3*S[1]*x[0]*y[0]*y[0] - 2*S[1]*x[0]*y[0]*y[1] - S[1]*x[0]*y[1]*y[1] - S[1]*x[1]*y[0]*y[0] - 2*S[1]*x[1]*y[0]*y[1] - 3*S[1]*x[1]*y[1]*y[1] + 6*a*b*(2*F[0] - 2*S[0]*cx + S[0]*x[0] + S[0]*x[1] - 2*S[1]*cy + S[1]*y[0] + S[1]*y[1]) + 2*a*(-3*F[0]*y[0] - 3*F[0]*y[1] + 3*S[0]*cx*y[0] + 3*S[0]*cx*y[1] - 2*S[0]*x[0]*y[0] - S[0]*x[0]*y[1] - S[0]*x[1]*y[0] - 2*S[0]*x[1]*y[1] + 3*S[1]*cy*y[0] + 3*S[1]*cy*y[1] - 2*S[1]*y[0]*y[0] - 2*S[1]*y[0]*y[1] - 2*S[1]*y[1]*y[1]) + 2*b*(3*F[0]*x[0] + 3*F[0]*x[1] - 3*S[0]*cx*x[0] - 3*S[0]*cx*x[1] + 2*S[0]*x[0]*x[0] + 2*S[0]*x[0]*x[1] + 2*S[0]*x[1]*x[1] - 3*S[1]*cy*x[0] - 3*S[1]*cy*x[1] + 2*S[1]*x[0]*y[0] + S[1]*x[0]*y[1] + S[1]*x[1]*y[0] + 2*S[1]*x[1]*y[1]))/(48*a*b)
-    ,
-    t*std::sqrt(x[0]*x[0] - 2*x[0]*x[1] + x[1]*x[1] + y[0]*y[0] - 2*y[0]*y[1] + y[1]*y[1])*(-4*F[1]*x[0]*y[0] - 2*F[1]*x[0]*y[1] - 2*F[1]*x[1]*y[0] - 4*F[1]*x[1]*y[1] + 4*S[2]*cx*x[0]*y[0] + 2*S[2]*cx*x[0]*y[1] + 2*S[2]*cx*x[1]*y[0] + 4*S[2]*cx*x[1]*y[1] - 3*S[2]*x[0]*x[0]*y[0] - S[2]*x[0]*x[0]*y[1] - 2*S[2]*x[0]*x[1]*y[0] - 2*S[2]*x[0]*x[1]*y[1] - S[2]*x[1]*x[1]*y[0] - 3*S[2]*x[1]*x[1]*y[1] + 4*S[3]*cy*x[0]*y[0] + 2*S[3]*cy*x[0]*y[1] + 2*S[3]*cy*x[1]*y[0] + 4*S[3]*cy*x[1]*y[1] - 3*S[3]*x[0]*y[0]*y[0] - 2*S[3]*x[0]*y[0]*y[1] - S[3]*x[0]*y[1]*y[1] - S[3]*x[1]*y[0]*y[0] - 2*S[3]*x[1]*y[0]*y[1] - 3*S[3]*x[1]*y[1]*y[1] + 6*a*b*(2*F[1] - 2*S[2]*cx + S[2]*x[0] + S[2]*x[1] - 2*S[3]*cy + S[3]*y[0] + S[3]*y[1]) + 2*a*(-3*F[1]*y[0] - 3*F[1]*y[1] + 3*S[2]*cx*y[0] + 3*S[2]*cx*y[1] - 2*S[2]*x[0]*y[0] - S[2]*x[0]*y[1] - S[2]*x[1]*y[0] - 2*S[2]*x[1]*y[1] + 3*S[3]*cy*y[0] + 3*S[3]*cy*y[1] - 2*S[3]*y[0]*y[0] - 2*S[3]*y[0]*y[1] - 2*S[3]*y[1]*y[1]) + 2*b*(3*F[1]*x[0] + 3*F[1]*x[1] - 3*S[2]*cx*x[0] - 3*S[2]*cx*x[1] + 2*S[2]*x[0]*x[0] + 2*S[2]*x[0]*x[1] + 2*S[2]*x[1]*x[1] - 3*S[3]*cy*x[0] - 3*S[3]*cy*x[1] + 2*S[3]*x[0]*y[0] + S[3]*x[0]*y[1] + S[3]*x[1]*y[0] + 2*S[3]*x[1]*y[1]))/(48*a*b)
-    ,
-    t*std::sqrt(x[0]*x[0] - 2*x[0]*x[1] + x[1]*x[1] + y[0]*y[0] - 2*y[0]*y[1] + y[1]*y[1])*(4*F[0]*x[0]*y[0] + 2*F[0]*x[0]*y[1] + 2*F[0]*x[1]*y[0] + 4*F[0]*x[1]*y[1] - 4*S[0]*cx*x[0]*y[0] - 2*S[0]*cx*x[0]*y[1] - 2*S[0]*cx*x[1]*y[0] - 4*S[0]*cx*x[1]*y[1] + 3*S[0]*x[0]*x[0]*y[0] + S[0]*x[0]*x[0]*y[1] + 2*S[0]*x[0]*x[1]*y[0] + 2*S[0]*x[0]*x[1]*y[1] + S[0]*x[1]*x[1]*y[0] + 3*S[0]*x[1]*x[1]*y[1] - 4*S[1]*cy*x[0]*y[0] - 2*S[1]*cy*x[0]*y[1] - 2*S[1]*cy*x[1]*y[0] - 4*S[1]*cy*x[1]*y[1] + 3*S[1]*x[0]*y[0]*y[0] + 2*S[1]*x[0]*y[0]*y[1] + S[1]*x[0]*y[1]*y[1] + S[1]*x[1]*y[0]*y[0] + 2*S[1]*x[1]*y[0]*y[1] + 3*S[1]*x[1]*y[1]*y[1] + 6*a*b*(2*F[0] - 2*S[0]*cx + S[0]*x[0] + S[0]*x[1] - 2*S[1]*cy + S[1]*y[0] + S[1]*y[1]) +2*a*(3*F[0]*y[0] + 3*F[0]*y[1] - 3*S[0]*cx*y[0] - 3*S[0]*cx*y[1] + 2*S[0]*x[0]*y[0] + S[0]*x[0]*y[1] + S[0]*x[1]*y[0] + 2*S[0]*x[1]*y[1] - 3*S[1]*cy*y[0] - 3*S[1]*cy*y[1] + 2*S[1]*y[0]*y[0] + 2*S[1]*y[0]*y[1] + 2*S[1]*y[1]*y[1]) + 2*b*(3*F[0]*x[0] + 3*F[0]*x[1] - 3*S[0]*cx*x[0] - 3*S[0]*cx*x[1] + 2*S[0]*x[0]*x[0] + 2*S[0]*x[0]*x[1] + 2*S[0]*x[1]*x[1] - 3*S[1]*cy*x[0] - 3*S[1]*cy*x[1] + 2*S[1]*x[0]*y[0] + S[1]*x[0]*y[1] + S[1]*x[1]*y[0] + 2*S[1]*x[1]*y[1]))/(48*a*b)
-    ,
-    t*std::sqrt(x[0]*x[0] - 2*x[0]*x[1] + x[1]*x[1] + y[0]*y[0] - 2*y[0]*y[1] + y[1]*y[1])*(4*F[1]*x[0]*y[0] + 2*F[1]*x[0]*y[1] + 2*F[1]*x[1]*y[0] + 4*F[1]*x[1]*y[1] - 4*S[2]*cx*x[0]*y[0] - 2*S[2]*cx*x[0]*y[1] - 2*S[2]*cx*x[1]*y[0] - 4*S[2]*cx*x[1]*y[1] + 3*S[2]*x[0]*x[0]*y[0] + S[2]*x[0]*x[0]*y[1] + 2*S[2]*x[0]*x[1]*y[0] + 2*S[2]*x[0]*x[1]*y[1] + S[2]*x[1]*x[1]*y[0] + 3*S[2]*x[1]*x[1]*y[1] - 4*S[3]*cy*x[0]*y[0] - 2*S[3]*cy*x[0]*y[1] - 2*S[3]*cy*x[1]*y[0] - 4*S[3]*cy*x[1]*y[1] + 3*S[3]*x[0]*y[0]*y[0] + 2*S[3]*x[0]*y[0]*y[1] + S[3]*x[0]*y[1]*y[1] + S[3]*x[1]*y[0]*y[0] + 2*S[3]*x[1]*y[0]*y[1] + 3*S[3]*x[1]*y[1]*y[1] + 6*a*b*(2*F[1] - 2*S[2]*cx + S[2]*x[0] + S[2]*x[1] - 2*S[3]*cy + S[3]*y[0] + S[3]*y[1]) +2*a*(3*F[1]*y[0] + 3*F[1]*y[1] - 3*S[2]*cx*y[0] - 3*S[2]*cx*y[1] + 2*S[2]*x[0]*y[0] + S[2]*x[0]*y[1] + S[2]*x[1]*y[0] + 2*S[2]*x[1]*y[1] - 3*S[3]*cy*y[0] - 3*S[3]*cy*y[1] + 2*S[3]*y[0]*y[0] + 2*S[3]*y[0]*y[1] + 2*S[3]*y[1]*y[1]) + 2*b*(3*F[1]*x[0] + 3*F[1]*x[1] - 3*S[2]*cx*x[0] - 3*S[2]*cx*x[1] + 2*S[2]*x[0]*x[0] + 2*S[2]*x[0]*x[1] + 2*S[2]*x[1]*x[1] - 3*S[3]*cy*x[0] - 3*S[3]*cy*x[1] + 2*S[3]*x[0]*y[0] + S[3]*x[0]*y[1] + S[3]*x[1]*y[0] + 2*S[3]*x[1]*y[1]))/(48*a*b)
-    ,
-    t*std::sqrt(x[0]*x[0] - 2*x[0]*x[1] + x[1]*x[1] + y[0]*y[0] - 2*y[0]*y[1] + y[1]*y[1])*(-4*F[0]*x[0]*y[0] - 2*F[0]*x[0]*y[1] - 2*F[0]*x[1]*y[0] - 4*F[0]*x[1]*y[1] + 4*S[0]*cx*x[0]*y[0] + 2*S[0]*cx*x[0]*y[1] + 2*S[0]*cx*x[1]*y[0] + 4*S[0]*cx*x[1]*y[1] - 3*S[0]*x[0]*x[0]*y[0] - S[0]*x[0]*x[0]*y[1] - 2*S[0]*x[0]*x[1]*y[0] - 2*S[0]*x[0]*x[1]*y[1] - S[0]*x[1]*x[1]*y[0] - 3*S[0]*x[1]*x[1]*y[1] + 4*S[1]*cy*x[0]*y[0] + 2*S[1]*cy*x[0]*y[1] + 2*S[1]*cy*x[1]*y[0] + 4*S[1]*cy*x[1]*y[1] - 3*S[1]*x[0]*y[0]*y[0] - 2*S[1]*x[0]*y[0]*y[1] - S[1]*x[0]*y[1]*y[1] - S[1]*x[1]*y[0]*y[0] - 2*S[1]*x[1]*y[0]*y[1] - 3*S[1]*x[1]*y[1]*y[1] + 6*a*b*(2*F[0] - 2*S[0]*cx + S[0]*x[0] + S[0]*x[1] - 2*S[1]*cy + S[1]*y[0] + S[1]*y[1]) + 2*a*(3*F[0]*y[0] + 3*F[0]*y[1] - 3*S[0]*cx*y[0] - 3*S[0]*cx*y[1] + 2*S[0]*x[0]*y[0] + S[0]*x[0]*y[1] + S[0]*x[1]*y[0] + 2*S[0]*x[1]*y[1] - 3*S[1]*cy*y[0] - 3*S[1]*cy*y[1] + 2*S[1]*y[0]*y[0] + 2*S[1]*y[0]*y[1] + 2*S[1]*y[1]*y[1]) + 2*b*(-3*F[0]*x[0] - 3*F[0]*x[1] + 3*S[0]*cx*x[0] + 3*S[0]*cx*x[1] - 2*S[0]*x[0]*x[0] - 2*S[0]*x[0]*x[1] - 2*S[0]*x[1]*x[1] + 3*S[1]*cy*x[0] + 3*S[1]*cy*x[1] - 2*S[1]*x[0]*y[0] - S[1]*x[0]*y[1] - S[1]*x[1]*y[0] - 2*S[1]*x[1]*y[1]))/(48*a*b)
-    ,
-    t*std::sqrt(x[0]*x[0] - 2*x[0]*x[1] + x[1]*x[1] + y[0]*y[0] - 2*y[0]*y[1] + y[1]*y[1])*(-4*F[1]*x[0]*y[0] - 2*F[1]*x[0]*y[1] - 2*F[1]*x[1]*y[0] - 4*F[1]*x[1]*y[1] + 4*S[2]*cx*x[0]*y[0] + 2*S[2]*cx*x[0]*y[1] + 2*S[2]*cx*x[1]*y[0] + 4*S[2]*cx*x[1]*y[1] - 3*S[2]*x[0]*x[0]*y[0] - S[2]*x[0]*x[0]*y[1] - 2*S[2]*x[0]*x[1]*y[0] - 2*S[2]*x[0]*x[1]*y[1] - S[2]*x[1]*x[1]*y[0] - 3*S[2]*x[1]*x[1]*y[1] + 4*S[3]*cy*x[0]*y[0] + 2*S[3]*cy*x[0]*y[1] + 2*S[3]*cy*x[1]*y[0] + 4*S[3]*cy*x[1]*y[1] - 3*S[3]*x[0]*y[0]*y[0] - 2*S[3]*x[0]*y[0]*y[1] - S[3]*x[0]*y[1]*y[1] - S[3]*x[1]*y[0]*y[0] - 2*S[3]*x[1]*y[0]*y[1] - 3*S[3]*x[1]*y[1]*y[1] + 6*a*b*(2*F[1] - 2*S[2]*cx + S[2]*x[0] + S[2]*x[1] - 2*S[3]*cy + S[3]*y[0] + S[3]*y[1]) + 2*a*(3*F[1]*y[0] + 3*F[1]*y[1] - 3*S[2]*cx*y[0] - 3*S[2]*cx*y[1] + 2*S[2]*x[0]*y[0] + S[2]*x[0]*y[1] + S[2]*x[1]*y[0] + 2*S[2]*x[1]*y[1] - 3*S[3]*cy*y[0] - 3*S[3]*cy*y[1] + 2*S[3]*y[0]*y[0] + 2*S[3]*y[0]*y[1] + 2*S[3]*y[1]*y[1]) + 2*b*(-3*F[1]*x[0] - 3*F[1]*x[1] + 3*S[2]*cx*x[0] + 3*S[2]*cx*x[1] - 2*S[2]*x[0]*x[0] - 2*S[2]*x[0]*x[1] - 2*S[2]*x[1]*x[1] + 3*S[3]*cy*x[0] + 3*S[3]*cy*x[1] - 2*S[3]*x[0]*y[0] - S[3]*x[0]*y[1] - S[3]*x[1]*y[0] - 2*S[3]*x[1]*y[1]))/(48*a*b)
-    };
-
-    return Rf;
-}
-
-Eigen::MatrixXd Q4S::diffusion_1dof(const double t, const std::vector<double>& A) const{
-    Eigen::MatrixXd M{{
+math::Matrix Q4S::diffusion_1dof(const double t, const math::Matrix& Am) const{
+    const double* A = Am.data();
+    math::Matrix M({
         A[0]*b*t/(3*a) + A[1]*t/4 + A[3]*t/4 + A[4]*a*t/(3*b)
         ,
         -A[0]*b*t/(3*a) + A[1]*t/4 - A[3]*t/4 + A[4]*a*t/(6*b)
@@ -573,7 +489,7 @@ Eigen::MatrixXd Q4S::diffusion_1dof(const double t, const std::vector<double>& A
         -A[0]*b*t/(6*a) - A[1]*t/4 - A[3]*t/4 - A[4]*a*t/(6*b)
         ,
         A[0]*b*t/(6*a) - A[1]*t/4 + A[3]*t/4 - A[4]*a*t/(3*b)
-        },{
+        ,
         -A[0]*b*t/(3*a) - A[1]*t/4 + A[3]*t/4 + A[4]*a*t/(6*b)
         ,
         A[0]*b*t/(3*a) - A[1]*t/4 - A[3]*t/4 + A[4]*a*t/(3*b)
@@ -581,7 +497,7 @@ Eigen::MatrixXd Q4S::diffusion_1dof(const double t, const std::vector<double>& A
         A[0]*b*t/(6*a) + A[1]*t/4 - A[3]*t/4 - A[4]*a*t/(3*b)
         ,
         -A[0]*b*t/(6*a) + A[1]*t/4 + A[3]*t/4 - A[4]*a*t/(6*b)
-        },{
+        ,
         -A[0]*b*t/(6*a) - A[1]*t/4 - A[3]*t/4 - A[4]*a*t/(6*b)
         ,
         A[0]*b*t/(6*a) - A[1]*t/4 + A[3]*t/4 - A[4]*a*t/(3*b)
@@ -589,7 +505,7 @@ Eigen::MatrixXd Q4S::diffusion_1dof(const double t, const std::vector<double>& A
         A[0]*b*t/(3*a) + A[1]*t/4 + A[3]*t/4 + A[4]*a*t/(3*b)
         ,
         -A[0]*b*t/(3*a) + A[1]*t/4 - A[3]*t/4 + A[4]*a*t/(6*b)
-        },{
+        ,
         A[0]*b*t/(6*a) + A[1]*t/4 - A[3]*t/4 - A[4]*a*t/(3*b)
         ,
         -A[0]*b*t/(6*a) + A[1]*t/4 + A[3]*t/4 - A[4]*a*t/(6*b)
@@ -597,14 +513,13 @@ Eigen::MatrixXd Q4S::diffusion_1dof(const double t, const std::vector<double>& A
         -A[0]*b*t/(3*a) - A[1]*t/4 + A[3]*t/4 + A[4]*a*t/(6*b)
         ,
         A[0]*b*t/(3*a) - A[1]*t/4 - A[3]*t/4 + A[4]*a*t/(3*b)
-        }
-    };
+    }, NODES_PER_ELEM, NODES_PER_ELEM);
 
     return M;
 }
 
-Eigen::MatrixXd Q4S::advection_1dof(const double t, const std::vector<double>& v) const{
-    Eigen::MatrixXd M{{
+math::Matrix Q4S::advection_1dof(const double t, const math::Vector& v) const{
+    math::Matrix M({
         t*(-a*v[1] - b*v[0])/3
         ,
         t*(-a*v[1] - 2*b*v[0])/6
@@ -612,7 +527,7 @@ Eigen::MatrixXd Q4S::advection_1dof(const double t, const std::vector<double>& v
         t*(-a*v[1] - b*v[0])/6
         ,
         t*(-2*a*v[1] - b*v[0])/6
-        },{
+        ,
         t*(-a*v[1] + 2*b*v[0])/6
         ,
         t*(-a*v[1] + b*v[0])/3
@@ -620,7 +535,7 @@ Eigen::MatrixXd Q4S::advection_1dof(const double t, const std::vector<double>& v
         t*(-2*a*v[1] + b*v[0])/6
         ,
         t*(-a*v[1] + b*v[0])/6
-        },{
+        ,
         t*(a*v[1] + b*v[0])/6
         ,
         t*(2*a*v[1] + b*v[0])/6
@@ -628,7 +543,7 @@ Eigen::MatrixXd Q4S::advection_1dof(const double t, const std::vector<double>& v
         t*(a*v[1] + b*v[0])/3
         ,
         t*(a*v[1] + 2*b*v[0])/6
-        },{
+        ,
         t*(2*a*v[1] - b*v[0])/6
         ,
         t*(a*v[1] - b*v[0])/6
@@ -636,13 +551,12 @@ Eigen::MatrixXd Q4S::advection_1dof(const double t, const std::vector<double>& v
         t*(a*v[1] - 2*b*v[0])/6
         ,
         t*(a*v[1] - b*v[0])/3
-        }
-    };
+    }, NODES_PER_ELEM, NODES_PER_ELEM);
     
     return M;
 }
-Eigen::MatrixXd Q4S::absorption_1dof(const double t) const{
-    Eigen::MatrixXd M{{
+math::Matrix Q4S::absorption_1dof(const double t) const{
+    math::Matrix M({
         4*a*b*t/9
         ,
         2*a*b*t/9
@@ -650,7 +564,7 @@ Eigen::MatrixXd Q4S::absorption_1dof(const double t) const{
         a*b*t/9
         ,
         2*a*b*t/9
-        },{
+        ,
         2*a*b*t/9
         ,
         4*a*b*t/9
@@ -658,47 +572,46 @@ Eigen::MatrixXd Q4S::absorption_1dof(const double t) const{
         2*a*b*t/9
         ,
         a*b*t/9
-        },{
-        a*b*t/9
-        ,
-        2*a*b*t/9
-        ,
-        4*a*b*t/9
-        ,
-        2*a*b*t/9
-        },{
-        2*a*b*t/9
         ,
         a*b*t/9
         ,
         2*a*b*t/9
         ,
         4*a*b*t/9
-        }
+        ,
+        2*a*b*t/9
+        ,
+        2*a*b*t/9
+        ,
+        a*b*t/9
+        ,
+        2*a*b*t/9
+        ,
+        4*a*b*t/9
+    }, NODES_PER_ELEM, NODES_PER_ELEM);
+
+    return M;
+}
+
+math::Vector Q4S::source_1dof(const double t) const{
+    math::Vector M{
+    a*b*t
+    ,
+    a*b*t
+    ,
+    a*b*t
+    ,
+    a*b*t
     };
 
     return M;
 }
 
-Eigen::VectorXd Q4S::source_1dof(const double t) const{
-    Eigen::Vector<double, 4> M{
-    a*b*t
-    ,
-    a*b*t
-    ,
-    a*b*t
-    ,
-    a*b*t
-    };
-
-    return M;
-}
-
-Eigen::VectorXd Q4S::flow_1dof(const double t, const MeshNode** nodes) const{
+math::Vector Q4S::flow_1dof(const double t, const MeshNode** nodes) const{
     std::array<double, 2> x{nodes[0]->point.X(), nodes[1]->point.X()};
     std::array<double, 2> y{nodes[0]->point.Y(), nodes[1]->point.Y()};
 
-    Eigen::Vector<double, 4> M{
+    math::Vector M{
     t*std::sqrt(x[0]*x[0] - 2*x[0]*x[1] + x[1]*x[1] + y[0]*y[0] - 2*y[0]*y[1] + y[1]*y[1])*(6*a*b - 3*a*(y[0] + y[1]) - 3*b*(x[0] + x[1]) + 2*x[0]*y[0] + x[0]*y[1] + x[1]*y[0] + 2*x[1]*y[1])/(24*a*b)
     ,
     t*std::sqrt(x[0]*x[0] - 2*x[0]*x[1] + x[1]*x[1] + y[0]*y[0] - 2*y[0]*y[1] + y[1]*y[1])*(6*a*b - 3*a*(y[0] + y[1]) + 3*b*(x[0] + x[1]) - 2*x[0]*y[0] - x[0]*y[1] - x[1]*y[0] - 2*x[1]*y[1])/(24*a*b)
@@ -711,17 +624,17 @@ Eigen::VectorXd Q4S::flow_1dof(const double t, const MeshNode** nodes) const{
     return M;
 }
 
-std::vector<double> Q4S::get_Ni(const gp_Pnt& p) const{
+math::Matrix Q4S::get_Ni(const gp_Pnt& p) const{
     const std::vector<double> Ni{
         N(p.X(), p.Y(), 0),
         N(p.X(), p.Y(), 1),
         N(p.X(), p.Y(), 2),
         N(p.X(), p.Y(), 3)
     };
-    std::vector<double> Nv(NODE_DOF*K_DIM, 0);
+    math::Matrix Nv(NODE_DOF, K_DIM);
     for(size_t i = 0; i < NODES_PER_ELEM; ++i){
-        Nv[0*K_DIM + NODE_DOF*(i+0)] = Ni[i];
-        Nv[1*K_DIM + NODE_DOF*(i+1)] = Ni[i];
+        Nv(0, NODE_DOF*(i+0)) = Ni[i];
+        Nv(1, NODE_DOF*(i+1)) = Ni[i];
     }
     return Nv;
 }

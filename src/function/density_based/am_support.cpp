@@ -21,6 +21,7 @@
 #include <mpich-x86_64/mpi.h>
 #include "function/density_based/am_support.hpp"
 #include "logger.hpp"
+#include "math/matrix.hpp"
 #include "projection/threshold.hpp"
 #include "optimizer.hpp"
 
@@ -109,20 +110,20 @@ double AMSupport::calculate(const DensityBasedOptimizer* const op, const std::ve
             this->gradx[i*N + j] *= this->proj_grad[i];
         }
     }
-    std::vector<double> v(3,0);
+    math::Vector v(3,0);
     v[0] = this->axis.X();
     v[1] = this->axis.Y();
     v[2] = this->axis.Z();
-    const std::vector<double> A{std::sqrt(v[0]*v[0] + 1e-14), 0.0, 0.0,
-                                0.0, std::sqrt(v[1]*v[1] + 1e-14), 0.0,
-                                0.0, 0.0, std::sqrt(v[2]*v[2] + 1e-14)};
+    const math::Matrix A({std::sqrt(v[0]*v[0] + 1e-14), 0.0, 0.0,
+                          0.0, std::sqrt(v[1]*v[1] + 1e-14), 0.0,
+                          0.0, 0.0, std::sqrt(v[2]*v[2] + 1e-14)}, 3, 3);
     auto x_it = x.cbegin();
     auto gx_it = this->gradx.cbegin();
     std::vector<double> p(num_nodes,0);
     const double cos_a = std::cos(this->support_angle);
     auto filter_mapping = this->filter->get_id_mapping();
     auto xn = this->filter->get_nodal_densities();
-    size_t geom_id = 0;
+    //size_t geom_id = 0;
     for(const auto& g:mesh->geometries){
         if(g->do_topopt){
             const size_t num_den = g->number_of_densities_needed();
@@ -142,7 +143,7 @@ double AMSupport::calculate(const DensityBasedOptimizer* const op, const std::ve
                 const auto Ne = (1.0 - Hx)*this->beta*beta_switch*e->source_1dof(this->mesh->thickness);
                 const auto psi_e = (1.0 - Hx)*(this->beta*beta_switch*e->absorption_1dof(this->mesh->thickness) +
                                    this->L*this->L*e->diffusion_1dof(this->mesh->thickness, A) +
-                                   this->v_norm*this->L*e->advection_1dof(this->mesh->thickness, v).transpose());
+                                   this->v_norm*this->L*e->advection_1dof(this->mesh->thickness, v).T());
 
                 for(size_t i = 0; i < num_nodes; ++i){
                     const auto& ni = e->nodes[i];
@@ -172,7 +173,7 @@ double AMSupport::calculate(const DensityBasedOptimizer* const op, const std::ve
                 x_it += num_den;
             }
         }
-        ++geom_id;
+        //++geom_id;
     }
 
     if(this->first_time){
@@ -187,7 +188,7 @@ double AMSupport::calculate(const DensityBasedOptimizer* const op, const std::ve
 
     auto d_it = this->diff.begin();
     auto fm_it = filter_mapping.cbegin();
-    geom_id = 0;
+    //geom_id = 0;
     for(const auto& g:mesh->geometries){
         if(g->do_topopt){
             for(const auto& e:g->mesh){
@@ -206,7 +207,7 @@ double AMSupport::calculate(const DensityBasedOptimizer* const op, const std::ve
                 ++d_it;
             }
         }
-        ++geom_id;
+        //++geom_id;
     }
 
     std::fill(this->Hgrad.begin(), this->Hgrad.end(), 1);
@@ -252,13 +253,13 @@ double AMSupport::calculate_with_gradient_nodal(const DensityBasedOptimizer* con
             this->gradx[i*N + j] *= this->proj_grad[i];
         }
     }
-    std::vector<double> v(3,0);
+    math::Vector v(3,0);
     v[0] = this->axis.X();
     v[1] = this->axis.Y();
     v[2] = this->axis.Z();
-    const std::vector<double> A{std::sqrt(v[0]*v[0] + 1e-14), 0.0, 0.0,
-                                0.0, std::sqrt(v[1]*v[1] + 1e-14), 0.0,
-                                0.0, 0.0, std::sqrt(v[2]*v[2] + 1e-14)};
+    const math::Matrix A({std::sqrt(v[0]*v[0] + 1e-14), 0.0, 0.0,
+                          0.0, std::sqrt(v[1]*v[1] + 1e-14), 0.0,
+                          0.0, 0.0, std::sqrt(v[2]*v[2] + 1e-14)}, 3, 3);
     auto x_it = x.cbegin();
     auto gx_it = this->gradx.cbegin();
     std::vector<double> p(num_nodes,0);
@@ -290,7 +291,7 @@ double AMSupport::calculate_with_gradient_nodal(const DensityBasedOptimizer* con
                 const auto Ne = (1.0 - Hx)*this->beta*beta_switch*e->source_1dof(this->mesh->thickness);
                 const auto psi_e = (1.0 - Hx)*(this->beta*beta_switch*e->absorption_1dof(this->mesh->thickness) +
                                    this->L*this->L*e->diffusion_1dof(this->mesh->thickness, A) +
-                                   this->v_norm*this->L*e->advection_1dof(this->mesh->thickness, v).transpose());
+                                   this->v_norm*this->L*e->advection_1dof(this->mesh->thickness, v).T());
                 for(size_t i = 0; i < num_nodes; ++i){
                     const auto& ni = e->nodes[i];
                     const long id1 = this->id_mapping[ni->id];
@@ -450,9 +451,9 @@ double AMSupport::calculate_with_gradient_nodal(const DensityBasedOptimizer* con
                     double norm_deriv = 0;
                     double vDp_deriv = 0;
                     for(size_t j = 0; j < N; ++j){
-                        norm_deriv += Ne[j*num_nodes + i]*Ne[j*num_nodes + i];
-                        switch_deriv += v[j]*(Ne[j*num_nodes + i]/norm - norm_deriv*(*(gx_it + j))/(norm*norm));
-                        vDp_deriv += v[j]*Ne[j*num_nodes + i];
+                        norm_deriv += Ne(j, i)*Ne(j, i);
+                        switch_deriv += v[j]*(Ne(j, i)/norm - norm_deriv*(*(gx_it + j))/(norm*norm));
+                        vDp_deriv += v[j]*Ne(j, i);
                     }
                     norm_deriv *= p[i]/norm;
                     //const double mult = 1.0/num_nodes - (dh1*norm_deriv*h2l + h1*dh2l*(-switch_deriv));

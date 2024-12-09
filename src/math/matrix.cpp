@@ -23,6 +23,7 @@
 #include <utility>
 #include "math/matrix.hpp"
 #include "logger.hpp"
+#include <fenv.h>
 
 namespace math{
 
@@ -156,10 +157,12 @@ Scalar Matrix::determinant() const{
 }
 
 Matrix& Matrix::operator=(const Matrix& m){
+    if(W*H != m.W*m.H){
+        delete[] this->M;
+        this->M = new Scalar[m.W*m.H];
+    }
     W = m.W;
     H = m.H;
-    delete[] this->M;
-    this->M = new Scalar[W*H];
 
     std::copy(m.M, m.M+W*H, this->M);
 
@@ -175,10 +178,12 @@ Matrix& Matrix::operator=(Matrix&& m){
 }
 
 Matrix& Matrix::operator=(const MatrixTransposeView& m){
+    if(W*H != m.W*m.H){
+        delete[] this->M;
+        this->M = new Scalar[m.W*m.H];
+    }
     W = m.W;
     H = m.H;
-    delete[] this->M;
-    this->M = new Scalar[W*H];
 
     for(size_t i = 0; i < H; ++i){
         for(size_t j = 0; j < W; ++j){
@@ -804,6 +809,26 @@ Vector& Vector::operator-=(const VectorNonTransposed& v){
     return *this;
 }
 
+Vector& Vector::operator=(const Vector& v){
+    if(N != v.N){
+        delete[] this->V;
+        this->V = new Scalar[N];
+        this->N = v.N;
+    }
+
+    std::copy(v.V, v.V + N, this->V);
+
+    return *this;
+}
+Vector& Vector::operator=(Vector&& v){
+    this->N = v.N;
+    delete[] this->V;
+    this->V = v.V;
+    v.V = nullptr;
+
+    return *this;
+}
+
 Matrix Vector::operator*(const VectorTransposed& v) const{
     Matrix m(N, v.N);
     for(size_t i = 0; i < N; ++i){
@@ -849,9 +874,11 @@ VectorTranspose::~VectorTranspose(){
     delete[] this->V;
 }
 VectorTranspose& VectorTranspose::operator=(const VectorTranspose& v){
-    this->N = v.N;
-    delete[] this->V;
-    this->V = new Scalar[N];
+    if(N != v.N){
+        delete[] this->V;
+        this->V = new Scalar[N];
+        this->N = v.N;
+    }
 
     std::copy(v.V, v.V + N, this->V);
 
@@ -1126,11 +1153,21 @@ Eigen::Eigen(Matrix A):
     // std::vector<int> IWORK(10*N);
     int M;
 
-    int info = LAPACKE_dsyevr(LAPACK_ROW_MAJOR, 'V', 'A', 'L', N, A.data(), N, 0, 0, 0, 0, 1e-7, &M,
+    fenv_t feexcept;
+    fegetenv(&feexcept);
+
+    if(feexcept.__control_word > 0){
+        fedisableexcept(FE_ALL_EXCEPT);
+    }
+
+    int info = LAPACKE_dsyevr(LAPACK_ROW_MAJOR, 'V', 'A', 'L', N, A.data(), N, 0, 0, 0, 0, 1e-14, &M,
          eigenvalues.data(), eigenvectors.data(), N, ISUPPZ.data());
+
 
     logger::log_assert(info == 0, logger::ERROR,
             "LAPACK returned {} while calculating eigenvalues and eigenvectors", info);
+
+    fesetenv(&feexcept);
 }
 
 Matrix Eigen::square_root() const{

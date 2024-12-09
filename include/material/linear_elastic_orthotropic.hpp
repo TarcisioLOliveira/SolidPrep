@@ -29,22 +29,22 @@ class LinearElasticOrthotropic : public Material{
     public:
     LinearElasticOrthotropic(const std::string& name, const double density, std::vector<double> E, std::vector<double> nu, std::vector<bool> nu_lower_half, std::vector<double> G, std::vector<double> Smax, std::vector<double> Tmax);
 
-    inline virtual std::vector<double> stiffness_2D(const MeshElement* const e, const gp_Pnt& p) const override{
+    inline virtual math::Matrix stiffness_2D(const MeshElement* const e, const gp_Pnt& p) const override{
         (void)p;
         (void)e;
         return this->D_2D;
     }
-    inline virtual std::vector<double> stiffness_3D(const MeshElement* const e, const gp_Pnt& p) const override{
+    inline virtual math::Matrix stiffness_3D(const MeshElement* const e, const gp_Pnt& p) const override{
         (void)p;
         (void)e;
         return this->D_3D;
     }
-    inline virtual std::vector<double> stiffness_inverse_2D(const MeshElement* const e, const gp_Pnt& p) const override{
+    inline virtual math::Matrix stiffness_inverse_2D(const MeshElement* const e, const gp_Pnt& p) const override{
         (void)p;
         (void)e;
         return this->S_2D;
     }
-    inline virtual std::vector<double> stiffness_inverse_3D(const MeshElement* const e, const gp_Pnt& p) const override{
+    inline virtual math::Matrix stiffness_inverse_3D(const MeshElement* const e, const gp_Pnt& p) const override{
         (void)p;
         (void)e;
         return this->S_3D;
@@ -55,12 +55,10 @@ class LinearElasticOrthotropic : public Material{
         return density;
     }
 
-    virtual double beam_E_2D(const MeshElement* const e, const gp_Pnt& p, const Eigen::Matrix<double, 2, 2>& R) const override;
-    virtual double beam_E_3D(const MeshElement* const e, const gp_Pnt& p, const Eigen::Matrix<double, 3, 3>& R) const override;
-    virtual std::array<double, 2> beam_EG_2D(const MeshElement* const e, const gp_Pnt& p, const Eigen::Matrix<double, 2, 2>& R) const override;
-    virtual std::array<double, 4> beam_EG_3D(const MeshElement* const e, const gp_Pnt& p, const Eigen::Matrix<double, 3, 3>& R) const override;
-    virtual double S12_2D(const MeshElement* const e, const gp_Pnt& p, const Eigen::Matrix<double, 2, 2>& R) const override;
-    virtual std::array<double, 2> S12_S13_3D(const MeshElement* const e, const gp_Pnt& p, const Eigen::Matrix<double, 3, 3>& R) const override;
+    virtual double beam_E_2D(const MeshElement* const e, const gp_Pnt& p, const math::Matrix& R) const override;
+    virtual double beam_E_3D(const MeshElement* const e, const gp_Pnt& p, const math::Matrix& R) const override;
+    virtual std::array<double, 2> beam_EG_2D(const MeshElement* const e, const gp_Pnt& p, const math::Matrix& R) const override;
+    virtual std::array<double, 4> beam_EG_3D(const MeshElement* const e, const gp_Pnt& p, const math::Matrix& R) const override;
 
     virtual Type get_type() const override{ return this->LINEAR_ELASTIC_ORTHOTROPIC; }
 
@@ -68,10 +66,10 @@ class LinearElasticOrthotropic : public Material{
 
     private:
     const double density;
-    std::vector<double> D_2D;
-    std::vector<double> D_3D;
-    std::vector<double> S_2D;
-    std::vector<double> S_3D;
+    math::Matrix D_2D;
+    math::Matrix D_3D;
+    math::Matrix S_2D;
+    math::Matrix S_3D;
 };
 
 }

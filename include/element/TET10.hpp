@@ -21,9 +21,7 @@
 #ifndef TET10_HPP
 #define TET10_HPP
 
-#include <Eigen/Core>
 #include "element.hpp"
-#include "material.hpp"
 #include <vector>
 #include "utils.hpp"
 #include "element_factory.hpp"
@@ -49,27 +47,25 @@ class TET10 : public MeshElementCommon3DTet<TET10>{
 
     TET10(ElementShape s);
 
-    virtual std::vector<double> get_k(const std::vector<double>& D, const double t) const override;
-    virtual std::vector<double> get_nodal_density_gradient(gp_Pnt p) const override;
-    virtual std::vector<double> get_R(const std::vector<double>& K, const double t, const std::vector<gp_Pnt>& points) const override;
-    virtual std::vector<double> get_Rf(const std::vector<double>& S, const std::vector<double>& F, const gp_Pnt& C, const double t, const std::vector<gp_Pnt>& points) const override;
-    virtual std::vector<double> get_B(const gp_Pnt& point) const override;
+    virtual math::Matrix get_k(const math::Matrix& D, const double t) const override;
+    virtual math::Matrix get_nodal_density_gradient(gp_Pnt p) const override;
+    virtual math::Matrix get_R(const math::Matrix& K, const double t, const std::vector<gp_Pnt>& points) const override;
+    virtual math::Matrix get_B(const gp_Pnt& point) const override;
 
-    virtual Eigen::MatrixXd diffusion_1dof(const double t, const std::vector<double>& A) const override;
-    virtual Eigen::MatrixXd advection_1dof(const double t, const std::vector<double>& v) const override;
-    virtual Eigen::MatrixXd absorption_1dof(const double t) const override;
-    virtual Eigen::VectorXd source_1dof(const double t) const override;
-    virtual Eigen::VectorXd flow_1dof(const double t, const MeshNode** nodes) const override;
+    virtual math::Matrix diffusion_1dof(const double t, const math::Matrix& A) const override;
+    virtual math::Matrix advection_1dof(const double t, const math::Vector& v) const override;
+    virtual math::Matrix absorption_1dof(const double t) const override;
+    virtual math::Vector source_1dof(const double t) const override;
+    virtual math::Vector flow_1dof(const double t, const MeshNode** nodes) const override;
 
-    virtual std::vector<double> get_Ni(const gp_Pnt& p) const override;
+    virtual math::Matrix get_Ni(const gp_Pnt& p) const override;
 
     virtual inline std::unique_ptr<MeshElementFactory> get_element_info() const override{
         return std::unique_ptr<MeshElementFactory>(new MeshElementFactoryImpl<TET10>());
     }
 
     private:
-    virtual std::vector<double> get_DB(const std::vector<double>& D, const gp_Pnt& point) const override;
-    virtual std::vector<double> get_Nf(const double t, const std::vector<gp_Pnt>& points) const override;
+    virtual math::Matrix get_Nf(const double t, const std::vector<gp_Pnt>& points) const override;
 
     inline gp_Pnt GL_point(double c1, double c2, double c3, double c4) const{
         return gp_Pnt(
@@ -243,11 +239,10 @@ class TET10 : public MeshElementCommon3DTet<TET10>{
         return 0;
     }
 
-    inline Eigen::Matrix<double, DIM, K_DIM> N_mat(const gp_Pnt& p) const{
+    inline math::Matrix N_mat(const gp_Pnt& p) const{
         const auto Lv = La(p);
 
-        Eigen::Matrix<double, DIM, K_DIM> NN;
-        NN.fill(0);
+        math::Matrix NN(NODE_DOF, K_DIM);
         for(size_t i = 0; i < NODES_PER_ELEM; ++i){
             const double Ni = N(Lv, i);
             NN(0,3*i+0) = Ni;
@@ -257,11 +252,10 @@ class TET10 : public MeshElementCommon3DTet<TET10>{
 
         return NN;
     }
-    inline Eigen::Matrix<double, S_SIZE, K_DIM> B_mat(const gp_Pnt& p) const{
+    inline math::Matrix B_mat(const gp_Pnt& p) const{
         const auto Lv = La(p);
 
-        Eigen::Matrix<double, S_SIZE, K_DIM> dNN;
-        dNN.fill(0);
+        math::Matrix dNN(S_SIZE, K_DIM);
         for(size_t i = 0; i < NODES_PER_ELEM; ++i){
             const double Nx = dNdx(Lv, i);
             const double Ny = dNdy(Lv, i);
@@ -283,9 +277,9 @@ class TET10 : public MeshElementCommon3DTet<TET10>{
         return dNN;
     }
 
-    inline Eigen::Vector<double, NODES_PER_ELEM> N_mat_1dof(const gp_Pnt& p) const{
+    inline math::Vector N_mat_1dof(const gp_Pnt& p) const{
         const auto Lv = La(p);
-        Eigen::Vector<double, NODES_PER_ELEM> NN;
+        math::Vector NN(NODES_PER_ELEM);
         for(size_t i = 0; i < NODES_PER_ELEM; ++i){
             const double Ni = N(Lv, i);
             NN[i] = Ni;
@@ -293,9 +287,9 @@ class TET10 : public MeshElementCommon3DTet<TET10>{
 
         return NN;
     }
-    inline Eigen::Matrix<double, NODE_DOF, NODES_PER_ELEM> dN_mat_1dof(const gp_Pnt& p) const{
+    inline math::Matrix dN_mat_1dof(const gp_Pnt& p) const{
         const auto Lv = La(p);
-        Eigen::Matrix<double, NODE_DOF, NODES_PER_ELEM> dNN;
+        math::Matrix dNN(NODE_DOF, NODES_PER_ELEM);
         for(size_t i = 0; i < NODES_PER_ELEM; ++i){
             dNN(0,i) = dNdx(Lv, i);
             dNN(1,i) = dNdy(Lv, i);
@@ -333,7 +327,7 @@ class TET10 : public MeshElementCommon3DTet<TET10>{
         return 0;
     }
 
-    inline Eigen::Vector<double, NODE_DOF> surface_to_nat(double xi, double eta, const double A[3], const double B[3], const double C[3], const std::array<double, BOUNDARY_NODES_PER_ELEM>& x, const std::array<double, BOUNDARY_NODES_PER_ELEM>& y, const std::array<double, BOUNDARY_NODES_PER_ELEM>& z) const{
+    inline math::Vector surface_to_nat(double xi, double eta, const double A[3], const double B[3], const double C[3], const std::array<double, BOUNDARY_NODES_PER_ELEM>& x, const std::array<double, BOUNDARY_NODES_PER_ELEM>& y, const std::array<double, BOUNDARY_NODES_PER_ELEM>& z) const{
         double X = 0, Y = 0, Z = 0;
         for(size_t i = 0; i < BOUNDARY_NODES_PER_ELEM; ++i){
             const double Ni = A[i] + B[i]*xi + C[i]*eta;
@@ -342,7 +336,7 @@ class TET10 : public MeshElementCommon3DTet<TET10>{
             Z += Ni*z[i];
         }
 
-        return Eigen::Vector<double, NODE_DOF>{X, Y, Z};
+        return math::Vector{X, Y, Z};
     }
 };
 

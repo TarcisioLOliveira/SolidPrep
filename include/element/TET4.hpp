@@ -21,14 +21,12 @@
 #ifndef TET4_HPP
 #define TET4_HPP
 
-#include <Eigen/Core>
 #include <vector>
 #include <array>
 #include "element.hpp"
-#include "material.hpp"
-#include "utils.hpp"
 #include "element_factory.hpp"
 #include "element_common.hpp"
+#include "math/matrix.hpp"
 
 namespace element{
 
@@ -49,36 +47,40 @@ class TET4 : public MeshElementCommon3DTet<TET4>{
 
     TET4(ElementShape s);
 
-    virtual std::vector<double> get_k(const std::vector<double>& D, const double t) const override;
-    virtual std::vector<double> get_nodal_density_gradient(gp_Pnt p) const override;
-    virtual std::vector<double> get_R(const std::vector<double>& K, const double t, const std::vector<gp_Pnt>& points) const override;
-    virtual std::vector<double> get_Rf(const std::vector<double>& S, const std::vector<double>& F, const gp_Pnt& C, const double t, const std::vector<gp_Pnt>& points) const override;
-    virtual std::vector<double> get_B(const gp_Pnt& point) const override;
+    virtual math::Matrix get_k(const math::Matrix& D, const double t) const override;
+    virtual math::Matrix get_nodal_density_gradient(gp_Pnt p) const override;
+    virtual math::Matrix get_R(const math::Matrix& K, const double t, const std::vector<gp_Pnt>& points) const override;
+    virtual math::Matrix get_B(const gp_Pnt& point) const override;
 
-    virtual std::vector<double> get_dk_sh(const std::vector<double>& D, const double t, const size_t n, const size_t dof) const override;
-    virtual std::vector<double> get_dB_sh(const gp_Pnt& p, const size_t n, const size_t dof) const override;
+    virtual math::Matrix get_dk_sh(const math::Matrix& D, const double t, const size_t n, const size_t dof) const override;
+    virtual math::Matrix get_dB_sh(const gp_Pnt& p, const size_t n, const size_t dof) const override;
     virtual void calculate_coefficients() override;
 
-    virtual Eigen::MatrixXd diffusion_1dof(const double t, const std::vector<double>& A) const override;
-    virtual Eigen::MatrixXd advection_1dof(const double t, const std::vector<double>& v) const override;
-    virtual Eigen::MatrixXd absorption_1dof(const double t) const override;
-    virtual Eigen::VectorXd source_1dof(const double t) const override;
-    virtual Eigen::VectorXd flow_1dof(const double t, const MeshNode** nodes) const override;
+    virtual math::Matrix diffusion_1dof(const double t, const math::Matrix& A) const override;
+    virtual math::Matrix advection_1dof(const double t, const math::Vector& v) const override;
+    virtual math::Matrix absorption_1dof(const double t) const override;
+    virtual math::Vector source_1dof(const double t) const override;
+    virtual math::Vector flow_1dof(const double t, const MeshNode** nodes) const override;
 
-    virtual std::vector<double> get_Ni(const gp_Pnt& p) const override;
+    virtual math::Matrix get_Ni(const gp_Pnt& p) const override;
 
     virtual inline std::unique_ptr<MeshElementFactory> get_element_info() const override{
         return std::unique_ptr<MeshElementFactory>(new MeshElementFactoryImpl<TET4>());
     }
 
     private:
-    virtual std::vector<double> get_DB(const std::vector<double>& D, const gp_Pnt& point) const override;
-    virtual std::vector<double> get_Nf(const double t, const std::vector<gp_Pnt>& points) const override;
+    virtual math::Matrix get_Nf(const double t, const std::vector<gp_Pnt>& points) const override;
 
-    typedef std::array<double, NODES_PER_ELEM*NODES_PER_ELEM> CoeffMat;
-
-    CoeffMat C;
+    math::Matrix C;
     double V;
+
+    inline gp_Pnt GL_point_tri(double c1, double c2, double c3, const std::vector<gp_Pnt>& p) const{
+        return gp_Pnt(
+            c1*p[0].X() + c2*p[1].X() + c3*p[2].X(),
+            c1*p[0].Y() + c2*p[1].Y() + c3*p[2].Y(),
+            c1*p[0].Z() + c2*p[1].Z() + c3*p[2].Z()
+        );
+    }
 
     inline gp_Pnt GL_point(double c1, double c2, double c3, double c4) const{
         return gp_Pnt(
@@ -88,7 +90,7 @@ class TET4 : public MeshElementCommon3DTet<TET4>{
         );
     }
 
-    inline double N(double x, double y, double z, size_t i, const CoeffMat& M) const{
+    inline double N(double x, double y, double z, size_t i, const math::Matrix& M) const{
         const double* const a = M.data();
         const double* const b = a + NODES_PER_ELEM;
         const double* const c = b + NODES_PER_ELEM;
@@ -110,25 +112,25 @@ class TET4 : public MeshElementCommon3DTet<TET4>{
         return 0;
     }
 
-    inline Eigen::Matrix<double, DIM, K_DIM> N_mat(double x, double y, double z, const CoeffMat& M) const{
+    inline math::Matrix N_mat(double x, double y, double z, const math::Matrix& M) const{
         const double Ni[NODES_PER_ELEM] = {N(x, y, z, 0, M), N(x, y, z, 1, M), N(x, y, z, 2, M), N(x, y, z, 3, M)};
 
-        return Eigen::Matrix<double, DIM, K_DIM>{{Ni[0], 0, 0, Ni[1], 0, 0, Ni[2], 0, 0, Ni[3], 0, 0},
-                                                 {0, Ni[0], 0, 0, Ni[1], 0, 0, Ni[2], 0, 0, Ni[3], 0},
-                                                 {0, 0, Ni[0], 0, 0, Ni[1], 0, 0, Ni[2], 0, 0, Ni[3]}};
+        return math::Matrix({Ni[0], 0, 0, Ni[1], 0, 0, Ni[2], 0, 0, Ni[3], 0, 0,
+                             0, Ni[0], 0, 0, Ni[1], 0, 0, Ni[2], 0, 0, Ni[3], 0,
+                             0, 0, Ni[0], 0, 0, Ni[1], 0, 0, Ni[2], 0, 0, Ni[3]}, DIM, K_DIM);
     }
 
-    inline Eigen::Vector<double, 4> N_mat_1dof(double x, double y, double z, const CoeffMat& M) const{
-        return Eigen::Vector<double, 4>(N(x, y, z, 0, M), N(x, y, z, 1, M), N(x, y, z, 2, M), N(x, y, z, 3, M));
+    inline math::Vector N_mat_1dof(double x, double y, double z, const math::Matrix& M) const{
+        return math::Vector({N(x, y, z, 0, M), N(x, y, z, 1, M), N(x, y, z, 2, M), N(x, y, z, 3, M)});
     }
-    inline Eigen::Matrix<double, 3, 4> dN_mat_1dof(const CoeffMat& M) const{
+    inline math::Matrix dN_mat_1dof(const math::Matrix& M) const{
         const double* const a = M.data();
         const double* const b = a + NODES_PER_ELEM;
         const double* const c = b + NODES_PER_ELEM;
         const double* const d = c + NODES_PER_ELEM;
-        return Eigen::Matrix<double, 3, 4>{{b[0], b[1], b[2], b[3]},
-                                           {c[0], c[1], c[2], c[3]},
-                                           {d[0], d[1], d[2], d[3]}};
+        return math::Matrix({b[0], b[1], b[2], b[3],
+                             c[0], c[1], c[2], c[3],
+                             d[0], d[1], d[2], d[3]}, 3, 4);
     }
     inline double dNdx_norm_surface(double x, double y, size_t i) const{
         (void)x;
@@ -159,7 +161,7 @@ class TET4 : public MeshElementCommon3DTet<TET4>{
         return 0;
     }
 
-    inline Eigen::Vector<double, NODE_DOF> surface_to_nat(double xi, double eta, const double A[3], const double B[3], const double C[3], const std::array<double, BOUNDARY_NODES_PER_ELEM>& x, const std::array<double, BOUNDARY_NODES_PER_ELEM>& y, const std::array<double, BOUNDARY_NODES_PER_ELEM>& z) const{
+    inline math::Vector surface_to_nat(double xi, double eta, const double A[3], const double B[3], const double C[3], const std::array<double, BOUNDARY_NODES_PER_ELEM>& x, const std::array<double, BOUNDARY_NODES_PER_ELEM>& y, const std::array<double, BOUNDARY_NODES_PER_ELEM>& z) const{
         double X = 0, Y = 0, Z = 0;
         for(size_t i = 0; i < BOUNDARY_NODES_PER_ELEM; ++i){
             const double Ni = A[i] + B[i]*xi + C[i]*eta;
@@ -168,27 +170,27 @@ class TET4 : public MeshElementCommon3DTet<TET4>{
             Z += Ni*z[i];
         }
 
-        return Eigen::Vector<double, NODE_DOF>{X, Y, Z};
+        return math::Vector{X, Y, Z};
     }
 
 
-    Eigen::Matrix<double, S_SIZE, K_DIM> B(const CoeffMat& M) const{
+    inline math::Matrix B(const math::Matrix& M) const{
         const double* const a = M.data();
         const double* const b = a + NODES_PER_ELEM;
         const double* const c = b + NODES_PER_ELEM;
         const double* const d = c + NODES_PER_ELEM;
-        Eigen::Matrix<double, S_SIZE, K_DIM>  B{
-            {b[0], 0, 0, b[1], 0, 0, b[2], 0, 0, b[3], 0, 0},
-            {0, c[0], 0, 0, c[1], 0, 0, c[2], 0, 0, c[3], 0},
-            {0, 0, d[0], 0, 0, d[1], 0, 0, d[2], 0, 0, d[3]},
-            {c[0], b[0], 0, c[1], b[1], 0, c[2], b[2], 0, c[3], b[3], 0},
-            {d[0], 0, b[0], d[1], 0, b[1], d[2], 0, b[2], d[3], 0, b[3]},
-            {0, d[0], c[0], 0, d[1], c[1], 0, d[2], c[2], 0, d[3], c[3]}
-        }; 
+        math::Matrix B({
+            b[0], 0, 0, b[1], 0, 0, b[2], 0, 0, b[3], 0, 0,
+            0, c[0], 0, 0, c[1], 0, 0, c[2], 0, 0, c[3], 0,
+            0, 0, d[0], 0, 0, d[1], 0, 0, d[2], 0, 0, d[3],
+            c[0], b[0], 0, c[1], b[1], 0, c[2], b[2], 0, c[3], b[3], 0,
+            d[0], 0, b[0], d[1], 0, b[1], d[2], 0, b[2], d[3], 0, b[3],
+            0, d[0], c[0], 0, d[1], c[1], 0, d[2], c[2], 0, d[3], c[3]
+        }, S_SIZE, K_DIM); 
         return B;
     }
 
-    CoeffMat get_C_derivative(const size_t n, const size_t dof) const;
+    math::Matrix get_C_derivative(const size_t n, const size_t dof) const;
 };
 
 }

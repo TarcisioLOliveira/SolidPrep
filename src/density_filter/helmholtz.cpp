@@ -19,9 +19,9 @@
  */
 
 #include <lapacke.h>
-#include <set>
 #include "density_filter/helmholtz.hpp"
 #include "logger.hpp"
+#include "math/matrix.hpp"
 
 namespace density_filter{
 
@@ -76,9 +76,9 @@ void Helmholtz::initialize(const Meshing* const mesh, const size_t x_size){
     this->NN = std::vector<double>(NN_n*NN_kd,0);
     this->id_mapping_linear.resize(x_size*num_nodes);
     auto id_it = id_mapping_linear.begin();
-    const std::vector<double> I{1, 0, 0,
-                                0, 1, 0,
-                                0, 0, 1};
+    const math::Matrix I({1, 0, 0,
+                          0, 1, 0,
+                          0, 0, 1}, 3, 3);
     for(const auto& g:mesh->geometries){
         if(g->do_topopt){
             const size_t num_den = g->number_of_densities_needed();
@@ -257,7 +257,7 @@ void Helmholtz::get_gradient(std::vector<double>& gradx) const{
                     }
                     for(size_t i = 0; i < N; ++i){
                         for(size_t k = 0; k < num_nodes; ++k){
-                            *g_it += grad[i*num_nodes + k]*nx[k];
+                            *g_it += grad(i, k)*nx[k];
                         }
                         ++g_it;
                     }

@@ -21,6 +21,7 @@
 #ifndef MUMPS_SPARSE_SYMMETRIC_HPP
 #define MUMPS_SPARSE_SYMMETRIC_HPP
 
+#include "math/matrix.hpp"
 #include "utils/coo.hpp"
 #include "meshing.hpp"
 #include "global_stiffness_matrix.hpp"
@@ -31,7 +32,7 @@ class MUMPSSparseSymmetric : public GlobalStiffnessMatrix{
     public:
     virtual ~MUMPSSparseSymmetric() = default;
 
-    virtual void generate(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const std::vector<double>& u_ext, const FiniteElement::ContactType type) override;
+    virtual void generate(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<math::Matrix>& D_cache, const std::vector<double>& u_ext, const FiniteElement::ContactType type) override;
 
     inline virtual void dot_vector(const std::vector<double>& v, std::vector<double>& v_out) const override{
         this->sK.dot_vector(v, v_out, false);
@@ -54,14 +55,14 @@ class MUMPSSparseSymmetric : public GlobalStiffnessMatrix{
     utils::COO<int> sK = utils::COO<int>(1);
     size_t u_size, l_num;
 
-    inline virtual void insert_block_symmetric(const std::vector<double>& k, const std::vector<long>& posi, const std::vector<long>& posj) override{
+    inline virtual void insert_block_symmetric(const math::Matrix& k, const std::vector<long>& posi, const std::vector<long>& posj) override{
         if(posi[0] > posj[0]){
             this->sK.insert_block(k, posi, posj, false);
         } else {
             this->sK.insert_block(k, posi, posj, true);
         }
     }
-    inline virtual void insert_element_matrix(const std::vector<double>& k, const std::vector<long>& pos) override{
+    inline virtual void insert_element_matrix(const math::Matrix& k, const std::vector<long>& pos) override{
         this->sK.insert_matrix_symmetric(k, pos);
     }
     inline virtual void add_to_matrix(size_t i, size_t j, double val) override{

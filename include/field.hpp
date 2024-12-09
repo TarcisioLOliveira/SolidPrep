@@ -79,7 +79,7 @@ class CoordinateField : public Field{
         return Type::COORDINATE;
     };
     virtual std::array<gp_Dir, 3> get_array(const MeshElement* e, const gp_Pnt& p) const = 0;
-    virtual Eigen::Matrix<double, 3, 3> get_matrix(const MeshElement* e, const gp_Pnt& p) const = 0;
+    virtual math::Matrix get_matrix(const MeshElement* e, const gp_Pnt& p) const = 0;
     virtual Class get_class() const = 0;
 };
 

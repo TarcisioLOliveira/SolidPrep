@@ -21,6 +21,7 @@
 #include "utils.hpp"
 #include "logger.hpp"
 #include "Interface_Static.hxx"
+#include "math/matrix.hpp"
 #include <TopExp_Explorer.hxx>
 #include <TopoDS_Edge.hxx>
 #include <TopoDS.hxx>
@@ -49,6 +50,17 @@
 #include <BOPAlgo_BOP.hxx>
 
 namespace utils{
+
+gp_Pnt change_point(const gp_Pnt& p, const math::Matrix& R){
+    math::Vector pv({p.X(), p.Y(), p.Z()});
+    pv = R*pv;
+    return gp_Pnt(pv[0], pv[1], pv[2]);
+}
+gp_Pnt change_point(const gp_Pnt& p, const math::MatrixTransposeView& R){
+    math::Vector pv({p.X(), p.Y(), p.Z()});
+    pv = R*pv;
+    return gp_Pnt(pv[0], pv[1], pv[2]);
+}
 
 void shape_to_file(const std::string& s, const TopoDS_Shape& t){
     STEPControl_Writer writer;

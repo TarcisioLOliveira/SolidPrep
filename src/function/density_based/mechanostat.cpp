@@ -22,6 +22,7 @@
 #include <mpich-x86_64/mpi.h>
 #include "function/density_based/mechanostat.hpp"
 #include "logger.hpp"
+#include "math/matrix.hpp"
 #include "utils.hpp"
 #include "optimizer.hpp"
 
@@ -74,7 +75,6 @@ double Mechanostat::calculate_with_gradient(const DensityBasedOptimizer* const o
     double result = 0;
 
     const size_t s_size = this->mesh->elem_info->get_D_dimension();
-    const size_t k_size = this->mesh->elem_info->get_k_dimension();
     const size_t dof = this->mesh->elem_info->get_dof_per_node();
     const size_t num_nodes = this->mesh->elem_info->get_nodes_per_element();
 
@@ -93,12 +93,8 @@ double Mechanostat::calculate_with_gradient(const DensityBasedOptimizer* const o
                     double H_e = 0;
                     for(size_t it = 0; it < fl.size(); ++it){
                         const auto& ui = fem->sub_u[it];
-                        auto eps_vec = e->get_strain_vector(c, ui);
-                        for(auto& e:eps_vec){
-                            e *= 1e6;
-                        }
+                        const math::Vector eps(1e6*e->get_strain_vector(c, ui));
                         if(this->problem_type == utils::PROBLEM_TYPE_2D){
-                            const StrainVector2D eps = Eigen::Map<const StrainVector2D>(eps_vec.data(), 3);
                             const double eps_lhs1 = rho*this->LHS_2D(0, eps);
                             const double eps_lhs2 = rho*this->LHS_2D(1, eps);
                             const StrainVector2D deps_lhs1 = rho*this->dLHS_2D(0, eps);
@@ -110,12 +106,7 @@ double Mechanostat::calculate_with_gradient(const DensityBasedOptimizer* const o
                                                       (dHp(eps_lhs2)*eps_lhs2 + H2)*deps_lhs2;
 
                             H_e = Hr;
-                            std::vector<double> dHB(k_size, 0);
-                            for(size_t j = 0; j < k_size; ++j){
-                                for(size_t i = 0; i < s_size; ++i){
-                                    dHB[j] += dH[i]*B[i*k_size + j];
-                                }
-                            }
+                            math::Vector dHB(dH.T()*B);
                             for(size_t i = 0; i < num_nodes; ++i){
                                 for(size_t j = 0; j < dof; ++j){
                                     const long pos = e->nodes[i]->u_pos[j];
@@ -125,7 +116,6 @@ double Mechanostat::calculate_with_gradient(const DensityBasedOptimizer* const o
                                 }
                             }
                         } else if(this->problem_type == utils::PROBLEM_TYPE_3D){
-                            const StrainVector3D eps = Eigen::Map<const StrainVector3D>(eps_vec.data(), 6);
                             const double eps_lhs1 = rho*this->LHS_3D(0, eps);
                             const double eps_lhs2 = rho*this->LHS_3D(1, eps);
                             const StrainVector3D deps_lhs1 = rho*this->dLHS_3D(0, eps);
@@ -137,12 +127,8 @@ double Mechanostat::calculate_with_gradient(const DensityBasedOptimizer* const o
                                                       (dHp(eps_lhs2)*eps_lhs2 + H2)*deps_lhs2;
 
                             H_e = Hr;
-                            std::vector<double> dHB(k_size, 0);
-                            for(size_t j = 0; j < k_size; ++j){
-                                for(size_t i = 0; i < s_size; ++i){
-                                    dHB[j] += dH[i]*B[i*k_size + j];
-                                }
-                            }
+                            math::Vector dHB(dH.T()*B);
+
                             for(size_t i = 0; i < num_nodes; ++i){
                                 for(size_t j = 0; j < dof; ++j){
                                     const long pos = e->nodes[i]->u_pos[j];
@@ -179,7 +165,7 @@ double Mechanostat::calculate_with_gradient(const DensityBasedOptimizer* const o
         for(const auto& g:this->mesh->geometries){
             if(g->do_topopt){
                 const size_t num_den = g->number_of_densities_needed();
-                std::vector<std::vector<double>> gradD_K(num_den, std::vector<double>(s_size*s_size, 0));
+                std::vector<math::Matrix> gradD_K(num_den, math::Matrix(s_size, s_size));
                 if(g->with_void){
                     #pragma omp parallel for
                     for(size_t i = 0; i < g->mesh.size(); ++i){
@@ -193,17 +179,13 @@ double Mechanostat::calculate_with_gradient(const DensityBasedOptimizer* const o
                         g->materials.get_gradD(x_it, psiK, e.get(), c, gradD_K);
                         double lKu = pc*std::pow(*x_it, pc-1)*e->get_compliance(gradD_K[0], this->mesh->thickness, u, l);
 
-                        auto eps_vec = e->get_strain_vector(c, u);
-                        for(auto& e:eps_vec){
-                            e *= 1e6;
-                        }
+                        const math::Vector eps(1e6*e->get_strain_vector(c, u));
 
                         const double rho = this->relaxed_rho(*x_it);
                         const double drho = this->relaxed_rho_grad(*x_it);
 
                         double dH_e = 0;
                         if(this->problem_type == utils::PROBLEM_TYPE_2D){
-                            const StrainVector2D eps = Eigen::Map<const StrainVector2D>(eps_vec.data(), 3);
                             const double eps_lhs1 = this->LHS_2D(0, eps);
                             const double eps_lhs2 = this->LHS_2D(1, eps);
                             const double H1 = Hm(rho*eps_lhs1);
@@ -213,7 +195,6 @@ double Mechanostat::calculate_with_gradient(const DensityBasedOptimizer* const o
 
                             dH_e = dH;
                         } else if(this->problem_type == utils::PROBLEM_TYPE_3D){
-                            const StrainVector3D eps = Eigen::Map<const StrainVector3D>(eps_vec.data(), 6);
                             const double eps_lhs1 = this->LHS_3D(0, eps);
                             const double eps_lhs2 = this->LHS_3D(1, eps);
                             const double H1 = Hm(rho*eps_lhs1);
@@ -251,17 +232,13 @@ double Mechanostat::calculate_with_gradient(const DensityBasedOptimizer* const o
                         auto grad_it = grad.begin() + gi + i*num_den;
                         auto gradHe_it = this->gradHe.begin() + ghi + i;
 
-                        auto eps_vec = e->get_strain_vector(c, u);
-                        for(auto& e:eps_vec){
-                            e *= 1e6;
-                        }
+                        const math::Vector eps(1e6*e->get_strain_vector(c, u));
 
                         const double rho = this->relaxed_rho(*x_it);
                         const double drho = this->relaxed_rho_grad(*x_it);
 
                         double dH_e = 0;
                         if(this->problem_type == utils::PROBLEM_TYPE_2D){
-                            const StrainVector2D eps = Eigen::Map<const StrainVector2D>(eps_vec.data(), 3);
                             const double eps_lhs1 = this->LHS_2D(0, eps);
                             const double eps_lhs2 = this->LHS_2D(1, eps);
                             const double H1 = Hm(rho*eps_lhs1);
@@ -271,7 +248,6 @@ double Mechanostat::calculate_with_gradient(const DensityBasedOptimizer* const o
 
                             dH_e = dH;
                         } else if(this->problem_type == utils::PROBLEM_TYPE_3D){
-                            const StrainVector3D eps = Eigen::Map<const StrainVector3D>(eps_vec.data(), 6);
                             const double eps_lhs1 = this->LHS_3D(0, eps);
                             const double eps_lhs2 = this->LHS_3D(1, eps);
                             const double H1 = Hm(rho*eps_lhs1);

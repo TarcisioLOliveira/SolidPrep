@@ -20,12 +20,15 @@
 
 #include "internal_loads.hpp"
 #include "logger.hpp"
+#include "math/matrix.hpp"
 #include "utils.hpp"
 #include "meshing.hpp"
+#include <map>
 #include <memory>
 #include <set>
+#include <list>
 
-inline Eigen::Matrix<double, 3, 3> Lek_rot3D(Eigen::Matrix<double, 3, 3> L, Eigen::Matrix<double, 3, 3> R){
+inline math::Matrix Lek_rot3D(math::Matrix L, math::Matrix R){
     return L*R;
 }
 
@@ -33,17 +36,17 @@ InternalLoads::InternalLoads(CrossSection cross_section, double thickness, gp_Di
     S(std::move(cross_section)), 
     A(S.get_area()),
     thickness(thickness),
-    rot2D{{normal.X(), v.X()},
-          {normal.Y(), v.Y()}},
-    Lek_basis
-        {{0, 0, -1},
-         {0, 1, 0},
-         {1, 0, 0}},
+    rot2D({normal.X(), v.X(),
+           normal.Y(), v.Y()}, 2, 2),
+    Lek_basis(
+        {0, 0, -1,
+         0, 1, 0,
+         1, 0, 0}, 3, 3),
     rot3D(Lek_rot3D(Lek_basis,
-        Eigen::Matrix<double, 3, 3>
-        {{normal.X(), v.X(), w.X()},
-         {normal.Y(), v.Y(), w.Y()},
-         {normal.Z(), v.Z(), w.Z()}})),
+        math::Matrix(
+        {normal.X(), v.X(), w.X(),
+         normal.Y(), v.Y(), w.Y(),
+         normal.Z(), v.Z(), w.Z()}, 3, 3))),
     F(F), M(M),
     mat(mat),
     normal(normal),
@@ -64,6 +67,13 @@ void InternalLoads::calculate_curvature(std::vector<BoundaryElement>& boundary_e
 }
 
 void InternalLoads::apply_load_2D(const std::vector<long>& node_positions, std::vector<double>& load_vector) const{
+    (void) node_positions;
+    (void) load_vector;
+    logger::log_assert(false, logger::ERROR,
+            "apply_load_2D() currently not implemented");
+    // Needs to become like apply_load_3D()
+    
+    /*
     auto is_between_points = [](gp_Pnt p1, gp_Pnt p2, gp_Pnt p)->bool{
         gp_Mat M(1, p1.X(), p1.Y(), 1, p2.X(), p2.Y(), 1, p.X(), p.Y());
         bool in_line = std::abs(M.Determinant()) < Precision::Confusion();
@@ -90,6 +100,7 @@ void InternalLoads::apply_load_2D(const std::vector<long>& node_positions, std::
     gp_Dir line_dir = Snormal.Rotated(gp_Ax1(center, gp_Dir(0,0,1)), M_PI/2);
     gp_Pnt p1 = center.Translated( 0.5*Ssize*line_dir);
     gp_Pnt p2 = center.Translated(-0.5*Ssize*line_dir);
+
     for(size_t j = 0; j < this->submesh.size(); ++j){
         const auto& e = this->submesh[j];
         const gp_Pnt c = e->get_centroid(bound_nodes_per_elem);
@@ -148,13 +159,14 @@ void InternalLoads::apply_load_2D(const std::vector<long>& node_positions, std::
             }
         }
     }
+    */
 }
 void InternalLoads::apply_load_3D(const std::vector<long>& node_positions, std::vector<double>& load_vector) const{
     const size_t bound_nodes_per_elem = this->elem_info->get_boundary_nodes_per_element();
     const size_t nodes_per_elem = this->elem_info->get_nodes_per_element();
     const size_t dof = this->elem_info->get_dof_per_node();
 
-    Eigen::Vector<double, 3> FF{0, 0, 0};
+    math::Vector FF{0, 0, 0};
     for(size_t j = 0; j < submesh.size(); ++j){
         const auto& e = submesh[j];
         const auto& b = this->boundary_mesh[j];
@@ -223,7 +235,7 @@ void InternalLoads::generate_mesh(const std::vector<BoundaryElement>& boundary_e
             const auto& b = boundary_elements[i];
             for(size_t j = 0; j < bound_nodes_per_elem; ++j){
                 const auto& n = b.nodes[j];
-                gp_Pnt p = utils::change_point(n->point, this->rot3D.transpose());
+                gp_Pnt p = utils::change_point(n->point, this->rot3D.T());
                 std::unique_ptr<MeshNode> node(std::make_unique<MeshNode>(p, 0, 1));
                 node->u_pos[0] = 0;
                 nodes.insert(std::move(node));
@@ -251,7 +263,7 @@ void InternalLoads::generate_mesh(const std::vector<BoundaryElement>& boundary_e
                 const auto& b = boundary_elements[i];
                 for(size_t j = 0; j < bound_nodes_per_elem; ++j){
                     const auto& n = b.nodes[j];
-                    gp_Pnt p = utils::change_point(n->point, this->rot3D.transpose());
+                    gp_Pnt p = utils::change_point(n->point, this->rot3D.T());
                     MeshNode* nn = std::find_if(this->boundary_nodes.begin(), this->boundary_nodes.end(), NodeComp(p))->get();
                     sh.nodes[j] = nn;
                 }
@@ -285,7 +297,7 @@ void InternalLoads::generate_mesh(const std::vector<BoundaryElement>& boundary_e
             const auto& b = new_elems[i];
             for(size_t j = 0; j < bound_nodes_per_elem/2; ++j){
                 const auto& n = b.nodes[j];
-                gp_Pnt p = utils::change_point(n->point, this->rot3D.transpose());
+                gp_Pnt p = utils::change_point(n->point, this->rot3D.T());
                 MeshNode* nn = std::find_if(this->boundary_nodes.begin(), this->boundary_nodes.end(), NodeComp(p))->get();
                 sh.nodes[j] = nn;
             }
@@ -372,7 +384,7 @@ std::vector<BoundaryElement> InternalLoads::increase_element_order(const std::ve
     for(size_t i = 0; i < edges.size(); ++i){
         gp_Pnt p(it->vertices[0]->point);
         p.BaryCenter(1, it->vertices[1]->point, 1);
-        p = utils::change_point(p, this->rot3D.transpose());
+        p = utils::change_point(p, this->rot3D.T());
         std::unique_ptr<MeshNode> node(std::make_unique<MeshNode>(p, 0, 1));
         this->boundary_nodes[prev_size + i] = std::move(node);
         for(auto& p:it->parents){

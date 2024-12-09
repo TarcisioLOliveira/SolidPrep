@@ -21,6 +21,7 @@
 #include <set>
 #include "field/orthotropic_flow.hpp"
 #include "general_solver/mumps_general.hpp"
+#include "math/matrix.hpp"
 #include "utils/sparse_matrix.hpp"
 #include "logger.hpp"
 #include "utils.hpp"
@@ -208,15 +209,13 @@ void OrthotropicFlow::generate(){
 
     std::vector<double> b(phi_size, 0);;
 
-    std::vector<double> A{1, 0, 0,
+    const math::Matrix A({1, 0, 0,
                           0, 1, 0,
-                          0, 0, 1};
+                          0, 0, 1}, 3, 3);
 
     for(const auto& g:this->geoms){
         for(const auto& e:g->mesh){
-            const Eigen::MatrixXd M_e = e->diffusion_1dof(thickness, A) + ALPHA*e->absorption_1dof(thickness);
-            std::vector<double> M_ev(num_nodes*num_nodes, 0);
-            std::copy(M_e.data(), M_e.data()+M_ev.size(), M_ev.begin());
+            const math::Matrix M_e = e->diffusion_1dof(thickness, A) + ALPHA*e->absorption_1dof(thickness);
             std::vector<long> pos(num_nodes);
 
             for(size_t i = 0; i < num_nodes; ++i){
@@ -224,7 +223,7 @@ void OrthotropicFlow::generate(){
                 pos[i] = id1;
             }
 
-            solver.add_element(M_ev, pos);
+            solver.add_element(M_e, pos);
         }
     }
 
@@ -233,7 +232,7 @@ void OrthotropicFlow::generate(){
     size_t it = 0;
     for(const auto& g:this->geoms){
         for(const auto& e:g->boundary_mesh){
-            const Eigen::VectorXd N = this->elem_mult_long[it]*e->parent->flow_1dof(thickness, e->nodes);
+            const math::Vector N = this->elem_mult_long[it]*e->parent->flow_1dof(thickness, e->nodes);
 
             for(size_t i = 0; i < num_nodes; ++i){
                 const long id1 = id_pos_map.at(e->parent->nodes[i]->id);
@@ -251,7 +250,7 @@ void OrthotropicFlow::generate(){
     it = 0;
     for(const auto& g:this->geoms){
         for(const auto& e:g->boundary_mesh){
-            const Eigen::VectorXd N = this->elem_mult_rad[it]*e->parent->flow_1dof(thickness, e->nodes);
+            const math::Vector N = this->elem_mult_rad[it]*e->parent->flow_1dof(thickness, e->nodes);
 
             for(size_t i = 0; i < num_nodes; ++i){
                 const long id1 = id_pos_map.at(e->parent->nodes[i]->id);
@@ -278,8 +277,8 @@ std::array<gp_Dir, 3> OrthotropicFlow::get_array(const MeshElement* e, const gp_
     for(size_t i = 0; i < DIM; ++i){
         for(size_t j = 0; j < NODES_PER_ELEM; ++j){
             const size_t id = this->id_pos_map.at(e->nodes[j]->id);
-            L[i] += grad[i*NODES_PER_ELEM + j]*this->longitudinal[id];
-            R[i] += grad[i*NODES_PER_ELEM + j]*this->radial[id];
+            L[i] += grad(i, j)*this->longitudinal[id];
+            R[i] += grad(i, j)*this->radial[id];
         }
     }
     gp_Dir Ld(L[0], L[1], L[2]);
@@ -289,15 +288,15 @@ std::array<gp_Dir, 3> OrthotropicFlow::get_array(const MeshElement* e, const gp_
 
     return {Ld, Rd, Ld.Crossed(Rd)};
 }
-Eigen::Matrix<double, 3, 3> OrthotropicFlow::get_matrix(const MeshElement* e, const gp_Pnt& p) const{
+math::Matrix OrthotropicFlow::get_matrix(const MeshElement* e, const gp_Pnt& p) const{
     const auto d = this->get_array(e, p);
 
-    return Eigen::Matrix<double, 3, 3>
+    return math::Matrix(
             {
-                {d[0].X(), d[1].X(), d[2].X()},
-                {d[0].Y(), d[1].Y(), d[2].Y()},
-                {d[0].Z(), d[1].Z(), d[2].Z()}
-            };
+                d[0].X(), d[1].X(), d[2].X(),
+                d[0].Y(), d[1].Y(), d[2].Y(),
+                d[0].Z(), d[1].Z(), d[2].Z()
+            }, 3, 3);
 }
 
 }

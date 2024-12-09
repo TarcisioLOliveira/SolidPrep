@@ -22,7 +22,6 @@
 #define INTERNAL_LOADS_HPP
 
 #include <array>
-#include <Eigen/Core>
 #include <memory>
 #include "element_factory.hpp"
 #include "logger.hpp"
@@ -56,9 +55,9 @@ class InternalLoads{
     const CrossSection S;
     const double A;
     const double thickness;
-    const Eigen::Matrix<double, 2, 2> rot2D;
-    const Eigen::Matrix<double, 3, 3> Lek_basis;
-    const Eigen::Matrix<double, 3, 3> rot3D;
+    const math::Matrix rot2D;
+    const math::Matrix Lek_basis;
+    const math::Matrix rot3D;
     const std::array<double, 3> F;
     const std::array<double, 3> M;
     const Material* mat;

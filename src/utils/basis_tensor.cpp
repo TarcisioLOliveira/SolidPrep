@@ -22,82 +22,82 @@
 
 namespace utils{
 
-std::vector<double> basis_tensor_2D(const Eigen::Matrix<double, 2, 2>& R){
-    return std::vector<double>
+math::Matrix basis_tensor_2D(const math::Matrix& R){
+    return math::Matrix(
         {R(0,0)*R(0,0), R(0,1)*R(0,1), 2*R(0,0)*R(0,1),
          R(1,0)*R(1,0), R(1,1)*R(1,1), 2*R(1,0)*R(1,1),
-         R(0,0)*R(1,0), R(0,1)*R(1,1),   R(0,0)*R(1,1)+R(0,1)*R(1,0)};
+         R(0,0)*R(1,0), R(0,1)*R(1,1),   R(0,0)*R(1,1)+R(0,1)*R(1,0)}, 3, 3);
 }
 
-std::vector<double> basis_tensor_2D_inv_T(const Eigen::Matrix<double, 2, 2>& R){
-    return std::vector<double>
+math::Matrix basis_tensor_2D_inv_T(const math::Matrix& R){
+    return math::Matrix(
         {  R(0,0)*R(0,0),   R(0,1)*R(0,1), R(0,0)*R(0,1),
            R(1,0)*R(1,0),   R(1,1)*R(1,1), R(1,0)*R(1,1),
-         2*R(0,0)*R(1,0), 2*R(0,1)*R(1,1), R(0,0)*R(1,1)+R(0,1)*R(1,0)};
+         2*R(0,0)*R(1,0), 2*R(0,1)*R(1,1), R(0,0)*R(1,1)+R(0,1)*R(1,0)}, 3, 3);
 }
 
-std::vector<double> basis_tensor_3D(const Eigen::Matrix<double, 3, 3>& R){
-    std::array<double, 9> K1 =
+math::Matrix basis_tensor_3D(const math::Matrix& R){
+    math::Matrix K1(
         {R(0,0)*R(0,0), R(0,1)*R(0,1), R(0,2)*R(0,2),
          R(1,0)*R(1,0), R(1,1)*R(1,1), R(1,2)*R(1,2),
-         R(2,0)*R(2,0), R(2,1)*R(2,1), R(2,2)*R(2,2)};
+         R(2,0)*R(2,0), R(2,1)*R(2,1), R(2,2)*R(2,2)}, 3, 3);
 
-    std::array<double, 9> K2 =
+    math::Matrix K2(
         {R(0,0)*R(0,1), R(0,2)*R(0,0), R(0,1)*R(0,2),
          R(1,0)*R(1,1), R(1,2)*R(1,0), R(1,1)*R(1,2),
-         R(2,0)*R(2,1), R(2,2)*R(2,0), R(2,1)*R(2,2)};
+         R(2,0)*R(2,1), R(2,2)*R(2,0), R(2,1)*R(2,2)}, 3, 3);
 
-    std::array<double, 9> K3 =
+    math::Matrix K3(
         {R(0,0)*R(1,0), R(0,1)*R(1,1), R(0,2)*R(1,2),
          R(2,0)*R(0,0), R(2,1)*R(0,1), R(2,2)*R(0,2),
-         R(1,0)*R(2,0), R(1,1)*R(2,1), R(1,2)*R(2,2)};
+         R(1,0)*R(2,0), R(1,1)*R(2,1), R(1,2)*R(2,2)}, 3, 3);
 
-    std::array<double, 9> K4 =
+    math::Matrix K4(
         {R(0,0)*R(1,1)+R(0,1)*R(1,0), R(0,2)*R(1,0)+R(0,0)*R(1,2), R(0,1)*R(1,2)+R(0,2)*R(1,1),
          R(2,0)*R(0,1)+R(2,1)*R(0,0), R(2,2)*R(0,0)+R(2,0)*R(0,2), R(2,1)*R(0,2)+R(2,2)*R(0,1),
-         R(1,0)*R(2,1)+R(1,1)*R(2,0), R(1,2)*R(2,0)+R(1,0)*R(2,2), R(1,1)*R(2,2)+R(1,2)*R(2,1)};
+         R(1,0)*R(2,1)+R(1,1)*R(2,0), R(1,2)*R(2,0)+R(1,0)*R(2,2), R(1,1)*R(2,2)+R(1,2)*R(2,1)}, 3, 3);
 
-    std::vector<double> K(36, 0);
+    math::Matrix K(6, 6);
     for(size_t i = 0; i < 3; ++i){
         for(size_t j = 0; j < 3; ++j){
-            K[i*6 + j] = K1[i*3 + j];
-            K[i*6 + (j+3)] = 2*K2[i*3 + j];
-            K[(i+3)*6 + j] = K3[i*3 + j];
-            K[(i+3)*6 + (j+3)] = K4[i*3 + j];
+            K(i, j) = K1(i, j);
+            K(i, (j+3)) = 2*K2(i, j);
+            K((i+3), j) = K3(i, j);
+            K((i+3), (j+3)) = K4(i, j);
         }
     }
 
     return K;
 }
 
-std::vector<double> basis_tensor_3D_inv_T(const Eigen::Matrix<double, 3, 3>& R){
-    std::array<double, 9> K1 =
+math::Matrix basis_tensor_3D_inv_T(const math::Matrix& R){
+    math::Matrix K1(
         {R(0,0)*R(0,0), R(0,1)*R(0,1), R(0,2)*R(0,2),
          R(1,0)*R(1,0), R(1,1)*R(1,1), R(1,2)*R(1,2),
-         R(2,0)*R(2,0), R(2,1)*R(2,1), R(2,2)*R(2,2)};
+         R(2,0)*R(2,0), R(2,1)*R(2,1), R(2,2)*R(2,2)}, 3, 3);
 
-    std::array<double, 9> K2 =
+    math::Matrix K2(
         {R(0,0)*R(0,1), R(0,2)*R(0,0), R(0,1)*R(0,2),
          R(1,0)*R(1,1), R(1,2)*R(1,0), R(1,1)*R(1,2),
-         R(2,0)*R(2,1), R(2,2)*R(2,0), R(2,1)*R(2,2)};
+         R(2,0)*R(2,1), R(2,2)*R(2,0), R(2,1)*R(2,2)}, 3, 3);
 
-    std::array<double, 9> K3 =
+    math::Matrix K3(
         {R(0,0)*R(1,0), R(0,1)*R(1,1), R(0,2)*R(1,2),
          R(2,0)*R(0,0), R(2,1)*R(0,1), R(2,2)*R(0,2),
-         R(1,0)*R(2,0), R(1,1)*R(2,1), R(1,2)*R(2,2)};
+         R(1,0)*R(2,0), R(1,1)*R(2,1), R(1,2)*R(2,2)}, 3, 3);
 
-    std::array<double, 9> K4 =
+    math::Matrix K4(
         {R(0,0)*R(1,1)+R(0,1)*R(1,0), R(0,2)*R(1,0)+R(0,0)*R(1,2), R(0,1)*R(1,2)+R(0,2)*R(1,1),
          R(2,0)*R(0,1)+R(2,1)*R(0,0), R(2,2)*R(0,0)+R(2,0)*R(0,2), R(2,1)*R(0,2)+R(2,2)*R(0,1),
-         R(1,0)*R(2,1)+R(1,1)*R(2,0), R(1,2)*R(2,0)+R(1,0)*R(2,2), R(1,1)*R(2,2)+R(1,2)*R(2,1)};
+         R(1,0)*R(2,1)+R(1,1)*R(2,0), R(1,2)*R(2,0)+R(1,0)*R(2,2), R(1,1)*R(2,2)+R(1,2)*R(2,1)}, 3, 3);
 
-    std::vector<double> K(36, 0);
+    math::Matrix K(36, 0);
     for(size_t i = 0; i < 3; ++i){
         for(size_t j = 0; j < 3; ++j){
-            K[i*6 + j] = K1[i*3 + j];
-            K[i*6 + (j+3)] = K2[i*3 + j];
-            K[(i+3)*6 + j] = 2*K3[i*3 + j];
-            K[(i+3)*6 + (j+3)] = K4[i*3 + j];
+            K(i, j) = K1(i, j);
+            K(i, (j+3)) = K2(i, j);
+            K((i+3), j) = 2*K3(i, j);
+            K((i+3), (j+3)) = K4(i, j);
         }
     }
 

@@ -21,6 +21,7 @@
 #include "geometry.hpp"
 #include "logger.hpp"
 #include "element_factory.hpp"
+#include "math/matrix.hpp"
 
 Geometry::Geometry(const std::string& path, double scale, utils::ProblemType type,
         MeshElementFactory* elem_type, bool do_topopt, bool with_void, size_t id):
@@ -37,7 +38,7 @@ Geometry::Geometry(TopoDS_Shape shape, utils::ProblemType type,
 void Geometry::get_stresses(const std::vector<double>& u, const double pc, const double psi, std::vector<double>::const_iterator& rho_it, std::vector<double>::iterator& stress_it) const{
     const size_t s_size = this->element_type->get_D_dimension();
     if(this->do_topopt){
-        auto D = std::vector<double>(s_size*s_size, 0);
+        math::Matrix D(s_size, s_size);
         const size_t num_den = this->number_of_densities_needed();
         if(this->with_void){
             for(const auto& e:this->mesh){
@@ -71,7 +72,7 @@ void Geometry::get_stresses(const std::vector<double>& u, const double pc, const
     }
 }
 
-void Geometry::get_stresses(const std::vector<double>& u, bool topopt, size_t& D_offset, const std::vector<std::vector<double>>& D_cache, std::vector<double>::iterator& stress_it) const{
+void Geometry::get_stresses(const std::vector<double>& u, bool topopt, size_t& D_offset, const std::vector<math::Matrix>& D_cache, std::vector<double>::iterator& stress_it) const{
 
     if((topopt && this->do_topopt) || !this->materials.get_materials()[0]->is_homogeneous()){
         #pragma omp parallel for

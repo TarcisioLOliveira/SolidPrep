@@ -20,6 +20,8 @@
 
 #include <mpich-x86_64/mpi.h>
 #include "function/density_based/global_stress_heaviside.hpp"
+#include "logger.hpp"
+#include "math/matrix.hpp"
 #include "optimizer.hpp"
 
 namespace function::density_based{
@@ -40,7 +42,7 @@ double GlobalStressHeaviside::calculate(const DensityBasedOptimizer* const op, c
         for(const auto& g:this->mesh->geometries){
             if(g->do_topopt){
                 const size_t num_den = g->number_of_densities_needed();
-                auto D = std::vector<double>(s_size*s_size, 0);
+                math::Matrix D(s_size, s_size);
                 if(g->with_void){
                     for(const auto& e:g->mesh){
                         const auto c = e->get_centroid();
@@ -99,7 +101,7 @@ double GlobalStressHeaviside::calculate_with_gradient(const DensityBasedOptimize
         for(const auto& g:this->mesh->geometries){
             if(g->do_topopt){
                 const size_t num_den = g->number_of_densities_needed();
-                auto D = std::vector<double>(s_size*s_size, 0);
+                math::Matrix D(s_size, s_size);
                 if(g->with_void){
                     for(const auto& e:g->mesh){
                         const auto c = e->get_centroid();
@@ -161,9 +163,9 @@ double GlobalStressHeaviside::calculate_with_gradient(const DensityBasedOptimize
         for(const auto& g:this->mesh->geometries){
             if(g->do_topopt){
                 const size_t num_den = g->number_of_densities_needed();
-                std::vector<std::vector<double>> gradD_K(num_den, std::vector<double>(s_size*s_size, 0));
-                std::vector<std::vector<double>> gradD_S(num_den, std::vector<double>(s_size*s_size, 0));
-                std::vector<double> D_S(std::vector<double>(s_size*s_size, 0));
+                std::vector<math::Matrix> gradD_K(num_den, math::Matrix(s_size, s_size));
+                std::vector<math::Matrix> gradD_S(num_den, math::Matrix(s_size, s_size));
+                math::Matrix D_S(math::Matrix(s_size, s_size));
                 if(g->with_void){
                     for(const auto& e:g->mesh){
                         const auto c = e->get_centroid();

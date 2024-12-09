@@ -54,25 +54,26 @@ class Q4S : public MeshElementCommon2DQuad<Q4S>{
 
     Q4S(ElementShape s);
 
-    virtual std::vector<double> get_k(const std::vector<double>& D, const double t) const override;
-    virtual std::vector<double> get_nodal_density_gradient(gp_Pnt p) const override;
-    virtual std::vector<double> get_R(const std::vector<double>& K, const double t, const std::vector<gp_Pnt>& points) const override;
-    virtual std::vector<double> get_Rf(const std::vector<double>& S, const std::vector<double>& F, const gp_Pnt& C, const double t, const std::vector<gp_Pnt>& points) const override;
-    virtual std::vector<double> get_B(const gp_Pnt& point) const override;
+    virtual math::Matrix get_k(const math::Matrix& D, const double t) const override;
+    virtual math::Matrix get_nodal_density_gradient(gp_Pnt p) const override;
+    virtual math::Matrix get_R(const math::Matrix& K, const double t, const std::vector<gp_Pnt>& points) const override;
+    virtual math::Matrix get_B(const gp_Pnt& point) const override;
 
-    virtual Eigen::MatrixXd diffusion_1dof(const double t, const std::vector<double>& A) const override;
-    virtual Eigen::MatrixXd advection_1dof(const double t, const std::vector<double>& v) const override;
-    virtual Eigen::MatrixXd absorption_1dof(const double t) const override;
-    virtual Eigen::VectorXd source_1dof(const double t) const override;
-    virtual Eigen::VectorXd flow_1dof(const double t, const MeshNode** nodes) const override;
+    virtual math::Matrix diffusion_1dof(const double t, const math::Matrix& A) const override;
+    virtual math::Matrix advection_1dof(const double t, const math::Vector& v) const override;
+    virtual math::Matrix absorption_1dof(const double t) const override;
+    virtual math::Vector source_1dof(const double t) const override;
+    virtual math::Vector flow_1dof(const double t, const MeshNode** nodes) const override;
 
-    virtual std::vector<double> get_Ni(const gp_Pnt& p) const override;
+    virtual math::Matrix get_Ni(const gp_Pnt& p) const override;
 
     virtual inline std::unique_ptr<MeshElementFactory> get_element_info() const override{
         return std::unique_ptr<MeshElementFactory>(new MeshElementFactoryImpl<Q4S>());
     }
 
     private:
+    virtual math::Matrix get_Nf(const double t, const std::vector<gp_Pnt>& points) const override;
+
     double a, b, x0, y0 = 0;
 
     inline double N(double x, double y, size_t i) const{
@@ -88,9 +89,6 @@ class Q4S : public MeshElementCommon2DQuad<Q4S>{
         }
         return 0;
     }
-
-    virtual std::vector<double> get_DB(const std::vector<double>& D, const gp_Pnt& point) const override;
-    virtual std::vector<double> get_Nf(const double t, const std::vector<gp_Pnt>& points) const override;
 
     inline gp_Pnt normalize(const gp_Pnt& point) const{
         return gp_Pnt(

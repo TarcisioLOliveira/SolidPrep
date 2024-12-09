@@ -21,6 +21,7 @@
 #ifndef GLOBAL_STIFFNESS_MATRIX_HPP
 #define GLOBAL_STIFFNESS_MATRIX_HPP
 
+#include "math/matrix.hpp"
 #include "meshing.hpp"
 #include "finite_element.hpp"
 
@@ -29,7 +30,7 @@ class GlobalStiffnessMatrix{
     virtual ~GlobalStiffnessMatrix() = default;
     const double K_MIN = 1e-14;
 
-    virtual void generate(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const std::vector<double>& u_ext, const FiniteElement::ContactType type) = 0;
+    virtual void generate(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<math::Matrix>& D_cache, const std::vector<double>& u_ext, const FiniteElement::ContactType type) = 0;
 
     virtual void dot_vector(const std::vector<double>& v, std::vector<double>& v_out) const = 0;
 
@@ -44,13 +45,13 @@ class GlobalStiffnessMatrix{
     const double EPS_PENALTY = 5e7;
     const double EPS_DISPL = 1e6;
 
-    virtual void generate_base(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<std::vector<double>>& D_cache, const std::vector<double>& u_ext, const FiniteElement::ContactType type);
+    virtual void generate_base(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<math::Matrix>& D_cache, const std::vector<double>& u_ext, const FiniteElement::ContactType type);
 
     virtual void calculate_dimensions(const Meshing * const mesh, const std::vector<long>& node_positions, const size_t matrix_width);
 
     virtual void add_geometry(const Meshing * const mesh, const std::vector<long>& node_positions, const Geometry * const g);
 
-    virtual void add_geometry(const Meshing * const mesh, const std::vector<long>& node_positions, const Geometry * const g, const size_t D_offset, const std::vector<std::vector<double>>& D_cache);
+    virtual void add_geometry(const Meshing * const mesh, const std::vector<long>& node_positions, const Geometry * const g, const size_t D_offset, const std::vector<math::Matrix>& D_cache);
 
     virtual void add_springs(const Meshing * const mesh, const std::vector<long>& node_positions);
 
@@ -58,9 +59,9 @@ class GlobalStiffnessMatrix{
 
     virtual void add_frictionless_part1(const Meshing * const mesh, const std::vector<long>& node_positions);
 
-    virtual void insert_block_symmetric(const std::vector<double>& k, const std::vector<long>& posi, const std::vector<long>& posj) = 0;
+    virtual void insert_block_symmetric(const math::Matrix& k, const std::vector<long>& posi, const std::vector<long>& posj) = 0;
 
-    virtual void insert_element_matrix(const std::vector<double>& k, const std::vector<long>& pos) = 0;
+    virtual void insert_element_matrix(const math::Matrix& k, const std::vector<long>& pos) = 0;
 
     virtual void add_to_matrix(size_t i, size_t j, double val) = 0;
 };

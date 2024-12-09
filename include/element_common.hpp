@@ -38,6 +38,7 @@
 
 #include "element.hpp"
 #include "logger.hpp"
+#include "math/matrix.hpp"
 #include "utils.hpp"
 #include "utils/gauss_legendre.hpp"
 #include <lapacke.h>
@@ -47,101 +48,59 @@ class MeshElementCommon : public MeshElement{
     public:
     virtual ~MeshElementCommon() = default;
 
-    virtual std::vector<double> get_internal_loads(const std::vector<double>& D, const double t, const std::vector<double>& u) const override{
+    virtual math::Vector get_internal_loads(const math::Matrix& D, const double t, const std::vector<double>& u) const override{
         const size_t N = T::NODES_PER_ELEM;
         const size_t K_DIM = T::K_DIM;
         const size_t NODE_DOF = T::NODE_DOF;
 
-        const std::vector<double> k = this->get_k(D, t);
+        const math::Matrix k = this->get_k(D, t);
 
-        std::vector<double> results(K_DIM, 0);
-        std::vector<double> U(K_DIM, 0);
+        math::Vector U(K_DIM);
         for(size_t l = 0; l < N; ++l){
             for(size_t j = 0; j < NODE_DOF; ++j){
-                if(this->nodes[l]->u_pos[j] > -1){
-                    U[l*NODE_DOF + j] = u[this->nodes[l]->u_pos[j]];
-                }
-            }
-        }
-        for(size_t i = 0; i < K_DIM; ++i){
-            for(size_t j = 0; j < K_DIM; ++j){
-                results[i] += k[i*K_DIM + j]*U[j];
+                U[l*NODE_DOF + j] = u[this->nodes[l]->u_pos[j]];
             }
         }
 
-        return results;
+        return k*U;
     }
     
-    virtual double get_compliance(const std::vector<double>& D, const double t, const std::vector<double>& u) const override{
+    virtual double get_compliance(const math::Matrix& D, const double t, const std::vector<double>& u) const override{
         const size_t N = T::NODES_PER_ELEM;
         const size_t K_DIM = T::K_DIM;
         const size_t NODE_DOF = T::NODE_DOF;
 
         const auto k = this->get_k(D, t);
 
-        std::vector<double> u_vec(K_DIM, 0);
+        math::Vector u_vec(K_DIM);
         for(size_t i = 0; i < N; ++i){
             for(size_t j = 0; j < NODE_DOF; ++j){
-                if(this->nodes[i]->u_pos[j] > -1){
-                    u_vec[i*NODE_DOF+j] = u[this->nodes[i]->u_pos[j]];
-                }
+                u_vec[i*NODE_DOF+j] = u[this->nodes[i]->u_pos[j]];
             }
         }
-
-        std::vector<double> f_vec(K_DIM, 0);
-
-        for(size_t i = 0; i < K_DIM; ++i){
-            for(size_t j = 0; j < K_DIM; ++j){
-                f_vec[i] += k[i*K_DIM + j]*u_vec[j];
-            }
-        }
-
-        double result = 0;
-        for(size_t i = 0; i < K_DIM; ++i){
-            result += f_vec[i]*u_vec[i];
-        }
-        // return cblas_ddot(K_DIM, u_vec.data(), 1, f_vec.data(), 1);
         
-        return result;
+        return u_vec.T()*k*u_vec;
     }
-    virtual double get_compliance(const std::vector<double>& D, const double t, const std::vector<double>& u, const std::vector<double>& l) const override{
+    virtual double get_compliance(const math::Matrix& D, const double t, const std::vector<double>& u, const std::vector<double>& l) const override{
         const size_t N = T::NODES_PER_ELEM;
         const size_t K_DIM = T::K_DIM;
         const size_t NODE_DOF = T::NODE_DOF;
 
         const auto k = this->get_k(D, t);
 
-        std::vector<double> u_vec(K_DIM, 0);
+        math::Vector u_vec(K_DIM, 0);
         for(size_t i = 0; i < N; ++i){
             for(size_t j = 0; j < NODE_DOF; ++j){
-                if(this->nodes[i]->u_pos[j] > -1){
-                    u_vec[i*NODE_DOF+j] = u[this->nodes[i]->u_pos[j]];
-                }
+                u_vec[i*NODE_DOF+j] = u[this->nodes[i]->u_pos[j]];
             }
         }
-
-        std::vector<double> f_vec(K_DIM, 0);
-
-        for(size_t i = 0; i < K_DIM; ++i){
-            for(size_t j = 0; j < K_DIM; ++j){
-                f_vec[i] += k[i*K_DIM + j]*u_vec[j];
-            }
-        }
-
-        double result = 0;
-        std::vector<double> l_vec(K_DIM, 0);
+        math::Vector l_vec(K_DIM, 0);
         for(size_t i = 0; i < N; ++i){
             for(size_t j = 0; j < NODE_DOF; ++j){
-                if(this->nodes[i]->u_pos[j] > -1){
-                    l_vec[i*NODE_DOF+j] = l[this->nodes[i]->u_pos[j]];
-                }
+                l_vec[i*NODE_DOF+j] = l[this->nodes[i]->u_pos[j]];
             }
         }
-        for(size_t i = 0; i < K_DIM; ++i){
-            result += f_vec[i]*l_vec[i];
-        }
-        // return cblas_ddot(K_DIM, l_vec.data(), 1, f_vec.data(), 1);
-        return result;
+        return u_vec.T()*k*l_vec;
     }
 
     virtual gp_Pnt get_centroid() const override{
@@ -165,52 +124,28 @@ class MeshElementCommon : public MeshElement{
             MeshElement(nodes)
             {}
 
-    virtual double _von_Mises_derivative(const std::vector<double>& D, const std::vector<double>& dD, double mult, const gp_Pnt& point, const std::vector<double>& u, const std::vector<double>& V, const size_t S_SIZE) const{
-        auto s = this->_get_stress_vector(D, point, u, S_SIZE);
-        auto ds = this->_get_stress_vector(dD, point, u, S_SIZE);
-        std::vector<double> vec1(s.size(), 0);
-        for(size_t i = 0; i < S_SIZE; ++i){
-            for(size_t j = 0; j < S_SIZE; ++j){
-                vec1[i] += V[i*S_SIZE + j]*ds[j];
-            }
-        }
+    virtual double _von_Mises_derivative(const math::Matrix& D, const math::Matrix& dD, double mult, const gp_Pnt& point, const std::vector<double>& u, const math::Matrix& V) const{
+        auto s = this->_get_stress_vector(D, point, u);
+        auto ds = this->_get_stress_vector(dD, point, u);
 
-        double result = 0;
-        for(size_t i = 0; i < S_SIZE; ++i){
-            result += s[i]*vec1[i];
-        }
-        result *= mult;
-
-        return result;
+        return mult*(s.T()*V*ds);
     }
 
-    virtual double _von_Mises_derivative_sh(const std::vector<double>& D, double mult, const gp_Pnt& point, const std::vector<double>& u, const size_t n, const size_t dof, const std::vector<double>& V, const size_t S_SIZE) const{
-        auto s = this->_get_stress_vector(D, point, u, S_SIZE);
-        auto ds = this->_get_stress_vector_sh(D, point, u, n, dof, S_SIZE);
-        std::vector<double> vec1(s.size(), 0);
-        for(size_t i = 0; i < S_SIZE; ++i){
-            for(size_t j = 0; j < S_SIZE; ++j){
-                vec1[i] += V[i*S_SIZE + j]*ds[j];
-            }
-        }
+    virtual double _von_Mises_derivative_sh(const math::Matrix& D, double mult, const gp_Pnt& point, const std::vector<double>& u, const size_t n, const size_t dof, const math::Matrix& V) const{
+        auto s = this->_get_stress_vector(D, point, u);
+        auto ds = this->_get_stress_vector_sh(D, point, u, n, dof);
 
-        double result = 0;
-        for(size_t i = 0; i < S_SIZE; ++i){
-            result += s[i]*vec1[i];
-        }
-        result *= mult;
-
-        return result;
+        return mult*(s.T()*V*ds);
     }
 
-    virtual void _get_virtual_load(const std::vector<double>& D, double mult, const gp_Pnt& point, const std::vector<double>& u, std::vector<double>& l, const std::vector<double>& V, const size_t S_SIZE) const{
+    virtual void _get_virtual_load(const math::Matrix& D, double mult, const gp_Pnt& p, const std::vector<double>& u, std::vector<double>& l, const math::Matrix& V) const{
         const size_t N = T::NODES_PER_ELEM;
         const size_t K_DIM = T::K_DIM;
         const size_t NODE_DOF = T::NODE_DOF;
 
-        const std::vector<double> DB = this->get_DB(D, point);
+        const math::Matrix DB = D*this->get_B(p);
 
-        std::vector<double> u_vec(K_DIM, 0);
+        math::Vector u_vec(K_DIM, 0);
         for(size_t i = 0; i < N; ++i){
             for(size_t j = 0; j < NODE_DOF; ++j){
                 if(this->nodes[i]->u_pos[j] > -1){
@@ -219,44 +154,23 @@ class MeshElementCommon : public MeshElement{
             }
         }
 
-        std::vector<double> vec(S_SIZE, 0);
-
-        for(size_t i = 0; i < S_SIZE; ++i){
-            for(size_t j = 0; j < K_DIM; ++j){
-                vec[i] += DB[i*K_DIM + j]*u_vec[j];
-            }
-        }
-        std::vector<double> vec2(S_SIZE, 0);
-        for(size_t i = 0; i < S_SIZE; ++i){
-            for(size_t j = 0; j < S_SIZE; ++j){
-                vec2[i] += V[i*S_SIZE + j]*vec[j];
-            }
-        }
-        std::vector<double> vec3(K_DIM, 0);
-        for(size_t i = 0; i < K_DIM; ++i){
-            for(size_t j = 0; j < S_SIZE; ++j){
-                vec3[i] += DB[j*K_DIM + i]*vec2[j];
-            }
-        }
+        const math::Vector result = mult*(DB.T()*V*DB*u_vec);
 
         for(size_t k = 0; k < N; ++k){
             for(size_t j = 0; j < NODE_DOF; ++j){
                 if(this->nodes[k]->u_pos[j] > -1){
-                    l[this->nodes[k]->u_pos[j]] += mult*vec3[k*NODE_DOF+j];
+                    l[this->nodes[k]->u_pos[j]] += mult*result[k*NODE_DOF+j];
                 }
             }
         }
     }
 
-    virtual std::vector<double> _get_stress_vector(const std::vector<double>& D, const gp_Pnt& p, const std::vector<double>& u, const size_t S_SIZE) const{
+    virtual math::Vector _get_stress_vector(const math::Matrix& D, const gp_Pnt& p, const std::vector<double>& u) const{
         const size_t N = T::NODES_PER_ELEM;
         const size_t K_DIM = T::K_DIM;
         const size_t NODE_DOF = T::NODE_DOF;
 
-        const std::vector<double> DB = this->get_DB(D, p);
-
-        std::vector<double> results(S_SIZE, 0);
-        std::vector<double> U(K_DIM, 0);
+        math::Vector U(K_DIM);
         for(size_t l = 0; l < N; ++l){
             for(size_t j = 0; j < NODE_DOF; ++j){
                 if(this->nodes[l]->u_pos[j] > -1){
@@ -264,24 +178,15 @@ class MeshElementCommon : public MeshElement{
                 }
             }
         }
-        for(size_t i = 0; i < S_SIZE; ++i){
-            for(size_t j = 0; j < K_DIM; ++j){
-                results[i] += DB[i*K_DIM + j]*U[j];
-            }
-        }
 
-        return results;
+        return D*this->get_B(p)*U;
     }
-    virtual std::vector<double> _get_stress_vector_sh(const std::vector<double>& D, const gp_Pnt& p, const std::vector<double>& u, const size_t n, const size_t dof, const size_t S_SIZE) const{
+    virtual math::Vector _get_stress_vector_sh(const math::Matrix& D, const gp_Pnt& p, const std::vector<double>& u, const size_t n, const size_t dof) const{
         const size_t N = T::NODES_PER_ELEM;
         const size_t K_DIM = T::K_DIM;
         const size_t NODE_DOF = T::NODE_DOF;
 
-        const std::vector<double> B = this->get_dB_sh(p, n, dof);
-
-        std::vector<double> results(S_SIZE, 0);
-        std::vector<double> Bu(S_SIZE, 0);
-        std::vector<double> U(K_DIM, 0);
+        math::Vector U(K_DIM);
         for(size_t l = 0; l < N; ++l){
             for(size_t j = 0; j < NODE_DOF; ++j){
                 if(this->nodes[l]->u_pos[j] > -1){
@@ -289,42 +194,31 @@ class MeshElementCommon : public MeshElement{
                 }
             }
         }
-        for(size_t i = 0; i < S_SIZE; ++i){
-            for(size_t j = 0; j < K_DIM; ++j){
-                Bu[i] += B[i*K_DIM + j]*U[j];
-            }
-        }
-        for(size_t i = 0; i < S_SIZE; ++i){
-            for(size_t j = 0; j < S_SIZE; ++j){
-                results[i] += D[i*S_SIZE + j]*Bu[j];
-            }
-        }
 
-        return results;
+        return D*this->get_dB_sh(p, n, dof)*U;
     }
 
 
-    virtual std::vector<double> _get_stress_tensor(const std::vector<double>& D, const gp_Pnt& p, const std::vector<double>& u, const std::vector<size_t> indices, const size_t S_SIZE) const{
+    virtual math::Matrix _get_stress_tensor(const math::Matrix& D, const gp_Pnt& p, const std::vector<double>& u, const std::vector<size_t> indices) const{
 
-        auto results = this->_get_stress_vector(D, p, u, S_SIZE);
+        const auto results = this->_get_stress_vector(D, p, u);
 
-        std::vector<double> S(indices.size());
+        const size_t N = std::sqrt(indices.size());
+
+        math::Matrix S(N, N);
         for(size_t i = 0; i < indices.size(); ++i){
-            S[i] = results[indices[i]];
+            S.data()[i] = results[indices[i]];
         }
 
         return S;
     }
 
-    virtual std::vector<double> _get_strain_vector(const gp_Pnt& p, const std::vector<double>& u, const size_t S_SIZE) const{
+    virtual math::Vector _get_strain_vector(const gp_Pnt& p, const std::vector<double>& u) const{
         const size_t N = T::NODES_PER_ELEM;
         const size_t K_DIM = T::K_DIM;
         const size_t NODE_DOF = T::NODE_DOF;
 
-        const std::vector<double> B = this->get_B(p);
-
-        std::vector<double> results(S_SIZE, 0);
-        std::vector<double> U(K_DIM, 0);
+        math::Vector U(K_DIM, 0);
         for(size_t l = 0; l < N; ++l){
             for(size_t j = 0; j < NODE_DOF; ++j){
                 if(this->nodes[l]->u_pos[j] > -1){
@@ -332,23 +226,20 @@ class MeshElementCommon : public MeshElement{
                 }
             }
         }
-        for(size_t i = 0; i < S_SIZE; ++i){
-            for(size_t j = 0; j < K_DIM; ++j){
-                results[i] += B[i*K_DIM + j]*U[j];
-            }
-        }
 
-        return results;
+        return this->get_B(p)*U;
     }
 
 
-    virtual std::vector<double> _get_strain_tensor(const gp_Pnt& p, const std::vector<double>& u, const std::vector<size_t> indices, const size_t S_SIZE) const{
+    virtual math::Matrix _get_strain_tensor(const gp_Pnt& p, const std::vector<double>& u, const std::vector<size_t> indices) const{
 
-        auto results = this->_get_strain_vector(p, u, S_SIZE);
+        auto results = this->_get_strain_vector(p, u);
 
-        std::vector<double> S(indices.size());
+        const size_t N = std::sqrt(indices.size());
+
+        math::Matrix S(N, N);
         for(size_t i = 0; i < indices.size(); ++i){
-            S[i] = results[indices[i]];
+            S.data()[i] = results[indices[i]];
         }
 
         return S;
@@ -366,60 +257,58 @@ class MeshElementCommon2D : public MeshElementCommon<T>{
 
     virtual ~MeshElementCommon2D() = default;
 
-    virtual double get_stress_at(const std::vector<double>& D, const gp_Pnt& point, const std::vector<double>& u, const double eps = 0) const override{
-        auto results = this->_get_stress_vector(D, point, u, S_SIZE);
+    virtual double get_stress_at(const math::Matrix& D, const gp_Pnt& point, const std::vector<double>& u, const double eps = 0) const override{
+        auto results = this->_get_stress_vector(D, point, u);
 
         return std::sqrt(results[0]*results[0] - results[0]*results[1] + results[1]*results[1] + 3*results[2]*results[2] + eps);
     }
     virtual double get_strain_VM(const gp_Pnt& p, const std::vector<double>& u, const double eps = 0) const override{
-        auto results = this->_get_strain_vector(p, u, S_SIZE);
+        auto results = this->_get_strain_vector(p, u);
 
         return std::sqrt(results[0]*results[0] - results[0]*results[1] + results[1]*results[1] + 3*results[2]*results[2] + eps);
     }
 
-    virtual std::vector<double> get_stress_tensor(const std::vector<double>& D, const gp_Pnt& p, const std::vector<double>& u) const override{
+    virtual math::Matrix get_stress_tensor(const math::Matrix& D, const gp_Pnt& p, const std::vector<double>& u) const override{
         const std::vector<size_t> indices{0, 2, 2, 1};
-        return this->_get_stress_tensor(D, p, u, indices, S_SIZE);
+        return this->_get_stress_tensor(D, p, u, indices);
     }
 
-    virtual std::vector<double> get_strain_tensor(const gp_Pnt& p, const std::vector<double>& u) const override{
+    virtual math::Matrix get_strain_tensor(const gp_Pnt& p, const std::vector<double>& u) const override{
         const std::vector<size_t> indices{0, 2, 2, 1};
-        return this->_get_strain_tensor(p, u, indices, S_SIZE);
+        return this->_get_strain_tensor(p, u, indices);
     }
-    virtual std::vector<double> get_principal_strains(const gp_Pnt& p, const std::vector<double>& u) const override{
-        auto s = this->get_strain_tensor(p, u);
-        constexpr size_t N = 2;
-        std::vector<double> Nv(N, 0);
-        LAPACKE_dsyev(LAPACK_COL_MAJOR, 'N', 'L', N, s.data(), N, Nv.data());
+    virtual math::Vector get_principal_strains(const gp_Pnt& p, const std::vector<double>& u) const override{
+        const auto s = this->get_strain_tensor(p, u);
+        math::Eigen e(s);
 
-        return Nv;
+        return e.eigenvalues;
     }
 
-    virtual std::vector<double> get_strain_vector(const gp_Pnt& p, const std::vector<double>& u) const override{
-        return this->_get_strain_vector(p, u, S_SIZE);
+    virtual math::Vector get_strain_vector(const gp_Pnt& p, const std::vector<double>& u) const override{
+        return this->_get_strain_vector(p, u);
     }
 
-    virtual void get_virtual_load(const std::vector<double>& D, double mult, const gp_Pnt& point, const std::vector<double>& u, std::vector<double>& l) const override{
-        const std::vector<double> V{1, -0.5, 0,
-                                   -0.5, 1, 0,
-                                   0,   0, 3};
+    virtual void get_virtual_load(const math::Matrix& D, double mult, const gp_Pnt& point, const std::vector<double>& u, std::vector<double>& l) const override{
+        const math::Matrix V({1, -0.5, 0,
+                              -0.5, 1, 0,
+                              0,   0, 3}, 3, 3);
 
-        this->_get_virtual_load(D, mult, point, u, l, V, S_SIZE);
+        this->_get_virtual_load(D, mult, point, u, l, V);
     }
 
-    virtual double von_Mises_derivative(const std::vector<double>& D, const std::vector<double>& dD, double mult, const gp_Pnt& point, const std::vector<double>& u) const override{
-        const std::vector<double> V{1, -0.5, 0,
-                                   -0.5, 1, 0,
-                                   0,   0, 3};
+    virtual double von_Mises_derivative(const math::Matrix& D, const math::Matrix& dD, double mult, const gp_Pnt& point, const std::vector<double>& u) const override{
+        const math::Matrix V({1, -0.5, 0,
+                              -0.5, 1, 0,
+                              0,   0, 3}, 3, 3);
 
-        return this->_von_Mises_derivative(D, dD, mult, point, u, V, S_SIZE);
+        return this->_von_Mises_derivative(D, dD, mult, point, u, V);
     }
-    virtual double von_Mises_derivative_sh(const std::vector<double>& D, double mult, const gp_Pnt& point, const std::vector<double>& u, const size_t n, const size_t dof) const override{
-        const std::vector<double> V{1, -0.5, 0,
-                                   -0.5, 1, 0,
-                                   0,   0, 3};
+    virtual double von_Mises_derivative_sh(const math::Matrix& D, double mult, const gp_Pnt& point, const std::vector<double>& u, const size_t n, const size_t dof) const override{
+        const math::Matrix V({1, -0.5, 0,
+                              -0.5, 1, 0,
+                              0,   0, 3}, 3, 3);
 
-        return this->_von_Mises_derivative_sh(D, mult, point, u, n, dof, V, S_SIZE);
+        return this->_von_Mises_derivative_sh(D, mult, point, u, n, dof, V);
     }
 
     virtual std::vector<gp_Pnt> get_intersection_points(const TopoDS_Shape& crosssection) const override{
@@ -458,31 +347,20 @@ class MeshElementCommon2D : public MeshElementCommon<T>{
         return points;
     }
 
-    virtual std::vector<double> get_f(const double t, const gp_Vec& vec, const std::vector<gp_Pnt>& points) const override{
-        const size_t K_DIM = T::K_DIM;
-
-        const auto Nf = this->get_Nf(t, points);
-
-        std::vector<double> f(K_DIM, 0);
-        for(size_t i = 0; i < K_DIM; ++i){
-            f[i] = Nf[T::DIM*i]*vec.X() + Nf[T::DIM*i+1]*vec.Y();
-        }
-
-        return f;
+    virtual math::Vector get_f(const double t, const math::Vector& vec, const std::vector<gp_Pnt>& points) const override{
+        return this->get_Nf(t, points)*vec;
     }
 
-    virtual std::vector<double> get_uu(const MeshElement* const e2, const std::vector<gp_Pnt>& bounds, const gp_Dir n) const override{
+    virtual math::Matrix get_uu(const MeshElement* const e2, const std::vector<gp_Pnt>& bounds, const gp_Dir n) const override{
         const size_t ORDER = T::ORDER;
         const size_t KW = T::K_DIM;
         const size_t DIM = this->DIM;
 
-        std::vector<double> NN(2*KW, 0);
-        std::vector<double> MnMn(4*KW*KW, 0);
+        math::Vector NN(2*KW, 0);
+        math::Matrix MnMn(2*KW, 2*KW, 0);
 
         constexpr size_t GN = 2*ORDER;
         const auto& GL = utils::GaussLegendre<GN>::get();
-
-        const double drnorm = bounds[0].Distance(bounds[1]);
 
         const gp_Pnt p1 = bounds[0];
         const gp_Pnt p2 = bounds[1];
@@ -496,62 +374,51 @@ class MeshElementCommon2D : public MeshElementCommon<T>{
 
             const auto N1 = this->get_Ni(pi);
             const auto N2 = e2->get_Ni(pi);
-            std::fill(NN.begin(), NN.end(), 0);
+            NN.fill(0);
             for(size_t i = 0; i < KW; ++i){
                 for(size_t j = 0; j < DIM; ++j){
-                    NN[i] += N1[i + j*KW]*n.Coord(1+j);
-                    NN[i + KW] += N2[i + j*KW]*n.Coord(1+j);
+                    NN[i] += N1(j, i)*n.Coord(1+j);
+                    NN[i + KW] += N2(j, i)*n.Coord(1+j);
                 }
             }
-            for(size_t i = 0; i < 2*KW; ++i){
-                for(size_t j = 0; j < 2*KW; ++j){
-                    MnMn[2*KW*i + j] += (xi->w*drnorm)*NN[i]*NN[j];
-                }
-            }
+            MnMn += (xi->w)*(NN*NN.T());
         }
         for(size_t i = 0; i < KW; ++i){
             for(size_t j = KW; j < 2*KW; ++j){
-                MnMn[2*KW*i + j] *= -1.0;
-                MnMn[2*KW*j + i] *= -1.0;
+                MnMn(i, j) *= -1.0;
+                MnMn(j, i) *= -1.0;
             }
         }
-        const gp_Vec v1(bounds[0], bounds[1]);
-        const gp_Vec v2(bounds[0], bounds[2]);
-        const double A = 0.5*v1.Crossed(v2).Magnitude();
-        cblas_dscal(MnMn.size(), A, MnMn.data(), 1);
+        const double drnorm = bounds[0].Distance(bounds[1]);
+        MnMn *= drnorm;
 
         return MnMn;
     }
 
-    virtual std::vector<double> get_MnMn(const MeshElement* const e2, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds, const gp_Dir n) const override{
+    virtual math::Matrix get_MnMn(const MeshElement* const e2, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds, const gp_Dir n) const override{
         const size_t ORDER = T::ORDER;
         const size_t NODES_PER_ELEM = T::NODES_PER_ELEM;
         const size_t DOF = T::NODE_DOF;
         const size_t KW = T::K_DIM;
         const size_t DIM = this->DIM;
 
-        std::vector<double> uv1(KW), uv2(KW);
+        math::Vector uv1(KW), uv2(KW);
         for(size_t i = 0; i < NODES_PER_ELEM; ++i){
             for(size_t j = 0; j < DOF; ++j){
                 uv1[i*DOF + j] = u_ext[this->nodes[i]->u_pos[j]];
                 uv2[i*DOF + j] = u_ext[e2->nodes[i]->u_pos[j]];
             }
         }
-        std::vector<double> NN(2*KW, 0);
-        std::vector<double> MnMn(4*KW*KW, 0);
+        math::Vector NN(2*KW, 0);
+        math::Matrix MnMn(2*KW, 2*KW, 0);
 
-        std::vector<double> up1(DIM), up2(DIM);
         constexpr size_t GN = 2*ORDER + 2;
         const auto& GL = utils::GaussLegendre<GN>::get();
-
-        const double drnorm = bounds[0].Distance(bounds[1]);
 
         const gp_Pnt p1 = bounds[0];
         const gp_Pnt p2 = bounds[1];
 
         for(auto xi = GL.begin(); xi < GL.end(); ++xi){
-            std::fill(up1.begin(), up1.end(), 0);
-            std::fill(up2.begin(), up2.end(), 0);
 
             const gp_Pnt pi(
                 p1.X() + (p2.X() - p1.X())*xi->x,
@@ -562,38 +429,30 @@ class MeshElementCommon2D : public MeshElementCommon<T>{
             const auto N1 = this->get_Ni(pi);
             const auto N2 = e2->get_Ni(pi);
             double gp = 0;
+            math::Vector up1(N1*uv1);
+            math::Vector up2(N2*uv2);
             for(size_t j = 0; j < DIM; ++j){
-                for(size_t i = 0; i < KW; ++i){
-                    up1[j] += N1[j*KW + i]*uv1[i];
-                    up2[j] += N2[j*KW + i]*uv2[i];
-                }
                 gp += (up2[j] - up1[j])*n.Coord(1+j);
             }
             if(gp < 1e-7){
-                std::fill(NN.begin(), NN.end(), 0);
+                NN.fill(0);
                 for(size_t i = 0; i < KW; ++i){
                     for(size_t j = 0; j < DIM; ++j){
-                        NN[i] += N1[i + j*KW]*n.Coord(1+j);
-                        NN[i + KW] += N2[i + j*KW]*n.Coord(1+j);
+                        NN[i] += N1(j, i)*n.Coord(1+j);
+                        NN[i + KW] += N2(j, i)*n.Coord(1+j);
                     }
                 }
-                for(size_t i = 0; i < 2*KW; ++i){
-                    for(size_t j = 0; j < 2*KW; ++j){
-                        MnMn[2*KW*i + j] += (xi->w*drnorm)*NN[i]*NN[j];
-                    }
-                }
+                MnMn += (xi->w)*(NN*NN.T());
             }
         }
         for(size_t i = 0; i < KW; ++i){
             for(size_t j = KW; j < 2*KW; ++j){
-                MnMn[2*KW*i + j] *= -1.0;
-                MnMn[2*KW*j + i] *= -1.0;
+                MnMn(i, j) *= -1.0;
+                MnMn(j, i) *= -1.0;
             }
         }
-        const gp_Vec v1(bounds[0], bounds[1]);
-        const gp_Vec v2(bounds[0], bounds[2]);
-        const double A = 0.5*v1.Crossed(v2).Magnitude();
-        cblas_dscal(MnMn.size(), A, MnMn.data(), 1);
+        const double drnorm = bounds[0].Distance(bounds[1]);
+        MnMn *= drnorm;
 
         return MnMn;
     }
@@ -729,8 +588,8 @@ class MeshElementCommon3D : public MeshElementCommon<T>{
 
     virtual ~MeshElementCommon3D() = default;
 
-    virtual double get_stress_at(const std::vector<double>& D, const gp_Pnt& point, const std::vector<double>& u, const double eps = 0) const override{
-        auto s = this->_get_stress_vector(D, point, u, S_SIZE);
+    virtual double get_stress_at(const math::Matrix& D, const gp_Pnt& point, const std::vector<double>& u, const double eps = 0) const override{
+        auto s = this->_get_stress_vector(D, point, u);
 
         const double ds1 = s[0] - s[1];
         const double ds2 = s[1] - s[2];
@@ -739,7 +598,7 @@ class MeshElementCommon3D : public MeshElementCommon<T>{
         return std::sqrt(0.5*(ds1*ds1 + ds2*ds2 + ds3*ds3 + 6*(s[3]*s[3] + s[4]*s[4] + s[5]*s[5])) + eps);
     }
     virtual double get_strain_VM(const gp_Pnt& p, const std::vector<double>& u, const double eps = 0) const override{
-        auto s = this->_get_strain_vector(p, u, S_SIZE);
+        auto s = this->_get_strain_vector(p, u);
 
         const double ds1 = s[0] - s[1];
         const double ds2 = s[1] - s[2];
@@ -747,72 +606,61 @@ class MeshElementCommon3D : public MeshElementCommon<T>{
 
         return std::sqrt(0.5*(ds1*ds1 + ds2*ds2 + ds3*ds3 + 6*(s[3]*s[3] + s[4]*s[4] + s[5]*s[5])) + eps);
     }
-    virtual std::vector<double> get_principal_strains(const gp_Pnt& p, const std::vector<double>& u) const override{
+    virtual math::Vector get_principal_strains(const gp_Pnt& p, const std::vector<double>& u) const override{
         auto s = this->get_strain_tensor(p, u);
-        constexpr size_t N = 3;
-        std::vector<double> Nv(N, 0);
-        LAPACKE_dsyev(LAPACK_COL_MAJOR, 'N', 'L', N, s.data(), N, Nv.data());
+        math::Eigen e(s);
 
-        return Nv;
+        return e.eigenvalues;
     }
 
-    virtual std::vector<double> get_stress_tensor(const std::vector<double>& D, const gp_Pnt& p, const std::vector<double>& u) const override{
+    virtual math::Matrix get_stress_tensor(const math::Matrix& D, const gp_Pnt& p, const std::vector<double>& u) const override{
         const std::vector<size_t> indices{0, 3, 4, 3, 1, 5, 4, 5, 2};
-        return this->_get_stress_tensor(D, p, u, indices, S_SIZE);
+        return this->_get_stress_tensor(D, p, u, indices);
     }
 
-    virtual std::vector<double> get_strain_tensor(const gp_Pnt& p, const std::vector<double>& u) const override{
+    virtual math::Matrix get_strain_tensor(const gp_Pnt& p, const std::vector<double>& u) const override{
         const std::vector<size_t> indices{0, 3, 4, 3, 1, 5, 4, 5, 2};
-        return this->_get_strain_tensor(p, u, indices, S_SIZE);
+        return this->_get_strain_tensor(p, u, indices);
     }
 
-    virtual std::vector<double> get_strain_vector(const gp_Pnt& p, const std::vector<double>& u) const override{
-        return this->_get_strain_vector(p, u, S_SIZE);
+    virtual math::Vector get_strain_vector(const gp_Pnt& p, const std::vector<double>& u) const override{
+        return this->_get_strain_vector(p, u);
     }
 
-    virtual void get_virtual_load(const std::vector<double>& D, double mult, const gp_Pnt& point, const std::vector<double>& u, std::vector<double>& l) const override{
-        const std::vector<double> V{   1, -0.5, -0.5, 0, 0, 0,
-                                    -0.5,    1, -0.5, 0, 0, 0,
-                                    -0.5, -0.5,    1, 0, 0, 0,
-                                       0,    0,    0, 3, 0, 0,
-                                       0,    0,    0, 0, 3, 0,
-                                       0,    0,    0, 0, 0, 3};
+    virtual void get_virtual_load(const math::Matrix& D, double mult, const gp_Pnt& point, const std::vector<double>& u, std::vector<double>& l) const override{
+        const math::Matrix V({   1, -0.5, -0.5, 0, 0, 0,
+                              -0.5,    1, -0.5, 0, 0, 0,
+                              -0.5, -0.5,    1, 0, 0, 0,
+                                 0,    0,    0, 3, 0, 0,
+                                 0,    0,    0, 0, 3, 0,
+                                 0,    0,    0, 0, 0, 3}, 6, 6);
 
-        this->_get_virtual_load(D, mult, point, u, l, V, S_SIZE);
+        this->_get_virtual_load(D, mult, point, u, l, V);
     }
 
-    virtual double von_Mises_derivative(const std::vector<double>& D, const std::vector<double>& dD, double mult, const gp_Pnt& point, const std::vector<double>& u) const override{
-        const std::vector<double> V{   1, -0.5, -0.5, 0, 0, 0,
-                                    -0.5,    1, -0.5, 0, 0, 0,
-                                    -0.5, -0.5,    1, 0, 0, 0,
-                                       0,    0,    0, 3, 0, 0,
-                                       0,    0,    0, 0, 3, 0,
-                                       0,    0,    0, 0, 0, 3};
+    virtual double von_Mises_derivative(const math::Matrix& D, const math::Matrix& dD, double mult, const gp_Pnt& point, const std::vector<double>& u) const override{
+        const math::Matrix V({   1, -0.5, -0.5, 0, 0, 0,
+                              -0.5,    1, -0.5, 0, 0, 0,
+                              -0.5, -0.5,    1, 0, 0, 0,
+                                 0,    0,    0, 3, 0, 0,
+                                 0,    0,    0, 0, 3, 0,
+                                 0,    0,    0, 0, 0, 3}, 6, 6);
 
-        return this->_von_Mises_derivative(D, dD, mult, point, u, V, S_SIZE);
+        return this->_von_Mises_derivative(D, dD, mult, point, u, V);
     }
-    virtual double von_Mises_derivative_sh(const std::vector<double>& D, double mult, const gp_Pnt& point, const std::vector<double>& u, const size_t n, const size_t dof) const override{
-        const std::vector<double> V{   1, -0.5, -0.5, 0, 0, 0,
-                                    -0.5,    1, -0.5, 0, 0, 0,
-                                    -0.5, -0.5,    1, 0, 0, 0,
-                                       0,    0,    0, 3, 0, 0,
-                                       0,    0,    0, 0, 3, 0,
-                                       0,    0,    0, 0, 0, 3};
+    virtual double von_Mises_derivative_sh(const math::Matrix& D, double mult, const gp_Pnt& point, const std::vector<double>& u, const size_t n, const size_t dof) const override{
+        const math::Matrix V({   1, -0.5, -0.5, 0, 0, 0,
+                              -0.5,    1, -0.5, 0, 0, 0,
+                              -0.5, -0.5,    1, 0, 0, 0,
+                                 0,    0,    0, 3, 0, 0,
+                                 0,    0,    0, 0, 3, 0,
+                                 0,    0,    0, 0, 0, 3}, 6, 6);
 
-        return this->_von_Mises_derivative_sh(D, mult, point, u, n, dof, V, S_SIZE);
+        return this->_von_Mises_derivative_sh(D, mult, point, u, n, dof, V);
     }
 
-    virtual std::vector<double> get_f(const double t, const gp_Vec& vec, const std::vector<gp_Pnt>& points) const override{
-        const size_t K_DIM = T::K_DIM;
-
-        const auto Nf = this->get_Nf(t, points);
-
-        std::vector<double> f(K_DIM, 0);
-        for(size_t i = 0; i < K_DIM; ++i){
-            f[i] = Nf[T::DIM*i]*vec.X() + Nf[T::DIM*i+1]*vec.Y() + Nf[T::DIM*i+2]*vec.Z();
-        }
-
-        return f;
+    virtual math::Vector get_f(const double t, const math::Vector& vec, const std::vector<gp_Pnt>& points) const override{
+        return this->get_Nf(t, points)*vec;
     }
 
 
@@ -923,52 +771,49 @@ class MeshElementCommon3DTet : public MeshElementCommon3D<T>{
         return points;
     }
 
-    virtual std::vector<double> get_uu(const MeshElement* const e2, const std::vector<gp_Pnt>& bounds, const gp_Dir n) const override{
+    virtual math::Matrix get_uu(const MeshElement* const e2, const std::vector<gp_Pnt>& bounds, const gp_Dir n) const override{
         const size_t ORDER = T::ORDER;
         const size_t KW = T::K_DIM;
         const size_t DIM = this->DIM;
 
-        const auto& gli = utils::GaussLegendreTri<2*ORDER + 2>::get();
-        std::vector<double> NN(2*KW, 0);
-        std::vector<double> MnMn(4*KW*KW, 0);
+        const auto& gli = utils::GaussLegendreTri<2*ORDER>::get();
+        math::Vector NN(2*KW, 0);
+        math::Matrix MnMn(2*KW, 2*KW, 0);
 
         for(auto it = gli.begin(); it != gli.end(); ++it){
             const gp_Pnt pi = MeshElementCommon3DTet<T>::ECTRI_GL_to_point(*it, bounds);
             const auto N1 = this->get_Ni(pi);
             const auto N2 = e2->get_Ni(pi);
-            std::fill(NN.begin(), NN.end(), 0);
+            NN.fill(0);
             for(size_t i = 0; i < KW; ++i){
                 for(size_t j = 0; j < DIM; ++j){
-                    NN[i] += N1[i + j*KW]*n.Coord(1+j);
-                    NN[i + KW] += N2[i + j*KW]*n.Coord(1+j);
+                    NN[i] += N1(j, i)*n.Coord(1+j);
+                    NN[i + KW] += N2(j, i)*n.Coord(1+j);
                 }
             }
-            for(size_t i = 0; i < 2*KW; ++i){
-                for(size_t j = 0; j < 2*KW; ++j){
-                    MnMn[2*KW*i + j] += it->w*NN[i]*NN[j];
-                }
-            }
+            MnMn += (it->w)*(NN*NN.T());
         }
         for(size_t i = 0; i < KW; ++i){
             for(size_t j = KW; j < 2*KW; ++j){
-                MnMn[2*KW*i + j] *= -1.0;
-                MnMn[2*KW*j + i] *= -1.0;
+                MnMn(i, j) *= -1.0;
+                MnMn(j, i) *= -1.0;
             }
         }
         const gp_Vec v1(bounds[0], bounds[1]);
         const gp_Vec v2(bounds[0], bounds[2]);
         const double A = 0.5*v1.Crossed(v2).Magnitude();
-        cblas_dscal(MnMn.size(), A, MnMn.data(), 1);
+        MnMn *= A;
 
         return MnMn;
     }
-    virtual std::vector<double> get_MnMn(const MeshElement* const e2, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds, const gp_Dir n) const override{
+    virtual math::Matrix get_MnMn(const MeshElement* const e2, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds, const gp_Dir n) const override{
         const size_t ORDER = T::ORDER;
         const size_t NODES_PER_ELEM = T::NODES_PER_ELEM;
         const size_t DOF = T::NODE_DOF;
         const size_t KW = T::K_DIM;
         const size_t DIM = this->DIM;
-        std::vector<double> uv1(KW), uv2(KW);
+
+        math::Vector uv1(KW), uv2(KW);
         for(size_t i = 0; i < NODES_PER_ELEM; ++i){
             for(size_t j = 0; j < DOF; ++j){
                 uv1[i*DOF + j] = u_ext[this->nodes[i]->u_pos[j]];
@@ -976,49 +821,40 @@ class MeshElementCommon3DTet : public MeshElementCommon3D<T>{
             }
         }
         const auto& gli = utils::GaussLegendreTri<2*ORDER + 2>::get();
-        std::vector<double> NN(2*KW, 0);
-        std::vector<double> MnMn(4*KW*KW, 0);
+        math::Vector NN(2*KW, 0);
+        math::Matrix MnMn(2*KW, 2*KW, 0);
 
-        std::vector<double> up1(DIM), up2(DIM);
         for(auto it = gli.begin(); it != gli.end(); ++it){
-            std::fill(up1.begin(), up1.end(), 0);
-            std::fill(up2.begin(), up2.end(), 0);
             const gp_Pnt pi = MeshElementCommon3DTet<T>::ECTRI_GL_to_point(*it, bounds);
             const auto N1 = this->get_Ni(pi);
             const auto N2 = e2->get_Ni(pi);
             double gp = 0;
+            math::Vector up1(N1*uv1);
+            math::Vector up2(N2*uv2);
             for(size_t j = 0; j < DIM; ++j){
-                for(size_t i = 0; i < KW; ++i){
-                    up1[j] += N1[j*KW + i]*uv1[i];
-                    up2[j] += N2[j*KW + i]*uv2[i];
-                }
                 gp += (up2[j] - up1[j])*n.Coord(1+j);
             }
             if(gp < 1e-7){
-                std::fill(NN.begin(), NN.end(), 0);
+                NN.fill(0);
                 for(size_t i = 0; i < KW; ++i){
                     for(size_t j = 0; j < DIM; ++j){
-                        NN[i] += N1[i + j*KW]*n.Coord(1+j);
-                        NN[i + KW] += N2[i + j*KW]*n.Coord(1+j);
+                        NN[i] += N1(j, i)*n.Coord(1+j);
+                        NN[i + KW] += N2(j, i)*n.Coord(1+j);
                     }
                 }
-                for(size_t i = 0; i < 2*KW; ++i){
-                    for(size_t j = 0; j < 2*KW; ++j){
-                        MnMn[2*KW*i + j] += it->w*NN[i]*NN[j];
-                    }
-                }
+                MnMn += (it->w)*(NN*NN.T());
             }
         }
         for(size_t i = 0; i < KW; ++i){
             for(size_t j = KW; j < 2*KW; ++j){
-                MnMn[2*KW*i + j] *= -1.0;
-                MnMn[2*KW*j + i] *= -1.0;
+                MnMn(i, j) *= -1.0;
+                MnMn(j, i) *= -1.0;
             }
         }
         const gp_Vec v1(bounds[0], bounds[1]);
         const gp_Vec v2(bounds[0], bounds[2]);
         const double A = 0.5*v1.Crossed(v2).Magnitude();
-        cblas_dscal(MnMn.size(), A, MnMn.data(), 1);
+        MnMn *= A;
 
         return MnMn;
     }

@@ -24,6 +24,7 @@
 #include <vector>
 #include <dmumps_c.h>
 #include "general_global_matrix/mumps_global_sparse.hpp"
+#include "math/matrix.hpp"
 
 // Recommended by the documentation
 #define ICNTL( i ) icntl[ (i) - 1 ]
@@ -45,10 +46,10 @@ class MUMPSGeneral{
     inline void print_matrix() const{
         this->M.print_matrix();
     }
-    inline void add_element(const std::vector<double>& matrix, const std::vector<long>& pos){
+    inline void add_element(const math::Matrix& matrix, const std::vector<long>& pos){
         this->M.add_element(matrix, pos);
     }
-    inline void add_element(const std::vector<double>& matrix, const std::vector<long>& pos_i, const std::vector<long>& pos_j){
+    inline void add_element(const math::Matrix& matrix, const std::vector<long>& pos_i, const std::vector<long>& pos_j){
         this->M.add_element(matrix, pos_i, pos_j);
     }
     inline void add_value(size_t i, size_t j, double val){

@@ -28,6 +28,7 @@
 #include <Eigen/Dense>
 #include <memory>
 #include "element_common.hpp"
+#include "math/matrix.hpp"
 #include <array>
 
 namespace element{
@@ -62,30 +63,28 @@ class H8 : public MeshElementCommon3DHex<H8>{
 
     H8(ElementShape s);
 
-    virtual std::vector<double> get_k(const std::vector<double>& D, const double t) const override;
-    virtual std::vector<double> get_nodal_density_gradient(gp_Pnt p) const override;
-    virtual std::vector<double> get_R(const std::vector<double>& K, const double t, const std::vector<gp_Pnt>& points) const override;
-    virtual std::vector<double> get_Rf(const std::vector<double>& S, const std::vector<double>& F, const gp_Pnt& C, const double t, const std::vector<gp_Pnt>& points) const override;
-    virtual std::vector<double> get_B(const gp_Pnt& point) const override;
+    virtual math::Matrix get_k(const math::Matrix& D, const double t) const override;
+    virtual math::Matrix get_nodal_density_gradient(gp_Pnt p) const override;
+    virtual math::Matrix get_R(const math::Matrix& K, const double t, const std::vector<gp_Pnt>& points) const override;
+    virtual math::Matrix get_B(const gp_Pnt& point) const override;
 
-    virtual Eigen::MatrixXd diffusion_1dof(const double t, const std::vector<double>& A) const override;
-    virtual Eigen::MatrixXd advection_1dof(const double t, const std::vector<double>& v) const override;
-    virtual Eigen::MatrixXd absorption_1dof(const double t) const override;
-    virtual Eigen::VectorXd source_1dof(const double t) const override;
-    virtual Eigen::VectorXd flow_1dof(const double t, const MeshNode** nodes) const override;
+    virtual math::Matrix diffusion_1dof(const double t, const math::Matrix& A) const override;
+    virtual math::Matrix advection_1dof(const double t, const math::Vector& v) const override;
+    virtual math::Matrix absorption_1dof(const double t) const override;
+    virtual math::Vector source_1dof(const double t) const override;
+    virtual math::Vector flow_1dof(const double t, const MeshNode** nodes) const override;
 
-    virtual std::vector<double> get_uu(const MeshElement* const e2, const std::vector<gp_Pnt>& bounds, const gp_Dir n) const override;
-    virtual std::vector<double> get_MnMn(const MeshElement* const e2, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds, const gp_Dir n) const override;
+    virtual math::Matrix get_Ni(const gp_Pnt& p) const override;
 
-    virtual std::vector<double> get_Ni(const gp_Pnt& p) const override;
+    virtual math::Matrix get_uu(const MeshElement* const e2, const std::vector<gp_Pnt>& bounds, const gp_Dir n) const override;
+    virtual math::Matrix get_MnMn(const MeshElement* const e2, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds, const gp_Dir n) const override;
 
     virtual inline std::unique_ptr<MeshElementFactory> get_element_info() const override{
         return std::unique_ptr<MeshElementFactory>(new MeshElementFactoryImpl<H8>());
     }
 
     private:
-    virtual std::vector<double> get_DB(const std::vector<double>& D, const gp_Pnt& point) const override;
-    virtual std::vector<double> get_Nf(const double t, const std::vector<gp_Pnt>& points) const override;
+    virtual math::Matrix get_Nf(const double t, const std::vector<gp_Pnt>& points) const override;
 
     inline double N_norm(double x, double y, double z, size_t i) const{
         switch(i){
@@ -175,32 +174,33 @@ class H8 : public MeshElementCommon3DHex<H8>{
         return 0;
     }
 
-    inline Eigen::Vector<double, NODES_PER_ELEM> N_mat_1dof(double x, double y, double z) const{
-        return Eigen::Vector<double, NODES_PER_ELEM>
+    inline math::Vector N_mat_1dof(double x, double y, double z) const{
+        return math::Vector
                 {N_norm(x,y,z,0), N_norm(x,y,z,1), N_norm(x,y,z,2), N_norm(x,y,z,3),
                  N_norm(x,y,z,4), N_norm(x,y,z,5), N_norm(x,y,z,6), N_norm(x,y,z,7)};
     }
 
-    inline Eigen::Matrix<double, NODE_DOF, NODES_PER_ELEM> dN_mat_1dof(double xi, double eta, double zeta,
+    inline math::Matrix dN_mat_1dof(double xi, double eta, double zeta,
                                                                        const std::array<double, NODES_PER_ELEM>& x, 
                                                                        const std::array<double, NODES_PER_ELEM>& y,
                                                                        const std::array<double, NODES_PER_ELEM>& z) const{
-        const Eigen::Matrix<double, NODE_DOF, NODE_DOF> Jm = J(xi, eta, zeta, x, y, z).inverse();
-        Eigen::Matrix<double, NODE_DOF, NODES_PER_ELEM> M
-                {{dNdx_norm(xi,eta,zeta,0),dNdx_norm(xi,eta,zeta,1),dNdx_norm(xi,eta,zeta,2),dNdx_norm(xi,eta,zeta,3),dNdx_norm(xi,eta,zeta,4),dNdx_norm(xi,eta,zeta,5),dNdx_norm(xi,eta,zeta,6),dNdx_norm(xi,eta,zeta,7)},
-                 {dNdy_norm(xi,eta,zeta,0),dNdy_norm(xi,eta,zeta,1),dNdy_norm(xi,eta,zeta,2),dNdy_norm(xi,eta,zeta,3),dNdy_norm(xi,eta,zeta,4),dNdy_norm(xi,eta,zeta,5),dNdy_norm(xi,eta,zeta,6),dNdy_norm(xi,eta,zeta,7)},
-                 {dNdz_norm(xi,eta,zeta,0),dNdz_norm(xi,eta,zeta,1),dNdz_norm(xi,eta,zeta,2),dNdz_norm(xi,eta,zeta,3),dNdz_norm(xi,eta,zeta,4),dNdz_norm(xi,eta,zeta,5),dNdz_norm(xi,eta,zeta,6),dNdz_norm(xi,eta,zeta,7)}};
+        math::Matrix Jm = J(xi, eta, zeta, x, y, z);
+        Jm.invert_LU();
+        math::Matrix M(
+                {dNdx_norm(xi,eta,zeta,0),dNdx_norm(xi,eta,zeta,1),dNdx_norm(xi,eta,zeta,2),dNdx_norm(xi,eta,zeta,3),dNdx_norm(xi,eta,zeta,4),dNdx_norm(xi,eta,zeta,5),dNdx_norm(xi,eta,zeta,6),dNdx_norm(xi,eta,zeta,7),
+                 dNdy_norm(xi,eta,zeta,0),dNdy_norm(xi,eta,zeta,1),dNdy_norm(xi,eta,zeta,2),dNdy_norm(xi,eta,zeta,3),dNdy_norm(xi,eta,zeta,4),dNdy_norm(xi,eta,zeta,5),dNdy_norm(xi,eta,zeta,6),dNdy_norm(xi,eta,zeta,7),
+                 dNdz_norm(xi,eta,zeta,0),dNdz_norm(xi,eta,zeta,1),dNdz_norm(xi,eta,zeta,2),dNdz_norm(xi,eta,zeta,3),dNdz_norm(xi,eta,zeta,4),dNdz_norm(xi,eta,zeta,5),dNdz_norm(xi,eta,zeta,6),dNdz_norm(xi,eta,zeta,7)},
+                NODE_DOF, NODES_PER_ELEM);
 
         return Jm*M;
     }
 
-    inline Eigen::Matrix<double, NODE_DOF, K_DIM> N_mat_norm(double x, double y, double z) const{
+    inline math::Matrix N_mat_norm(double x, double y, double z) const{
         double Ni[NODES_PER_ELEM] = 
                 {N_norm(x,y,z,0), N_norm(x,y,z,1), N_norm(x,y,z,2), N_norm(x,y,z,3),
                  N_norm(x,y,z,4), N_norm(x,y,z,5), N_norm(x,y,z,6), N_norm(x,y,z,7)};
 
-        Eigen::Matrix<double, NODE_DOF, K_DIM> M;
-        M.fill(0);
+        math::Matrix M(NODE_DOF, K_DIM);
         for(size_t i = 0; i < NODES_PER_ELEM; ++i){
             M(0, 3*i  ) = Ni[i];
             M(1, 3*i+1) = Ni[i];
@@ -210,7 +210,7 @@ class H8 : public MeshElementCommon3DHex<H8>{
         return M;
     }
 
-    inline Eigen::Vector<double, NODE_DOF> norm_to_nat(double xi, double eta, double zeta, const std::array<double, NODES_PER_ELEM>& x, const std::array<double, NODES_PER_ELEM>& y, const std::array<double, NODES_PER_ELEM>& z) const{
+    inline math::Vector norm_to_nat(double xi, double eta, double zeta, const std::array<double, NODES_PER_ELEM>& x, const std::array<double, NODES_PER_ELEM>& y, const std::array<double, NODES_PER_ELEM>& z) const{
         double X = 0, Y = 0, Z = 0;
         for(size_t i = 0; i < NODES_PER_ELEM; ++i){
             const double Ni = N_norm(xi, eta, zeta, i);
@@ -219,17 +219,16 @@ class H8 : public MeshElementCommon3DHex<H8>{
             Z += Ni*z[i];
         }
 
-        return Eigen::Vector<double, NODE_DOF>{X, Y, Z};
+        return math::Vector{X, Y, Z};
     }
 
 
-    inline Eigen::Matrix<double, NODE_DOF, NODE_DOF> J(const double xi, const double eta, const double zeta,
+    inline math::Matrix J(const double xi, const double eta, const double zeta,
                                        const std::array<double, NODES_PER_ELEM>& x, 
                                        const std::array<double, NODES_PER_ELEM>& y,
                                        const std::array<double, NODES_PER_ELEM>& z) const{
 
-        Eigen::Matrix<double, NODE_DOF, NODE_DOF> Jm;
-        Jm.fill(0);
+        math::Matrix Jm(NODE_DOF, NODE_DOF);
         for(size_t i = 0; i < NODES_PER_ELEM; ++i){
             const double Nix = dNdx_norm(xi,eta,zeta,i);
             const double Niy = dNdy_norm(xi,eta,zeta,i);
@@ -251,9 +250,9 @@ class H8 : public MeshElementCommon3DHex<H8>{
         return Jm;
     }
 
-    inline Eigen::Matrix<double, S_SIZE, K_DIM> B_mat_norm(double xi, double eta, double zeta, const std::array<double, NODES_PER_ELEM>& x, const std::array<double, NODES_PER_ELEM>& y, const std::array<double, NODES_PER_ELEM>& z) const{
+    inline math::Matrix B_mat_norm(double xi, double eta, double zeta, const std::array<double, NODES_PER_ELEM>& x, const std::array<double, NODES_PER_ELEM>& y, const std::array<double, NODES_PER_ELEM>& z) const{
         auto Ji = J(xi, eta, zeta, x, y, z);
-        Ji = Ji.inverse();
+        Ji.invert_LU();
         double Nix[NODES_PER_ELEM];
         double Niy[NODES_PER_ELEM];
         double Niz[NODES_PER_ELEM];
@@ -272,8 +271,7 @@ class H8 : public MeshElementCommon3DHex<H8>{
             Niz[i] = Nizi;
         }
 
-        Eigen::Matrix<double, S_SIZE, K_DIM> Bm;
-        Bm.fill(0);
+        math::Matrix Bm(S_SIZE, K_DIM);
 
         for(size_t i = 0; i < NODES_PER_ELEM; ++i){
             Bm(0, 3*i + 0) = Nix[i];
@@ -332,7 +330,7 @@ class H8 : public MeshElementCommon3DHex<H8>{
         }
         return 0;
     }
-    inline Eigen::Vector<double, NODE_DOF> surface_to_nat(double xi, double eta, const std::array<double, BOUNDARY_NODES_PER_ELEM>& x, const std::array<double, BOUNDARY_NODES_PER_ELEM>& y, const std::array<double, BOUNDARY_NODES_PER_ELEM>& z) const{
+    inline math::Vector surface_to_nat(double xi, double eta, const std::array<double, BOUNDARY_NODES_PER_ELEM>& x, const std::array<double, BOUNDARY_NODES_PER_ELEM>& y, const std::array<double, BOUNDARY_NODES_PER_ELEM>& z) const{
         double X = 0, Y = 0, Z = 0;
         for(size_t i = 0; i < BOUNDARY_NODES_PER_ELEM; ++i){
             const double Ni = N_norm_surface(xi, eta, i);
@@ -341,7 +339,7 @@ class H8 : public MeshElementCommon3DHex<H8>{
             Z += Ni*z[i];
         }
 
-        return Eigen::Vector<double, NODE_DOF>{X, Y, Z};
+        return math::Vector{X, Y, Z};
     }
     inline double surface_drnorm(double xi, double eta, const std::array<double, BOUNDARY_NODES_PER_ELEM>& x, const std::array<double, BOUNDARY_NODES_PER_ELEM>& y, const std::array<double, BOUNDARY_NODES_PER_ELEM>& z) const{
         double dXdx = 0, dYdx = 0, dZdx = 0;
@@ -358,10 +356,10 @@ class H8 : public MeshElementCommon3DHex<H8>{
             dYdy += Niy*y[i];
             dZdy += Niy*z[i];
         }
-        Eigen::Vector<double, 3> rx{dXdx, dYdx, dZdx};
-        Eigen::Vector<double, 3> ry{dXdy, dYdy, dZdy};
+        gp_Vec rx{dXdx, dYdx, dZdx};
+        gp_Vec ry{dXdy, dYdy, dZdy};
 
-        return (rx.cross(ry)).norm();
+        return (rx.Crossed(ry)).Magnitude();
     }
 };
 

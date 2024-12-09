@@ -23,6 +23,7 @@
 
 #include <TopoDS_Shape.hxx>
 #include <unordered_map>
+#include <map>
 #include "element.hpp"
 #include <vector>
 #include "support.hpp"

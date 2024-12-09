@@ -526,6 +526,9 @@ class Vector : public VectorMut<Vector>{
     Vector& operator+=(const VectorNonTransposed& v);
     Vector& operator-=(const VectorNonTransposed& v);
 
+    Vector& operator=(const Vector& v);
+    Vector& operator=(Vector&& v);
+
     Matrix operator*(const VectorTransposed& v) const;
 };
 

@@ -27,6 +27,7 @@
 #include <cstddef>
 #include <limits>
 #include "logger.hpp"
+#include "math/matrix.hpp"
 
 namespace utils{
 
@@ -75,7 +76,7 @@ class COO{
         std::copy(cooVal_bkp.begin(), cooVal_bkp.end(), cooVal.begin());
     }
 
-    inline void insert_matrix_symmetric(const std::vector<double>& M, const std::vector<long>& pos){
+    inline void insert_matrix_symmetric(const math::Matrix& M, const std::vector<long>& pos){
         size_t W = pos.size();
         if(this->coo_first_time){
             for(size_t i = 0; i < W; ++i){
@@ -88,9 +89,9 @@ class COO{
                     }
                     //if(std::abs(M[i*W + j]) > 0){
                         if(pos[i] >= pos[j]){
-                            this->data[Point(pos[i], pos[j])] += M[i*W + j];
+                            this->data[Point(pos[i], pos[j])] += M(i, j);
                         } else {
-                            this->data[Point(pos[j], pos[i])] += M[i*W + j];
+                            this->data[Point(pos[j], pos[i])] += M(i, j);
                         }
                     //}
                 }
@@ -100,9 +101,9 @@ class COO{
                 for(size_t j = 0; j <= i; ++j){
                     if(pos[i] > -1 && pos[j] > -1){
                         if(pos[i] >= pos[j]){
-                            this->add_coo(pos[i], pos[j], M[i*W + j]);
+                            this->add_coo(pos[i], pos[j], M(i, j));
                         } else {
-                            this->add_coo(pos[j], pos[i], M[i*W + j]);
+                            this->add_coo(pos[j], pos[i], M(i, j));
                         }
                     }
                 }
@@ -139,7 +140,7 @@ class COO{
             //}
         }
     }
-    inline void insert_matrix_general(const std::vector<double>& M, const std::vector<long>& pos){
+    inline void insert_matrix_general(const math::Matrix& M, const std::vector<long>& pos){
         size_t W = pos.size();
         if(this->coo_first_time){
             for(size_t i = 0; i < W; ++i){
@@ -151,7 +152,7 @@ class COO{
                         continue;
                     }
                     //if(std::abs(M[i*W + j]) > 0){
-                        this->data[Point(pos[i], pos[j])] += M[i*W + j];
+                        this->data[Point(pos[i], pos[j])] += M(i, j);
                     //}
                 }
             }
@@ -170,7 +171,7 @@ class COO{
                     for(int c = cooRowPtr[pos[i]]; c < cooRowPtr[pos[i]+1]; ++c){
                         if(cooColInd[c] == pos[j] + offset){
                             found_one = true;
-                            cooVal[c] += M[i*W+j];
+                            cooVal[c] += M(i, j);
                             size_t j_prev = j;
                             do{
                                 ++j;
@@ -189,7 +190,7 @@ class COO{
             }
         }
     }
-    inline void insert_block(const std::vector<double>& M, const std::vector<long>& pos_i, const std::vector<long>& pos_j, const bool transpose){
+    inline void insert_block(const math::Matrix& M, const std::vector<long>& pos_i, const std::vector<long>& pos_j, const bool transpose){
         size_t Wi = pos_i.size();
         size_t Wj = pos_j.size();
         if(this->coo_first_time){
@@ -203,7 +204,7 @@ class COO{
                             continue;
                         }
                         //if(std::abs(M[i*Wj + j]) > 0){
-                            this->data[Point(pos_i[i], pos_j[j])] += M[i*Wj + j];
+                            this->data[Point(pos_i[i], pos_j[j])] += M(i, j);
                         //}
                     }
                 }
@@ -217,7 +218,7 @@ class COO{
                             continue;
                         }
                         //if(std::abs(M[i*Wj + j]) > 0){
-                            this->data[Point(pos_j[j], pos_i[i])] += M[i*Wj + j];
+                            this->data[Point(pos_j[j], pos_i[i])] += M(i, j);
                         //}
                     }
                 }
@@ -238,7 +239,7 @@ class COO{
                         for(int c = cooRowPtr[pos_i[i]]; c < cooRowPtr[pos_i[i]+1]; ++c){
                             if(cooColInd[c] == pos_j[j] + offset){
                                 found_one = true;
-                                cooVal[c] += M[i*Wj+j];
+                                cooVal[c] += M(i, j);
                                 size_t j_prev = j;
                                 do{
                                     ++j;
@@ -270,7 +271,7 @@ class COO{
                         for(int c = cooRowPtr[pos_j[j]]; c < cooRowPtr[pos_j[j]+1]; ++c){
                             if(cooColInd[c] == pos_i[i] + offset){
                                 found_one = true;
-                                cooVal[c] += M[i*Wj+j];
+                                cooVal[c] += M(i, j);
                                 size_t i_prev = i;
                                 do{
                                     ++i;

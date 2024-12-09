@@ -25,6 +25,7 @@
 #include <gp_Pnt.hxx>
 #include <TopoDS_Shape.hxx>
 #include "element.hpp"
+#include "math/matrix.hpp"
 #include "multimaterial.hpp"
 #include "utils.hpp"
 #include "material.hpp"
@@ -41,7 +42,7 @@ class Geometry{
 
     void get_stresses(const std::vector<double>& u, const double p, const double psi, std::vector<double>::const_iterator& rho_it, std::vector<double>::iterator& stress_it) const;
 
-    void get_stresses(const std::vector<double>& u, bool topopt, size_t& D_offset, const std::vector<std::vector<double>>& D_cache, std::vector<double>::iterator& stress_it) const;
+    void get_stresses(const std::vector<double>& u, bool topopt, size_t& D_offset, const std::vector<math::Matrix>& D_cache, std::vector<double>::iterator& stress_it) const;
 
     inline void set_materials(std::vector<Material*> materials){
         this->M = MultiMaterial(materials, this->type, this->with_void);

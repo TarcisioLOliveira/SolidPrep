@@ -137,13 +137,13 @@ int main(int argc, char* argv[]){
                         const auto D = g->materials.get_D(e.get(), c);
                         stresses.push_back(e->get_stress_at(D, e->get_centroid(), u));
                         auto tensor = e->get_stress_tensor(D, e->get_centroid(), u);
-                        stressesX.push_back(tensor[0]);
-                        stressesY.push_back(tensor[3]);
-                        stressesXY.push_back(tensor[1]);
+                        stressesX.push_back(tensor.data()[0]);
+                        stressesY.push_back(tensor.data()[3]);
+                        stressesXY.push_back(tensor.data()[1]);
                         tensor = e->get_strain_tensor(e->get_centroid(), u);
-                        strainX.push_back(tensor[0]);
-                        strainY.push_back(tensor[3]);
-                        strainXY.push_back(tensor[1]);
+                        strainX.push_back(tensor.data()[0]);
+                        strainY.push_back(tensor.data()[3]);
+                        strainXY.push_back(tensor.data()[1]);
                     }
                 }
 
@@ -235,19 +235,19 @@ int main(int argc, char* argv[]){
                             max_point = c;
                         }
                         auto tensor = e->get_stress_tensor(D, e->get_centroid(), u);
-                        stressesX.push_back(tensor[0]);
-                        stressesY.push_back(tensor[4]);
-                        stressesZ.push_back(tensor[8]);
-                        stressesXY.push_back(tensor[1]);
-                        stressesXZ.push_back(tensor[2]);
-                        stressesYZ.push_back(tensor[5]);
+                        stressesX.push_back(tensor.data()[0]);
+                        stressesY.push_back(tensor.data()[4]);
+                        stressesZ.push_back(tensor.data()[8]);
+                        stressesXY.push_back(tensor.data()[1]);
+                        stressesXZ.push_back(tensor.data()[2]);
+                        stressesYZ.push_back(tensor.data()[5]);
                         tensor = e->get_strain_tensor(e->get_centroid(), u);
-                        strainX.push_back(tensor[0]);
-                        strainY.push_back(tensor[4]);
-                        strainZ.push_back(tensor[8]);
-                        strainXY.push_back(tensor[1]);
-                        strainXZ.push_back(tensor[2]);
-                        strainYZ.push_back(tensor[5]);
+                        strainX.push_back(tensor.data()[0]);
+                        strainY.push_back(tensor.data()[4]);
+                        strainZ.push_back(tensor.data()[8]);
+                        strainXY.push_back(tensor.data()[1]);
+                        strainXZ.push_back(tensor.data()[2]);
+                        strainYZ.push_back(tensor.data()[5]);
                     }
                 }
 

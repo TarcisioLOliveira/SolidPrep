@@ -21,7 +21,6 @@
 #ifndef BQ4_HPP
 #define BQ4_HPP
 
-#include <Eigen/Core>
 #include "element.hpp"
 #include "material.hpp"
 #include <vector>
@@ -48,18 +47,18 @@ class BQ4 : public BoundaryMeshElement{
 
     BQ4(ElementShape s, const MeshElement* const parent);
 
-    virtual std::vector<double> get_K_ext(const Eigen::MatrixXd& D, const gp_Pnt& center) const override;
-    virtual std::vector<double> get_normal_stresses(const Eigen::MatrixXd& D, const std::vector<double>& u, const gp_Pnt& p, const gp_Pnt& center) const override;
-    virtual std::vector<double> get_stress_integrals(const Eigen::MatrixXd& D, const gp_Pnt& center) const override;
-    virtual std::vector<double> get_equilibrium_partial(const Eigen::MatrixXd& D, const gp_Pnt& center, const std::vector<size_t>& stresses) const override;
-    virtual std::vector<double> get_dz_vector(const Eigen::MatrixXd& S, const Eigen::MatrixXd& D, const double Az, const double Bz, const gp_Pnt& center) const override;
-    virtual std::vector<double> get_force_vector(const Eigen::MatrixXd& D, const std::vector<double>& u, const gp_Pnt& center, const Eigen::MatrixXd& rot) const override;
+    virtual math::Matrix get_K_ext(const math::Matrix& D, const gp_Pnt& center) const override;
+    virtual math::Vector get_normal_stresses(const math::Matrix& D, const std::vector<double>& u, const gp_Pnt& p, const gp_Pnt& center) const override;
+    virtual math::Matrix get_stress_integrals(const math::Matrix& D, const gp_Pnt& center) const override;
+    virtual math::Matrix get_equilibrium_partial(const math::Matrix& D, const gp_Pnt& center, const std::vector<size_t>& stresses) const override;
+    virtual math::Vector get_dz_vector(const math::Matrix& S, const math::Matrix& D, const double Az, const double Bz, const gp_Pnt& center) const override;
+    virtual math::Vector get_force_vector(const math::Matrix& D, const std::vector<double>& u, const gp_Pnt& center, const math::Matrix& rot) const override;
 
-    virtual Eigen::MatrixXd diffusion_1dof(const Eigen::MatrixXd& M) const override;
-    virtual Eigen::MatrixXd advection_1dof(const Eigen::VectorXd& v) const override;
-    virtual Eigen::MatrixXd absorption_1dof() const override;
-    virtual Eigen::VectorXd source_1dof() const override;
-    virtual Eigen::VectorXd flow_1dof(const std::array<const Node*, 2>& nodes) const override;
+    virtual math::Matrix diffusion_1dof(const math::Matrix& A) const override;
+    virtual math::Matrix advection_1dof(const math::Vector& v) const override;
+    virtual math::Matrix absorption_1dof() const override;
+    virtual math::Vector source_1dof() const override;
+    virtual math::Vector flow_1dof(const std::array<const Node*, 2>& nodes) const override;
 
     virtual double get_area() const override{
         return this->A;
@@ -107,10 +106,10 @@ class BQ4 : public BoundaryMeshElement{
         return 0;
     }
 
-    inline Eigen::Vector<double, NODES_PER_ELEM> N_mat_1dof(const gp_Pnt& p) const{
+    inline math::Vector N_mat_1dof(const gp_Pnt& p) const{
         const double x = p.X();
         const double y = p.Y();
-        return Eigen::Vector<double, NODES_PER_ELEM>
+        return math::Vector
                 {N(x,y,0), N(x,y,1), N(x,y,2), N(x,y,3)};
     }
 
@@ -122,12 +121,12 @@ class BQ4 : public BoundaryMeshElement{
         (void)y;
         return c[i] + d[i]*x;
     }
-    inline Eigen::Matrix<double, DIM, NODES_PER_ELEM> dN_mat_1dof(const gp_Pnt& p) const{
+    inline math::Matrix dN_mat_1dof(const gp_Pnt& p) const{
         const double x = p.X();
         const double y = p.Y();
-        return Eigen::Matrix<double, DIM, NODES_PER_ELEM>
-                {{dNdx(x,y,0),dNdx(x,y,1),dNdx(x,y,2),dNdx(x,y,3)},
-                 {dNdy(x,y,0),dNdy(x,y,1),dNdy(x,y,2),dNdy(x,y,3)}};
+        return math::Matrix(
+                {dNdx(x,y,0),dNdx(x,y,1),dNdx(x,y,2),dNdx(x,y,3),
+                 dNdy(x,y,0),dNdy(x,y,1),dNdy(x,y,2),dNdy(x,y,3)}, DIM, NODES_PER_ELEM);
     }
     inline gp_Pnt norm_to_nat(double xi, double eta) const{
         double X = 0, Y = 0, Z = 0;
@@ -141,7 +140,7 @@ class BQ4 : public BoundaryMeshElement{
 
         return gp_Pnt(X, Y, Z);
     }
-    inline Eigen::Matrix<double, DIM, DIM> J(const double xi, const double eta) const{
+    inline math::Matrix J(const double xi, const double eta) const{
         std::array<double, NODES_PER_ELEM> x{
             this->nodes[0]->point.X(),
             this->nodes[1]->point.X(),
@@ -154,23 +153,22 @@ class BQ4 : public BoundaryMeshElement{
             this->nodes[2]->point.Y(),
             this->nodes[3]->point.Y()
         };
-        return Eigen::Matrix<double, DIM, DIM>
-        {{
+        return math::Matrix(
+        {
             eta*x[0]/4 - eta*x[1]/4 + eta*x[2]/4 - eta*x[3]/4 - x[0]/4 + x[1]/4 + x[2]/4 - x[3]/4
             ,
             eta*y[0]/4 - eta*y[1]/4 + eta*y[2]/4 - eta*y[3]/4 - y[0]/4 + y[1]/4 + y[2]/4 - y[3]/4
-            },{
+            ,
             x[0]*xi/4 - x[0]/4 - x[1]*xi/4 - x[1]/4 + x[2]*xi/4 + x[2]/4 - x[3]*xi/4 + x[3]/4
             ,
             xi*y[0]/4 - xi*y[1]/4 + xi*y[2]/4 - xi*y[3]/4 - y[0]/4 - y[1]/4 + y[2]/4 + y[3]/4
-        }};
+        }, DIM, DIM);
     }
-    inline Eigen::Matrix<double, S_SIZE, K_DIM + 6> get_eps(const gp_Pnt& p, const gp_Pnt& center) const{
+    inline math::Matrix get_eps(const gp_Pnt& p, const gp_Pnt& center) const{
         const auto dN = this->dN_mat_1dof(p);
         const double x = p.X() - center.X();
         const double y = p.Y() - center.Y();
-        Eigen::Matrix<double, S_SIZE, K_DIM + 6> M;
-        M.fill(0);
+        math::Matrix M(S_SIZE, K_DIM + 6);
 
         /*
             {{dN(0,i),       0,       0, 0, 0, 0,  0, 0, 0},
@@ -205,10 +203,9 @@ class BQ4 : public BoundaryMeshElement{
         return M;
 
     };
-    inline Eigen::Matrix<double, S_SIZE, K_DIM> get_deps(const gp_Pnt& p) const{
+    inline math::Matrix get_deps(const gp_Pnt& p) const{
         const auto dN = this->dN_mat_1dof(p);
-        Eigen::Matrix<double, S_SIZE, K_DIM> M;
-        M.fill(0);
+        math::Matrix M(S_SIZE, K_DIM);
         for(size_t i = 0; i < NODES_PER_ELEM; ++i){
             M(0, i*NODE_DOF + 0) = dN(0, i);
             M(1, i*NODE_DOF + 1) = dN(1, i);
