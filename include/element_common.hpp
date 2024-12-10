@@ -148,9 +148,7 @@ class MeshElementCommon : public MeshElement{
         math::Vector u_vec(K_DIM, 0);
         for(size_t i = 0; i < N; ++i){
             for(size_t j = 0; j < NODE_DOF; ++j){
-                if(this->nodes[i]->u_pos[j] > -1){
-                    u_vec[i*NODE_DOF+j] = u[this->nodes[i]->u_pos[j]];
-                }
+                u_vec[i*NODE_DOF+j] = u[this->nodes[i]->u_pos[j]];
             }
         }
 
@@ -158,9 +156,7 @@ class MeshElementCommon : public MeshElement{
 
         for(size_t k = 0; k < N; ++k){
             for(size_t j = 0; j < NODE_DOF; ++j){
-                if(this->nodes[k]->u_pos[j] > -1){
-                    l[this->nodes[k]->u_pos[j]] += result[k*NODE_DOF+j];
-                }
+                l[this->nodes[k]->u_pos[j]] += result[k*NODE_DOF+j];
             }
         }
     }
@@ -173,9 +169,7 @@ class MeshElementCommon : public MeshElement{
         math::Vector U(K_DIM);
         for(size_t l = 0; l < N; ++l){
             for(size_t j = 0; j < NODE_DOF; ++j){
-                if(this->nodes[l]->u_pos[j] > -1){
-                    U[l*NODE_DOF + j] = u[this->nodes[l]->u_pos[j]];
-                }
+                U[l*NODE_DOF + j] = u[this->nodes[l]->u_pos[j]];
             }
         }
 
@@ -189,9 +183,7 @@ class MeshElementCommon : public MeshElement{
         math::Vector U(K_DIM);
         for(size_t l = 0; l < N; ++l){
             for(size_t j = 0; j < NODE_DOF; ++j){
-                if(this->nodes[l]->u_pos[j] > -1){
-                    U[l*NODE_DOF + j] = u[this->nodes[l]->u_pos[j]];
-                }
+                U[l*NODE_DOF + j] = u[this->nodes[l]->u_pos[j]];
             }
         }
 
@@ -221,9 +213,7 @@ class MeshElementCommon : public MeshElement{
         math::Vector U(K_DIM, 0);
         for(size_t l = 0; l < N; ++l){
             for(size_t j = 0; j < NODE_DOF; ++j){
-                if(this->nodes[l]->u_pos[j] > -1){
-                    U[l*NODE_DOF + j] = u[this->nodes[l]->u_pos[j]];
-                }
+                U[l*NODE_DOF + j] = u[this->nodes[l]->u_pos[j]];
             }
         }
 
