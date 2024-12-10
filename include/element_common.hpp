@@ -159,7 +159,7 @@ class MeshElementCommon : public MeshElement{
         for(size_t k = 0; k < N; ++k){
             for(size_t j = 0; j < NODE_DOF; ++j){
                 if(this->nodes[k]->u_pos[j] > -1){
-                    l[this->nodes[k]->u_pos[j]] += mult*result[k*NODE_DOF+j];
+                    l[this->nodes[k]->u_pos[j]] += result[k*NODE_DOF+j];
                 }
             }
         }
