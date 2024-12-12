@@ -75,7 +75,6 @@ class InternalLoads{
     std::array<double, 2> curv;
     gp_Pnt center;
     size_t phi_size;
-    std::unique_ptr<BoundaryMeshElementFactory> bound_elem_higher_order = nullptr;
 
     std::vector<std::unique_ptr<MeshNode>> boundary_nodes;
     std::vector<std::unique_ptr<BoundaryMeshElement>> boundary_mesh;
@@ -83,8 +82,6 @@ class InternalLoads{
     std::vector<const Node*> line_nodes;
 
     void generate_mesh(const std::vector<BoundaryElement>& boundary_elements);
-
-    std::vector<BoundaryElement> increase_element_order(const std::vector<BoundaryElement>& boundary_elements);
 
     // Base it off Meshing::apply_springs
     void apply_load(const std::vector<double>& load_vector) const;
