@@ -29,6 +29,8 @@
 #include <TopoDS_Edge.hxx>
 #include <memory>
 
+class BoundaryElement;
+
 /**
  * Basic node superclass.
  */
@@ -256,6 +258,10 @@ class MeshElement : public Element{
     virtual math::Matrix get_MnMn(const MeshElement* const e2, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds, const gp_Dir n) const = 0;
 
     virtual math::Matrix get_Ni(const gp_Pnt& p) const = 0;
+    virtual math::Vector get_Ni_1dof(const gp_Pnt& p) const{
+        (void) p;
+        return math::Vector();
+    }
 
     /**
      * Creates and returns the elemental stiffness matrix.
@@ -582,6 +588,8 @@ class BoundaryMeshElement : public Element{
     public:
     const MeshElement* const parent;
 
+    virtual ~BoundaryMeshElement() = default;
+
     virtual math::Matrix get_K_ext(const math::Matrix& D, const gp_Pnt& center) const = 0;
     virtual math::Vector get_normal_stresses(const math::Matrix& D, const std::vector<double>& u, const gp_Pnt& p, const gp_Pnt& center) const = 0;
     virtual math::Matrix get_stress_integrals(const math::Matrix& D, const gp_Pnt& center) const = 0;
@@ -653,6 +661,8 @@ class ContactMeshElement : public Element{
     const MeshElement* const e1;
     const MeshElement* const e2;
 
+    virtual ~ContactMeshElement() = default;
+
     virtual math::Matrix get_frictionless_Ge() const = 0;
 
     virtual math::Matrix fl_uLne(const math::Matrix& D, const math::Vector& ln_e) const = 0;
@@ -689,6 +699,38 @@ class ContactMeshElement : public Element{
      */
     ContactMeshElement(const std::vector<MeshNode*>& nodes, const MeshElement* const e1, const MeshElement* const e2):
         Element(std::vector<Node*>(nodes.begin(), nodes.end())), e1(e1), e2(e2)
+        {}
+};
+
+class ShapeMeshElement : public Element{
+    public:
+    virtual ~ShapeMeshElement() = default;
+
+    virtual math::Vector shape_flow(const BoundaryElement* e, const math::Vector& f) const = 0;
+
+    virtual double get_area() const = 0;
+
+    /**
+     * Calculates the centroid of the element.
+     *
+     * @return The centroid.
+     */
+    virtual gp_Pnt get_centroid() const = 0;
+    /**
+     * Calculates the normal of the element.
+     *
+     * @return The normal.
+     */
+    virtual gp_Dir get_normal() const = 0;
+
+    protected:
+    /**
+     * Creates an element with the specified nodes.
+     *
+     * @param nodes List of nodes.
+     */
+    ShapeMeshElement(const std::vector<MeshNode*>& nodes):
+        Element(std::vector<Node*>(nodes.begin(), nodes.end()))
         {}
 };
 

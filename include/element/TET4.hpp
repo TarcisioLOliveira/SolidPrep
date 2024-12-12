@@ -63,6 +63,7 @@ class TET4 : public MeshElementCommon3DTet<TET4>{
     virtual math::Vector flow_1dof(const double t, const MeshNode** nodes) const override;
 
     virtual math::Matrix get_Ni(const gp_Pnt& p) const override;
+    virtual math::Vector get_Ni_1dof(const gp_Pnt& p) const override;
 
     virtual inline std::unique_ptr<MeshElementFactory> get_element_info() const override{
         return std::unique_ptr<MeshElementFactory>(new MeshElementFactoryImpl<TET4>());

@@ -251,4 +251,8 @@ math::Matrix TET4::get_dB_sh(const gp_Pnt& p, const size_t n, const size_t dof) 
     return this->B(C2);
 }
 
+math::Vector TET4::get_Ni_1dof(const gp_Pnt& p) const {
+    return this->N_mat_1dof(p.X(), p.Y(), p.Z(), C);
+}
+
 }
