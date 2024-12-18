@@ -306,6 +306,7 @@ void Meshing::populate_boundary_elements(const std::vector<ElementShape>& bounda
     this->boundary_elements.clear();
     this->boundary_elements.reserve(boundary_base_mesh.size());
     std::vector<size_t> inter_geom;
+    size_t bound_elem_id = 0;
     // If contact type is rigid, overlapping nodes have been merged, so finding
     // the intergeometry boundary is a matter of looking for intersections
     // using the inverse mesh. Such boundary involves two boundary elements
@@ -364,7 +365,8 @@ void Meshing::populate_boundary_elements(const std::vector<ElementShape>& bounda
                         }
                         ++geom_id;
                     }
-                    this->boundary_elements.emplace_back(b.nodes, *it, mult*n, geom_id);
+                    this->boundary_elements.emplace_back(b.nodes, *it, mult*n, geom_id, bound_elem_id);
+                    ++bound_elem_id;
                 } else if(common_nodes.size() == 2){
                     auto it = common_nodes.begin();
                     bool found = false;
@@ -389,8 +391,9 @@ void Meshing::populate_boundary_elements(const std::vector<ElementShape>& bounda
                             }
                             ++geom_id;
                         }
-                        this->boundary_elements.emplace_back(b.nodes, *it, mult*n, geom_id);
+                        this->boundary_elements.emplace_back(b.nodes, *it, mult*n, geom_id, bound_elem_id);
                         inter_geom.push_back(this->boundary_elements.size()-1);
+                        ++bound_elem_id;
                         ++it;
                         geom_id = 0;
                         for(const auto& g:this->geometries){
@@ -406,8 +409,9 @@ void Meshing::populate_boundary_elements(const std::vector<ElementShape>& bounda
                             }
                             ++geom_id;
                         }
-                        this->boundary_elements.emplace_back(b.nodes, *it, -mult*n, geom_id);
+                        this->boundary_elements.emplace_back(b.nodes, *it, -mult*n, geom_id, bound_elem_id);
                         inter_geom.push_back(this->boundary_elements.size()-1);
+                        ++bound_elem_id;
                     }
                 } else {
                     logger::log_assert(false, logger::ERROR, "More than two elements are connected to a single boundary (this shouldn't happen).");
@@ -415,16 +419,16 @@ void Meshing::populate_boundary_elements(const std::vector<ElementShape>& bounda
             }
         }
     }
+    // Generate inverse mesh for boundary
+    for(auto& b:this->boundary_elements){
+        for(size_t i = 0; i < N; ++i){
+            this->boundary_inverse_mesh.emplace(b.nodes[i]->id, &b);
+        }
+    }
     // If contact type is not rigid, nodes have not been merged, so one needs
     // to use to_rigid_map to find overlapping nodes and generate intergeometry
     // boundary metadata
     if(this->proj_data->contact_data.contact_type != FiniteElement::ContactType::RIGID){
-        // Generate inverse mesh for boundary
-        for(auto& b:this->boundary_elements){
-            for(size_t i = 0; i < N; ++i){
-                this->boundary_inverse_mesh.emplace(b.nodes[i]->id, &b);
-            }
-        }
         std::vector<size_t> bnodes(N);
         for(auto& b:this->boundary_elements){
             bool found_equivalent = true;

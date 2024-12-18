@@ -44,14 +44,15 @@ class BoundaryElement{
     const MeshElement* const parent;
     gp_Dir normal;
     const size_t geom_id;
+    const size_t id;
     
     ~BoundaryElement(){
         delete[] nodes;
     }
-    BoundaryElement(const std::vector<MeshNode*>& n, const MeshElement* const parent, gp_Dir normal, size_t geom_id):
-        nodes(allocate_nodes(n)), parent(parent), normal(std::move(normal)), geom_id(geom_id){}
-    BoundaryElement(const std::vector<const MeshNode*>& n, const MeshElement* const parent, gp_Dir normal, size_t geom_id):
-        nodes(allocate_nodes(n)), parent(parent), normal(std::move(normal)), geom_id(geom_id){}
+    BoundaryElement(const std::vector<MeshNode*>& n, const MeshElement* const parent, gp_Dir normal, size_t geom_id, size_t id):
+        nodes(allocate_nodes(n)), parent(parent), normal(std::move(normal)), geom_id(geom_id), id(id){}
+    BoundaryElement(const std::vector<const MeshNode*>& n, const MeshElement* const parent, gp_Dir normal, size_t geom_id, size_t id):
+        nodes(allocate_nodes(n)), parent(parent), normal(std::move(normal)), geom_id(geom_id), id(id){}
 
     inline gp_Pnt get_centroid(const size_t N) const{
         double x = 0, y = 0, z = 0;
