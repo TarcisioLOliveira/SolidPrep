@@ -42,6 +42,10 @@ class TET10 : public MeshElementCommon3DTet<TET10>{
     static const size_t BOUNDARY_GMSH_TYPE = 9;
     static std::unique_ptr<BoundaryMeshElementFactory> get_boundary_element_info();
     static std::unique_ptr<ContactMeshElementFactory> get_contact_element_info();
+    static std::unique_ptr<ShapeMeshElementFactory> get_shape_element_info(){
+        logger::log_assert(false, logger::ERROR, "STRI6 ELEMENT TYPE NOT IMPLEMENTED");
+        return std::unique_ptr<ShapeMeshElementFactory>();
+    }
 
     static const spview::defs::ElementType SPVIEW_CODE = spview::defs::TET10;
 
