@@ -22,6 +22,7 @@
 #define SHAPE_HANDLER_HPP
 
 #include "meshing.hpp"
+#include "general_solver/mumps_general.hpp"
 
 class ShapeHandler{
     public:
@@ -59,10 +60,22 @@ class ShapeHandler{
     std::vector<Geometry*> geometries;
 
     std::vector<AffectedNode> optimized_nodes;
-    std::vector<MeshElement*> affected_elements;
+    std::vector<std::unique_ptr<ShapeMeshElement>> shape_elements;
+    std::vector<BoundaryElement*> boundary_elements;
+    std::map<size_t, long> id_mapping;
+    std::map<size_t, size_t> bound_to_shape_mapping;
+    std::map<size_t, size_t> optimized_nodes_mapping;
+    std::map<size_t, MeshElement*> node_to_elem_unique_mapping;
+    std::vector<MeshNode*> domain_nodes;
+    size_t matrix_width;
+    // Full boundary except for boundary conditions
+    bool full_boundary_optimization = true;
 
     std::vector<double> original_points;
     std::vector<double> shape_displacement;
+
+    std::unique_ptr<general_solver::MUMPSGeneral> solver;
+    std::vector<double> b;
 };
 
 #endif
