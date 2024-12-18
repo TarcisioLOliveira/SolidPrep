@@ -25,12 +25,12 @@
 
 namespace shape_element{
 
-STRI3::STRI3(ElementShape s, gp_Dir normal)
+STRI3::STRI3(ElementShape s)
     :ShapeMeshElement(s.nodes){
 
     const size_t N = STRI3::NODES_PER_ELEM;
 
-    const gp_Dir n(normal);
+    const gp_Dir n(s.normal);
     const gp_Dir d1 = gp_Vec(this->nodes[0]->point, this->nodes[1]->point);
     const gp_Dir d2 = -d1.Crossed(n);
 

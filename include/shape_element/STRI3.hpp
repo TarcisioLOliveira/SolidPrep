@@ -40,7 +40,7 @@ class STRI3 : public ShapeMeshElement{
     static const Element::Shape SHAPE_TYPE = Element::Shape::TRI;
     static const utils::ProblemType PROBLEM_TYPE = utils::PROBLEM_TYPE_3D;
 
-    STRI3(ElementShape s, gp_Dir normal);
+    STRI3(ElementShape s);
 
     virtual math::Vector shape_flow(const BoundaryElement* e, const math::Vector& f) const override;
 
