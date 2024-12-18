@@ -77,11 +77,11 @@ STRI3::STRI3(ElementShape s)
 math::Vector STRI3::shape_flow(const BoundaryElement* e, const math::Vector& f) const{
     const auto& gli = utils::GaussLegendreTri<2*ORDER>::get();
     const auto elem_info = e->parent->get_element_info();
-    const size_t E_KW = elem_info->get_k_dimension();
-    math::Vector V(E_KW);
+    const size_t NUM_NODES = elem_info->get_nodes_per_element();
+    math::Vector V(NUM_NODES);
 
     const gp_Dir n = this->get_normal();
-    const math::Vector vn((e->normal.Dot(n) < 0) 
+    const math::Vector vn((e->normal.Dot(n) > 0) 
             ? 
                 math::Vector{n.X(), n.Y(), n.Z()}
             : 
