@@ -66,6 +66,7 @@ class ShapeHandler{
     std::map<size_t, size_t> bound_to_shape_mapping;
     std::map<size_t, size_t> optimized_nodes_mapping;
     std::map<size_t, MeshElement*> node_to_elem_unique_mapping;
+    std::map<MeshElement*, std::vector<size_t>> elem_to_affected_node_mapping;
     std::vector<MeshNode*> domain_nodes;
     size_t matrix_width;
     // Full boundary except for boundary conditions
