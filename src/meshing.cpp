@@ -1491,8 +1491,15 @@ void Meshing::deduplicate(std::unordered_map<size_t, MeshNode*>& id_map, const s
         logger::log_assert(n != this->boundary_node_list.end(),
                 logger::ERROR,
                 "WHAT");
-        id_map[dn.second] = *n;
+        id_map[dn.second] = id_map[dn.first];
         if(delete_dups){
+            auto n = this->boundary_node_list.begin();
+            while(n < this->boundary_node_list.end()){
+                if((*n)->id == dn.second){
+                    break;
+                }
+                ++n;
+            }
             this->boundary_node_list.erase(n);
 
             auto nn = this->node_list.begin();
@@ -1753,10 +1760,10 @@ void Meshing::distribute_node_pointers(){
             }
         }
         g->node_list.insert(g->node_list.begin(), nodes.begin(), nodes.end());
-        std::set<const MeshNode*> bnodes;
+        std::set<MeshNode*> bnodes;
         for(auto& e:g->boundary_mesh){
             for(size_t i = 0; i < bnodes_per_elem; ++i){
-                bnodes.insert(e->nodes[i]);
+                bnodes.insert(this->node_list[e->nodes[i]->id].get());
             }
         }
         g->boundary_node_list.insert(g->boundary_node_list.begin(), bnodes.begin(), bnodes.end());
