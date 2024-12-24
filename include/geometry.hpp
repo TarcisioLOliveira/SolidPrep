@@ -97,8 +97,8 @@ class Geometry{
     std::vector<std::unique_ptr<MeshElement>> mesh;
     std::vector<BoundaryElement*> boundary_mesh;
     std::vector<BoundaryElement*> inter_geometry_boundary_mesh;
-    std::vector<const Node*> node_list; 
-    std::vector<const MeshNode*> boundary_node_list; 
+    std::vector<Node*> node_list; 
+    std::vector<MeshNode*> boundary_node_list; 
     private:
     const utils::ProblemType type;
     MultiMaterial M;

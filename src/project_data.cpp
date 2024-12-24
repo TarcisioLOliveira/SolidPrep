@@ -19,6 +19,7 @@
  */
 #include "material/mandible.hpp"
 #include "meshing/mesh_file.hpp"
+#include "shape_handler.hpp"
 #include <cstring>
 #include <memory>
 #define _USE_MATH_DEFINES
@@ -874,6 +875,7 @@ std::unique_ptr<NodeShapeBasedOptimizer> ProjectData::load_shopt_optimizer(const
         this->log_data(to, "minfac", TYPE_DOUBLE, true);
         this->log_data(to, "maxfac", TYPE_DOUBLE, true);
         this->log_data(to, "c", TYPE_DOUBLE, true);
+        this->log_data(to, "shape_set", TYPE_OBJECT, true);
 
         double xtol_abs = to["xtol_abs"].GetDouble();
         double ftol_rel = to["ftol_rel"].GetDouble();
@@ -899,7 +901,9 @@ std::unique_ptr<NodeShapeBasedOptimizer> ProjectData::load_shopt_optimizer(const
             geoms.push_back(g.get());
         }
 
-        ShapeHandler sh(this->topopt_mesher.get(), geoms);
+        auto shape_set = this->get_shape_operations(to["shape_set"]);
+
+        ShapeHandler sh(this->topopt_mesher.get(), geoms, std::move(shape_set));
 
         return std::make_unique<optimizer::node_shape_based::MMA>(std::move(sh), this, std::move(objective), std::move(weights), std::move(constraints), asyminit, asymdec, asyminc, minfac, maxfac, c, xtol_abs, ftol_rel, save_result);
     }
@@ -1469,4 +1473,42 @@ std::vector<SubProblem> ProjectData::load_sub_problems(const rapidjson::GenericV
     }
 
     return sub_problems;
+}
+
+std::unique_ptr<shape_op::ShapeOp> ProjectData::get_shape_operations(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc) const{
+    this->log_data(doc, "type", TYPE_STRING, true);
+    const std::string type = doc["type"].GetString();
+    if(type == "geometry"){
+        this->log_data(doc, "id", TYPE_INT, true);
+        const size_t id = doc["id"].GetUint64();
+        logger::log_assert(id < this->geometries.size(), logger::ERROR,
+                "unknown geometry id: {}", id);
+        return std::make_unique<shape_op::Geometry>(id);
+    } else if(type == "union"){
+        this->log_data(doc, "shape1", TYPE_OBJECT, true);
+        this->log_data(doc, "shape2", TYPE_OBJECT, true);
+
+        return std::make_unique<shape_op::Union>(
+                    this->get_shape_operations(doc["shape1"]),
+                    this->get_shape_operations(doc["shape2"])
+                );
+    } else if(type == "intersection"){
+        this->log_data(doc, "shape1", TYPE_OBJECT, true);
+        this->log_data(doc, "shape2", TYPE_OBJECT, true);
+
+        return std::make_unique<shape_op::Intersection>(
+                    this->get_shape_operations(doc["shape1"]),
+                    this->get_shape_operations(doc["shape2"])
+                );
+    } else if(type == "difference"){
+        this->log_data(doc, "shape1", TYPE_OBJECT, true);
+        this->log_data(doc, "shape2", TYPE_OBJECT, true);
+
+        return std::make_unique<shape_op::Difference>(
+                    this->get_shape_operations(doc["shape1"]),
+                    this->get_shape_operations(doc["shape2"])
+                );
+    }
+
+    return nullptr;
 }

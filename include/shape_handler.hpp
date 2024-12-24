@@ -23,6 +23,110 @@
 
 #include "meshing.hpp"
 #include "general_solver/mumps_general.hpp"
+#include <limits>
+#include <set>
+
+namespace shape_op{
+
+enum class Code{
+    UNION,
+    INTERSECTION,
+    DIFFERENCE,
+    GEOMETRY,
+    SHELL
+};
+
+class ShapeOp{
+    public:
+    ShapeOp(std::unique_ptr<ShapeOp> s1, std::unique_ptr<ShapeOp> s2):
+        s1(std::move(s1)), s2(std::move(s2)){}
+
+    virtual ~ShapeOp() = default;
+
+    virtual Code get_type() const = 0;
+    inline ShapeOp* first() const{
+        return s1.get();
+    }
+    inline ShapeOp* second() const{
+        return s2.get();
+    }
+    virtual size_t get_id() const{
+        return std::numeric_limits<size_t>::max();
+    }
+
+    private:
+    std::unique_ptr<ShapeOp> s1, s2;
+};
+
+class Union : public ShapeOp{
+    public:
+    Union(std::unique_ptr<ShapeOp> s1, std::unique_ptr<ShapeOp> s2):
+        ShapeOp(std::move(s1), std::move(s2)){}
+
+    virtual ~Union() = default;
+    virtual Code get_type() const override{
+        return Code::UNION;
+    }
+};
+
+class Intersection : public ShapeOp{
+    public:
+    Intersection(std::unique_ptr<ShapeOp> s1, std::unique_ptr<ShapeOp> s2):
+        ShapeOp(std::move(s1), std::move(s2)){}
+
+    virtual ~Intersection() = default;
+    virtual Code get_type() const override{
+        return Code::INTERSECTION;
+    }
+};
+
+class Difference : public ShapeOp{
+    public:
+    Difference(std::unique_ptr<ShapeOp> s1, std::unique_ptr<ShapeOp> s2):
+        ShapeOp(std::move(s1), std::move(s2)){}
+
+    virtual ~Difference() = default;
+    virtual Code get_type() const override{
+        return Code::DIFFERENCE;
+    }
+};
+
+class Geometry : public ShapeOp{
+    public:
+    Geometry(size_t id):
+        ShapeOp(nullptr, nullptr), id(id){}
+
+    virtual ~Geometry() = default;
+    virtual Code get_type() const override{
+        return Code::GEOMETRY;
+    }
+    virtual size_t get_id() const override{
+        return this->id;
+    }
+
+    private:
+    const size_t id;
+};
+
+class Shell : public ShapeOp{
+    public:
+    Shell(size_t id):
+        ShapeOp(nullptr, nullptr), id(id){}
+
+    virtual ~Shell() = default;
+    virtual Code get_type() const override{
+        return Code::SHELL;
+    }
+    virtual size_t get_id() const override{
+        return this->id;
+    }
+
+    private:
+    const size_t id;
+};
+
+
+};
 
 class ShapeHandler{
     public:
@@ -37,7 +141,7 @@ class ShapeHandler{
         const std::vector<AffectedElement> elements;
     };
 
-    ShapeHandler(Meshing* mesh, std::vector<Geometry*> geometries);
+    ShapeHandler(Meshing* mesh, std::vector<Geometry*> geometries, std::unique_ptr<shape_op::ShapeOp> root_op);
 
     void obtain_affected_nodes();
     void update_nodes(const std::vector<double>& dx);
@@ -56,6 +160,8 @@ class ShapeHandler{
     }
 
     private:
+    std::set<MeshNode*> apply_op(shape_op::ShapeOp* op) const;
+
     Meshing* mesh;
     std::vector<Geometry*> geometries;
 
@@ -77,6 +183,8 @@ class ShapeHandler{
 
     std::unique_ptr<general_solver::MUMPSGeneral> solver;
     std::vector<double> b;
+
+    std::unique_ptr<shape_op::ShapeOp> root_op;
 };
 
 #endif

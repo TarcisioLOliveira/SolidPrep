@@ -27,6 +27,7 @@
 #include "projection.hpp"
 #include "rapidjson/document.h"
 
+#include "shape_handler.hpp"
 #include "support.hpp"
 #include "pathfinding.hpp"
 #include "sizing.hpp"
@@ -175,6 +176,8 @@ class ProjectData {
     Projection::Parameter get_projection_parameter(const rapidjson::GenericValue<rapidjson::UTF8<>>& p) const;
 
     CrossSection get_cross_section(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc) const;
+
+    std::unique_ptr<shape_op::ShapeOp> get_shape_operations(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc) const;
 };
 
 #endif

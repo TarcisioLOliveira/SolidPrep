@@ -24,13 +24,13 @@
 #include "math/matrix.hpp"
 #include "project_data.hpp"
 #include "utils.hpp"
-#include <limits>
+#include <algorithm>
 #include <set>
 
-ShapeHandler::ShapeHandler(Meshing* mesh, std::vector<Geometry*> geometries):
+ShapeHandler::ShapeHandler(Meshing* mesh, std::vector<Geometry*> geometries, std::unique_ptr<shape_op::ShapeOp> root_op):
     mesh(mesh), geometries(std::move(geometries)),
-    solver(std::make_unique<general_solver::MUMPSGeneral>()){
-
+    solver(std::make_unique<general_solver::MUMPSGeneral>()),
+    root_op(std::move(root_op)){
 };
 
 void ShapeHandler::obtain_affected_nodes(){
@@ -81,12 +81,21 @@ void ShapeHandler::obtain_affected_nodes(){
         }
     }
 
+    auto short_list = this->apply_op(root_op.get());
+
     // TODO deduplicate superimposed nodes
-    this->optimized_nodes.reserve(affected_num);
+    this->optimized_nodes.reserve(short_list.size());
     std::set<BoundaryElement*> elem_set;
-    for(size_t i = 0; i < affected.size(); ++i){
-        if(affected[i]){
-            const size_t curr_id = this->mesh->boundary_node_list[i]->id;
+    for(auto& ni:short_list){
+        size_t af_id = 0;
+        while(af_id < affected.size()){
+            if(this->mesh->boundary_node_list[af_id]->id == ni->id){
+                break;
+            }
+            ++af_id;
+        }
+        if(affected[af_id]){
+            const size_t curr_id = ni->id;
             std::vector<size_t> node_ids{curr_id};
             std::vector<AffectedElement> elems;
             const auto& range = this->mesh->inverse_mesh.equal_range(curr_id);
@@ -217,6 +226,10 @@ void ShapeHandler::obtain_affected_nodes(){
         this->domain_nodes.push_back(this->mesh->node_list[n->id].get());
     }
 
+    if(this->geometries.size() > 1){
+        return;
+    }
+
     size_t idm = 0;
     // Optimized nodes have non-homogeneous Dirichlet.
     // Non-optimized nodes have homogeneous Dirichlet.
@@ -289,6 +302,8 @@ void ShapeHandler::update_nodes(const std::vector<double>& dx){
                           0, 1, 0,
                           0, 0, 1}, 3, 3);
 
+    if(this->geometries.size() == 1){
+
     // Update other nodes
     math::Vector bn_vals(num);
     for(size_t dim_i = 0; dim_i < dim; ++dim_i){
@@ -319,6 +334,8 @@ void ShapeHandler::update_nodes(const std::vector<double>& dx){
             }
         }
     }
+
+    }
     
     // Update view
     for(size_t i = 0; i < this->mesh->node_list.size(); ++i){
@@ -335,4 +352,55 @@ void ShapeHandler::update_nodes(const std::vector<double>& dx){
             e->calculate_coefficients();
         }
     }
+}
+
+std::set<MeshNode*> ShapeHandler::apply_op(shape_op::ShapeOp* op) const{
+    switch(op->get_type()){
+        case shape_op::Code::GEOMETRY:{
+            logger::log_assert(op->get_id() < this->geometries.size(), logger::ERROR,
+                    "unknown geometry id: {}", op->get_id());
+            const auto g = this->geometries[op->get_id()];
+            std::set<MeshNode*> nodes(g->boundary_node_list.begin(), g->boundary_node_list.end());
+
+            return nodes;
+        }
+        case shape_op::Code::UNION:{
+            auto s1 = this->apply_op(op->first());
+            auto s2 = this->apply_op(op->second());
+            s1.insert(s2.begin(), s2.end());
+            s2.clear();
+            return s1;
+        }
+        case shape_op::Code::INTERSECTION:{
+            auto s1 = this->apply_op(op->first());
+            auto s2 = this->apply_op(op->second());
+            std::vector<MeshNode*> result_vec(std::min(s1.size(), s2.size()));
+            std::set<MeshNode*> result;
+            auto input_end = std::set_intersection(s1.begin(), s1.end(), s2.begin(), s2.end(), result_vec.begin());
+            s1.clear();
+            s2.clear();
+            result.insert(result_vec.begin(), input_end);
+            result_vec.clear();
+            return result;
+        }
+        case shape_op::Code::DIFFERENCE:{
+            auto s1 = this->apply_op(op->first());
+            auto s2 = this->apply_op(op->second());
+            std::vector<MeshNode*> result_vec(s1.size());
+            std::set<MeshNode*> result;
+            auto input_end = std::set_difference(s1.begin(), s1.end(), s2.begin(), s2.end(), result_vec.begin());
+            s1.clear();
+            s2.clear();
+            result.insert(result_vec.begin(), input_end);
+            result_vec.clear();
+            return result;
+        }
+        case shape_op::Code::SHELL:{
+            logger::log_assert(false, logger::ERROR,
+                    "SHELL shape operation is currently not implemented");
+            return std::set<MeshNode*>();
+        }
+    }
+
+    return std::set<MeshNode*>();
 }
