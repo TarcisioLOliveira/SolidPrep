@@ -188,14 +188,10 @@ class Meshing{
     std::vector<std::vector<double>> load_vector;
     std::vector<std::vector<long>> node_positions;
     std::vector<size_t> dofs_per_subproblem;
+    // Original to internal node mapping
+    std::unordered_map<size_t, MeshNode*> to_rigid_map;
 
     private:
-    // Original to internal node mapping
-    // Stored _temporarily_ between a call to generate_elements() and
-    // apply_boundary_conditions(). Their existence is checked to ensure
-    // the object is in the appropriate state before applying boundary
-    // conditions.
-    std::unordered_map<size_t, MeshNode*> to_rigid_map;
     // Number of nodes that are/would be removed by deduplication
     size_t number_duplicated_nodes = 0;
 

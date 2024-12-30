@@ -34,6 +34,7 @@ ShapeHandler::ShapeHandler(Meshing* mesh, std::vector<Geometry*> geometries, std
 };
 
 void ShapeHandler::obtain_affected_nodes(){
+    const bool rigid = (this->mesh->proj_data->contact_data.contact_type == FiniteElement::ContactType::RIGID);
     const size_t node_num = this->mesh->elem_info->get_nodes_per_element();
     const size_t bnode_num = this->mesh->elem_info->get_boundary_nodes_per_element();
 
@@ -80,47 +81,96 @@ void ShapeHandler::obtain_affected_nodes(){
             ++affected_num;
         }
     }
+    this->merged_nodes.reserve(this->mesh->boundary_node_list.size());
+    if(rigid){
+        size_t bid = 0;
+        for(auto& bn:this->mesh->boundary_node_list){
+            SuperimposedNodes s{bid, {bn}};
+            this->merged_nodes.push_back(std::move(s));
+            this->merged_nodes_mapping[bn->id] = &this->merged_nodes.back();
+            ++bid;
+        }
+    } else {
+        logger::log_assert(this->mesh->to_rigid_map.size() > 0,
+                logger::ERROR,
+                "to_rigid_map is being cleared somewhere");
+        size_t bid = 0;
+        for(auto& bn:this->mesh->boundary_node_list){
+            MeshNode* rn = this->mesh->to_rigid_map[bn->id];
+            if(bn == rn){
+                auto existing = this->merged_nodes_mapping.find(bn->id);
+                if(existing == this->merged_nodes_mapping.end()){
+                    SuperimposedNodes s{bid, {bn}};
+                    this->merged_nodes.push_back(std::move(s));
+                    this->merged_nodes_mapping[bn->id] = &this->merged_nodes.back();
+                    ++bid;
+                } else {
+                    existing->second->nodes.push_back(bn);
+                    this->merged_nodes_mapping[bn->id] = existing->second;
+                }
+            } else {
+                auto existing = this->merged_nodes_mapping.find(rn->id);
+                if(existing == this->merged_nodes_mapping.end()){
+                    SuperimposedNodes s{bid, {bn, rn}};
+                    this->merged_nodes.push_back(std::move(s));
+                    this->merged_nodes_mapping[bn->id] = &this->merged_nodes.back();
+                    this->merged_nodes_mapping[rn->id] = &this->merged_nodes.back();
+                    ++bid;
+                } else {
+                    existing->second->nodes.push_back(bn);
+                    this->merged_nodes_mapping[bn->id] = existing->second;
+                }
+            }
+        }
+    }
 
     auto short_list = this->apply_op(root_op.get());
 
-    // TODO deduplicate superimposed nodes
     this->optimized_nodes.reserve(short_list.size());
     std::set<BoundaryElement*> elem_set;
     for(auto& ni:short_list){
         size_t af_id = 0;
         while(af_id < affected.size()){
-            if(this->mesh->boundary_node_list[af_id]->id == ni->id){
+            if(this->mesh->boundary_node_list[af_id]->id == ni->nodes[0]->id){
                 break;
             }
             ++af_id;
         }
         if(affected[af_id]){
-            const size_t curr_id = ni->id;
-            std::vector<size_t> node_ids{curr_id};
+            std::vector<size_t> node_ids;
+            node_ids.reserve(ni->nodes.size());
             std::vector<AffectedElement> elems;
-            const auto& range = this->mesh->inverse_mesh.equal_range(curr_id);
             size_t e_size = 0;
-            for(auto it = range.first; it != range.second; ++it){
-                ++e_size;
+            for(auto curr_node:ni->nodes){
+                const size_t curr_id = curr_node->id;
+                node_ids.push_back(curr_id);
+                const auto& range = this->mesh->inverse_mesh.equal_range(curr_id);
+                for(auto it = range.first; it != range.second; ++it){
+                    ++e_size;
+                }
             }
             elems.reserve(e_size);
-            for(auto it = range.first; it != range.second; ++it){
-                auto e = it->second;
-                size_t n;
-                for(n = 0; n < node_num; ++n){
-                    if(e->nodes[n]->id == curr_id){
-                        break;
+            for(auto curr_node:ni->nodes){
+                const size_t curr_id = curr_node->id;
+                const auto& range = this->mesh->inverse_mesh.equal_range(curr_id);
+                for(auto it = range.first; it != range.second; ++it){
+                    auto e = it->second;
+                    size_t n;
+                    for(n = 0; n < node_num; ++n){
+                        if(e->nodes[n]->id == curr_id){
+                            break;
+                        }
                     }
+                    elems.push_back(AffectedElement{e, n});
+                    auto& vec = this->elem_to_affected_node_mapping[e];
+                    vec.reserve(bnode_num);
+                    vec.push_back(n);
                 }
-                elems.push_back(AffectedElement{e, n});
-                auto& vec = this->elem_to_affected_node_mapping[e];
-                vec.reserve(bnode_num);
-                vec.push_back(n);
-            }
-            const auto& brange = this->mesh->boundary_inverse_mesh.equal_range(curr_id);
-            for(auto it = brange.first; it != brange.second; ++it){
-                auto e = it->second;
-                elem_set.insert(e);
+                const auto& brange = this->mesh->boundary_inverse_mesh.equal_range(curr_id);
+                for(auto it = brange.first; it != brange.second; ++it){
+                    auto e = it->second;
+                    elem_set.insert(e);
+                }
             }
             this->optimized_nodes.push_back(AffectedNode{std::move(node_ids), std::move(elems)});
         }
@@ -132,6 +182,9 @@ void ShapeHandler::obtain_affected_nodes(){
     }
     this->boundary_elements.reserve(elem_set.size());
     this->boundary_elements.insert(this->boundary_elements.begin(), elem_set.begin(), elem_set.end());
+
+    this->merged_nodes_mapping.clear();
+    this->merged_nodes.clear();
 
     const auto bcomp = [](const BoundaryElement* e1, const BoundaryElement* e2) -> bool{
         return e1->id < e2->id;
@@ -178,12 +231,6 @@ void ShapeHandler::obtain_affected_nodes(){
     }
 
     const auto& g = this->geometries[0];
-    // Initialize id_mapping
-    if(!this->full_boundary_optimization){
-        for(const auto& n:g->node_list){
-            this->id_mapping[n->id] = -1;
-        }
-    }
     // Generate linear problem
     // TODO: expand for multiple geometries
     const auto ecomp = [](const Node* e1, const Node* e2) -> bool{
@@ -354,13 +401,16 @@ void ShapeHandler::update_nodes(const std::vector<double>& dx){
     }
 }
 
-std::set<MeshNode*> ShapeHandler::apply_op(shape_op::ShapeOp* op) const{
+std::set<ShapeHandler::SuperimposedNodes*> ShapeHandler::apply_op(shape_op::ShapeOp* op) const{
     switch(op->get_type()){
         case shape_op::Code::GEOMETRY:{
             logger::log_assert(op->get_id() < this->geometries.size(), logger::ERROR,
                     "unknown geometry id: {}", op->get_id());
             const auto g = this->geometries[op->get_id()];
-            std::set<MeshNode*> nodes(g->boundary_node_list.begin(), g->boundary_node_list.end());
+            std::set<SuperimposedNodes*> nodes;//(g->boundary_node_list.begin(), g->boundary_node_list.end());
+            for(auto bn:g->boundary_node_list){
+                nodes.insert(this->merged_nodes_mapping.at(bn->id));
+            }
 
             return nodes;
         }
@@ -374,8 +424,8 @@ std::set<MeshNode*> ShapeHandler::apply_op(shape_op::ShapeOp* op) const{
         case shape_op::Code::INTERSECTION:{
             auto s1 = this->apply_op(op->first());
             auto s2 = this->apply_op(op->second());
-            std::vector<MeshNode*> result_vec(std::min(s1.size(), s2.size()));
-            std::set<MeshNode*> result;
+            std::vector<SuperimposedNodes*> result_vec(std::min(s1.size(), s2.size()));
+            std::set<SuperimposedNodes*> result;
             auto input_end = std::set_intersection(s1.begin(), s1.end(), s2.begin(), s2.end(), result_vec.begin());
             s1.clear();
             s2.clear();
@@ -386,8 +436,8 @@ std::set<MeshNode*> ShapeHandler::apply_op(shape_op::ShapeOp* op) const{
         case shape_op::Code::DIFFERENCE:{
             auto s1 = this->apply_op(op->first());
             auto s2 = this->apply_op(op->second());
-            std::vector<MeshNode*> result_vec(s1.size());
-            std::set<MeshNode*> result;
+            std::vector<SuperimposedNodes*> result_vec(s1.size());
+            std::set<SuperimposedNodes*> result;
             auto input_end = std::set_difference(s1.begin(), s1.end(), s2.begin(), s2.end(), result_vec.begin());
             s1.clear();
             s2.clear();
@@ -398,9 +448,9 @@ std::set<MeshNode*> ShapeHandler::apply_op(shape_op::ShapeOp* op) const{
         case shape_op::Code::SHELL:{
             logger::log_assert(false, logger::ERROR,
                     "SHELL shape operation is currently not implemented");
-            return std::set<MeshNode*>();
+            return std::set<SuperimposedNodes*>();
         }
     }
 
-    return std::set<MeshNode*>();
+    return std::set<SuperimposedNodes*>();
 }

@@ -141,6 +141,12 @@ class ShapeHandler{
         const std::vector<AffectedElement> elements;
     };
 
+    struct SuperimposedNodes{
+        public:
+        size_t id;
+        std::vector<MeshNode*> nodes;
+    };
+
     ShapeHandler(Meshing* mesh, std::vector<Geometry*> geometries, std::unique_ptr<shape_op::ShapeOp> root_op);
 
     void obtain_affected_nodes();
@@ -160,7 +166,7 @@ class ShapeHandler{
     }
 
     private:
-    std::set<MeshNode*> apply_op(shape_op::ShapeOp* op) const;
+    std::set<SuperimposedNodes*> apply_op(shape_op::ShapeOp* op) const;
 
     Meshing* mesh;
     std::vector<Geometry*> geometries;
@@ -177,6 +183,9 @@ class ShapeHandler{
     size_t matrix_width;
     // Full boundary except for boundary conditions
     bool full_boundary_optimization = true;
+
+    std::map<size_t, SuperimposedNodes*> merged_nodes_mapping;
+    std::vector<SuperimposedNodes> merged_nodes;
 
     std::vector<double> original_points;
     std::vector<double> shape_displacement;
