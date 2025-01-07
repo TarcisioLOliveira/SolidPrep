@@ -166,32 +166,36 @@ class ShapeHandler{
     }
 
     private:
+    struct GeometryCluster{
+        std::set<Geometry*> geometries;
+        std::map<size_t, long> id_mapping;
+        size_t matrix_width;
+        std::unique_ptr<general_solver::MUMPSGeneral> solver;
+        std::vector<double> b;
+    };
     std::set<SuperimposedNodes*> apply_op(shape_op::ShapeOp* op) const;
 
     Meshing* mesh;
     std::vector<Geometry*> geometries;
 
-    std::vector<AffectedNode> optimized_nodes;
-    std::vector<std::unique_ptr<ShapeMeshElement>> shape_elements;
-    std::vector<BoundaryElement*> boundary_elements;
-    std::map<size_t, long> id_mapping;
     std::map<size_t, size_t> bound_to_shape_mapping;
     std::map<size_t, size_t> optimized_nodes_mapping;
     std::map<size_t, MeshElement*> node_to_elem_unique_mapping;
     std::map<MeshElement*, std::vector<size_t>> elem_to_affected_node_mapping;
-    std::vector<MeshNode*> domain_nodes;
-    size_t matrix_width;
+
+    std::vector<AffectedNode> optimized_nodes;
+    std::vector<std::unique_ptr<ShapeMeshElement>> shape_elements;
+    std::vector<BoundaryElement*> boundary_elements;
+    std::vector<Node*> domain_nodes;
     // Full boundary except for boundary conditions
     bool full_boundary_optimization = true;
+    std::vector<GeometryCluster> clusters;
 
     std::map<size_t, SuperimposedNodes*> merged_nodes_mapping;
     std::vector<SuperimposedNodes> merged_nodes;
 
     std::vector<double> original_points;
     std::vector<double> shape_displacement;
-
-    std::unique_ptr<general_solver::MUMPSGeneral> solver;
-    std::vector<double> b;
 
     std::unique_ptr<shape_op::ShapeOp> root_op;
 };
