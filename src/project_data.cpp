@@ -83,6 +83,7 @@
 #include "function/node_shape_based/compliance.hpp"
 #include "function/node_shape_based/volume.hpp"
 #include "function/node_shape_based/global_stress_heaviside.hpp"
+#include "function/node_shape_based/mechanostat.hpp"
 #include "field/orthotropic_flow.hpp"
 
 ProjectData::ProjectData(std::string project_file){
@@ -1018,6 +1019,22 @@ std::unique_ptr<NodeShapeBasedFunction> ProjectData::get_shopt_function(const ra
         double C = doc["C"].GetDouble();
         double max_stress = doc["max_stress"].GetDouble();
         return std::make_unique<function::node_shape_based::GlobalStressHeaviside>(this->topopt_mesher.get(), this->topopt_fea.get(), max_stress, C);
+    } else if(type == "mechanostat"){
+        this->log_data(doc, "beta", TYPE_DOUBLE, true);
+        this->log_data(doc, "traction", TYPE_ARRAY, true);
+        this->log_data(doc, "compression", TYPE_ARRAY, true);
+        this->log_data(doc, "shear", TYPE_ARRAY, true);
+        double beta = doc["beta"].GetDouble();
+        auto traction = doc["traction"].GetArray();
+        auto compression = doc["compression"].GetArray();
+        auto shear = doc["shear"].GetArray();
+        logger::log_assert(traction.Size() == 2, logger::ERROR, "\"traction\" item must have size 2.");
+        logger::log_assert(compression.Size() == 2, logger::ERROR, "\"compression\" item must have size 2.");
+        logger::log_assert(shear.Size() == 2, logger::ERROR, "\"shear\" item must have size 2.");
+        function::density_based::Mechanostat::Range t{traction[0].GetDouble(), traction[1].GetDouble()};
+        function::density_based::Mechanostat::Range c{compression[0].GetDouble(), compression[1].GetDouble()};
+        function::density_based::Mechanostat::Range s{shear[0].GetDouble(), shear[1].GetDouble()};
+        return std::make_unique<function::node_shape_based::Mechanostat>(this->topopt_mesher.get(), this->topopt_fea.get(), beta, t, c, s, this->type);
     }
 
     logger::log_assert(false, logger::ERROR, "function \"{}\" not found.", type);
