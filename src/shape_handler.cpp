@@ -324,13 +324,19 @@ void ShapeHandler::obtain_affected_nodes(){
                           0, 1, 0,
                           0, 0, 1}, 3, 3);
 
+    std::set<SuperimposedNodes*> inter_geom;
+    for(auto& e:mesh->inter_geometry_boundary){
+        for(size_t i = 0; i < bnode_num; ++i){
+            inter_geom.insert(this->merged_nodes_mapping[e->nodes[i]->id]);
+        }
+    }
+
     for(auto& cluster:this->clusters){
         cluster.solver = std::make_unique<general_solver::MUMPSGeneral>();
         size_t idm = 0;
 
         std::set<SuperimposedNodes*> geom_union;
-        std::set<SuperimposedNodes*> used_bound;
-        std::set<SuperimposedNodes*> unused_bound;
+        std::set<SuperimposedNodes*> unused_inner_bound;
         for(auto g:cluster.geometries){ 
             for(const auto& n:g->node_list){
                 cluster.id_mapping[n->id] = -1;
@@ -340,10 +346,13 @@ void ShapeHandler::obtain_affected_nodes(){
         for(const auto& n:geom_union){
             auto found = final_list.find(n);
             if(found == final_list.end()){
-                unused_bound.insert(n);
+                auto found_inter = inter_geom.find(n);
+                if(found_inter != inter_geom.end()){
+                    unused_inner_bound.insert(n);
+                }
             }
         }
-        for(const auto& n:unused_bound){
+        for(const auto& n:unused_inner_bound){
             for(auto& ni:n->nodes){
                 cluster.id_mapping[ni->id] = idm;
             }
@@ -352,27 +361,19 @@ void ShapeHandler::obtain_affected_nodes(){
         std::set<Node*> all_domain_nodes;
         for(auto g:cluster.geometries){ 
             std::set<Node*> domain_nodes;
-            std::set<SuperimposedNodes*> bound_nodes;
-            for(const auto& e:node_list[g->id]){
-                for(const auto& n:final_list){
-                    if(e == n){
-                        bound_nodes.insert(e);
-                        break;
-                    } else if(n > e) {
-                        break;
-                    }
-                }
-            }
             domain_nodes.insert(g->node_list.begin(), g->node_list.end());
-            for(const auto& b:bound_nodes){
-                for(auto& n:b->nodes){
-                    auto it = domain_nodes.find(n);
-                    if(it != domain_nodes.end()){
-                        domain_nodes.erase(it);
-                    }
+            for(const auto& n:g->boundary_node_list){
+                auto it = domain_nodes.find(n);
+                if(it != domain_nodes.end()){
+                    domain_nodes.erase(it);
                 }
             }
             all_domain_nodes.insert(domain_nodes.begin(), domain_nodes.end());
+        }
+        for(const auto b:unused_inner_bound){
+            for(const auto n:b->nodes){
+                all_domain_nodes.insert(n);
+            }
         }
 
         for(const auto& n:all_domain_nodes){
