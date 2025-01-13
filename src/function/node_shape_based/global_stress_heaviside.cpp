@@ -21,6 +21,7 @@
 #include <mpi.h>
 #include "function/node_shape_based/global_stress_heaviside.hpp"
 #include "logger.hpp"
+#include "math/matrix.hpp"
 #include "optimizer.hpp"
 
 namespace function::node_shape_based{
@@ -89,9 +90,8 @@ double GlobalStressHeaviside::calculate_with_gradient(const NodeShapeBasedOptimi
 
         logger::quick_log("Calculating stress gradient...");
 
-        std::vector<double> ue(kw, 0);
-        std::vector<double> le(kw, 0);
-        std::vector<double> dKu(kw, 0);
+        math::Vector ue(kw);
+        math::Vector le(kw);
 
         for(size_t i = 0; i < nodes.size(); ++i){
             const auto& shn = nodes[i];
@@ -110,9 +110,7 @@ double GlobalStressHeaviside::calculate_with_gradient(const NodeShapeBasedOptimi
                     }
                 }
                 for(size_t j = 0; j < dof; ++j){
-                    const auto dK = e.e->get_dk_sh(D, this->mesh->thickness, e.node_num, j);
-                    cblas_dgemv(CblasRowMajor, CblasNoTrans, kw, kw, 1, dK.data(), kw, ue.data(), 1, 0, dKu.data(), 1);
-                    const double ldKu = cblas_ddot(kw, le.data(), 1, dKu.data(), 1);
+                    const double ldKu = le.T()*e.e->get_dk_sh(D, this->mesh->thickness, e.node_num, j)*ue;
 
                     const double dS = e.e->von_Mises_derivative_sh(D, mult, c, u, e.node_num, j);
 
