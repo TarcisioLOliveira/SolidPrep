@@ -85,6 +85,7 @@
 #include "function/node_shape_based/global_stress_heaviside.hpp"
 #include "function/node_shape_based/mechanostat.hpp"
 #include "field/orthotropic_flow.hpp"
+#include "field/principal_stress.hpp"
 
 ProjectData::ProjectData(std::string project_file){
 #ifdef _WIN32
@@ -185,11 +186,17 @@ ProjectData::ProjectData(std::string project_file){
     if(this->log_data(doc, "geometry", TYPE_ARRAY, true)){
         this->geometries = this->load_geometries(doc);
     }
+    if(this->log_data(doc, "material", TYPE_ARRAY, true)){
+        this->materials = this->load_materials_simple(doc);
+    }
     if(this->log_data(doc, "fields", TYPE_ARRAY, false)){
         this->fields = this->load_fields(doc);
     }
     if(this->log_data(doc, "material", TYPE_ARRAY, true)){
-        this->materials = this->load_materials(doc);
+        auto field_mat = this->load_materials_field(doc);
+        const size_t old_size = this->materials.size();
+        this->materials.resize(this->materials.size() + field_mat.size());
+        std::move(field_mat.begin(), field_mat.end(), this->materials.begin() + old_size);
     }
     this->assign_materials(doc);
     if(this->log_data(doc, "springs", TYPE_ARRAY, false)){
@@ -316,12 +323,11 @@ ProjectData::ContactData ProjectData::get_contact_data(const rapidjson::GenericV
     return ProjectData::ContactData{FiniteElement::ContactType::RIGID, 0.0};
 }
 
-std::vector<std::unique_ptr<Material>> ProjectData::load_materials(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc){
+std::vector<std::unique_ptr<Material>> ProjectData::load_materials_simple(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc){
     const auto& materials = doc["material"].GetArray();
     std::vector<std::unique_ptr<Material>> material;
 
     std::vector<size_t> queue;
-    size_t mat_num = 0;
     for(const auto& mat:materials){
         logger::log_assert(mat.HasMember("name"), logger::ERROR, "missing material property: name");
         logger::log_assert(mat["name"].IsString(), logger::ERROR, "material property 'name' must be a string");
@@ -379,7 +385,23 @@ std::vector<std::unique_ptr<Material>> ProjectData::load_materials(const rapidjs
             bool plane_stress = mat["plane_stress"].GetBool();
 
             material.emplace_back(new material::LinearElasticIsotropic(name, density, E*1e3, nu, Smax, Tmax, plane_stress));
-        } else if(mat["type"] == "linear_elastic_orthotropic_field"){
+        }
+    }
+
+    return material;
+}
+std::vector<std::unique_ptr<Material>> ProjectData::load_materials_field(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc){
+    const auto& materials = doc["material"].GetArray();
+    std::vector<std::unique_ptr<Material>> material;
+
+    std::vector<size_t> queue;
+    size_t mat_num = 0;
+    for(const auto& mat:materials){
+        logger::log_assert(mat.HasMember("name"), logger::ERROR, "missing material property: name");
+        logger::log_assert(mat["name"].IsString(), logger::ERROR, "material property 'name' must be a string");
+        std::string name(mat["name"].GetString());
+        this->log_data(mat, "type", TYPE_STRING, true);
+        if(mat["type"] == "linear_elastic_orthotropic_field"){
             std::vector<std::string> properties{"E", "nu", "G", "Smax", "Tmax"};
             for(auto& s:properties){
                 logger::log_assert(mat.HasMember(s.c_str()), logger::ERROR, "missing material property: {}", s);
@@ -455,12 +477,27 @@ std::vector<std::unique_ptr<Material>> ProjectData::load_materials(const rapidjs
             auto equal_name_outer = [&outer](const std::unique_ptr<Material>& m)->bool{
                 return outer == m->name;
             };
-            auto it = std::find_if(material.begin(), material.end(), equal_name_inner);
-            logger::log_assert(it != material.end(), logger::ERROR, "material with name '{}' not found", inner);
-            Material* i = it->get();
-            it = std::find_if(material.begin(), material.end(), equal_name_outer);
-            logger::log_assert(it != material.end(), logger::ERROR, "material with name '{}' not found", outer);
-            Material* o = it->get();
+            Material* i = nullptr;
+            Material* o = nullptr;
+
+            auto it1 = std::find_if(material.begin(), material.end(), equal_name_inner);
+            auto it2 = std::find_if(this->materials.begin(), this->materials.end(), equal_name_inner);
+            logger::log_assert(it1 != material.end() || it2 != this->materials.end(), logger::ERROR, "material with name '{}' not found", inner);
+            if(it1 != material.end()){
+                i = it1->get();
+            } else {
+                i = it2->get();
+            }
+
+            it1 = std::find_if(material.begin(), material.end(), equal_name_outer);
+            it2 = std::find_if(this->materials.begin(), this->materials.end(), equal_name_outer);
+            logger::log_assert(it1 != material.end() || it2 != this->materials.end(), logger::ERROR, "material with name '{}' not found", inner);
+            if(it1 != material.end()){
+                o = it1->get();
+            } else {
+                o = it2->get();
+            }
+
             bool has_implant = this->log_data(mat, "implant", TYPE_OBJECT, false);
             material::Mandible::ImplantRegion imp;
             if(has_implant){
@@ -1190,6 +1227,22 @@ std::vector<std::unique_ptr<Field>> ProjectData::load_fields(const rapidjson::Ge
             }
 
             fields.emplace_back(std::make_unique<field::OrthotropicFlow>(this->topopt_element.get(), geoms, cs, coeffs, alpha, this->thickness, show));
+        } else if(type == "principal_stress"){
+            this->log_data(f, "display", TYPE_BOOL, true);
+            this->log_data(f, "initial_material", TYPE_STRING, true);
+
+            bool show = f["display"].GetBool();
+            std::string mat_name = f["initial_material"].GetString();
+
+            Material* init_mat = nullptr;
+            for(auto& mat:this->materials){
+                if(mat->name == mat_name){
+                    init_mat = mat.get();
+                    break;
+                }
+            }
+
+            fields.emplace_back(std::make_unique<field::PrincipalStress>(this->topopt_element.get(), this, init_mat, this->thickness, show));
         }
     }
 

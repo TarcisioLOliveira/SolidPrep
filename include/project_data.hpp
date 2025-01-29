@@ -125,7 +125,9 @@ class ProjectData {
 
     ContactData get_contact_data(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc);
 
-    std::vector<std::unique_ptr<Material>> load_materials(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc);
+    std::vector<std::unique_ptr<Material>> load_materials_simple(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc);
+
+    std::vector<std::unique_ptr<Material>> load_materials_field(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc);
 
     std::vector<std::unique_ptr<Geometry>> load_geometries(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc);
 

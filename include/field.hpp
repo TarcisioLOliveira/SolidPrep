@@ -44,6 +44,7 @@ class Field{
     virtual void display_views() const = 0;
     virtual Type get_type() const = 0;
     virtual SubType get_sub_type() const = 0;
+    virtual bool is_fea_dependent() const{ return false; }
 };
 
 class ScalarField : public Field{
@@ -73,7 +74,8 @@ class DirectionField : public Field{
 class CoordinateField : public Field{
     public:
     enum class Class{
-        ORTHOTROPIC_FLOW
+        ORTHOTROPIC_FLOW,
+        PRINCIPAL_STRESS
     };
     inline virtual Type get_type() const override{
         return Type::COORDINATE;
