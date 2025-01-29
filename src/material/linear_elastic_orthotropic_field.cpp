@@ -26,7 +26,7 @@
 
 namespace material{
 
-LinearElasticOrthotropicField::LinearElasticOrthotropicField(const std::string& name, const double density, std::vector<double> E, std::vector<double> nu, std::vector<bool> nu_lower_half, std::vector<double> G, std::vector<double> Smax, std::vector<double> Tmax, const CoordinateField* field):
+LinearElasticOrthotropicField::LinearElasticOrthotropicField(const std::string& name, const double density, std::vector<double> E, std::vector<double> nu, std::vector<bool> nu_lower_half, std::vector<double> G, std::vector<double> Smax, std::vector<double> Tmax, CoordinateField* field):
     Material(name, std::move(Smax), std::move(Tmax)), density(density), field(field),
     D_2D(), D_3D(), S_2D(3,3), S_3D(6,6){
 

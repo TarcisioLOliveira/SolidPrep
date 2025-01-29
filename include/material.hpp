@@ -28,6 +28,7 @@
 #include "math/matrix.hpp"
 
 class MeshElement;
+class Field;
 
 class Material{
     public:
@@ -65,6 +66,7 @@ class Material{
 
     virtual Type get_type() const{ return this->NONE; }
     virtual bool is_homogeneous() const{ return true; }
+    virtual Field* get_field() const{ return nullptr; }
 
     /**
      * Considers each beam node as representing maximum stresses at its cross

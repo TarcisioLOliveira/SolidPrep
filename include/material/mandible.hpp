@@ -71,6 +71,10 @@ class Mandible : public Material{
 
     virtual Type get_type() const override{ return this->MANDIBLE; }
     virtual bool is_homogeneous() const override{ return false; }
+    virtual Field* get_field() const override{
+        // Temporary, should return both fields, actually.
+        return this->inner->get_field();
+    }
 
     virtual std::vector<double> get_max_stresses(gp_Dir d) const override{
         (void)d;

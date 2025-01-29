@@ -28,7 +28,7 @@ namespace material{
 
 class LinearElasticOrthotropicField : public Material{
     public:
-    LinearElasticOrthotropicField(const std::string& name, const double density, std::vector<double> E, std::vector<double> nu, std::vector<bool> nu_lower_half, std::vector<double> G, std::vector<double> Smax, std::vector<double> Tmax, const CoordinateField* field);
+    LinearElasticOrthotropicField(const std::string& name, const double density, std::vector<double> E, std::vector<double> nu, std::vector<bool> nu_lower_half, std::vector<double> G, std::vector<double> Smax, std::vector<double> Tmax, CoordinateField* field);
 
     virtual math::Matrix stiffness_2D(const MeshElement* const e, const gp_Pnt& p) const override;
     virtual math::Matrix stiffness_3D(const MeshElement* const e, const gp_Pnt& p) const override;
@@ -47,12 +47,13 @@ class LinearElasticOrthotropicField : public Material{
 
     virtual Type get_type() const override{ return this->LINEAR_ELASTIC_ORTHOTROPIC_FIELD; }
     virtual bool is_homogeneous() const override{ return false; }
+    virtual Field* get_field() const override{ return this->field; }
 
     virtual std::vector<double> get_max_stresses(gp_Dir d) const override;
 
     private:
     const double density;
-    const CoordinateField* field;
+    CoordinateField* field;
     math::Matrix D_2D;
     math::Matrix D_3D;
     math::Matrix S_2D;
