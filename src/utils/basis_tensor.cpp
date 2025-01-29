@@ -91,7 +91,7 @@ math::Matrix basis_tensor_3D_inv_T(const math::Matrix& R){
          R(2,0)*R(0,1)+R(2,1)*R(0,0), R(2,2)*R(0,0)+R(2,0)*R(0,2), R(2,1)*R(0,2)+R(2,2)*R(0,1),
          R(1,0)*R(2,1)+R(1,1)*R(2,0), R(1,2)*R(2,0)+R(1,0)*R(2,2), R(1,1)*R(2,2)+R(1,2)*R(2,1)}, 3, 3);
 
-    math::Matrix K(36, 0);
+    math::Matrix K(6, 6);
     for(size_t i = 0; i < 3; ++i){
         for(size_t j = 0; j < 3; ++j){
             K(i, j) = K1(i, j);
