@@ -171,16 +171,18 @@ void OrthotropicFlow::generate(){
     }
 
     if(this->show){
-        std::set<UniqueNodeForView> uniques;
         if(!(this->elem_info->get_element_order() == 1 && 
              this->elem_info->get_shape_type() == Element::Shape::TRI)){
+
+            std::set<UniqueNodeForView> uniques;
             for(const auto& g:this->geoms){
                 for(const auto& e:g->mesh){
-                    for(size_t i = 0; i < bound_num; ++i){
+                    for(size_t i = 0; i < num_nodes; ++i){
                         uniques.insert(UniqueNodeForView{e->nodes[i], e.get()});
                     }
                 }
             }
+            this->node_view_list.insert(this->node_view_list.begin(), uniques.begin(), uniques.end());
         }
     }
     std::set<size_t> unique_ids;
