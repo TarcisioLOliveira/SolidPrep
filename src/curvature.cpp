@@ -54,7 +54,7 @@ Curvature::Curvature(const Material* mat, math::Matrix rot2D, math::Matrix rot3D
     this->rotate_X_Z_3D_inv = utils::basis_tensor_3D_inv_T(Lek_basis);
 
     this->permute_and_rotate_3D = permute_shear_3D*rotate_X_Z_3D;
-    this->permute_and_rotate_3D_inv = rotate_X_Z_3D_inv*permute_and_rotate_3D_inv;
+    this->permute_and_rotate_3D_inv = rotate_X_Z_3D_inv*permute_shear_3D;
 }
 
 void Curvature::generate_curvature_3D(const std::vector<std::unique_ptr<MeshNode>>& boundary_nodes, const std::vector<std::unique_ptr<BoundaryMeshElement>>& boundary_mesh, size_t reduced_vector_size, size_t full_vector_size)
