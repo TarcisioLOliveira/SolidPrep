@@ -146,6 +146,11 @@ void Meshing::generate_elements(const std::vector<size_t>& geom_elem_mapping,
         this->distribute_boundary_elements();
     }
     this->distribute_node_pointers();
+
+    const size_t dof = this->elem_info->get_dof_per_node();
+    const size_t vec_size = this->node_list.size()*dof;
+    this->max_dofs = vec_size;
+
     logger::quick_log("Done.");
 }
 
@@ -165,21 +170,28 @@ void Meshing::apply_boundary_conditions(const std::vector<Force>& forces,
     }
 
     const size_t dof = this->elem_info->get_dof_per_node();
-    const size_t vec_size = this->node_list.size()*dof;
-    this->max_dofs = vec_size;
+    const size_t vec_size = this->max_dofs;
 
     this->sub_problems = &sub_problems;
 
-    this->node_positions.clear();
-    this->node_positions.resize(sub_problems.size());
-    this->dofs_per_subproblem.clear();
-    this->dofs_per_subproblem.resize(sub_problems.size());
-    this->load_vector.clear();
-    this->load_vector.resize(sub_problems.size());
-    for(auto& v:this->node_positions){
-        v.resize(vec_size, 0);
+    if(this->node_positions.size() == 0){
+        this->node_positions.resize(sub_problems.size());
+        this->dofs_per_subproblem.resize(sub_problems.size());
+        this->load_vector.resize(sub_problems.size());
+        for(auto& v:this->node_positions){
+            v.resize(vec_size, 0);
+        }
+        this->global_load_vector.resize(vec_size);
+    } else {
+        for(auto& v:this->node_positions){
+            std::fill(v.begin(), v.end(), 0);
+        }
+        for(auto& v:this->load_vector){
+            std::fill(v.begin(), v.end(), 0);
+        }
+        std::fill(this->global_load_vector.begin(), this->global_load_vector.end(), 0);
+        std::fill(this->dofs_per_subproblem.begin(), this->dofs_per_subproblem.end(), 0);
     }
-    this->global_load_vector.resize(vec_size);
     // TODO: revert back to old way of removing nodes?
     // Factorization is faster and uses less memory, but it would require
     // passing `node_positions` and handle used instances of node->u_pos
