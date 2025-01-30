@@ -177,7 +177,7 @@ math::Vector BTRI3::get_force_vector(const math::Matrix & D, const std::vector<d
         const math::Vector Sv{S[2], S[1], S[0]};
         const math::Vector Sr(rot*Sv);
         const auto N = this->parent->get_Ni(pr);
-        F += it->w*(N*Sr);
+        F += it->w*(N.T()*Sr);
     }
     F *= this->delta;
 
