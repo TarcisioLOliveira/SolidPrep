@@ -27,14 +27,16 @@
 namespace field{
 
     
-PrincipalStress::PrincipalStress(const MeshElementFactory* elem_info, ProjectData* proj_data, Material* initial_material, double thickness, bool show)
+PrincipalStress::PrincipalStress(const MeshElementFactory* elem_info, ProjectData* proj_data, Material* initial_material, size_t max_it, double thickness, bool show)
         :
     proj_data(proj_data),
     initial_material(initial_material),
     elem_info(elem_info), geoms(),
     thickness(thickness), show(show),
     DIM((elem_info->get_problem_type() == utils::PROBLEM_TYPE_2D) ? 2 : 3),
-    NODES_PER_ELEM(elem_info->get_nodes_per_element()){
+    NODES_PER_ELEM(elem_info->get_nodes_per_element()),
+    max_it(max_it)
+    {
     
     logger::log_assert(this->initial_material != nullptr &&
             initial_material->get_type() == Material::Type::LINEAR_ELASTIC_ISOTROPIC,
@@ -141,12 +143,13 @@ void PrincipalStress::generate(){
 
     this->u.resize(mesh->max_dofs, 0);
     auto u_old = this->u;
+    double c_old = 0;
 
     double du = 1.0;
     size_t it = 0;
     logger::quick_log("Generating principal stress field....");
     logger::quick_log("");
-    while(du > TOL){
+    while(it < max_it){
         fem->generate_matrix(mesh);
 
         fem->calculate_displacements_global(mesh, mesh->load_vector, this->u);
@@ -157,6 +160,11 @@ void PrincipalStress::generate(){
             u_old[i] = u[i];
         }
 
+        double c = 0;
+        for(size_t i = 0; i < this->u.size(); ++i){
+            c += this->u[i]*mesh->global_load_vector[i];
+        }
+
         if(it == 0){
             for(size_t i = 0; i < this->geoms.size(); ++i){
                 auto& g = this->geoms[i];
@@ -164,7 +172,8 @@ void PrincipalStress::generate(){
             }
             this->first_run = false;
         }
-        logger::quick_log("Iteration:", it, "du:", du);
+        logger::quick_log("Iteration:", it, "du:", du, "c:", c, "dc:", std::abs(c - c_old), "dc/c:", std::abs(c - c_old)/std::abs(c));
+        c_old = c;
 
         mesh->apply_boundary_conditions(this->proj_data->forces, this->proj_data->supports, this->proj_data->springs, this->proj_data->internal_loads, this->proj_data->sub_problems);
 

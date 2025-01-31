@@ -31,7 +31,7 @@ namespace field{
 
 class PrincipalStress : public CoordinateField {
     public:
-    PrincipalStress(const MeshElementFactory* elem_info, ProjectData* proj_data, Material* initial_material, double thickness, bool show);
+    PrincipalStress(const MeshElementFactory* elem_info, ProjectData* proj_data, Material* initial_material, size_t max_it, double thickness, bool show);
 
     virtual void generate() override;
     virtual void initialize_views(Visualization* viz) override;
@@ -70,7 +70,7 @@ class PrincipalStress : public CoordinateField {
     size_t NODES_PER_ELEM;
     bool first_run = true;
     std::vector<double> u;
-    double TOL = 1e-7;
+    const size_t max_it;
 
     std::map<size_t, size_t> id_pos_map;
     std::vector<UniqueNodeForView> node_view_list;

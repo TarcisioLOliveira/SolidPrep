@@ -1230,9 +1230,11 @@ std::vector<std::unique_ptr<Field>> ProjectData::load_fields(const rapidjson::Ge
         } else if(type == "principal_stress"){
             this->log_data(f, "display", TYPE_BOOL, true);
             this->log_data(f, "initial_material", TYPE_STRING, true);
+            this->log_data(f, "max_it", TYPE_INT, true);
 
             bool show = f["display"].GetBool();
             std::string mat_name = f["initial_material"].GetString();
+            size_t max_it = f["max_it"].GetInt64();
 
             Material* init_mat = nullptr;
             for(auto& mat:this->materials){
@@ -1242,7 +1244,7 @@ std::vector<std::unique_ptr<Field>> ProjectData::load_fields(const rapidjson::Ge
                 }
             }
 
-            fields.emplace_back(std::make_unique<field::PrincipalStress>(this->topopt_element.get(), this, init_mat, this->thickness, show));
+            fields.emplace_back(std::make_unique<field::PrincipalStress>(this->topopt_element.get(), this, init_mat, max_it, this->thickness, show));
         }
     }
 
