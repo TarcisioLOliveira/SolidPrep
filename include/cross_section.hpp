@@ -185,9 +185,10 @@ class CrossSection{
     }
 
     inline bool is_inside_bounding_box(const gp_Pnt& p) const{
-        return p.X() - xmin >= -Precision::Confusion() && p.X() - xmax <= Precision::Confusion() &&
-               p.Y() - ymin >= -Precision::Confusion() && p.Y() - ymax <= Precision::Confusion() &&
-               p.Z() - zmin >= -Precision::Confusion() && p.Z() - zmax <= Precision::Confusion();
+        const double TOL = 1e-4;
+        return p.X() - xmin >= -TOL && p.X() - xmax <= TOL &&
+               p.Y() - ymin >= -TOL && p.Y() - ymax <= TOL &&
+               p.Z() - zmin >= -TOL && p.Z() - zmax <= TOL;
     }
 };
 

@@ -1263,7 +1263,7 @@ std::vector<Force> ProjectData::get_loads(const rapidjson::GenericValue<rapidjso
             gp_Vec l(loads[0].GetDouble(), loads[1].GetDouble(), 0);
 
             auto S = this->get_cross_section(f);
-            forces.emplace_back(S, l);
+            forces.emplace_back(std::move(S), l);
         }
     } else if(this->type == utils::PROBLEM_TYPE_3D) {
         for(auto& f : doc.GetArray()){
@@ -1275,7 +1275,7 @@ std::vector<Force> ProjectData::get_loads(const rapidjson::GenericValue<rapidjso
             gp_Vec l(loads[0].GetDouble(), loads[1].GetDouble(), loads[2].GetDouble());
 
             auto S = this->get_cross_section(f);
-            forces.emplace_back(S, l);
+            forces.emplace_back(std::move(S), l);
         }
     }
     return forces;
