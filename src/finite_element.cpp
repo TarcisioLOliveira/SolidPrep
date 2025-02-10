@@ -175,7 +175,10 @@ void FiniteElement::solve_frictionless_displ(const Meshing* const mesh, std::vec
         //this->nl_solver->update(u.data(), step, r.data());
         std::copy(u.begin() + u_size, u.end(), lambda.begin());
 
-        logger::quick_log(lambda);
+        for(auto l:lambda){
+            std::cout << l*l << " ";
+        }
+        std::cout << std::endl;
         mesh->extend_vector(0, u, u_ext);
         //this->generate_matrix(mesh, u.size(), 0, mesh->node_positions[0], topopt, D_cache, u_ext);
         std::fill(Ku.begin(), Ku.end(), 0);
@@ -226,7 +229,7 @@ void FiniteElement::solve_frictionless_displ(const Meshing* const mesh, std::vec
                     if(ni2 > -1){
                         u2 = u[ni2];
                     }
-                    gp += (u1 - u2)*normal.Coord(1+j);
+                    gp += (u2 - u1)*normal.Coord(1+j);
                 }
                 max_gp = std::max(gp, max_gp);
                 min_gp = std::min(gp, min_gp);

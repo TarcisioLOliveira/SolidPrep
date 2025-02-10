@@ -53,7 +53,7 @@ void SolverManager::calculate_displacements_global(const Meshing* const mesh, st
     }
     for(size_t i = 0; i < mesh->sub_problems->size(); ++i){
         if(this->iteration == 1 && needs_lambda){
-            this->lambdas[i].emplace_back(mesh->lag_node_map.size(), 0.01);
+            this->lambdas[i].emplace_back(mesh->lag_node_map.size(), 0.001);
         }
         auto& l = load[i];
         this->split_u[i].resize(mesh->max_dofs, 0);
@@ -75,7 +75,7 @@ void SolverManager::calculate_displacements_adjoint(const Meshing* const mesh, s
     bool needs_lambda = mesh->proj_data->contact_data.contact_type == FiniteElement::ContactType::FRICTIONLESS_DISPL;
     for(size_t i = 0; i < mesh->sub_problems->size(); ++i){
         if(this->iteration == 1 && needs_lambda){
-            this->lambdas[i].emplace_back(mesh->lag_node_map.size(), 0.01);
+            this->lambdas[i].emplace_back(mesh->lag_node_map.size(), 0.001);
         }
         auto& l = load[i];
         auto& n = mesh->node_positions[i];

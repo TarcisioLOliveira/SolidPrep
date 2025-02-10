@@ -218,11 +218,11 @@ math::Matrix CTRI3::fl2_uL(const math::Vector& l_e) const{
         NN.fill(0);
         for(size_t i = 0; i < U_KW; ++i){
             for(size_t j = 0; j < DIM; ++j){
-                NN[i] += N1(j,i)*n.Coord(1+j);
-                NN[i + U_KW] -= N2(j,i)*n.Coord(1+j);
+                NN[i] -= N1(j,i)*n.Coord(1+j);
+                NN[i + U_KW] += N2(j,i)*n.Coord(1+j);
             }
         }
-        uL += (it->w*l)*(NN*Nl.T());
+        uL += (it->w*(-l))*(NN*Nl.T());
     }
     uL *= this->delta;
 
@@ -260,7 +260,7 @@ void CTRI3::fl2_Ku_lambda(const double EPS, const std::vector<long> u1_pos, cons
     auto e_info = this->e1->get_element_info();
     const size_t bnum = this->NODES_PER_ELEM;
     size_t U_KW = u1_pos.size();
-    const auto& gli1 = utils::GaussLegendreTri<3*ORDER>::get();
+    const auto& gli1 = utils::GaussLegendreTri<4*ORDER>::get();
     math::Vector NN(2*U_KW, 0);
     math::Vector uL(2*U_KW, 0);
     math::Vector u1(U_KW), u2(U_KW);
@@ -274,34 +274,10 @@ void CTRI3::fl2_Ku_lambda(const double EPS, const std::vector<long> u1_pos, cons
     }
 
     const gp_Dir n = this->get_normal();
-
-    for(auto it = gli1.begin(); it != gli1.end(); ++it){
-        const gp_Pnt pi = this->GS_point(it->a, it->b, it->c);
-        const gp_Pnt rpi = this->R_GS_point(it->a, it->b, it->c);
-        const auto N1 = e1->get_Ni(pi);
-        const auto N2 = e2->get_Ni(pi);
-        const auto Nl = this->N_mat_1dof(rpi);
-        const double l = Nl.T()*l_e;
-        NN.fill(0);
-        for(size_t i = 0; i < U_KW; ++i){
-            for(size_t j = 0; j < DIM; ++j){
-                NN[i] += N1(j,i)*n.Coord(1+j);
-                NN[i + U_KW] -= N2(j,i)*n.Coord(1+j);
-            }
-        }
-        uL += (it->w*l*l/2)*NN;
-    }
-    for(size_t i = 0; i < U_KW; ++i){
-        Ku[u1_pos[i]] += EPS*this->delta*uL[i];
-        Ku[u2_pos[i]] += EPS*this->delta*uL[i + U_KW];
-    }
-
-    const auto& gli2 = utils::GaussLegendreTri<4*ORDER>::get();
-
+    math::Vector up1(DIM), up2(DIM);
     math::Vector LL(NODES_PER_ELEM);
 
-    math::Vector up1(DIM), up2(DIM);
-    for(auto it = gli2.begin(); it != gli2.end(); ++it){
+    for(auto it = gli1.begin(); it != gli1.end(); ++it){
         const gp_Pnt pi = this->GS_point(it->a, it->b, it->c);
         const gp_Pnt rpi = this->R_GS_point(it->a, it->b, it->c);
         const auto N1 = e1->get_Ni(pi);
@@ -314,10 +290,21 @@ void CTRI3::fl2_Ku_lambda(const double EPS, const std::vector<long> u1_pos, cons
         for(size_t j = 0; j < DIM; ++j){
             gp += (up2[j] - up1[j])*n.Coord(1+j);
         }
-        const double mult = l*(l*l/2 - gp);
-        LL += (it->w*mult)*Nl;
+        const double mult = (gp - l*l/2);
+        NN.fill(0);
+        for(size_t i = 0; i < U_KW; ++i){
+            for(size_t j = 0; j < DIM; ++j){
+                NN[i] -= N1(j,i)*n.Coord(1+j);
+                NN[i + U_KW] += N2(j,i)*n.Coord(1+j);
+            }
+        }
+        uL += (it->w*mult)*NN;
+        LL += (it->w*(-l*mult))*Nl;
     }
-
+    for(size_t i = 0; i < U_KW; ++i){
+        Ku[u1_pos[i]] += EPS*this->delta*uL[i];
+        Ku[u2_pos[i]] += EPS*this->delta*uL[i + U_KW];
+    }
     for(size_t i = 0; i < NODES_PER_ELEM; ++i){
         Ku[lu_pos[i]] += EPS*this->delta*LL[i];
     }
