@@ -99,6 +99,21 @@ struct PairedBoundaryElements{
 };
 
 class Meshing{
+    private:
+
+    struct ContactElementMetadata{
+        size_t geom_id;
+        size_t mesh_pos;
+
+        bool operator<(const ContactElementMetadata& d) const{
+            if(geom_id < d.geom_id){
+                return true;
+            } else {
+                return mesh_pos < d.mesh_pos;
+            }
+        };
+    };
+
     public:
     Meshing(const std::vector<std::unique_ptr<Geometry>>& geometries,
             const MeshElementFactory* const elem_type,
@@ -182,6 +197,7 @@ class Meshing{
     std::vector<PairedBoundaryElements> paired_boundary;
     std::map<size_t, long> lag_node_map;
     std::unordered_map<const MeshElement*, const Geometry*> elem_geom_mapping;
+    std::map<const MeshElement*, ContactElementMetadata> contact_data;
 
     std::vector<double> global_load_vector;
     // Subproblems

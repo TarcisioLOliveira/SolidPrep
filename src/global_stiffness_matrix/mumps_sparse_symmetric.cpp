@@ -24,12 +24,12 @@
 
 namespace global_stiffness_matrix{
 
-void MUMPSSparseSymmetric::generate(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<math::Matrix>& D_cache, const std::vector<double>& u_ext, const FiniteElement::ContactType type){
+void MUMPSSparseSymmetric::generate(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<math::Matrix>& D_cache, const std::vector<double>& u_ext, const std::vector<double>& lambda, const FiniteElement::ContactType type){
     logger::quick_log("Generating stiffness matrix...");
     this->u_size = u_size;
     this->l_num = l_num;
     this->sK.zero();
-    this->generate_base(mesh, u_size, l_num, node_positions, topopt, D_cache, u_ext, type);
+    this->generate_base(mesh, u_size, l_num, node_positions, topopt, D_cache, u_ext, lambda, type);
     size_t M = u_size;
     if(type != FiniteElement::ContactType::RIGID){
         M += l_num;
@@ -38,7 +38,7 @@ void MUMPSSparseSymmetric::generate(const Meshing * const mesh, const size_t u_s
         this->sK.generate_coo(M);
         this->first_time = false;
     }
-    if(type == FiniteElement::ContactType::FRICTIONLESS_DISPL){
+    if(type >= FiniteElement::ContactType::FRICTIONLESS_DISPL_SIMPLE){
         this->sK.backup_matrix();
     }
     logger::quick_log("Done.");

@@ -213,7 +213,7 @@ class ContactMeshElementFactory{
     public:
     virtual ~ContactMeshElementFactory() = default;
 
-    inline virtual ContactMeshElement* make_element(const ElementShape& shape, const MeshElement* const e1, const MeshElement* const e2) const = 0;
+    inline virtual ContactMeshElement* make_element(const ElementShape& shape, const MeshElement* const e1, const MeshElement* const e2, bool e1_base) const = 0;
     inline virtual size_t get_k_dimension() const = 0;
     inline virtual size_t get_D_dimension() const = 0;
     inline virtual size_t get_dof_per_node() const = 0;
@@ -233,8 +233,8 @@ class ContactMeshElementFactory{
 template<class T>
 class ContactMeshElementFactoryImpl : public ContactMeshElementFactory{
     public:
-    inline ContactMeshElement* make_element(const ElementShape& shape, const MeshElement* const e1, const MeshElement* const e2) const override{
-        return new T(shape, e1, e2);
+    inline ContactMeshElement* make_element(const ElementShape& shape, const MeshElement* const e1, const MeshElement* const e2, bool e1_base) const override{
+        return new T(shape, e1, e2, e1_base);
     }
     inline size_t get_k_dimension() const override{
         return T::K_DIM;

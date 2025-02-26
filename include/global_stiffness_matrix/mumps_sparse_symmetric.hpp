@@ -31,8 +31,9 @@ namespace global_stiffness_matrix{
 class MUMPSSparseSymmetric : public GlobalStiffnessMatrix{
     public:
     virtual ~MUMPSSparseSymmetric() = default;
+    MUMPSSparseSymmetric(double EPS_DISPL):GlobalStiffnessMatrix(EPS_DISPL){}
 
-    virtual void generate(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<math::Matrix>& D_cache, const std::vector<double>& u_ext, const FiniteElement::ContactType type) override;
+    virtual void generate(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<math::Matrix>& D_cache, const std::vector<double>& u_ext, const std::vector<double>& lambda, const FiniteElement::ContactType type) override;
 
     inline virtual void dot_vector(const std::vector<double>& v, std::vector<double>& v_out) const override{
         this->sK.dot_vector(v, v_out, false);

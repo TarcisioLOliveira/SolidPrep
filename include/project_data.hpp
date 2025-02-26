@@ -54,6 +54,8 @@ class ProjectData {
     struct ContactData{
         FiniteElement::ContactType contact_type = FiniteElement::ContactType::RIGID;
         double rtol_abs = 0;
+        double max_step = 0;
+        double EPS_DISPL = 0;
     };
 
     enum DataType{

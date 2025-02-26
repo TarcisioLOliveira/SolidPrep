@@ -26,14 +26,17 @@
 
 namespace finite_element{
 
-EigenPCG::EigenPCG(ContactType contact_type, double rtol_abs):
-    FiniteElement(contact_type, rtol_abs, &this->gsm), gsm(){}
+EigenPCG::EigenPCG(ContactType contact_type, double rtol_abs, double max_step, double EPS_DISPL):
+    FiniteElement(contact_type, rtol_abs, max_step), gsm(EPS_DISPL){
 
-void EigenPCG::generate_matrix_base(const Meshing* const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<math::Matrix>& D_cache, const std::vector<double>& u_ext, const ContactType type){
+    this->set_global_matrix(&this->gsm);    
+}
+
+void EigenPCG::generate_matrix_base(const Meshing* const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<math::Matrix>& D_cache, const std::vector<double>& u_ext, const std::vector<double>& lambda, const ContactType type){
 
     this->l_num = l_num;
     this->u_size = u_size;
-    this->gsm.generate(mesh, u_size, l_num, node_positions, topopt, D_cache, u_ext, type);
+    this->gsm.generate(mesh, u_size, l_num, node_positions, topopt, D_cache, u_ext, lambda, type);
     auto& K = this->gsm.get_K();
     this->cg.compute(K);
 }

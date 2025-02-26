@@ -22,6 +22,7 @@
 #define CTRI3_HPP
 
 #include "element.hpp"
+#include "logger.hpp"
 #include "material.hpp"
 #include <vector>
 #include "math/matrix.hpp"
@@ -41,20 +42,20 @@ class CTRI3 : public ContactMeshElement{
     static const Element::Shape SHAPE_TYPE = Element::Shape::TRI;
     static const utils::ProblemType PROBLEM_TYPE = utils::PROBLEM_TYPE_3D;
 
-    CTRI3(ElementShape s, const MeshElement* const e1, const MeshElement* const e2);
+    CTRI3(ElementShape s, const MeshElement* const e1, const MeshElement* const e2, bool e1_base);
 
     virtual math::Matrix get_frictionless_Ge() const override;
 
-    virtual math::Matrix fl_uLne(const math::Matrix& D, const math::Vector& ln_e) const override;
-    virtual math::Matrix fl_LnLne(const math::Matrix& D, const math::Vector& ln_e) const override;
-    virtual math::Matrix fl_LtLne(const math::Matrix& D, const math::Vector& ln_e, size_t ti) const override;
-    virtual math::Matrix fl_uLte(const math::Matrix& D, size_t ti) const override;
-    virtual math::Matrix fl_LtLte(const math::Matrix& D, size_t t1, size_t t2) const override;
+    virtual math::Matrix fl3_uL(const math::Matrix& D, const math::Vector& ln_e) const override;
+    virtual math::Matrix fl3_LL(const math::Matrix& D, const math::Vector& ln_e, const math::Vector& lp1_e, const math::Vector& lp2_e, const std::vector<double>& u) const override;
+    virtual void fl3_Ku(const math::Matrix& D, const std::vector<long> u_pos, const std::vector<long>& lu_pos, const std::vector<double>& u, std::vector<double>& Ku) const override;
+    virtual math::Vector fl3_eq(const math::Vector& ln_e, const math::Vector& lp1_e, const math::Vector& lp2_e, const math::Vector& u_e) const override;
 
     virtual math::Matrix fl2_uL(const math::Vector& l_e) const override;
     virtual math::Matrix fl2_LL(const math::Vector& l_e, const math::Vector& u1, const math::Vector& u2) const override;
 
     virtual void fl2_Ku_lambda(const double EPS, const std::vector<long> u1_pos, const std::vector<long> u2_pos, const std::vector<long>& lu_pos, const std::vector<double>& u, std::vector<double>& Ku) const override;
+    virtual void fl2_dKu_lambda(const double EPS, const std::vector<long> u1_pos, const std::vector<long> u2_pos, const std::vector<long>& lu_pos, const std::vector<double>& u, const std::vector<double>& du, const double eta, std::vector<double>& dKu) const override;
 
     virtual double get_area() const override{
         return this->delta;
@@ -149,49 +150,77 @@ class CTRI3 : public ContactMeshElement{
     inline math::Matrix eps_mat_lambda(const gp_Dir& n) const
     {
         math::Matrix eps(S_SIZE, NODES_PER_ELEM);
-        std::vector<double> didj(NODE_DOF*NODE_DOF*NODES_PER_ELEM);
+        std::vector<math::Matrix> didj(NODES_PER_ELEM, math::Matrix(NODE_DOF, NODE_DOF));
 
-        math::Vector dXIdx{R(0,0), R(1,0), R(2,0)};
-        math::Vector dXIdy{R(0,1), R(1,1), R(2,1)};
-        math::Vector dXIdz{R(0,2), R(1,2), R(2,2)};
+        math::Matrix Rl(
+                {R(0,0), R(1,0), R(2,0),
+                 R(0,1), R(1,1), R(2,1)}, 2, 3);
 
-        std::vector<math::Vector> gradN
-        {
-            this->gradN_1dof_vec(dXIdx),
-            this->gradN_1dof_vec(dXIdy),
-            this->gradN_1dof_vec(dXIdz)
-        };
+        // Calculate the gradient of lambda times n, without the lambda vector,
+        // then transform the rank-3 tensor into the strain matrix, which
+        // multiplied to the lambda vector should result in a strain vector.
+        math::Matrix gradN(Rl.T()*this->gradN_1dof());
         for(size_t i = 0; i < NODE_DOF; ++i){
+            const math::Matrix gradNni(n.Coord(1+i)*gradN);
             for(size_t j = 0; j < NODE_DOF; ++j){
-                const math::Vector m(n.Coord(1+i)*gradN[j]);
                 for(size_t k = 0; k < NODES_PER_ELEM; ++k){
-                    didj[i*NODE_DOF*NODES_PER_ELEM + j*NODES_PER_ELEM + k] = m[k];
+                    didj[k](i, j) = gradNni(j, k);
                 }
             }
         }
 
         for(size_t i = 0; i < NODE_DOF; ++i){
             for(size_t j = 0; j < NODES_PER_ELEM; ++j){
-                eps(i, j) = didj[i*NODE_DOF*NODES_PER_ELEM + i*NODES_PER_ELEM + j];
+                eps(i, j) = didj[j](i,i);
             }
         }
         for(size_t j = 0; j < NODES_PER_ELEM; ++j){
-            eps(3, j) = 
-                didj[0*NODE_DOF*NODES_PER_ELEM + 1*NODES_PER_ELEM + j] +
-                didj[1*NODE_DOF*NODES_PER_ELEM + 0*NODES_PER_ELEM + j];
+            eps(3, j) = didj[j](0, 1) + didj[j](1, 0);
         }
         for(size_t j = 0; j < NODES_PER_ELEM; ++j){
-            eps(4, j) = 
-                didj[0*NODE_DOF*NODES_PER_ELEM + 2*NODES_PER_ELEM + j] +
-                didj[2*NODE_DOF*NODES_PER_ELEM + 0*NODES_PER_ELEM + j];
+            eps(4, j) = didj[j](0, 2) + didj[j](2, 0);
         }
         for(size_t j = 0; j < NODES_PER_ELEM; ++j){
-            eps(5, j) = 
-                didj[2*NODE_DOF*NODES_PER_ELEM + 1*NODES_PER_ELEM + j] +
-                didj[1*NODE_DOF*NODES_PER_ELEM + 2*NODES_PER_ELEM + j];
+            eps(5, j) = didj[j](1, 2) + didj[j](2, 1);
         }
 
         return eps;
+    }
+
+    inline math::Vector eps_vec(const gp_Pnt& p, const math::Vector& le_n, const math::Vector& le_p1, const math::Vector& le_p2, const gp_Dir& n, const gp_Dir& p1, const gp_Dir& p2) const{
+        const math::Vector N(this->N_mat_1dof(p));
+
+        const double l_n = N.T()*le_n;
+
+        const auto eps_n = this->eps_mat_lambda(n);
+        const auto eps_p1 = this->eps_mat_lambda(p1);
+        const auto eps_p2 = this->eps_mat_lambda(p2);
+
+        return 2*(l_n*eps_n*le_n) + eps_p1*le_p1 + eps_p2*le_p2;
+    }
+
+    inline math::Matrix delta_eps_1(const gp_Pnt& p, const math::Vector& le_n, const gp_Dir& n, const gp_Dir& p1, const gp_Dir& p2) const{
+        const math::Vector N(this->N_mat_1dof(p));
+
+        const double l_n = N.T()*le_n;
+
+        const auto eps_n = this->eps_mat_lambda(n);
+        const auto eps_p1 = this->eps_mat_lambda(p1);
+        const auto eps_p2 = this->eps_mat_lambda(p2);
+
+        const auto eps_nf = 2*(l_n*eps_n + (eps_n*le_n)*N.T());
+
+        math::Matrix eps_f(S_SIZE, 3*NODES_PER_ELEM);
+
+        for(size_t i = 0; i < S_SIZE; ++i){
+            for(size_t j = 0; j < NODES_PER_ELEM; ++j){
+                eps_f(i,j + 0*NODES_PER_ELEM) = eps_nf(i,j);
+                eps_f(i,j + 1*NODES_PER_ELEM) = eps_p1(i,j);
+                eps_f(i,j + 2*NODES_PER_ELEM) = eps_p2(i,j);
+            }
+        }
+
+        return eps_f;
     }
 };
 

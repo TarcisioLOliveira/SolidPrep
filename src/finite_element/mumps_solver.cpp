@@ -26,9 +26,11 @@
 
 namespace finite_element{
 
-MUMPSSolver::MUMPSSolver(ContactType contact_type, double rtol_abs):
-    FiniteElement(contact_type, rtol_abs, &this->gsm)
+MUMPSSolver::MUMPSSolver(ContactType contact_type, double rtol_abs, double max_step, double EPS_DISPL):
+    FiniteElement(contact_type, rtol_abs, max_step), gsm(EPS_DISPL)
 {
+    this->set_global_matrix(&this->gsm);
+
     this->config.job = -1; // Configuration initialization
     this->config.sym = 1; // Hermitian matrix
     this->config.par = 1; // Host process also does computations
@@ -78,13 +80,13 @@ MUMPSSolver::~MUMPSSolver(){
     dmumps_c(&this->config);
 }
 
-void MUMPSSolver::generate_matrix_base(const Meshing* const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<math::Matrix>& D_cache, const std::vector<double>& u_ext, const ContactType type){
+void MUMPSSolver::generate_matrix_base(const Meshing* const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<math::Matrix>& D_cache, const std::vector<double>& u_ext, const std::vector<double>& lambda, const ContactType type){
     int mpi_id = 0;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi_id);
 
     long M = u_size + l_num;
     if(mpi_id == 0){
-        this->gsm.generate(mesh, u_size, l_num, node_positions, topopt, D_cache, u_ext, type);
+        this->gsm.generate(mesh, u_size, l_num, node_positions, topopt, D_cache, u_ext, lambda, type);
 
         std::vector<int>& rows = this->gsm.get_rows();
         std::vector<int>& cols = this->gsm.get_cols();

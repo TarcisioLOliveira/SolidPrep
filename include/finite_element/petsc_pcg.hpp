@@ -31,12 +31,12 @@ class PETScPCG : public FiniteElement{
     public:
     typedef global_stiffness_matrix::PETScSparseSymmetric::Backend PETScBackend;
 
-    PETScPCG(ContactType contact_type, double rtol_abs, PETScBackend backend);
+    PETScPCG(ContactType contact_type, double rtol_abs, double max_step, double EPS_DISPL, PETScBackend backend);
 
     virtual ~PETScPCG();
 
     private:
-    virtual void generate_matrix_base(const Meshing* const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<math::Matrix>& D_cache, const std::vector<double>& u_ext, const ContactType type) override;
+    virtual void generate_matrix_base(const Meshing* const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<math::Matrix>& D_cache, const std::vector<double>& u_ext, const std::vector<double>& lambda, const ContactType type) override;
 
     virtual void solve(std::vector<double>& load) override;
     virtual void reset_hessian() override;

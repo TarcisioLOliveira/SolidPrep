@@ -305,6 +305,8 @@ ProjectData::ContactData ProjectData::get_contact_data(const rapidjson::GenericV
         const std::string type = doc["type"].GetString();
         FiniteElement::ContactType contact_type = FiniteElement::ContactType::RIGID;
         double rtol_abs = 0;
+        double max_step = 0;
+        double EPS_DISPL = 0;
         if(type == "rigid"){
             contact_type = FiniteElement::ContactType::RIGID;
         } else {
@@ -312,13 +314,21 @@ ProjectData::ContactData ProjectData::get_contact_data(const rapidjson::GenericV
             rtol_abs = doc["rtol_abs"].GetDouble();
             if(type == "frictionless_penalty"){
             contact_type = FiniteElement::ContactType::FRICTIONLESS_PENALTY;
-            } else  if(type == "frictionless_displ"){
-                contact_type = FiniteElement::ContactType::FRICTIONLESS_DISPL;
+            } else if(type == "frictionless_displ_simple"){
+                contact_type = FiniteElement::ContactType::FRICTIONLESS_DISPL_SIMPLE;
+            } else if(type == "frictionless_displ_constr"){
+                contact_type = FiniteElement::ContactType::FRICTIONLESS_DISPL_CONSTR;
             } else {
                 logger::log_assert(false, logger::ERROR, "unknown contact type: {}", type);
             }
         }
-        return {contact_type, rtol_abs};
+        if(contact_type == FiniteElement::ContactType::FRICTIONLESS_DISPL_SIMPLE){
+            this->log_data(doc, "max_step", TYPE_DOUBLE, true);
+            this->log_data(doc, "opt_weight", TYPE_DOUBLE, true);
+            max_step = doc["max_step"].GetDouble();
+            EPS_DISPL = doc["opt_weight"].GetDouble();
+        }
+        return {contact_type, rtol_abs, max_step, EPS_DISPL};
     }
     return ProjectData::ContactData{FiniteElement::ContactType::RIGID, 0.0};
 }
@@ -704,9 +714,9 @@ std::unique_ptr<FiniteElement> ProjectData::load_fea(const rapidjson::GenericVal
     //    finite_element.reset(new finite_element::PCG(eps, p));
     //} else if(fea["type"] == "mumps"){
     if(fea["type"] == "mumps"){
-        finite_element.reset(new finite_element::MUMPSSolver(this->contact_data.contact_type, this->contact_data.rtol_abs));
+        finite_element.reset(new finite_element::MUMPSSolver(this->contact_data.contact_type, this->contact_data.rtol_abs, this->contact_data.max_step, this->contact_data.EPS_DISPL));
     } else if(fea["type"] == "eigen_pcg"){
-        finite_element.reset(new finite_element::EigenPCG(this->contact_data.contact_type, this->contact_data.rtol_abs));
+        finite_element.reset(new finite_element::EigenPCG(this->contact_data.contact_type, this->contact_data.rtol_abs, this->contact_data.max_step, this->contact_data.EPS_DISPL));
     } else if(fea["type"] == "petsc_pcg"){
         this->log_data(fea, "backend", TYPE_STRING, true);
         std::string backend = fea["backend"].GetString();
@@ -717,7 +727,7 @@ std::unique_ptr<FiniteElement> ProjectData::load_fea(const rapidjson::GenericVal
             b = finite_element::PETScPCG::PETScBackend::CUDA;
         }
 
-        finite_element.reset(new finite_element::PETScPCG(this->contact_data.contact_type, this->contact_data.rtol_abs, b));
+        finite_element.reset(new finite_element::PETScPCG(this->contact_data.contact_type, this->contact_data.rtol_abs, this->contact_data.max_step, this->contact_data.EPS_DISPL, b));
     }
 
     return finite_element;

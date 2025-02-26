@@ -210,18 +210,10 @@ void Meshing::apply_boundary_conditions(const std::vector<Force>& forces,
         this->apply_supports();
     }
 
-    for(size_t it = 0; it < this->node_positions.size(); ++it){
-        auto& v = this->node_positions[it];
-        long current = 0;
-        //if(rigid){
-        for(auto& i:v){
-            if(i >= 0){
-                i = current;
-                ++current;
-            }
-        }
-        /*
-        } else {
+    if(this->proj_data->contact_data.contact_type == FiniteElement::ContactType::FRICTIONLESS_DISPL_CONSTR){
+        for(size_t it = 0; it < this->node_positions.size(); ++it){
+            auto& v = this->node_positions[it];
+            long current = 0;
             std::vector<bool> pos_set(this->node_list.size(), false);
             for(size_t i = 0; i < this->node_list.size(); ++i){
                 const auto& n = this->node_list[i];
@@ -255,9 +247,22 @@ void Meshing::apply_boundary_conditions(const std::vector<Force>& forces,
                     }
                 }
             }
-        }*/
-        this->dofs_per_subproblem[it] = current;
-        this->load_vector[it].resize(current, 0);
+            this->dofs_per_subproblem[it] = current;
+            this->load_vector[it].resize(current, 0);
+        }
+    } else {
+        for(size_t it = 0; it < this->node_positions.size(); ++it){
+            auto& v = this->node_positions[it];
+            long current = 0;
+            for(auto& i:v){
+                if(i >= 0){
+                    i = current;
+                    ++current;
+                }
+            }
+            this->dofs_per_subproblem[it] = current;
+            this->load_vector[it].resize(current, 0);
+        }
     }
 
     logger::quick_log("loads");
@@ -441,6 +446,7 @@ void Meshing::populate_boundary_elements(const std::vector<ElementShape>& bounda
     // to use to_rigid_map to find overlapping nodes and generate intergeometry
     // boundary metadata
     if(this->proj_data->contact_data.contact_type != FiniteElement::ContactType::RIGID){
+        bool e1_ref = this->proj_data->contact_data.contact_type == FiniteElement::ContactType::FRICTIONLESS_DISPL_SIMPLE;
         std::vector<size_t> bnodes(N);
         for(auto& b:this->boundary_elements){
             bool found_equivalent = true;
@@ -488,8 +494,8 @@ void Meshing::populate_boundary_elements(const std::vector<ElementShape>& bounda
                     }
                     ElementShape es{std::move(nodes), e1->normal};
                     std::unique_ptr<ContactMeshElement> bme(nullptr);
-                    if(this->proj_data->contact_data.contact_type == FiniteElement::FRICTIONLESS_DISPL){
-                        bme.reset(this->elem_info->get_contact_element_info()->make_element(es, e1->parent, e2->parent));
+                    if(this->proj_data->contact_data.contact_type >= FiniteElement::FRICTIONLESS_DISPL_SIMPLE){
+                        bme.reset(this->elem_info->get_contact_element_info()->make_element(es, e1->parent, e2->parent, e1_ref));
                     }
                     this->paired_boundary.emplace_back(e1, e2, std::move(bme));
 
@@ -540,6 +546,24 @@ void Meshing::populate_boundary_elements(const std::vector<ElementShape>& bounda
         for(auto& m:this->lag_node_map){
             m.second = lag_id;
             ++lag_id;
+        }
+        const auto get_data = [&](const MeshElement* e)->ContactElementMetadata{
+            size_t geom_id = 0;
+            for(const auto& g:this->geometries){
+                size_t mesh_id = 0;
+                for(const auto& ge:g->mesh){
+                    if(e == ge.get()){
+                        return {geom_id, mesh_id};
+                    }
+                    ++mesh_id;
+                }
+                ++geom_id;
+            }
+            return {static_cast<size_t>(-1), static_cast<size_t>(-1)};
+        };
+        for(const auto& b:this->paired_boundary){
+            this->contact_data[b.elem->e1] = get_data(b.elem->e1);
+            this->contact_data[b.elem->e2] = get_data(b.elem->e2);
         }
     }
 }

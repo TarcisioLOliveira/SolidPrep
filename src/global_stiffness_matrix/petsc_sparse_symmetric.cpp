@@ -29,7 +29,7 @@ PETScSparseSymmetric::~PETScSparseSymmetric(){
     MatDestroy(&this->K);
 }
 
-void PETScSparseSymmetric::generate(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<math::Matrix>& D_cache, const std::vector<double>& u_ext, const FiniteElement::ContactType type){
+void PETScSparseSymmetric::generate(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<math::Matrix>& D_cache, const std::vector<double>& u_ext, const std::vector<double>& lambda, const FiniteElement::ContactType type){
     int mpi_id = 0;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi_id);
     this->u_size = u_size;
@@ -40,12 +40,12 @@ void PETScSparseSymmetric::generate(const Meshing * const mesh, const size_t u_s
     }
 
     if(first_time){
-        this->preallocate(mesh, u_size, l_num, node_positions, topopt, D_cache, u_ext, type, mpi_id);
+        this->preallocate(mesh, u_size, l_num, node_positions, topopt, D_cache, u_ext, lambda, type, mpi_id);
     } else {
         this->zero();
     }
 
-    this->assemble_matrix(mesh, u_size, l_num, node_positions, topopt, D_cache, u_ext, type, mpi_id);
+    this->assemble_matrix(mesh, u_size, l_num, node_positions, topopt, D_cache, u_ext, lambda, type, mpi_id);
 
     this->first_time = false;
     if(mpi_id == 0){
@@ -53,7 +53,7 @@ void PETScSparseSymmetric::generate(const Meshing * const mesh, const size_t u_s
     }
 }
 
-void PETScSparseSymmetricCPU::preallocate(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<math::Matrix>& D_cache, const std::vector<double>& u_ext, const FiniteElement::ContactType type, const size_t mpi_id){
+void PETScSparseSymmetricCPU::preallocate(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<math::Matrix>& D_cache, const std::vector<double>& u_ext, const std::vector<double>& lambda, const FiniteElement::ContactType type, const size_t mpi_id){
     MatCreate(PETSC_COMM_WORLD, &this->K);
     MatSetType(this->K, MATAIJ);
 
@@ -81,7 +81,7 @@ void PETScSparseSymmetricCPU::preallocate(const Meshing * const mesh, const size
 
     if(mpi_id == 0){
         std::swap(tmp, K);
-        this->generate_base(mesh, u_size, l_num, node_positions, topopt, D_cache, u_ext, type);
+        this->generate_base(mesh, u_size, l_num, node_positions, topopt, D_cache, u_ext, lambda, type);
         std::swap(tmp, K);
     }
 
@@ -95,9 +95,9 @@ void PETScSparseSymmetricCPU::preallocate(const Meshing * const mesh, const size
     MatDestroy(&tmp);
 }
 
-void PETScSparseSymmetricCPU::assemble_matrix(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<math::Matrix>& D_cache, const std::vector<double>& u_ext, const FiniteElement::ContactType type, const size_t mpi_id){
+void PETScSparseSymmetricCPU::assemble_matrix(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<math::Matrix>& D_cache, const std::vector<double>& u_ext, const std::vector<double>& lambda, const FiniteElement::ContactType type, const size_t mpi_id){
     if(mpi_id == 0){
-        this->generate_base(mesh, u_size, l_num, node_positions, topopt, D_cache, u_ext, type);
+        this->generate_base(mesh, u_size, l_num, node_positions, topopt, D_cache, u_ext, lambda, type);
     }
 
     MatAssemblyBegin(this->K, MAT_FINAL_ASSEMBLY);
@@ -163,7 +163,7 @@ void PETScSparseSymmetricCPU::dot_vector(const std::vector<double>& v, std::vect
     VecRestoreArrayRead(v2, &v_out_data);
 }
 
-void PETScSparseSymmetricCUDA::preallocate(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<math::Matrix>& D_cache, const std::vector<double>& u_ext, const FiniteElement::ContactType type, const size_t mpi_id){
+void PETScSparseSymmetricCUDA::preallocate(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<math::Matrix>& D_cache, const std::vector<double>& u_ext, const std::vector<double>& lambda, const FiniteElement::ContactType type, const size_t mpi_id){
     MatCreate(PETSC_COMM_WORLD, &this->K);
     MatSetType(this->K, MATAIJCUSPARSE);
 
@@ -179,7 +179,7 @@ void PETScSparseSymmetricCUDA::preallocate(const Meshing * const mesh, const siz
     MatSetOption(this->K, MAT_KEEP_NONZERO_PATTERN, PETSC_TRUE);
 
     if(mpi_id == 0){
-        this->generate_base(mesh, u_size, l_num, node_positions, topopt, D_cache, u_ext, type);
+        this->generate_base(mesh, u_size, l_num, node_positions, topopt, D_cache, u_ext, lambda, type);
     }
 
     this->K_coo.generate_coo(M);
@@ -188,13 +188,13 @@ void PETScSparseSymmetricCUDA::preallocate(const Meshing * const mesh, const siz
 
     MatSetUp(this->K);
 }
-void PETScSparseSymmetricCUDA::assemble_matrix(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<math::Matrix>& D_cache, const std::vector<double>& u_ext, const FiniteElement::ContactType type, const size_t mpi_id){
+void PETScSparseSymmetricCUDA::assemble_matrix(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<math::Matrix>& D_cache, const std::vector<double>& u_ext, const std::vector<double>& lambda, const FiniteElement::ContactType type, const size_t mpi_id){
 
     if(mpi_id == 0){
         if(!this->first_time){
-            this->generate_base(mesh, u_size, l_num, node_positions, topopt, D_cache, u_ext, type);
+            this->generate_base(mesh, u_size, l_num, node_positions, topopt, D_cache, u_ext, lambda, type);
         }
-        if(type == FiniteElement::ContactType::FRICTIONLESS_DISPL){
+        if(type >= FiniteElement::ContactType::FRICTIONLESS_DISPL_SIMPLE){
             this->K_coo.backup_matrix();
         }
         MatSetValuesCOO(this->K, this->K_coo.vals.data(), INSERT_VALUES);

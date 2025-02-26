@@ -37,9 +37,10 @@ class PETScSparseSymmetric : public GlobalStiffnessMatrix{
         CPU,
         CUDA
     };
+    PETScSparseSymmetric(double EPS_DISPL):GlobalStiffnessMatrix(EPS_DISPL){}
     virtual ~PETScSparseSymmetric();
 
-    virtual void generate(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<math::Matrix>& D_cache, const std::vector<double>& u_ext, const FiniteElement::ContactType type) override;
+    virtual void generate(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<math::Matrix>& D_cache, const std::vector<double>& u_ext, const std::vector<double>& lambda, const FiniteElement::ContactType type) override;
 
     Mat get_K() const{
         return this->K;
@@ -50,14 +51,14 @@ class PETScSparseSymmetric : public GlobalStiffnessMatrix{
     bool first_time = true;
     size_t u_size, l_num;
 
-    virtual void preallocate(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<math::Matrix>& D_cache, const std::vector<double>& u_ext, const FiniteElement::ContactType type, const size_t mpi_id) = 0;
-    virtual void assemble_matrix(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<math::Matrix>& D_cache, const std::vector<double>& u_ext, const FiniteElement::ContactType type, const size_t mpi_id) = 0;
+    virtual void preallocate(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<math::Matrix>& D_cache, const std::vector<double>& u_ext, const std::vector<double>& lambda, const FiniteElement::ContactType type, const size_t mpi_id) = 0;
+    virtual void assemble_matrix(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<math::Matrix>& D_cache, const std::vector<double>& u_ext, const std::vector<double>& lambda, const FiniteElement::ContactType type, const size_t mpi_id) = 0;
     virtual void zero() = 0;
 };
 
 class PETScSparseSymmetricCPU : public PETScSparseSymmetric {
     public:
-    PETScSparseSymmetricCPU() = default;
+    PETScSparseSymmetricCPU(double EPS_DISPL):PETScSparseSymmetric(EPS_DISPL){}
     virtual ~PETScSparseSymmetricCPU() = default;
 
     virtual void dot_vector(const std::vector<double>& v, std::vector<double>& v_out) const override;
@@ -67,8 +68,8 @@ class PETScSparseSymmetricCPU : public PETScSparseSymmetric {
     };
 
     protected:
-    virtual void preallocate(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<math::Matrix>& D_cache, const std::vector<double>& u_ext, const FiniteElement::ContactType type, const size_t mpi_id) override;
-    virtual void assemble_matrix(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<math::Matrix>& D_cache, const std::vector<double>& u_ext, const FiniteElement::ContactType type, const size_t mpi_id) override;
+    virtual void preallocate(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<math::Matrix>& D_cache, const std::vector<double>& u_ext, const std::vector<double>& lambda, const FiniteElement::ContactType type, const size_t mpi_id) override;
+    virtual void assemble_matrix(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<math::Matrix>& D_cache, const std::vector<double>& u_ext, const std::vector<double>& lambda, const FiniteElement::ContactType type, const size_t mpi_id) override;
     inline virtual void zero() override{
         MatZeroEntries(this->K);
     }
@@ -95,7 +96,7 @@ class PETScSparseSymmetricCPU : public PETScSparseSymmetric {
 
 class PETScSparseSymmetricCUDA : public PETScSparseSymmetric {
     public:
-    PETScSparseSymmetricCUDA() = default;
+    PETScSparseSymmetricCUDA(double EPS_DISPL):PETScSparseSymmetric(EPS_DISPL){}
     virtual ~PETScSparseSymmetricCUDA() = default;
 
     inline virtual void dot_vector(const std::vector<double>& v, std::vector<double>& v_out) const override{
@@ -107,8 +108,8 @@ class PETScSparseSymmetricCUDA : public PETScSparseSymmetric {
     protected:
     utils::COO<PetscInt> K_coo;
 
-    virtual void preallocate(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<math::Matrix>& D_cache, const std::vector<double>& u_ext, const FiniteElement::ContactType type, const size_t mpi_id) override;
-    virtual void assemble_matrix(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<math::Matrix>& D_cache, const std::vector<double>& u_ext, const FiniteElement::ContactType type, const size_t mpi_id) override;
+    virtual void preallocate(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<math::Matrix>& D_cache, const std::vector<double>& u_ext, const std::vector<double>& lambda, const FiniteElement::ContactType type, const size_t mpi_id) override;
+    virtual void assemble_matrix(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<math::Matrix>& D_cache, const std::vector<double>& u_ext, const std::vector<double>& lambda, const FiniteElement::ContactType type, const size_t mpi_id) override;
     inline virtual void zero() override{
         this->K_coo.zero();
     }

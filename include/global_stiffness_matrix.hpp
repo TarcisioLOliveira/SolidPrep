@@ -29,23 +29,27 @@ class GlobalStiffnessMatrix{
     public:
     virtual ~GlobalStiffnessMatrix() = default;
     const double K_MIN = 1e-14;
+    GlobalStiffnessMatrix(double EPS_DISPL);
 
-    virtual void generate(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<math::Matrix>& D_cache, const std::vector<double>& u_ext, const FiniteElement::ContactType type) = 0;
+    virtual void generate(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<math::Matrix>& D_cache, const std::vector<double>& u_ext, const std::vector<double>& lambda, const FiniteElement::ContactType type) = 0;
 
     virtual void dot_vector(const std::vector<double>& v, std::vector<double>& v_out) const = 0;
 
     virtual void reset_hessian() = 0;
 
-    virtual void add_frictionless_part2(const Meshing * const mesh, const std::vector<long>& node_positions, const std::vector<double>& u_ext, const std::vector<double>& lambda);
+    virtual void add_frictionless_part2(const Meshing * const mesh, const std::vector<long>& node_positions, const std::vector<double>& u_ext, const std::vector<double>& lambda, const std::vector<math::Matrix>& D_cache, bool topopt);
+    virtual void add_frictionless_part2_old(const Meshing * const mesh, const std::vector<long>& node_positions, const std::vector<double>& u_ext, const std::vector<double>& lambda);
 
-    void append_Ku_frictionless(const Meshing* const mesh, const std::vector<double>& u, std::vector<double>& Ku) const;
+    void append_Ku_frictionless(const Meshing* const mesh, const std::vector<double>& u, std::vector<double>& Ku, const std::vector<math::Matrix>& D_cache, bool topopt) const;
+    void append_Ku_frictionless_old(const Meshing* const mesh, const std::vector<double>& u, std::vector<double>& Ku) const;
+    void append_dKu_frictionless_old(const Meshing* const mesh, const std::vector<double>& u, const std::vector<double>& du, const double eta, std::vector<double>& Ku) const;
 
     protected:
     size_t W, N;
     const double EPS_PENALTY = 5e7;
-    const double EPS_DISPL = 1e-10;
+    const double EPS_DISPL;
 
-    virtual void generate_base(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<math::Matrix>& D_cache, const std::vector<double>& u_ext, const FiniteElement::ContactType type);
+    virtual void generate_base(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<math::Matrix>& D_cache, const std::vector<double>& u_ext, const std::vector<double>& lambda, const FiniteElement::ContactType type);
 
     virtual void calculate_dimensions(const Meshing * const mesh, const std::vector<long>& node_positions, const size_t matrix_width);
 
@@ -57,7 +61,7 @@ class GlobalStiffnessMatrix{
 
     virtual void add_contacts(const Meshing * const mesh, const std::vector<long>& node_positions, const std::vector<double>& u_ext);
 
-    virtual void add_frictionless_part1(const Meshing * const mesh, const std::vector<long>& node_positions);
+    virtual void add_frictionless_part1_old(const Meshing * const mesh, const std::vector<long>& node_positions);
 
     virtual void insert_block_symmetric(const math::Matrix& k, const std::vector<long>& posi, const std::vector<long>& posj) = 0;
 
