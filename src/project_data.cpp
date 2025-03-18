@@ -86,6 +86,7 @@
 #include "function/node_shape_based/mechanostat.hpp"
 #include "field/orthotropic_flow.hpp"
 #include "field/principal_stress.hpp"
+#include "simulation/marginal_bone_loss.hpp"
 
 ProjectData::ProjectData(std::string project_file){
 #ifdef _WIN32
@@ -123,31 +124,43 @@ ProjectData::ProjectData(std::string project_file){
 
     if(this->log_data(doc, "analysis", TYPE_OBJECT, true)){
         const auto& analysis = doc["analysis"];
-        if(this->log_data(analysis, "gen", TYPE_BOOL, false)){
-            this->generate_beams = analysis["gen"].GetBool();
+        if(this->log_data(analysis, "simulation", TYPE_BOOL, false)){
+            this->do_simulation = analysis["simulation"].GetBool();
         }
-        if(this->log_data(analysis, "meshing", TYPE_BOOL, false)){
-            this->do_meshing = analysis["meshing"].GetBool();
-        } else if(this->generate_beams){
-            this->do_meshing = true;
+        if(!this->do_simulation){
+            if(this->log_data(analysis, "gen", TYPE_BOOL, false)){
+                this->generate_beams = analysis["gen"].GetBool();
+            }
+            if(this->log_data(analysis, "meshing", TYPE_BOOL, false)){
+                this->do_meshing = analysis["meshing"].GetBool();
+            } else if(this->generate_beams){
+                this->do_meshing = true;
+            }
+            if(this->generate_beams){
+                logger::log_assert(this->do_meshing, logger::WARNING, "mesh loading not supported for geometry generation, ignoring setting");
+                this->do_meshing = true;
+            }
+            if(this->log_data(analysis, "topopt", TYPE_BOOL, false)){
+                this->do_topopt = analysis["topopt"].GetBool();
+            }
+            if(this->log_data(analysis, "fea", TYPE_BOOL, false)){
+                this->do_fea = analysis["fea"].GetBool();
+            }
+            if(this->log_data(analysis, "shape_opt", TYPE_BOOL, false)){
+                this->do_shape_opt = analysis["shape_opt"].GetBool();
+            }
+            if(this->do_shape_opt){
+                logger::log_assert(!this->do_topopt, logger::ERROR, "topology optimization followed by shape optimization is currently not supported");
+                logger::log_assert(!this->generate_beams, logger::ERROR, "geometry generation followed by shape optimization is currently not supported");
+            }
         }
-        if(this->generate_beams){
-            logger::log_assert(this->do_meshing, logger::WARNING, "mesh loading not supported for geometry generation, ignoring setting");
-            this->do_meshing = true;
-        }
-        if(this->log_data(analysis, "topopt", TYPE_BOOL, false)){
-            this->do_topopt = analysis["topopt"].GetBool();
-        }
-        if(this->log_data(analysis, "fea", TYPE_BOOL, false)){
-            this->do_fea = analysis["fea"].GetBool();
-        }
-        if(this->log_data(analysis, "shape_opt", TYPE_BOOL, false)){
-            this->do_shape_opt = analysis["shape_opt"].GetBool();
-        }
-        if(this->do_shape_opt){
-            logger::log_assert(!this->do_topopt, logger::ERROR, "topology optimization followed by shape optimization is currently not supported");
-            logger::log_assert(!this->generate_beams, logger::ERROR, "geometry generation followed by shape optimization is currently not supported");
-        }
+        logger::log_assert(this->do_meshing || 
+                           this->do_fea ||
+                           this->generate_beams || 
+                           this->do_topopt || 
+                           this->do_shape_opt || 
+                           this->do_simulation, 
+                    logger::ERROR, "No analysis type was set");        
     }
     if(this->generate_beams){
         logger::log_assert(this->type == utils::PROBLEM_TYPE_2D,
@@ -250,6 +263,9 @@ ProjectData::ProjectData(std::string project_file){
     }
     if(this->log_data(doc, "shape_opt", TYPE_OBJECT, this->do_shape_opt)){
         this->shopt_optimizer = this->load_shopt_optimizer(doc);
+    }
+    if(this->log_data(doc, "simulation", TYPE_OBJECT, this->do_simulation)){
+        this->simulator = this->load_simulation(doc["simulation"]);
     }
 
 
@@ -509,7 +525,6 @@ std::vector<std::unique_ptr<Material>> ProjectData::load_materials_field(const r
             }
 
             bool has_implant = this->log_data(mat, "implant", TYPE_OBJECT, false);
-            material::Mandible::ImplantRegion imp;
             if(has_implant){
                 const auto& impdata = mat["implant"];
                 this->log_data(impdata, "center1", TYPE_ARRAY, true);
@@ -533,10 +548,11 @@ std::vector<std::unique_ptr<Material>> ProjectData::load_materials_field(const r
                 for(size_t i = 0; i < coeffs.size(); ++i){
                     coeffs[i] = c[i].GetDouble();
                 }
-                imp = material::Mandible::ImplantRegion(center_1, center_2, r1, r2, coeffs, decay_distance);
+                auto imp(material::Mandible::ImplantRegion(center_1, center_2, r1, r2, coeffs, decay_distance));
+                material.emplace_back(new material::Mandible(name, o, i, path_points1, path_points2, C, has_implant, imp));
+            } else {
+                material.emplace_back(new material::Mandible(name, o, i, path_points1, path_points2, C, has_implant, material::Mandible::ImplantRegion()));
             }
-
-            material.emplace_back(new material::Mandible(name, o, i, path_points1, path_points2, C, has_implant, imp));
         }
     }
 
@@ -571,6 +587,10 @@ std::vector<std::unique_ptr<Geometry>> ProjectData::load_geometries(const rapidj
         bool with_void = ((alt_size > 0) ? false : true) && do_topopt;
         if(this->log_data(geom, "with_void", TYPE_BOOL, false) && alt_size > 0 && do_topopt){
             with_void = geom["with_void"].GetBool();
+        }
+        if(this->do_simulation){
+            do_topopt = false;
+            with_void = false;
         }
 
         geometry.emplace_back(new Geometry(absolute_path, scale, this->type, this->topopt_element.get(), do_topopt, with_void, id));
@@ -1590,6 +1610,80 @@ std::unique_ptr<shape_op::ShapeOp> ProjectData::get_shape_operations(const rapid
                     this->get_shape_operations(doc["shape1"]),
                     this->get_shape_operations(doc["shape2"])
                 );
+    }
+
+    return nullptr;
+}
+
+std::unique_ptr<Simulation> ProjectData::load_simulation(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc){
+    this->log_data(doc, "type", TYPE_STRING, true);
+    std::string type = doc["type"].GetString();
+    if(type == "marginal_bone_loss"){ 
+        this->log_data(doc, "time_step", TYPE_DOUBLE, true);
+        this->log_data(doc, "maximum_volume_variation", TYPE_DOUBLE, true);
+        this->log_data(doc, "time_limit", TYPE_DOUBLE, true);
+        this->log_data(doc, "maturation_rate", TYPE_DOUBLE, true);
+        this->log_data(doc, "pc", TYPE_DOUBLE, true);
+
+        this->log_data(doc, "mandible_geometry", TYPE_INT, true);
+
+        this->log_data(doc, "traction", TYPE_ARRAY, true);
+        this->log_data(doc, "compression", TYPE_ARRAY, true);
+        this->log_data(doc, "shear", TYPE_ARRAY, true);
+
+        this->log_data(doc, "a0", TYPE_ARRAY, true);
+        this->log_data(doc, "a1", TYPE_ARRAY, true);
+        this->log_data(doc, "a2", TYPE_ARRAY, true);
+        this->log_data(doc, "a3", TYPE_ARRAY, true);
+
+        double time_step = doc["time_step"].GetDouble();
+        double maximum_volume_variation = doc["maximum_volume_variation"].GetDouble();
+        double time_limit = doc["time_limit"].GetDouble();
+        double maturation_rate = doc["maturation_rate"].GetDouble();
+        double pc = doc["pc"].GetDouble();
+
+        size_t mandible_geometry = doc["mandible_geometry"].GetInt();
+
+        auto traction = doc["traction"].GetArray();
+        auto compression = doc["compression"].GetArray();
+        auto shear = doc["shear"].GetArray();
+        auto a0 = doc["a0"].GetArray();
+        auto a1 = doc["a1"].GetArray();
+        auto a2 = doc["a2"].GetArray();
+        auto a3 = doc["a3"].GetArray();
+
+        const size_t RANGE_NUM = simulation::MarginalBoneLoss::RANGE_NUM;
+
+        logger::log_assert(traction.Size() == RANGE_NUM, logger::ERROR, "\"traction\" item must have size {}.", RANGE_NUM);
+        logger::log_assert(compression.Size() == RANGE_NUM, logger::ERROR, "\"compression\" item must have size {}.", RANGE_NUM);
+        logger::log_assert(shear.Size() == RANGE_NUM, logger::ERROR, "\"shear\" item must have size {}.", RANGE_NUM);
+
+        simulation::MarginalBoneLoss::Range t;
+        simulation::MarginalBoneLoss::Range c;
+        simulation::MarginalBoneLoss::Range s;
+        for(size_t i = 0; i < RANGE_NUM; ++i){
+            t[i] = traction[i].GetDouble();
+            c[i] = compression[i].GetDouble();
+            s[i] = shear[i].GetDouble();
+        }
+
+        std::vector<double> a0v(a0.Size());
+        std::vector<double> a1v(a1.Size());
+        std::vector<double> a2v(a2.Size());
+        std::vector<double> a3v(a3.Size());
+
+        const auto load_poly = [&](std::vector<double>& a, decltype(a0) array){
+            for(size_t i = 0; i < array.Size(); ++i){
+                a[i] = array[i].GetDouble();
+            }
+        };
+
+        load_poly(a0v, a0);
+        load_poly(a1v, a1);
+        load_poly(a2v, a2);
+        load_poly(a3v, a3);
+
+        return std::make_unique<simulation::MarginalBoneLoss>(this->topopt_mesher.get(), this->topopt_fea.get(), this->geometries[mandible_geometry].get(), mandible_geometry, time_step, maximum_volume_variation, time_limit, maturation_rate, pc, t, c, s, a0v, a1v, a2v, a3v, this->type);
     }
 
     return nullptr;

@@ -44,6 +44,7 @@
 #include "field.hpp"
 #include "solver_manager.hpp"
 #include "sub_problem.hpp"
+#include "simulation.hpp"
 
 /**
  * Reads and stores project data.
@@ -78,8 +79,9 @@ class ProjectData {
     bool do_meshing = false;
     bool generate_beams = false;
     bool do_topopt = false;
-    bool do_fea = true;
+    bool do_fea = false;
     bool do_shape_opt = false;
+    bool do_simulation = false;
 
     double thickness;
     std::unique_ptr<Pathfinding> pathfinder;
@@ -101,6 +103,7 @@ class ProjectData {
     std::unique_ptr<Projection> projection;
     std::unique_ptr<DensityBasedOptimizer> topopt_optimizer;
     std::unique_ptr<NodeShapeBasedOptimizer> shopt_optimizer;
+    std::unique_ptr<Simulation> simulator;
     std::vector<std::unique_ptr<Field>> fields;
     std::vector<SubProblem> sub_problems;
     ContactData contact_data;
@@ -182,6 +185,8 @@ class ProjectData {
     CrossSection get_cross_section(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc) const;
 
     std::unique_ptr<shape_op::ShapeOp> get_shape_operations(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc) const;
+
+    std::unique_ptr<Simulation> load_simulation(const rapidjson::GenericValue<rapidjson::UTF8<>>& doc);
 };
 
 #endif

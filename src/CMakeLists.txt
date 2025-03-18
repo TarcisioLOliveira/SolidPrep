@@ -47,10 +47,12 @@ add_subdirectory(shape_element)
 add_subdirectory(field)
 add_subdirectory(nonlinear_solver)
 add_subdirectory(math)
+add_subdirectory(simulation)
 
 add_executable(${PROJECT_NAME} ${SOURCES})
 
 target_link_libraries(${PROJECT_NAME} PUBLIC
+    simulation
     math
     sizing
     pathfinding 

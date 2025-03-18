@@ -105,7 +105,30 @@ int main(int argc, char* argv[]){
     std::vector<MeshElement*> elems;
     std::vector<double> loads;
     auto stop_mesh = std::chrono::high_resolution_clock::now();
-    if(proj->do_fea && !proj->do_topopt && !proj->do_shape_opt){
+    if(proj->do_simulation){
+        if(mpi_id == 0){
+            // Display progress
+            v->load_mesh(proj->topopt_mesher.get(), proj->type);
+
+            proj->simulator->initialize_views(v.get());
+            for(auto& f:proj->fields){
+                f->initialize_views(v.get());
+            }
+            for(auto& f:proj->fields){
+                f->display_views();
+            }
+        }
+
+        proj->simulator->initialize();
+        proj->simulator->run();
+
+        if(mpi_id == 0){
+
+            v->wait();
+
+            v->end();
+        }
+    } else if(proj->do_fea && !proj->do_topopt && !proj->do_shape_opt){
 
         // Finite element analysis
         auto start_fea = std::chrono::high_resolution_clock::now();
