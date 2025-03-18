@@ -88,7 +88,7 @@ class Geometry{
     }
 
     TopoDS_Shape shape;
-    const MultiMaterial& materials = this->M;
+    MultiMaterial& materials = this->M;
     const MeshElementFactory* const element_type;
     const bool do_topopt;
     const bool with_void;
