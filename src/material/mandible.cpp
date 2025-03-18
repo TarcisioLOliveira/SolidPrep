@@ -291,7 +291,7 @@ Mandible::ImplantRegion::ImplantRegion(const gp_Pnt& center_1, const gp_Pnt& cen
     center_1(center_1), center_2(center_2), r1(r1), r2(r2),
     normal(gp_Vec(center_1, center_2)),
     decay_distance(dl), min_str(a[0]),
-    a(a), a_len(a.size()),
+    a(a), a_orig(a), a_len(a.size()),
     max_l(center_1.Distance(center_2)){
     
 }
@@ -347,6 +347,13 @@ double Mandible::ImplantRegion::get_implant_multiplier(const gp_Pnt& p) const{
         }
     }
     return 1;
+}
+
+void Mandible::ImplantRegion::set_maturation_alpha(double alpha){
+    this->a[0] = alpha*1.0 + (1 - alpha)*this->a_orig[0];
+    for(size_t i = 1; i < this->a_len; ++i){
+        this->a[i] = (1 - alpha)*this->a_orig[i];
+    }
 }
 
 }

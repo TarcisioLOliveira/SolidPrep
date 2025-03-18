@@ -33,6 +33,7 @@ class Mandible : public Material{
         ImplantRegion(const gp_Pnt& center_1, const gp_Pnt& center_2, double r1, double r2, const std::vector<double>& a, double dl);
 
         double get_implant_multiplier(const gp_Pnt& p) const;
+        void set_maturation_alpha(double alpha);
 
         private:
         inline double f(const double x) const{
@@ -51,9 +52,9 @@ class Mandible : public Material{
         double decay_distance;
         double min_str;
         std::vector<double> a;
+        const std::vector<double> a_orig;
         size_t a_len;
         double max_l;
-
     };
 
     Mandible(const std::string& name, Material* outer, Material* inner, const std::string& path_points1, const std::string& path_points2, double C, bool with_implant = false, ImplantRegion imp = ImplantRegion());
@@ -79,6 +80,10 @@ class Mandible : public Material{
     virtual std::vector<double> get_max_stresses(gp_Dir d) const override{
         (void)d;
         return std::vector<double>{};
+    }
+
+    inline void set_maturation_alpha(double alpha){
+        this->implant.set_maturation_alpha(alpha);
     }
 
     private:
