@@ -43,7 +43,6 @@ add_subdirectory(general_global_matrix)
 add_subdirectory(general_solver)
 add_subdirectory(boundary_element)
 add_subdirectory(contact_element)
-add_subdirectory(shape_element)
 add_subdirectory(field)
 add_subdirectory(nonlinear_solver)
 add_subdirectory(math)
@@ -62,7 +61,6 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
     element
     boundary_element
     contact_element
-    shape_element
     material
     field
     density_filter

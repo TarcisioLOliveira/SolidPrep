@@ -184,7 +184,6 @@ class ShapeHandler{
     std::map<MeshElement*, std::vector<size_t>> elem_to_affected_node_mapping;
 
     std::vector<AffectedNode> optimized_nodes;
-    std::vector<std::unique_ptr<ShapeMeshElement>> shape_elements;
     std::vector<BoundaryElement*> boundary_elements;
     std::vector<Node*> domain_nodes;
     // Full boundary except for boundary conditions

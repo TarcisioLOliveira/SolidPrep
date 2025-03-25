@@ -195,15 +195,12 @@ void ShapeHandler::obtain_affected_nodes(){
     std::sort(this->boundary_elements.begin(), this->boundary_elements.end(), bcomp);
 
     // Generate shape elements (currently unused)
-    const auto elem_maker = this->mesh->elem_info->get_shape_element_info();
-    this->shape_elements.reserve(this->boundary_elements.size());
     std::vector<MeshNode*> nodes(bnode_num);
     for(size_t i = 0; i < bnode_num; ++i){
         nodes[i] = this->mesh->node_list[this->boundary_elements[0]->nodes[i]->id].get();
     }
     this->bound_to_shape_mapping[0] = 0;
     ElementShape es{std::move(nodes), this->boundary_elements[0]->normal};
-    this->shape_elements.emplace_back(elem_maker->make_element(std::move(es)));
 
     size_t shape_id = 1;
     for(size_t j = 1; j < this->boundary_elements.size(); ++j){
@@ -220,7 +217,6 @@ void ShapeHandler::obtain_affected_nodes(){
         }
         this->bound_to_shape_mapping[j] = shape_id;
         ElementShape es{std::move(nodes), this->boundary_elements[j]->normal};
-        this->shape_elements.emplace_back(elem_maker->make_element(std::move(es)));
         ++shape_id;
     }
 

@@ -702,36 +702,4 @@ class ContactMeshElement : public Element{
         {}
 };
 
-class ShapeMeshElement : public Element{
-    public:
-    virtual ~ShapeMeshElement() = default;
-
-    virtual math::Vector shape_flow(const BoundaryElement* e, const math::Vector& f) const = 0;
-
-    virtual double get_area() const = 0;
-
-    /**
-     * Calculates the centroid of the element.
-     *
-     * @return The centroid.
-     */
-    virtual gp_Pnt get_centroid() const = 0;
-    /**
-     * Calculates the normal of the element.
-     *
-     * @return The normal.
-     */
-    virtual gp_Dir get_normal() const = 0;
-
-    protected:
-    /**
-     * Creates an element with the specified nodes.
-     *
-     * @param nodes List of nodes.
-     */
-    ShapeMeshElement(const std::vector<MeshNode*>& nodes):
-        Element(std::vector<Node*>(nodes.begin(), nodes.end()))
-        {}
-};
-
 #endif
