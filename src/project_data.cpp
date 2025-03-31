@@ -181,7 +181,6 @@ ProjectData::ProjectData(std::string project_file){
         this->log_data(doc["mesher"], "element_type", TYPE_STRING, true);
         if(this->do_meshing){
             this->topopt_element = this->get_element_type(doc["mesher"]["element_type"].GetString());
-            this->topopt_boundary_element = this->topopt_element->get_boundary_element_info();
         } else {
             std::string absolute_path = this->folder_path;
             std::string mesh_path = doc["mesher"]["file_path"].GetString();
@@ -193,7 +192,6 @@ ProjectData::ProjectData(std::string project_file){
             file.close();
 
             this->topopt_element = this->get_element_type(this->element_name);
-            this->topopt_boundary_element = this->topopt_element->get_boundary_element_info();
         }
     }
     if(this->log_data(doc, "geometry", TYPE_ARRAY, true)){
@@ -1458,7 +1456,7 @@ std::vector<InternalLoads> ProjectData::get_internal_loads(const rapidjson::Gene
         Material* mat(it->get());
 
         auto S = this->get_cross_section(f);
-        internal_loads.emplace_back(S, this->thickness, nv, vv, wv, mat, F, M, this->topopt_element.get(), this->topopt_boundary_element.get(), this->type);
+        internal_loads.emplace_back(S, this->thickness, nv, vv, wv, mat, F, M, this->topopt_element.get(), this->type);
     }
     return internal_loads;
 }

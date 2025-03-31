@@ -38,7 +38,7 @@ class InternalLoads{
     // ASSUMES CROSS SECTION IS PLANE
     // ASSUMES this->normal == this->S.normal
 
-    InternalLoads(CrossSection cross_section, double thickness, gp_Dir normal, gp_Dir v, gp_Dir w, Material* mat, std::array<double, 3> F, std::array<double, 3> M, MeshElementFactory* elem, BoundaryMeshElementFactory* bound_elem, utils::ProblemType type);
+    InternalLoads(CrossSection cross_section, double thickness, gp_Dir normal, gp_Dir v, gp_Dir w, Material* mat, std::array<double, 3> F, std::array<double, 3> M, MeshElementFactory* elem, utils::ProblemType type);
     InternalLoads(InternalLoads&&) = default;
 
     inline void clear_curvature_data(){
@@ -63,7 +63,6 @@ class InternalLoads{
     const Material* mat;
     const gp_Dir normal;
     const MeshElementFactory* elem_info;
-    BoundaryMeshElementFactory* boundary_elem_info;
     std::vector<const BoundaryElement*> submesh;
     std::unique_ptr<Curvature> curvature;
 
