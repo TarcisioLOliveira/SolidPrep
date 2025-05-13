@@ -47,10 +47,12 @@ add_subdirectory(field)
 add_subdirectory(nonlinear_solver)
 add_subdirectory(math)
 add_subdirectory(simulation)
+add_subdirectory(project_specification)
 
 add_executable(${PROJECT_NAME} ${SOURCES})
 
 target_link_libraries(${PROJECT_NAME} PUBLIC
+    project_specification
     simulation
     math
     sizing
@@ -87,6 +89,7 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
     Eigen3::Eigen
     Threads::Threads
     ${GSL_LIBRARIES}
+    jsoncpp_lib
 )
 
 if(OpenMP_CXX_FOUND)

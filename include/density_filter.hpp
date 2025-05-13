@@ -28,6 +28,9 @@
 
 class DensityFilter{
     public:
+    static std::string get_name(){
+        return "density_filter";
+    }
     virtual ~DensityFilter() = default;
 
     enum class FilterGradient{

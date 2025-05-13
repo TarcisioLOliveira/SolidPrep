@@ -30,7 +30,7 @@ inline math::Matrix Lek_rot3D(math::Matrix L, math::Matrix R){
     return L*R;
 }
 
-InternalLoads::InternalLoads(CrossSection cross_section, double thickness, gp_Dir normal, gp_Dir v, gp_Dir w, Material* mat, std::array<double, 3> F, std::array<double, 3> M, MeshElementFactory* elem, utils::ProblemType type):
+InternalLoads::InternalLoads(CrossSection cross_section, double thickness, gp_Dir normal, gp_Dir v, gp_Dir w, utils::DelayedPointerView<Material> mat, std::array<double, 3> F, std::array<double, 3> M, MeshElementFactory* elem, utils::ProblemType type):
     S(std::move(cross_section)), 
     A(S.get_area()),
     thickness(thickness),
@@ -56,7 +56,7 @@ InternalLoads::InternalLoads(CrossSection cross_section, double thickness, gp_Di
 
 void InternalLoads::calculate_curvature(std::vector<BoundaryElement>& boundary_elements){
     auto boundary_elem_info = this->elem_info->get_boundary_element_info();
-    this->curvature = std::make_unique<Curvature>(mat, rot2D, rot3D, boundary_elem_info.get(), F[0], F[1], F[2], M[0], M[1], M[2]);
+    this->curvature = std::make_unique<Curvature>(mat.get(), rot2D, rot3D, boundary_elem_info.get(), F[0], F[1], F[2], M[0], M[1], M[2]);
     this->generate_mesh(boundary_elements);
     this->curvature->generate_curvature_3D(this->boundary_nodes, this->boundary_mesh, this->phi_size, this->boundary_nodes.size());
 

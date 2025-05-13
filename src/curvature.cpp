@@ -355,18 +355,6 @@ math::Matrix Curvature::get_S_3D(const MeshElement* const e, const gp_Pnt& p) co
 
     return S;
 }
-math::Matrix Curvature::get_B_3D(const MeshElement* const e, const gp_Pnt& p) const{
-    const auto S = this->get_S_3D(e, p);
-    math::Matrix B;
-
-    for(size_t i = 0; i < 6; ++i){
-        for(size_t j = 0; j < 6; ++j){
-            B(i,j) = S(i,j) - S(i,2)*S(j,2)/S(2,2);
-        }
-    }
-
-    return B;
-}
 math::Matrix Curvature::get_D_3D(const MeshElement* const e, const gp_Pnt& p) const{
     auto D = this->mat->stiffness_3D(e, p);
     this->mat->rotate_D(D, this->permute_and_rotate_3D);
@@ -374,41 +362,6 @@ math::Matrix Curvature::get_D_3D(const MeshElement* const e, const gp_Pnt& p) co
     return D;
 }
     
-void Curvature::get_B_tensors_3D(const MeshElement* const e, const gp_Pnt& p, math::Matrix& B4, math::Matrix& B3, math::Matrix& B2) const{
-    const auto B = this->get_B_3D(e, p);
-
-    B4 = math::Matrix(
-         { B(1,1),  B(0,1), -B(1,5),
-           B(0,1),  B(0,0), -B(0,5),
-          -B(1,5), -B(0,5),  B(5,5)}, 3, 3);
-
-    B3 = math::Matrix(
-         {-B(1,3),  B(1,4),
-          -B(0,3),  B(0,4),
-           B(3,5), -B(4,5)}, 3, 2);
-
-    B2 = math::Matrix(
-         { B(3,3), -B(3,4),
-          -B(3,4),  B(4,4)}, 2, 2);
-}
-
-math::Matrix Curvature::get_T_3D(const math::Matrix& S) const{
-    return math::Matrix(
-        {
-            1, 0, 0, 0, 0, 0,
-            0, 1, 0, 0, 0, 0,
-            -S(0,2)/S(2,2), -S(1,2)/S(2,2), 1.0/S(2,2), -S(3,2)/S(2,2), -S(4,2)/S(2,2), -S(5,2)/S(2,2),
-            0, 0, 0, 1, 0, 0,
-            0, 0, 0, 0, 1, 0,
-            0, 0, 0, 0, 0, 1
-        }, 6, 6);
-}
-math::Matrix Curvature::get_TST_3D(const math::Matrix& S) const{
-    const auto T = this->get_T_3D(S);
-    const auto TST = T.T()*S*T;
-
-    return TST;
-}
 
 math::Matrix Curvature::get_T_D_3D(const math::Matrix& S, const math::Matrix& D) const{
     return math::Matrix(

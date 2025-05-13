@@ -40,6 +40,9 @@ class Function {
 
 class DensityBasedFunction : public Function {
     public:
+    static std::string get_name(){
+        return "density_based_function";
+    }
     virtual ~DensityBasedFunction() = default;
 
     virtual void initialize(const DensityBasedOptimizer* const op){(void)op;}
@@ -71,6 +74,9 @@ class DensityBasedFunction : public Function {
 
 class NodeShapeBasedFunction : public Function {
     public:
+    static std::string get_name(){
+        return "node_shape_based_function";
+    }
     virtual ~NodeShapeBasedFunction() = default;
 
     virtual void initialize(const NodeShapeBasedOptimizer* const op){(void)op;}

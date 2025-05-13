@@ -19,19 +19,14 @@
  */
 
 #include "element/TRI3.hpp"
-#include "cblas.h"
 #include "math/matrix.hpp"
 #include "utils.hpp"
-#include <BRepBuilderAPI_MakeVertex.hxx>
-#include <BRepBuilderAPI_MakeEdge.hxx>
-#include <BRepBuilderAPI_MakeWire.hxx>
-#include <BRepBuilderAPI_MakeFace.hxx>
-#include <TopoDS_Wire.hxx>
-#include <TopoDS_Face.hxx>
-#include <TopoDS.hxx>
-#include <IntTools_EdgeEdge.hxx>
+#include "project_specification/registry.hpp"
 
 namespace element{
+
+const bool TRI3::reg = projspec::ElementRegistry::add("TRI3",
+    std::make_unique<MeshElementFactoryImpl<TRI3>>());
 
 TRI3::TRI3(ElementShape s):
     MeshElementCommon2DTri<TRI3>(s.nodes){

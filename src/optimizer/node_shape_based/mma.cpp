@@ -26,9 +26,22 @@
 
 namespace optimizer::node_shape_based{
 
-MMA::MMA(ShapeHandler sh, ProjectData* data, std::vector<std::unique_ptr<NodeShapeBasedFunction>> objective, std::vector<double> objective_weights, std::vector<NodeShapeBasedConstraint> constraints, double asyminit, double asymdec, double asyminc, double minfac, double maxfac, double c, double xtol_abs, double ftol_rel, bool save):
-    NodeShapeBasedOptimizer(std::move(sh)), data(data), xtol_abs(xtol_abs), ftol_rel(ftol_rel), asyminit(asyminit), asymdec(asymdec), asyminc(asyminc), minfac(minfac), maxfac(maxfac), c(c), save_result(save), objective(std::move(objective)), objective_weights(std::move(objective_weights)), constraints(std::move(constraints)), viz(nullptr)
-    {}
+MMA::MMA(const projspec::DataMap& data):
+    NodeShapeBasedOptimizer(std::move(data.proj->shape_handler)),
+    data(data.proj),
+    xtol_abs(data.get_double("xtol_abs", 1e-10)),
+    ftol_rel(data.get_double("ftol_rel", 1e-10)),
+    asyminit(data.get_double("asyminit")),
+    asymdec (data.get_double("asymdec")),
+    asyminc (data.get_double("asyminc")),
+    minfac  (data.get_double("minfac")),
+    maxfac  (data.get_double("maxfac")),
+    c(data.get_double("c")),
+    save_result(data.get_bool("save_result", false)),
+    viz(nullptr)
+{
+
+}
 
 void MMA::initialize_views(Visualization* viz){
     this->viz = viz;
@@ -255,5 +268,26 @@ TopoDS_Shape MMA::optimize(SolverManager* fem, Meshing* mesh){
 
     return TopoDS_Shape();
 }
+
+using namespace projspec;
+const bool MMA::reg = Factory<NodeShapeBasedOptimizer>::add(
+    [](const DataMap& data){
+        return std::make_unique<MMA>(data);
+    },
+    ObjectRequirements{
+        "mma",
+        {
+            DataEntry{.name = "xtol_abs", .type = TYPE_DOUBLE, .required = false},
+            DataEntry{.name = "ftol_rel", .type = TYPE_DOUBLE, .required = false},
+            DataEntry{.name = "save_result", .type = TYPE_BOOL, .required = false},
+            DataEntry{.name = "asyminit", .type = TYPE_DOUBLE, .required = true},
+            DataEntry{.name = "asymdec", .type = TYPE_DOUBLE, .required = true},
+            DataEntry{.name = "asyminc", .type = TYPE_DOUBLE, .required = true},
+            DataEntry{.name = "minfac", .type = TYPE_DOUBLE, .required = true},
+            DataEntry{.name = "maxfac", .type = TYPE_DOUBLE, .required = true},
+            DataEntry{.name = "c", .type = TYPE_DOUBLE, .required = true},
+        }
+    }
+);
 
 }

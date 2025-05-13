@@ -84,6 +84,7 @@ class H8 : public MeshElementCommon3DHex<H8>{
     }
 
     private:
+    static const bool reg;
     virtual math::Matrix get_Nf(const double t, const std::vector<gp_Pnt>& points) const override;
 
     inline double N_norm(double x, double y, double z, size_t i) const{

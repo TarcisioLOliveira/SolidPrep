@@ -35,10 +35,10 @@
 Constraint::Constraint(std::vector<Type> types, std::vector<double> bounds):
     types(std::move(types)), bounds(std::move(bounds)){}
 
-DensityBasedConstraint::DensityBasedConstraint(std::unique_ptr<DensityBasedFunction> fun, std::vector<Type> types, std::vector<double> bounds):
+DensityBasedConstraint::DensityBasedConstraint(std::unique_ptr<FunctionType> fun, std::vector<Type> types, std::vector<double> bounds):
     Constraint(std::move(types), std::move(bounds)), fun(std::move(fun)){}
 
-NodeShapeBasedConstraint::NodeShapeBasedConstraint(std::unique_ptr<NodeShapeBasedFunction> fun, std::vector<Type> types, std::vector<double> bounds):
+NodeShapeBasedConstraint::NodeShapeBasedConstraint(std::unique_ptr<FunctionType> fun, std::vector<Type> types, std::vector<double> bounds):
     Constraint(std::move(types), std::move(bounds)), fun(std::move(fun)){}
 
 void Optimizer::initialize_optimizer(const Meshing* const mesh){

@@ -24,20 +24,27 @@
 #include "finite_element/petsc_pcg.hpp"
 #include "math/matrix.hpp"
 #include "logger.hpp"
+#include "project_data.hpp"
 
 namespace finite_element{
 
-PETScPCG::PETScPCG(ContactType contact_type, double rtol_abs, double max_step, double EPS_DISPL, PETScBackend backend):
-    FiniteElement(contact_type, rtol_abs, max_step), gsm(nullptr){
-    switch(backend){
-        case PETScBackend::CPU:
-            this->vec_type = VECSTANDARD;
-            this->gsm = std::make_unique<global_stiffness_matrix::PETScSparseSymmetricCPU>(EPS_DISPL);
-            break;
-        case PETScBackend::CUDA:
-            this->vec_type = VECCUDA;
-            this->gsm = std::make_unique<global_stiffness_matrix::PETScSparseSymmetricCUDA>(EPS_DISPL);
-            break;
+PETScPCG::PETScPCG(const projspec::DataMap& data):
+    FiniteElement(
+        data.proj->contact_data.contact_type,
+        data.proj->contact_data.rtol_abs,
+        data.proj->contact_data.max_step),
+    gsm(nullptr)
+{
+    const auto EPS_DISPL = data.proj->contact_data.EPS_DISPL;
+    const std::string backend(data.get_string("backend"));
+    if(backend == "cpu"){
+        this->vec_type = VECSTANDARD;
+        this->gsm = std::make_unique<global_stiffness_matrix::PETScSparseSymmetricCPU>(EPS_DISPL);
+    } else if(backend == "cuda"){
+        this->vec_type = VECCUDA;
+        this->gsm = std::make_unique<global_stiffness_matrix::PETScSparseSymmetricCUDA>(EPS_DISPL);
+    } else {
+        logger::log_assert(false, logger::ERROR, "undefined PETSc backend: {}", backend);
     }
     this->set_global_matrix(this->gsm.get());
 }
@@ -209,5 +216,18 @@ void PETScPCG::reset_hessian(){
     this->gsm->reset_hessian();
     this->setup = false;
 }
+
+using namespace projspec;
+const bool PETScPCG::reg = Factory<FiniteElement>::add(
+    [](const DataMap& data){
+        return std::make_unique<PETScPCG>(data);
+    },
+    ObjectRequirements{
+        "petsc_pcg",
+        {
+            DataEntry{.name = "backend", .type = TYPE_STRING, .required = true}
+        }
+    }
+);
 
 }

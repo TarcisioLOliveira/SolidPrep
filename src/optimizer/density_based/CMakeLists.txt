@@ -5,4 +5,4 @@ set(SOURCES_DENSITY_BASED_OPTIMIZER
     newton.cpp
 )
 
-add_library(density_based_optimizer ${SOURCES_DENSITY_BASED_OPTIMIZER})
+add_library(density_based_optimizer OBJECT ${SOURCES_DENSITY_BASED_OPTIMIZER})

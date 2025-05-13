@@ -23,11 +23,18 @@
 #include "logger.hpp"
 #include "math/matrix.hpp"
 #include "optimizer.hpp"
+#include "project_specification/data_map.hpp"
+#include "project_data.hpp"
 
 namespace function::node_shape_based{
 
 GlobalStressHeaviside::GlobalStressHeaviside(const Meshing* const mesh, SolverManager* fem, double max_stress, double C):
     mesh(mesh), fem(fem), max_stress(max_stress), C(C){}
+GlobalStressHeaviside::GlobalStressHeaviside(const projspec::DataMap& data):
+    mesh(data.proj->topopt_mesher.get()),
+    fem(data.proj->topopt_fea.get()),
+    max_stress(data.get_double("max_stress")),
+    C(data.get_double("C")){}
 
 double GlobalStressHeaviside::calculate(const NodeShapeBasedOptimizer* const op, const std::vector<double>& u){
     (void) op;
@@ -124,5 +131,19 @@ double GlobalStressHeaviside::calculate_with_gradient(const NodeShapeBasedOptimi
 
     return result;
 }
+
+using namespace projspec;
+const bool GlobalStressHeaviside::reg = Factory<NodeShapeBasedFunction>::add(
+    [](const DataMap& data){
+        return std::make_unique<GlobalStressHeaviside>(data);
+    },
+    ObjectRequirements{
+        "global_stress_heaviside",
+        {
+            DataEntry{.name = "max_stress", .type = TYPE_DOUBLE, .required = true},
+            DataEntry{.name = "C", .type = TYPE_DOUBLE, .required = true}
+        }
+    }
+);
 
 }

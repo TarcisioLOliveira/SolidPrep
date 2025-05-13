@@ -85,11 +85,7 @@ class Curvature{
     void GS_quad(const MeshElement* const e, const std::array<gp_Pnt, 4>& p, const std::array<gp_Pnt, 4>& px, const std::vector<std::function<double(const math::Matrix& S, const gp_Pnt& px)>>& fn, math::Vector& result) const;
 
     math::Matrix get_S_3D(const MeshElement* const e, const gp_Pnt& p) const;
-    math::Matrix get_B_3D(const MeshElement* const e, const gp_Pnt& p) const;
     math::Matrix get_D_3D(const MeshElement* const e, const gp_Pnt& p) const;
-
-    math::Matrix get_T_3D(const math::Matrix& S) const;
-    math::Matrix get_TST_3D(const math::Matrix& S) const;
 
     math::Matrix get_T_D_3D(const math::Matrix& S, const math::Matrix& D) const;
     math::Matrix get_DT_3D(const math::Matrix& S, const math::Matrix& D) const;

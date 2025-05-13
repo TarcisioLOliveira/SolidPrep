@@ -48,9 +48,9 @@
 
 namespace sizing{
 
-BeamSizing::BeamSizing(ProjectData* data, BeamElementFactory::BeamElementType t):
-    Sizing(data), type(t){
-
+BeamSizing::BeamSizing(const projspec::DataMap& data):
+    Sizing(data.proj),
+    type(BeamElementFactory::BEAM_LINEAR_2D){
 }
 
 TopoDS_Shape BeamSizing::run(){
@@ -132,5 +132,17 @@ TopoDS_Shape BeamSizing::run(){
 
     return TopoDS_Shape();
 }
+
+using namespace projspec;
+const bool BeamSizing::reg = Factory<Sizing>::add(
+    [](const DataMap& data){
+        return std::make_unique<BeamSizing>(data);
+    },
+    ObjectRequirements{
+        "beam_sizing",
+        {
+        }
+    }
+);
 
 }

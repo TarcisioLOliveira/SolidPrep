@@ -5,5 +5,5 @@ set(SOURCES_FIELD
     principal_stress.cpp
 )
 
-add_library(field ${SOURCES_FIELD})
+add_library(field OBJECT ${SOURCES_FIELD})
 

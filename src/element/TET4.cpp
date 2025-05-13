@@ -21,20 +21,14 @@
 #include "element/TET4.hpp"
 #include "boundary_element/BTRI3.hpp"
 #include "contact_element/CTRI3.hpp"
-#include "cblas.h"
 #include "math/matrix.hpp"
 #include "utils/gauss_legendre.hpp"
-#include <BRepBuilderAPI_MakeVertex.hxx>
-#include <BRepBuilderAPI_MakeEdge.hxx>
-#include <BRepBuilderAPI_MakeWire.hxx>
-#include <BRepBuilderAPI_MakeFace.hxx>
-#include <TopoDS_Wire.hxx>
-#include <TopoDS_Face.hxx>
-#include <TopoDS.hxx>
-#include <IntTools_EdgeEdge.hxx>
-#include <lapacke.h>
+#include "project_specification/registry.hpp"
 
 namespace element{
+
+const bool TET4::reg = projspec::ElementRegistry::add("TET4",
+    std::make_unique<MeshElementFactoryImpl<TET4>>());
 
 TET4::TET4(ElementShape s):
     MeshElementCommon3DTet<TET4>(s.nodes), C(NODES_PER_ELEM, NODES_PER_ELEM){

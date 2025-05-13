@@ -21,10 +21,17 @@
 #include <cmath>
 #include "logger.hpp"
 #include "projection/heaviside.hpp"
+#include "project_data.hpp"
 
 namespace projection{
+
 Heaviside::Heaviside(Parameter beta, double eta):
     beta(std::move(beta)), eta(eta){}
+Heaviside::Heaviside(const projspec::DataMap& data):
+    beta(data.proj->projection_parameters),
+    eta(data.get_double("eta")){
+
+}
 
 void Heaviside::update(const size_t iteration){
     if(iteration > 0 && iteration % beta.iteration_step == 0 && beta.value < beta.final_value){
@@ -52,5 +59,18 @@ void Heaviside::project_gradient(std::vector<double>& new_df, const std::vector<
         df *= ds;
     }
 }
+
+using namespace projspec;
+const bool Heaviside::reg = Factory<Projection>::add(
+    [](const DataMap& data){
+        return std::make_unique<Heaviside>(data);
+    },
+    ObjectRequirements{
+        "heaviside",
+        {
+            DataEntry{.name = "eta", .type = TYPE_DOUBLE, .required = true}
+        }
+    }
+);
 
 }

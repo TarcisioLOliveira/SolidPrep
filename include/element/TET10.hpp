@@ -65,6 +65,7 @@ class TET10 : public MeshElementCommon3DTet<TET10>{
     }
 
     private:
+    static const bool reg;
     virtual math::Matrix get_Nf(const double t, const std::vector<gp_Pnt>& points) const override;
 
     inline gp_Pnt GL_point(double c1, double c2, double c3, double c4) const{

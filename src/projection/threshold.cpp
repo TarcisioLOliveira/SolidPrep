@@ -21,10 +21,17 @@
 #include <cmath>
 #include "logger.hpp"
 #include "projection/threshold.hpp"
+#include "project_data.hpp"
 
 namespace projection{
+
 Threshold::Threshold(Parameter beta, double eta):
     beta(std::move(beta)), eta(eta){}
+Threshold::Threshold(const projspec::DataMap& data):
+    beta(data.proj->projection_parameters),
+    eta(data.get_double("eta")){
+
+}
 
 void Threshold::update(const size_t iteration){
     if(iteration > 0 && iteration % beta.iteration_step == 0 && beta.value < beta.final_value){
@@ -51,5 +58,18 @@ void Threshold::project_gradient(std::vector<double>& new_df, const std::vector<
         df *= ((1-t*t)*b)/(std::tanh(b*eta) + std::tanh(b*(1.0-eta)));
     }
 }
+
+using namespace projspec;
+const bool Threshold::reg = Factory<Projection>::add(
+    [](const DataMap& data){
+        return std::make_unique<Threshold>(data);
+    },
+    ObjectRequirements{
+        "threshold",
+        {
+            DataEntry{.name = "eta", .type = TYPE_DOUBLE, .required = true}
+        }
+    }
+);
 
 }

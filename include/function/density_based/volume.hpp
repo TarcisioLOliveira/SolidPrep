@@ -23,12 +23,13 @@
 
 #include "function.hpp"
 #include "meshing.hpp"
+#include "project_specification/data_map.hpp"
 
 namespace function::density_based{
 
 class Volume : public DensityBasedFunction{
     public:
-    Volume(const Meshing* const mesh);
+    Volume(const projspec::DataMap& data);
 
     virtual ~Volume() = default;
 
@@ -37,6 +38,7 @@ class Volume : public DensityBasedFunction{
     virtual double calculate_with_gradient(const DensityBasedOptimizer* const op, const std::vector<double>& u, const std::vector<double>& x, std::vector<double>& grad) override;
 
     private:
+    static const bool reg;
     const Meshing* const mesh;
     double max_V;
 };

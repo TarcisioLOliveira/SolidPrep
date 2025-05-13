@@ -1,5 +1,5 @@
 /*
- *   Copyright (C) 2022 Tarcísio Ladeia de Oliveira.
+ *   Copyright (C) 2025 Tarcísio Ladeia de Oliveira.
  *
  *   This file is part of SolidPrep
  *
@@ -18,37 +18,22 @@
  *
  */
 
-#include "projection/none.hpp"
-#include "project_specification/registry.hpp"
+#include "project_specification/data_map.hpp"
 
-namespace projection{
+namespace projspec{
 
-None::None(const projspec::DataMap& data){
-    (void)data;
-}
+DataMap* DataArray::get_object(size_t key, DataMap* none) const{
+    static DataMap empty_map(nullptr);
 
-void None::update(const size_t iteration){
-    (void)iteration;
-}
-
-void None::project_densities(std::vector<double>& new_x) const{
-    (void)new_x;
-}
-
-void None::project_gradient(std::vector<double>& new_df, const std::vector<double>& new_x) const{
-    (void)new_df;
-    (void)new_x;
-}
-
-using namespace projspec;
-const bool None::reg = Factory<Projection>::add(
-    [](const DataMap& data){
-        return std::make_unique<None>(data);
-    },
-    ObjectRequirements{
-        "none",
-        {}
+    if(none == nullptr){
+        none = &empty_map;
     }
-);
+    auto found = this->object_map.find(key);
+    if(found != this->object_map.end()){
+        return found->second.get();
+    } else {
+        return none;
+    }
+}
 
 }

@@ -23,6 +23,7 @@
 
 #include "function.hpp"
 #include "meshing.hpp"
+#include "project_specification/data_map.hpp"
 #include "solver_manager.hpp"
 
 namespace function::node_shape_based{
@@ -30,6 +31,7 @@ namespace function::node_shape_based{
 class GlobalStressHeaviside : public NodeShapeBasedFunction{
     public:
     GlobalStressHeaviside(const Meshing* const mesh, SolverManager* fem, double max_stress, double C);
+    GlobalStressHeaviside(const projspec::DataMap& data);
 
     virtual ~GlobalStressHeaviside() = default;
 
@@ -37,6 +39,7 @@ class GlobalStressHeaviside : public NodeShapeBasedFunction{
     virtual double calculate_with_gradient(const NodeShapeBasedOptimizer* const op, const std::vector<double>& u, std::vector<double>& grad) override;
 
     private:
+    static const bool reg;
     const Meshing* const mesh;
     SolverManager* fem;
     const double max_stress;

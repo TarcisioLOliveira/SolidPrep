@@ -23,12 +23,13 @@
 
 #include "function.hpp"
 #include "meshing.hpp"
+#include "project_specification/data_map.hpp"
 
 namespace function::density_based{
 
 class MassFirstMaterial : public DensityBasedFunction{
     public:
-    MassFirstMaterial(const Meshing* const mesh);
+    MassFirstMaterial(const projspec::DataMap& data);
 
     virtual ~MassFirstMaterial() = default;
 
@@ -37,6 +38,7 @@ class MassFirstMaterial : public DensityBasedFunction{
     virtual double calculate_with_gradient(const DensityBasedOptimizer* const op, const std::vector<double>& u, const std::vector<double>& x, std::vector<double>& grad) override;
 
     private:
+    static const bool reg;
     const Meshing* const mesh;
 };
 

@@ -28,9 +28,27 @@
 
 namespace optimizer::density_based{
 
-MMA::MMA(DensityFilter* filter, Projection* projection, ProjectData* data, std::vector<std::unique_ptr<DensityBasedFunction>> objective, std::vector<double> weights, std::vector<DensityBasedConstraint> constraints, double asyminit, double asymdec, double asyminc, double minfac, double maxfac, double c, double pc, double psi, double rho_init, double xtol_abs, double ftol_rel, double result_threshold, bool save):
-    data(data), rho_init(rho_init), xtol_abs(xtol_abs), ftol_rel(ftol_rel), pc(pc), psi(psi), result_threshold(result_threshold), asyminit(asyminit), asymdec(asymdec), asyminc(asyminc), minfac(minfac), maxfac(maxfac), c(c), save_result(save), objective(std::move(objective)), objective_weights(std::move(weights)), constraints(std::move(constraints)), filter(filter), projection(projection), viz(nullptr)
-    {}
+MMA::MMA(const projspec::DataMap& data):
+    data(data.proj),
+    rho_init(data.get_double("rho_init")),
+    xtol_abs(data.get_double("xtol_abs", 1e-10)),
+    ftol_rel(data.get_double("ftol_rel", 1e-10)),
+    pc (data.proj->topopt_penalization),
+    psi(data.proj->topopt_psi),
+    result_threshold(data.get_double("result_threshold", 0.5)),
+    asyminit(data.get_double("asyminit")),
+    asymdec (data.get_double("asymdec")),
+    asyminc (data.get_double("asyminc")),
+    minfac  (data.get_double("minfac")),
+    maxfac  (data.get_double("maxfac")),
+    c(data.get_double("c")),
+    save_result(data.get_bool("save_result", false)),
+    filter(data.proj->density_filter.get()),
+    projection(data.proj->projection.get()),
+    viz(nullptr)
+{
+
+}
 
 void MMA::initialize_views(Visualization* viz){
     this->viz = viz;
@@ -393,5 +411,28 @@ TopoDS_Shape MMA::optimize(SolverManager* fem, Meshing* mesh){
 
     return TopoDS_Shape();
 }
+
+using namespace projspec;
+const bool MMA::reg = Factory<DensityBasedOptimizer>::add(
+    [](const DataMap& data){
+        return std::make_unique<MMA>(data);
+    },
+    ObjectRequirements{
+        "mma",
+        {
+            DataEntry{.name = "rho_init", .type = TYPE_DOUBLE, .required = true},
+            DataEntry{.name = "xtol_abs", .type = TYPE_DOUBLE, .required = false},
+            DataEntry{.name = "ftol_rel", .type = TYPE_DOUBLE, .required = false},
+            DataEntry{.name = "result_threshold", .type = TYPE_DOUBLE, .required = false},
+            DataEntry{.name = "save_result", .type = TYPE_BOOL, .required = false},
+            DataEntry{.name = "asyminit", .type = TYPE_DOUBLE, .required = true},
+            DataEntry{.name = "asymdec", .type = TYPE_DOUBLE, .required = true},
+            DataEntry{.name = "asyminc", .type = TYPE_DOUBLE, .required = true},
+            DataEntry{.name = "minfac", .type = TYPE_DOUBLE, .required = true},
+            DataEntry{.name = "maxfac", .type = TYPE_DOUBLE, .required = true},
+            DataEntry{.name = "c", .type = TYPE_DOUBLE, .required = true},
+        }
+    }
+);
 
 }

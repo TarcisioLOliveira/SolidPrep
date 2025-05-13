@@ -27,6 +27,9 @@
 
 class Pathfinding{
     public:
+    static std::string get_name(){
+        return "pathfinding";
+    }
     virtual ~Pathfinding() = default;
 
     virtual std::vector<gp_Pnt> find_path(const CrossSection& begin, const CrossSection& end) = 0;

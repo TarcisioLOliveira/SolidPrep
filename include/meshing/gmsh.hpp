@@ -22,6 +22,7 @@
 #define GMSH_HPP
 
 #include "meshing.hpp"
+#include "project_specification/data_map.hpp"
 
 class ProjectData;
 
@@ -29,20 +30,18 @@ namespace meshing{
 
 class Gmsh : public Meshing{
     public:
-    Gmsh(const std::vector<std::unique_ptr<Geometry>>& geometries,
-         const MeshElementFactory* const elem_type,
-         const ProjectData* const proj_data,
-         double size, double thickness, double tmp_scale = 1, int algorithm2D = 6, int algorithm3D = 4);
+    Gmsh(const projspec::DataMap& data);
 
     virtual void mesh(const std::vector<Force>& forces, 
                       const std::vector<Support>& supports,
                       std::vector<Spring>& springs) override;
 
     private:
+    static const bool reg;
+    double tmp_scale;
     double size;
     int algorithm2D;
     int algorithm3D;
-    double tmp_scale;
 
     std::unordered_map<size_t, MeshNode*> gmsh_meshing(bool has_condition_inside, TopoDS_Shape sh, std::vector<size_t>& geom_elem_mapping, std::vector<size_t>& elem_node_tags, std::vector<size_t>& bound_elem_node_tags, const MeshElementFactory* const elem_type, std::unordered_map<size_t, size_t>& duplicate_map);
 };

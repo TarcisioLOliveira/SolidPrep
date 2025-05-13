@@ -6,4 +6,4 @@ set(SOURCES_DENSITY_FILTER
     averaging.cpp
 )
 
-add_library(density_filter ${SOURCES_DENSITY_FILTER})
+add_library(density_filter OBJECT ${SOURCES_DENSITY_FILTER})

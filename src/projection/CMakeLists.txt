@@ -6,4 +6,4 @@ set(SOURCES_PROJECTION
     heaviside.cpp
 )
 
-add_library(projection ${SOURCES_PROJECTION})
+add_library(projection OBJECT ${SOURCES_PROJECTION})

@@ -23,6 +23,7 @@
 
 #include "function.hpp"
 #include "meshing.hpp"
+#include "project_specification/data_map.hpp"
 
 namespace function::density_based{
 
@@ -30,7 +31,7 @@ class Compliance : public DensityBasedFunction{
     public:
     const double K_MIN = 1e-6;
 
-    Compliance(const Meshing* const mesh, double pc, double psi);
+    Compliance(const projspec::DataMap& data);
 
     virtual ~Compliance() = default;
 
@@ -38,6 +39,7 @@ class Compliance : public DensityBasedFunction{
     virtual double calculate_with_gradient(const DensityBasedOptimizer* const op, const std::vector<double>& u, const std::vector<double>& x, std::vector<double>& grad) override;
 
     private:
+    static const bool reg;
     const double pc;
     const double psi;
     const Meshing* const mesh;

@@ -23,12 +23,13 @@
 
 #include "material.hpp"
 #include "math/matrix.hpp"
+#include "project_specification/data_map.hpp"
 
 namespace material{
 
 class LinearElasticIsotropic : public Material{
     public:
-    LinearElasticIsotropic(const std::string& name, const double density, double E, double nu, double Smax, double Tmax, bool plane_stress);
+    LinearElasticIsotropic(const projspec::DataMap& data);
 
     inline virtual math::Matrix stiffness_2D(const MeshElement* const e, const gp_Pnt& p) const override{
         (void)p;
@@ -87,9 +88,10 @@ class LinearElasticIsotropic : public Material{
     virtual std::vector<double> get_max_stresses(gp_Dir d) const override;
 
     private:
+    static const bool reg;
     const double E;
-    const double G;
     const double nu;
+    const double G;
     const double density;
     math::Matrix D_2D;
     math::Matrix D_3D;

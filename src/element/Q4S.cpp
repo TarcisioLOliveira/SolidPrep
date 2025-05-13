@@ -19,14 +19,14 @@
  */
 
 #include "element/Q4S.hpp"
-#include "cblas.h"
-#include "logger.hpp"
 #include "math/matrix.hpp"
 #include "utils.hpp"
-#include <vector>
-#include <lapacke.h>
+#include "project_specification/registry.hpp"
 
 namespace element{
+
+const bool Q4S::reg = projspec::ElementRegistry::add("Q4S",
+    std::make_unique<MeshElementFactoryImpl<Q4S>>());
 
 Q4S::Q4S(ElementShape s):
     MeshElementCommon2DQuad<Q4S>(s.nodes){

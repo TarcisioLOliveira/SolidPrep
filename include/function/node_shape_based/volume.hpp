@@ -23,12 +23,13 @@
 
 #include "function.hpp"
 #include "meshing.hpp"
+#include "project_specification/data_map.hpp"
 
 namespace function::node_shape_based{
 
 class Volume : public NodeShapeBasedFunction{
     public:
-    Volume(const Meshing* const mesh);
+    Volume(const projspec::DataMap& data);
 
     virtual ~Volume() = default;
 
@@ -37,6 +38,7 @@ class Volume : public NodeShapeBasedFunction{
     virtual double calculate_with_gradient(const NodeShapeBasedOptimizer* const op, const std::vector<double>& u, std::vector<double>& grad) override;
 
     private:
+    static const bool reg;
     const Meshing* const mesh;
     double max_V;
 };

@@ -22,18 +22,18 @@
 #define FUNCTION_AM_SUPPORT_HPP
 
 #include <Eigen/SparseCore>
-#include <Eigen/src/SparseCore/SparseMatrix.h>
 #include <Eigen/SparseLU>
 #include "function.hpp"
 #include "meshing.hpp"
 #include "density_filter.hpp"
+#include "project_specification/data_map.hpp"
 #include "projection/threshold.hpp"
 
 namespace function::density_based{
 
 class AMSupport : public DensityBasedFunction{
     public:
-    AMSupport(const Meshing* const mesh, const DensityFilter* const filter, const Projection* const global_proj, gp_Dir axis, double v_norm, double L, double beta, double angle);
+    AMSupport(const projspec::DataMap& data);
 
     virtual ~AMSupport() = default;
 
@@ -46,6 +46,7 @@ class AMSupport : public DensityBasedFunction{
     }
 
     private:
+    static const bool reg;
     const Meshing* const mesh;
     const DensityFilter* const filter;
     const Projection* const global_proj;

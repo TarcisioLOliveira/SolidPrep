@@ -24,17 +24,19 @@
 #include <memory>
 #include "optimizer.hpp"
 #include "function.hpp"
+#include "project_specification/data_map.hpp"
 
 namespace optimizer::node_shape_based{
 
 class MMA : public NodeShapeBasedOptimizer{
     public:
-    MMA(ShapeHandler sh, ProjectData* data, std::vector<std::unique_ptr<NodeShapeBasedFunction>> objective, std::vector<double> objective_weights, std::vector<NodeShapeBasedConstraint> constraints, double asyminit, double asymdec, double asyminc, double minfac, double maxfac, double c, double xtol_abs, double ftol_rel, bool save);
+    MMA(const projspec::DataMap& data);
 
     virtual void initialize_views(Visualization* viz) override;
     virtual TopoDS_Shape optimize(SolverManager* fem, Meshing* mesh) override;
 
     private:
+    static const bool reg;
     ProjectData* data;
     const double xtol_abs;
     const double ftol_rel;
@@ -42,9 +44,6 @@ class MMA : public NodeShapeBasedOptimizer{
     const double minfac, maxfac;
     const double c;
     const bool save_result;
-    std::vector<std::unique_ptr<NodeShapeBasedFunction>> objective;
-    std::vector<double> objective_weights;
-    std::vector<NodeShapeBasedConstraint> constraints;
 
     Visualization* viz;
 

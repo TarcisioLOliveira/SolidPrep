@@ -18,15 +18,15 @@
  *
  */
 
-#include <vector>
-#include <cblas.h>
-#include <lapacke.h>
 #include "math/matrix.hpp"
 #include "utils/gauss_legendre.hpp"
 #include "element/Q4.hpp"
-#include "logger.hpp"
+#include "project_specification/registry.hpp"
 
 namespace element{
+
+const bool Q4::reg = projspec::ElementRegistry::add("Q4",
+    std::make_unique<MeshElementFactoryImpl<Q4>>());
 
 Q4::Q4(ElementShape s):
     MeshElementCommon2DQuad<Q4>(s.nodes){

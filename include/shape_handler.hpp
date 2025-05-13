@@ -147,6 +147,7 @@ class ShapeHandler{
         std::vector<MeshNode*> nodes;
     };
 
+    ShapeHandler() = default;
     ShapeHandler(Meshing* mesh, std::vector<Geometry*> geometries, std::unique_ptr<shape_op::ShapeOp> root_op);
 
     void obtain_affected_nodes();

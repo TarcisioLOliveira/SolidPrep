@@ -24,6 +24,7 @@
 #include <array>
 #include "TopoDS_Solid.hxx"
 #include "pathfinding.hpp"
+#include "project_specification/data_map.hpp"
 #include "utils.hpp"
 
 namespace pathfinding{
@@ -64,12 +65,13 @@ class MeshlessAStar : public Pathfinding{
         std::vector<PathPoint*> c;
     };
 
-    MeshlessAStar(TopoDS_Shape topology, double step, double turn_angle, int choices, double restriction, utils::ProblemType type);
+    MeshlessAStar(const projspec::DataMap& data);
     ~MeshlessAStar() = default;
 
     virtual std::vector<gp_Pnt> find_path(const CrossSection& begin, const CrossSection& end) override;
 
     private:
+    static const bool reg;
     double step;
     double turn_angle;
     std::vector<double> angles2D;
@@ -82,7 +84,6 @@ class MeshlessAStar : public Pathfinding{
     bool is_inside_2D(gp_Pnt p, const TopoDS_Shape& t);
     bool is_inside_3D(gp_Pnt p, const TopoDS_Shape& t);
     std::pair<bool, gp_Pnt> get_intersection_point(gp_Pnt p, gp_Dir dir, double step, const TopoDS_Shape& t);
-
 };
 
 }

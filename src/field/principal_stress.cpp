@@ -26,23 +26,24 @@
 
 namespace field{
 
-    
-PrincipalStress::PrincipalStress(const MeshElementFactory* elem_info, ProjectData* proj_data, Material* initial_material, size_t max_it, double thickness, bool show)
-        :
-    proj_data(proj_data),
-    initial_material(initial_material),
-    elem_info(elem_info), geoms(),
-    thickness(thickness), show(show),
+PrincipalStress::PrincipalStress(const projspec::DataMap& data):
+    proj_data(data.proj),
+    initial_material(data.proj->get_material(data.get_string("initial_material"))),
+    elem_info(data.proj->topopt_element),
+    geoms(),
+    thickness(data.proj->thickness),
+    show(data.get_bool("display", true)),
     DIM((elem_info->get_problem_type() == utils::PROBLEM_TYPE_2D) ? 2 : 3),
     NODES_PER_ELEM(elem_info->get_nodes_per_element()),
-    max_it(max_it)
+    max_it(data.get_int("max_it"))
     {
-    
-    logger::log_assert(this->initial_material != nullptr &&
-            initial_material->get_type() == Material::Type::LINEAR_ELASTIC_ISOTROPIC,
-            logger::ERROR,
-            "initial material chosen for principal stress field is not isotropic");
-
+   
+    if(!data.get_bool("STUB")){ 
+        logger::log_assert(this->initial_material.get() != nullptr &&
+                initial_material->get_type() == Material::Type::LINEAR_ELASTIC_ISOTROPIC,
+                logger::ERROR,
+                "initial material chosen for principal stress field is not isotropic");
+    }
 }
 
 void PrincipalStress::initialize_views(Visualization* viz){
@@ -121,10 +122,10 @@ void PrincipalStress::generate(){
     Meshing* mesh = this->proj_data->topopt_mesher.get();
     SolverManager* fem = this->proj_data->topopt_fea.get();
 
-    std::vector<std::vector<Material*>> materials_backup(this->geoms.size());
+    std::vector<std::vector<utils::DelayedPointerView<Material>>> materials_backup(this->geoms.size());
 
-    std::vector<Material*> iso_material{this->initial_material};
-    std::vector<std::vector<Material*>> ortho_material(this->geoms.size());
+    std::vector<utils::DelayedPointerView<Material>> iso_material{this->initial_material};
+    std::vector<std::vector<utils::DelayedPointerView<Material>>> ortho_material(this->geoms.size());
     for(size_t i = 0; i < this->geoms.size(); ++i){
         auto& g = this->geoms[i];
         auto mats = g->materials.get_materials();
@@ -134,7 +135,7 @@ void PrincipalStress::generate(){
                 // Assumes there is a single material that uses this field
                 // for each material list because it's much easier this
                 // way
-                ortho_material[i] = std::vector<Material*>{m};
+                ortho_material[i] = std::vector<utils::DelayedPointerView<Material>>{m};
                 break;
             }
         }
@@ -306,16 +307,22 @@ math::Matrix PrincipalStress::get_matrix(const MeshElement* e, const gp_Pnt& p) 
                 dirs(i, j) = eigen.eigenvectors(i, pos[j]);
             }
         }
-        //if(pos[0] != 0){
-        //    logger::quick_log(eigen.eigenvalues);
-        //    logger::quick_log(abs_sort);
-        //    logger::quick_log(pos);
-        //    logger::quick_log(eigen.eigenvectors);
-        //    logger::quick_log(dirs);
-        //    exit(0);
-        //}
         return dirs;
     }
 }
 
+using namespace projspec;
+const bool PrincipalStress::reg = Factory<Field>::add(
+    [](const DataMap& data){
+        return std::make_unique<PrincipalStress>(data);
+    },
+    ObjectRequirements{
+        "principal_stress",
+        {
+            DataEntry{.name = "initial_material", .type = TYPE_STRING, .required = true},
+            DataEntry{.name = "display", .type = TYPE_BOOL, .required = false},
+            DataEntry{.name = "max_it", .type = TYPE_INT, .required = true},
+        }
+    }
+);
 }

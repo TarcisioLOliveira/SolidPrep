@@ -25,6 +25,7 @@
 #include "finite_element.hpp"
 #include "global_stiffness_matrix/mumps_sparse_symmetric.hpp"
 #include "math/matrix.hpp"
+#include "project_specification/data_map.hpp"
 
 // Recommended by the documentation
 #define ICNTL( i ) icntl[ (i) - 1 ]
@@ -34,10 +35,11 @@ namespace finite_element{
 
 class MUMPSSolver : public FiniteElement{
     public:
-    MUMPSSolver(ContactType contact_type, double rtol_abs, double max_step, double EPS_DISPL);
+    MUMPSSolver(const projspec::DataMap& data);
     virtual ~MUMPSSolver();
 
     private:
+    static const bool reg;
     virtual void generate_matrix_base(const Meshing* const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<math::Matrix>& D_cache, const std::vector<double>& u_ext, const std::vector<double>& lambda, const ContactType type) override;
 
     virtual void solve(std::vector<double>& load) override;

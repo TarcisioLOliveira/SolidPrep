@@ -72,6 +72,7 @@ class Q4 : public MeshElementCommon2DQuad<Q4>{
     }
 
     private:
+    static const bool reg;
     virtual math::Matrix get_Nf(const double t, const std::vector<gp_Pnt>& points) const override;
 
     double a[NODES_PER_ELEM], b[NODES_PER_ELEM], c[NODES_PER_ELEM], d[NODES_PER_ELEM], A;

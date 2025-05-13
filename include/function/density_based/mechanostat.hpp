@@ -24,6 +24,7 @@
 #include "function.hpp"
 #include "math/matrix.hpp"
 #include "meshing.hpp"
+#include "project_specification/data_map.hpp"
 #include "solver_manager.hpp"
 #include "utils.hpp"
 
@@ -32,7 +33,7 @@ namespace function::density_based{
 class Mechanostat : public DensityBasedFunction{
     public:
     typedef std::array<double, 2> Range;
-    Mechanostat(const Meshing* const mesh, SolverManager* fem, double pc, double psiK, double beta, Range traction, Range compression, Range shear, utils::ProblemType type);
+    Mechanostat(const projspec::DataMap& data);
 
     virtual ~Mechanostat() = default;
 
@@ -42,6 +43,7 @@ class Mechanostat : public DensityBasedFunction{
     virtual double calculate_with_gradient(const DensityBasedOptimizer* const op, const std::vector<double>& u, const std::vector<double>& x, std::vector<double>& grad) override;
 
     private:
+    static const bool reg;
     const Meshing* const mesh;
     SolverManager* fem;
     const double beta;

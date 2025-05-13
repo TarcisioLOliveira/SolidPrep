@@ -19,46 +19,62 @@
  */
 
 #include "material/linear_elastic_orthotropic.hpp"
+#include "project_specification/registry.hpp"
 #include "utils/basis_tensor.hpp"
 #include <cmath>
 #include <lapacke.h>
 #include <cblas.h>
+#include <memory>
 
 namespace material{
 
-LinearElasticOrthotropic::LinearElasticOrthotropic(const std::string& name, const double density, std::vector<double> E, std::vector<double> nu, std::vector<bool> nu_lower_half, std::vector<double> G, std::vector<double> Smax, std::vector<double> Tmax):
-    Material(name, std::move(Smax), std::move(Tmax)), density(density),
+LinearElasticOrthotropic::LinearElasticOrthotropic(const projspec::DataMap& data):
+    Material(data.get_string("name"),
+            {data.get_array("Smax")->get_double_array()},
+            {data.get_array("Tmax")->get_double_array()}),
+    density(data.get_double("density")),
     D_2D(), D_3D(), S_2D(3,3), S_3D(6,6){
-   
-    double Sxy = 0, Sxz = 0, Syz = 0;
-    if(nu_lower_half[0]){
-        Sxy = -nu[0]/E[0];
-    } else {
-        Sxy = -nu[0]/E[1];
-    }
-    if(nu_lower_half[1]){
-        Sxz = -nu[1]/E[0];
-    } else {
-        Sxz = -nu[1]/E[2];
-    }
-    if(nu_lower_half[2]){
-        Syz = -nu[2]/E[1];
-    } else {
-        Syz = -nu[2]/E[2];
-    }
 
-    S_2D.data()[0] = 1/E[0]; S_2D.data()[1] = Sxy;
-    S_2D.data()[3] = Sxy; S_2D.data()[4] = 1/E[1];
-    S_2D.data()[8] = 1/G[0];
-    this->D_2D = S_2D.get_inverted_cholesky();
+    if(!data.get_bool("STUB", false)){
+        const auto nu = data.get_array("nu")->get_double_array();
+        const auto nu_lower_half = data.get_array("nu_lower_half")->get_bool_array();
+        auto E = data.get_array("E")->get_double_array();
+        auto G = data.get_array("G")->get_double_array();
+        for(size_t i = 0; i < 3; ++i){
+            E[i] *= 1e3;
+            G[i] *= 1e3;
+        }
+       
+        double Sxy = 0, Sxz = 0, Syz = 0;
+        if(nu_lower_half[0]){
+            Sxy = -nu[0]/E[0];
+        } else {
+            Sxy = -nu[0]/E[1];
+        }
+        if(nu_lower_half[1]){
+            Sxz = -nu[1]/E[0];
+        } else {
+            Sxz = -nu[1]/E[2];
+        }
+        if(nu_lower_half[2]){
+            Syz = -nu[2]/E[1];
+        } else {
+            Syz = -nu[2]/E[2];
+        }
 
-    S_3D.data()[ 0] = 1/E[0]; S_3D.data()[ 1] = Sxy; S_3D.data()[ 2] = Sxz;
-    S_3D.data()[ 6] = Sxy; S_3D.data()[ 7] = 1/E[1]; S_3D.data()[ 8] = Syz;
-    S_3D.data()[12] = Sxz; S_3D.data()[13] = Syz; S_3D.data()[14] = 1/E[2];
-    S_3D.data()[21] = 1/G[0];
-    S_3D.data()[28] = 1/G[1];
-    S_3D.data()[35] = 1/G[2];
-    this->D_3D = S_3D.get_inverted_cholesky();
+        S_2D.data()[0] = 1/E[0]; S_2D.data()[1] = Sxy;
+        S_2D.data()[3] = Sxy; S_2D.data()[4] = 1/E[1];
+        S_2D.data()[8] = 1/G[0];
+        this->D_2D = S_2D.get_inverted_cholesky();
+
+        S_3D.data()[ 0] = 1/E[0]; S_3D.data()[ 1] = Sxy; S_3D.data()[ 2] = Sxz;
+        S_3D.data()[ 6] = Sxy; S_3D.data()[ 7] = 1/E[1]; S_3D.data()[ 8] = Syz;
+        S_3D.data()[12] = Sxz; S_3D.data()[13] = Syz; S_3D.data()[14] = 1/E[2];
+        S_3D.data()[21] = 1/G[0];
+        S_3D.data()[28] = 1/G[1];
+        S_3D.data()[35] = 1/G[2];
+        this->D_3D = S_3D.get_inverted_cholesky();
+    }
 }
 
 double LinearElasticOrthotropic::beam_E_2D(const MeshElement* const e, const gp_Pnt& p, const math::Matrix& R) const{
@@ -170,5 +186,75 @@ std::vector<double> LinearElasticOrthotropic::get_max_stresses(gp_Dir d) const{
 
     return std::vector<double>();
 }
+
+using namespace projspec;
+const bool LinearElasticOrthotropic::reg = Factory<Material>::add(
+    [](const DataMap& data){
+        return std::make_unique<LinearElasticOrthotropic>(data);
+    },
+    ObjectRequirements{
+        "linear_elastic_orthotropic",
+        {
+            DataEntry{.name = "name", .type = TYPE_STRING, .required = true},
+            DataEntry{.name = "Smax", .type = TYPE_ARRAY,
+                         .array_data = std::shared_ptr<ArrayRequirements>(
+                             new ArrayRequirements{
+                                 .size = 3,
+                                 .type = TYPE_DOUBLE
+                             }
+                         ),
+                         .required_if = 
+                             [](const RequirementConditions& r){
+                                 return r.generate_beams;
+                             }
+                     },
+            DataEntry{.name = "Tmax", .type = TYPE_ARRAY,
+                          .array_data = std::shared_ptr<ArrayRequirements>(
+                              new ArrayRequirements{
+                                  .size = 3,
+                                  .type = TYPE_DOUBLE
+                              }
+                          ),
+                          .required_if = 
+                              [](const RequirementConditions& r){
+                                  return r.generate_beams;
+                              }
+                      },
+            DataEntry{.name = "E", .type = TYPE_ARRAY, .required = true,
+                         .array_data = std::shared_ptr<ArrayRequirements>(
+                             new ArrayRequirements{
+                                 .size = 3,
+                                 .type = TYPE_DOUBLE
+                             }
+                         ),
+                     },
+            DataEntry{.name = "G", .type = TYPE_ARRAY, .required = true,
+                         .array_data = std::shared_ptr<ArrayRequirements>(
+                             new ArrayRequirements{
+                                 .size = 3,
+                                 .type = TYPE_DOUBLE
+                             }
+                         ),
+                     },
+            DataEntry{.name = "nu", .type = TYPE_ARRAY, .required = true,
+                         .array_data = std::shared_ptr<ArrayRequirements>(
+                             new ArrayRequirements{
+                                 .size = 3,
+                                 .type = TYPE_DOUBLE
+                             }
+                         ),
+                     },
+            DataEntry{.name = "nu_lower_half", .type = TYPE_ARRAY, .required = true,
+                         .array_data = std::shared_ptr<ArrayRequirements>(
+                             new ArrayRequirements{
+                                 .size = 3,
+                                 .type = TYPE_BOOL
+                             }
+                         ),
+                     },
+            DataEntry{.name = "density", .type = TYPE_DOUBLE, .required = true}
+        }
+    }
+);
 
 }

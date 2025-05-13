@@ -23,11 +23,12 @@
 #include "function/node_shape_based/compliance.hpp"
 #include "math/matrix.hpp"
 #include "optimizer.hpp"
+#include "project_data.hpp"
 
 namespace function::node_shape_based{
 
-Compliance::Compliance(const Meshing* const mesh):
-    mesh(mesh){}
+Compliance::Compliance(const projspec::DataMap& data):
+    mesh(data.proj->topopt_mesher.get()){}
 
 double Compliance::calculate(const NodeShapeBasedOptimizer* const op, const std::vector<double>& u){
     (void)op;
@@ -80,5 +81,16 @@ double Compliance::calculate_with_gradient(const NodeShapeBasedOptimizer* const 
     return c;
 }
 
+using namespace projspec;
+const bool Compliance::reg = Factory<NodeShapeBasedFunction>::add(
+    [](const DataMap& data){
+        return std::make_unique<Compliance>(data);
+    },
+    ObjectRequirements{
+        "compliance",
+        {
+        }
+    }
+);
 
 }

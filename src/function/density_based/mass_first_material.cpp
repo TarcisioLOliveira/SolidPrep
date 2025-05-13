@@ -22,11 +22,12 @@
 #include "function/density_based/mass_first_material.hpp"
 #include "logger.hpp"
 #include "optimizer.hpp"
+#include "project_data.hpp"
 
 namespace function::density_based{
 
-MassFirstMaterial::MassFirstMaterial(const Meshing* const mesh):
-    mesh(mesh){}
+MassFirstMaterial::MassFirstMaterial(const projspec::DataMap& data):
+    mesh(data.proj->topopt_mesher.get()){}
 
 void MassFirstMaterial::initialize(const DensityBasedOptimizer* const op){
     (void)op;
@@ -138,6 +139,18 @@ double MassFirstMaterial::calculate_with_gradient(const DensityBasedOptimizer* c
 
     return V;
 }
+
+using namespace projspec;
+const bool MassFirstMaterial::reg = Factory<DensityBasedFunction>::add(
+    [](const DataMap& data){
+        return std::make_unique<MassFirstMaterial>(data);
+    },
+    ObjectRequirements{
+        "mass_first_material",
+        {
+        }
+    }
+);
 
 }
 

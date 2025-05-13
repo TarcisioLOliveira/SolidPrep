@@ -23,19 +23,33 @@
 #include "logger.hpp"
 #include "math/matrix.hpp"
 #include "optimizer.hpp"
+#include "project_data.hpp"
 
 namespace function::node_shape_based{
 
-Mechanostat::Mechanostat(const Meshing* const mesh, SolverManager* fem, double beta, Range traction, Range compression, Range shear, utils::ProblemType type):
-    mesh(mesh), fem(fem), beta(beta),
-    t(traction), c(compression), s(shear),
+Mechanostat::Mechanostat(const projspec::DataMap& data):
+    mesh(data.proj->topopt_mesher.get()),
+    fem(data.proj->topopt_fea.get()),
+    beta(data.get_double("beta")),
+    t({
+        data.get_array("traction")->get_double(0),
+        data.get_array("traction")->get_double(1)
+    }),
+    c({
+        data.get_array("compression")->get_double(0),
+        data.get_array("compression")->get_double(1)
+    }),
+    s({
+        data.get_array("shear")->get_double(0),
+        data.get_array("shear")->get_double(1)
+    }),
     K_e1({0.5*std::pow((t[0]+c[0])/(2*t[0]*c[0]), 2), 
           0.5*std::pow((t[1]+c[1])/(2*t[1]*c[1]), 2)}),
     K_g({1.0/(2*s[0]*s[0]),
          1.0/(2*s[1]*s[1])}),
     K_e2({-(t[0]-c[0])/(2*t[0]*c[0]), 
           -(t[1]-c[1])/(2*t[1]*c[1])}),
-   problem_type(type){
+    problem_type(data.proj->type){
 
 }
 
@@ -215,5 +229,42 @@ double Mechanostat::calculate_with_gradient(const NodeShapeBasedOptimizer* const
 
     return result;
 }
+
+using namespace projspec;
+const bool Mechanostat::reg = Factory<NodeShapeBasedFunction>::add(
+    [](const DataMap& data){
+        return std::make_unique<Mechanostat>(data);
+    },
+    ObjectRequirements{
+        "mechanostat",
+        {
+            DataEntry{.name = "beta", .type = TYPE_DOUBLE, .required = true},
+            DataEntry{.name = "traction", .type = TYPE_ARRAY, .required = true,
+                         .array_data = std::shared_ptr<ArrayRequirements>(
+                             new ArrayRequirements{
+                                 .size = 2,
+                                 .type = TYPE_DOUBLE
+                             }
+                         ),
+                     },
+            DataEntry{.name = "compression", .type = TYPE_ARRAY, .required = true,
+                         .array_data = std::shared_ptr<ArrayRequirements>(
+                             new ArrayRequirements{
+                                 .size = 2,
+                                 .type = TYPE_DOUBLE
+                             }
+                         ),
+                     },
+            DataEntry{.name = "shear", .type = TYPE_ARRAY, .required = true,
+                         .array_data = std::shared_ptr<ArrayRequirements>(
+                             new ArrayRequirements{
+                                 .size = 2,
+                                 .type = TYPE_DOUBLE
+                             }
+                         ),
+                     },
+        }
+    }
+);
 
 }

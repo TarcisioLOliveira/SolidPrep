@@ -6,4 +6,4 @@ set(SOURCES_MESHING
     mesh_file.cpp
 )
 
-add_library(meshing ${SOURCES_MESHING})
+add_library(meshing OBJECT ${SOURCES_MESHING})

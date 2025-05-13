@@ -21,6 +21,7 @@
 #ifndef PROJECTION_NONE_HPP
 #define PROJECTION_NONE_HPP
 
+#include "project_specification/data_map.hpp"
 #include "projection.hpp"
 
 namespace projection{
@@ -28,12 +29,17 @@ namespace projection{
 class None : public Projection{
     public:
     virtual ~None() = default;
+    None() = default;
+    None(const projspec::DataMap& data);
     
     virtual void update(const size_t iteration) override;
 
     virtual void project_densities(std::vector<double>& new_x) const override;
 
     virtual void project_gradient(std::vector<double>& new_df, const std::vector<double>& new_x) const override;
+
+    private:
+    static const bool reg;
 };
 
 }

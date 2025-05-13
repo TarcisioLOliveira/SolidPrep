@@ -56,20 +56,24 @@ class Constraint{
 
 class DensityBasedConstraint : public Constraint{
     public:
+    typedef DensityBasedFunction FunctionType;
+
     DensityBasedConstraint() = default;
     DensityBasedConstraint(const DensityBasedConstraint&) = delete;
     DensityBasedConstraint(DensityBasedConstraint&&) = default;
     DensityBasedConstraint& operator=(const DensityBasedConstraint&) = delete;
     DensityBasedConstraint& operator=(DensityBasedConstraint&&) = default;
 
-    DensityBasedConstraint(std::unique_ptr<DensityBasedFunction> fun, std::vector<Type> types, std::vector<double> bounds);
+    DensityBasedConstraint(std::unique_ptr<FunctionType> fun, std::vector<Type> types, std::vector<double> bounds);
     virtual ~DensityBasedConstraint() = default;
 
-    std::unique_ptr<DensityBasedFunction> fun;
+    std::unique_ptr<FunctionType> fun;
 };
 
 class NodeShapeBasedConstraint : public Constraint{
     public:
+    typedef NodeShapeBasedFunction FunctionType;
+
     NodeShapeBasedConstraint() = default;
     NodeShapeBasedConstraint(const NodeShapeBasedConstraint&) = delete;
     NodeShapeBasedConstraint(NodeShapeBasedConstraint&&) = default;
@@ -77,10 +81,10 @@ class NodeShapeBasedConstraint : public Constraint{
     NodeShapeBasedConstraint& operator=(NodeShapeBasedConstraint&&) = default;
 
 
-    NodeShapeBasedConstraint(std::unique_ptr<NodeShapeBasedFunction> fun, std::vector<Type> types, std::vector<double> bounds);
+    NodeShapeBasedConstraint(std::unique_ptr<FunctionType> fun, std::vector<Type> types, std::vector<double> bounds);
     virtual ~NodeShapeBasedConstraint() = default;
 
-    std::unique_ptr<NodeShapeBasedFunction> fun;
+    std::unique_ptr<FunctionType> fun;
 };
 
 class Optimizer{
@@ -121,14 +125,30 @@ class Optimizer{
 
 class DensityBasedOptimizer : public Optimizer{
     public:
+    static std::string get_name(){
+        return "topopt";
+    }
     virtual ~DensityBasedOptimizer() = default;
 
     inline const std::vector<double>& get_filtered_densities() const{
         return this->filtered_densities;
     }
 
+    inline void set_objective(std::vector<std::unique_ptr<DensityBasedFunction>> f, std::vector<double> w){
+        this->objective = std::move(f);
+        this->objective_weights = std::move(w);
+    }
+
+    inline void set_constraints(std::vector<DensityBasedConstraint> f){
+        this->constraints = std::move(f);
+    }
+
     protected:
     std::vector<double> filtered_densities;
+
+    std::vector<std::unique_ptr<DensityBasedFunction>> objective;
+    std::vector<double> objective_weights;
+    std::vector<DensityBasedConstraint> constraints;
 
     TopoDS_Shape make_shape(const std::vector<double>& x, const std::vector<Geometry*>& geometries, const double result_threshold, const utils::ProblemType type) const;
 
@@ -137,6 +157,10 @@ class DensityBasedOptimizer : public Optimizer{
 
 class NodeShapeBasedOptimizer : public Optimizer{
     public:
+    static std::string get_name(){
+        return "shape_opt";
+    }
+
     NodeShapeBasedOptimizer(ShapeHandler sh):
         shape_handler(std::move(sh)){}
 
@@ -144,7 +168,20 @@ class NodeShapeBasedOptimizer : public Optimizer{
 
     virtual ~NodeShapeBasedOptimizer() = default;
 
+    inline void set_objective(std::vector<std::unique_ptr<NodeShapeBasedFunction>> f, std::vector<double> w){
+        this->objective = std::move(f);
+        this->objective_weights = std::move(w);
+    }
+
+    inline void set_constraints(std::vector<NodeShapeBasedConstraint> f){
+        this->constraints = std::move(f);
+    }
+
     protected:
+
+    std::vector<std::unique_ptr<NodeShapeBasedFunction>> objective;
+    std::vector<double> objective_weights;
+    std::vector<NodeShapeBasedConstraint> constraints;
 
     TopoDS_Shape make_shape(const std::vector<Geometry*>& geometries, const utils::ProblemType type) const;
 };

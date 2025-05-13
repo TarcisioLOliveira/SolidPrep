@@ -23,6 +23,7 @@
 
 #include "TopoDS_Solid.hxx"
 #include "pathfinding.hpp"
+#include "project_specification/data_map.hpp"
 #include "utils.hpp"
 #include "geometry.hpp"
 #include "Geom_Curve.hxx"
@@ -61,11 +62,13 @@ class VisibilityGraph : public Pathfinding{
     };
 
     VisibilityGraph(const std::unique_ptr<Geometry>& topology, double step, double turn_angle, double restriction, utils::ProblemType type);
+    VisibilityGraph(const projspec::DataMap& data);
     ~VisibilityGraph() = default;
 
     virtual std::vector<gp_Pnt> find_path(const CrossSection& begin, const CrossSection& end) override;
 
     private:
+    static const bool reg;
     double step;
     double angle;
     double restriction;

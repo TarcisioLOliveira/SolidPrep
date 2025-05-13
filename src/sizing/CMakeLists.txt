@@ -5,4 +5,4 @@ set(SOURCES_SIZING
     standard_sizing.cpp
 )
 
-add_library(sizing ${SOURCES_SIZING})
+add_library(sizing OBJECT ${SOURCES_SIZING})

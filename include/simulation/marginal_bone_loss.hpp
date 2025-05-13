@@ -23,6 +23,7 @@
 
 #include "math/matrix.hpp"
 #include "meshing.hpp"
+#include "project_specification/data_map.hpp"
 #include "simulation.hpp"
 #include "solver_manager.hpp"
 #include "view_handler.hpp"
@@ -36,13 +37,14 @@ class MarginalBoneLoss : public Simulation{
     typedef std::array<double, RANGE_NUM> Range;
     virtual ~MarginalBoneLoss() = default;
 
-    MarginalBoneLoss(Meshing* mesh, SolverManager* fem, Geometry* mandible, size_t geom_id, double time_step, double maximum_volume_variation, double time_limit, double maturation_rate, double pc, Range traction, Range compression, Range shear, std::vector<double> a0, std::vector<double> a1, std::vector<double> a2, std::vector<double> a3, utils::ProblemType type);
+    MarginalBoneLoss(const projspec::DataMap& data);
 
     virtual void initialize_views(Visualization* viz) override;
     virtual void initialize() override;
     virtual void run() override;
 
     private:
+    static const bool reg;
     Meshing* mesh;
     SolverManager* fem;
     const double pc;
@@ -54,8 +56,8 @@ class MarginalBoneLoss : public Simulation{
     const std::vector<double> a0, a1, a2, a3;
     const math::Vector eps_to_x;
 
-    Geometry* mandible;
     const size_t geom_id;
+    Geometry* mandible;
     const double time_step, maximum_volume_variation, time_limit;
     const double maturation_rate;
 

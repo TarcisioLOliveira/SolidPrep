@@ -18,14 +18,17 @@
  *
  */
 
-#include <lapacke.h>
 #include "element/H8.hpp"
 #include "boundary_element/BQ4.hpp"
 #include "logger.hpp"
 #include "math/matrix.hpp"
 #include "utils/gauss_legendre.hpp"
+#include "project_specification/registry.hpp"
 
 namespace element{
+
+const bool H8::reg = projspec::ElementRegistry::add("H8",
+    std::make_unique<MeshElementFactoryImpl<H8>>());
 
 H8::H8(ElementShape s):
     MeshElementCommon3DHex<H8>(s.nodes){

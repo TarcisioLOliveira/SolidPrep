@@ -22,6 +22,8 @@
 #define MATERIAL_MANDIBLE_HPP
 
 #include "material.hpp"
+#include "project_specification/data_map.hpp"
+#include "utils/delayed_pointer.hpp"
 
 namespace material{
 
@@ -30,7 +32,7 @@ class Mandible : public Material{
     class ImplantRegion{
         public:
         ImplantRegion() = default;
-        ImplantRegion(const gp_Pnt& center_1, const gp_Pnt& center_2, double r1, double r2, const std::vector<double>& a, double dl);
+        ImplantRegion(const projspec::DataMap* const data);
 
         double get_implant_multiplier(const gp_Pnt& p) const;
         void set_maturation_alpha(double alpha);
@@ -50,14 +52,14 @@ class Mandible : public Material{
         double r2;
         gp_Dir normal;
         double decay_distance;
-        double min_str;
         std::vector<double> a;
-        const std::vector<double> a_orig;
+        double min_str;
+        std::vector<double> a_orig;
         size_t a_len;
         double max_l;
     };
 
-    Mandible(const std::string& name, Material* outer, Material* inner, const std::string& path_points1, const std::string& path_points2, double C, bool with_implant = false, ImplantRegion imp = ImplantRegion());
+    Mandible(const projspec::DataMap& data);
 
     virtual math::Matrix stiffness_2D(const MeshElement* const e, const gp_Pnt& p) const override;
     virtual math::Matrix stiffness_3D(const MeshElement* const e, const gp_Pnt& p) const override;
@@ -87,6 +89,7 @@ class Mandible : public Material{
     }
 
     private:
+    static const bool reg;
     struct RingPoint{
         double r;
         double theta;
@@ -127,8 +130,8 @@ class Mandible : public Material{
     double get_multiplier(const gp_Pnt& p) const;
     double angle_with_ref(const gp_Vec& dist) const;
 
-    const Material* const outer;
-    const Material* const inner;
+    const utils::DelayedPointerView<Material> outer;
+    const utils::DelayedPointerView<Material> inner;
     const double C;
     Ring ring1, ring2;
     gp_Dir center_normal;

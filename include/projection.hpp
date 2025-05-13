@@ -22,10 +22,14 @@
 #define PROJECTION_HPP
 
 #include <cstddef>
+#include <string>
 #include <vector>
 
 class Projection{
     public:
+    static std::string get_name(){
+        return "projection";
+    }
     struct Parameter{
         double value;
         double final_value;

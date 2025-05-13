@@ -33,12 +33,16 @@
 
 namespace meshing{
 
-Gmsh::Gmsh(const std::vector<std::unique_ptr<Geometry>>& geometries,
-           const MeshElementFactory* const elem_type,
-           const ProjectData* const proj_data,
-           double size, double thickness, double tmp_scale, int algorithm2D, int algorithm3D):
-    Meshing(geometries, elem_type, proj_data, thickness),
-    size(tmp_scale*size), algorithm2D(algorithm2D), algorithm3D(algorithm3D), tmp_scale(tmp_scale){
+Gmsh::Gmsh(const projspec::DataMap& data):
+    Meshing(data.proj->geometries, 
+            data.proj->topopt_element,
+            data.proj,
+            data.proj->thickness),
+    tmp_scale(data.get_double("tmp_scale", 1.0)),
+    size(tmp_scale*data.get_double("size")),
+    algorithm2D(data.get_int("algorithm2D", 6)),
+    algorithm3D(data.get_int("algorithm3D", 4)){
+
 }
 
 void Gmsh::mesh(const std::vector<Force>& forces, 
@@ -409,5 +413,21 @@ std::unordered_map<size_t, MeshNode*> Gmsh::gmsh_meshing(bool has_condition_insi
 
     return id_map;
 }
+
+using namespace projspec;
+const bool Gmsh::reg = Factory<Meshing>::add(
+    [](const DataMap& data){
+        return std::make_unique<Gmsh>(data);
+    },
+    ObjectRequirements{
+        "gmsh",
+        {
+            DataEntry{.name = "element_size", .type = TYPE_DOUBLE, .required = true},
+            DataEntry{.name = "tmp_scale", .type = TYPE_DOUBLE, .required = false},
+            DataEntry{.name = "algorithm2D", .type = TYPE_INT, .required = false},
+            DataEntry{.name = "algorithm3D", .type = TYPE_INT, .required = false}
+        }
+    }
+);
 
 }

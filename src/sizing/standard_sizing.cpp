@@ -64,11 +64,18 @@
 #include <ShapeCustom.hxx>
 #include <ShapeCustom_RestrictionParameters.hxx>
 #include "element/GT9.hpp"
+#include "project_data.hpp"
 
 namespace sizing{
 
-StandardSizing::StandardSizing(ProjectData* data, FiniteElement* solver, double element_size, double multiplier):
-   Sizing(data), solver(solver), element_size(element_size), multiplier(multiplier){}
+StandardSizing::StandardSizing(const projspec::DataMap& data):
+    Sizing(data.proj),
+    solver(data.proj->sizer_fea.get()),
+    element_size(data.get_double("element_size")),
+    multiplier(data.get_double("oversizing", 1.0)){
+
+}
+
 
 TopoDS_Shape StandardSizing::run(){
     return this->boundary_expansion_approach();
@@ -85,7 +92,7 @@ TopoDS_Shape StandardSizing::boundary_expansion_approach(){
                                                 this->data->geometries[0]->do_topopt, 
                                                 this->data->geometries[0]->with_void,
                                                 0));
-    geom->set_materials({this->data->materials[0].get()});
+    geom->set_materials({this->data->materials[0].get_view()});
     std::vector<std::unique_ptr<Geometry>> ggeom;
     ggeom.push_back(std::move(geom));
     meshing::StandardBeamMesher mesh(ggeom, gt9_maker.get(), this->data, this->element_size, this->data->thickness);
@@ -823,5 +830,19 @@ bool StandardSizing::insert_expansion_node(std::vector<ExpansionNode>& exp_info,
 
     return inserted;
 }
+
+using namespace projspec;
+const bool StandardSizing::reg = Factory<Sizing>::add(
+    [](const DataMap& data){
+        return std::make_unique<StandardSizing>(data);
+    },
+    ObjectRequirements{
+        "standard_sizing",
+        {
+            DataEntry{.name = "element_size", .type = TYPE_DOUBLE, .required = true},
+            DataEntry{.name = "oversizing", .type = TYPE_DOUBLE, .required = false}
+        }
+    }
+);
 
 }

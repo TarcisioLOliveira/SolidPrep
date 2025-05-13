@@ -22,11 +22,13 @@
 #include <numeric>
 #include "function/node_shape_based/volume.hpp"
 #include "optimizer.hpp"
+#include "project_specification/data_map.hpp"
+#include "project_data.hpp"
 
 namespace function::node_shape_based{
 
-Volume::Volume(const Meshing* const mesh):
-    mesh(mesh){}
+Volume::Volume(const projspec::DataMap& data):
+    mesh(data.proj->topopt_mesher.get()){}
 
 void Volume::initialize(const NodeShapeBasedOptimizer* const op){
     auto v = op->get_volumes();
@@ -85,6 +87,18 @@ double Volume::calculate_with_gradient(const NodeShapeBasedOptimizer* const op, 
 
     return this->calculate(op, u);
 }
+
+using namespace projspec;
+const bool Volume::reg = Factory<NodeShapeBasedFunction>::add(
+    [](const DataMap& data){
+        return std::make_unique<Volume>(data);
+    },
+    ObjectRequirements{
+        "volume",
+        {
+        }
+    }
+);
 
 }
 

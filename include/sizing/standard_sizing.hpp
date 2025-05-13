@@ -21,6 +21,7 @@
 #ifndef STANDARD_SIZING_HPP
 #define STANDARD_SIZING_HPP
 
+#include "project_specification/data_map.hpp"
 #include "sizing.hpp"
 #include "finite_element.hpp"
 #include "meshing/standard_beam_mesher.hpp"
@@ -53,11 +54,12 @@ class StandardSizing : public Sizing{
         gp_Vec force;
     };
 
-    StandardSizing(ProjectData* data, FiniteElement* solver, double element_size, double multiplier);
+    StandardSizing(const projspec::DataMap& data);
 
     virtual TopoDS_Shape run() override;
 
     private:
+    static const bool reg;
     FiniteElement* solver;
     double element_size;
     double multiplier;

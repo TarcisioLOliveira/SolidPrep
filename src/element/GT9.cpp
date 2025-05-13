@@ -20,11 +20,13 @@
 
 #include "math/matrix.hpp"
 #include "utils/gauss_legendre.hpp"
+#include "project_specification/registry.hpp"
 #include "element/GT9.hpp"
-#include "cblas.h"
-#include <vector>
 
 namespace element{
+
+const bool GT9::reg = projspec::ElementRegistry::add("GT9",
+    std::make_unique<MeshElementFactoryImpl<GT9>>());
 
 GT9::GT9(ElementShape s):
     MeshElementCommon2DTri<GT9>(s.nodes){

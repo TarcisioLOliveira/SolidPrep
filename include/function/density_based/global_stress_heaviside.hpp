@@ -23,13 +23,14 @@
 
 #include "function.hpp"
 #include "meshing.hpp"
+#include "project_specification/data_map.hpp"
 #include "solver_manager.hpp"
 
 namespace function::density_based{
 
 class GlobalStressHeaviside : public DensityBasedFunction{
     public:
-    GlobalStressHeaviside(const Meshing* const mesh, SolverManager* fem, double max_stress, double C, double pc, double pt, double psiK, double psiS);
+    GlobalStressHeaviside(const projspec::DataMap& data);
 
     virtual ~GlobalStressHeaviside() = default;
 
@@ -37,6 +38,7 @@ class GlobalStressHeaviside : public DensityBasedFunction{
     virtual double calculate_with_gradient(const DensityBasedOptimizer* const op, const std::vector<double>& u, const std::vector<double>& x, std::vector<double>& grad) override;
 
     private:
+    static const bool reg;
     const Meshing* const mesh;
     SolverManager* fem;
     const double max_stress;

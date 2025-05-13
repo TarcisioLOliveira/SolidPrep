@@ -23,13 +23,30 @@
 #include "function/density_based/omni_machining.hpp"
 #include "logger.hpp"
 #include "math/matrix.hpp"
+#include "project_specification/data_map.hpp"
 #include "projection/threshold.hpp"
 #include "optimizer.hpp"
+#include "project_data.hpp"
 
 namespace function::density_based{
 
-OmniMachining::OmniMachining(const Meshing* const mesh, const DensityFilter* const filter, gp_Pnt center, gp_Dir axis, double v_norm, double beta1, double beta2, double L)
-        : mesh(mesh), filter(filter), center(center), axis(axis), v_norm(v_norm), beta1(beta1), beta2(beta2), L(L), proj(Projection::Parameter{20, 20, 0, 0}, 0.5){}
+OmniMachining::OmniMachining(const projspec::DataMap& data):
+    mesh(data.proj->topopt_mesher.get()),
+    center(
+        data.get_array("center")->get_double(0),
+        data.get_array("center")->get_double(1),
+        data.get_array("center")->get_double(2)
+    ),
+    axis(
+        data.get_array("axis")->get_double(0),
+        data.get_array("axis")->get_double(1),
+        data.get_array("axis")->get_double(2)
+    ),
+    v_norm(data.get_double("v")),
+    beta1(data.get_double("beta1")),
+    beta2(data.get_double("beta2")),
+    L(data.get_double("L")),
+    proj(Projection::Parameter{20, 20, 0, 0}, 0.5){}
 
 void OmniMachining::initialize_views(Visualization* viz){
     this->shadow_view = viz->add_view("Shadows", spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::DENSITY);
@@ -390,5 +407,37 @@ double OmniMachining::calculate_with_gradient(const DensityBasedOptimizer* const
 
     return result;
 }
+
+using namespace projspec;
+const bool OmniMachining::reg = Factory<DensityBasedFunction>::add(
+    [](const DataMap& data){
+        return std::make_unique<OmniMachining>(data);
+    },
+    ObjectRequirements{
+        "omni_machining",
+        {
+            DataEntry{.name = "beta1", .type = TYPE_DOUBLE, .required = true},
+            DataEntry{.name = "beta2", .type = TYPE_DOUBLE, .required = true},
+            DataEntry{.name = "v", .type = TYPE_DOUBLE, .required = true},
+            DataEntry{.name = "L", .type = TYPE_DOUBLE, .required = true},
+            DataEntry{.name = "center", .type = TYPE_ARRAY, .required = true,
+                         .array_data = std::shared_ptr<ArrayRequirements>(
+                             new ArrayRequirements{
+                                 .size = 3,
+                                 .type = TYPE_DOUBLE
+                             }
+                         ),
+                     },
+            DataEntry{.name = "axis", .type = TYPE_ARRAY, .required = true,
+                         .array_data = std::shared_ptr<ArrayRequirements>(
+                             new ArrayRequirements{
+                                 .size = 3,
+                                 .type = TYPE_DOUBLE
+                             }
+                         ),
+                     }
+        }
+    }
+);
 
 }

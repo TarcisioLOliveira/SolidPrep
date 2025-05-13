@@ -24,11 +24,24 @@
 #include "math/matrix.hpp"
 #include "projection/threshold.hpp"
 #include "optimizer.hpp"
+#include "project_data.hpp"
 
 namespace function::density_based{
 
-AMSupport::AMSupport(const Meshing* const mesh, const DensityFilter* const filter, const Projection* const global_proj, gp_Dir axis, double v_norm, double L, double beta, double angle)
-    : mesh(mesh), filter(filter), global_proj(global_proj), axis(axis), v_norm(v_norm), L(L), beta(beta), support_angle(angle), proj(projection::Threshold::Parameter{100, 50, 0, 0}, 0.75){}
+AMSupport::AMSupport(const projspec::DataMap& data):
+    mesh(data.proj->topopt_mesher.get()),
+    filter(data.proj->density_filter.get()),
+    global_proj(data.proj->projection.get()),
+    axis(
+        data.get_array("axis")->get_double(0),
+        data.get_array("axis")->get_double(1),
+        data.get_array("axis")->get_double(2)
+    ),
+    v_norm(data.get_double("v")),
+    L(data.get_double("L")),
+    beta(data.get_double("beta")),
+    support_angle(data.get_double("support_angle")),
+    proj(Projection::Parameter{100, 50, 0, 0}, 0.75){}
 
 void AMSupport::initialize_views(Visualization* viz){
     this->shadow_view = viz->add_view("AM Supports", spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::DENSITY);
@@ -478,5 +491,29 @@ double AMSupport::calculate_with_gradient_nodal(const DensityBasedOptimizer* con
 
     return result;
 }
+
+using namespace projspec;
+const bool AMSupport::reg = Factory<DensityBasedFunction>::add(
+    [](const DataMap& data){
+        return std::make_unique<AMSupport>(data);
+    },
+    ObjectRequirements{
+        "omni_machining",
+        {
+            DataEntry{.name = "beta", .type = TYPE_DOUBLE, .required = true},
+            DataEntry{.name = "v", .type = TYPE_DOUBLE, .required = true},
+            DataEntry{.name = "L", .type = TYPE_DOUBLE, .required = true},
+            DataEntry{.name = "support_angle", .type = TYPE_DOUBLE, .required = true},
+            DataEntry{.name = "axis", .type = TYPE_ARRAY, .required = true,
+                         .array_data = std::shared_ptr<ArrayRequirements>(
+                             new ArrayRequirements{
+                                 .size = 3,
+                                 .type = TYPE_DOUBLE
+                             }
+                         ),
+                     }
+        }
+    }
+);
 
 }

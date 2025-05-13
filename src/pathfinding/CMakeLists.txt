@@ -5,4 +5,4 @@ set(SOURCES_PATHFINDING
     visibility_graph.cpp
 )
 
-add_library(pathfinding ${SOURCES_PATHFINDING})
+add_library(pathfinding OBJECT ${SOURCES_PATHFINDING})

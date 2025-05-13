@@ -23,22 +23,32 @@
 #include "material/mandible.hpp"
 #include "math/matrix.hpp"
 #include <algorithm>
+#include "project_data.hpp"
 
 namespace simulation{
 
-MarginalBoneLoss::MarginalBoneLoss(Meshing* mesh, SolverManager* fem, Geometry* mandible, size_t geom_id, double time_step, double maximum_volume_variation, double time_limit, double maturation_rate, double pc, Range traction, Range compression, Range shear, std::vector<double> a0, std::vector<double> a1, std::vector<double> a2, std::vector<double> a3, utils::ProblemType type)
-    :
-    mesh(mesh), fem(fem), pc(pc),
-    t(traction), c(compression), s(shear),
+MarginalBoneLoss::MarginalBoneLoss(const projspec::DataMap& data):
+    mesh(data.proj->topopt_mesher.get()),
+    fem(data.proj->topopt_fea.get()),
+    pc(data.get_double("pc")),
+    t(data.get_array("traction")->get_double_array_fixed<RANGE_NUM>()),
+    c(data.get_array("compression")->get_double_array_fixed<RANGE_NUM>()),
+    s(data.get_array("shear")->get_double_array_fixed<RANGE_NUM>()),
     K_e1(this->get_K_e1(t, c)),
     K_g(this->get_K_g(s)),
     K_e2(this->get_K_e2(t, c)),
-    problem_type(type),
-    a0(a0), a1(a1), a2(a2), a3(a3),
+    problem_type(data.proj->type),
+    a0(data.get_array("a0")->get_double_array()),
+    a1(data.get_array("a1")->get_double_array()),
+    a2(data.get_array("a2")->get_double_array()),
+    a3(data.get_array("a3")->get_double_array()),
     eps_to_x(this->make_eps_to_x()),
-    mandible(mandible), geom_id(geom_id),
-    time_step(time_step), maximum_volume_variation(maximum_volume_variation), time_limit(time_limit),
-    maturation_rate(maturation_rate)
+    geom_id(data.get_int("mandible_geometry")),
+    mandible(data.proj->geometries[geom_id].get()),
+    time_step(data.get_double("time_step")),
+    maximum_volume_variation(data.get_double("maximum_volume_variation")),
+    time_limit(data.get_double("time_limit")),
+    maturation_rate(data.get_double("maturation_rate"))
 {
     logger::log_assert(mandible->materials.get_materials()[0]->get_type() == Material::MANDIBLE,
             logger::ERROR,
@@ -104,7 +114,7 @@ void MarginalBoneLoss::run(){
 
     std::vector<double> u(this->mesh->max_dofs);
 
-    material::Mandible* material = static_cast<material::Mandible*>(this->mandible->materials.get_materials()[0]);
+    material::Mandible* material = static_cast<material::Mandible*>(this->mandible->materials.get_materials()[0].get());
 
     double time_count = 0;
     double alpha_count = 0;
@@ -204,5 +214,79 @@ double MarginalBoneLoss::get_density_variation(const StrainVector3D& eps) const{
         return poly_calc(this->a3, 4);
     }
 }
+
+using namespace projspec;
+const bool MarginalBoneLoss::reg = Factory<Simulation>::add(
+    [](const DataMap& data){
+        return std::make_unique<MarginalBoneLoss>(data);
+    },
+    ObjectRequirements{
+        "marginal_bone_loss",
+        {
+            DataEntry{.name = "time_step", .type = TYPE_DOUBLE, .required = true},
+            DataEntry{.name = "maximum_volume_variation", .type = TYPE_DOUBLE, .required = true},
+            DataEntry{.name = "time_limit", .type = TYPE_DOUBLE, .required = true},
+            DataEntry{.name = "maturation_rate", .type = TYPE_DOUBLE, .required = true},
+            DataEntry{.name = "pc", .type = TYPE_DOUBLE, .required = true},
+            DataEntry{.name = "mandible_geometry", .type = TYPE_INT, .required = true},
+            DataEntry{.name = "traction", .type = TYPE_ARRAY, .required = true,
+                         .array_data = std::shared_ptr<ArrayRequirements>(
+                             new ArrayRequirements{
+                                 .size = MarginalBoneLoss::RANGE_NUM,
+                                 .type = TYPE_DOUBLE
+                             }
+                         ),
+                     },
+            DataEntry{.name = "compression", .type = TYPE_ARRAY, .required = true,
+                         .array_data = std::shared_ptr<ArrayRequirements>(
+                             new ArrayRequirements{
+                                 .size = MarginalBoneLoss::RANGE_NUM,
+                                 .type = TYPE_DOUBLE
+                             }
+                         ),
+                     },
+            DataEntry{.name = "shear", .type = TYPE_ARRAY, .required = true,
+                         .array_data = std::shared_ptr<ArrayRequirements>(
+                             new ArrayRequirements{
+                                 .size = MarginalBoneLoss::RANGE_NUM,
+                                 .type = TYPE_DOUBLE
+                             }
+                         ),
+                     },
+            DataEntry{.name = "a0", .type = TYPE_ARRAY, .required = true,
+                         .array_data = std::shared_ptr<ArrayRequirements>(
+                             new ArrayRequirements{
+                                 .size = 0,
+                                 .type = TYPE_DOUBLE
+                             }
+                         ),
+                     },
+            DataEntry{.name = "a1", .type = TYPE_ARRAY, .required = true,
+                         .array_data = std::shared_ptr<ArrayRequirements>(
+                             new ArrayRequirements{
+                                 .size = 0,
+                                 .type = TYPE_DOUBLE
+                             }
+                         ),
+                     },
+            DataEntry{.name = "a2", .type = TYPE_ARRAY, .required = true,
+                         .array_data = std::shared_ptr<ArrayRequirements>(
+                             new ArrayRequirements{
+                                 .size = 0,
+                                 .type = TYPE_DOUBLE
+                             }
+                         ),
+                     },
+            DataEntry{.name = "a3", .type = TYPE_ARRAY, .required = true,
+                         .array_data = std::shared_ptr<ArrayRequirements>(
+                             new ArrayRequirements{
+                                 .size = 0,
+                                 .type = TYPE_DOUBLE
+                             }
+                         ),
+                     },
+        }
+    }
+);
 
 }

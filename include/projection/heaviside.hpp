@@ -21,6 +21,7 @@
 #ifndef HEAVISIDE_HPP
 #define HEAVISIDE_HPP
 
+#include "project_specification/data_map.hpp"
 #include "projection.hpp"
 
 namespace projection{
@@ -28,6 +29,7 @@ namespace projection{
 class Heaviside : public Projection{
     public:
     Heaviside(Parameter beta, double eta);
+    Heaviside(const projspec::DataMap& data);
     virtual ~Heaviside() = default;
     
     virtual void update(const size_t iteration) override;
@@ -37,6 +39,7 @@ class Heaviside : public Projection{
     virtual void project_gradient(std::vector<double>& new_df, const std::vector<double>& new_x) const override;
 
     private:
+    static const bool reg;
     Parameter beta;
     double eta;
 };

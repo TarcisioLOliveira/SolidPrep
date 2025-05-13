@@ -24,12 +24,14 @@
 #include <map>
 #include <vector>
 #include "field.hpp"
+#include "project_specification/data_map.hpp"
 
 namespace field{
 
 class OrthotropicFlow : public CoordinateField {
     public:
-    OrthotropicFlow(const MeshElementFactory* elem_info, std::vector<Geometry*> geoms, std::vector<CrossSection> entries, std::vector<double> coeffs, double alpha, double thickness, bool show);
+    virtual ~OrthotropicFlow() = default;
+    OrthotropicFlow(const projspec::DataMap& data);
 
     virtual void generate() override;
     virtual void initialize_views(Visualization* viz) override;
@@ -46,6 +48,7 @@ class OrthotropicFlow : public CoordinateField {
     }
 
     private:
+    static const bool reg;
     class UniqueNodeForView{
         public:
         const Node* node;

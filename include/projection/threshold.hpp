@@ -21,6 +21,7 @@
 #ifndef THRESHOLD_HPP
 #define THRESHOLD_HPP
 
+#include "project_specification/data_map.hpp"
 #include "projection.hpp"
 
 namespace projection{
@@ -28,6 +29,7 @@ namespace projection{
 class Threshold : public Projection{
     public:
     Threshold(Parameter beta, double eta);
+    Threshold(const projspec::DataMap& data);
     virtual ~Threshold() = default;
     
     virtual void update(const size_t iteration) override;
@@ -37,6 +39,7 @@ class Threshold : public Projection{
     virtual void project_gradient(std::vector<double>& new_df, const std::vector<double>& new_x) const override;
 
     private:
+    static const bool reg;
     Parameter beta;
     double eta;
 };

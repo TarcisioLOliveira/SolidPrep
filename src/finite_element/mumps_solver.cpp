@@ -23,11 +23,16 @@
 #include "finite_element/mumps_solver.hpp"
 #include "logger.hpp"
 #include "math/matrix.hpp"
+#include "project_data.hpp"
 
 namespace finite_element{
 
-MUMPSSolver::MUMPSSolver(ContactType contact_type, double rtol_abs, double max_step, double EPS_DISPL):
-    FiniteElement(contact_type, rtol_abs, max_step), gsm(EPS_DISPL)
+MUMPSSolver::MUMPSSolver(const projspec::DataMap& data):
+    FiniteElement(
+        data.proj->contact_data.contact_type,
+        data.proj->contact_data.rtol_abs,
+        data.proj->contact_data.max_step),
+    gsm(data.proj->contact_data.EPS_DISPL)
 {
     this->set_global_matrix(&this->gsm);
 
@@ -162,5 +167,16 @@ void MUMPSSolver::reset_hessian(){
     this->gsm.reset_hessian();
     this->factorized = false;
 }
+
+using namespace projspec;
+const bool MUMPSSolver::reg = Factory<FiniteElement>::add(
+    [](const DataMap& data){
+        return std::make_unique<MUMPSSolver>(data);
+    },
+    ObjectRequirements{
+        "mumps",
+        {}
+    }
+);
 
 }

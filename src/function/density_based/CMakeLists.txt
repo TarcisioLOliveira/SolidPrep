@@ -13,4 +13,4 @@ set(SOURCES_DENSITY_BASED_FUNCTION
     mechanostat.cpp
 )
 
-add_library(density_based_function ${SOURCES_DENSITY_BASED_FUNCTION})
+add_library(density_based_function OBJECT ${SOURCES_DENSITY_BASED_FUNCTION})

@@ -53,6 +53,8 @@ class CrossSection{
         gp_Dir normal;
     };
 
+    CrossSection() = default;
+
     /**
      * Creates a cross section for 2D problems.
      *

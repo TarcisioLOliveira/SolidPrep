@@ -44,6 +44,7 @@
 #include <vector>
 #include <algorithm>
 #include <memory>
+#include "project_data.hpp"
 
 namespace pathfinding{
 
@@ -74,9 +75,18 @@ bool MeshlessAStar::PriorityQueue::equal(gp_Pnt p1, gp_Pnt p2, double eps){
            ((p1.Z() - p2.Z()) < eps) && ((p2.Z() - p1.Z()) < eps);
 }
 
-MeshlessAStar::MeshlessAStar(TopoDS_Shape topology, double step, double angle, int choices, double restriction, utils::ProblemType type):
-    step(step), turn_angle(angle), angles2D(), angles3D(), restriction(restriction), type(type), topology(){
-    angle = (M_PI/180)*angle;
+MeshlessAStar::MeshlessAStar(const projspec::DataMap& data):
+    step(data.get_double("step")),
+    turn_angle(data.get_double("max_turn_angle")),
+    angles2D(),
+    angles3D(),
+    restriction(data.get_double("restriction_size")),
+    type(data.proj->type),
+    topology(TopoDS::Solid(data.proj->geometries[0]->shape)){
+
+    const auto choices = data.get_int("turn_options");
+
+    const double angle = (M_PI/180.0)*this->turn_angle;
     if(type == utils::PROBLEM_TYPE_2D){
         this->topology = BRepBuilderAPI_MakeSolid(TopoDS::Shell(topology));
     } else {
@@ -247,5 +257,21 @@ std::pair<bool, gp_Pnt> MeshlessAStar::get_intersection_point(gp_Pnt p, gp_Dir d
         }
     }
 }
+
+using namespace projspec;
+const bool MeshlessAStar::reg = Factory<Pathfinding>::add(
+    [](const DataMap& data){
+        return std::make_unique<MeshlessAStar>(data);
+    },
+    ObjectRequirements{
+        "meshless_astar",
+        {
+            DataEntry{.name = "step", .type = TYPE_DOUBLE, .required = true},
+            DataEntry{.name = "max_turn_angle", .type = TYPE_DOUBLE, .required = true},
+            DataEntry{.name = "turn_options", .type = TYPE_INT, .required = true},
+            DataEntry{.name = "restriction_size", .type = TYPE_DOUBLE, .required = false},
+        }
+    }
+);
 
 }

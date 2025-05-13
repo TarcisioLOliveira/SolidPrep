@@ -31,6 +31,9 @@ class GlobalStiffnessMatrix;
 
 class FiniteElement{
     public:
+    static std::string get_name(){
+        return "finite_element";
+    }
     const double K_MIN = 1e-6;
 
     enum ContactType{

@@ -21,11 +21,12 @@
 #include <mpich-x86_64/mpi.h>
 #include "function/density_based/mass.hpp"
 #include "optimizer.hpp"
+#include "project_data.hpp"
 
 namespace function::density_based{
 
-Mass::Mass(const Meshing* const mesh):
-    mesh(mesh){}
+Mass::Mass(const projspec::DataMap& data):
+    mesh(data.proj->topopt_mesher.get()){}
 
 void Mass::initialize(const DensityBasedOptimizer* const op){
     (void) op;
@@ -101,6 +102,18 @@ double Mass::calculate_with_gradient(const DensityBasedOptimizer* const op, cons
 
     return V;
 }
+
+using namespace projspec;
+const bool Mass::reg = Factory<DensityBasedFunction>::add(
+    [](const DataMap& data){
+        return std::make_unique<Mass>(data);
+    },
+    ObjectRequirements{
+        "mass",
+        {
+        }
+    }
+);
 
 }
 

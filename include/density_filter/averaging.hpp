@@ -22,12 +22,13 @@
 #define AVERAGING_HPP
 
 #include "density_filter.hpp"
-#include <map>
+#include "project_specification/data_map.hpp"
 
 namespace density_filter{
 
 class Averaging : public DensityFilter{
     public:
+    Averaging(const projspec::DataMap& data);
     virtual ~Averaging() = default;
 
     virtual void initialize(const Meshing* const mesh, const size_t x_size) override;
@@ -49,6 +50,7 @@ class Averaging : public DensityFilter{
     }
 
     private:
+    static const bool reg;
     std::vector<double> D;
     std::vector<double> nodal_densities;
     std::vector<double> nodal_gradient;

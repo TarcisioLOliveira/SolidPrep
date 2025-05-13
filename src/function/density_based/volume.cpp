@@ -22,11 +22,12 @@
 #include <numeric>
 #include "function/density_based/volume.hpp"
 #include "optimizer.hpp"
+#include "project_data.hpp"
 
 namespace function::density_based{
 
-Volume::Volume(const Meshing* const mesh):
-    mesh(mesh){}
+Volume::Volume(const projspec::DataMap& data):
+    mesh(data.proj->topopt_mesher.get()){}
 
 void Volume::initialize(const DensityBasedOptimizer* const op){
     auto v = op->get_volumes();
@@ -95,6 +96,18 @@ double Volume::calculate_with_gradient(const DensityBasedOptimizer* const op, co
 
     return V;
 }
+
+using namespace projspec;
+const bool Volume::reg = Factory<DensityBasedFunction>::add(
+    [](const DataMap& data){
+        return std::make_unique<Volume>(data);
+    },
+    ObjectRequirements{
+        "volume",
+        {
+        }
+    }
+);
 
 }
 

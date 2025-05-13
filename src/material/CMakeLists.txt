@@ -7,4 +7,4 @@ set(SOURCES_MATERIAL
     linear_elastic_orthotropic_field.cpp
 )
 
-add_library(material ${SOURCES_MATERIAL})
+add_library(material OBJECT ${SOURCES_MATERIAL})

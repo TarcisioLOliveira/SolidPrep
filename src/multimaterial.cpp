@@ -27,7 +27,7 @@
 #include "multimaterial.hpp"
 #include "utils.hpp"
 
-MultiMaterial::MultiMaterial(std::vector<Material*> materials, utils::ProblemType type, bool has_void):
+MultiMaterial::MultiMaterial(std::vector<utils::DelayedPointerView<Material>> materials, utils::ProblemType type, bool has_void):
     materials(std::move(materials)), problem_type(type), has_void(has_void){
 
     for(const auto& M:this->materials){    

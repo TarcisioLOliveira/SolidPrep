@@ -29,6 +29,7 @@
 #include "utils.hpp"
 #include "cross_section.hpp"
 #include "curvature.hpp"
+#include "utils/delayed_pointer.hpp"
 
 class BoundaryElement;
 
@@ -38,7 +39,7 @@ class InternalLoads{
     // ASSUMES CROSS SECTION IS PLANE
     // ASSUMES this->normal == this->S.normal
 
-    InternalLoads(CrossSection cross_section, double thickness, gp_Dir normal, gp_Dir v, gp_Dir w, Material* mat, std::array<double, 3> F, std::array<double, 3> M, MeshElementFactory* elem, utils::ProblemType type);
+    InternalLoads(CrossSection cross_section, double thickness, gp_Dir normal, gp_Dir v, gp_Dir w, utils::DelayedPointerView<Material> mat, std::array<double, 3> F, std::array<double, 3> M, MeshElementFactory* elem, utils::ProblemType type);
     InternalLoads(InternalLoads&&) = default;
 
     inline void clear_curvature_data(){
@@ -60,7 +61,7 @@ class InternalLoads{
     const math::Matrix rot3D;
     const std::array<double, 3> F;
     const std::array<double, 3> M;
-    const Material* mat;
+    const utils::DelayedPointerView<Material> mat;
     const gp_Dir normal;
     const MeshElementFactory* elem_info;
     std::vector<const BoundaryElement*> submesh;

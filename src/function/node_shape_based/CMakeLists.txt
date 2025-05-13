@@ -7,4 +7,4 @@ set(SOURCES_NODE_SHAPE_BASED_FUNCTION
     mechanostat.cpp
 )
 
-add_library(node_shape_based_function ${SOURCES_NODE_SHAPE_BASED_FUNCTION})
+add_library(node_shape_based_function OBJECT ${SOURCES_NODE_SHAPE_BASED_FUNCTION})

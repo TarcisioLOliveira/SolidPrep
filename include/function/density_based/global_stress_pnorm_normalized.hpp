@@ -23,6 +23,7 @@
 
 #include "function.hpp"
 #include "meshing.hpp"
+#include "project_specification/data_map.hpp"
 #include "solver_manager.hpp"
 
 namespace function::density_based{
@@ -31,7 +32,7 @@ class GlobalStressPnormNormalized : public DensityBasedFunction{
     public:
     const double K_MIN = 1e-6;
 
-    GlobalStressPnormNormalized(const Meshing* const mesh, SolverManager* fem, double pc, double P, double pt, double psiK, double psiS);
+    GlobalStressPnormNormalized(const projspec::DataMap& data);
 
     virtual ~GlobalStressPnormNormalized() = default;
 
@@ -40,6 +41,7 @@ class GlobalStressPnormNormalized : public DensityBasedFunction{
     virtual double calculate_with_gradient(const DensityBasedOptimizer* const op, const std::vector<double>& u, const std::vector<double>& x, std::vector<double>& grad) override;
 
     private:
+    static const bool reg;
     const Meshing* const mesh;
     SolverManager* fem;
     const double pc;

@@ -23,12 +23,17 @@
 #include "finite_element/eigen_pcg.hpp"
 #include "logger.hpp"
 #include "math/matrix.hpp"
+#include "project_data.hpp"
 
 namespace finite_element{
 
-EigenPCG::EigenPCG(ContactType contact_type, double rtol_abs, double max_step, double EPS_DISPL):
-    FiniteElement(contact_type, rtol_abs, max_step), gsm(EPS_DISPL){
-
+EigenPCG::EigenPCG(const projspec::DataMap& data):
+    FiniteElement(
+        data.proj->contact_data.contact_type,
+        data.proj->contact_data.rtol_abs,
+        data.proj->contact_data.max_step),
+    gsm(data.proj->contact_data.EPS_DISPL)
+{
     this->set_global_matrix(&this->gsm);    
 }
 
@@ -59,5 +64,16 @@ void EigenPCG::solve(std::vector<double>& load){
 void EigenPCG::reset_hessian(){
     this->gsm.reset_hessian();
 }
+
+using namespace projspec;
+const bool EigenPCG::reg = Factory<FiniteElement>::add(
+    [](const DataMap& data){
+        return std::make_unique<EigenPCG>(data);
+    },
+    ObjectRequirements{
+        "eigen_pcg",
+        {}
+    }
+);
 
 }

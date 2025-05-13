@@ -27,6 +27,9 @@ class ProjectData;
 
 class Sizing{
     public:
+    static std::string get_name(){
+        return "sizing";
+    }
     Sizing(ProjectData* data):data(data){}
     virtual ~Sizing() = default;
 

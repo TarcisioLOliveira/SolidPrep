@@ -9,7 +9,7 @@ set(SOURCES_FINITE_ELEMENT
     petsc_pcg.cpp
 )
 
-add_library(finite_element ${SOURCES_FINITE_ELEMENT})
+add_library(finite_element OBJECT ${SOURCES_FINITE_ELEMENT})
 
 # if(USE_CUDA)
 #     set(SOURCES_FINITE_ELEMENT_CUDA

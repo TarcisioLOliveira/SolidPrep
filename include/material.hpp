@@ -32,6 +32,9 @@ class Field;
 
 class Material{
     public:
+    static std::string get_name(){
+        return "material";
+    }
     enum Type{
         NONE,
         LINEAR_ELASTIC_ISOTROPIC,
@@ -89,7 +92,7 @@ class Material{
         S = R*S*R.T();
     }
 
-    const std::string name;
+    const std::string material_name;
     protected:
     std::vector<double> Smax;
     std::vector<double> Tmax;

@@ -1,6 +1,3 @@
-[submodule "rapidjson"]
-	path = modules/rapidjson
-    url = https://github.com/Tencent/rapidjson.git
 [submodule "modules/SPView"]
 	path = modules/SPView
 	url = https://github.com/TarcisioLOliveira/SPView.git

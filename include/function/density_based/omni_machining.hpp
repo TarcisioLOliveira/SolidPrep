@@ -22,19 +22,18 @@
 #define FUNCTION_RADIAL_MACHINING_HPP
 
 #include <Eigen/SparseCore>
-#include <Eigen/src/SparseCore/SparseMatrix.h>
 #include <Eigen/SparseLU>
 #include "function.hpp"
 #include "meshing.hpp"
 #include "density_filter.hpp"
-#include "projection/heaviside.hpp"
+#include "project_specification/data_map.hpp"
 #include "projection/threshold.hpp"
 
 namespace function::density_based{
 
 class OmniMachining : public DensityBasedFunction{
     public:
-    OmniMachining(const Meshing* const mesh, const DensityFilter* const filter, gp_Pnt center, gp_Dir axis, double v_norm, double beta1, double beta2, double L);
+    OmniMachining(const projspec::DataMap& data);
 
     virtual ~OmniMachining() = default;
 
@@ -47,8 +46,8 @@ class OmniMachining : public DensityBasedFunction{
     }
 
     private:
+    static const bool reg;
     const Meshing* const mesh;
-    const DensityFilter* const filter;
     const gp_Pnt center;
     const gp_Dir axis;
     const double v_norm;

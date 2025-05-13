@@ -25,19 +25,32 @@
 #include <algorithm>
 #include <gp_Ax1.hxx>
 #include "logger.hpp"
-#include "utils/D_operations.hpp"
+#include "project_specification/data_map.hpp"
 #include "material/mandible.hpp"
 #include "utils/basis_tensor.hpp"
+#include "project_data.hpp"
 
 namespace material{
 
-Mandible::Mandible(const std::string& name, Material* outer, Material* inner, const std::string& path_points1, const std::string& path_points2, double C, bool with_implant, ImplantRegion imp):
-    Material(name, std::vector<double>(1), std::vector<double>(1)),
-    outer(outer), inner(inner), C(C), ring1(this), ring2(this), with_implant(with_implant), implant(imp){
+Mandible::Mandible(const projspec::DataMap& data):
+    Material(data.get_string("name"),
+            std::vector<double>(1),
+            std::vector<double>(1)),
+    outer(data.proj->get_material(data.get_string("material_outer"))),
+    inner(data.proj->get_material(data.get_string("material_inner"))),
+    C(data.get_double("C")),
+    ring1(this),
+    ring2(this),
+    with_implant(data.exists_object("implant"))
+{
 
-    {
-        auto p1 = this->load_points(path_points1);
-        auto p2 = this->load_points(path_points2);
+    if(!data.get_bool("STUB", false)){
+        if(this->with_implant){
+            implant = ImplantRegion(data.get_object("implant"));
+        }
+
+        auto p1 = this->load_points(data.get_string("path_points1"));
+        auto p2 = this->load_points(data.get_string("path_points2"));
         this->ring1.initialize_center(p1);
         this->ring2.initialize_center(p2);
         this->center_normal = gp_Vec(this->ring1.center, this->ring2.center);
@@ -47,7 +60,6 @@ Mandible::Mandible(const std::string& name, Material* outer, Material* inner, co
         this->ring1.initialize_points(p1);
         this->ring2.initialize_points(p2);
     }
-
 }
 math::Matrix Mandible::stiffness_2D(const MeshElement* const e, const gp_Pnt& p) const{
     auto Do = this->outer->stiffness_2D(e, p);
@@ -287,11 +299,25 @@ double Mandible::angle_with_ref(const gp_Vec& dist) const{
     return result;
 }
 
-Mandible::ImplantRegion::ImplantRegion(const gp_Pnt& center_1, const gp_Pnt& center_2, double r1, double r2, const std::vector<double>& a, double dl):
-    center_1(center_1), center_2(center_2), r1(r1), r2(r2),
+Mandible::ImplantRegion::ImplantRegion(const projspec::DataMap* const data):
+    center_1(
+        data->get_array("center1")->get_double(0),
+        data->get_array("center1")->get_double(1),
+        data->get_array("center1")->get_double(2)
+    ),
+    center_2(
+        data->get_array("center2")->get_double(0),
+        data->get_array("center2")->get_double(1),
+        data->get_array("center2")->get_double(2)
+    ),
+    r1(data->get_double("r1")),
+    r2(data->get_double("r2")),
     normal(gp_Vec(center_1, center_2)),
-    decay_distance(dl), min_str(a[0]),
-    a(a), a_orig(a), a_len(a.size()),
+    decay_distance(data->get_double("decay_distance")),
+    a(data->get_array("coefficients")->get_double_array()),
+    min_str(a[0]),
+    a_orig(a),
+    a_len(a.size()),
     max_l(center_1.Distance(center_2)){
     
 }
@@ -355,5 +381,54 @@ void Mandible::ImplantRegion::set_maturation_alpha(double alpha){
         this->a[i] = (1 - alpha)*this->a_orig[i];
     }
 }
+
+using namespace projspec;
+const bool Mandible::reg = Factory<Material>::add(
+    [](const DataMap& data){
+        return std::make_unique<Mandible>(data);
+    },
+    ObjectRequirements{
+        "mandible",
+        {
+            DataEntry{.name = "name", .type = TYPE_STRING, .required = true},
+            DataEntry{.name = "material_outer", .type = TYPE_STRING, .required = true},
+            DataEntry{.name = "material_inner", .type = TYPE_STRING, .required = true},
+            DataEntry{.name = "path_points1", .type = TYPE_RELATIVE_PATH, .required = true},
+            DataEntry{.name = "path_points2", .type = TYPE_RELATIVE_PATH, .required = true},
+            DataEntry{.name = "C", .type = TYPE_DOUBLE, .required = true},
+            DataEntry{.name = "implant", .type = TYPE_OBJECT, .required = false,
+                .object_data = {
+                    DataEntry{.name = "center1", .type = TYPE_ARRAY, .required = true,
+                         .array_data = std::shared_ptr<ArrayRequirements>(
+                             new ArrayRequirements{
+                                 .size = 3,
+                                 .type = TYPE_DOUBLE
+                             }
+                         ),
+                    },
+                    DataEntry{.name = "center2", .type = TYPE_ARRAY, .required = true,
+                         .array_data = std::shared_ptr<ArrayRequirements>(
+                             new ArrayRequirements{
+                                 .size = 3,
+                                 .type = TYPE_DOUBLE
+                             }
+                         ),
+                    },
+                    DataEntry{.name = "r1", .type = TYPE_DOUBLE, .required = true},
+                    DataEntry{.name = "r2", .type = TYPE_DOUBLE, .required = true},
+                    DataEntry{.name = "decay_distance", .type = TYPE_DOUBLE, .required = true},
+                    DataEntry{.name = "coefficients", .type = TYPE_ARRAY, .required = true,
+                         .array_data = std::shared_ptr<ArrayRequirements>(
+                             new ArrayRequirements{
+                                 .size = 0,
+                                 .type = TYPE_DOUBLE
+                             }
+                         ),
+                    },
+                }
+            }
+        }
+    }
+);
 
 }

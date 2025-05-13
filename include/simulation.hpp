@@ -25,6 +25,9 @@
 
 class Simulation{
     public:
+    static std::string get_name(){
+        return "simulation";
+    }
     virtual ~Simulation() = default;
 
     virtual void initialize_views(Visualization* viz) = 0;

@@ -27,7 +27,7 @@ Dependencies:
 - [LAPACK, LAPACKE, CBLAS](http://www.netlib.org/lapack/)
 - [Gmsh](https://gmsh.info/)
 - [VTK](https://vtk.org/) (Dependency for OpenCascade, may not be bundled with it)
-- [RapidJSON](https://github.com/Tencent/rapidjson) (included as submodule)
+- [JsonCpp](https://github.com/open-source-parsers/jsoncpp)
 - MPI (currently only [MPICH](https://www.mpich.org/))
 - [MUMPS](https://graal.ens-lyon.fr/MUMPS/index.php) ([CMake version](https://github.com/scivision/mumps))
 - [Eigen](https://eigen.tuxfamily.org/)

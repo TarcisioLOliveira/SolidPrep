@@ -23,11 +23,20 @@
 #include "logger.hpp"
 #include "math/matrix.hpp"
 #include "optimizer.hpp"
+#include "project_specification/data_map.hpp"
+#include "project_data.hpp"
 
 namespace function::density_based{
 
-GlobalStressHeaviside::GlobalStressHeaviside(const Meshing* const mesh, SolverManager* fem, double max_stress, double C, double pc, double pt, double psiK, double psiS):
-    mesh(mesh), fem(fem), max_stress(max_stress), C(C), pc(pc), pt(pt), psiK(psiK), psiS(psiS){}
+GlobalStressHeaviside::GlobalStressHeaviside(const projspec::DataMap& data):
+    mesh(data.proj->topopt_mesher.get()),
+    fem(data.proj->topopt_fea.get()),
+    max_stress(data.get_double("max_stress")),
+    C(data.get_double("C")),
+    pc(data.proj->topopt_penalization),
+    pt(data.get_double("pt")),
+    psiK(data.proj->topopt_psi),
+    psiS(-data.get_double("psiS")){}
 
 double GlobalStressHeaviside::calculate(const DensityBasedOptimizer* const op, const std::vector<double>& u, const std::vector<double>& x){
     (void)op;
@@ -230,6 +239,22 @@ double GlobalStressHeaviside::calculate_with_gradient(const DensityBasedOptimize
 
     return result;
 }
+
+using namespace projspec;
+const bool GlobalStressHeaviside::reg = Factory<DensityBasedFunction>::add(
+    [](const DataMap& data){
+        return std::make_unique<GlobalStressHeaviside>(data);
+    },
+    ObjectRequirements{
+        "global_stress_heaviside",
+        {
+            DataEntry{.name = "C", .type = TYPE_DOUBLE, .required = true},
+            DataEntry{.name = "max_stress", .type = TYPE_DOUBLE, .required = true},
+            DataEntry{.name = "pt", .type = TYPE_DOUBLE, .required = true},
+            DataEntry{.name = "psi", .type = TYPE_DOUBLE, .required = true},
+        }
+    }
+);
 
 }
 

@@ -22,11 +22,12 @@
 #include "density_filter/helmholtz.hpp"
 #include "logger.hpp"
 #include "math/matrix.hpp"
+#include "project_specification/registry.hpp"
 
 namespace density_filter{
 
-Helmholtz::Helmholtz(const double radius)
-    : radius(radius/(2*std::sqrt(3))){}
+Helmholtz::Helmholtz(const projspec::DataMap& data):
+    radius(data.get_double("radius")/(2*std::sqrt(3))){}
 
 void Helmholtz::initialize(const Meshing* const mesh, const size_t x_size){
     (void)x_size;
@@ -267,5 +268,18 @@ void Helmholtz::get_gradient(std::vector<double>& gradx) const{
         }
     }
 }
+
+using namespace projspec;
+const bool Helmholtz::reg = Factory<DensityFilter>::add(
+    [](const DataMap& data){
+        return std::make_unique<Helmholtz>(data);
+    },
+    ObjectRequirements{
+        "helmholtz",
+        {
+            DataEntry{.name = "radius", .type = TYPE_DOUBLE, .required = true}
+        }
+    }
+);
 
 }

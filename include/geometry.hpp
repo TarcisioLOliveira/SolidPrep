@@ -44,7 +44,7 @@ class Geometry{
 
     void get_stresses(const std::vector<double>& u, bool topopt, size_t& D_offset, const std::vector<math::Matrix>& D_cache, std::vector<double>::iterator& stress_it) const;
 
-    inline void set_materials(std::vector<Material*> materials){
+    inline void set_materials(std::vector<utils::DelayedPointerView<Material>> materials){
         this->M = MultiMaterial(materials, this->type, this->with_void);
     }
 

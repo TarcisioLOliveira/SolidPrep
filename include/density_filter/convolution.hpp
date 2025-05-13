@@ -22,12 +22,13 @@
 #define CONVOLUTION_HPP
 
 #include "density_filter.hpp"
+#include "project_specification/data_map.hpp"
 
 namespace density_filter{
 
 class Convolution : public DensityFilter{
     public:
-    Convolution(const double radius);
+    Convolution(const projspec::DataMap& data);
 
     virtual ~Convolution() = default;
 
@@ -53,6 +54,7 @@ class Convolution : public DensityFilter{
         logger::log_assert(false, logger::ERROR, "chosen density filter does not support nodal densities");
     }
     private:
+    static const bool reg;
     const double radius;
     std::vector<std::vector<size_t>> neighbors;
     std::vector<double> p;

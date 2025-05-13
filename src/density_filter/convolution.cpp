@@ -19,11 +19,14 @@
  */
 
 #include "density_filter/convolution.hpp"
+#include "project_specification/registry.hpp"
 
 namespace density_filter{
 
-Convolution::Convolution(const double radius):
-    radius(radius){}
+Convolution::Convolution(const projspec::DataMap& data):
+    radius(data.get_double("radius")){
+
+}
 
 void Convolution::initialize(const Meshing* const mesh, const size_t x_size){
     // Caching positions, because this calculation is expensive.
@@ -101,5 +104,18 @@ void Convolution::filter_gradient(const std::vector<double>& df, std::vector<dou
         }
     }
 }
+
+using namespace projspec;
+const bool Convolution::reg = Factory<DensityFilter>::add(
+    [](const DataMap& data){
+        return std::make_unique<Convolution>(data);
+    },
+    ObjectRequirements{
+        "convolution",
+        {
+            DataEntry{.name = "radius", .type = TYPE_DOUBLE, .required = true}
+        }
+    }
+);
 
 }

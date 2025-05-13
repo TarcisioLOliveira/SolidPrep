@@ -115,6 +115,9 @@ class Meshing{
     };
 
     public:
+    static std::string get_name(){
+        return "mesher";
+    }
     Meshing(const std::vector<std::unique_ptr<Geometry>>& geometries,
             const MeshElementFactory* const elem_type,
             const ProjectData* const proj_data,

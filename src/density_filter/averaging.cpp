@@ -19,10 +19,14 @@
  */
 
 #include "density_filter/averaging.hpp"
-#include "logger.hpp"
+#include "project_specification/registry.hpp"
 #include "utils.hpp"
 
 namespace density_filter{
+
+Averaging::Averaging(const projspec::DataMap& data){
+    (void)data;
+}
 
 void Averaging::initialize(const Meshing* const mesh, const size_t x_size){
     (void)x_size;
@@ -239,5 +243,17 @@ void Averaging::get_gradient(std::vector<double>& gradx) const{
         }
     }
 }
+
+using namespace projspec;
+const bool Averaging::reg = Factory<DensityFilter>::add(
+    [](const DataMap& data){
+        return std::make_unique<Averaging>(data);
+    },
+    ObjectRequirements{
+        "averaging",
+        {
+        }
+    }
+);
 
 }

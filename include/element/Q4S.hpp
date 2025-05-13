@@ -22,12 +22,9 @@
 #define Q4S_HPP
 
 #include "element.hpp"
-#include "material.hpp"
 #include "utils.hpp"
 #include "element_factory.hpp"
-#include <memory>
 #include "element_common.hpp"
-#include <array>
 
 namespace element{
 
@@ -72,6 +69,7 @@ class Q4S : public MeshElementCommon2DQuad<Q4S>{
     }
 
     private:
+    static const bool reg;
     virtual math::Matrix get_Nf(const double t, const std::vector<gp_Pnt>& points) const override;
 
     double a, b, x0, y0 = 0;

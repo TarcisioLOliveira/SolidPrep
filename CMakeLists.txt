@@ -11,7 +11,7 @@ set(VERSION ${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH})
 enable_language(CXX)
 enable_language(C)
 enable_language(Fortran)
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 
 set(BUILD_TESTS OFF CACHE BOOL "Compile tests (requires Catch2 v3)")
 set(NO_OPENMP OFF CACHE BOOL "Compile without OpenMP support")
@@ -29,6 +29,8 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 # PkgConfig
 find_package(PkgConfig REQUIRED)
 
+find_package(jsoncpp REQUIRED)
+get_target_property(JSON_INC_PATH jsoncpp_lib INTERFACE_INCLUDE_DIRECTORIES)
 find_package(OpenCASCADE REQUIRED)
 if(OpenCASCADE_FOUND)
     message("-- OpenCASCADE found. Version: ${OpenCASCADE_VERSION_MAJOR}.${OpenCASCADE_VERSION_MINOR}.${OpenCASCADE_MAINTENANCE_VERSION}.")
@@ -109,7 +111,6 @@ add_subdirectory(modules/SPView)
 include_directories(
     ${PROJECT_SOURCE_DIR}/include
     SYSTEM
-    ${PROJECT_SOURCE_DIR}/modules/rapidjson/include
     ${PROJECT_SOURCE_DIR}/modules/SPView/include
     ${OpenCASCADE_INCLUDE_DIR}
     ${LAPACK_INCLUDE_DIR}
@@ -122,6 +123,7 @@ include_directories(
     ${Eigen3_INCLUDE_DIR}
     ${PETSC_INCLUDE_DIRS}
     ${GSL_INCLUDE_DIR}
+    ${JSON_INC_PATH}
 )
 
 if(USE_CUDA)

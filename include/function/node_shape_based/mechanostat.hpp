@@ -23,6 +23,7 @@
 
 #include "function.hpp"
 #include "meshing.hpp"
+#include "project_specification/data_map.hpp"
 #include "solver_manager.hpp"
 
 namespace function::node_shape_based{
@@ -30,7 +31,7 @@ namespace function::node_shape_based{
 class Mechanostat: public NodeShapeBasedFunction{
     public:
     typedef std::array<double, 2> Range;
-    Mechanostat(const Meshing* const mesh, SolverManager* fem, double beta, Range traction, Range compression, Range shear, utils::ProblemType type);
+    Mechanostat(const projspec::DataMap& data);
 
     virtual void initialize_views(Visualization* viz) override;
     virtual void initialize(const NodeShapeBasedOptimizer* const op) override;
@@ -38,6 +39,7 @@ class Mechanostat: public NodeShapeBasedFunction{
     virtual double calculate_with_gradient(const NodeShapeBasedOptimizer* const op, const std::vector<double>& u, std::vector<double>& grad) override;
 
     private:
+    static const bool reg;
     const Meshing* const mesh;
     SolverManager* fem;
     const double beta;

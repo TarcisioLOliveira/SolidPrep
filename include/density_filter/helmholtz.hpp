@@ -22,12 +22,13 @@
 #define HELMHOLTZ_HPP
 
 #include "density_filter.hpp"
+#include "project_specification/data_map.hpp"
 
 namespace density_filter{
 
 class Helmholtz : public DensityFilter{
     public:
-    Helmholtz(const double radius);
+    Helmholtz(const projspec::DataMap& data);
     virtual ~Helmholtz() = default;
 
     virtual void initialize(const Meshing* const mesh, const size_t x_size) override;
@@ -49,6 +50,7 @@ class Helmholtz : public DensityFilter{
     }
 
     private:
+    static const bool reg;
     const double radius;
     size_t NN_n;
     size_t NN_kd;

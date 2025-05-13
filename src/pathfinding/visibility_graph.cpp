@@ -48,11 +48,22 @@
 #include <memory>
 #include <GeomAPI_ExtremaCurveCurve.hxx>
 #include <lapacke.h>
+#include "project_data.hpp"
 
 namespace pathfinding{
 
 VisibilityGraph::VisibilityGraph(const std::unique_ptr<Geometry>& topology, double step, double turn_angle, double restriction, utils::ProblemType type):
     step(step), angle(turn_angle*M_PI/180), restriction(restriction), topology(topology.get()), type(type){}
+
+VisibilityGraph::VisibilityGraph(const projspec::DataMap& data):
+    step(data.get_double("step")),
+    angle(data.get_double("max_turn_angle")*M_PI/180.0),
+    restriction(data.get_double("restriction_size")),
+    topology(data.proj->geometries[0].get()),
+    type(data.proj->type)
+{
+
+}
 
 std::vector<gp_Pnt> VisibilityGraph::find_path(const CrossSection& begin, const CrossSection& end){
     struct Vertex{
@@ -359,6 +370,20 @@ bool VisibilityGraph::intersects_edge_3D(const gp_Pnt& p1, const gp_Pnt& p2, boo
     return false;
 }
 
+using namespace projspec;
+const bool VisibilityGraph::reg = Factory<Pathfinding>::add(
+    [](const DataMap& data){
+        return std::make_unique<VisibilityGraph>(data);
+    },
+    ObjectRequirements{
+        "visibility_graph",
+        {
+            DataEntry{.name = "step", .type = TYPE_DOUBLE, .required = true},
+            DataEntry{.name = "max_turn_angle", .type = TYPE_DOUBLE, .required = true},
+            DataEntry{.name = "restriction_size", .type = TYPE_DOUBLE, .required = false},
+        }
+    }
+);
 
 }
 

@@ -26,12 +26,15 @@
 #include <vector>
 #include "field.hpp"
 #include "math/matrix.hpp"
+#include "project_specification/data_map.hpp"
+#include "utils/delayed_pointer.hpp"
 
 namespace field{
 
 class PrincipalStress : public CoordinateField {
     public:
-    PrincipalStress(const MeshElementFactory* elem_info, ProjectData* proj_data, Material* initial_material, size_t max_it, double thickness, bool show);
+    virtual ~PrincipalStress() = default;
+    PrincipalStress(const projspec::DataMap& data);
 
     virtual void generate() override;
     virtual void initialize_views(Visualization* viz) override;
@@ -49,6 +52,7 @@ class PrincipalStress : public CoordinateField {
     inline virtual bool is_fea_dependent() const override{ return true; }
 
     private:
+    static const bool reg;
     class UniqueNodeForView{
         public:
         const Node* node;
@@ -59,7 +63,7 @@ class PrincipalStress : public CoordinateField {
         }
     };
     ProjectData* proj_data;
-    Material* initial_material;
+    utils::DelayedPointerView<Material> initial_material;
     const MeshElementFactory* elem_info;
     std::vector<Geometry*> geoms;
     std::vector<math::Matrix> base_D;

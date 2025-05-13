@@ -23,11 +23,18 @@
 #include "function/density_based/global_stress_pnorm.hpp"
 #include "logger.hpp"
 #include "optimizer.hpp"
+#include "project_data.hpp"
 
 namespace function::density_based{
 
-GlobalStressPnorm::GlobalStressPnorm(const Meshing* const mesh, SolverManager* fem, double pc, double P, double pt, double psiK, double psiS):
-    mesh(mesh), fem(fem), pc(pc), P(P), pt(pt), psiK(psiK), psiS(psiS){}
+GlobalStressPnorm::GlobalStressPnorm(const projspec::DataMap& data):
+    mesh(data.proj->topopt_mesher.get()),
+    fem(data.proj->topopt_fea.get()),
+    pc(data.proj->topopt_penalization),
+    P(data.get_double("P")),
+    pt(data.get_double("pt")),
+    psiK(data.proj->topopt_psi),
+    psiS(-data.get_double("psiS")){}
 
 double GlobalStressPnorm::calculate(const DensityBasedOptimizer* const op, const std::vector<double>& u, const std::vector<double>& x){
     (void)x;
@@ -243,6 +250,21 @@ double GlobalStressPnorm::calculate_with_gradient(const DensityBasedOptimizer* c
 
     return result;
 }
+
+using namespace projspec;
+const bool GlobalStressPnorm::reg = Factory<DensityBasedFunction>::add(
+    [](const DataMap& data){
+        return std::make_unique<GlobalStressPnorm>(data);
+    },
+    ObjectRequirements{
+        "global_stress_pnorm_normalized",
+        {
+            DataEntry{.name = "P", .type = TYPE_DOUBLE, .required = true},
+            DataEntry{.name = "pt", .type = TYPE_DOUBLE, .required = true},
+            DataEntry{.name = "psi", .type = TYPE_DOUBLE, .required = true},
+        }
+    }
+);
 
 }
 

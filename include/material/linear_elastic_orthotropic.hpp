@@ -22,12 +22,13 @@
 #define LINEAR_ELASTIC_ORTHOTROPIC_HPP
 
 #include "material.hpp"
+#include "project_specification/data_map.hpp"
 
 namespace material{
 
 class LinearElasticOrthotropic : public Material{
     public:
-    LinearElasticOrthotropic(const std::string& name, const double density, std::vector<double> E, std::vector<double> nu, std::vector<bool> nu_lower_half, std::vector<double> G, std::vector<double> Smax, std::vector<double> Tmax);
+    LinearElasticOrthotropic(const projspec::DataMap& data);
 
     inline virtual math::Matrix stiffness_2D(const MeshElement* const e, const gp_Pnt& p) const override{
         (void)p;
@@ -65,6 +66,7 @@ class LinearElasticOrthotropic : public Material{
     virtual std::vector<double> get_max_stresses(gp_Dir d) const override;
 
     private:
+    static const bool reg;
     const double density;
     math::Matrix D_2D;
     math::Matrix D_3D;

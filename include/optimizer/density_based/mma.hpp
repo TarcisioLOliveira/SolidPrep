@@ -23,6 +23,7 @@
 
 #include <memory>
 #include "density_filter.hpp"
+#include "project_specification/data_map.hpp"
 #include "projection.hpp"
 #include "optimizer.hpp"
 #include "function.hpp"
@@ -31,12 +32,13 @@ namespace optimizer::density_based{
 
 class MMA : public DensityBasedOptimizer{
     public:
-    MMA(DensityFilter* filter, Projection* projection, ProjectData* data, std::vector<std::unique_ptr<DensityBasedFunction>> objective, std::vector<double> objective_weights, std::vector<DensityBasedConstraint> constraints, double asyminit, double asymdec, double asyminc, double minfac, double maxfac, double c, double pc, double psi, double rho_init, double xtol_abs, double ftol_rel, double result_threshold, bool save);
+    MMA(const projspec::DataMap& data);
 
     virtual void initialize_views(Visualization* viz) override;
     virtual TopoDS_Shape optimize(SolverManager* fem, Meshing* mesh) override;
 
     private:
+    static const bool reg;
     ProjectData* data;
     const double rho_init;
     const double xtol_abs;
@@ -48,9 +50,6 @@ class MMA : public DensityBasedOptimizer{
     const double minfac, maxfac;
     const double c;
     const bool save_result;
-    std::vector<std::unique_ptr<DensityBasedFunction>> objective;
-    std::vector<double> objective_weights;
-    std::vector<DensityBasedConstraint> constraints;
 
     DensityFilter* filter;
     Projection* projection;

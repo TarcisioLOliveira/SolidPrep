@@ -28,6 +28,9 @@
 
 class Field{
     public:
+    static std::string get_name(){
+        return "fields";
+    }
     enum class Type{
         SCALAR,
         VECTOR,
@@ -39,6 +42,7 @@ class Field{
         PROJECTION,   // Limited to the volumetric projection of a cross-section
         BOUNDARY      // Limited to the boundary of the union of geometries
     };
+    virtual ~Field() = default;
     virtual void generate() = 0;
     virtual void initialize_views(Visualization* viz) = 0;
     virtual void display_views() const = 0;
@@ -52,6 +56,7 @@ class ScalarField : public Field{
     inline virtual Type get_type() const override{
         return Type::SCALAR;
     };
+    virtual ~ScalarField() = default;
     virtual double get(const MeshElement* e, const gp_Pnt& p) const = 0;
 };
 
@@ -60,6 +65,7 @@ class VectorField : public Field{
     inline virtual Type get_type() const override{
         return Type::VECTOR;
     };
+    virtual ~VectorField() = default;
     virtual gp_Vec get(const MeshElement* e, const gp_Pnt& p) const = 0;
 };
 
@@ -68,6 +74,7 @@ class DirectionField : public Field{
     inline virtual Type get_type() const override{
         return Type::DIRECTION;
     };
+    virtual ~DirectionField() = default;
     virtual gp_Dir get(const MeshElement* e, const gp_Pnt& p) const = 0;
 };
 
@@ -77,6 +84,7 @@ class CoordinateField : public Field{
         ORTHOTROPIC_FLOW,
         PRINCIPAL_STRESS
     };
+    virtual ~CoordinateField() = default;
     inline virtual Type get_type() const override{
         return Type::COORDINATE;
     };

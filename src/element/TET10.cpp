@@ -20,22 +20,15 @@
 
 #include "element/TET10.hpp"
 #include "boundary_element/BTRI6.hpp"
-#include "cblas.h"
 #include "logger.hpp"
-#include <BRepBuilderAPI_MakeVertex.hxx>
-#include <BRepBuilderAPI_MakeEdge.hxx>
-#include <BRepBuilderAPI_MakeWire.hxx>
-#include <BRepBuilderAPI_MakeFace.hxx>
-#include <TopoDS_Wire.hxx>
-#include <TopoDS_Face.hxx>
-#include <TopoDS.hxx>
-#include <IntTools_EdgeEdge.hxx>
-#include <lapacke.h>
-#include <vector>
 #include "math/matrix.hpp"
 #include "utils/gauss_legendre.hpp"
+#include "project_specification/registry.hpp"
 
 namespace element{
+
+const bool TET10::reg = projspec::ElementRegistry::add("TET10",
+    std::make_unique<MeshElementFactoryImpl<TET10>>());
 
 TET10::TET10(ElementShape s):
     MeshElementCommon3DTet<TET10>(s.nodes){

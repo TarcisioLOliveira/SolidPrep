@@ -22,11 +22,16 @@
 #include <mpich-x86_64/mpi.h>
 #include "function/density_based/compliance.hpp"
 #include "math/matrix.hpp"
+#include "project_data.hpp"
 
 namespace function::density_based{
 
-Compliance::Compliance(const Meshing* const mesh, double pc, double psi):
-    pc(pc), psi(psi), mesh(mesh){}
+Compliance::Compliance(const projspec::DataMap& data):
+    pc(data.proj->topopt_penalization),
+    psi(data.proj->topopt_psi),
+    mesh(data.proj->topopt_mesher.get()){
+
+}
 
 double Compliance::calculate(const DensityBasedOptimizer* const op, const std::vector<double>& u, const std::vector<double>& x){
     (void)x;
@@ -88,6 +93,18 @@ double Compliance::calculate_with_gradient(const DensityBasedOptimizer* const op
 
     return c;
 }
+
+using namespace projspec;
+const bool Compliance::reg = Factory<DensityBasedFunction>::add(
+    [](const DataMap& data){
+        return std::make_unique<Compliance>(data);
+    },
+    ObjectRequirements{
+        "compliance",
+        {
+        }
+    }
+);
 
 
 }

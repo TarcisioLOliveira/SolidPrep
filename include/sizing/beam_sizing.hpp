@@ -21,6 +21,7 @@
 #ifndef BEAM_SIZING_HPP
 #define BEAM_SIZING_HPP
 
+#include "project_specification/data_map.hpp"
 #include "sizing.hpp"
 #include <vector>
 #include "element_factory.hpp"
@@ -29,11 +30,14 @@ namespace sizing{
 
 class BeamSizing : public Sizing{
     public:
-    BeamSizing(ProjectData* data, BeamElementFactory::BeamElementType t);
+    BeamSizing(const projspec::DataMap& data);
 
     virtual TopoDS_Shape run() override;
 
     BeamElementFactory::BeamElementType type;
+
+    private:
+    static const bool reg;
 };
 
 }

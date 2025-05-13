@@ -21,8 +21,6 @@
 #ifndef TET4_HPP
 #define TET4_HPP
 
-#include <vector>
-#include <array>
 #include "element.hpp"
 #include "element_factory.hpp"
 #include "element_common.hpp"
@@ -70,6 +68,7 @@ class TET4 : public MeshElementCommon3DTet<TET4>{
     }
 
     private:
+    static const bool reg;
     virtual math::Matrix get_Nf(const double t, const std::vector<gp_Pnt>& points) const override;
 
     math::Matrix C;

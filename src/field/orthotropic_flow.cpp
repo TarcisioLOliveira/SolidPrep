@@ -25,16 +25,39 @@
 #include "utils/sparse_matrix.hpp"
 #include "logger.hpp"
 #include "utils.hpp"
+#include "project_data.hpp"
 
 namespace field{
 
-OrthotropicFlow::OrthotropicFlow(const MeshElementFactory* elem_info, std::vector<Geometry*> geoms, std::vector<CrossSection> entries, std::vector<double> coeffs, double alpha, double thickness, bool show):
-    elem_info(elem_info), geoms(std::move(geoms)), 
-    entries(std::move(entries)), coeffs(std::move(coeffs)), ALPHA(alpha),
-    thickness(thickness), show(show),
+OrthotropicFlow::OrthotropicFlow(const projspec::DataMap& data):
+    elem_info(data.proj->topopt_element),
+    ALPHA(data.get_double("alpha")),
+    thickness(data.proj->thickness),
+    show(data.get_bool("display", true)),
     DIM((elem_info->get_problem_type() == utils::PROBLEM_TYPE_2D) ? 2 : 3),
-    NODES_PER_ELEM(elem_info->get_nodes_per_element()){
+    NODES_PER_ELEM(elem_info->get_nodes_per_element())
+{
+    if(!data.get_bool("STUB")){
+        const auto geom_ids = data.get_array("geometries")->get_int_array();
+        this->geoms.reserve(geom_ids.size());
+        for(auto i:geom_ids){
+            if(i >= 0){
+                this->geoms.push_back(data.proj->geometries[i].get());
+            }
+        }
 
+        const auto bc_array = data.get_array("boundary_conditions");
+        const size_t bc_size = bc_array->size();
+        if(bc_size > 0){
+            this->entries.reserve(bc_size);
+            this->coeffs.reserve(bc_size);
+            for(size_t i = 0; i < bc_size; ++i){
+                const auto obj = bc_array->get_object(i);
+                this->coeffs.push_back(obj->get_double("coeff"));
+                this->entries.push_back(obj->get_cross_section("region"));
+            }
+        }
+    }
 }
 
 void OrthotropicFlow::initialize_views(Visualization* viz){
@@ -300,5 +323,39 @@ math::Matrix OrthotropicFlow::get_matrix(const MeshElement* e, const gp_Pnt& p) 
                 d[0].Z(), d[1].Z(), d[2].Z()
             }, 3, 3);
 }
+
+using namespace projspec;
+const bool OrthotropicFlow::reg = Factory<Field>::add(
+    [](const DataMap& data){
+        return std::make_unique<OrthotropicFlow>(data);
+    },
+    ObjectRequirements{
+        "orthotropic_flow",
+        {
+            DataEntry{.name = "display", .type = TYPE_BOOL, .required = false},
+            DataEntry{.name = "alpha", .type = TYPE_DOUBLE, .required = true},
+            DataEntry{.name = "geometries", .type = TYPE_ARRAY, .required = true,
+                         .array_data = std::shared_ptr<ArrayRequirements>(
+                             new ArrayRequirements{
+                                 .size = 0,
+                                 .type = TYPE_INT
+                             }
+                         ),
+                     },
+            DataEntry{.name = "boundary_conditions", .type = TYPE_ARRAY, .required = true,
+                         .array_data = std::shared_ptr<ArrayRequirements>(
+                             new ArrayRequirements{
+                                 .size = 0,
+                                 .type = TYPE_OBJECT,
+                                 .object_data = {
+                                     DataEntry{.name = "coeff", .type = TYPE_DOUBLE, .required = true},
+                                     DataEntry{.name = "region", .type = TYPE_CROSS_SECTION, .required = true}
+                                 }
+                             }
+                         )
+                     },
+        }
+    }
+);
 
 }

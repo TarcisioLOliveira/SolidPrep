@@ -24,11 +24,12 @@
 #include "material.hpp"
 #include "math/matrix.hpp"
 #include "utils.hpp"
+#include "utils/delayed_pointer.hpp"
 
 class MultiMaterial{
     public:
     MultiMaterial() = default;
-    MultiMaterial(std::vector<Material*> materials, utils::ProblemType type, bool has_void);
+    MultiMaterial(std::vector<utils::DelayedPointerView<Material>> materials, utils::ProblemType type, bool has_void);
 
     inline math::Matrix get_D(const MeshElement* e, const gp_Pnt& p) const{
         if(this->problem_type == utils::PROBLEM_TYPE_2D){
@@ -51,12 +52,12 @@ class MultiMaterial{
         return this->materials.size();
     }
 
-    inline const std::vector<Material*>& get_materials() const{
+    inline const std::vector<utils::DelayedPointerView<Material>>& get_materials() const{
         return this->materials;
     }
 
     private:
-    std::vector<Material*> materials;
+    std::vector<utils::DelayedPointerView<Material>> materials;
     utils::ProblemType problem_type;
     bool has_void;
     bool is_homogeneous = true;
