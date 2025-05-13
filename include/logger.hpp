@@ -21,6 +21,7 @@
 #ifndef LOGGER_HPP
 #define LOGGER_HPP
 
+#include <sstream>
 #include <string>
 #include <iostream>
 #include <utility>
@@ -37,13 +38,16 @@ namespace logger{
     };
 
     inline void log_matrix(const std::vector<double>& v, size_t M, size_t N){
+        std::stringstream ss;
         for(size_t i = 0; i < M; ++i){
             for(size_t j = 0; j < N; ++j){
-                std::cout << v[i*N + j] << " ";
+                ss << v[i*N + j] << " ";
             }
-            std::cout << std::endl;
+            ss << std::endl;
         }
-        std::cout << std::endl;
+        ss << std::endl;
+
+        std::cout << ss.rdbuf();
     }
 
     /**
@@ -76,23 +80,42 @@ namespace logger{
         return expr;
     }
 
+namespace internal {
+    template<typename T>
+    static void quick_log(std::stringstream& ss, T t){
+        ss << t << std::endl;
+    }
+
+    template<typename T, typename ... Args>
+    static void quick_log(std::stringstream& ss, T t, Args&& ... args){
+        ss << t << " ";
+        quick_log(ss, args...);
+    }
+}
     template<typename T>
     static void quick_log(T t){
-        std::cout << t << std::endl;
+        std::stringstream ss;
+        ss << t << std::endl;
+        std::cout << ss.rdbuf();
     }
 
     template<typename T, typename ... Args>
     static void quick_log(T t, Args&& ... args){
-        std::cout << t << " ";
-        quick_log(args...);
+        std::stringstream ss;
+        ss << t << " ";
+        internal::quick_log(ss, args...);
+
+        std::cout << ss.rdbuf();
     }
 
     template<typename T>
     static void quick_log(const std::vector<T>& v){
+        std::stringstream ss;
         for(const T& e:v){
-            std::cout << e << " ";
+            ss << e << " ";
         }
-        std::cout << std::endl;
+        ss << std::endl;
+        std::cout << ss.rdbuf();
     }
 }
 
