@@ -38,21 +38,35 @@ MarginalBoneLoss::MarginalBoneLoss(const projspec::DataMap& data):
     K_g(this->get_K_g(s)),
     K_e2(this->get_K_e2(t, c)),
     problem_type(data.proj->type),
-    a0(data.get_array("a0")->get_double_array()),
-    a1(data.get_array("a1")->get_double_array()),
-    a2(data.get_array("a2")->get_double_array()),
-    a3(data.get_array("a3")->get_double_array()),
+    //a0(data.get_array("a0")->get_double_array()),
+    //a1(data.get_array("a1")->get_double_array()),
+    //a2(data.get_array("a2")->get_double_array()),
+    //a3(data.get_array("a3")->get_double_array()),
     eps_to_x(this->make_eps_to_x()),
     geom_id(data.get_int("mandible_geometry")),
     mandible(data.proj->geometries[geom_id].get()),
     time_step(data.get_double("time_step")),
-    maximum_volume_variation(data.get_double("maximum_volume_variation")),
     time_limit(data.get_double("time_limit")),
-    maturation_rate(data.get_double("maturation_rate"))
+    dv1_orig(data.get_double("volume_variation_rate")),
+    dv2_orig(data.get_double("overload_volume_variation_rate"))
 {
     logger::log_assert(mandible->materials.get_materials()[0]->get_type() == Material::MANDIBLE,
             logger::ERROR,
             "geometry selected for marginal bone loss simulation must have a material of type \"mandible\"");
+
+    this->dv0 = dv1_orig*(this->c[0] - 0.0);
+    this->dv1 = 0;
+    this->dv2 = dv1_orig*(this->c[2] - this->c[1]);
+    this->dv3 = -dv2_orig*(this->c[3] - this->c[2]);
+
+    StrainVector3D eps(6);
+
+    eps[0] = -this->c[1];
+    this->lhs2_offset = this->LHS_3D(2, eps);
+    eps[0] = -this->c[2];
+    this->lhs3_offset = this->LHS_3D(3, eps);
+
+    this->max_dv2 = this->dv2*(1 - this->lhs2_offset);
 }
 
 
@@ -114,16 +128,16 @@ void MarginalBoneLoss::run(){
 
     std::vector<double> u(this->mesh->max_dofs);
 
-    material::Mandible* material = static_cast<material::Mandible*>(this->mandible->materials.get_materials()[0].get());
+    //material::Mandible* material = static_cast<material::Mandible*>(this->mandible->materials.get_materials()[0].get());
 
+    // TODO: make this affect CT scan based material
     double time_count = 0;
-    double alpha_count = 0;
     while(time_count < this->time_limit){
 
         logger::quick_log("");
         logger::quick_log("Time:", time_count);
 
-        material->set_maturation_alpha(alpha_count);
+        //material->set_maturation_alpha(alpha_count);
         this->fem->generate_matrix(this->mesh, density, this->pc);
         this->fem->calculate_displacements_global(this->mesh, this->mesh->load_vector, u);
 
@@ -145,7 +159,7 @@ void MarginalBoneLoss::run(){
         for(size_t i = 0; i < density_num; ++i){
             const auto& e = this->mandible->mesh[i];
             const auto strain = 1e6*e->get_strain_vector(e->get_centroid(), u);
-            const double gi = this->get_density_variation(strain)*this->time_step*this->maturation_rate/v[i];
+            const double gi = this->get_density_variation(strain, v[i])*this->time_step;
             growth[mand_geom_offset + i] = gi;
             density[i] += gi;
             if(density[i] < 0){
@@ -156,7 +170,6 @@ void MarginalBoneLoss::run(){
         }
         this->growth_view->update_view(growth);
 
-        alpha_count += this->maturation_rate;
         time_count += this->time_step;
     }
 }
@@ -169,11 +182,8 @@ math::Vector MarginalBoneLoss::make_eps_to_x() const{
 
     for(size_t i = 0; i < RANGE_NUM; ++i){
         b[i] = i + 1;
-        eps[0] = 1.0/(3*K_e2[i]);
-        eps[1] = 1.0/(3*K_e2[i]);
-        eps[2] = 1.0/(3*K_e2[i]);
+        eps[0] = -this->c[i];
         for(size_t j = 0; j < RANGE_NUM; ++j){
-
             const double LHS = this->LHS_3D(j, eps);
             M(i,j) = LHS;
         } 
@@ -185,33 +195,20 @@ math::Vector MarginalBoneLoss::make_eps_to_x() const{
     return b;
 }
 
-double MarginalBoneLoss::get_density_variation(const StrainVector3D& eps) const{
+double MarginalBoneLoss::get_density_variation(const StrainVector3D& eps, const double v) const{
     StrainVector3D lhs(RANGE_NUM);
     for(size_t j = 0; j < RANGE_NUM; ++j){
         lhs[j] = this->LHS_3D(j, eps);
     }
 
-    const auto poly_calc = [](const std::vector<double>& a, const double x)->double{
-        double y = 0;
-        for(size_t i = 0; i < a.size(); ++i){
-            y += a[i]*std::pow(x, i);
-        }
-        return y;
-    };
-
-    const double x = eps_to_x.T()*lhs;
-    if(x < 0){
-        return poly_calc(this->a0, 0);
-    } else if(x < 1){
-        return poly_calc(this->a0, x);
-    } else if(x < 2){
-        return poly_calc(this->a1, x);
-    } else if(x < 3){
-        return poly_calc(this->a2, x);
-    } else if(x < 4){
-        return poly_calc(this->a3, x);
+    if(lhs[0] < 1){
+        return dv0*(1 - lhs[0])/v;
+    } else if(lhs[1] < 1){
+        return 0;
+    } else if(lhs[2] < 1){
+        return dv2*(lhs[2] - this->lhs2_offset)/v;
     } else {
-        return poly_calc(this->a3, 4);
+        return max_dv2 + dv3*(lhs[3] - this->lhs3_offset)/v;
     }
 }
 
@@ -224,9 +221,9 @@ const bool MarginalBoneLoss::reg = Factory<Simulation>::add(
         "marginal_bone_loss",
         {
             DataEntry{.name = "time_step", .type = TYPE_DOUBLE, .required = true},
-            DataEntry{.name = "maximum_volume_variation", .type = TYPE_DOUBLE, .required = true},
+            DataEntry{.name = "volume_variation_rate", .type = TYPE_DOUBLE, .required = true},
+            DataEntry{.name = "overload_volume_variation_rate", .type = TYPE_DOUBLE, .required = true},
             DataEntry{.name = "time_limit", .type = TYPE_DOUBLE, .required = true},
-            DataEntry{.name = "maturation_rate", .type = TYPE_DOUBLE, .required = true},
             DataEntry{.name = "pc", .type = TYPE_DOUBLE, .required = true},
             DataEntry{.name = "mandible_geometry", .type = TYPE_INT, .required = true},
             DataEntry{.name = "traction", .type = TYPE_ARRAY, .required = true,
@@ -249,38 +246,6 @@ const bool MarginalBoneLoss::reg = Factory<Simulation>::add(
                          .array_data = std::shared_ptr<ArrayRequirements>(
                              new ArrayRequirements{
                                  .size = MarginalBoneLoss::RANGE_NUM,
-                                 .type = TYPE_DOUBLE
-                             }
-                         ),
-                     },
-            DataEntry{.name = "a0", .type = TYPE_ARRAY, .required = true,
-                         .array_data = std::shared_ptr<ArrayRequirements>(
-                             new ArrayRequirements{
-                                 .size = 0,
-                                 .type = TYPE_DOUBLE
-                             }
-                         ),
-                     },
-            DataEntry{.name = "a1", .type = TYPE_ARRAY, .required = true,
-                         .array_data = std::shared_ptr<ArrayRequirements>(
-                             new ArrayRequirements{
-                                 .size = 0,
-                                 .type = TYPE_DOUBLE
-                             }
-                         ),
-                     },
-            DataEntry{.name = "a2", .type = TYPE_ARRAY, .required = true,
-                         .array_data = std::shared_ptr<ArrayRequirements>(
-                             new ArrayRequirements{
-                                 .size = 0,
-                                 .type = TYPE_DOUBLE
-                             }
-                         ),
-                     },
-            DataEntry{.name = "a3", .type = TYPE_ARRAY, .required = true,
-                         .array_data = std::shared_ptr<ArrayRequirements>(
-                             new ArrayRequirements{
-                                 .size = 0,
                                  .type = TYPE_DOUBLE
                              }
                          ),

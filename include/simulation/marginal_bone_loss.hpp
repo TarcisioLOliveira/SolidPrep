@@ -27,7 +27,6 @@
 #include "simulation.hpp"
 #include "solver_manager.hpp"
 #include "view_handler.hpp"
-#include <vector>
 
 namespace simulation{
 
@@ -53,13 +52,16 @@ class MarginalBoneLoss : public Simulation{
     const double lhs_eps = 1e-30;
     const Range K_e1, K_g, K_e2;
     const utils::ProblemType problem_type;
-    const std::vector<double> a0, a1, a2, a3;
     const math::Vector eps_to_x;
 
     const size_t geom_id;
     Geometry* mandible;
-    const double time_step, maximum_volume_variation, time_limit;
-    const double maturation_rate;
+    const double time_step, time_limit;
+    const double dv1_orig, dv2_orig;
+    double dv0, dv1, dv2, dv3;
+    double lhs2_offset;
+    double lhs3_offset;
+    double max_dv2;
 
     ViewHandler* stress_view = nullptr;
     ViewHandler* density_view = nullptr;
@@ -72,7 +74,7 @@ class MarginalBoneLoss : public Simulation{
     typedef math::Vector StrainVector3D;
 
     math::Vector make_eps_to_x() const;
-    double get_density_variation(const StrainVector3D& eps) const;
+    double get_density_variation(const StrainVector3D& eps, const double v) const;
 
     inline double LHS_3D(const size_t i, const StrainVector3D& e) const{
         const double dexy = e[0] - e[1];
