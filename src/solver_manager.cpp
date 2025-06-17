@@ -27,11 +27,13 @@ void SolverManager::generate_matrix(const Meshing* const mesh, const std::vector
     this->topopt = density.size() > 0;
     this->update_D_matrices(mesh, density, pc, psi);
     size_t l_num = 0;
+    const size_t l_num_orig = mesh->lag_node_map.size();
     bool needs_lambda = mesh->proj_data->contact_data.contact_type >= FiniteElement::ContactType::FRICTIONLESS_DISPL_SIMPLE;
     if(mesh->proj_data->contact_data.contact_type == FiniteElement::ContactType::FRICTIONLESS_DISPL_SIMPLE){
-        l_num = mesh->lag_node_map.size();
+        l_num = l_num_orig;
     } else if(mesh->proj_data->contact_data.contact_type == FiniteElement::ContactType::FRICTIONLESS_DISPL_CONSTR){
-        l_num = 3*mesh->lag_node_map.size();
+        //l_num = 3*l_num_orig;
+        l_num = l_num_orig;
     }
     if(this->iteration == 0){
         this->lambdas.resize(mesh->sub_problems->size());
@@ -43,13 +45,17 @@ void SolverManager::generate_matrix(const Meshing* const mesh, const std::vector
     for(size_t i = 0; i < mesh->sub_problems->size(); ++i){
         if(this->iteration == 0){
             if(needs_lambda){
+                //this->lambdas[i].emplace_back(l_num, 0.001);
                 this->lambdas[i].emplace_back(l_num, 0.01);
+                //std::fill(this->lambdas[i][0].begin(), this->lambdas[i][0].begin() + l_num_orig, 0.01);
             } else {
                 this->lambdas[i].emplace_back();
             }
         } else {
             if(needs_lambda){
                 std::fill(this->lambdas[i][0].begin(), this->lambdas[i][0].end(), 0.01);
+                //std::fill(this->lambdas[i][0].begin(), this->lambdas[i][0].begin() + l_num_orig, 0.01);
+                //std::fill(this->lambdas[i][0].begin() + l_num_orig, this->lambdas[i][0].end(), 0.0);
                 std::fill(this->split_u[i].begin(), this->split_u[i].end(), 0.0);
             }
         }

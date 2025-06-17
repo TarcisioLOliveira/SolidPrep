@@ -21,6 +21,7 @@
 #include "element/TET4.hpp"
 #include "boundary_element/BTRI3.hpp"
 #include "contact_element/CTRI3.hpp"
+#include "logger.hpp"
 #include "math/matrix.hpp"
 #include "utils/gauss_legendre.hpp"
 #include "project_specification/registry.hpp"
@@ -126,12 +127,13 @@ math::Matrix TET4::get_R(const math::Matrix& K, const double t, const std::vecto
     const auto& p = points;
     gp_Vec v1(p[1], p[0]);
     gp_Vec v2(p[2], p[0]);
-    const double drnorm = (v1.Crossed(v2)).Magnitude();
+    const double drnorm = (v1.Crossed(v2)).Magnitude()/2;
     for(auto it = gl.begin(); it < gl.end(); ++it){
         gp_Pnt pi = this->GL_point_tri(it->a, it->b, it->c, points);
         const auto NN = N_mat(pi.X(), pi.Y(), pi.Z(), this->C);
-        R += drnorm*(NN.T()*K*NN)/3.0;
+        R += it->w*(NN.T()*K*NN);
     }
+    R *= drnorm;
 
     return R;
 }
@@ -172,6 +174,27 @@ math::Matrix TET4::absorption_1dof(const double t) const{
     }
 
     return this->V*M;
+}
+
+math::Matrix TET4::robin_1dof(const double t, const std::vector<gp_Pnt>& points) const{
+
+    (void)t;
+    math::Matrix M(NODES_PER_ELEM, NODES_PER_ELEM);
+
+    auto& gl = utils::GaussLegendreTri<2>::get();
+
+    const auto& p = points;
+    gp_Vec v1(p[1], p[0]);
+    gp_Vec v2(p[2], p[0]);
+    const double drnorm = (v1.Crossed(v2)).Magnitude()/2;
+    for(auto it = gl.begin(); it < gl.end(); ++it){
+        gp_Pnt p = this->GL_point_tri(it->a, it->b, it->c, points);
+        const auto N = this->N_mat_1dof(p.X(), p.Y(), p.Z(), this->C);
+        M += it->w*(N*N.T());
+    }
+    M *= drnorm;
+
+    return M;
 }
 math::Vector TET4::source_1dof(const double t) const{
     (void)t;

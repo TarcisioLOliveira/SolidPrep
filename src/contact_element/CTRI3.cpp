@@ -20,6 +20,7 @@
 
 #include <lapacke.h>
 #include "contact_element/CTRI3.hpp"
+#include "logger.hpp"
 #include "math/matrix.hpp"
 #include "utils/gauss_legendre.hpp"
 #include "element_factory.hpp"
@@ -131,7 +132,7 @@ math::Matrix CTRI3::fl3_uL(const math::Matrix& D, const math::Vector& ln_e) cons
     const gp_Dir n2(this->get_d1());
     const gp_Dir n3(this->get_d2());
 
-    const auto& gli = utils::GaussLegendreTri<1>::get();
+    const auto& gli = utils::GaussLegendreTri<2>::get();
 
     math::Matrix M(U_KW, 3*NODES_PER_ELEM);
 
@@ -156,7 +157,7 @@ math::Matrix CTRI3::fl3_LL(const math::Matrix& D, const math::Vector& ln_e, cons
     const gp_Dir n2(this->get_d1());
     const gp_Dir n3(this->get_d2());
 
-    const auto& gli = utils::GaussLegendreTri<2>::get();
+    const auto& gli = utils::GaussLegendreTri<3>::get();
 
     math::Matrix M(3*NODES_PER_ELEM, 3*NODES_PER_ELEM);
     math::Matrix Mn(3*NODES_PER_ELEM, 3*NODES_PER_ELEM);
@@ -170,15 +171,16 @@ math::Matrix CTRI3::fl3_LL(const math::Matrix& D, const math::Vector& ln_e, cons
 
         auto B = this->delta_eps_1(p, ln_e, n1, n2, n3);
 
-        auto N = this->N_mat_1dof(p);
-        auto Bl = this->eps_mat_lambda(n1);
+        //auto N = this->N_mat_1dof(p);
+        //auto Bl = this->eps_mat_lambda(n1);
         
-        math::Matrix Mn_tmp(N*(eps_l + strain).T()*D*Bl);
-        for(size_t i = 0; i < NODES_PER_ELEM; ++i){
-            for(size_t j = 0; j < NODES_PER_ELEM; ++j){
-                Mn(i,j) = Mn_tmp(i,j) + Mn_tmp(j,i);
-            }
-        }
+        //math::Matrix Mn_tmp(N*(eps_l + strain).T()*D*Bl);
+        //for(size_t i = 0; i < NODES_PER_ELEM; ++i){
+        //    for(size_t j = 0; j < NODES_PER_ELEM; ++j){
+        //        Mn(i,j) = 2*(Mn_tmp(i,j) + Mn_tmp(j,i));
+        //    }
+        //}
+        Mn = this->delta_eps_2(p, n1, eps_l + strain, D);
 
         M += gl->w*((B.T()*D*B) + Mn);
     }
@@ -225,7 +227,7 @@ void CTRI3::fl3_Ku(const math::Matrix& D, const std::vector<long> u_pos, const s
 
         auto B = this->delta_eps_1(p, ln_e, n1, n2, n3);
         auto Bu = this->e1->get_B(pn);
-        uL += gl->w*(Bu.T()*D*full_strain);
+        uL += gl->w*(Bu.T()*D*eps_l);
         LL += gl->w*(B.T()*D*full_strain);
     }
     for(size_t i = 0; i < U_KW; ++i){
@@ -256,12 +258,168 @@ math::Vector CTRI3::fl3_eq(const math::Vector& ln_e, const math::Vector& lp1_e, 
         const math::Matrix Nu2(this->e2->get_Ni(pn));
         const math::Vector u1(Nu1*u_e);
 
-        V += gl->w*(Nu2.T()*(u1 + this->R*lv));
+        //V += gl->w*(Nu2.T()*(u1 + this->R*lv));
+        V += gl->w*(Nu2.T()*(this->R*lv));
     }
     V *= this->delta;
 
     return V;
 }
+
+math::Vector CTRI3::fl3_eq(const math::Vector& ln_e, const math::Vector& lp1_e, const math::Vector& lp2_e, const math::Vector& u_e, const size_t dof) const{
+    (void)u_e;
+    auto e_info = this->e1->get_element_info();
+    //size_t U_KW = e_info->get_k_dimension();
+    size_t U_NE = e_info->get_nodes_per_element();
+    math::Vector V(U_NE);
+    const auto& gli = utils::GaussLegendreTri<4>::get();
+
+    for(auto gl = gli.begin(); gl < gli.end(); ++gl){
+        gp_Pnt p = this->R_GS_point(gl->a, gl->b, gl->c);
+        gp_Pnt pn = this->GS_point(gl->a, gl->b, gl->c);
+
+        const math::Vector N(this->N_mat_1dof(p));
+        const double l_n = N.T()*ln_e;
+        const double l_p1 = N.T()*lp1_e;
+        const double l_p2 = N.T()*lp2_e;
+
+        const math::Vector lv({l_p2, l_p1, l_n*l_n});
+        
+        const math::Vector Nu2(this->e2->get_Ni_1dof(pn));
+        //const math::Vector Nu1(this->e1->get_Ni_1dof(pn));
+        //const math::Vector u1(Nu1*u_e);
+        double l_i = 0;
+        for(size_t i = 0; i < 3; ++i){
+            l_i += this->R(dof, i)*lv[i];
+        }
+
+        //V += gl->w*(Nu2*(u1[dof] + l_i));
+        V += gl->w*(Nu2*l_i);
+    }
+    V *= this->delta;
+
+    return V;
+}
+math::Matrix CTRI3::fl4_uL(const math::Matrix& D, const math::Vector& ln_e) const{
+    auto e_info = this->e1->get_element_info();
+    size_t U_KW = e_info->get_k_dimension();
+
+    const gp_Dir n1(this->get_normal());
+
+    const auto& gli = utils::GaussLegendreTri<2>::get();
+
+    math::Matrix M(U_KW, NODES_PER_ELEM);
+
+    for(auto gl = gli.begin(); gl < gli.end(); ++gl){
+        gp_Pnt p = this->R_GS_point(gl->a, gl->b, gl->c);
+        gp_Pnt pn = this->GS_point(gl->a, gl->b, gl->c);
+
+        auto B = this->fl4_delta_eps_1(p, ln_e, n1);
+        auto Bu = this->e1->get_B(pn);
+
+        M += gl->w*(Bu.T()*D*B);
+    }
+
+    M *= this->delta;
+
+    return M;
+}
+math::Matrix CTRI3::fl4_LL(const math::Matrix& D, const math::Vector& ln_e, const std::vector<double>& u) const{
+    auto e_info = this->e1->get_element_info();
+
+    const gp_Dir n1(this->get_normal());
+
+    const auto& gli = utils::GaussLegendreTri<3>::get();
+
+    math::Matrix M(NODES_PER_ELEM, NODES_PER_ELEM);
+    math::Matrix Mn(NODES_PER_ELEM, NODES_PER_ELEM);
+
+    for(auto gl = gli.begin(); gl < gli.end(); ++gl){
+        const gp_Pnt p = this->R_GS_point(gl->a, gl->b, gl->c);
+        const gp_Pnt pn = this->GS_point(gl->a, gl->b, gl->c);
+
+        const auto eps_l = this->fl4_eps_vec(p, ln_e, n1);
+        const auto strain = this->e1->get_strain_vector(pn, u);
+
+        const auto B = this->fl4_delta_eps_1(p, ln_e, n1);
+
+        Mn = this->fl4_delta_eps_2(p, n1, eps_l + strain, D);
+
+        M += gl->w*((B.T()*D*B) + Mn);
+    }
+
+    M *= this->delta;
+
+    return M;
+}
+void CTRI3::fl4_Ku(const math::Matrix& D, const std::vector<long> u_pos, const std::vector<long>& lu_pos, const std::vector<double>& u, std::vector<double>& Ku) const{
+    auto e_info = this->e1->get_element_info();
+    size_t U_KW = e_info->get_k_dimension();
+
+    math::Vector u_e(U_KW);
+    math::Vector ln_e(NODES_PER_ELEM);
+    for(size_t i = 0; i < U_KW; ++i){
+        u_e[i] = u[u_pos[i]];
+    }
+    for(size_t i = 0; i < NODES_PER_ELEM; ++i){
+        ln_e[i] = u[lu_pos[i]];
+    }
+
+    const gp_Dir n1(this->get_normal());
+
+    const auto& gli = utils::GaussLegendreTri<3>::get();
+
+    math::Vector uL(U_KW);
+    math::Vector LL(NODES_PER_ELEM);
+
+    for(auto gl = gli.begin(); gl < gli.end(); ++gl){
+        gp_Pnt p = this->R_GS_point(gl->a, gl->b, gl->c);
+        gp_Pnt pn = this->GS_point(gl->a, gl->b, gl->c);
+
+        const auto eps_l = this->fl4_eps_vec(p, ln_e, n1);
+        const auto strain = this->e1->get_strain_vector(pn, u);
+        const auto full_strain = eps_l + strain;
+
+        auto B = this->fl4_delta_eps_1(p, ln_e, n1);
+        auto Bu = this->e1->get_B(pn);
+        uL += gl->w*(Bu.T()*D*eps_l);
+        LL += gl->w*(B.T()*D*full_strain);
+    }
+    for(size_t i = 0; i < U_KW; ++i){
+        Ku[u_pos[i]] += this->delta*uL[i];
+    }
+    for(size_t i = 0; i < NODES_PER_ELEM; ++i){
+        Ku[lu_pos[i]] += this->delta*LL[i];
+    }
+}
+math::Vector CTRI3::fl4_eq(const math::Vector& ln_e, const math::Vector& u_e) const{
+    (void) u_e;
+    auto e_info = this->e1->get_element_info();
+    size_t U_KW = e_info->get_k_dimension();
+    math::Vector V(U_KW);
+    const auto& gli = utils::GaussLegendreTri<4>::get();
+    const auto normal(this->get_normal());
+    const math::Vector nv({normal.X(), normal.Y(), normal.Z()});
+
+    for(auto gl = gli.begin(); gl < gli.end(); ++gl){
+        gp_Pnt p = this->R_GS_point(gl->a, gl->b, gl->c);
+        gp_Pnt pn = this->GS_point(gl->a, gl->b, gl->c);
+
+        const math::Vector N(this->N_mat_1dof(p));
+        const double l_n = N.T()*ln_e;
+        
+        const math::Matrix Nu2(this->e2->get_Ni(pn));
+        //const math::Matrix Nu1(this->e1->get_Ni(pn));
+        //const math::Vector u1(Nu1*u_e);
+
+        //V += gl->w*(Nu2.T()*(u1 + nv*(l_n*l_n)));
+        V += gl->w*(Nu2.T()*(nv*(l_n*l_n)));
+    }
+    V *= this->delta;
+
+    return V;
+}
+
 
 math::Matrix CTRI3::fl2_uL(const math::Vector& l_e) const{
     auto e_info = this->e1->get_element_info();

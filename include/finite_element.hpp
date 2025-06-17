@@ -55,6 +55,7 @@ class FiniteElement{
 
 
     // FRICTIONLESS_DISPL_CONSTR
+    void apply_lambda_old(const Meshing* mesh, const std::vector<double>& lambda, std::vector<double>& u_ext);
     void apply_lambda(const Meshing* mesh, const std::vector<double>& lambda, std::vector<double>& u_ext);
     ////
     protected:
@@ -71,8 +72,11 @@ class FiniteElement{
     std::map<Node*, long> constr_id_map;
     general_solver::MUMPSGeneral constr_solver;
     std::vector<double> constr_force;
+    std::vector<Node*> boundary_reference_nodes;
     double max_step;
 
+    void apply_constr_force_old(const Meshing* mesh, const std::vector<double>& u_ext, const std::vector<double>& lambda, std::vector<double>& b) const;
+    void apply_constr_force_old(const Meshing* mesh, const std::vector<double>& u_ext, const std::vector<double>& lambda, std::vector<double>& b, const size_t dof) const;
     void apply_constr_force(const Meshing* mesh, const std::vector<double>& u_ext, const std::vector<double>& lambda, std::vector<double>& b) const;
     ////
 

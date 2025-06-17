@@ -559,11 +559,11 @@ ProjectData::ContactData ProjectData::get_contact_data(const Json::Value& doc) c
                 logger::log_assert(false, logger::ERROR, "unknown contact type: {}", type);
             }
         }
-        if(contact_type == FiniteElement::ContactType::FRICTIONLESS_DISPL_SIMPLE){
+        if(contact_type >= FiniteElement::ContactType::FRICTIONLESS_DISPL_SIMPLE){
             this->log_data(doc, "max_step", projspec::TYPE_DOUBLE, true);
-            this->log_data(doc, "opt_weight", projspec::TYPE_DOUBLE, true);
+            //this->log_data(doc, "opt_weight", projspec::TYPE_DOUBLE, true);
             max_step = doc["max_step"].asDouble();
-            EPS_DISPL = doc["opt_weight"].asDouble();
+            EPS_DISPL = 0;//doc["opt_weight"].asDouble();
         }
         return {contact_type, rtol_abs, max_step, EPS_DISPL};
     }

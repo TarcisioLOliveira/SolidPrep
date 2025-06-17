@@ -529,6 +529,10 @@ class MeshElement : public Element{
      */
     virtual math::Matrix absorption_1dof(const double t) const = 0;
 
+    virtual math::Matrix robin_1dof(const double t, const std::vector<gp_Pnt>& points) const{
+        (void)t; (void)points; return math::Matrix();
+    }
+
     /**
      * Returns a 1 degree of freedom source vector.
      *
@@ -669,6 +673,12 @@ class ContactMeshElement : public Element{
     virtual math::Matrix fl3_LL(const math::Matrix& D, const math::Vector& ln_e, const math::Vector& lp1_e, const math::Vector& lp2_e, const std::vector<double>& u) const = 0;
     virtual void fl3_Ku(const math::Matrix& D, const std::vector<long> u_pos, const std::vector<long>& lu_pos, const std::vector<double>& u, std::vector<double>& Ku) const = 0;
     virtual math::Vector fl3_eq(const math::Vector& ln_e, const math::Vector& lp1_e, const math::Vector& lp2_e, const math::Vector& u_e) const = 0;
+    virtual math::Vector fl3_eq(const math::Vector& ln_e, const math::Vector& lp1_e, const math::Vector& lp2_e, const math::Vector& u_e, const size_t dof) const = 0;
+
+    virtual math::Matrix fl4_uL(const math::Matrix& D, const math::Vector& ln_e) const = 0;
+    virtual math::Matrix fl4_LL(const math::Matrix& D, const math::Vector& ln_e, const std::vector<double>& u) const = 0;
+    virtual void fl4_Ku(const math::Matrix& D, const std::vector<long> u_pos, const std::vector<long>& lu_pos, const std::vector<double>& u, std::vector<double>& Ku) const = 0;
+    virtual math::Vector fl4_eq(const math::Vector& ln_e, const math::Vector& u_e) const = 0;
 
     virtual math::Matrix fl2_uL(const math::Vector& l_e) const = 0;
     virtual math::Matrix fl2_LL(const math::Vector& l_e, const math::Vector& u1, const math::Vector& u2) const = 0;
@@ -695,6 +705,7 @@ class ContactMeshElement : public Element{
      * @return The normal.
      */
     virtual gp_Dir get_normal() const = 0;
+    virtual const math::Matrix& get_R() const = 0;
 
     protected:
     /**

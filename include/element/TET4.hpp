@@ -57,6 +57,7 @@ class TET4 : public MeshElementCommon3DTet<TET4>{
     virtual math::Matrix diffusion_1dof(const double t, const math::Matrix& A) const override;
     virtual math::Matrix advection_1dof(const double t, const math::Vector& v) const override;
     virtual math::Matrix absorption_1dof(const double t) const override;
+    virtual math::Matrix robin_1dof(const double t, const std::vector<gp_Pnt>& points) const override;
     virtual math::Vector source_1dof(const double t) const override;
     virtual math::Vector flow_1dof(const double t, const MeshNode** nodes) const override;
 

@@ -104,7 +104,44 @@ void FiniteElement::generate_matrix(const Meshing* const mesh, const size_t u_si
             this->constr_solver.add_element(M, pos);
         }
 
+        /*
+        const size_t matrix_size = id;
+        this->constr_solver.initialize_matrix(true, matrix_size);
+        this->constr_force.resize(matrix_size);
+
+        std::vector<gp_Pnt> bound(num_bound_nodes);
+        std::vector<long> pos(num_nodes);
+        math::Matrix M;
+        for(auto& b:mesh->paired_boundary){
+            auto& c = b.elem;
+            auto& e = b.elem->e2;
+            for(size_t i = 0; i < num_bound_nodes; ++i){
+                bound[i] = c->nodes[i]->point;
+            }
+            for(size_t i = 0; i < num_nodes; ++i){
+                const long id = this->constr_id_map[e->nodes[i]];
+                pos[i] = id;
+            }
+            M = e->robin_1dof(t, bound);
+
+            this->constr_solver.add_element(M, pos);
+        }
+        */
+
         this->constr_solver.compute();
+
+        std::set<Node*> unique_nodes;
+        for(const auto& e:mesh->paired_boundary){
+            for(size_t i = 0; i < num_nodes; ++i){
+                //const auto n1 = e.elem->e1->nodes[i];
+                const auto n2 = e.elem->e2->nodes[i];
+                const long id = this->constr_id_map.at(n2);
+                if(id >= 0){
+                    unique_nodes.insert(n2);
+                }
+            }
+        }
+        this->boundary_reference_nodes.insert(this->boundary_reference_nodes.begin(), unique_nodes.begin(), unique_nodes.end());
     }    
 }
 
@@ -137,6 +174,7 @@ void FiniteElement::solve_frictionless_displ(const Meshing* const mesh, std::vec
     std::vector<double> f(vec_size, 0);
     std::vector<double> u(vec_size, 0);
     std::vector<double> r(vec_size);
+    std::vector<double> r2(vec_size);
     std::vector<double> dr(vec_size);
     std::vector<double> u_test(vec_size);
 
@@ -170,18 +208,17 @@ void FiniteElement::solve_frictionless_displ(const Meshing* const mesh, std::vec
     //this->matrix->dot_vector(u, Ku);
     //std::fill(Ku.begin() + u_size, Ku.end(), 0);
     mesh->extend_vector(0, u, u_ext);
+
+    this->apply_lambda(mesh, lambda, u_ext);
     this->matrix->append_Ku_frictionless(mesh, u, Ku, D_cache, topopt);
     for(size_t i = 0; i < vec_size; ++i){
         r[i] = -(Ku[i] - f[i]);
     }
     this->matrix->add_frictionless_part2(mesh, mesh->node_positions[0], u_ext, lambda, D_cache, topopt);
-    this->apply_lambda(mesh, lambda, u_ext);
     rnorm = std::sqrt(cblas_ddot(r.size(), r.data(), 1, r.data(), 1));
-
 
     //++it;
     do{
-
         //this->reset_hessian();
         //std::copy(u.begin() + u_size, u.begin() + u_size + 2*l_num, lambda.begin());
 
@@ -191,87 +228,122 @@ void FiniteElement::solve_frictionless_displ(const Meshing* const mesh, std::vec
         logger::quick_log("u min max", *std::min_element(u.begin(), u.end()), *std::max_element(u.begin(), u.end()));
         this->solve(r);
 
-        step = 1;//this->get_newton_step(r, lambda, Ku);
-        //this->nl_solver->update(u.data(), step, r.data());
+        step = this->max_step;
         
         this->reset_hessian();
         std::copy(r.begin(), r.end(), dr.begin());
         double drnorm = std::sqrt(cblas_ddot(dr.size(), dr.data(), 1, dr.data(), 1));
         logger::quick_log("drnorm", drnorm);
         logger::quick_log("dr min max", *std::min_element(dr.begin(), dr.end()), *std::max_element(dr.begin(), dr.end()));
-        old_rnorm = rnorm;
-        bool should_break = false;
-        do {
-            //if(it != 1){
-            //    this->nl_solver->update(u_test.data(), step, dr.data());
-            //}
-            for(size_t i = 0; i < u.size(); ++i){
-                u_test[i] = u[i] + step*dr[i];
-            }
-            mesh->extend_vector(0, u_test, u_ext);
 
-            std::fill(Ku.begin(), Ku.end(), 0);
-            //this->matrix->dot_vector(u, Ku);
-            //std::fill(Ku.begin() + u_size, Ku.end(), 0);
-            this->matrix->append_Ku_frictionless(mesh, u, Ku, D_cache, topopt);
+        // Backtrace
+        /*
+            old_rnorm = rnorm;
+            bool should_break = false;
+            do {
+                for(size_t i = 0; i < u.size(); ++i){
+                    u_test[i] = u[i] + step*dr[i];
+                }
+                mesh->extend_vector(0, u_test, u_ext);
 
-            for(size_t i = 0; i < vec_size; ++i){
-                r[i] = -(Ku[i] - f[i]);
-            }
-            rnorm = std::sqrt(cblas_ddot(r.size(), r.data(), 1, r.data(), 1));
-            //if(it == 1){
-            //    std::fill(Kd.begin(), Kd.end(), 0);
-            //    this->matrix->dot_vector(dr, Kd);
-            //    double dmr = cblas_ddot(r.size(), r.data(), 1, Kd.data(), 1);
-            //    double dmrnorm = -dmr/rnorm;
-            //    logger::quick_log("dmr", dmr);
-            //    logger::quick_log("rnorm", rnorm);
-            //    logger::quick_log("dmrnorm", dmrnorm);
-            //    exit(0);
-            //}
-            if(rnorm < old_rnorm){
-                should_break = true;
+                std::fill(Ku.begin(), Ku.end(), 0);
+                this->matrix->dot_vector(u_test, Ku);
+                //std::fill(Ku.begin() + u_size, Ku.end(), 0);
+                this->matrix->append_Ku_frictionless(mesh, u_test, Ku, D_cache, topopt);
+
+                for(size_t i = 0; i < vec_size; ++i){
+                    r[i] = -(Ku[i] - f[i]);
+                }
+                rnorm = std::sqrt(cblas_ddot(r.size(), r.data(), 1, r.data(), 1));
+
+                if(rnorm < old_rnorm){
+                    should_break = true;
+                } else {
+                    step *= 0.8;
+                    //old_rnorm = rnorm;
+                }
+                if(step < 1e-5){
+                    break;
+                }
+            } while(!should_break);
+        */
+
+        // Damped Newton-Rhapson
+            const auto get_g = [&](double alpha)->double{
+                for(size_t i = 0; i < u.size(); ++i){
+                    u_test[i] = u[i] + alpha*dr[i];
+                }
+                std::fill(Ku.begin(), Ku.end(), 0);
+                this->matrix->dot_vector(u_test, Ku);
+                this->matrix->append_Ku_frictionless(mesh, u_test, Ku, D_cache, topopt);
+                for(size_t i = 0; i < vec_size; ++i){
+                    r[i] = (Ku[i] - f[i]);
+                }
+                return cblas_ddot(vec_size, dr.data(), 1, r.data(), 1);
+            };
+            double g1 = 0, g2 = 1;
+            double a1 = 0, a2 = this->max_step;
+            g1 = get_g(a1);
+            double g0 = g1;
+            g2 = get_g(a2);
+            const double DIFF = 1e-4;
+            logger::quick_log("g0", g0);
+            logger::quick_log("g2", g2);
+            if(g2*g1 < 0 && std::abs(g2) > DIFF*std::abs(g0)){
+                while(std::abs(g2) > DIFF*std::abs(g0)){
+                    double a2_old = a2;
+                    double diff = g2 - g1;
+                    if(std::abs(diff) < 1e-13){
+                        break;
+                    }
+                    a2 -= g2*(a2 - a1)/diff;
+                    a1 = a2_old;
+                    g1 = g2;
+                    //std::copy(r.begin(), r.end(), r2.begin());
+                    g2 = get_g(a2);
+                }
+            } else if(g1 > 0 && g2 > 0){
+                a2 = 0;
+                g2 = get_g(a2);
             } else {
-                step *= 0.8;
-                //old_rnorm = rnorm;
+                a2 = 1;
+                g2 = get_g(a2);
             }
-            if(step < 1e-5){
-                break;
+            logger::quick_log("g2_final", g2);
+            step = a2;
+            if(step < 0){
+                step = 1e-5;
+                g2 = get_g(step);
             }
-        } while(!should_break);
-        std::copy(u_test.begin(), u_test.end(), u.begin());
-        
-        //for(size_t i = u_size; i < r.size(); ++i){
-        //    std::cout << r[i] << " ";
-        //}
-        //std::cout << std::endl;
-        //std::cout << std::endl;
+            for(size_t i = 0; i < vec_size; ++i){
+                r[i] *= -1.0;
+            }
 
-        //this->nl_solver->update(u.data(), step, r.data());
+        std::copy(u_test.begin(), u_test.end(), u.begin());
         std::copy(u.begin() + u_size, u.end(), lambda.begin());
 
         mesh->extend_vector(0, u, u_ext);
-        //this->generate_matrix(mesh, u.size(), 0, mesh->node_positions[0], topopt, D_cache, u_ext);
-        std::fill(Ku.begin(), Ku.end(), 0);
+        this->apply_lambda(mesh, lambda, u_ext);
+
+        //std::fill(Ku.begin(), Ku.end(), 0);
         //this->matrix->dot_vector(u, Ku);
         //std::fill(Ku.begin() + u_size, Ku.end(), 0);
-        this->matrix->append_Ku_frictionless(mesh, u, Ku, D_cache, topopt);
-        for(size_t i = 0; i < vec_size; ++i){
-            r[i] = -(Ku[i] - f[i]);
-        }
+        //this->matrix->append_Ku_frictionless(mesh, u, Ku, D_cache, topopt);
+        //for(size_t i = 0; i < vec_size; ++i){
+        //    r[i] = -(Ku[i] - f[i]);
+        //}
         this->matrix->add_frictionless_part2(mesh, mesh->node_positions[0], u_ext, lambda, D_cache, topopt);
-        this->apply_lambda(mesh, lambda, u_ext);
-        //rnorm = std::sqrt(cblas_ddot(r.size(), r.data(), 1, r.data(), 1));
         E = 0;
         for(size_t i = 0; i < vec_size; ++i){
             E += u[i]*(Ku[i]/2 - f[i]);
         }
-        //for(size_t i = 0; i < u_size; ++i){
-        //    r[i] = -(Ku[i] - f[i]);
-        //}
-        //rnorm = std::sqrt(cblas_ddot(r.size(), r.data(), 1, r.data(), 1));
 
-        //this->reset_hessian();
+        //logger::quick_log("lambda n");
+        //const size_t l_num_orig = l_num/3;
+        //for(size_t i = 0; i < l_num_orig; ++i){
+        //    std::cout << lambda[i] << " ";
+        //}
+        //std::cout << std::endl;
 
         logger::quick_log("Iteration:", it);
         logger::quick_log("Potential energy:", E);
@@ -279,41 +351,64 @@ void FiniteElement::solve_frictionless_displ(const Meshing* const mesh, std::vec
         rnorm = std::sqrt(cblas_ddot(r.size(), r.data(), 1, r.data(), 1));
         logger::quick_log("||r|| actual:", rnorm);
         logger::quick_log("Step:", step);
-        logger::quick_log("");
         const size_t bnum = mesh->elem_info->get_boundary_nodes_per_element();
         const size_t dof = mesh->elem_info->get_dof_per_node();
         double max_gp = -1e100;
         double min_gp = 1e100;
+        logger::quick_log(mesh->paired_boundary.size());
+        //size_t eid = 0;
         for(const auto& e:mesh->paired_boundary){
             for(size_t i = 0; i < bnum; ++i){
                 const auto n1 = e.b1->nodes[i];
                 const auto n2 = e.b2->nodes[i];
-                const auto normal = e.b1->normal;
+                const auto normal = e.b2->normal;
                 double gp = 0;
                 for(size_t j = 0; j < dof; ++j){
-                    auto ni1 = mesh->node_positions[0][n1->u_pos[j]];
-                    auto ni2 = mesh->node_positions[0][n2->u_pos[j]];
                     double u1 = 0;
                     double u2 = 0;
-                    if(ni1 > -1){
-                        u1 = u[ni1];
-                    }
-                    if(ni2 > -1){
-                        u2 = u[ni2];
-                    }
+                    u1 = u_ext[n1->u_pos[j]];
+                    u2 = u_ext[n2->u_pos[j]];
+                    //auto ni1 = mesh->node_positions[0][n1->u_pos[j]];
+                    //auto ni2 = mesh->node_positions[0][n2->u_pos[j]];
+                    //u1 = u[ni1];
+                    //u2 = u[ni2];
                     gp += (u2 - u1)*normal.Coord(1+j);
                 }
+                //if(gp < 0){
+                //    std::cout << gp << " u2 ";
+                //    for(size_t j = 0; j < dof; ++j){
+                //        std::cout << u_ext[n2->u_pos[j]] << " ";
+                //    }
+                //    std::cout << " u1 ";
+                //    for(size_t j = 0; j < dof; ++j){
+                //        std::cout << u_ext[n1->u_pos[j]] << " ";
+                //    }
+                //    std::cout << " point ";
+                //    for(size_t j = 0; j < dof; ++j){
+                //        std::cout << e.elem->nodes[i]->point.Coord(1+j) << " ";
+                //    }
+                //    std::cout << " normal ";
+                //    for(size_t j = 0; j < dof; ++j){
+                //        std::cout << normal.Coord(1+j) << " ";
+                //    }
+                //    std::cout << " node ";
+                //    std::cout << this->constr_id_map.at(e.elem->nodes[i]) << " ";
+                //    std::cout << " c_elem ";
+                //    std::cout << eid << std::endl;
+                //}
+                //++eid;
                 max_gp = std::max(gp, max_gp);
                 min_gp = std::min(gp, min_gp);
             }
         }
         logger::quick_log("max_gp", max_gp);
         logger::quick_log("min_gp", min_gp);
+        logger::quick_log("");
         //if(it == 10) exit(0);
 
         logger::log_assert(rnorm < 1e30, logger::ERROR, "Newton process diverged, increase rtol_abs and/or decrease mult");
         ++it;
-    } while(rnorm > this->rtol_abs || it < 1);
+    } while((rnorm > this->rtol_abs || it < 1) && step > 0);
 
     std::copy(u.begin(), u.begin() + u_size, load.begin());
 }
@@ -372,7 +467,6 @@ void FiniteElement::solve_frictionless_displ_simple(const Meshing* const mesh, s
     std::vector<double> dl_e(bnum);
     auto& node_positions = mesh->node_positions[0];
 
-
     const auto get_g_dg = [&](double& gamma, double& dgamma, double eta, const std::vector<double>& u, const std::vector<double>& du){
         gamma = 0;
         dgamma = 0;
@@ -408,8 +502,9 @@ void FiniteElement::solve_frictionless_displ_simple(const Meshing* const mesh, s
     for(size_t i = 0; i < vec_size; ++i){
         r[i] = -(Ku[i] - f[i]);
     }
-    //this->matrix->add_frictionless_simple(mesh, mesh->node_positions[0], u_ext, lambda);
-    get_g_dg(gamma, step, step, u, dr);
+    this->matrix->add_frictionless_simple(mesh, mesh->node_positions[0], u_ext, lambda);
+    double unused = 0;
+    get_g_dg(gamma, unused, step, u, dr);
     step = 1;
     rnorm = std::sqrt(cblas_ddot(r.size(), r.data(), 1, r.data(), 1) + gamma*gamma);
 
@@ -460,7 +555,9 @@ void FiniteElement::solve_frictionless_displ_simple(const Meshing* const mesh, s
         double GHG = cblas_ddot(vec_size, G.data(), 1, HG.data(), 1);
         // `r` is already negative
         double dLAG = (gamma + GHr)/GHG;
-
+        //if(dLAG < 0){
+        //    dLAG = 1;
+        //}
 
         step = 1;
         
@@ -572,6 +669,7 @@ void FiniteElement::solve_frictionless_displ_simple(const Meshing* const mesh, s
         */
 
         // 2-point MMA
+        /*
             const double eta_0 = 0;
             const double eta_1 = this->max_step;
             const double L = -0.1*eta_1; 
@@ -617,7 +715,7 @@ void FiniteElement::solve_frictionless_displ_simple(const Meshing* const mesh, s
             }
 
             std::fill(Ku_tmp.begin(), Ku_tmp.end(), 0);
-            this->matrix->append_Ku_frictionless_simple(mesh, u2, Ku2);
+            this->matrix->append_Ku_frictionless_simple(mesh, u2, Ku_tmp);
             this->matrix->append_dKu_frictionless_simple(mesh, u2, dr, eta_1, Kd2);
             for(size_t i = 0; i < vec_size; ++i){
                 Ku2[i] += LAG_2*Ku_tmp[i];
@@ -646,7 +744,7 @@ void FiniteElement::solve_frictionless_displ_simple(const Meshing* const mesh, s
             const double Q = PQV[1];
             logger::quick_log("a b P Q", a, b, P, Q);
             logger::log_assert(P >= 0 || Q >= 0,
-                    logger::ERROR,
+                    logger::WARNING,
                     "P and Q are less than zero, there might be a mistake in the problem's definition");
             if(P < 0){
                 // Minimum is beyond the approximation's bounds
@@ -679,12 +777,85 @@ void FiniteElement::solve_frictionless_displ_simple(const Meshing* const mesh, s
             get_g_dg(g1, dg1, step, u, dr);
             rnorm = std::sqrt(cblas_ddot(r.size(), r.data(), 1, r.data(), 1) + g1*g1);
             gamma = g1;
+        */
+        
+        // Damped Newton-Rhapson
+            const auto get_g = [&](double alpha)->double{
+                for(size_t i = 0; i < u.size(); ++i){
+                    u1[i] = u[i] + alpha*dr[i];
+                }
+                double LAG_1 = LAG + alpha*dLAG;
+                std::fill(Ku.begin(), Ku.end(), 0);
+                this->matrix->dot_vector(u1, Ku);
+                this->matrix->set_lag_displ_simple(LAG_1);
+                this->matrix->dot_vector(dr, Kd1);
+
+                std::fill(Ku_tmp.begin(), Ku_tmp.end(), 0);
+                this->matrix->append_Ku_frictionless_simple(mesh, u1, Ku_tmp);
+                this->matrix->append_dKu_frictionless_simple(mesh, u1, dr, alpha, Kd1);
+                for(size_t i = 0; i < vec_size; ++i){
+                    Ku[i] += LAG_1*Ku_tmp[i];
+                    Kd1[i] += dLAG*Ku_tmp[i];
+                }
+
+                for(size_t i = 0; i < vec_size; ++i){
+                    r[i] = (Ku[i] - f[i]);
+                }
+                double gamma = 0, dgamma = 0;
+                get_g_dg(gamma, dgamma, alpha, u1, dr);
+                return cblas_ddot(vec_size, Kd1.data(), 1, r.data(), 1) + dLAG*gamma;
+            };
+            double g1 = 0, g2 = 1;
+            double a1 = 0, a2 = this->max_step;
+            g1 = get_g(a1);
+            double g0 = g1;
+            g2 = get_g(a2);
+            const double DIFF = 1e-2;
+            logger::quick_log("g0", g0);
+            logger::quick_log("g2", g2);
+            if(g2*g1 < 0 && std::abs(g2) > DIFF*std::abs(g0)){
+                while(std::abs(g2) > DIFF*std::abs(g0)){
+                    double a2_old = a2;
+                    double diff = g2 - g1;
+                    if(std::abs(diff) < 1e-13){
+                        break;
+                        if(diff < 0){
+                            diff = -1e-13;
+                        } else {
+                            diff = 1e-13;
+                        }
+                    }
+                    a2 -= g2*(a2 - a1)/diff;
+                    a1 = a2_old;
+                    g1 = g2;
+                    std::copy(r.begin(), r.end(), r2.begin());
+                    g2 = get_g(a2);
+                }
+            } 
+            logger::quick_log("g2_final", g2);
+            step = a2;
+            if(step < 0){
+                step = 1e-5;
+                g2 = get_g(step);
+            }
+            for(size_t i = 0; i < vec_size; ++i){
+                r[i] *= -1;
+            }
+            std::copy(u1.begin(), u1.end(), u.begin());
+            LAG += step*dLAG;
+            mesh->extend_vector(0, u, u_ext);
+            double dg1 = 0;
+            get_g_dg(g1, dg1, step, u, dr);
+            gamma = g1;
+
+        rnorm = std::sqrt(cblas_ddot(r.size(), r.data(), 1, r.data(), 1) + gamma*gamma);
        
         std::copy(u.begin() + u_size, u.end(), lambda.begin());
 
         this->matrix->set_lag_displ_simple(LAG);
         this->matrix->add_frictionless_simple(mesh, mesh->node_positions[0], u_ext, lambda);
         E = 0;
+        // This is definitely wrong, but works as an estimate
         for(size_t i = 0; i < vec_size; ++i){
             E += u[i]*(Ku[i]/2 - f[i]);
         }
@@ -729,9 +900,9 @@ void FiniteElement::solve_frictionless_displ_simple(const Meshing* const mesh, s
 
         logger::log_assert(rnorm < 1e30, logger::ERROR, "Newton process diverged, increase rtol_abs and/or decrease mult");
         ++it;
-        if(b > 1e-6 || step <= 0){
-            break;
-        }
+        //if(b > 1e-6 || step <= 0){
+        //    break;
+        //}
     } while((rnorm > this->rtol_abs || it < 1));
 
     std::copy(u.begin(), u.begin() + u_size, load.begin());
@@ -829,7 +1000,7 @@ void FiniteElement::solve_frictionless_penalty(const Meshing* const mesh, std::v
 
         logger::log_assert(rnorm < 1e30, logger::ERROR, "Newton process diverged, increase rtol_abs and/or decrease mult");
         ++it;
-    } while(rnorm > this->rtol_abs || it < 1);
+    } while((rnorm > this->rtol_abs || it < 1) && step > 0);
 
     std::copy(u.begin(), u.begin() + u_size, load.begin());
 }
@@ -863,11 +1034,12 @@ std::vector<double> FiniteElement::calculate_forces(const Meshing* const mesh, c
     return results;
 }
 
-void FiniteElement::apply_constr_force(const Meshing* mesh, const std::vector<double>& u_ext, const std::vector<double>& lambda, std::vector<double>& b) const{
+void FiniteElement::apply_constr_force_old(const Meshing* mesh, const std::vector<double>& u_ext, const std::vector<double>& lambda, std::vector<double>& b) const{
     const size_t num_nodes = mesh->elem_info->get_nodes_per_element();
     const size_t num_bound_nodes = mesh->elem_info->get_boundary_nodes_per_element();
     const size_t dof = mesh->elem_info->get_dof_per_node();
     const size_t kw = mesh->elem_info->get_k_dimension();
+    const size_t l_num = mesh->lag_node_map.size();
 
     math::Vector ln_e(num_bound_nodes);
     math::Vector lp1_e(num_bound_nodes);
@@ -877,8 +1049,8 @@ void FiniteElement::apply_constr_force(const Meshing* mesh, const std::vector<do
     for(const auto& e:mesh->paired_boundary){
         for(size_t i = 0; i < num_bound_nodes; ++i){
             const long p1 = mesh->lag_node_map.at(e.b1->nodes[i]->id);
-            const long p2 = p1 + num_bound_nodes;
-            const long p3 = p2 + num_bound_nodes;
+            const long p2 = p1 + l_num;
+            const long p3 = p2 + l_num;
             ln_e[i] = lambda[p1];
             lp1_e[i] = lambda[p2];
             lp2_e[i] = lambda[p3];
@@ -895,6 +1067,7 @@ void FiniteElement::apply_constr_force(const Meshing* mesh, const std::vector<do
             } else {
                 for(size_t j = 0; j < dof; ++j){
                     u_pos[dof*i + j] = -1;
+                    u_e[dof*i + j] = 0;
                 }
             }
         }
@@ -906,23 +1079,176 @@ void FiniteElement::apply_constr_force(const Meshing* mesh, const std::vector<do
         }
     }
 }
-void FiniteElement::apply_lambda(const Meshing* mesh, const std::vector<double>& lambda, std::vector<double>& u_ext){
+void FiniteElement::apply_constr_force_old(const Meshing* mesh, const std::vector<double>& u_ext, const std::vector<double>& lambda, std::vector<double>& b, const size_t dof) const{
     const size_t num_nodes = mesh->elem_info->get_nodes_per_element();
-    const size_t dof = mesh->elem_info->get_dof_per_node();
+    const size_t num_bound_nodes = mesh->elem_info->get_boundary_nodes_per_element();
+    //const size_t max_dof = mesh->elem_info->get_dof_per_node();
+    //const size_t kw = mesh->elem_info->get_k_dimension();
+    const size_t l_num = mesh->lag_node_map.size();
 
-    std::fill(this->constr_force.begin(), this->constr_force.end(), 0);
-    this->apply_constr_force(mesh, u_ext, lambda, this->constr_force);
-    this->constr_solver.solve(this->constr_force);
+    math::Vector ln_e(num_bound_nodes);
+    math::Vector lp1_e(num_bound_nodes);
+    math::Vector lp2_e(num_bound_nodes);
+    math::Vector u_e(num_nodes);
+    std::vector<long> u_pos(num_nodes);
     for(const auto& e:mesh->paired_boundary){
+        for(size_t i = 0; i < num_bound_nodes; ++i){
+            const long p1 = mesh->lag_node_map.at(e.b1->nodes[i]->id);
+            const long p2 = p1 + l_num;
+            const long p3 = p2 + l_num;
+            ln_e[i]  = lambda[p1];
+            lp1_e[i] = lambda[p2];
+            lp2_e[i] = lambda[p3];
+        }
+        for(size_t i = 0; i < num_nodes; ++i){
+            const auto n1 = e.elem->e1->nodes[i];
+            const auto n2 = e.elem->e2->nodes[i];
+            const long id = this->constr_id_map.at(n2);
+            u_pos[i] = id;
+            if(id >= 0){
+                u_e[i] = u_ext[n1->u_pos[dof]];
+            } else {
+                u_e[i] = 0;
+            }
+        }
+        const auto be(e.elem->fl3_eq(ln_e, lp1_e, lp2_e, u_e, dof));
+        for(size_t i = 0; i < num_nodes; ++i){
+            if(u_pos[i] >= 0){
+                b[u_pos[i]] += be[i];
+            }
+        }
+    }
+}
+void FiniteElement::apply_constr_force(const Meshing* mesh, const std::vector<double>& u_ext, const std::vector<double>& lambda, std::vector<double>& b) const{
+    const size_t num_nodes = mesh->elem_info->get_nodes_per_element();
+    const size_t num_bound_nodes = mesh->elem_info->get_boundary_nodes_per_element();
+    const size_t dof = mesh->elem_info->get_dof_per_node();
+    const size_t kw = mesh->elem_info->get_k_dimension();
+
+    math::Vector ln_e(num_bound_nodes);
+    math::Vector u_e(kw);
+    std::vector<long> u_pos(kw);
+    for(const auto& e:mesh->paired_boundary){
+        for(size_t i = 0; i < num_bound_nodes; ++i){
+            const long p1 = mesh->lag_node_map.at(e.b1->nodes[i]->id);
+            ln_e[i] = lambda[p1];
+        }
         for(size_t i = 0; i < num_nodes; ++i){
             const auto n1 = e.elem->e1->nodes[i];
             const auto n2 = e.elem->e2->nodes[i];
             const long id = this->constr_id_map.at(n2);
             if(id >= 0){
                 for(size_t j = 0; j < dof; ++j){
-                    u_ext[n1->u_pos[j]] += this->constr_force[id*dof + j];
+                    u_pos[dof*i + j] = id*dof + j;
+                    u_e[dof*i + j] = u_ext[n1->u_pos[j]];
+                }
+            } else {
+                for(size_t j = 0; j < dof; ++j){
+                    u_pos[dof*i + j] = -1;
+                    u_e[dof*i + j] = 0;
                 }
             }
+        }
+        const auto be(e.elem->fl4_eq(ln_e, u_e));
+        for(size_t i = 0; i < kw; ++i){
+            if(u_pos[i] >= 0){
+                b[u_pos[i]] += be[i];
+            }
+        }
+    }
+}
+void FiniteElement::apply_lambda_old(const Meshing* mesh, const std::vector<double>& lambda, std::vector<double>& u_ext){
+    const size_t dof = mesh->elem_info->get_dof_per_node();
+
+
+    const size_t num_bound_nodes = mesh->elem_info->get_boundary_nodes_per_element();
+    std::vector<double> D(this->constr_force.size(), 0);
+    for(const auto& e:mesh->paired_boundary){
+        const double A = e.elem->get_area()/num_bound_nodes;
+        for(size_t i = 0; i < num_bound_nodes; ++i){
+            const auto id = this->constr_id_map.at(e.elem->nodes[i]);
+            D[id] += A;
+        }
+    }
+    math::Vector l_e(num_bound_nodes);
+    const size_t l_num_orig = this->l_num/3;
+    for(size_t k = 0; k < dof; ++k){
+        std::fill(this->constr_force.begin(), this->constr_force.end(), 0);
+        for(const auto& e:mesh->paired_boundary){
+            const double A = e.elem->get_area()/num_bound_nodes;
+            for(size_t i = 0; i < num_bound_nodes; ++i){
+                const long p1 = mesh->lag_node_map.at(e.b1->nodes[i]->id);
+                const long p2 = p1 + l_num_orig;
+                const long p3 = p2 + l_num_orig;
+                l_e[0] = lambda[p3];
+                l_e[1] = lambda[p2];
+                l_e[2] = lambda[p1]*lambda[p1];
+                const auto id = this->constr_id_map.at(e.elem->nodes[i]);
+                const auto& R = e.elem->get_R();
+                const double l = l_e[0]*R(k, 0) + l_e[1]*R(k, 1) + l_e[2]*R(k, 2);
+                this->constr_force[id] += A*l;
+                if(k == 2 && id == 118){
+                    logger::quick_log(118, A, l);
+                    logger::quick_log(R);
+                }
+            }
+        }
+        for(const auto n:this->boundary_reference_nodes){
+            const long id = this->constr_id_map.at(n);
+            if(id == 118){
+                logger::quick_log(this->constr_force[id], u_ext[n->u_pos[k]]);
+            }
+            u_ext[n->u_pos[k]] += this->constr_force[id]/D[id];
+            if(id == 118){
+                logger::quick_log(this->constr_force[id], u_ext[n->u_pos[k]]);
+            }
+        }
+    }
+
+    //for(size_t i = 0; i < dof; ++i){
+    //    std::fill(this->constr_force.begin(), this->constr_force.end(), 0);
+    //    this->apply_constr_force(mesh, u_ext, lambda, this->constr_force, i);
+    //    this->constr_solver.solve(this->constr_force);
+    //    for(const auto n:this->boundary_reference_nodes){
+    //        const long id = this->constr_id_map.at(n);
+    //        u_ext[n->u_pos[i]] += this->constr_force[id];
+    //    }
+    //}
+
+    //std::fill(this->constr_force.begin(), this->constr_force.end(), 0);
+    //this->apply_constr_force(mesh, u_ext, lambda, this->constr_force);
+    //this->constr_solver.solve(this->constr_force);
+    //for(const auto n:this->boundary_reference_nodes){
+    //    const long id = this->constr_id_map.at(n);
+    //    for(size_t j = 0; j < dof; ++j){
+    //        u_ext[n->u_pos[j]] = this->constr_force[id*dof + j];
+    //    }
+    //}
+    //
+    //const size_t num_nodes = mesh->elem_info->get_nodes_per_element();
+    //for(const auto& e:mesh->paired_boundary){
+    //    for(size_t i = 0; i < num_nodes; ++i){
+    //        //const auto n1 = e.elem->e1->nodes[i];
+    //        const auto n2 = e.elem->e2->nodes[i];
+    //        const long id = this->constr_id_map.at(n2);
+    //        if(id >= 0){
+    //            for(size_t j = 0; j < dof; ++j){
+    //                u_ext[n2->u_pos[j]] = this->constr_force[id*dof + j];
+    //            }
+    //        }
+    //    }
+    //}
+}
+void FiniteElement::apply_lambda(const Meshing* mesh, const std::vector<double>& lambda, std::vector<double>& u_ext){
+    const size_t dof = mesh->elem_info->get_dof_per_node();
+
+    std::fill(this->constr_force.begin(), this->constr_force.end(), 0);
+    this->apply_constr_force(mesh, u_ext, lambda, this->constr_force);
+    this->constr_solver.solve(this->constr_force);
+    for(const auto n:this->boundary_reference_nodes){
+        const long id = this->constr_id_map.at(n);
+        for(size_t j = 0; j < dof; ++j){
+            u_ext[n->u_pos[j]] += this->constr_force[id*dof + j];
         }
     }
 }
