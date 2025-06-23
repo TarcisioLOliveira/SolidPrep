@@ -48,7 +48,7 @@ class FiniteElement{
         double rtol_abs = 0;
         double max_step = 0;
         double step_tol = 0;
-        double EPS_DISPL = 0;
+        double EPS_DISPL_SIMPLE = 0;
     };
 
     FiniteElement(const ContactData& data);
@@ -73,6 +73,7 @@ class FiniteElement{
     const ContactType contact_type;
     const double rtol_abs;
     const double step_tol;
+    const double start_lag_simple;
     GlobalStiffnessMatrix* matrix = nullptr;
     size_t u_size, l_num;
 

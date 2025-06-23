@@ -24,7 +24,7 @@
 #include "math/matrix.hpp"
 #include <limits>
 
-GlobalStiffnessMatrix::GlobalStiffnessMatrix(double EPS_DISPL):
+GlobalStiffnessMatrix::GlobalStiffnessMatrix(double EPS_DISPL_SIMPLE):
     EPS_DISPL(EPS_DISPL){
 
     }

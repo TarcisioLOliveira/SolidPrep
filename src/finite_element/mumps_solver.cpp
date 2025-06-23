@@ -29,7 +29,7 @@ namespace finite_element{
 
 MUMPSSolver::MUMPSSolver(const projspec::DataMap& data):
     FiniteElement(data.proj->contact_data),
-    gsm(data.proj->contact_data.EPS_DISPL)
+    gsm(data.proj->contact_data.EPS_DISPL_SIMPLE)
 {
     this->set_global_matrix(&this->gsm);
 

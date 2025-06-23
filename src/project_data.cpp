@@ -563,10 +563,10 @@ FiniteElement::ContactData ProjectData::get_contact_data(const Json::Value& doc)
         if(contact_type >= FiniteElement::ContactType::FRICTIONLESS_DISPL_SIMPLE){
             this->log_data(doc, "max_step", projspec::TYPE_DOUBLE, true);
             this->log_data(doc, "step_tol", projspec::TYPE_DOUBLE, true);
-            //this->log_data(doc, "opt_weight", projspec::TYPE_DOUBLE, true);
+            this->log_data(doc, "opt_weight", projspec::TYPE_DOUBLE, true);
             max_step = doc["max_step"].asDouble();
             step_tol = doc["step_tol"].asDouble();
-            EPS_DISPL = 0;//doc["opt_weight"].asDouble();
+            EPS_DISPL = doc["opt_weight"].asDouble();
         }
         return {contact_type, rtol_abs, max_step, step_tol, EPS_DISPL};
     }

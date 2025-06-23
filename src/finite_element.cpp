@@ -30,7 +30,9 @@ FiniteElement::FiniteElement(const ContactData& data)
     :contact_type(data.contact_type),
      rtol_abs(data.rtol_abs),
      step_tol(data.step_tol),
-     max_step(data.max_step){
+     start_lag_simple(data.EPS_DISPL_SIMPLE),
+     max_step(data.max_step)
+{
 
 }
 
@@ -39,7 +41,9 @@ void FiniteElement::generate_matrix(const Meshing* const mesh, const size_t u_si
     this->l_num = l_num;
     this->generate_matrix_base(mesh, u_size, l_num, node_positions, topopt, D_cache, u_ext, lambda, this->contact_type);
 
-    if(this->contact_type == FRICTIONLESS_DISPL_CONSTR){
+    if(this->contact_type == FRICTIONLESS_DISPL_SIMPLE){
+        this->matrix->set_lag_displ_simple(this->start_lag_simple);
+    } else if(this->contact_type == FRICTIONLESS_DISPL_CONSTR){
         const size_t num_nodes = mesh->elem_info->get_nodes_per_element();
         const size_t num_bound_nodes = mesh->elem_info->get_boundary_nodes_per_element();
         const size_t dof = mesh->elem_info->get_dof_per_node();

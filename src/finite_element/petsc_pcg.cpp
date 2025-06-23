@@ -32,7 +32,7 @@ PETScPCG::PETScPCG(const projspec::DataMap& data):
     FiniteElement(data.proj->contact_data),
     gsm(nullptr)
 {
-    const auto EPS_DISPL = data.proj->contact_data.EPS_DISPL;
+    const auto EPS_DISPL = data.proj->contact_data.EPS_DISPL_SIMPLE;
     const std::string backend(data.get_string("backend"));
     if(backend == "cpu"){
         this->vec_type = VECSTANDARD;
