@@ -45,7 +45,6 @@ class GlobalStiffnessMatrix{
 
     void append_Ku_frictionless_simple(const Meshing* const mesh, const std::vector<double>& u, std::vector<double>& Ku) const;
     void append_dKu_frictionless_simple(const Meshing* const mesh, const std::vector<double>& u, const std::vector<double>& du, const double eta, std::vector<double>& Ku) const;
-    void append_ddKu_frictionless_simple(const Meshing* const mesh, const std::vector<double>& u, const std::vector<double>& du, const double eta, std::vector<double>& Ku) const;
 
     inline void set_lag_displ_simple(double L){
         this->LAG_DISPL_SIMPLE = L;

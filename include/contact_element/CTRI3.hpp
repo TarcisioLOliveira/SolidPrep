@@ -53,11 +53,6 @@ class CTRI3 : public ContactMeshElement{
     virtual math::Vector fl3_eq(const math::Vector& ln_e, const math::Vector& lp1_e, const math::Vector& lp2_e, const math::Vector& u_e) const override;
     virtual math::Vector fl3_eq(const math::Vector& ln_e, const math::Vector& lp1_e, const math::Vector& lp2_e, const math::Vector& u_e, const size_t dof) const override;
 
-    virtual math::Matrix fl4_uL(const math::Matrix& D, const math::Vector& ln_e) const override;
-    virtual math::Matrix fl4_LL(const math::Matrix& D, const math::Vector& ln_e, const std::vector<double>& u) const override;
-    virtual void fl4_Ku(const math::Matrix& D, const std::vector<long> u_pos, const std::vector<long>& lu_pos, const std::vector<double>& u, std::vector<double>& Ku) const override;
-    virtual math::Vector fl4_eq(const math::Vector& ln_e, const math::Vector& u_e) const override;
-
     virtual math::Matrix fl2_uL(const math::Vector& l_e) const override;
     virtual math::Matrix fl2_LL(const math::Vector& l_e, const math::Vector& u1, const math::Vector& u2) const override;
     virtual math::Vector fl2_LAG(const math::Vector& l_e, const math::Vector& u1, const math::Vector& u2) const override;
@@ -67,7 +62,6 @@ class CTRI3 : public ContactMeshElement{
 
     virtual void fl2_Ku_lambda(const double EPS, const std::vector<long> u1_pos, const std::vector<long> u2_pos, const std::vector<long>& lu_pos, const std::vector<double>& u, std::vector<double>& Ku) const override;
     virtual void fl2_dKu_lambda(const double EPS, const std::vector<long> u1_pos, const std::vector<long> u2_pos, const std::vector<long>& lu_pos, const std::vector<double>& u, const std::vector<double>& du, const double eta, std::vector<double>& dKu) const override;
-    virtual void fl2_ddKu_lambda(const double EPS, const std::vector<long> u1_pos, const std::vector<long> u2_pos, const std::vector<long>& lu_pos, const std::vector<double>& u, const std::vector<double>& du, const double eta, std::vector<double>& dKu) const override;
 
     virtual double get_area() const override{
         return this->delta;

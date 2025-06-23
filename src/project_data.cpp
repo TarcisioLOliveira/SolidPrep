@@ -553,8 +553,8 @@ ProjectData::ContactData ProjectData::get_contact_data(const Json::Value& doc) c
             contact_type = FiniteElement::ContactType::FRICTIONLESS_PENALTY;
             } else if(type == "frictionless_displ_simple"){
                 contact_type = FiniteElement::ContactType::FRICTIONLESS_DISPL_SIMPLE;
-            } else if(type == "frictionless_displ_constr"){
-                contact_type = FiniteElement::ContactType::FRICTIONLESS_DISPL_CONSTR;
+            //} else if(type == "frictionless_displ_constr"){
+            //    contact_type = FiniteElement::ContactType::FRICTIONLESS_DISPL_CONSTR;
             } else {
                 logger::log_assert(false, logger::ERROR, "unknown contact type: {}", type);
             }
