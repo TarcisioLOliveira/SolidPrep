@@ -102,6 +102,18 @@ void PETScSparseSymmetricCPU::assemble_matrix(const Meshing * const mesh, const 
 
     MatAssemblyBegin(this->K, MAT_FINAL_ASSEMBLY);
     MatAssemblyEnd(this->K, MAT_FINAL_ASSEMBLY);
+
+    if(mpi_id == 0){
+        if(type >= FiniteElement::ContactType::FRICTIONLESS_DISPL_SIMPLE){
+            if(this->H == 0){
+                MatConvert(this->K, MATSAME, MAT_INITIAL_MATRIX, &this->H);
+            } else {
+                MatCopy(this->K, this->H, SAME_NONZERO_PATTERN);
+            }
+            MatAssemblyBegin(this->H, MAT_FINAL_ASSEMBLY);
+            MatAssemblyEnd(this->H, MAT_FINAL_ASSEMBLY);
+        }
+    }
 }
 
 void PETScSparseSymmetricCPU::dot_vector(const std::vector<double>& v, std::vector<double>& v_out) const{

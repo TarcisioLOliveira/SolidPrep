@@ -49,6 +49,7 @@ class CTRI3 : public ContactMeshElement{
     virtual math::Matrix fl3_uL(const math::Matrix& D, const math::Vector& ln_e) const override;
     virtual math::Matrix fl3_LL(const math::Matrix& D, const math::Vector& ln_e, const math::Vector& lp1_e, const math::Vector& lp2_e, const std::vector<double>& u) const override;
     virtual void fl3_Ku(const math::Matrix& D, const std::vector<long> u_pos, const std::vector<long>& lu_pos, const std::vector<double>& u, std::vector<double>& Ku) const override;
+    virtual void fl3_dKu(const math::Matrix& D, const double eta, const std::vector<long> u_pos, const std::vector<long>& lu_pos, const std::vector<double>& u, const std::vector<double>& du, std::vector<double>& Ku) const override;
     virtual math::Vector fl3_eq(const math::Vector& ln_e, const math::Vector& lp1_e, const math::Vector& lp2_e, const math::Vector& u_e) const override;
     virtual math::Vector fl3_eq(const math::Vector& ln_e, const math::Vector& lp1_e, const math::Vector& lp2_e, const math::Vector& u_e, const size_t dof) const override;
 
@@ -62,9 +63,11 @@ class CTRI3 : public ContactMeshElement{
     virtual math::Vector fl2_LAG(const math::Vector& l_e, const math::Vector& u1, const math::Vector& u2) const override;
     virtual double fl2_int(const math::Vector& l_e, const math::Vector& u1, const math::Vector& u2) const override;
     virtual double fl2_int_deriv(const math::Vector& l_e, const math::Vector& u1, const math::Vector& u2, const math::Vector& dl_e, const math::Vector& du1, const math::Vector& du2, const double eta) const override;
+    virtual double fl2_int_deriv2(const math::Vector& l_e, const math::Vector& u1, const math::Vector& u2, const math::Vector& dl_e, const math::Vector& du1, const math::Vector& du2, const double eta) const override;
 
     virtual void fl2_Ku_lambda(const double EPS, const std::vector<long> u1_pos, const std::vector<long> u2_pos, const std::vector<long>& lu_pos, const std::vector<double>& u, std::vector<double>& Ku) const override;
     virtual void fl2_dKu_lambda(const double EPS, const std::vector<long> u1_pos, const std::vector<long> u2_pos, const std::vector<long>& lu_pos, const std::vector<double>& u, const std::vector<double>& du, const double eta, std::vector<double>& dKu) const override;
+    virtual void fl2_ddKu_lambda(const double EPS, const std::vector<long> u1_pos, const std::vector<long> u2_pos, const std::vector<long>& lu_pos, const std::vector<double>& u, const std::vector<double>& du, const double eta, std::vector<double>& dKu) const override;
 
     virtual double get_area() const override{
         return this->delta;
@@ -282,7 +285,7 @@ class CTRI3 : public ContactMeshElement{
 
         for(size_t i = 0; i < S_SIZE; ++i){
             for(size_t j = 0; j < NODES_PER_ELEM; ++j){
-                eps_f(i,j + 0*NODES_PER_ELEM) = eps_n_full(i,j);
+                eps_f(i,j + 0*NODES_PER_ELEM) = 2*eps_n_full(i,j);
                 eps_f(i,j + 1*NODES_PER_ELEM) = eps_p1(i,j);
                 eps_f(i,j + 2*NODES_PER_ELEM) = eps_p2(i,j);
             }
@@ -305,8 +308,44 @@ class CTRI3 : public ContactMeshElement{
         }            
         for(size_t i = 0; i < NODES_PER_ELEM; ++i){
             for(size_t j = 0; j < NODES_PER_ELEM; ++j){
-                result(i,j) = sum(i,j);
+                result(i,j) = 2*sum(i,j);
             } 
+        }
+
+        return result;
+    }
+
+    inline math::Vector eps_vec_eta(const gp_Pnt& p, const double eta, const math::Vector& le_n, const math::Vector& dle_n, const math::Vector& dle_p1, const math::Vector& dle_p2, const gp_Dir& n, const gp_Dir& p1, const gp_Dir& p2) const{
+        (void) eta;
+        const math::Vector N(this->N_mat_1dof(p));
+
+        const auto eps_n = this->eps_mat_lambda_2(n, p);
+        const auto eps_p1 = this->eps_mat_lambda(p1);
+        const auto eps_p2 = this->eps_mat_lambda(p2);
+
+        math::Vector eps_n_full(S_SIZE);
+        for(size_t i = 0; i < S_SIZE; ++i){
+            eps_n_full[i] = 2*((le_n.T())*eps_n[i]*dle_n);
+        }
+
+        return eps_n_full + eps_p1*dle_p1 + eps_p2*dle_p2;
+    }
+
+    inline math::Vector eps_D_eta(const gp_Pnt& p, const math::Vector& dle_n, const gp_Dir& n, const math::Vector& eps, const math::Matrix& D) const{
+        const math::Vector N(this->N_mat_1dof(p));
+
+        const auto eps_n = this->eps_mat_lambda_2(n, p);
+
+        const auto eps_D(eps.T()*D);
+
+        math::Vector result(3*NODES_PER_ELEM);
+        math::Matrix sum(NODES_PER_ELEM, NODES_PER_ELEM);
+        for(size_t k = 0; k < S_SIZE; ++k){
+            sum += eps_D[k]*eps_n[k];
+        }    
+        math::Vector sum_mult(sum*dle_n);        
+        for(size_t i = 0; i < NODES_PER_ELEM; ++i){
+            result[i] = 2*sum_mult[i];
         }
 
         return result;
