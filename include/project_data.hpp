@@ -56,13 +56,6 @@
 class ProjectData {
     public:
 
-    struct ContactData{
-        FiniteElement::ContactType contact_type = FiniteElement::ContactType::RIGID;
-        double rtol_abs = 0;
-        double max_step = 0;
-        double EPS_DISPL = 0;
-    };
-
     //enum DataType{
     //    TYPE_NULL,
     //    TYPE_BOOL,
@@ -109,7 +102,7 @@ class ProjectData {
     std::unique_ptr<Simulation> simulator;
     std::vector<utils::DelayedPointer<Field>> fields;
     std::vector<SubProblem> sub_problems;
-    ContactData contact_data;
+    FiniteElement::ContactData contact_data;
     meshing::MeshFile* mesh_file = nullptr;
     double topopt_penalization = 3; // Topopt with void
     double topopt_psi = 0.5; // Topopt with two materials
@@ -140,7 +133,7 @@ class ProjectData {
      */
     bool log_data(const Json::Value& doc, std::string name, projspec::DataType type, bool required) const;
 
-    ContactData get_contact_data(const Json::Value& doc) const;
+    FiniteElement::ContactData get_contact_data(const Json::Value& doc) const;
 
     std::vector<Force> get_loads(const Json::Value& doc) const;
 

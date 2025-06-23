@@ -21,17 +21,13 @@
 #include <Eigen/IterativeLinearSolvers>
 #include <mpich-x86_64/mpi.h>
 #include "finite_element/eigen_pcg.hpp"
-#include "logger.hpp"
 #include "math/matrix.hpp"
 #include "project_data.hpp"
 
 namespace finite_element{
 
 EigenPCG::EigenPCG(const projspec::DataMap& data):
-    FiniteElement(
-        data.proj->contact_data.contact_type,
-        data.proj->contact_data.rtol_abs,
-        data.proj->contact_data.max_step),
+    FiniteElement(data.proj->contact_data),
     gsm(data.proj->contact_data.EPS_DISPL)
 {
     this->set_global_matrix(&this->gsm);    

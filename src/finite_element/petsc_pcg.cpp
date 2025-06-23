@@ -29,10 +29,7 @@
 namespace finite_element{
 
 PETScPCG::PETScPCG(const projspec::DataMap& data):
-    FiniteElement(
-        data.proj->contact_data.contact_type,
-        data.proj->contact_data.rtol_abs,
-        data.proj->contact_data.max_step),
+    FiniteElement(data.proj->contact_data),
     gsm(nullptr)
 {
     const auto EPS_DISPL = data.proj->contact_data.EPS_DISPL;

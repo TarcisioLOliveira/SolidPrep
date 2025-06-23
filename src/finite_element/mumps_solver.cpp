@@ -28,10 +28,7 @@
 namespace finite_element{
 
 MUMPSSolver::MUMPSSolver(const projspec::DataMap& data):
-    FiniteElement(
-        data.proj->contact_data.contact_type,
-        data.proj->contact_data.rtol_abs,
-        data.proj->contact_data.max_step),
+    FiniteElement(data.proj->contact_data),
     gsm(data.proj->contact_data.EPS_DISPL)
 {
     this->set_global_matrix(&this->gsm);

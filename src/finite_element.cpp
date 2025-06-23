@@ -26,8 +26,11 @@
 #include "global_stiffness_matrix.hpp"
 #include "math/matrix.hpp"
 
-FiniteElement::FiniteElement(ContactType contact_type, double rtol_abs, double max_step)
-    :contact_type(contact_type), rtol_abs(rtol_abs), max_step(max_step){
+FiniteElement::FiniteElement(const ContactData& data)
+    :contact_type(data.contact_type),
+     rtol_abs(data.rtol_abs),
+     step_tol(data.step_tol),
+     max_step(data.max_step){
 
 }
 
@@ -401,7 +404,7 @@ void FiniteElement::solve_frictionless_displ_simple(const Meshing* const mesh, s
     std::vector<double> dl_e(bnum);
     auto& node_positions = mesh->node_positions[0];
 
-    const auto get_g_dg_ddg = [&](double& gamma, double& dgamma, double& ddgamma, double eta, const std::vector<double>& u, const std::vector<double>& du){
+    const auto get_g_dg = [&](double& gamma, double& dgamma, double eta, const std::vector<double>& u, const std::vector<double>& du){
         gamma = 0;
         dgamma = 0;
         
@@ -423,11 +426,9 @@ void FiniteElement::solve_frictionless_displ_simple(const Meshing* const mesh, s
             }
             const double integ(e.elem->fl2_int(l_e, u_e1, u_e2));
             const double integ_deriv(e.elem->fl2_int_deriv(l_e, u_e1, u_e2, dl_e, du_e1, du_e2, eta));
-            const double integ_deriv2(e.elem->fl2_int_deriv2(l_e, u_e1, u_e2, dl_e, du_e1, du_e2, eta));
 
             gamma += integ;
             dgamma += integ_deriv;
-            ddgamma += integ_deriv2;
         }
     };
 
@@ -440,7 +441,7 @@ void FiniteElement::solve_frictionless_displ_simple(const Meshing* const mesh, s
     }
     this->matrix->add_frictionless_simple(mesh, mesh->node_positions[0], u_ext, lambda);
     double unused = 0;
-    get_g_dg_ddg(gamma, unused, unused, step, u, dr);
+    get_g_dg(gamma, unused, step, u, dr);
     step = 1;
     rnorm = std::sqrt(cblas_ddot(r.size(), r.data(), 1, r.data(), 1) + gamma*gamma);
 
@@ -644,8 +645,8 @@ void FiniteElement::solve_frictionless_displ_simple(const Meshing* const mesh, s
                 for(size_t i = 0; i < vec_size; ++i){
                     r[i] = (Ku[i] - f[i]);
                 }
-                double gamma = 0, dgamma = 0, unused = 0;
-                get_g_dg_ddg(gamma, dgamma, unused, alpha, u1, dr);
+                double gamma = 0, dgamma = 0;
+                get_g_dg(gamma, dgamma, alpha, u1, dr);
                 if(dLAG != 0){
                     return cblas_ddot(vec_size, Kd1.data(), 1, r.data(), 1) + dgamma*gamma;
                 } else {
@@ -653,41 +654,6 @@ void FiniteElement::solve_frictionless_displ_simple(const Meshing* const mesh, s
                 }
             };
 
-            /*
-            const auto get_a = [&](double alpha, double& gf)->double{
-                for(size_t i = 0; i < u.size(); ++i){
-                    u1[i] = u[i] + alpha*dr[i];
-                }
-                double LAG_1 = LAG + alpha*dLAG;
-                std::fill(Ku.begin(), Ku.end(), 0);
-                std::fill(Kd1.begin(), Kd1.end(), 0);
-                std::fill(Kdd1.begin(), Kdd1.end(), 0);
-                this->matrix->set_lag_displ_simple(LAG_1);
-
-                std::fill(Ku_tmp.begin(), Ku_tmp.end(), 0);
-                this->matrix->append_Ku_frictionless_simple(mesh, u1, Ku_tmp);
-                this->matrix->append_dKu_frictionless_simple(mesh, u1, dr, alpha, Kd1);
-                this->matrix->append_ddKu_frictionless_simple(mesh, u1, dr, alpha, Kdd1);
-                for(size_t i = 0; i < vec_size; ++i){
-                    Ku[i] += Ku_tmp[i];
-                    Kdd1[i] += 2*dLAG*Kd1[i]/LAG_1;
-                    Kd1[i] += dLAG*Ku_tmp[i];
-                }
-                this->matrix->dot_vector(u1, Ku);
-                this->matrix->dot_vector(dr, Kd1);
-
-                for(size_t i = 0; i < vec_size; ++i){
-                    r[i] = (Ku[i] - f[i]);
-                }
-                double gamma = 0, dgamma = 0, ddgamma = 0;
-                get_g_dg_ddg(gamma, dgamma, ddgamma, alpha, u1, dr);
-                const double g1 = cblas_ddot(vec_size, Kd1.data(), 1, r.data(), 1) + dgamma*gamma;
-                const double g2 = cblas_ddot(vec_size, Kd1.data(), 1, Kd1.data(), 1) + dgamma*dgamma +
-                                  cblas_ddot(vec_size, Kdd1.data(), 1, r.data(), 1) + ddgamma*gamma;
-                gf = g1;
-                return alpha - g1/g2;
-            };
-            */
             double g1 = 0, g2 = 1;
             double a1 = 0, a2 = this->max_step;
             g1 = get_g(a1);
@@ -708,46 +674,22 @@ void FiniteElement::solve_frictionless_displ_simple(const Meshing* const mesh, s
                 }
             }
             if(std::abs(g2/g1) > 1e4 && g2*g1 < 0){
-                //a2 = std::abs(g1/g2);
-                //g2 = get_g(a2);
                 a2 = std::abs(g1/g2);
                 g2 = get_g(a2);
                 while(g2*g1 > 0){
                     a2 *= 2;
                     g2 = get_g(a2);
-                    //a2 = std::sqrt(a2);
-                    //a2 = std::min(this->max_step, std::max(0.0, a2));
-                    //g2 = get_g(a2);
                 }
                 logger::quick_log(a2, g2);
             }
             const double DIFF = 1e-2;
             const double stop = DIFF*std::min(std::abs(g0), std::abs(g2));
-            //if(std::abs(g1) < std::abs(g2)){
-            //    std::swap(a1, a2);
-            //    std::swap(g1, g2);
-            //}
             if(g2*g1 < 0){
                 logger::quick_log("Regula falsi...");
                 if(g1 > g2){
                     std::swap(g1, g2);
                     std::swap(a1, a2);
                 }
-                // Regula falsi
-                //while(std::abs(g2) > stop){
-                //    double diff = g2 - g1;
-                //    if(std::abs(diff) < 1e-13){
-                //        break;
-                //    }
-                //    double c = a2 - g2*(a2 - a1)/diff;
-                //    if(c > 0){
-                //        a2 = c;
-                //        g2 = get_g(a2);
-                //    } else {
-                //        a1 = c;
-                //        g1 = get_g(a1);
-                //    }
-                //}
                 // Regula falsi Illinois
                 while(std::min(std::abs(g2), std::abs(g1)) > stop){
                     double diff = 0.5*g2 - g1;
@@ -770,26 +712,14 @@ void FiniteElement::solve_frictionless_displ_simple(const Meshing* const mesh, s
                 } else {
                     logger::quick_log(a2, g2);
                 }
-                // Newton 
-                // logger::quick_log(a2);
-                // while(std::abs(a2 - a1) > 1e-2 || std::abs(g2) > stop){
-                //     a1 = a2;
-                //     a2 = get_a(a1, g2);
-                // }
             } else if(g2 > 0 && g1 > 0){
                 a2 = 0;
             }
             logger::quick_log("Applying step...");
             step = this->max_step;
-            //logger::quick_log("g2_final", g2);
             if(a2 != this->max_step){
                 step = 0.9*a2;
-                //step = a2;
             }
-            //if(step < 0){
-            //    step = 1e-5;
-            //    g2 = get_g(step);
-            //}
             for(size_t i = 0; i < u.size(); ++i){
                 u[i] += step*dr[i];
             }
@@ -802,14 +732,9 @@ void FiniteElement::solve_frictionless_displ_simple(const Meshing* const mesh, s
                 r[i] = -(Ku[i] - f[i]);
             }
 
-            // for(size_t i = 0; i < vec_size; ++i){
-            //     r[i] *= -1;
-            // }
-            // LAG += step*dLAG;
-            // std::copy(u1.begin(), u1.end(), u.begin());
             mesh->extend_vector(0, u, u_ext);
             double dg1 = 0;
-            get_g_dg_ddg(g1, dg1, dg1, step, u, dr);
+            get_g_dg(g1, dg1, step, u, dr);
             gamma = g1;
 
         rnorm = std::sqrt(cblas_ddot(r.size(), r.data(), 1, r.data(), 1) + gamma*gamma);
@@ -870,7 +795,7 @@ void FiniteElement::solve_frictionless_displ_simple(const Meshing* const mesh, s
         if(step == 0){
             break;
         }
-    } while((rnorm > this->rtol_abs || it < 1));
+    } while((rnorm > this->rtol_abs && std::abs(step) > this->step_tol) || it < 1);
 
     std::copy(u.begin(), u.begin() + u_size, load.begin());
 }
@@ -1045,129 +970,6 @@ void FiniteElement::apply_constr_force(const Meshing* mesh, const std::vector<do
             }
         }
     }
-}
-void FiniteElement::apply_constr_force(const Meshing* mesh, const std::vector<double>& u_ext, const std::vector<double>& lambda, std::vector<double>& b, const size_t dof) const{
-    const size_t num_nodes = mesh->elem_info->get_nodes_per_element();
-    const size_t num_bound_nodes = mesh->elem_info->get_boundary_nodes_per_element();
-    //const size_t max_dof = mesh->elem_info->get_dof_per_node();
-    //const size_t kw = mesh->elem_info->get_k_dimension();
-    const size_t l_num = mesh->lag_node_map.size();
-
-    math::Vector ln_e(num_bound_nodes);
-    math::Vector lp1_e(num_bound_nodes);
-    math::Vector lp2_e(num_bound_nodes);
-    math::Vector u_e(num_nodes);
-    std::vector<long> u_pos(num_nodes);
-    for(const auto& e:mesh->paired_boundary){
-        for(size_t i = 0; i < num_bound_nodes; ++i){
-            const long p1 = mesh->lag_node_map.at(e.b1->nodes[i]->id);
-            const long p2 = p1 + l_num;
-            const long p3 = p2 + l_num;
-            ln_e[i]  = lambda[p1];
-            lp1_e[i] = lambda[p2];
-            lp2_e[i] = lambda[p3];
-        }
-        for(size_t i = 0; i < num_nodes; ++i){
-            const auto n1 = e.elem->e1->nodes[i];
-            const auto n2 = e.elem->e2->nodes[i];
-            const long id = this->constr_id_map.at(n2);
-            u_pos[i] = id;
-            if(id >= 0){
-                u_e[i] = u_ext[n1->u_pos[dof]];
-            } else {
-                u_e[i] = 0;
-            }
-        }
-        const auto be(e.elem->fl3_eq(ln_e, lp1_e, lp2_e, u_e, dof));
-        for(size_t i = 0; i < num_nodes; ++i){
-            if(u_pos[i] >= 0){
-                b[u_pos[i]] += be[i];
-            }
-        }
-    }
-}
-void FiniteElement::apply_lambda_old(const Meshing* mesh, const std::vector<double>& lambda, std::vector<double>& u_ext){
-    const size_t dof = mesh->elem_info->get_dof_per_node();
-
-    /*
-    const size_t num_bound_nodes = mesh->elem_info->get_boundary_nodes_per_element();
-    std::vector<double> D(this->constr_force.size(), 0);
-    for(const auto& e:mesh->paired_boundary){
-        const double A = e.elem->get_area()/num_bound_nodes;
-        for(size_t i = 0; i < num_bound_nodes; ++i){
-            const auto id = this->constr_id_map.at(e.elem->nodes[i]);
-            D[id] += A;
-        }
-    }
-    math::Vector l_e(num_bound_nodes);
-    const size_t l_num_orig = this->l_num/3;
-    for(size_t k = 0; k < dof; ++k){
-        std::fill(this->constr_force.begin(), this->constr_force.end(), 0);
-        for(const auto& e:mesh->paired_boundary){
-            const double A = e.elem->get_area()/num_bound_nodes;
-            for(size_t i = 0; i < num_bound_nodes; ++i){
-                const long p1 = mesh->lag_node_map.at(e.b1->nodes[i]->id);
-                const long p2 = p1 + l_num_orig;
-                const long p3 = p2 + l_num_orig;
-                l_e[0] = lambda[p3];
-                l_e[1] = lambda[p2];
-                l_e[2] = lambda[p1]*lambda[p1];
-                const auto id = this->constr_id_map.at(e.elem->nodes[i]);
-                const auto& R = e.elem->get_R();
-                const double l = l_e[0]*R(k, 0) + l_e[1]*R(k, 1) + l_e[2]*R(k, 2);
-                this->constr_force[id] += A*l;
-                if(k == 2 && id == 118){
-                    logger::quick_log(118, A, l);
-                    logger::quick_log(R);
-                }
-            }
-        }
-        for(const auto n:this->boundary_reference_nodes){
-            const long id = this->constr_id_map.at(n);
-            if(id == 118){
-                logger::quick_log(this->constr_force[id], u_ext[n->u_pos[k]]);
-            }
-            u_ext[n->u_pos[k]] += this->constr_force[id]/D[id];
-            if(id == 118){
-                logger::quick_log(this->constr_force[id], u_ext[n->u_pos[k]]);
-            }
-        }
-    }
-    */
-
-    //for(size_t i = 0; i < dof; ++i){
-    //    std::fill(this->constr_force.begin(), this->constr_force.end(), 0);
-    //    this->apply_constr_force(mesh, u_ext, lambda, this->constr_force, i);
-    //    this->constr_solver.solve(this->constr_force);
-    //    for(const auto n:this->boundary_reference_nodes){
-    //        const long id = this->constr_id_map.at(n);
-    //        u_ext[n->u_pos[i]] += this->constr_force[id];
-    //    }
-    //}
-
-    std::fill(this->constr_force.begin(), this->constr_force.end(), 0);
-    this->apply_constr_force(mesh, u_ext, lambda, this->constr_force);
-    this->constr_solver.solve(this->constr_force);
-    for(const auto n:this->boundary_reference_nodes){
-        const long id = this->constr_id_map.at(n);
-        for(size_t j = 0; j < dof; ++j){
-            u_ext[n->u_pos[j]] += this->constr_force[id*dof + j];
-        }
-    }
-    
-    //const size_t num_nodes = mesh->elem_info->get_nodes_per_element();
-    //for(const auto& e:mesh->paired_boundary){
-    //    for(size_t i = 0; i < num_nodes; ++i){
-    //        //const auto n1 = e.elem->e1->nodes[i];
-    //        const auto n2 = e.elem->e2->nodes[i];
-    //        const long id = this->constr_id_map.at(n2);
-    //        if(id >= 0){
-    //            for(size_t j = 0; j < dof; ++j){
-    //                u_ext[n2->u_pos[j]] = this->constr_force[id*dof + j];
-    //            }
-    //        }
-    //    }
-    //}
 }
 void FiniteElement::apply_lambda(const Meshing* mesh, const std::vector<double>& lambda, std::vector<double>& u_ext){
     const size_t dof = mesh->elem_info->get_dof_per_node();

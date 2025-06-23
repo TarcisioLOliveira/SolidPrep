@@ -43,7 +43,15 @@ class FiniteElement{
         FRICTIONLESS_DISPL_CONSTR
     };
 
-    FiniteElement(ContactType contact_type, double rtol_abs, double max_step);
+    struct ContactData{
+        FiniteElement::ContactType contact_type = FiniteElement::ContactType::RIGID;
+        double rtol_abs = 0;
+        double max_step = 0;
+        double step_tol = 0;
+        double EPS_DISPL = 0;
+    };
+
+    FiniteElement(const ContactData& data);
 
     virtual ~FiniteElement() = default;
 
@@ -55,7 +63,6 @@ class FiniteElement{
 
 
     // FRICTIONLESS_DISPL_CONSTR
-    void apply_lambda_old(const Meshing* mesh, const std::vector<double>& lambda, std::vector<double>& u_ext);
     void apply_lambda(const Meshing* mesh, const std::vector<double>& lambda, std::vector<double>& u_ext);
     ////
     protected:
@@ -65,6 +72,7 @@ class FiniteElement{
 
     const ContactType contact_type;
     const double rtol_abs;
+    const double step_tol;
     GlobalStiffnessMatrix* matrix = nullptr;
     size_t u_size, l_num;
 
@@ -76,7 +84,6 @@ class FiniteElement{
     double max_step;
 
     void apply_constr_force(const Meshing* mesh, const std::vector<double>& u_ext, const std::vector<double>& lambda, std::vector<double>& b) const;
-    void apply_constr_force(const Meshing* mesh, const std::vector<double>& u_ext, const std::vector<double>& lambda, std::vector<double>& b, const size_t dof) const;
     ////
 
     virtual void generate_matrix_base(const Meshing* const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<math::Matrix>& D_cache, const std::vector<double>& u_ext, const std::vector<double>& lambda, const ContactType type) = 0;

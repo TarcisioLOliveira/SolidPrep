@@ -682,7 +682,6 @@ class ContactMeshElement : public Element{
     virtual math::Vector fl2_LAG(const math::Vector& l_e, const math::Vector& u1, const math::Vector& u2) const = 0;
     virtual double fl2_int(const math::Vector& l_e, const math::Vector& u1, const math::Vector& u2) const = 0;
     virtual double fl2_int_deriv(const math::Vector& l_e, const math::Vector& u1, const math::Vector& u2, const math::Vector& dl_e, const math::Vector& du1, const math::Vector& du2, const double eta) const = 0;
-    virtual double fl2_int_deriv2(const math::Vector& l_e, const math::Vector& u1, const math::Vector& u2, const math::Vector& dl_e, const math::Vector& du1, const math::Vector& du2, const double eta) const = 0;
 
     virtual void fl2_Ku_lambda(const double EPS, const std::vector<long> u1_pos, const std::vector<long> u2_pos, const std::vector<long>& lu_pos, const std::vector<double>& u, std::vector<double>& Ku) const = 0;
     virtual void fl2_dKu_lambda(const double EPS, const std::vector<long> u1_pos, const std::vector<long> u2_pos, const std::vector<long>& lu_pos, const std::vector<double>& u, const std::vector<double>& du, const double eta, std::vector<double>& dKu) const = 0;

@@ -57,7 +57,7 @@ ProjectData::ProjectData(std::string project_file){
     if(this->log_data(settings, "contact_type", projspec::TYPE_OBJECT, false)){
         this->contact_data = this->get_contact_data(settings["contact_type"]);
     } else {
-        this->contact_data = ProjectData::ContactData{FiniteElement::ContactType::RIGID, 0.0};
+        this->contact_data = FiniteElement::ContactData{FiniteElement::ContactType::RIGID, 0.0};
     }
 
     logger::log_assert(settings.isMember("solid_type"), logger::ERROR, "Missing member: ");
@@ -537,12 +537,13 @@ bool ProjectData::log_data(const Json::Value& doc, std::string name, projspec::D
     return correct_type;
 }
 
-ProjectData::ContactData ProjectData::get_contact_data(const Json::Value& doc) const{
+FiniteElement::ContactData ProjectData::get_contact_data(const Json::Value& doc) const{
     if(this->log_data(doc, "type", projspec::TYPE_STRING, true)){
         const std::string type = doc["type"].asString();
         FiniteElement::ContactType contact_type = FiniteElement::ContactType::RIGID;
         double rtol_abs = 0;
         double max_step = 0;
+        double step_tol = 0;
         double EPS_DISPL = 0;
         if(type == "rigid"){
             contact_type = FiniteElement::ContactType::RIGID;
@@ -561,13 +562,15 @@ ProjectData::ContactData ProjectData::get_contact_data(const Json::Value& doc) c
         }
         if(contact_type >= FiniteElement::ContactType::FRICTIONLESS_DISPL_SIMPLE){
             this->log_data(doc, "max_step", projspec::TYPE_DOUBLE, true);
+            this->log_data(doc, "step_tol", projspec::TYPE_DOUBLE, true);
             //this->log_data(doc, "opt_weight", projspec::TYPE_DOUBLE, true);
             max_step = doc["max_step"].asDouble();
+            step_tol = doc["step_tol"].asDouble();
             EPS_DISPL = 0;//doc["opt_weight"].asDouble();
         }
-        return {contact_type, rtol_abs, max_step, EPS_DISPL};
+        return {contact_type, rtol_abs, max_step, step_tol, EPS_DISPL};
     }
-    return ProjectData::ContactData{FiniteElement::ContactType::RIGID, 0.0};
+    return FiniteElement::ContactData{FiniteElement::ContactType::RIGID};
 }
 
 std::vector<utils::DelayedPointer<Material>> ProjectData::generate_material_stubs(const Json::Value& doc,

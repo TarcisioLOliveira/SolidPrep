@@ -536,45 +536,6 @@ double CTRI3::fl2_int_deriv(const math::Vector& l_e, const math::Vector& u1, con
 
     return this->delta*dg;
 }
-double CTRI3::fl2_int_deriv2(const math::Vector& l_e, const math::Vector& u1, const math::Vector& u2, const math::Vector& dl_e, const math::Vector& du1, const math::Vector& du2, const double eta) const{
-    (void) eta;
-    auto e_info = this->e1->get_element_info();
-    size_t U_KW = u1.get_N();
-    const auto& gli1 = utils::GaussLegendreTri<4*ORDER>::get();
-    math::Vector NN(2*U_KW, 0);
-    math::Vector uL(2*U_KW, 0);
-
-    const gp_Dir n = this->get_normal();
-    math::Vector up1(DIM), up2(DIM);
-    math::Vector dup1(DIM), dup2(DIM);
-    math::Vector LL(NODES_PER_ELEM);
-    double dg = 0;
-    for(auto it = gli1.begin(); it != gli1.end(); ++it){
-        const gp_Pnt pi = this->GS_point(it->a, it->b, it->c);
-        const gp_Pnt rpi = this->R_GS_point(it->a, it->b, it->c);
-        const auto N1 = e1->get_Ni(pi);
-        const auto N2 = e2->get_Ni(pi);
-        const auto Nl = this->N_mat_1dof(rpi);
-        double gp = 0, dgp = 0;
-        const double l = Nl.T()*l_e;
-        const double dl = Nl.T()*dl_e;
-        up1 = N1*u1;
-        up2 = N2*u2;
-        dup1 = N1*du1;
-        dup2 = N2*du2;
-        for(size_t j = 0; j < DIM; ++j){
-            gp += (up2[j] - up1[j])*n.Coord(1+j);
-            dgp += (dup2[j] - dup1[j])*n.Coord(1+j);
-        }
-        const double g_tmp = gp - l*l/2;
-        const double dg_tmp = dgp - l*dl;
-        const double ddg_tmp = -dl*dl;
-
-        dg += it->w*(dg_tmp*dg_tmp + g_tmp*ddg_tmp);
-    }
-
-    return this->delta*dg;
-}
 
 void CTRI3::fl2_Ku_lambda(const double EPS, const std::vector<long> u1_pos, const std::vector<long> u2_pos, const std::vector<long>& lu_pos, const std::vector<double>& u, std::vector<double>& Ku) const{
     auto e_info = this->e1->get_element_info();
