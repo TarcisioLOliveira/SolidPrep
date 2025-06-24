@@ -415,10 +415,13 @@ math::Matrix CTRI3::fl2_LL(const math::Vector& l_e, const math::Vector& u1, cons
         for(size_t j = 0; j < DIM; ++j){
             gp += (up2[j] - up1[j])*n.Coord(1+j);
         }
-        const double mult = 3*l*l/2 - gp;
+        const double mult = std::abs(3*l*l/2 - gp);
         LL += (it->w*mult)*(Nl*Nl.T());
     }
     LL *= this->delta;
+    if(LL(0,0) < 0){
+        logger::quick_log(LL(0,0));
+    }
 
     return LL;
 }

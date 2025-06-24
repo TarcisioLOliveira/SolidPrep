@@ -46,7 +46,7 @@ void SolverManager::generate_matrix(const Meshing* const mesh, const std::vector
             if(needs_lambda){
                 this->lambdas[i].emplace_back(l_num, 0.00);
                 //std::fill(this->lambdas[i][0].begin(), this->lambdas[i][0].begin() + l_num_orig, 0.1);
-                std::fill(this->lambdas[i][0].begin(), this->lambdas[i][0].begin() + l_num_orig, 0.1);
+                std::fill(this->lambdas[i][0].begin(), this->lambdas[i][0].begin() + l_num_orig, 0.01);
             } else {
                 this->lambdas[i].emplace_back();
             }

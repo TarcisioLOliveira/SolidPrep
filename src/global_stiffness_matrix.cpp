@@ -25,7 +25,7 @@
 #include <limits>
 
 GlobalStiffnessMatrix::GlobalStiffnessMatrix(double EPS_DISPL_SIMPLE):
-    EPS_DISPL(EPS_DISPL){
+    EPS_DISPL(EPS_DISPL_SIMPLE){
 
     }
 
@@ -447,6 +447,7 @@ void GlobalStiffnessMatrix::add_frictionless_simple(const Meshing * const mesh, 
     }
     for(size_t i = u_size; i < max_size; ++i){
         this->add_to_matrix(i, i, this->K_MIN);
+        //this->add_to_matrix(i, i, 1e-3);
     }
     if(!stub){
         this->final_flush_matrix();
