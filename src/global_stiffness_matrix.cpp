@@ -59,7 +59,9 @@ void GlobalStiffnessMatrix::generate_base(const Meshing * const mesh, const size
     }
     if(this->first_time){
         this->first_time = false;
-        if(type == FiniteElement::ContactType::FRICTIONLESS_DISPL_SIMPLE){
+        if(type == FiniteElement::ContactType::FRICTIONLESS_DISPL_LOG){
+            this->add_frictionless_log(mesh, node_positions, u_ext, true);
+        } else if(type == FiniteElement::ContactType::FRICTIONLESS_DISPL_SIMPLE){
             const std::vector<double> empty_lambda(lambda.size(), 0);
             this->add_frictionless_simple(mesh, node_positions, u_ext, empty_lambda, true);
         } else if(type == FiniteElement::ContactType::FRICTIONLESS_DISPL_CONSTR){
@@ -295,6 +297,34 @@ void GlobalStiffnessMatrix::add_frictionless_part2(const Meshing * const mesh, c
         this->final_flush_matrix();
     }
 }
+void GlobalStiffnessMatrix::add_frictionless_log(const Meshing * const mesh, const std::vector<long>& node_positions, const std::vector<double>& u_ext, bool stub){
+    const size_t node_num = mesh->elem_info->get_nodes_per_element();
+    const size_t bnum = mesh->elem_info->get_boundary_nodes_per_element();
+    const size_t dof = mesh->elem_info->get_dof_per_node();
+
+    const size_t kw = mesh->elem_info->get_k_dimension();
+    std::vector<gp_Pnt> points(node_num);
+    std::vector<long> u_pos(2*kw);
+    for(const auto& e:mesh->paired_boundary){
+        for(size_t i = 0; i < bnum; ++i){
+            points[i] = e.b1->nodes[i]->point;
+        }
+        for(size_t i = 0; i < node_num; ++i){
+            const auto n1 = e.b1->parent->nodes[i];
+            const auto n2 = e.b2->parent->nodes[i];
+            for(size_t j = 0; j < dof; ++j){
+                u_pos[dof*i + j] = node_positions[n1->u_pos[j]];
+                u_pos[dof*(node_num + i) + j] = node_positions[n2->u_pos[j]];
+            }
+        }
+        //logger::quick_log(e.b1->geom_id, e.b2->geom_id);
+        const auto MM(this->K_LOG*e.b1->parent->get_MnMn_log(e.b2->parent, u_ext, this->EPS_LOG, points, e.b1->normal));
+        this->insert_element_matrix(MM, u_pos);
+    }
+    if(!stub){
+        this->final_flush_matrix();
+    }
+}
 
 void GlobalStiffnessMatrix::append_Ku_frictionless(const Meshing* const mesh, const std::vector<double>& u, std::vector<double>& Ku, const std::vector<math::Matrix>& D_cache, bool topopt) const{
     const size_t node_num = mesh->elem_info->get_nodes_per_element();
@@ -506,3 +536,65 @@ void GlobalStiffnessMatrix::append_dKu_frictionless_simple(const Meshing* const 
     }
 }
 
+void GlobalStiffnessMatrix::append_Ku_frictionless_log(const Meshing* const mesh, const std::vector<double>& u, std::vector<double>& Ku) const{
+    const size_t node_num = mesh->elem_info->get_nodes_per_element();
+    const size_t bnum = mesh->elem_info->get_boundary_nodes_per_element();
+    const size_t dof = mesh->elem_info->get_dof_per_node();
+    const size_t u_size = mesh->load_vector[0].size();
+
+    const size_t kw = mesh->elem_info->get_k_dimension();
+    std::vector<gp_Pnt> points(node_num);
+    std::vector<long> u1_pos(kw);
+    std::vector<long> u2_pos(kw);
+    std::vector<long> l_pos(bnum);
+    std::vector<long> u_pos(2*kw);
+    for(const auto& e:mesh->paired_boundary){
+        for(size_t i = 0; i < bnum; ++i){
+            points[i] = e.b1->nodes[i]->point;
+        }
+        for(size_t i = 0; i < bnum; ++i){
+            l_pos[i] = mesh->lag_node_map.at(e.b1->nodes[i]->id) + u_size;
+        }
+        for(size_t i = 0; i < node_num; ++i){
+            const auto n1 = e.b1->parent->nodes[i];
+            const auto n2 = e.b2->parent->nodes[i];
+            for(size_t j = 0; j < dof; ++j){
+                u1_pos[dof*i + j] = mesh->node_positions[0][n1->u_pos[j]];
+                u2_pos[dof*i + j] = mesh->node_positions[0][n2->u_pos[j]];
+            }
+        }
+        e.b1->parent->Ku_log(e.b2->parent, u, this->EPS_LOG, this->K_LOG, points, e.b1->normal, Ku);
+    }
+}
+
+void GlobalStiffnessMatrix::append_dKu_frictionless_log(const Meshing* const mesh, const std::vector<double>& u, const std::vector<double>& du, const double eta, std::vector<double>& Ku) const{
+    (void)eta;
+    const size_t node_num = mesh->elem_info->get_nodes_per_element();
+    const size_t bnum = mesh->elem_info->get_boundary_nodes_per_element();
+    const size_t dof = mesh->elem_info->get_dof_per_node();
+    const size_t u_size = mesh->load_vector[0].size();
+
+    const size_t kw = mesh->elem_info->get_k_dimension();
+    std::vector<gp_Pnt> points(node_num);
+    std::vector<long> u1_pos(kw);
+    std::vector<long> u2_pos(kw);
+    std::vector<long> l_pos(bnum);
+    std::vector<long> u_pos(2*kw);
+    for(const auto& e:mesh->paired_boundary){
+        for(size_t i = 0; i < bnum; ++i){
+            points[i] = e.b1->nodes[i]->point;
+        }
+        for(size_t i = 0; i < bnum; ++i){
+            l_pos[i] = mesh->lag_node_map.at(e.b1->nodes[i]->id) + u_size;
+        }
+        for(size_t i = 0; i < node_num; ++i){
+            const auto n1 = e.b1->parent->nodes[i];
+            const auto n2 = e.b2->parent->nodes[i];
+            for(size_t j = 0; j < dof; ++j){
+                u1_pos[dof*i + j] = mesh->node_positions[0][n1->u_pos[j]];
+                u2_pos[dof*i + j] = mesh->node_positions[0][n2->u_pos[j]];
+            }
+        }
+        e.b1->parent->dKu_log(e.b2->parent, u, du, this->EPS_LOG, this->K_LOG, points, e.b1->normal, Ku);
+    }
+}

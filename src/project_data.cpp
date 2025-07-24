@@ -542,7 +542,7 @@ FiniteElement::ContactData ProjectData::get_contact_data(const Json::Value& doc)
         const std::string type = doc["type"].asString();
         FiniteElement::ContactType contact_type = FiniteElement::ContactType::RIGID;
         double rtol_abs = 0;
-        double max_step = 0;
+        double max_step = 1;
         double step_tol = 0;
         double EPS_DISPL = 0;
         if(type == "rigid"){
@@ -552,6 +552,8 @@ FiniteElement::ContactData ProjectData::get_contact_data(const Json::Value& doc)
             rtol_abs = doc["rtol_abs"].asDouble();
             if(type == "frictionless_penalty"){
             contact_type = FiniteElement::ContactType::FRICTIONLESS_PENALTY;
+            } else if(type == "frictionless_displ_log"){
+                contact_type = FiniteElement::ContactType::FRICTIONLESS_DISPL_LOG;
             } else if(type == "frictionless_displ_simple"){
                 contact_type = FiniteElement::ContactType::FRICTIONLESS_DISPL_SIMPLE;
             //} else if(type == "frictionless_displ_constr"){
@@ -560,13 +562,20 @@ FiniteElement::ContactData ProjectData::get_contact_data(const Json::Value& doc)
                 logger::log_assert(false, logger::ERROR, "unknown contact type: {}", type);
             }
         }
-        if(contact_type >= FiniteElement::ContactType::FRICTIONLESS_DISPL_SIMPLE){
-            this->log_data(doc, "max_step", projspec::TYPE_DOUBLE, true);
+        if(contact_type == FiniteElement::ContactType::FRICTIONLESS_DISPL_LOG){
+            this->log_data(doc, "step_tol", projspec::TYPE_DOUBLE, true);
+            step_tol = doc["step_tol"].asDouble();
+            if(this->log_data(doc, "max_step", projspec::TYPE_DOUBLE, false)){
+                max_step = doc["max_step"].asDouble();
+            }
+        } else if(contact_type >= FiniteElement::ContactType::FRICTIONLESS_DISPL_SIMPLE){
             this->log_data(doc, "step_tol", projspec::TYPE_DOUBLE, true);
             this->log_data(doc, "opt_weight", projspec::TYPE_DOUBLE, true);
-            max_step = doc["max_step"].asDouble();
             step_tol = doc["step_tol"].asDouble();
             EPS_DISPL = doc["opt_weight"].asDouble();
+            if(this->log_data(doc, "max_step", projspec::TYPE_DOUBLE, false)){
+                max_step = doc["max_step"].asDouble();
+            }
         }
         return {contact_type, rtol_abs, max_step, step_tol, EPS_DISPL};
     }

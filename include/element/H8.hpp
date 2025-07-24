@@ -78,6 +78,9 @@ class H8 : public MeshElementCommon3DHex<H8>{
 
     virtual math::Matrix get_uu(const MeshElement* const e2, const std::vector<gp_Pnt>& bounds, const gp_Dir n) const override;
     virtual math::Matrix get_MnMn(const MeshElement* const e2, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds, const gp_Dir n) const override;
+    virtual math::Matrix get_MnMn_log(const MeshElement* const e2, const std::vector<double>& u_ext, const double eps, const std::vector<gp_Pnt>& bounds, const gp_Dir n) const override;
+    virtual void Ku_log(const MeshElement* const e2, const std::vector<double>& u_ext, const double eps, const double C, const std::vector<gp_Pnt>& bounds, const gp_Dir n, std::vector<double>& Ku) const override;
+    virtual void dKu_log(const MeshElement* const e2, const std::vector<double>& u, const std::vector<double>& du, const double eps, const double C, const std::vector<gp_Pnt>& bounds, const gp_Dir n, std::vector<double>& dKu) const override;
 
     virtual inline std::unique_ptr<MeshElementFactory> get_element_info() const override{
         return std::unique_ptr<MeshElementFactory>(new MeshElementFactoryImpl<H8>());

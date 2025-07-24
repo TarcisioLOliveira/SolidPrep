@@ -419,9 +419,9 @@ math::Matrix CTRI3::fl2_LL(const math::Vector& l_e, const math::Vector& u1, cons
         LL += (it->w*mult)*(Nl*Nl.T());
     }
     LL *= this->delta;
-    if(LL(0,0) < 0){
-        logger::quick_log(LL(0,0));
-    }
+    //if(LL(0,0) < 0){
+    //    logger::quick_log(LL(0,0));
+    //}
 
     return LL;
 }

@@ -98,10 +98,11 @@ void PETScPCG::solve(std::vector<double>& load){
         KSPSetInitialGuessNonzero(this->ksp, PETSC_FALSE);
 
         KSPGetPC(this->ksp, &this->pc);
-        //KSPSetNormType(this->ksp, KSP_NORM_UNPRECONDITIONED);
+        KSPSetNormType(this->ksp, KSP_NORM_UNPRECONDITIONED);
         PCFactorSetUseInPlace(this->pc, PETSC_TRUE);
         PCSetType(this->pc, PCJACOBI);
         PCJacobiSetType(this->pc, PC_JACOBI_DIAGONAL);
+        //KSPSetTolerances(this->ksp, 1e-5, 1e-5, 1e5, 1e5);
         //PCSetType(this->pc, PCHYPRE);
         //PCSetType(this->pc, PCKACZMARZ);
         //PCHYPRESetType(this->pc, "ams");
@@ -113,8 +114,9 @@ void PETScPCG::solve(std::vector<double>& load){
         //PCGAMGSetLowMemoryFilter(this->pc, PETSC_TRUE);
         //
         if(this->contact_type >= FiniteElement::ContactType::FRICTIONLESS_DISPL_SIMPLE){
-            //PCJacobiSetType(this->pc, PC_JACOBI_ROWL1);
+            //KSPSetType(this->ksp, KSPMINRES);
             //PCJacobiSetUseAbs(this->pc, PETSC_TRUE);
+            //KSPMINRESSetUseQLP(this->ksp, PETSC_TRUE);
             //KSPSetType(this->ksp, KSPBCGS);
 
             //KSPSetInitialGuessNonzero(this->ksp, PETSC_TRUE);
@@ -182,6 +184,14 @@ void PETScPCG::solve(std::vector<double>& load){
     KSPConvergedReason r;
     KSPGetConvergedReason(this->ksp, &r);
     logger::quick_log("Converged?", r);
+    {
+        double tmp = 0;
+        PetscInt its = 0;
+        KSPGetResidualNorm(this->ksp, &tmp);
+        KSPGetTotalIterations(this->ksp, &its);
+        logger::quick_log("Residual norm", tmp);
+        logger::quick_log("Total iterations", its);
+    }
 
     const double* load_data;
 

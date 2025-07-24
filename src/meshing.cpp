@@ -541,7 +541,9 @@ void Meshing::populate_boundary_elements(const std::vector<ElementShape>& bounda
         this->paired_boundary.shrink_to_fit();
     }
     logger::quick_log("inter_geom", this->inter_geometry_boundary.size());
-    if(this->paired_boundary.size() > 0){
+    // Generate lambda id
+    if(this->paired_boundary.size() > 0 && 
+            this->proj_data->contact_data.contact_type >= FiniteElement::FRICTIONLESS_DISPL_SIMPLE){
         long lag_id = 0;
         for(auto& m:this->lag_node_map){
             m.second = lag_id;

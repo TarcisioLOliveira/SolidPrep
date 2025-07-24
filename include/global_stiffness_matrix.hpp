@@ -39,12 +39,16 @@ class GlobalStiffnessMatrix{
 
     virtual void add_frictionless_part2(const Meshing * const mesh, const std::vector<long>& node_positions, const std::vector<double>& u_ext, const std::vector<double>& lambda, const std::vector<math::Matrix>& D_cache, bool topopt, bool stub = false);
     virtual void add_frictionless_simple(const Meshing * const mesh, const std::vector<long>& node_positions, const std::vector<double>& u_ext, const std::vector<double>& lambda, bool stub = false);
+    virtual void add_frictionless_log(const Meshing * const mesh, const std::vector<long>& node_positions, const std::vector<double>& u_ext, bool stub = false);
 
     void append_Ku_frictionless(const Meshing* const mesh, const std::vector<double>& u, std::vector<double>& Ku, const std::vector<math::Matrix>& D_cache, bool topopt) const;
     void append_dKu_frictionless(const Meshing* const mesh, const std::vector<double>& u, const std::vector<double>& du, const double eta, std::vector<double>& Ku, const std::vector<math::Matrix>& D_cache, bool topopt) const;
 
     void append_Ku_frictionless_simple(const Meshing* const mesh, const std::vector<double>& u, std::vector<double>& Ku) const;
     void append_dKu_frictionless_simple(const Meshing* const mesh, const std::vector<double>& u, const std::vector<double>& du, const double eta, std::vector<double>& Ku) const;
+
+    void append_Ku_frictionless_log(const Meshing* const mesh, const std::vector<double>& u, std::vector<double>& Ku) const;
+    void append_dKu_frictionless_log(const Meshing* const mesh, const std::vector<double>& u, const std::vector<double>& du, const double eta, std::vector<double>& Ku) const;
 
     inline void set_lag_displ_simple(double L){
         this->LAG_DISPL_SIMPLE = L;
@@ -59,6 +63,8 @@ class GlobalStiffnessMatrix{
     const double EPS_DISPL;
     double LAG_DISPL_SIMPLE = 1e4;
     bool first_time = true;
+    const double EPS_LOG = 1e-5;
+    const double K_LOG = 1e-6;
 
     virtual void final_flush_matrix(){}
 
