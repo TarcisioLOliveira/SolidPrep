@@ -25,7 +25,7 @@
 #include <limits>
 
 GlobalStiffnessMatrix::GlobalStiffnessMatrix(double EPS_DISPL_SIMPLE):
-    EPS_DISPL(EPS_DISPL_SIMPLE){
+    EPS_PENALTY(EPS_DISPL_SIMPLE), EPS_DISPL(EPS_DISPL_SIMPLE){
 
     }
 
@@ -211,7 +211,7 @@ void GlobalStiffnessMatrix::add_contacts(const Meshing * const mesh, const std::
         //logger::quick_log(e.b1->geom_id, e.b2->geom_id);
         const auto MM(EPS_PENALTY*e.b1->parent->get_MnMn(e.b2->parent, u_ext, points, e.b1->normal));
         for(size_t i = 0; i < 2*kw; ++i){
-            if(std::abs(MM(i, i)) > 1e-7){
+            if(std::abs(MM(i, i)) > 1e-14){
                 ++added;
                 break;
             }
@@ -431,7 +431,7 @@ void GlobalStiffnessMatrix::add_frictionless_simple(const Meshing * const mesh, 
     const size_t bnum = mesh->elem_info->get_boundary_nodes_per_element();
     const size_t dof = mesh->elem_info->get_dof_per_node();
     const size_t u_size = mesh->load_vector[0].size();
-    const size_t max_size = u_size + lambda.size();
+    //const size_t max_size = u_size + lambda.size();
 
     const size_t kw = mesh->elem_info->get_k_dimension();
 

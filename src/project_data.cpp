@@ -551,7 +551,7 @@ FiniteElement::ContactData ProjectData::get_contact_data(const Json::Value& doc)
             this->log_data(doc, "rtol_abs", projspec::TYPE_DOUBLE, true);
             rtol_abs = doc["rtol_abs"].asDouble();
             if(type == "frictionless_penalty"){
-            contact_type = FiniteElement::ContactType::FRICTIONLESS_PENALTY;
+                contact_type = FiniteElement::ContactType::FRICTIONLESS_PENALTY;
             } else if(type == "frictionless_displ_log"){
                 contact_type = FiniteElement::ContactType::FRICTIONLESS_DISPL_LOG;
             } else if(type == "frictionless_displ_simple"){
@@ -562,7 +562,10 @@ FiniteElement::ContactData ProjectData::get_contact_data(const Json::Value& doc)
                 logger::log_assert(false, logger::ERROR, "unknown contact type: {}", type);
             }
         }
-        if(contact_type == FiniteElement::ContactType::FRICTIONLESS_DISPL_LOG){
+        if(contact_type == FiniteElement::ContactType::FRICTIONLESS_PENALTY){
+            this->log_data(doc, "opt_weight", projspec::TYPE_DOUBLE, true);
+            EPS_DISPL = doc["opt_weight"].asDouble();
+        } else if(contact_type == FiniteElement::ContactType::FRICTIONLESS_DISPL_LOG){
             this->log_data(doc, "step_tol", projspec::TYPE_DOUBLE, true);
             step_tol = doc["step_tol"].asDouble();
             if(this->log_data(doc, "max_step", projspec::TYPE_DOUBLE, false)){
