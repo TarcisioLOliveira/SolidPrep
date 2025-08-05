@@ -104,7 +104,7 @@ void PETScSparseSymmetricCPU::assemble_matrix(const Meshing * const mesh, const 
     MatAssemblyEnd(this->K, MAT_FINAL_ASSEMBLY);
 
     if(mpi_id == 0){
-        if(type >= FiniteElement::ContactType::FRICTIONLESS_DISPL_SIMPLE){
+        if(type > FiniteElement::ContactType::RIGID){
             if(this->H == 0){
                 MatConvert(this->K, MATSAME, MAT_INITIAL_MATRIX, &this->H);
             } else {
@@ -206,7 +206,7 @@ void PETScSparseSymmetricCUDA::assemble_matrix(const Meshing * const mesh, const
         if(!this->first_time){
             this->generate_base(mesh, u_size, l_num, node_positions, topopt, D_cache, u_ext, lambda, type);
         }
-        if(type >= FiniteElement::ContactType::FRICTIONLESS_DISPL_SIMPLE){
+        if(type > FiniteElement::ContactType::RIGID){
             this->K_coo.backup_matrix();
         }
         MatSetValuesCOO(this->K, this->K_coo.vals.data(), INSERT_VALUES);

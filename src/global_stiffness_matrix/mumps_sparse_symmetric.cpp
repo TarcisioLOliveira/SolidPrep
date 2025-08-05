@@ -38,7 +38,7 @@ void MUMPSSparseSymmetric::generate(const Meshing * const mesh, const size_t u_s
         this->sK.generate_coo(M);
         this->first_time = false;
     }
-    if(type >= FiniteElement::ContactType::FRICTIONLESS_DISPL_SIMPLE){
+    if(type > FiniteElement::ContactType::RIGID){
         this->sK.backup_matrix();
     }
     logger::quick_log("Done.");

@@ -164,7 +164,7 @@ void FiniteElement::calculate_displacements(const Meshing* const mesh, std::vect
             this->solve_rigid(load);
             break;
         case FRICTIONLESS_PENALTY:
-            this->solve_frictionless_penalty(mesh, load, topopt, D_cache, u0);
+            this->solve_frictionless_penalty(mesh, load, u0);
             break;
         case FRICTIONLESS_DISPL_LOG:
             this->solve_frictionless_displ_log(mesh, load, u0);
@@ -926,7 +926,6 @@ void FiniteElement::solve_frictionless_displ_simple(const Meshing* const mesh, s
     const double l_max =  -0;
     const double l_min =  -0.1;
     const double mma_step = 0.1;
-    const double ms2 = (mma_step < 1) ? mma_step*mma_step : 1;
     std::vector<double> S(vec_size, mma_step);
 
     rnorm = std::sqrt(cblas_ddot(r.size(), r.data(), 1, r.data(), 1));
@@ -1394,7 +1393,7 @@ void FiniteElement::solve_frictionless_displ_simple(const Meshing* const mesh, s
 
     std::copy(u.begin(), u.begin() + u_size, load.begin());
 }
-void FiniteElement::solve_frictionless_penalty(const Meshing* const mesh, std::vector<double>& load, const bool topopt, const std::vector<math::Matrix>& D_cache, const std::vector<double>& u0){
+void FiniteElement::solve_frictionless_penalty(const Meshing* const mesh, std::vector<double>& load, const std::vector<double>& u0){
     const size_t vec_size = this->u_size;
 
     double E = 0;
@@ -1420,11 +1419,13 @@ void FiniteElement::solve_frictionless_penalty(const Meshing* const mesh, std::v
 
     double step = 1.0;
     std::fill(Ku.begin(), Ku.end(), 0);
+    this->matrix->add_contacts(mesh, mesh->node_positions[0], u_ext);
     this->matrix->dot_vector(u, Ku);
     for(size_t i = 0; i < u_size; ++i){
         r[i] = -(Ku[i] - f[i]);
     }
     rnorm = std::sqrt(cblas_ddot(r.size(), r.data(), 1, r.data(), 1));
+    logger::quick_log("Initial ||r||:", rnorm);
 
     do{
 
@@ -1437,7 +1438,8 @@ void FiniteElement::solve_frictionless_penalty(const Meshing* const mesh, std::v
             u[i] += step*r[i];
         }
         mesh->extend_vector(0, u, u_ext);
-        this->generate_matrix(mesh, u.size(), 0, mesh->node_positions[0], topopt, D_cache, u_ext, std::vector<double>());
+        this->reset_hessian();
+        this->matrix->add_contacts(mesh, mesh->node_positions[0], u_ext);
         std::fill(Ku.begin(), Ku.end(), 0);
         this->matrix->dot_vector(u, Ku);
 

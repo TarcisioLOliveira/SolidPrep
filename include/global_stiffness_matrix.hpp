@@ -37,6 +37,8 @@ class GlobalStiffnessMatrix{
 
     virtual void reset_hessian() = 0;
 
+    virtual void add_contacts(const Meshing * const mesh, const std::vector<long>& node_positions, const std::vector<double>& u_ext);
+
     virtual void add_frictionless_part2(const Meshing * const mesh, const std::vector<long>& node_positions, const std::vector<double>& u_ext, const std::vector<double>& lambda, const std::vector<math::Matrix>& D_cache, bool topopt, bool stub = false);
     virtual void add_frictionless_simple(const Meshing * const mesh, const std::vector<long>& node_positions, const std::vector<double>& u_ext, const std::vector<double>& lambda, bool stub = false);
     virtual void add_frictionless_log(const Meshing * const mesh, const std::vector<long>& node_positions, const std::vector<double>& u_ext, bool stub = false);
@@ -76,8 +78,6 @@ class GlobalStiffnessMatrix{
     virtual void add_geometry(const Meshing * const mesh, const std::vector<long>& node_positions, const Geometry * const g, const size_t D_offset, const std::vector<math::Matrix>& D_cache);
 
     virtual void add_springs(const Meshing * const mesh, const std::vector<long>& node_positions);
-
-    virtual void add_contacts(const Meshing * const mesh, const std::vector<long>& node_positions, const std::vector<double>& u_ext);
 
     virtual void insert_block_symmetric(const math::Matrix& k, const std::vector<long>& posi, const std::vector<long>& posj) = 0;
 

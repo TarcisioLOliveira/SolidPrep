@@ -54,9 +54,6 @@ void GlobalStiffnessMatrix::generate_base(const Meshing * const mesh, const size
         this->add_springs(mesh, node_positions);
     }
     // Reserve space but do not apply matrices
-    if(type == FiniteElement::ContactType::FRICTIONLESS_PENALTY){
-        this->add_contacts(mesh, node_positions, u_ext);
-    }
     if(this->first_time){
         this->first_time = false;
         if(type == FiniteElement::ContactType::FRICTIONLESS_DISPL_LOG){
@@ -221,6 +218,7 @@ void GlobalStiffnessMatrix::add_contacts(const Meshing * const mesh, const std::
         }
         this->insert_element_matrix(MM, u_pos);
     }
+    this->final_flush_matrix();
     logger::quick_log("added", added);
 }
 void GlobalStiffnessMatrix::add_frictionless_part2(const Meshing * const mesh, const std::vector<long>& node_positions, const std::vector<double>& u_ext, const std::vector<double>& lambda, const std::vector<math::Matrix>& D_cache, bool topopt, bool stub){
