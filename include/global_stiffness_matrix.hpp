@@ -45,7 +45,6 @@ class GlobalStiffnessMatrix{
     void append_dKu_frictionless(const Meshing* const mesh, const std::vector<double>& u, const std::vector<double>& du, const double eta, std::vector<double>& Ku, const std::vector<math::Matrix>& D_cache, bool topopt) const;
 
     void append_Ku_frictionless_simple(const Meshing* const mesh, const std::vector<double>& u, std::vector<double>& Ku) const;
-    void append_dKu_frictionless_simple(const Meshing* const mesh, const std::vector<double>& u, const std::vector<double>& du, const double eta, std::vector<double>& Ku) const;
 
     void append_Ku_frictionless_log(const Meshing* const mesh, const std::vector<double>& u, std::vector<double>& Ku) const;
     void append_dKu_frictionless_log(const Meshing* const mesh, const std::vector<double>& u, const std::vector<double>& du, const double eta, std::vector<double>& Ku) const;
