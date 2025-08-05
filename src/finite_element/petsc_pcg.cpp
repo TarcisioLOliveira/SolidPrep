@@ -102,7 +102,7 @@ void PETScPCG::solve(std::vector<double>& load){
         PCFactorSetUseInPlace(this->pc, PETSC_TRUE);
         PCSetType(this->pc, PCJACOBI);
         PCJacobiSetType(this->pc, PC_JACOBI_DIAGONAL);
-        //KSPSetTolerances(this->ksp, 1e-5, 1e-5, 1e5, 1e5);
+        KSPSetTolerances(this->ksp, 1e-5, 1e-5, 1e5, 1e5);
         //PCSetType(this->pc, PCHYPRE);
         //PCSetType(this->pc, PCKACZMARZ);
         //PCHYPRESetType(this->pc, "ams");
@@ -114,9 +114,9 @@ void PETScPCG::solve(std::vector<double>& load){
         //PCGAMGSetLowMemoryFilter(this->pc, PETSC_TRUE);
         //
         if(this->contact_type >= FiniteElement::ContactType::FRICTIONLESS_DISPL_SIMPLE){
-            //KSPSetType(this->ksp, KSPMINRES);
-            //PCJacobiSetUseAbs(this->pc, PETSC_TRUE);
-            //KSPMINRESSetUseQLP(this->ksp, PETSC_TRUE);
+            PCJacobiSetUseAbs(this->pc, PETSC_TRUE);
+            KSPSetType(this->ksp, KSPMINRES);
+            KSPMINRESSetUseQLP(this->ksp, PETSC_TRUE);
             //KSPSetType(this->ksp, KSPBCGS);
 
             //KSPSetInitialGuessNonzero(this->ksp, PETSC_TRUE);

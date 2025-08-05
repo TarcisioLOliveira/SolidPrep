@@ -290,10 +290,10 @@ void GlobalStiffnessMatrix::add_frictionless_part2(const Meshing * const mesh, c
             insert_elements(e, D_const);
         }
     }
-    for(size_t i = u_size; i < max_size; ++i){
-        this->add_to_matrix(i, i, this->K_MIN);
-    }
     if(!stub){
+        for(size_t i = u_size; i < max_size; ++i){
+            this->add_to_matrix(i, i, this->K_MIN);
+        }
         this->final_flush_matrix();
     }
 }
@@ -305,23 +305,23 @@ void GlobalStiffnessMatrix::add_frictionless_log(const Meshing * const mesh, con
     const size_t kw = mesh->elem_info->get_k_dimension();
     std::vector<gp_Pnt> points(node_num);
     std::vector<long> u_pos(2*kw);
-    for(const auto& e:mesh->paired_boundary){
-        for(size_t i = 0; i < bnum; ++i){
-            points[i] = e.b1->nodes[i]->point;
-        }
-        for(size_t i = 0; i < node_num; ++i){
-            const auto n1 = e.b1->parent->nodes[i];
-            const auto n2 = e.b2->parent->nodes[i];
-            for(size_t j = 0; j < dof; ++j){
-                u_pos[dof*i + j] = node_positions[n1->u_pos[j]];
-                u_pos[dof*(node_num + i) + j] = node_positions[n2->u_pos[j]];
-            }
-        }
-        //logger::quick_log(e.b1->geom_id, e.b2->geom_id);
-        const auto MM(this->K_LOG*e.b1->parent->get_MnMn_log(e.b2->parent, u_ext, this->EPS_LOG, points, e.b1->normal));
-        this->insert_element_matrix(MM, u_pos);
-    }
     if(!stub){
+        for(const auto& e:mesh->paired_boundary){
+            for(size_t i = 0; i < bnum; ++i){
+                points[i] = e.b1->nodes[i]->point;
+            }
+            for(size_t i = 0; i < node_num; ++i){
+                const auto n1 = e.b1->parent->nodes[i];
+                const auto n2 = e.b2->parent->nodes[i];
+                for(size_t j = 0; j < dof; ++j){
+                    u_pos[dof*i + j] = node_positions[n1->u_pos[j]];
+                    u_pos[dof*(node_num + i) + j] = node_positions[n2->u_pos[j]];
+                }
+            }
+            //logger::quick_log(e.b1->geom_id, e.b2->geom_id);
+            const auto MM(this->K_LOG*e.b1->parent->get_MnMn_log(e.b2->parent, u_ext, this->EPS_LOG, points, e.b1->normal));
+            this->insert_element_matrix(MM, u_pos);
+        }
         this->final_flush_matrix();
     }
 }
@@ -442,6 +442,10 @@ void GlobalStiffnessMatrix::add_frictionless_simple(const Meshing * const mesh, 
     std::vector<long> l_pos(bnum);
     std::vector<double> u1(kw), u2(kw);
     std::vector<double> l_e(bnum);
+
+    math::Matrix uu(2*kw, 2*kw, 0); 
+    math::Matrix uL(2*kw, bnum, 0); 
+    math::Matrix LL(bnum, bnum, 0); 
     for(const auto& e:mesh->paired_boundary){
         for(size_t i = 0; i < bnum; ++i){
             points[i] = e.b1->nodes[i]->point;
@@ -467,20 +471,26 @@ void GlobalStiffnessMatrix::add_frictionless_simple(const Meshing * const mesh, 
                 u2[dof*i + j] = u_ext[n2->u_pos[j]];
             }
         }
-        const auto uu(this->LAG_DISPL_SIMPLE*e.b1->parent->get_uu(e.b2->parent, points, e.b1->normal));
-        const auto uL(this->LAG_DISPL_SIMPLE*e.elem->fl2_uL(l_e));
-        const auto LL(this->LAG_DISPL_SIMPLE*e.elem->fl2_LL(l_e, u1, u2));
+        if(!stub){ 
+            //uu = this->LAG_DISPL_SIMPLE*e.b1->parent->get_uu(e.b2->parent, points, e.b1->normal);
+            uL = this->LAG_DISPL_SIMPLE*e.elem->fl2_uL(l_e, u1, u2);
+            LL = this->LAG_DISPL_SIMPLE*e.elem->fl2_LL(l_e, u1, u2);
+        }
 
-        this->insert_element_matrix(uu, u_pos);
+        //this->insert_element_matrix(uu, u_pos);
         this->insert_block_symmetric(uL, u_pos, l_pos);
         this->insert_element_matrix(LL, l_pos);
     }
-    for(size_t i = u_size; i < max_size; ++i){
-        this->add_to_matrix(i, i, this->K_MIN);
-        //this->add_to_matrix(i, i, 1e-3);
-    }
     if(!stub){
+        for(size_t i = u_size; i < max_size; ++i){
+            //this->add_to_matrix(i, i, this->K_MIN);
+            //this->add_to_matrix(i, i, 5);
+        }
         this->final_flush_matrix();
+    //} else {
+    //    for(size_t i = u_size; i < max_size; ++i){
+    //        this->add_to_matrix(i, i, 0);
+    //    }
     }
 }
 

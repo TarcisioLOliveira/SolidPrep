@@ -61,10 +61,10 @@ class GlobalStiffnessMatrix{
     size_t W, N;
     const double EPS_PENALTY = 5e7;
     const double EPS_DISPL;
-    double LAG_DISPL_SIMPLE = 1e4;
+    double LAG_DISPL_SIMPLE = 1;
     bool first_time = true;
     const double EPS_LOG = 1e-5;
-    const double K_LOG = 1e-6;
+    const double K_LOG = 1;
 
     virtual void final_flush_matrix(){}
 

@@ -679,7 +679,7 @@ class ContactMeshElement : public Element{
     virtual math::Vector fl3_eq(const math::Vector& ln_e, const math::Vector& lp1_e, const math::Vector& lp2_e, const math::Vector& u_e) const = 0;
     virtual math::Vector fl3_eq(const math::Vector& ln_e, const math::Vector& lp1_e, const math::Vector& lp2_e, const math::Vector& u_e, const size_t dof) const = 0;
 
-    virtual math::Matrix fl2_uL(const math::Vector& l_e) const = 0;
+    virtual math::Matrix fl2_uL(const math::Vector& l_e, const math::Vector& u1, const math::Vector& u2) const = 0;
     virtual math::Matrix fl2_LL(const math::Vector& l_e, const math::Vector& u1, const math::Vector& u2) const = 0;
 
     virtual math::Vector fl2_LAG(const math::Vector& l_e, const math::Vector& u1, const math::Vector& u2) const = 0;

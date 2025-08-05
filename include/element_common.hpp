@@ -367,18 +367,18 @@ class MeshElementCommon2D : public MeshElementCommon<T>{
             NN.fill(0);
             for(size_t i = 0; i < KW; ++i){
                 for(size_t j = 0; j < DIM; ++j){
-                    NN[i] += N1(j, i)*n.Coord(1+j);
+                    NN[i] -= N1(j, i)*n.Coord(1+j);
                     NN[i + KW] += N2(j, i)*n.Coord(1+j);
                 }
             }
             MnMn += (xi->w)*(NN*NN.T());
         }
-        for(size_t i = 0; i < KW; ++i){
-            for(size_t j = KW; j < 2*KW; ++j){
-                MnMn(i, j) *= -1.0;
-                MnMn(j, i) *= -1.0;
-            }
-        }
+        //for(size_t i = 0; i < KW; ++i){
+        //    for(size_t j = KW; j < 2*KW; ++j){
+        //        MnMn(i, j) *= -1.0;
+        //        MnMn(j, i) *= -1.0;
+        //    }
+        //}
         const double drnorm = bounds[0].Distance(bounds[1]);
         MnMn *= drnorm;
 
@@ -963,18 +963,18 @@ class MeshElementCommon3DTet : public MeshElementCommon3D<T>{
             NN.fill(0);
             for(size_t i = 0; i < KW; ++i){
                 for(size_t j = 0; j < DIM; ++j){
-                    NN[i] += N1(j, i)*n.Coord(1+j);
+                    NN[i] -= N1(j, i)*n.Coord(1+j);
                     NN[i + KW] += N2(j, i)*n.Coord(1+j);
                 }
             }
             MnMn += (it->w)*(NN*NN.T());
         }
-        for(size_t i = 0; i < KW; ++i){
-            for(size_t j = KW; j < 2*KW; ++j){
-                MnMn(i, j) *= -1.0;
-                MnMn(j, i) *= -1.0;
-            }
-        }
+        //for(size_t i = 0; i < KW; ++i){
+        //    for(size_t j = KW; j < 2*KW; ++j){
+        //        MnMn(i, j) *= -1.0;
+        //        MnMn(j, i) *= -1.0;
+        //    }
+        //}
         const gp_Vec v1(bounds[0], bounds[1]);
         const gp_Vec v2(bounds[0], bounds[2]);
         const double A = 0.5*v1.Crossed(v2).Magnitude();

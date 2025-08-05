@@ -53,7 +53,7 @@ class CTRI3 : public ContactMeshElement{
     virtual math::Vector fl3_eq(const math::Vector& ln_e, const math::Vector& lp1_e, const math::Vector& lp2_e, const math::Vector& u_e) const override;
     virtual math::Vector fl3_eq(const math::Vector& ln_e, const math::Vector& lp1_e, const math::Vector& lp2_e, const math::Vector& u_e, const size_t dof) const override;
 
-    virtual math::Matrix fl2_uL(const math::Vector& l_e) const override;
+    virtual math::Matrix fl2_uL(const math::Vector& l_e, const math::Vector& u1, const math::Vector& u2) const override;
     virtual math::Matrix fl2_LL(const math::Vector& l_e, const math::Vector& u1, const math::Vector& u2) const override;
     virtual math::Vector fl2_LAG(const math::Vector& l_e, const math::Vector& u1, const math::Vector& u2) const override;
     virtual double fl2_int(const math::Vector& l_e, const math::Vector& u1, const math::Vector& u2) const override;
@@ -105,18 +105,16 @@ class CTRI3 : public ContactMeshElement{
         std::array<double, N> x, y;//, z;
         std::fill(x.begin(), x.end(), 0);
         std::fill(y.begin(), y.end(), 0);
-        //std::fill(z.begin(), z.end(), 0);
         for(size_t i = 0; i < N; ++i){
             for(size_t j = 0; j < NODE_DOF; ++j){
-                x[i] += R(0,j)*this->nodes[i]->point.X();
-                y[i] += R(1,j)*this->nodes[i]->point.Y();
-                //z[i] += R(2,j)*this->nodes[i]->point.Z();
+                x[i] += R(j,0)*this->nodes[i]->point.Coord(1+j);
+                y[i] += R(j,1)*this->nodes[i]->point.Coord(1+j);
             }
         }
         return gp_Pnt(
             c1*x[0] + c2*x[1] + c3*x[2],
             c1*y[0] + c2*y[1] + c3*y[2],
-            0 //c1*z[0] + c2*z[1] + c3*z[2]
+            0
         );
     }
     inline gp_Pnt GS_point(double c1, double c2, double c3) const{
