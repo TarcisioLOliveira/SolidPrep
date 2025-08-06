@@ -431,7 +431,7 @@ void GlobalStiffnessMatrix::add_frictionless_simple(const Meshing * const mesh, 
     const size_t bnum = mesh->elem_info->get_boundary_nodes_per_element();
     const size_t dof = mesh->elem_info->get_dof_per_node();
     const size_t u_size = mesh->load_vector[0].size();
-    //const size_t max_size = u_size + lambda.size();
+    const size_t max_size = u_size + lambda.size();
 
     const size_t kw = mesh->elem_info->get_k_dimension();
 
@@ -470,21 +470,26 @@ void GlobalStiffnessMatrix::add_frictionless_simple(const Meshing * const mesh, 
             }
         }
         if(!stub){ 
-            //uu = this->LAG_DISPL_SIMPLE*e.b1->parent->get_uu(e.b2->parent, points, e.b1->normal);
+            uu = this->LAG_DISPL_SIMPLE*e.b1->parent->get_uu(e.b2->parent, points, e.b1->normal);
             uL = this->LAG_DISPL_SIMPLE*e.elem->fl2_uL(l_e, u1, u2);
             LL = this->LAG_DISPL_SIMPLE*e.elem->fl2_LL(l_e, u1, u2);
         }
 
         //this->insert_element_matrix(uu, u_pos);
-        this->insert_block_symmetric(uL, u_pos, l_pos);
-        this->insert_element_matrix(LL, l_pos);
+        //this->insert_block_symmetric(uL, u_pos, l_pos);
+        //this->insert_element_matrix(LL, l_pos);
     }
     if(!stub){
-        // for(size_t i = u_size; i < max_size; ++i){
-        //     //this->add_to_matrix(i, i, this->K_MIN);
-        //     //this->add_to_matrix(i, i, 5);
-        // }
+        for(size_t i = u_size; i < max_size; ++i){
+            this->add_to_matrix(i, i, 0);
+            //this->add_to_matrix(i, i, this->K_MIN);
+            //this->add_to_matrix(i, i, 5);
+        }
         this->final_flush_matrix();
+    } else {
+        for(size_t i = u_size; i < max_size; ++i){
+            this->add_to_matrix(i, i, 0);
+        }
     }
 }
 
@@ -510,7 +515,7 @@ void GlobalStiffnessMatrix::append_Ku_frictionless_simple(const Meshing* const m
                 u2_pos[dof*i + j] = mesh->node_positions[0][n2->u_pos[j]];
             }
         }
-        e.elem->fl2_Ku_lambda(this->LAG_DISPL_SIMPLE, u1_pos, u2_pos, l_pos, u, Ku);
+        //e.elem->fl2_Ku_lambda(this->LAG_DISPL_SIMPLE, u1_pos, u2_pos, l_pos, u, Ku);
     }
 }
 
