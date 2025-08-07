@@ -337,6 +337,15 @@ class COO{
         this->coo_first_time = true;
     }
 
+    void dump_matrix(){
+        for(size_t i = 0; i < cooRowPtr.size() - 1; ++i){
+            for(INT c = cooRowPtr[i]; c < cooRowPtr[i+1]; ++c){
+                std::cout << cooVal[c] << " ";
+            }
+            std::cout << std::endl;
+        }
+    }
+
     private:
     std::map<Point, double> data;
     INT offset = 0;

@@ -389,15 +389,17 @@ math::Matrix CTRI3::fl2_uL(const math::Vector& l_e, const math::Vector& u1, cons
             gp += (up2[j] - up1[j])*n.Coord(1+j);
         }
         NN.fill(0);
-        for(size_t i = 0; i < U_KW; ++i){
-            for(size_t j = 0; j < DIM; ++j){
-                NN[i] -= N1(j,i)*n.Coord(1+j);
-                NN[i + U_KW] += N2(j,i)*n.Coord(1+j);
+        if(gp < 0){
+            for(size_t i = 0; i < U_KW; ++i){
+                for(size_t j = 0; j < DIM; ++j){
+                    NN[i] -= N1(j,i)*n.Coord(1+j);
+                    NN[i + U_KW] += N2(j,i)*n.Coord(1+j);
+                }
             }
+            //uL += (it->w*l)*(NN*Nl.T());
+            uL += (it->w*(-1))*(NN*Nl.T());
+            //uL += (it->w)*(NN*Nl.T());
         }
-        //uL += (it->w*l)*(NN*Nl.T());
-        uL += (it->w)*(NN*Nl.T());
-        //uL += (it->w)*(NN*Nl.T());
     }
     uL *= this->delta;
 
@@ -424,8 +426,10 @@ math::Matrix CTRI3::fl2_LL(const math::Vector& l_e, const math::Vector& u1, cons
         for(size_t j = 0; j < DIM; ++j){
             gp += (up2[j] - up1[j])*n.Coord(1+j);
         }
-        const double mult = 1;//2*gp;
-        LL += (it->w*mult)*(Nl*Nl.T());
+        if(gp < 0){
+            const double mult = 1;//2*gp;
+            LL += (it->w*mult)*(Nl*Nl.T());
+        }
     }
     LL *= this->delta;
 
@@ -465,18 +469,20 @@ void CTRI3::fl2_Ku_lambda(const double EPS, const std::vector<long> u1_pos, cons
         for(size_t j = 0; j < DIM; ++j){
             gp += (up2[j] - up1[j])*n.Coord(1+j);
         }
-        const double mult_uL = l;
-        //const double mult_LL = l*gp + 1e-5;
-        const double mult_LL = l + gp;
-        NN.fill(0);
-        for(size_t i = 0; i < U_KW; ++i){
-            for(size_t j = 0; j < DIM; ++j){
-                NN[i] -= N1(j,i)*n.Coord(1+j);
-                NN[i + U_KW] += N2(j,i)*n.Coord(1+j);
+        if(gp < 0){
+            const double mult_uL = -l;
+            //const double mult_LL = l*gp + 1e-5;
+            const double mult_LL = -gp;//l + gp;
+            NN.fill(0);
+            for(size_t i = 0; i < U_KW; ++i){
+                for(size_t j = 0; j < DIM; ++j){
+                    NN[i] -= N1(j,i)*n.Coord(1+j);
+                    NN[i + U_KW] += N2(j,i)*n.Coord(1+j);
+                }
             }
+            uL += (it->w*mult_uL)*NN;
+            //LL += (it->w*mult_LL)*Nl;
         }
-        uL += (it->w*mult_uL)*NN;
-        LL += (it->w*mult_LL)*Nl;
     }
     for(size_t i = 0; i < U_KW; ++i){
         Ku[u1_pos[i]] += EPS*this->delta*uL[i];

@@ -1019,6 +1019,7 @@ class MeshElementCommon3DTet : public MeshElementCommon3D<T>{
                     }
                 }
                 MnMn += (it->w*(-gp))*(NN*NN.T());
+                //MnMn += (it->w)*(NN*NN.T());
             }
         }
         //for(size_t i = 0; i < KW; ++i){

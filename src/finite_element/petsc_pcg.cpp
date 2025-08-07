@@ -117,6 +117,17 @@ void PETScPCG::solve(std::vector<double>& load){
             PCJacobiSetUseAbs(this->pc, PETSC_TRUE);
             KSPSetType(this->ksp, KSPMINRES);
             KSPMINRESSetUseQLP(this->ksp, PETSC_TRUE);
+
+            //KSPSetInitialGuessNonzero(this->ksp, PETSC_TRUE);
+            //long begin = 0, end = 0;
+            //VecGetOwnershipRange(this->u, &begin, &end);
+            //double* u_data = nullptr;
+            //VecGetArray(this->u, &u_data);
+            //for(auto d = 0; d < end - begin; ++d){
+            //    *(u_data+d) = 0.1;
+            //}
+            //VecRestoreArray(this->u, &u_data);
+
             //KSPSetType(this->ksp, KSPBCGS);
 
             //KSPSetInitialGuessNonzero(this->ksp, PETSC_TRUE);

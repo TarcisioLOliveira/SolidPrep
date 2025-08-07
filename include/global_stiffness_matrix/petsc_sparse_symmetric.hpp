@@ -110,6 +110,10 @@ class PETScSparseSymmetricCUDA : public PETScSparseSymmetric {
 
     inline virtual void reset_hessian() override;
 
+    virtual void dump_matrix() override{
+        this->K_coo.dump_matrix();
+    }
+
     protected:
     utils::COO<PetscInt> K_coo;
 

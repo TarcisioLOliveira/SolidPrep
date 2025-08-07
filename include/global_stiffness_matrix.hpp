@@ -58,6 +58,8 @@ class GlobalStiffnessMatrix{
         return this->LAG_DISPL_SIMPLE;
     }
 
+    virtual void dump_matrix(){}
+
     protected:
     size_t W, N;
     const double EPS_PENALTY = 5e7;
