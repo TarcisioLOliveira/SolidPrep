@@ -468,8 +468,8 @@ void MMASolver::GenSub(const double *xval, const double *dfdx, const double *gx,
                 double dgdxm = std::max(0.0, -1.0 * dgdx[i * m + j]);
                 double xmamiinv = 1.0 / std::max(xmamieps, xmax[i] - xmin[i]);
                 double pq = 0.001 * std::abs(dgdx[i * m + j]) + raa0 * xmamiinv;
-                pij[i * m + j] = std::pow(upp[i] - xval[i], 2.0) * (dgdxp + pq);
-                qij[i * m + j] = std::pow(xval[i] - low[i], 2.0) * (dgdxm + pq);
+                pij[i * m + j] = std::pow(upp[i] - xval[i], 2.0) * (1.001*dgdxp + pq);
+                qij[i * m + j] = std::pow(xval[i] - low[i], 2.0) * (1.001*dgdxm + pq);
             }
         }
 
