@@ -246,7 +246,7 @@ void FiniteElement::solve_frictionless_displ_log(const Meshing* const mesh, std:
                 auto ni2 = mesh->node_positions[0][n2->u_pos[j]];
                 if(std::abs(normal.Coord(1+j)) > 1e-10){
                     const double sign = (normal.Coord(1+j) > 0) ? 1 : -1;
-                    u[ni2] = sign*1e-2;
+                    u[ni2] = -sign*1e-10;
                 }
             }
 
@@ -299,7 +299,7 @@ void FiniteElement::solve_frictionless_displ_log(const Meshing* const mesh, std:
     this->matrix->add_frictionless_log(mesh, mesh->node_positions[0], u_ext);
     const double u_max =  0.1;
     const double u_min = -0.1;
-    const double mma_step = 0.001;
+    const double mma_step = 0.00001;
     std::vector<double> S(vec_size, mma_step);
     step = 1;
     rnorm = std::sqrt(cblas_ddot(r.size(), r.data(), 1, r.data(), 1));
@@ -329,69 +329,60 @@ void FiniteElement::solve_frictionless_displ_log(const Meshing* const mesh, std:
             const double UX = U - u[i];
             const double L = std::max(u[i] - s, min);
             const double LX = u[i] - L;
-            const double P =  (UX*UX*UX)/(UX + LX) + 1e-13/(max - min);
-            const double Q = -(LX*LX*LX)/(UX + LX) - 1e-13/(max - min);
+            const double P =  (UX*UX*UX)/(UX + LX) + 1e-11/(max - min);
+            const double Q = -(LX*LX*LX)/(UX + LX) - 1e-11/(max - min);
             const double V = dr[i];
             const bool P_nonzero = std::abs(P) > 1e-15;
             const bool Q_nonzero = std::abs(Q) > 1e-15;
             logger::log_assert(P_nonzero && Q_nonzero, logger::ERROR, "P or Q became zero somehow");
             double R = 0;
-            //if(P_nonzero){
+            if(UX > 0){
                 R -= P/UX;
-            //}
-            //if(Q_nonzero){
+            }
+            if(LX > 0){
                 R -= Q/LX;  
-            //}
+            }
 
-            //if(P_nonzero && Q_nonzero){
-                const double a = -(V - R);
-                const double b = ((V - R)*(U + L) - (P - Q));
-                const double c = -(V - R)*U*L - Q*U + P*L;
+            const double a = -(V - R);
+            const double b = ((V - R)*(U + L) - (P - Q));
+            const double c = -(V - R)*U*L - Q*U + P*L;
 
-                const double delta = b*b - 4*a*c;
-                if(delta < 0){
-                    logger::quick_log(U, u[i], L, P, Q, R, dr[i]);
-                    logger::log_assert(delta >= 0, logger::ERROR, "delta negative in 2nd order MMA: {}", delta);
-                }
+            const double delta = b*b - 4*a*c;
+            if(delta >= 0 && std::abs(a) > 1e-15){
                 const double xt1 = (-b + std::sqrt(delta))/(2*a);
                 const double xt2 = (-b - std::sqrt(delta))/(2*a);
-                const bool xt1_within = L < xt1 && xt1 < U;
-                const bool xt2_within = L < xt2 && xt2 < U;
-                if(!xt1_within && !xt2_within){
-                    if(std::abs(xt1 - L) < 1e-15 || std::abs(xt2 - L) < 1e-15){
-                        u[i] = L;
-                    } else if(std::abs(xt1 - U) < 1e-15 || std::abs(xt2 - U) < 1e-15) {
-                        u[i] = U;
-                    }
-                } else {
-                    logger::log_assert(xt1_within != xt2_within || std::abs(xt1 - xt2) < 1e-5, logger::ERROR, "incorrect assumption about test points placement, L: {} xt1: {} xt2: {} U: {} xi: {} P: {} Q: {} R: {}, V: {}", L, xt1, xt2, U, u[i], P, Q, R, V);
-                    if(xt1_within){
-                        u[i] = xt1;
-                    } else {
-                        u[i] = xt2;
-                    }
+                //const bool xt1_within = (L < xt1 || std::abs(xt1 - L) < 1e-5) && (xt1 < U || std::abs(U - xt1) < 1e-5);
+                //const bool xt2_within = (L < xt2 || std::abs(xt2 - L) < 1e-5) && (xt2 < U || std::abs(U - xt2) < 1e-5);
+                if((V-R) > 0){
+                    u[i] = std::max(xt1, xt2);
+                    u[i] = std::min(u[i], U);
+                } else if(std::abs(V) > 1e-15){
+                    u[i] = std::min(xt1, xt2);
+                    u[i] = std::max(u[i], L);
                 }
-            //} else if(P_nonzero){
-            //    const double diff = V - R;
-            //    if(std::abs(diff) > 1e-15){
-            //        u[i] = U - P/diff;
-            //        logger::log_assert(L - 1e-15 < u[i] && u[i] < U + 1e-15, logger::ERROR, "PNONZERO Update violated asymptotes, L: {} U: {} xi: {} P: {} Q: {} R: {} V: {} P_nonzero: {} Q_nonzero: {} diff: {} P/diff: {} U - P/diff {}", L, U, u[i], P, Q, R, V, P_nonzero, Q_nonzero, diff, P/diff, U - P/diff);
-            //    }
-            //    // Otherwise, x == x0
-            //} else if(Q_nonzero){
-            //    const double diff = V - R;
-            //    if(std::abs(diff) > 1e-15){
-            //        u[i] = L + Q/diff;
-            //    }
-            //    // Otherwise, x == x0
-            //}
-            logger::log_assert(L - 1e-15 < u[i] && u[i] < U + 1e-15, logger::ERROR, "Update violated asymptotes, L: {} U: {} xi: {} P: {} Q: {} R: {} V: {} P_nonzero: {} Q_nonzero: {}", L, U, u[i], P, Q, R, V, P_nonzero, Q_nonzero);
-            logger::log_assert(min - 1e-15 < u[i] && u[i] < max + 1e-15, logger::ERROR, "Update violated boundaries, L: {} U: {} xi: {} P: {} Q: {} R: {} V: {} P_nonzero: {} Q_nonzero: {}", L, U, u[i], P, Q, R, V, P_nonzero, Q_nonzero);
+                //if(std::abs(V) > 0.001){
+                //if(!xt1_within && !xt2_within){
+                //    if(std::abs(xt1 - L) < 1e-10 || std::abs(xt2 - L) < 1e-10){
+                //        u[i] = L;
+                //    } else if(std::abs(xt1 - U) < 1e-10 || std::abs(xt2 - U) < 1e-10) {
+                //        u[i] = U;
+                //    }
+                //} else {
+                //    logger::log_assert(xt1_within != xt2_within || std::abs(xt1 - xt2) < 1e-5, logger::ERROR, "incorrect assumption about test points placement, L: {} xt1: {} xt2: {} U: {} xi: {} P: {} Q: {} R: {}, V: {}", L, xt1, xt2, U, u[i], P, Q, R, V);
+                //    if(xt1_within){
+                //        u[i] = xt1;
+                //    } else {
+                //        u[i] = xt2;
+                //    }
+                //}
+            }
+            //logger::log_assert(L - 1e-15 < u[i] && u[i] < U + 1e-15, logger::ERROR, "Update violated asymptotes, L: {} U: {} xi: {} P: {} Q: {} R: {} V: {} P_nonzero: {} Q_nonzero: {}", L, U, u[i], P, Q, R, V, P_nonzero, Q_nonzero);
+            //logger::log_assert(min - 1e-15 < u[i] && u[i] < max + 1e-15, logger::ERROR, "Update violated boundaries, L: {} U: {} xi: {} P: {} Q: {} R: {} V: {} P_nonzero: {} Q_nonzero: {}", L, U, u[i], P, Q, R, V, P_nonzero, Q_nonzero);
             // Otherwise, x == x0
             if(it > 1){
                 if((uold2[i] - uold1[i])*(uold1[i] - u[i]) < 0){
-                    //S[i] *= 0.7;
-                    S[i] = std::abs(uold1[i] - u[i]);
+                    S[i] *= 0.7;
+                    //S[i] = std::abs(uold1[i] - u[i]);
                 //} else {
                 //    S[i] = std::min(1.05*S[i], mma_step);
                 }
@@ -399,45 +390,32 @@ void FiniteElement::solve_frictionless_displ_log(const Meshing* const mesh, std:
             uold2[i] = uold1[i];
             uold1[i] = u[i];
         };
-        //std::copy(u.begin(), u.end(), u2.begin());
-        #pragma omp parallel
-        {
-            //#pragma omp for
-            //for(size_t i = 0; i < vec_size; ++i){
-            //    u2[i] = u[i];
-            //}
-            #pragma omp for
-            for(size_t i = 0; i < u_size; ++i){
-                update_vars(i, u_min, u_max);
-            }
-            //#pragma omp for
-            //for(size_t i = 0; i < vec_size; ++i){
-            //    dr[i] = u[i] - u2[i];
-            //    u[i] = u2[i];
-            //}
-        }
-        for(size_t i = 0; i < vec_size; ++i){
-            u_var = std::max(std::abs(u[i] - uold2[i]), u_var);
-        }
+        //#pragma omp parallel
+        //{
+        //    #pragma omp for
+        //    for(size_t i = 0; i < u_size; ++i){
+        //        update_vars(i, u_min, u_max);
+        //    }
+        //}
 
-            // const auto get_g = [&](double alpha)->double{
-            //     for(size_t i = 0; i < u.size(); ++i){
-            //         u1[i] = u[i] + alpha*dr[i];
-            //     }
-            //     std::fill(Ku.begin(), Ku.end(), 0);
-            //     std::fill(Kd1.begin(), Kd1.end(), 0);
-            //     this->matrix->dot_vector(u1, Ku);
-            //     this->matrix->dot_vector(dr, Kd1);
-            //     this->matrix->append_Ku_frictionless_log(mesh, u1, Ku);
-            //     this->matrix->append_dKu_frictionless_log(mesh, u1, dr, alpha, Kd1);
-            //     for(size_t i = 0; i < vec_size; ++i){
-            //         r[i] = (Ku[i] - f[i]);
-            //     }
+            const auto get_g = [&](double alpha)->double{
+                for(size_t i = 0; i < u.size(); ++i){
+                    u1[i] = u[i] + alpha*dr[i];
+                }
+                std::fill(Ku.begin(), Ku.end(), 0);
+                std::fill(Kd1.begin(), Kd1.end(), 0);
+                this->matrix->dot_vector(u1, Ku);
+                this->matrix->dot_vector(dr, Kd1);
+                this->matrix->append_Ku_frictionless_log(mesh, u1, Ku);
+                this->matrix->append_dKu_frictionless_log(mesh, u1, dr, alpha, Kd1);
+                for(size_t i = 0; i < vec_size; ++i){
+                    r[i] = (Ku[i] - f[i]);
+                }
 
-            //     rnorm = std::sqrt(cblas_ddot(r.size(), r.data(), 1, r.data(), 1));
+                rnorm = std::sqrt(cblas_ddot(r.size(), r.data(), 1, r.data(), 1));
 
-            //     return cblas_ddot(vec_size, Kd1.data(), 1, r.data(), 1)/rnorm;
-            // };
+                return cblas_ddot(vec_size, Kd1.data(), 1, r.data(), 1)/rnorm;
+            };
 
             // const auto init_step = [&]()->double{
             //     double alpha = this->max_step;
@@ -475,88 +453,88 @@ void FiniteElement::solve_frictionless_displ_log(const Meshing* const mesh, std:
             //     return alpha;
             // };
 
-            // double g1 = 0, g2 = 1;
-            // double a1 = 0, a2 = init_step();//this->max_step;
-            // g1 = get_g(a1);
-            // double g0 = g1;
-            // g2 = get_g(a2);
-            // logger::quick_log("g1", g0, "a1", a1);
-            // logger::quick_log("g2", g2, "a2", a2);
-            // logger::quick_log("Improving starting points...");
-            // if(g0 > 0){
-            //     a1 = -1e-20;
-            //     g1 = get_g(a1);
-            //     g0 = g1;
-            //     while(g0 > 0){
-            //         a1 *= 2;
-            //         g1 = get_g(a1);
-            //         g0 = g1;
-            //         if(g0 < 0) break;
-            //         g1 = get_g(std::abs(a1));
-            //         g0 = g1;
-            //         if(g0 < 0){
-            //             a1 = -a1;
-            //         }
-            //         if(std::abs(a1) >= 1){
-            //             break;
-            //         }
-            //     }
-            // }
-            // if(a1 > -1){
-            //     if(std::abs(g2/g1) > 1e4 && g2*g1 < 0){
-            //         a2 = 0.1*std::abs(g1/g2);
-            //         g2 = get_g(a2);
-            //         while(g2*g1 > 0){
-            //             a2 *= 2;
-            //             g2 = get_g(a2);
-            //         }
-            //         logger::quick_log(a2, g2);
-            //     }
-            //     const double DIFF = 1e-2;
-            //     const double stop = DIFF*std::min(std::abs(g0), std::abs(g2));
-            //     if(g2*g1 < 0){
-            //         logger::quick_log("Regula falsi...");
-            //         if(g1 > g2){
-            //             std::swap(g1, g2);
-            //             std::swap(a1, a2);
-            //         }
-            //         // Regula falsi Illinois
-            //         while(std::min(std::abs(g2), std::abs(g1)) > stop){
-            //             double diff = 0.5*g2 - g1;
-            //             if(std::abs(diff) < 1e-13){
-            //                 break;
-            //             }
-            //             double c = (0.5*g2*a1 - g1*a2)/diff;
-            //             double gc = get_g(c);
-            //             if(gc > 0){
-            //                 a2 = c;
-            //                 g2 = gc;
-            //             } else {
-            //                 a1 = c;
-            //                 g1 = gc;
-            //             }
-            //         }
-            //         if(std::abs(g1) < std::abs(g2)){
-            //             a2 = a1;
-            //             logger::quick_log(a1, g1);
-            //         } else {
-            //             logger::quick_log(a2, g2);
-            //         }
-            //     } else if(g2 > 0 && g1 > 0){
-            //         a2 = 0;
-            //     }
-            //     logger::quick_log("Applying step...");
-            //     step = this->max_step;
-            //     if(a2 != this->max_step){
-            //         //step = 0.9*a2;
-            //         step = 1.0*a2;
-            //     }
-            // } else {
-            //     step = 0;
-            // }
-            // for(size_t i = 0; i < u.size(); ++i){
-            //     u[i] += step*dr[i];
-            // }
+            double g1 = 0, g2 = 1;
+            double a1 = 0, a2 = this->max_step;
+            g1 = get_g(a1);
+            double g0 = g1;
+            g2 = get_g(a2);
+            logger::quick_log("g1", g0, "a1", a1);
+            logger::quick_log("g2", g2, "a2", a2);
+            logger::quick_log("Improving starting points...");
+            if(g0 > 0){
+                a1 = -1e-20;
+                g1 = get_g(a1);
+                g0 = g1;
+                while(g0 > 0){
+                    a1 *= 2;
+                    g1 = get_g(a1);
+                    g0 = g1;
+                    if(g0 < 0) break;
+                    g1 = get_g(std::abs(a1));
+                    g0 = g1;
+                    if(g0 < 0){
+                        a1 = -a1;
+                    }
+                    if(std::abs(a1) >= 1){
+                        break;
+                    }
+                }
+            }
+            if(a1 > -1){
+                if(std::abs(g2/g1) > 1e4 && g2*g1 < 0){
+                    a2 = 0.1*std::abs(g1/g2);
+                    g2 = get_g(a2);
+                    while(g2*g1 > 0){
+                        a2 *= 2;
+                        g2 = get_g(a2);
+                    }
+                    logger::quick_log(a2, g2);
+                }
+                const double DIFF = 1e-2;
+                const double stop = DIFF*std::min(std::abs(g0), std::abs(g2));
+                if(g2*g1 < 0){
+                    logger::quick_log("Regula falsi...");
+                    if(g1 > g2){
+                        std::swap(g1, g2);
+                        std::swap(a1, a2);
+                    }
+                    // Regula falsi Illinois
+                    while(std::min(std::abs(g2), std::abs(g1)) > stop){
+                        double diff = 0.5*g2 - g1;
+                        if(std::abs(diff) < 1e-13){
+                            break;
+                        }
+                        double c = (0.5*g2*a1 - g1*a2)/diff;
+                        double gc = get_g(c);
+                        if(gc > 0){
+                            a2 = c;
+                            g2 = gc;
+                        } else {
+                            a1 = c;
+                            g1 = gc;
+                        }
+                    }
+                    if(std::abs(g1) < std::abs(g2)){
+                        a2 = a1;
+                        logger::quick_log(a1, g1);
+                    } else {
+                        logger::quick_log(a2, g2);
+                    }
+                } else if(g2 > 0 && g1 > 0){
+                    a2 = 0;
+                }
+                logger::quick_log("Applying step...");
+                step = this->max_step;
+                if(a2 != this->max_step){
+                    //step = 0.9*a2;
+                    step = 1.0*a2;
+                }
+            } else {
+                step = 0;
+            }
+            for(size_t i = 0; i < u.size(); ++i){
+                u[i] += step*dr[i];
+            }
             //LAG += step*dLAG;
             std::fill(Ku.begin(), Ku.end(), 0);
             this->matrix->dot_vector(u, Ku);
@@ -566,6 +544,10 @@ void FiniteElement::solve_frictionless_displ_log(const Meshing* const mesh, std:
             }
 
             mesh->extend_vector(0, u, u_ext);
+
+        for(size_t i = 0; i < vec_size; ++i){
+            u_var = std::max(std::abs(u[i] - uold2[i]), u_var);
+        }
 
         rnorm = std::sqrt(cblas_ddot(r.size(), r.data(), 1, r.data(), 1));
        
@@ -581,7 +563,8 @@ void FiniteElement::solve_frictionless_displ_log(const Meshing* const mesh, std:
         logger::quick_log("||r||", rnorm);
         const double Kd1norm = std::sqrt(cblas_ddot(Kd1.size(), Kd1.data(), 1, Kd1.data(), 1));
         logger::quick_log("||Kd1||:", Kd1norm);
-        logger::quick_log("Step:", step);
+        logger::quick_log("step:", step);
+        logger::quick_log("du:", u_var);
         logger::quick_log("");
         double max_gp = -1e100;
         double min_gp = 1e100;
@@ -1162,12 +1145,12 @@ void FiniteElement::solve_frictionless_displ_simple(const Meshing* const mesh, s
                 const double xt2 = (-b - std::sqrt(delta))/(2*a);
                 //const bool xt1_within = (L < xt1 || std::abs(xt1 - L) < 1e-5) && (xt1 < U || std::abs(U - xt1) < 1e-5);
                 //const bool xt2_within = (L < xt2 || std::abs(xt2 - L) < 1e-5) && (xt2 < U || std::abs(U - xt2) < 1e-5);
-                if(V < 0){
-                    u[i] = std::min(xt1, xt2);
-                    u[i] = std::max(u[i], L);
-                } else {
+                if((V-R) > 0){
                     u[i] = std::max(xt1, xt2);
                     u[i] = std::min(u[i], U);
+                } else if(std::abs(V) > 1e-15){
+                    u[i] = std::min(xt1, xt2);
+                    u[i] = std::max(u[i], L);
                 }
                 //if(std::abs(V) > 0.001){
                 //if(!xt1_within && !xt2_within){

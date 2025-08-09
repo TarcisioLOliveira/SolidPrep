@@ -446,7 +446,7 @@ class MeshElementCommon2D : public MeshElementCommon<T>{
 
         return MnMn;
     }
-    virtual math::Matrix get_MnMn_log(const MeshElement* const e2, const std::vector<double>& u_ext, const double eps, const std::vector<gp_Pnt>& bounds, const gp_Dir n) const override{
+    virtual math::Matrix get_MnMn_log(const MeshElement* const e2, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds, const gp_Dir n, const double C, const double K) const override{
         const size_t ORDER = T::ORDER;
         const size_t NODES_PER_ELEM = T::NODES_PER_ELEM;
         const size_t DOF = T::NODE_DOF;
@@ -463,7 +463,7 @@ class MeshElementCommon2D : public MeshElementCommon<T>{
         math::Vector NN(2*KW, 0);
         math::Matrix MnMn(2*KW, 2*KW, 0);
 
-        constexpr size_t GN = 2*ORDER + 2;
+        constexpr size_t GN = 2*ORDER + 1;
         const auto& GL = utils::GaussLegendre<GN>::get();
 
         const gp_Pnt p1 = bounds[0];
@@ -485,8 +485,7 @@ class MeshElementCommon2D : public MeshElementCommon<T>{
             for(size_t j = 0; j < DIM; ++j){
                 gp += (up2[j] - up1[j])*n.Coord(1+j);
             }
-            const double tmp = (gp + eps);
-            const double log = 1.0/tmp*tmp;
+            const double log = this->ddH(gp, C, K);
             NN.fill(0);
             for(size_t i = 0; i < KW; ++i){
                 for(size_t j = 0; j < DIM; ++j){
@@ -496,18 +495,12 @@ class MeshElementCommon2D : public MeshElementCommon<T>{
             }
             MnMn += (xi->w*log*NN)*NN.T();
         }
-        //for(size_t i = 0; i < KW; ++i){
-        //    for(size_t j = KW; j < 2*KW; ++j){
-        //        MnMn(i, j) *= -1.0;
-        //        MnMn(j, i) *= -1.0;
-        //    }
-        //}
         const double drnorm = bounds[0].Distance(bounds[1]);
         MnMn *= drnorm;
 
         return MnMn;
     }
-    virtual void Ku_log(const MeshElement* const e2, const std::vector<double>& u_ext, const double eps, const double C, const std::vector<gp_Pnt>& bounds, const gp_Dir n, std::vector<double>& Ku) const override{
+    virtual void Ku_log(const MeshElement* const e2, const std::vector<long>& node_positions, const std::vector<double>& u, const std::vector<gp_Pnt>& bounds, const gp_Dir n, std::vector<double>& Ku, const double C, const double K) const override{
         const size_t ORDER = T::ORDER;
         const size_t NODES_PER_ELEM = T::NODES_PER_ELEM;
         const size_t DOF = T::NODE_DOF;
@@ -517,8 +510,14 @@ class MeshElementCommon2D : public MeshElementCommon<T>{
         math::Vector uv1(KW), uv2(KW);
         for(size_t i = 0; i < NODES_PER_ELEM; ++i){
             for(size_t j = 0; j < DOF; ++j){
-                uv1[i*DOF + j] = u_ext[this->nodes[i]->u_pos[j]];
-                uv2[i*DOF + j] = u_ext[e2->nodes[i]->u_pos[j]];
+                const long n1 = node_positions[this->nodes[i]->u_pos[j]];
+                const long n2 = node_positions[e2->nodes[i]->u_pos[j]];
+                if(n1 >= 0){
+                    uv1[i*DOF + j]  =  u[n1];
+                }
+                if(n2 >= 0){
+                    uv2[i*DOF + j]  =  u[n2];
+                }
             }
         }
 
@@ -546,7 +545,11 @@ class MeshElementCommon2D : public MeshElementCommon<T>{
             for(size_t j = 0; j < DIM; ++j){
                 gp += (up2[j] - up1[j])*n.Coord(1+j);
             }
-            const double log = -1.0/(gp + eps);
+            const double log = this->dH(gp, C, K);
+            if(log < -C/(std::numbers::pi*K)){
+                logger::quick_log(log);
+                exit(0);
+            }
             NN.fill(0);
             for(size_t i = 0; i < KW; ++i){
                 for(size_t j = 0; j < DIM; ++j){
@@ -557,15 +560,21 @@ class MeshElementCommon2D : public MeshElementCommon<T>{
             Mn += (xi->w*log*NN);
         }
         const double drnorm = bounds[0].Distance(bounds[1]);
-        Mn *= C*drnorm;
+        Mn *= drnorm;
         for(size_t i = 0; i < NODES_PER_ELEM; ++i){
             for(size_t j = 0; j < DOF; ++j){
-                Ku[this->nodes[i]->u_pos[j]] = Mn[i*DOF + j];
-                Ku[e2->nodes[i]->u_pos[j]] = Mn[KW + i*DOF + j];;
+                const long n1 = node_positions[this->nodes[i]->u_pos[j]];
+                const long n2 = node_positions[e2->nodes[i]->u_pos[j]];
+                if(n1 >= 0){
+                    Ku[n1] = Mn[i*DOF + j];
+                }
+                if(n2 >= 0){
+                    Ku[n2] = Mn[KW + i*DOF + j];;
+                }
             }
         }
     }
-    virtual void dKu_log(const MeshElement* const e2, const std::vector<double>& u_ext, const std::vector<double>& du, const double eps, const double C, const std::vector<gp_Pnt>& bounds, const gp_Dir n, std::vector<double>& dKu) const override{
+    virtual void dKu_log(const MeshElement* const e2, const std::vector<long>& node_positions, const std::vector<double>& u, const std::vector<double>& du, const std::vector<gp_Pnt>& bounds, const gp_Dir n, std::vector<double>& dKu, const double C, const double K) const override{
         const size_t ORDER = T::ORDER;
         const size_t NODES_PER_ELEM = T::NODES_PER_ELEM;
         const size_t DOF = T::NODE_DOF;
@@ -576,10 +585,16 @@ class MeshElementCommon2D : public MeshElementCommon<T>{
         math::Vector duv1(KW), duv2(KW);
         for(size_t i = 0; i < NODES_PER_ELEM; ++i){
             for(size_t j = 0; j < DOF; ++j){
-                uv1[i*DOF + j] = u_ext[this->nodes[i]->u_pos[j]];
-                uv2[i*DOF + j] = u_ext[e2->nodes[i]->u_pos[j]];
-                duv1[i*DOF + j] = du[this->nodes[i]->u_pos[j]];
-                duv2[i*DOF + j] = du[e2->nodes[i]->u_pos[j]];
+                const long n1 = node_positions[this->nodes[i]->u_pos[j]];
+                const long n2 = node_positions[e2->nodes[i]->u_pos[j]];
+                if(n1 >= 0){
+                    uv1[i*DOF + j]  =  u[n1];
+                    duv1[i*DOF + j] = du[n1];
+                }
+                if(n2 >= 0){
+                    uv2[i*DOF + j]  =  u[n2];
+                    duv2[i*DOF + j] = du[n2];
+                }
             }
         }
         math::Vector NN(2*KW, 0);
@@ -610,10 +625,7 @@ class MeshElementCommon2D : public MeshElementCommon<T>{
                 gp += (up2[j] - up1[j])*n.Coord(1+j);
                 dgp += (dup2[j] - dup1[j])*n.Coord(1+j);
             }
-            //const double tmp = eps/(gp + eps);
-            //const double log = -10*eps*tmp;
-            const double s = (gp + eps);
-            const double dlog = dgp/(s*s);
+            const double dlog = this->ddH(gp, C, K)*dgp;
             NN.fill(0);
             for(size_t i = 0; i < KW; ++i){
                 for(size_t j = 0; j < DIM; ++j){
@@ -624,11 +636,17 @@ class MeshElementCommon2D : public MeshElementCommon<T>{
             Mn += (xi->w*dlog*NN);
         }
         const double drnorm = bounds[0].Distance(bounds[1]);
-        Mn *= C*drnorm;
+        Mn *= drnorm;
         for(size_t i = 0; i < NODES_PER_ELEM; ++i){
             for(size_t j = 0; j < DOF; ++j){
-                dKu[this->nodes[i]->u_pos[j]] = Mn[i*DOF + j];
-                dKu[e2->nodes[i]->u_pos[j]] = Mn[KW + i*DOF + j];;
+                const long n1 = node_positions[this->nodes[i]->u_pos[j]];
+                const long n2 = node_positions[e2->nodes[i]->u_pos[j]];
+                if(n1 >= 0){
+                    dKu[n1] = Mn[i*DOF + j];
+                }
+                if(n2 >= 0){
+                    dKu[n2] = Mn[KW + i*DOF + j];;
+                }
             }
         }
     }
@@ -1035,7 +1053,7 @@ class MeshElementCommon3DTet : public MeshElementCommon3D<T>{
 
         return MnMn;
     }
-    virtual math::Matrix get_MnMn_log(const MeshElement* const e2, const std::vector<double>& u_ext, const double eps, const std::vector<gp_Pnt>& bounds, const gp_Dir n) const override{
+    virtual math::Matrix get_MnMn_log(const MeshElement* const e2, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds, const gp_Dir n, const double C, const double K) const override{
         const size_t ORDER = T::ORDER;
         const size_t NODES_PER_ELEM = T::NODES_PER_ELEM;
         const size_t DOF = T::NODE_DOF;
@@ -1063,8 +1081,7 @@ class MeshElementCommon3DTet : public MeshElementCommon3D<T>{
             for(size_t j = 0; j < DIM; ++j){
                 gp += (up2[j] - up1[j])*n.Coord(1+j);
             }
-            const double tmp = (gp + eps);
-            const double log = 1.0/(tmp*tmp);
+            const double log = this->ddH(gp, C, K);
             NN.fill(0);
             for(size_t i = 0; i < KW; ++i){
                 for(size_t j = 0; j < DIM; ++j){
@@ -1087,7 +1104,7 @@ class MeshElementCommon3DTet : public MeshElementCommon3D<T>{
 
         return MnMn;
     }
-    virtual void Ku_log(const MeshElement* const e2, const std::vector<double>& u_ext, const double eps, const double C, const std::vector<gp_Pnt>& bounds, const gp_Dir n, std::vector<double>& Ku) const override{
+    virtual void Ku_log(const MeshElement* const e2, const std::vector<long>& node_positions, const std::vector<double>& u, const std::vector<gp_Pnt>& bounds, const gp_Dir n, std::vector<double>& Ku, const double C, const double K) const override{
         const size_t ORDER = T::ORDER;
         const size_t NODES_PER_ELEM = T::NODES_PER_ELEM;
         const size_t DOF = T::NODE_DOF;
@@ -1097,8 +1114,14 @@ class MeshElementCommon3DTet : public MeshElementCommon3D<T>{
         math::Vector uv1(KW), uv2(KW);
         for(size_t i = 0; i < NODES_PER_ELEM; ++i){
             for(size_t j = 0; j < DOF; ++j){
-                uv1[i*DOF + j] = u_ext[this->nodes[i]->u_pos[j]];
-                uv2[i*DOF + j] = u_ext[e2->nodes[i]->u_pos[j]];
+                const long n1 = node_positions[this->nodes[i]->u_pos[j]];
+                const long n2 = node_positions[e2->nodes[i]->u_pos[j]];
+                if(n1 >= 0){
+                    uv1[i*DOF + j]  =  u[n1];
+                }
+                if(n2 >= 0){
+                    uv2[i*DOF + j]  =  u[n2];
+                }
             }
         }
         const auto& gli = utils::GaussLegendreTri<2*ORDER + 2>::get();
@@ -1115,7 +1138,7 @@ class MeshElementCommon3DTet : public MeshElementCommon3D<T>{
             for(size_t j = 0; j < DIM; ++j){
                 gp += (up2[j] - up1[j])*n.Coord(1+j);
             }
-            const double log = -1.0/(gp + eps);
+            const double log = this->dH(gp, C, K);
             NN.fill(0);
             for(size_t i = 0; i < KW; ++i){
                 for(size_t j = 0; j < DIM; ++j){
@@ -1128,15 +1151,21 @@ class MeshElementCommon3DTet : public MeshElementCommon3D<T>{
         const gp_Vec v1(bounds[0], bounds[1]);
         const gp_Vec v2(bounds[0], bounds[2]);
         const double A = 0.5*v1.Crossed(v2).Magnitude();
-        Mn *= C*A;
+        Mn *= A;
         for(size_t i = 0; i < NODES_PER_ELEM; ++i){
             for(size_t j = 0; j < DOF; ++j){
-                Ku[this->nodes[i]->u_pos[j]] = Mn[i*DOF + j];
-                Ku[e2->nodes[i]->u_pos[j]] = Mn[KW + i*DOF + j];;
+                const long n1 = node_positions[this->nodes[i]->u_pos[j]];
+                const long n2 = node_positions[e2->nodes[i]->u_pos[j]];
+                if(n1 >= 0){
+                    Ku[n1] = Mn[i*DOF + j];
+                }
+                if(n2 >= 0){
+                    Ku[n2] = Mn[KW + i*DOF + j];;
+                }
             }
         }
     }
-    virtual void dKu_log(const MeshElement* const e2, const std::vector<double>& u_ext, const std::vector<double>& du, const double eps, const double C, const std::vector<gp_Pnt>& bounds, const gp_Dir n, std::vector<double>& dKu) const override{
+    virtual void dKu_log(const MeshElement* const e2, const std::vector<long>& node_positions, const std::vector<double>& u, const std::vector<double>& du, const std::vector<gp_Pnt>& bounds, const gp_Dir n, std::vector<double>& dKu, const double C, const double K) const override{
         const size_t ORDER = T::ORDER;
         const size_t NODES_PER_ELEM = T::NODES_PER_ELEM;
         const size_t DOF = T::NODE_DOF;
@@ -1147,10 +1176,16 @@ class MeshElementCommon3DTet : public MeshElementCommon3D<T>{
         math::Vector duv1(KW), duv2(KW);
         for(size_t i = 0; i < NODES_PER_ELEM; ++i){
             for(size_t j = 0; j < DOF; ++j){
-                uv1[i*DOF + j] = u_ext[this->nodes[i]->u_pos[j]];
-                uv2[i*DOF + j] = u_ext[e2->nodes[i]->u_pos[j]];
-                duv1[i*DOF + j] = du[this->nodes[i]->u_pos[j]];
-                duv2[i*DOF + j] = du[e2->nodes[i]->u_pos[j]];
+                const long n1 = node_positions[this->nodes[i]->u_pos[j]];
+                const long n2 = node_positions[e2->nodes[i]->u_pos[j]];
+                if(n1 >= 0){
+                    uv1[i*DOF + j]  =  u[n1];
+                    duv1[i*DOF + j] = du[n1];
+                }
+                if(n2 >= 0){
+                    uv2[i*DOF + j]  =  u[n2];
+                    duv2[i*DOF + j] = du[n2];
+                }
             }
         }
         const auto& gli = utils::GaussLegendreTri<2*ORDER + 2>::get();
@@ -1171,10 +1206,7 @@ class MeshElementCommon3DTet : public MeshElementCommon3D<T>{
                 gp += (up2[j] - up1[j])*n.Coord(1+j);
                 dgp += (dup2[j] - dup1[j])*n.Coord(1+j);
             }
-            //const double tmp = eps/(gp + eps);
-            //const double log = -10*eps*tmp;
-            const double s = (gp + eps);
-            const double dlog = dgp/(s*s);
+            const double dlog = this->ddH(gp, C, K)*dgp;
             NN.fill(0);
             for(size_t i = 0; i < KW; ++i){
                 for(size_t j = 0; j < DIM; ++j){
@@ -1187,11 +1219,17 @@ class MeshElementCommon3DTet : public MeshElementCommon3D<T>{
         const gp_Vec v1(bounds[0], bounds[1]);
         const gp_Vec v2(bounds[0], bounds[2]);
         const double A = 0.5*v1.Crossed(v2).Magnitude();
-        Mn *= C*A;
+        Mn *= A;
         for(size_t i = 0; i < NODES_PER_ELEM; ++i){
             for(size_t j = 0; j < DOF; ++j){
-                dKu[this->nodes[i]->u_pos[j]] = Mn[i*DOF + j];
-                dKu[e2->nodes[i]->u_pos[j]] = Mn[KW + i*DOF + j];;
+                const long n1 = node_positions[this->nodes[i]->u_pos[j]];
+                const long n2 = node_positions[e2->nodes[i]->u_pos[j]];
+                if(n1 >= 0){
+                    dKu[n1] = Mn[i*DOF + j];
+                }
+                if(n2 >= 0){
+                    dKu[n2] = Mn[KW + i*DOF + j];;
+                }
             }
         }
     }

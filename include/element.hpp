@@ -256,9 +256,9 @@ class MeshElement : public Element{
     virtual math::Matrix get_uu(const MeshElement* const e2, const std::vector<gp_Pnt>& bounds, const gp_Dir n) const = 0;
 
     virtual math::Matrix get_MnMn(const MeshElement* const e2, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds, const gp_Dir n) const = 0;
-    virtual math::Matrix get_MnMn_log(const MeshElement* const e2, const std::vector<double>& u_ext, const double eps, const std::vector<gp_Pnt>& bounds, const gp_Dir n) const = 0;
-    virtual void Ku_log(const MeshElement* const e2, const std::vector<double>& u, const double eps, const double C, const std::vector<gp_Pnt>& bounds, const gp_Dir n, std::vector<double>& Ku) const = 0;
-    virtual void dKu_log(const MeshElement* const e2, const std::vector<double>& u, const std::vector<double>& du, const double eps, const double C, const std::vector<gp_Pnt>& bounds, const gp_Dir n, std::vector<double>& dKu) const = 0;
+    virtual math::Matrix get_MnMn_log(const MeshElement* const e2, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds, const gp_Dir n, const double C, const double K) const = 0;
+    virtual void Ku_log(const MeshElement* const e2, const std::vector<long>& node_positions, const std::vector<double>& u, const std::vector<gp_Pnt>& bounds, const gp_Dir n, std::vector<double>& Ku, const double C, const double K) const = 0;
+    virtual void dKu_log(const MeshElement* const e2, const std::vector<long>& node_positions, const std::vector<double>& u, const std::vector<double>& du, const std::vector<gp_Pnt>& bounds, const gp_Dir n, std::vector<double>& dKu, const double C, const double K) const = 0;
 
     virtual math::Matrix get_Ni(const gp_Pnt& p) const = 0;
     virtual math::Vector get_Ni_1dof(const gp_Pnt& p) const{
@@ -573,6 +573,22 @@ class MeshElement : public Element{
     MeshElement(const std::vector<MeshNode*>& nodes):
         Element(std::vector<Node*>(nodes.begin(), nodes.end()))
         {}
+
+    inline double H(const double x, const double C, const double K) const{
+        constexpr double pi = std::numbers::pi;
+        return C*(std::atan(-K*x) + pi/2)*(x*x - x)/pi - C*x/(pi*K);
+    }
+    inline double dH(const double x, const double C, const double K) const{
+        constexpr double pi = std::numbers::pi;
+        const double Kx = K*x;
+        return C*(-(K*(x*x - x))/(1 + Kx*Kx) + (std::atan(-K*x) + pi/2)*(2*x - 1))/pi - C/(pi*K);
+    }
+    inline double ddH(const double x, const double C, const double K) const{
+        constexpr double pi = std::numbers::pi;
+        const double Kx = K*x;
+        const double Kx_den = 1 + Kx*Kx;
+        return C*((-2*Kx*Kx*Kx - 4*Kx + 2*K)/(Kx_den*Kx_den) + 2*(std::atan(-K*x) + pi/2))/pi;
+    }
 
     /**
      * Gets the matrix used to calculate the nodal force vector. Calculated
