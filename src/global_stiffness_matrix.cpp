@@ -209,7 +209,7 @@ void GlobalStiffnessMatrix::add_contacts(const Meshing * const mesh, const std::
             }
         }
         //logger::quick_log(e.b1->geom_id, e.b2->geom_id);
-        const auto MM(EPS_PENALTY*e.b1->parent->get_MnMn(e.b2->parent, u_ext, points, e.b1->normal));
+        const auto MM(EPS_PENALTY*e.b1->parent->get_MnMn(e.b2->parent, u_ext, points, -e.b1->normal));
         for(size_t i = 0; i < 2*kw; ++i){
             if(std::abs(MM(i, i)) > 1e-14){
                 ++added;
@@ -220,6 +220,78 @@ void GlobalStiffnessMatrix::add_contacts(const Meshing * const mesh, const std::
     }
     this->final_flush_matrix();
     logger::quick_log("added", added);
+}
+void GlobalStiffnessMatrix::append_Ku_penalty(const Meshing* const mesh, const std::vector<long>& node_positions, const std::vector<double>& u_ext, std::vector<double>& Ku) const{
+    const size_t node_num = mesh->elem_info->get_nodes_per_element();
+    const size_t bnum = mesh->elem_info->get_boundary_nodes_per_element();
+    const size_t dof = mesh->elem_info->get_dof_per_node();
+
+    const size_t kw = mesh->elem_info->get_k_dimension();
+    std::vector<gp_Pnt> points(node_num);
+    std::vector<long> u_pos(2*kw);
+    math::Vector uv(2*kw);
+    for(const auto& e:mesh->paired_boundary){
+        for(size_t i = 0; i < bnum; ++i){
+            points[i] = e.b1->nodes[i]->point;
+        }
+        for(size_t i = 0; i < node_num; ++i){
+            const auto n1 = e.b1->parent->nodes[i];
+            const auto n2 = e.b2->parent->nodes[i];
+            for(size_t j = 0; j < dof; ++j){
+                u_pos[dof*i + j] = node_positions[n1->u_pos[j]];
+                u_pos[dof*(node_num + i) + j] = node_positions[n2->u_pos[j]];
+                uv[dof*i + j] = u_ext[n1->u_pos[j]];
+                uv[dof*(node_num + i) + j] = u_ext[n2->u_pos[j]];
+            }
+        }
+        //logger::quick_log(e.b1->geom_id, e.b2->geom_id);
+        const auto MM(EPS_PENALTY*e.b1->parent->get_MnMn(e.b2->parent, u_ext, points, -e.b1->normal));
+        const auto Kue = MM*uv;
+        for(size_t i = 0; i < 2*kw; ++i){
+            if(u_pos[i] >= 0){
+                Ku[u_pos[i]] = Kue[i];
+            }
+        }
+    }
+}
+void GlobalStiffnessMatrix::append_dKu_penalty(const Meshing* const mesh, const std::vector<long>& node_positions, const std::vector<double>& u_ext, const std::vector<double>& du, std::vector<double>& dKu) const{
+    const size_t node_num = mesh->elem_info->get_nodes_per_element();
+    const size_t bnum = mesh->elem_info->get_boundary_nodes_per_element();
+    const size_t dof = mesh->elem_info->get_dof_per_node();
+
+    const size_t kw = mesh->elem_info->get_k_dimension();
+    std::vector<gp_Pnt> points(node_num);
+    std::vector<long> u_pos(2*kw);
+    math::Vector duv(2*kw);
+    for(const auto& e:mesh->paired_boundary){
+        for(size_t i = 0; i < bnum; ++i){
+            points[i] = e.b1->nodes[i]->point;
+        }
+        for(size_t i = 0; i < node_num; ++i){
+            const auto n1 = e.b1->parent->nodes[i];
+            const auto n2 = e.b2->parent->nodes[i];
+            for(size_t j = 0; j < dof; ++j){
+                const auto p1 = node_positions[n1->u_pos[j]];
+                const auto p2 = node_positions[n2->u_pos[j]];
+                u_pos[dof*i + j] = p1;
+                u_pos[dof*(node_num + i) + j] = p2;
+                if(p1 >= 0){
+                    duv[dof*i + j] = du[p1];
+                }
+                if(p2 >= 0){
+                    duv[dof*(node_num + i) + j] = du[p2];
+                }
+            }
+        }
+        //logger::quick_log(e.b1->geom_id, e.b2->geom_id);
+        const auto MM(EPS_PENALTY*e.b1->parent->get_MnMn(e.b2->parent, u_ext, points, -e.b1->normal));
+        const auto dKue = MM*duv;
+        for(size_t i = 0; i < 2*kw; ++i){
+            if(u_pos[i] >= 0){
+                dKu[u_pos[i]] = dKue[i];
+            }
+        }
+    }
 }
 void GlobalStiffnessMatrix::add_frictionless_part2(const Meshing * const mesh, const std::vector<long>& node_positions, const std::vector<double>& u_ext, const std::vector<double>& lambda, const std::vector<math::Matrix>& D_cache, bool topopt, bool stub){
     const size_t node_num = mesh->elem_info->get_nodes_per_element();

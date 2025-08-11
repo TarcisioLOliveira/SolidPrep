@@ -1028,7 +1028,7 @@ class MeshElementCommon3DTet : public MeshElementCommon3D<T>{
             for(size_t j = 0; j < DIM; ++j){
                 gp += (up2[j] - up1[j])*n.Coord(1+j);
             }
-            if(gp < 0){
+            if(gp > 0){
                 NN.fill(0);
                 for(size_t i = 0; i < KW; ++i){
                     for(size_t j = 0; j < DIM; ++j){
@@ -1036,7 +1036,7 @@ class MeshElementCommon3DTet : public MeshElementCommon3D<T>{
                         NN[i + KW] += N2(j, i)*n.Coord(1+j);
                     }
                 }
-                MnMn += (it->w*(-gp))*(NN*NN.T());
+                MnMn += (it->w)*(NN*NN.T());
                 //MnMn += (it->w)*(NN*NN.T());
             }
         }
