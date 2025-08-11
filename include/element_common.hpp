@@ -1017,28 +1017,42 @@ class MeshElementCommon3DTet : public MeshElementCommon3D<T>{
         const auto& gli = utils::GaussLegendreTri<2*ORDER + 2>::get();
         math::Vector NN(2*KW, 0);
         math::Matrix MnMn(2*KW, 2*KW, 0);
+        std::vector<utils::GLPointTri> tris({
+                {1.0, 0.0, 0.0, 0.0}, 
+                {0.0, 1.0, 0.0, 0.0}, 
+                {0.0, 0.0, 1.0, 0.0}});
 
+        double accum_gp = 0;
+        for(size_t i = 0; i < bounds.size(); ++i){
+            const gp_Pnt pi = MeshElementCommon3DTet<T>::ECTRI_GL_to_point(tris[i], bounds);
+            const auto N1 = this->get_Ni(pi);
+            const auto N2 = e2->get_Ni(pi);
+            math::Vector up1(N1*uv1);
+            math::Vector up2(N2*uv2);
+            for(size_t j = 0; j < DIM; ++j){
+                accum_gp += (up2[j] - up1[j])*n.Coord(1+j);
+            }
+        }
+        accum_gp /= bounds.size();
         for(auto it = gli.begin(); it != gli.end(); ++it){
             const gp_Pnt pi = MeshElementCommon3DTet<T>::ECTRI_GL_to_point(*it, bounds);
             const auto N1 = this->get_Ni(pi);
             const auto N2 = e2->get_Ni(pi);
-            double gp = 0;
-            math::Vector up1(N1*uv1);
-            math::Vector up2(N2*uv2);
-            for(size_t j = 0; j < DIM; ++j){
-                gp += (up2[j] - up1[j])*n.Coord(1+j);
-            }
-            if(gp > 0){
-                NN.fill(0);
-                for(size_t i = 0; i < KW; ++i){
-                    for(size_t j = 0; j < DIM; ++j){
-                        NN[i] -= N1(j, i)*n.Coord(1+j);
-                        NN[i + KW] += N2(j, i)*n.Coord(1+j);
-                    }
+            //double gp = 0;
+            //math::Vector up1(N1*uv1);
+            //math::Vector up2(N2*uv2);
+            //for(size_t j = 0; j < DIM; ++j){
+            //    gp += (up2[j] - up1[j])*n.Coord(1+j);
+            //}
+            NN.fill(0);
+            for(size_t i = 0; i < KW; ++i){
+                for(size_t j = 0; j < DIM; ++j){
+                    NN[i] -= N1(j, i)*n.Coord(1+j);
+                    NN[i + KW] += N2(j, i)*n.Coord(1+j);
                 }
-                MnMn += (it->w)*(NN*NN.T());
-                //MnMn += (it->w)*(NN*NN.T());
             }
+            MnMn += (it->w)*(NN*NN.T());
+            //MnMn += (it->w)*(NN*NN.T());
         }
         //for(size_t i = 0; i < KW; ++i){
         //    for(size_t j = KW; j < 2*KW; ++j){
@@ -1049,7 +1063,11 @@ class MeshElementCommon3DTet : public MeshElementCommon3D<T>{
         const gp_Vec v1(bounds[0], bounds[1]);
         const gp_Vec v2(bounds[0], bounds[2]);
         const double A = 0.5*v1.Crossed(v2).Magnitude();
-        MnMn *= A;
+        if(accum_gp > 0){
+            MnMn *= A;
+        } else {
+            MnMn *= 0;
+        }
 
         return MnMn;
     }

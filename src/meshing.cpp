@@ -446,7 +446,7 @@ void Meshing::populate_boundary_elements(const std::vector<ElementShape>& bounda
     // to use to_rigid_map to find overlapping nodes and generate intergeometry
     // boundary metadata
     if(this->proj_data->contact_data.contact_type != FiniteElement::ContactType::RIGID){
-        bool e1_ref = this->proj_data->contact_data.contact_type == FiniteElement::ContactType::FRICTIONLESS_DISPL_SIMPLE;
+        bool e1_ref = this->proj_data->contact_data.contact_type != FiniteElement::ContactType::FRICTIONLESS_DISPL_CONSTR;
         std::vector<size_t> bnodes(N);
         for(auto& b:this->boundary_elements){
             bool found_equivalent = true;
@@ -494,7 +494,7 @@ void Meshing::populate_boundary_elements(const std::vector<ElementShape>& bounda
                     }
                     ElementShape es{std::move(nodes), e1->normal};
                     std::unique_ptr<ContactMeshElement> bme(nullptr);
-                    if(this->proj_data->contact_data.contact_type >= FiniteElement::FRICTIONLESS_DISPL_SIMPLE){
+                    if(this->proj_data->contact_data.contact_type >= FiniteElement::FRICTIONLESS_PENALTY){
                         bme.reset(this->elem_info->get_contact_element_info()->make_element(es, e1->parent, e2->parent, e1_ref));
                     }
                     this->paired_boundary.emplace_back(e1, e2, std::move(bme));
@@ -543,7 +543,7 @@ void Meshing::populate_boundary_elements(const std::vector<ElementShape>& bounda
     logger::quick_log("inter_geom", this->inter_geometry_boundary.size());
     // Generate lambda id
     if(this->paired_boundary.size() > 0 && 
-            this->proj_data->contact_data.contact_type >= FiniteElement::FRICTIONLESS_DISPL_SIMPLE){
+            this->proj_data->contact_data.contact_type >= FiniteElement::FRICTIONLESS_PENALTY){
         long lag_id = 0;
         for(auto& m:this->lag_node_map){
             m.second = lag_id;

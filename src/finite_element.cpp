@@ -1590,6 +1590,7 @@ void FiniteElement::solve_frictionless_penalty(const Meshing* const mesh, std::v
     std::vector<double> uold2(vec_size, 0);
     std::vector<double> r(vec_size);
     std::vector<double> dr(vec_size);
+    std::vector<double> lambda(mesh->lag_node_map.size(), 0);
 
     mesh->de_extend_vector(0, u0, u);
 
@@ -1665,7 +1666,7 @@ void FiniteElement::solve_frictionless_penalty(const Meshing* const mesh, std::v
                     gp += (u2 - u1)*normal.Coord(1+j);
                 }
                 if(gp > 0){
-                    l[mesh->lag_node_map.at(n1->id)] += gp*this->start_lag_simple;
+                    l[mesh->lag_node_map.at(n1->id)] += 1e-3*gp*this->start_lag_simple;
                 }
             }
         }
@@ -1788,6 +1789,7 @@ void FiniteElement::solve_frictionless_penalty(const Meshing* const mesh, std::v
     };
 
     double u_var = 0;
+    step = this->max_step;
     
     do{
         u_var = 0;
@@ -1808,6 +1810,7 @@ void FiniteElement::solve_frictionless_penalty(const Meshing* const mesh, std::v
 
 
         // Damped Newton-Rhapson
+        /*
             const auto get_g = [&](double alpha)->double{
                 for(size_t i = 0; i < u.size(); ++i){
                     u1[i] = u[i] + alpha*dr[i];
@@ -1818,8 +1821,8 @@ void FiniteElement::solve_frictionless_penalty(const Meshing* const mesh, std::v
                 mesh->extend_vector(0, u1, u_ext);
                 this->matrix->dot_vector(u1, Ku);
                 this->matrix->dot_vector(dr, Kd);
-                this->matrix->append_Ku_penalty(mesh, mesh->node_positions[0], u_ext, Ku);
-                this->matrix->append_dKu_penalty(mesh, mesh->node_positions[0], u_ext, dr, Kd);
+                this->matrix->append_Ku_penalty(mesh, mesh->node_positions[0], u_ext, lambda, Ku);
+                this->matrix->append_dKu_penalty(mesh, mesh->node_positions[0], u_ext, lambda, dr, Kd);
                 for(size_t i = 0; i < vec_size; ++i){
                     r[i] = (Ku[i] - f[i]);
                 }
@@ -1839,8 +1842,8 @@ void FiniteElement::solve_frictionless_penalty(const Meshing* const mesh, std::v
             g2 = get_g(a2);
             logger::quick_log("g0", g0);
             logger::quick_log("g2", g2);
-            logger::quick_log("Improving starting points...");
             if(g0 > 0){
+                logger::quick_log("Improving starting points...");
                 a1 = -1e-20;
                 g1 = get_g(a1);
                 g0 = g1;
@@ -1859,16 +1862,18 @@ void FiniteElement::solve_frictionless_penalty(const Meshing* const mesh, std::v
                     }
                 }
             }
-            if(a1 > -1){
-                if(std::abs(g2/g1) > 1e4 && g2*g1 < 0){
-                    a2 = std::abs(g1/g2);
+            if(std::abs(g2/g1) > 1e4 && g2*g1 < 0){
+                a2 = std::abs(g1/g2);
+                g2 = get_g(a2);
+                while(g2*g1 > 0){
+                    a2 *= 2;
                     g2 = get_g(a2);
-                    while(g2*g1 > 0){
-                        a2 *= 2;
-                        g2 = get_g(a2);
-                    }
-                    logger::quick_log(a2, g2);
                 }
+                logger::quick_log(a2, g2);
+            }
+            logger::quick_log("g1", g1);
+            logger::quick_log("g2", g2);
+            if(a1 > -1 && g0 < 0 && a2 > 1e-5){
                 const double DIFF = 1e-2;
                 const double stop = DIFF*std::min(std::abs(g0), std::abs(g2));
                 if(g2*g1 < 0){
@@ -1911,9 +1916,16 @@ void FiniteElement::solve_frictionless_penalty(const Meshing* const mesh, std::v
             } else {
                 step = 0;
             }
+        */
             for(size_t i = 0; i < u.size(); ++i){
                 u[i] += step*dr[i];
             }
+            //step = this->max_step;
+            //for(size_t i = 0; i < u.size(); ++i){
+            //    u[i] += this->max_step*dr[i];
+            //}
+            apply_multiplier(u, lambda);
+            
 
 
         for(size_t i = 0; i < vec_size; ++i){
@@ -1931,7 +1943,7 @@ void FiniteElement::solve_frictionless_penalty(const Meshing* const mesh, std::v
         for(size_t i = 0; i < u_size; ++i){
             E += u[i]*(Ku[i]/2 - f[i]);
         }
-        this->matrix->append_Ku_penalty(mesh, mesh->node_positions[0], u_ext, Ku);
+        this->matrix->append_Ku_penalty(mesh, mesh->node_positions[0], u_ext, lambda, Ku);
         for(size_t i = 0; i < u_size; ++i){
             r[i] = -(Ku[i] - f[i]);
         }
@@ -1975,7 +1987,7 @@ void FiniteElement::solve_frictionless_penalty(const Meshing* const mesh, std::v
 
         logger::log_assert(rnorm < 1e30, logger::ERROR, "Newton process diverged, increase rtol_abs and/or decrease mult");
         ++it;
-    } while((rnorm > this->rtol_abs || it < 1) && step > 0 && u_var > 1e-10);
+    } while((rnorm > this->rtol_abs || it < 1) && step > 0 && u_var > 1e-8 && it < 50);
 
     std::copy(u.begin(), u.begin() + u_size, load.begin());
 }

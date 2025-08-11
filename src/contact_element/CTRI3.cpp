@@ -372,36 +372,55 @@ math::Matrix CTRI3::fl2_uL(const math::Vector& l_e, const math::Vector& u1, cons
     math::Vector NN(2*U_KW);
     math::Matrix uL(2*U_KW, NODES_PER_ELEM);
 
-    const gp_Dir n = this->get_normal();
+    const gp_Dir n = -this->get_normal();
 
     math::Vector up1(DIM), up2(DIM);
+
+    std::vector<utils::GLPointTri> tris({
+            {1.0, 0.0, 0.0, 0.0}, 
+            {0.0, 1.0, 0.0, 0.0}, 
+            {0.0, 0.0, 1.0, 0.0}});
+
+    double accum_gp = 0;
+    for(size_t i = 0; i < NODES_PER_ELEM; ++i){
+        const gp_Pnt pi = this->GS_point(tris[i].a, tris[i].b, tris[i].c);
+        const auto N1 = e1->get_Ni(pi);
+        const auto N2 = e2->get_Ni(pi);
+        up1 = N1*u1;
+        up2 = N2*u2;
+        for(size_t j = 0; j < DIM; ++j){
+            accum_gp += (up2[j] - up1[j])*n.Coord(1+j);
+        }
+    }
+    accum_gp /= NODES_PER_ELEM;
+
     for(auto it = gli.begin(); it != gli.end(); ++it){
         const gp_Pnt pi = this->GS_point(it->a, it->b, it->c);
         const gp_Pnt rpi = this->R_GS_point(it->a, it->b, it->c);
         const auto N1 = e1->get_Ni(pi);
         const auto N2 = e2->get_Ni(pi);
         const auto Nl = this->N_mat_1dof(rpi);
-        double gp = 0;
-        const double l = Nl.T()*l_e;
-        up1 = N1*u1;
-        up2 = N2*u2;
-        for(size_t j = 0; j < DIM; ++j){
-            gp += (up2[j] - up1[j])*n.Coord(1+j);
-        }
+        //double gp = 0;
+        //const double l = Nl.T()*l_e;
+        //up1 = N1*u1;
+        //up2 = N2*u2;
+        //for(size_t j = 0; j < DIM; ++j){
+        //    gp += (up2[j] - up1[j])*n.Coord(1+j);
+        //}
         NN.fill(0);
-        if(gp < 0){
-            for(size_t i = 0; i < U_KW; ++i){
-                for(size_t j = 0; j < DIM; ++j){
-                    NN[i] -= N1(j,i)*n.Coord(1+j);
-                    NN[i + U_KW] += N2(j,i)*n.Coord(1+j);
-                }
+        for(size_t i = 0; i < U_KW; ++i){
+            for(size_t j = 0; j < DIM; ++j){
+                NN[i] -= N1(j,i)*n.Coord(1+j);
+                NN[i + U_KW] += N2(j,i)*n.Coord(1+j);
             }
-            //uL += (it->w*l)*(NN*Nl.T());
-            uL += (it->w*(-1))*(NN*Nl.T());
-            //uL += (it->w)*(NN*Nl.T());
         }
+        uL += (it->w)*(NN*Nl.T());
     }
-    uL *= this->delta;
+    if(accum_gp > 0){
+        uL *= this->delta;
+    } else {
+        uL *= 0;
+    }
 
     return uL;
 }

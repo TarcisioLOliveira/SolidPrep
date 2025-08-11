@@ -221,7 +221,7 @@ void GlobalStiffnessMatrix::add_contacts(const Meshing * const mesh, const std::
     this->final_flush_matrix();
     logger::quick_log("added", added);
 }
-void GlobalStiffnessMatrix::append_Ku_penalty(const Meshing* const mesh, const std::vector<long>& node_positions, const std::vector<double>& u_ext, std::vector<double>& Ku) const{
+void GlobalStiffnessMatrix::append_Ku_penalty(const Meshing* const mesh, const std::vector<long>& node_positions, const std::vector<double>& u_ext, const std::vector<double>& lambda, std::vector<double>& Ku) const{
     const size_t node_num = mesh->elem_info->get_nodes_per_element();
     const size_t bnum = mesh->elem_info->get_boundary_nodes_per_element();
     const size_t dof = mesh->elem_info->get_dof_per_node();
@@ -229,10 +229,18 @@ void GlobalStiffnessMatrix::append_Ku_penalty(const Meshing* const mesh, const s
     const size_t kw = mesh->elem_info->get_k_dimension();
     std::vector<gp_Pnt> points(node_num);
     std::vector<long> u_pos(2*kw);
+    std::vector<long> l_pos(bnum);
+    math::Vector u1(kw);
+    math::Vector u2(kw);
     math::Vector uv(2*kw);
+    math::Vector l_e(bnum);
     for(const auto& e:mesh->paired_boundary){
         for(size_t i = 0; i < bnum; ++i){
             points[i] = e.b1->nodes[i]->point;
+        }
+        for(size_t i = 0; i < bnum; ++i){
+            l_pos[i] = mesh->lag_node_map.at(e.b1->nodes[i]->id);
+            l_e[i] = lambda[l_pos[i]];
         }
         for(size_t i = 0; i < node_num; ++i){
             const auto n1 = e.b1->parent->nodes[i];
@@ -242,19 +250,23 @@ void GlobalStiffnessMatrix::append_Ku_penalty(const Meshing* const mesh, const s
                 u_pos[dof*(node_num + i) + j] = node_positions[n2->u_pos[j]];
                 uv[dof*i + j] = u_ext[n1->u_pos[j]];
                 uv[dof*(node_num + i) + j] = u_ext[n2->u_pos[j]];
+                u1[dof*i + j] = u_ext[n1->u_pos[j]];
+                u2[dof*i + j] = u_ext[n2->u_pos[j]];
             }
         }
         //logger::quick_log(e.b1->geom_id, e.b2->geom_id);
         const auto MM(EPS_PENALTY*e.b1->parent->get_MnMn(e.b2->parent, u_ext, points, -e.b1->normal));
+        const auto uL(e.elem->fl2_uL(l_e, u1, u2));
+        //const auto Kue = uL*l_e + MM*uv;
         const auto Kue = MM*uv;
         for(size_t i = 0; i < 2*kw; ++i){
             if(u_pos[i] >= 0){
-                Ku[u_pos[i]] = Kue[i];
+                Ku[u_pos[i]] += Kue[i];
             }
         }
     }
 }
-void GlobalStiffnessMatrix::append_dKu_penalty(const Meshing* const mesh, const std::vector<long>& node_positions, const std::vector<double>& u_ext, const std::vector<double>& du, std::vector<double>& dKu) const{
+void GlobalStiffnessMatrix::append_dKu_penalty(const Meshing* const mesh, const std::vector<long>& node_positions, const std::vector<double>& u_ext, const std::vector<double>& lambda, const std::vector<double>& du, std::vector<double>& dKu) const{
     const size_t node_num = mesh->elem_info->get_nodes_per_element();
     const size_t bnum = mesh->elem_info->get_boundary_nodes_per_element();
     const size_t dof = mesh->elem_info->get_dof_per_node();
@@ -262,10 +274,18 @@ void GlobalStiffnessMatrix::append_dKu_penalty(const Meshing* const mesh, const 
     const size_t kw = mesh->elem_info->get_k_dimension();
     std::vector<gp_Pnt> points(node_num);
     std::vector<long> u_pos(2*kw);
+    std::vector<long> l_pos(bnum);
+    math::Vector u1(kw);
+    math::Vector u2(kw);
     math::Vector duv(2*kw);
+    math::Vector l_e(bnum);
     for(const auto& e:mesh->paired_boundary){
         for(size_t i = 0; i < bnum; ++i){
             points[i] = e.b1->nodes[i]->point;
+        }
+        for(size_t i = 0; i < bnum; ++i){
+            l_pos[i] = mesh->lag_node_map.at(e.b1->nodes[i]->id);
+            l_e[i] = lambda[l_pos[i]];
         }
         for(size_t i = 0; i < node_num; ++i){
             const auto n1 = e.b1->parent->nodes[i];
@@ -275,6 +295,8 @@ void GlobalStiffnessMatrix::append_dKu_penalty(const Meshing* const mesh, const 
                 const auto p2 = node_positions[n2->u_pos[j]];
                 u_pos[dof*i + j] = p1;
                 u_pos[dof*(node_num + i) + j] = p2;
+                u1[dof*i + j] = u_ext[n1->u_pos[j]];
+                u2[dof*i + j] = u_ext[n2->u_pos[j]];
                 if(p1 >= 0){
                     duv[dof*i + j] = du[p1];
                 }
@@ -285,10 +307,12 @@ void GlobalStiffnessMatrix::append_dKu_penalty(const Meshing* const mesh, const 
         }
         //logger::quick_log(e.b1->geom_id, e.b2->geom_id);
         const auto MM(EPS_PENALTY*e.b1->parent->get_MnMn(e.b2->parent, u_ext, points, -e.b1->normal));
+        const auto uL(e.elem->fl2_uL(l_e, u1, u2));
+        //const auto dKue = uL*l_e + MM*duv;
         const auto dKue = MM*duv;
         for(size_t i = 0; i < 2*kw; ++i){
             if(u_pos[i] >= 0){
-                dKu[u_pos[i]] = dKue[i];
+                dKu[u_pos[i]] += dKue[i];
             }
         }
     }
