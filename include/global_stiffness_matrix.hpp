@@ -70,8 +70,8 @@ class GlobalStiffnessMatrix{
     bool first_time = true;
     const double EPS_LOG = 1e-5;
     const double K_LOG = 1;
-    const double HK = 10000000;
-    const double HC = 100;
+    const double HK = 1e5;
+    const double HC = 1;
 
     virtual void final_flush_matrix(){}
 

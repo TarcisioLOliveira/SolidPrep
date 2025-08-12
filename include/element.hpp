@@ -574,20 +574,21 @@ class MeshElement : public Element{
         Element(std::vector<Node*>(nodes.begin(), nodes.end()))
         {}
 
+    const double x0 = 0;
     inline double H(const double x, const double C, const double K) const{
         constexpr double pi = std::numbers::pi;
-        return C*(std::atan(-K*x) + pi/2)*(x*x - x)/pi - C*x/(pi*K);
+        return C*(std::atan(K*(x + x0)) + pi/2)*(x*x + x)/pi + C*x/(pi*K);
     }
     inline double dH(const double x, const double C, const double K) const{
         constexpr double pi = std::numbers::pi;
-        const double Kx = K*x;
-        return C*(-(K*(x*x - x))/(1 + Kx*Kx) + (std::atan(-K*x) + pi/2)*(2*x - 1))/pi - C/(pi*K);
+        const double Kx = K*(x + x0);
+        return C*((K*(x*x - x))/(1 + Kx*Kx) + (std::atan(K*x) + pi/2)*(2*x - 1))/pi + C/(pi*K);
     }
     inline double ddH(const double x, const double C, const double K) const{
         constexpr double pi = std::numbers::pi;
-        const double Kx = K*x;
+        const double Kx = K*(x + x0);
         const double Kx_den = 1 + Kx*Kx;
-        return C*((-2*Kx*Kx*Kx - 4*Kx + 2*K)/(Kx_den*Kx_den) + 2*(std::atan(-K*x) + pi/2))/pi;
+        return C*((2*Kx*Kx*Kx + 4*Kx + 2*K)/(Kx_den*Kx_den) + 2*(std::atan(K*x) + pi/2))/pi;
     }
 
     /**

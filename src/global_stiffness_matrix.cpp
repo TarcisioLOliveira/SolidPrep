@@ -413,7 +413,7 @@ void GlobalStiffnessMatrix::add_frictionless_log(const Meshing * const mesh, con
                 }
             }
             //logger::quick_log(e.b1->geom_id, e.b2->geom_id);
-            const auto MM(e.b1->parent->get_MnMn_log(e.b2->parent, u_ext, points, e.b1->normal, HC, HK));
+            const auto MM(e.b1->parent->get_MnMn_log(e.b2->parent, u_ext, points, -e.b1->normal, HC, HK));
             this->insert_element_matrix(MM, u_pos);
         }
         this->final_flush_matrix();
@@ -629,7 +629,7 @@ void GlobalStiffnessMatrix::append_Ku_frictionless_log(const Meshing* const mesh
         for(size_t i = 0; i < bnum; ++i){
             points[i] = e.b1->nodes[i]->point;
         }
-        e.b1->parent->Ku_log(e.b2->parent, mesh->node_positions[0], u, points, e.b1->normal, Ku, HC, HK);
+        e.b1->parent->Ku_log(e.b2->parent, mesh->node_positions[0], u, points, -e.b1->normal, Ku, HC, HK);
     }
 }
 
@@ -648,6 +648,6 @@ void GlobalStiffnessMatrix::append_dKu_frictionless_log(const Meshing* const mes
         for(size_t i = 0; i < bnum; ++i){
             points[i] = e.b1->nodes[i]->point;
         }
-        e.b1->parent->dKu_log(e.b2->parent, mesh->node_positions[0], u, du, points, e.b1->normal, Ku, HC, HK);
+        e.b1->parent->dKu_log(e.b2->parent, mesh->node_positions[0], u, du, points, -e.b1->normal, Ku, HC, HK);
     }
 }

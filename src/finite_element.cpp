@@ -246,7 +246,7 @@ void FiniteElement::solve_frictionless_displ_log(const Meshing* const mesh, std:
                 auto ni2 = mesh->node_positions[0][n2->u_pos[j]];
                 if(std::abs(normal.Coord(1+j)) > 1e-10){
                     const double sign = (normal.Coord(1+j) > 0) ? 1 : -1;
-                    u[ni2] = -sign*1e-10;
+                    u[ni2] = -sign*(1e-3);
                 }
             }
 
@@ -299,10 +299,11 @@ void FiniteElement::solve_frictionless_displ_log(const Meshing* const mesh, std:
     this->matrix->add_frictionless_log(mesh, mesh->node_positions[0], u_ext);
     const double u_max =  0.1;
     const double u_min = -0.1;
-    const double mma_step = 0.00001;
+    const double mma_step = 0.001;
     std::vector<double> S(vec_size, mma_step);
     step = 1;
     rnorm = std::sqrt(cblas_ddot(r.size(), r.data(), 1, r.data(), 1));
+    step = this->max_step;
 
     double u_var = 0;
     do{
@@ -312,8 +313,6 @@ void FiniteElement::solve_frictionless_displ_log(const Meshing* const mesh, std:
         logger::quick_log("u min max", *std::min_element(u.begin(), u.end()), *std::max_element(u.begin(), u.end()));
         this->solve(r);
 
-        step = 1;
-        
         this->reset_hessian();
         std::copy(r.begin(), r.end(), dr.begin());
 
@@ -321,6 +320,15 @@ void FiniteElement::solve_frictionless_displ_log(const Meshing* const mesh, std:
 
         logger::quick_log("drnorm", drnorm);
         logger::quick_log("dr min max", *std::min_element(dr.begin(), dr.end()), *std::max_element(dr.begin(), dr.end()));
+
+        const auto sign = [](const double x)->double{
+            if(x > 0){
+                return 1;
+            } else if(x < 0){
+                return -1;
+            }
+            return 0;
+        };
 
         const auto update_vars = [&](const size_t i, const double min, const double max){
             //const double s = std::min(std::abs(dr[i]), 1.0)*S[i];
@@ -332,6 +340,7 @@ void FiniteElement::solve_frictionless_displ_log(const Meshing* const mesh, std:
             const double P =  (UX*UX*UX)/(UX + LX) + 1e-11/(max - min);
             const double Q = -(LX*LX*LX)/(UX + LX) - 1e-11/(max - min);
             const double V = dr[i];
+            //const double V = -std::abs(dr[i])*sign(r[i]);
             const bool P_nonzero = std::abs(P) > 1e-15;
             const bool Q_nonzero = std::abs(Q) > 1e-15;
             logger::log_assert(P_nonzero && Q_nonzero, logger::ERROR, "P or Q became zero somehow");
@@ -343,20 +352,20 @@ void FiniteElement::solve_frictionless_displ_log(const Meshing* const mesh, std:
                 R -= Q/LX;  
             }
 
-            const double a = -(V - R);
-            const double b = ((V - R)*(U + L) - (P - Q));
-            const double c = -(V - R)*U*L - Q*U + P*L;
+            const double a = (V - R);
+            const double b = -((V - R)*(U + L) - (P - Q));
+            const double c = (V - R)*U*L + Q*U - P*L;
 
             const double delta = b*b - 4*a*c;
             if(delta >= 0 && std::abs(a) > 1e-15){
-                const double xt1 = (-b + std::sqrt(delta))/(2*a);
-                const double xt2 = (-b - std::sqrt(delta))/(2*a);
+                const double xt1 = -2*c/(b + std::sqrt(delta));
+                const double xt2 = -2*c/(b - std::sqrt(delta));
                 //const bool xt1_within = (L < xt1 || std::abs(xt1 - L) < 1e-5) && (xt1 < U || std::abs(U - xt1) < 1e-5);
                 //const bool xt2_within = (L < xt2 || std::abs(xt2 - L) < 1e-5) && (xt2 < U || std::abs(U - xt2) < 1e-5);
                 if((V-R) > 0){
                     u[i] = std::max(xt1, xt2);
                     u[i] = std::min(u[i], U);
-                } else if(std::abs(V) > 1e-15){
+                } else {
                     u[i] = std::min(xt1, xt2);
                     u[i] = std::max(u[i], L);
                 }
@@ -375,6 +384,9 @@ void FiniteElement::solve_frictionless_displ_log(const Meshing* const mesh, std:
                 //        u[i] = xt2;
                 //    }
                 //}
+            } else if(delta >= 0){
+                const double xt1 = -2*c/(b + std::sqrt(delta));
+                u[i] = xt1;
             }
             //logger::log_assert(L - 1e-15 < u[i] && u[i] < U + 1e-15, logger::ERROR, "Update violated asymptotes, L: {} U: {} xi: {} P: {} Q: {} R: {} V: {} P_nonzero: {} Q_nonzero: {}", L, U, u[i], P, Q, R, V, P_nonzero, Q_nonzero);
             //logger::log_assert(min - 1e-15 < u[i] && u[i] < max + 1e-15, logger::ERROR, "Update violated boundaries, L: {} U: {} xi: {} P: {} Q: {} R: {} V: {} P_nonzero: {} Q_nonzero: {}", L, U, u[i], P, Q, R, V, P_nonzero, Q_nonzero);
@@ -390,14 +402,15 @@ void FiniteElement::solve_frictionless_displ_log(const Meshing* const mesh, std:
             uold2[i] = uold1[i];
             uold1[i] = u[i];
         };
-        //#pragma omp parallel
-        //{
-        //    #pragma omp for
-        //    for(size_t i = 0; i < u_size; ++i){
-        //        update_vars(i, u_min, u_max);
-        //    }
-        //}
+        #pragma omp parallel
+        {
+            #pragma omp for
+            for(size_t i = 0; i < u_size; ++i){
+                update_vars(i, u_min, u_max);
+            }
+        }
 
+            /*
             const auto get_g = [&](double alpha)->double{
                 for(size_t i = 0; i < u.size(); ++i){
                     u1[i] = u[i] + alpha*dr[i];
@@ -416,42 +429,6 @@ void FiniteElement::solve_frictionless_displ_log(const Meshing* const mesh, std:
 
                 return cblas_ddot(vec_size, Kd1.data(), 1, r.data(), 1)/rnorm;
             };
-
-            // const auto init_step = [&]()->double{
-            //     double alpha = this->max_step;
-            //     for(const auto& e:mesh->paired_boundary){
-            //         for(size_t i = 0; i < bnum; ++i){
-            //             const auto n1 = e.b1->nodes[i];
-            //             const auto n2 = e.b2->nodes[i];
-            //             const auto normal = e.b1->normal;
-            //             double gp = 0;
-            //             double dgp = 0;
-            //             for(size_t j = 0; j < dof; ++j){
-            //                 auto ni1 = mesh->node_positions[0][n1->u_pos[j]];
-            //                 auto ni2 = mesh->node_positions[0][n2->u_pos[j]];
-            //                 double u1 = 0;
-            //                 double u2 = 0;
-            //                 double du1 = 0;
-            //                 double du2 = 0;
-            //                 if(ni1 > -1){
-            //                     u1 = u[ni1];
-            //                     du1 = dr[ni1];
-            //                 }
-            //                 if(ni2 > -1){
-            //                     u2 = u[ni2];
-            //                     du2 = dr[ni2];
-            //                 }
-            //                 gp += (u2 - u1)*normal.Coord(1+j);
-            //                 dgp += (du2 - du1)*normal.Coord(1+j);
-            //             }
-            //             double test_alpha = -gp/dgp;
-            //             if(test_alpha > 0 && test_alpha < alpha){
-            //                 alpha = 0.5*test_alpha;
-            //             }
-            //         }
-            //     }
-            //     return alpha;
-            // };
 
             double g1 = 0, g2 = 1;
             double a1 = 0, a2 = this->max_step;
@@ -532,10 +509,10 @@ void FiniteElement::solve_frictionless_displ_log(const Meshing* const mesh, std:
             } else {
                 step = 0;
             }
-            for(size_t i = 0; i < u.size(); ++i){
-                u[i] += step*dr[i];
-            }
-            //LAG += step*dLAG;
+            */
+            //for(size_t i = 0; i < u.size(); ++i){
+            //    u[i] += step*dr[i];
+            //}
             std::fill(Ku.begin(), Ku.end(), 0);
             this->matrix->dot_vector(u, Ku);
             this->matrix->append_Ku_frictionless_log(mesh, u, Ku);
@@ -549,7 +526,11 @@ void FiniteElement::solve_frictionless_displ_log(const Meshing* const mesh, std:
             u_var = std::max(std::abs(u[i] - uold2[i]), u_var);
         }
 
-        rnorm = std::sqrt(cblas_ddot(r.size(), r.data(), 1, r.data(), 1));
+        const double rnorm2 = std::sqrt(cblas_ddot(r.size(), r.data(), 1, r.data(), 1));
+        //if(rnorm2 > rnorm){
+        //    step *= 0.7;
+        //}
+        rnorm = rnorm2;
        
         this->matrix->add_frictionless_log(mesh, mesh->node_positions[0], u_ext);
         E = 0;
