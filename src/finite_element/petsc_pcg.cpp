@@ -102,7 +102,7 @@ void PETScPCG::solve(std::vector<double>& load){
         PCFactorSetUseInPlace(this->pc, PETSC_TRUE);
         PCSetType(this->pc, PCJACOBI);
         PCJacobiSetType(this->pc, PC_JACOBI_DIAGONAL);
-        KSPSetTolerances(this->ksp, 1e-7, 1e-5, 1e19, 1e5);
+        KSPSetTolerances(this->ksp, 1e-5, 1e-50, 1e19, 1e5);
         //PCSetType(this->pc, PCHYPRE);
         //PCSetType(this->pc, PCKACZMARZ);
         //PCHYPRESetType(this->pc, "ams");
