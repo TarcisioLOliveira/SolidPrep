@@ -56,9 +56,9 @@ double GlobalStressHeaviside::calculate(const DensityBasedOptimizer* const op, c
                     for(const auto& e:g->mesh){
                         const auto c = e->get_centroid();
                         g->materials.get_D(x_it, this->psiS, e.get(), c, D);
-                        const double S = e->get_stress_at(D, c, u, this->vm_eps);
                         const double rho = this->relaxed_rho(*x_it);
-                        const double Se = rho*S;
+                        const double S = e->get_stress_at(rho*D, c, u, this->vm_eps);
+                        const double Se = S;
                         const double H = this->heaviside(Se);
 
                         result += H*Se;
@@ -115,14 +115,14 @@ double GlobalStressHeaviside::calculate_with_gradient(const DensityBasedOptimize
                     for(const auto& e:g->mesh){
                         const auto c = e->get_centroid();
                         g->materials.get_D(x_it, this->psiS, e.get(), c, D);
-                        const double S = e->get_stress_at(D, c, u, this->vm_eps);
                         const double rho = this->relaxed_rho(*x_it);
-                        const double Se = rho*S;
+                        const double S = e->get_stress_at(rho*D, c, u, this->vm_eps);
+                        const double Se = S;
                         const double H = this->heaviside(Se);
                         const double dH = this->heaviside_grad(Se);
                         for(size_t i = 0; i < fl.size(); ++i){
                             const auto& ui = fem->sub_u[i];
-                            e->get_virtual_load(D, (dH*rho*Se + H)*rho/S, e->get_centroid(), ui, fl[i]);
+                            e->get_virtual_load(rho*D, (dH*Se + H)/S, e->get_centroid(), ui, fl[i]);
                         }
                         result += H*Se;
 
@@ -183,16 +183,16 @@ double GlobalStressHeaviside::calculate_with_gradient(const DensityBasedOptimize
                         g->materials.get_D(x_it, psiS, e.get(), c, D_S);
 
                         double lKu = pc*std::pow(*x_it, pc-1)*e->get_compliance(gradD_K[0], this->mesh->thickness, u, l);
-                        const double S = e->get_stress_at(D_S, c, u, this->vm_eps);
                         const double rho = this->relaxed_rho(*x_it);
                         const double drho = this->relaxed_rho_grad(*x_it);
-                        const double Se = rho*S;
+                        const double S = e->get_stress_at(rho*D_S, c, u, this->vm_eps);
+                        const double Se = S;
                         const double H = this->heaviside(Se);
                         const double dH = this->heaviside_grad(Se);
 
-                        *grad_it = (dH*rho*Se + H)*drho*Se - lKu;
+                        *grad_it = (dH*Se + H)*drho*Se - lKu;
 
-                        const double mult = rho*this->heaviside_grad(S)/S;
+                        const double mult = this->heaviside_grad(S)/S;
                         const double rho_lKu = std::pow(*x_it, pc);
 
                         ++x_it;
@@ -200,7 +200,7 @@ double GlobalStressHeaviside::calculate_with_gradient(const DensityBasedOptimize
                         for(size_t i = 1; i < num_den; ++i){
                             double lKu = rho_lKu*e->get_compliance(gradD_K[i], this->mesh->thickness, u, l);
                             const auto c = e->get_centroid();
-                            const double Se = e->von_Mises_derivative(D_S, gradD_S[i], mult, c, u);
+                            const double Se = e->von_Mises_derivative(rho*D_S, rho*gradD_S[i], mult, c, u);
                             const double H = this->heaviside(Se);
                             const double dH = this->heaviside_grad(Se);
 
