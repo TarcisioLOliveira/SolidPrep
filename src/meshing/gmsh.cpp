@@ -29,6 +29,7 @@
 #include <unordered_map>
 #include <BOPAlgo_Splitter.hxx>
 #include <BRepBuilderAPI_Copy.hxx>
+#include <TopoDS.hxx>
 #include <set>
 
 namespace meshing{
@@ -39,7 +40,7 @@ Gmsh::Gmsh(const projspec::DataMap& data):
             data.proj,
             data.proj->thickness),
     tmp_scale(data.get_double("tmp_scale", 1.0)),
-    size(tmp_scale*data.get_double("size")),
+    size(tmp_scale*data.get_double("element_size")),
     algorithm2D(data.get_int("algorithm2D", 6)),
     algorithm3D(data.get_int("algorithm3D", 4)){
 
@@ -70,17 +71,19 @@ void Gmsh::mesh(const std::vector<Force>& forces,
     } else {
         // Maybe disable for cubic elements?
         for(auto& f:forces){
-            //has_condition_inside = this->is_strictly_inside3D(f.S.get_centroid(), shape);
-            BOPAlgo_Splitter splitter;
-            splitter.SetNonDestructive(true);
-            splitter.AddArgument(sh);
-            splitter.AddTool(f.S.get_shape());
-            splitter.Perform();
-            sh = splitter.Shape();
+            if(f.cut_into_shape){
+                //has_condition_inside = this->is_strictly_inside3D(f.S.get_centroid(), shape);
+                BOPAlgo_Splitter splitter;
+                splitter.SetNonDestructive(true);
+                splitter.AddArgument(sh);
+                splitter.AddTool(f.S.get_shape());
+                splitter.Perform();
+                sh = splitter.Shape();
+            }
         }
         for(auto& s:supports){
             //has_condition_inside = this->is_strictly_inside3D(s.S.get_centroid(), shape);
-            if(s.S.get_area() > 0){
+            if(s.cut_into_shape && s.S.get_area() > 0){
                 BOPAlgo_Splitter splitter;
                 splitter.SetNonDestructive(true);
                 splitter.AddArgument(sh);
@@ -123,8 +126,8 @@ void Gmsh::mesh(const std::vector<Force>& forces,
     }
     gmsh::option::setNumber("Mesh.Optimize", 1);
     //gmsh::option::setNumber("Mesh.OptimizeNetgen", 1);
-    gmsh::option::setNumber("Mesh.OptimizeThreshold", 0.5);
-    gmsh::option::setNumber("Geometry.Tolerance", 1e-2);
+    gmsh::option::setNumber("Mesh.OptimizeThreshold", 0.3);
+    gmsh::option::setNumber("Geometry.Tolerance", 1e-4);
     gmsh::option::setNumber("Mesh.Smoothing", 200);
     gmsh::option::setNumber("Mesh.AnisoMax", 1e1);
     gmsh::option::setNumber("Mesh.AllowSwapAngle", 90);
@@ -235,6 +238,7 @@ std::unordered_map<size_t, MeshNode*> Gmsh::gmsh_meshing(bool has_condition_insi
         gmsh::model::add("base");
         gmsh::vectorpair vec;
         gmsh::model::occ::importShapesNativePointer(static_cast<const void*>(&sh), vec);
+        gmsh::model::occ::removeAllDuplicates();
         gmsh::model::occ::synchronize();
 
         gmsh::model::mesh::generate(dim);

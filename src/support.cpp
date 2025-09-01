@@ -32,16 +32,18 @@
 #include <STEPCAFControl_Writer.hxx>
 #include <STEPControl_StepModelType.hxx>
 
-Support::Support(bool X, bool Y, bool MZ, CrossSection cross_section):
-    X(X), Y(Y), Z(false), MX(false), MY(false), MZ(MZ), S(std::move(cross_section)), fdof(0), mdof(0){
+Support::Support(bool X, bool Y, bool MZ, CrossSection cross_section, bool cut_into_shape):
+    X(X), Y(Y), Z(false), MX(false), MY(false), MZ(MZ), S(std::move(cross_section)), cut_into_shape(cut_into_shape), 
+    fdof(0), mdof(0){
     if(X) ++this->fdof;
     if(Y) ++this->fdof;
     if(MZ) ++this->mdof;
     
 }
 
-Support::Support(bool X, bool Y, bool Z, bool MX, bool MY, bool MZ, CrossSection cross_section):
-    X(X), Y(Y), Z(Z), MX(MX), MY(MY), MZ(MZ), S(std::move(cross_section)), fdof(0), mdof(0){
+Support::Support(bool X, bool Y, bool Z, bool MX, bool MY, bool MZ, CrossSection cross_section, bool cut_into_shape):
+    X(X), Y(Y), Z(Z), MX(MX), MY(MY), MZ(MZ), S(std::move(cross_section)), cut_into_shape(cut_into_shape),
+    fdof(0), mdof(0){
     if(X) ++this->fdof;
     if(Y) ++this->fdof;
     if(Z) ++this->fdof;

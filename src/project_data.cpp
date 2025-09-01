@@ -1038,6 +1038,9 @@ std::vector<Force> ProjectData::get_loads(const Json::Value& doc) const{
         for(auto& f : doc){
             logger::log_assert(f.isObject(), logger::ERROR, "Each load must be stored as a JSON object");
             this->log_data(f, "load", projspec::TYPE_ARRAY, true);
+            this->log_data(f, "cut_into_shape", projspec::TYPE_BOOL, true);
+            bool cut_into_shape = f["cut_into_shape"].asBool();
+
             auto loads = f["load"];
             this->log_data(loads, "region", projspec::TYPE_OBJECT, true);
             logger::log_assert(loads.size() == 2, logger::ERROR, "Load vector must have exactly two dimensions in 2D problems");
@@ -1046,7 +1049,7 @@ std::vector<Force> ProjectData::get_loads(const Json::Value& doc) const{
 
             this->log_data(f, "region", projspec::TYPE_OBJECT, true);
             auto S = this->get_cross_section(f["region"]);
-            forces.emplace_back(std::move(S), l);
+            forces.emplace_back(std::move(S), l, cut_into_shape);
         }
     } else if(this->type == utils::PROBLEM_TYPE_3D) {
         for(auto& f : doc){
@@ -1054,12 +1057,14 @@ std::vector<Force> ProjectData::get_loads(const Json::Value& doc) const{
             this->log_data(f, "load", projspec::TYPE_ARRAY, true);
             auto loads = f["load"];
             logger::log_assert(loads.size() == 3, logger::ERROR, "Load vector must have exactly three dimensions in 3D problems");
+            this->log_data(f, "cut_into_shape", projspec::TYPE_BOOL, true);
+            bool cut_into_shape = f["cut_into_shape"].asBool();
 
             gp_Vec l(loads[0].asDouble(), loads[1].asDouble(), loads[2].asDouble());
 
             this->log_data(f, "region", projspec::TYPE_OBJECT, true);
             auto S = this->get_cross_section(f["region"]);
-            forces.emplace_back(std::move(S), l);
+            forces.emplace_back(std::move(S), l, cut_into_shape);
         }
     }
     return forces;
@@ -1076,10 +1081,12 @@ std::vector<Support> ProjectData::get_support(const Json::Value& doc) const{
             bool X = f["X"].asBool();
             bool Y = f["Y"].asBool();
             bool MZ = f["MZ"].asBool();
+            this->log_data(f, "cut_into_shape", projspec::TYPE_BOOL, true);
+            bool cut_into_shape = f["cut_into_shape"].asBool();
 
             this->log_data(f, "region", projspec::TYPE_OBJECT, true);
             auto S = this->get_cross_section(f["region"]);
-            supports.emplace_back(X, Y, MZ, S);
+            supports.emplace_back(X, Y, MZ, S, cut_into_shape);
         }
     } else if(this->type == utils::PROBLEM_TYPE_3D) {
         for(auto& f : doc){
@@ -1096,10 +1103,12 @@ std::vector<Support> ProjectData::get_support(const Json::Value& doc) const{
             bool MX = f["MX"].asBool();
             bool MY = f["MY"].asBool();
             bool MZ = f["MZ"].asBool();
+            this->log_data(f, "cut_into_shape", projspec::TYPE_BOOL, true);
+            bool cut_into_shape = f["cut_into_shape"].asBool();
 
             this->log_data(f, "region", projspec::TYPE_OBJECT, true);
             auto S = this->get_cross_section(f["region"]);
-            supports.emplace_back(X, Y, Z, MX, MY, MZ, S);
+            supports.emplace_back(X, Y, Z, MX, MY, MZ, S, cut_into_shape);
         }
     }
     return supports;

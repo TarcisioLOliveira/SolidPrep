@@ -20,6 +20,6 @@
 
 #include "force.hpp"
 
-Force::Force(CrossSection cross_section, gp_Vec force):
-    S(std::move(cross_section)), vec(std::move(force)){}
+Force::Force(CrossSection cross_section, gp_Vec force, bool cut_into_shape):
+    S(std::move(cross_section)), vec(std::move(force)), cut_into_shape(cut_into_shape){}
 

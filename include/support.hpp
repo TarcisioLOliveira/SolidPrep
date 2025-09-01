@@ -20,10 +20,7 @@
 #ifndef SUPPORT_HPP
 #define SUPPORT_HPP
 
-#include <memory>
-#include <vector>
 #include "cross_section.hpp"
-#include "BRepClass3d_SolidClassifier.hxx"
 
 class Support{
     public:
@@ -36,7 +33,7 @@ class Support{
      * @param MZ Whether it resists bending perpendicular to Z.
      * @param cross_section Maximum dimensions of the supporting face.
      */
-    Support(bool X, bool Y, bool MZ, CrossSection cross_section);
+    Support(bool X, bool Y, bool MZ, CrossSection cross_section, bool cut_into_shape);
 
     /**
      * Creates a Support object for 3D problems.
@@ -49,7 +46,7 @@ class Support{
      * @param MZ Whether it resists bending perpendicular to Z.
      * @param cross_section Maximum dimensions of the supporting face.
      */
-    Support(bool X, bool Y, bool Z, bool MX, bool MY, bool MZ, CrossSection cross_section);
+    Support(bool X, bool Y, bool Z, bool MX, bool MY, bool MZ, CrossSection cross_section, bool cut_into_shape);
 
     inline int F_DOF() const{
         return this->fdof;
@@ -63,6 +60,7 @@ class Support{
 
     const bool X, Y, Z, MX, MY, MZ;
     CrossSection S;
+    const bool cut_into_shape;
     private:
     int fdof, mdof;
 };

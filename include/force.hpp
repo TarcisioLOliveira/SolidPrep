@@ -33,10 +33,11 @@ class Force{
      * @param cross_section Region of force application.
      * @param force Force vector.
      */
-    Force(CrossSection cross_section, gp_Vec force);
+    Force(CrossSection cross_section, gp_Vec force, bool cut_into_shape);
 
     const CrossSection S;
     const gp_Vec vec;
+    const bool cut_into_shape;
 };
 
 #endif
