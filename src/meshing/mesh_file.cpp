@@ -65,6 +65,7 @@ void MeshFile::save_mesh(const std::vector<std::unique_ptr<MeshNode>>& node_list
      */
 
     std::ofstream file(file_path, std::ios::out);
+    file << std::setprecision(10);
     file << this->element_name << std::endl;
     file << std::endl;
 
