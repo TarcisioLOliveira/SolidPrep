@@ -53,6 +53,7 @@ find_package(MPI REQUIRED)
 find_package(MUMPS REQUIRED)
 find_package(Eigen3 REQUIRED NO_MODULE)
 find_package(GSL REQUIRED)
+find_package(Teem REQUIRED)
 
 # PETSc
 if (PKG_CONFIG_FOUND)
@@ -124,6 +125,7 @@ include_directories(
     ${PETSC_INCLUDE_DIRS}
     ${GSL_INCLUDE_DIR}
     ${JSON_INC_PATH}
+    ${Teem_INCLUDE_DIRS}
 )
 
 if(USE_CUDA)
