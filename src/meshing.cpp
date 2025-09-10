@@ -1789,11 +1789,12 @@ void Meshing::de_extend_vector(const size_t subproblem, const std::vector<double
 }
 
 void Meshing::distribute_node_pointers(){
+    const size_t nodes_per_elem = this->elem_info->get_nodes_per_element();
     const size_t bnodes_per_elem = this->elem_info->get_boundary_nodes_per_element();
     for(auto& g:this->geometries){
         std::set<Node*> nodes;
         for(auto& e:g->mesh){
-            for(size_t i = 0; i < bnodes_per_elem; ++i){
+            for(size_t i = 0; i < nodes_per_elem; ++i){
                 nodes.insert(e->nodes[i]);
             }
         }

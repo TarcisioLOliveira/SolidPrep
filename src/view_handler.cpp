@@ -18,7 +18,10 @@
  *
  */
 
+#include <limits>
+#include <set>
 #include "view_handler.hpp"
+#include "logger.hpp"
 
 ViewHandler::ViewHandler(const Meshing* const mesh, spview::Server* server, const std::string& view_name, const spview::defs::ViewType view_type, const spview::defs::DataType data_type, utils::ProblemType problem_type, const size_t view_id)
     : view_type(view_type), data_type(data_type), view_id(view_id), mesh(mesh),
@@ -58,37 +61,24 @@ void ViewHandler::update_view(const std::vector<double>& data, const std::vector
         tags.resize(this->node_num);
         std::iota(tags.begin(), tags.end(), 0);
     } else {
-        const size_t nodes_per_elem = this->mesh->elem_info->get_nodes_per_element();
-        std::vector<double> used_nodes(this->node_num, false);
+        std::set<size_t> node_ids;
         for(size_t i = 0; i < this->mesh->geometries.size(); ++i){
             const auto pos = std::find(geometries.begin(), geometries.end(), i);
             if(pos < geometries.end()){
                 const auto& g = this->mesh->geometries[i];
-                #pragma omp parallel for
-                for(const auto& e:g->mesh){
-                    for(size_t j = 0; j < nodes_per_elem; ++j){
-                        const auto& n = e->nodes[j];
-                        used_nodes[n->id] = true;
-                    }
+                for(const auto& n:g->node_list){
+                    node_ids.insert(n->id);
                 }
             }
         }
 
-        size_t num_nodes = 0;
-        #pragma omp parallel for reduction(+:num_nodes)
-        for(const auto& b:used_nodes){
-            if(b){
-                ++num_nodes;
-            }
-        }
+        size_t num_nodes = node_ids.size();
 
         tags.resize(num_nodes);
         auto tag_it = tags.begin();
-        for(size_t node_id = 0; node_id < this->node_num; ++node_id){
-            if(used_nodes[node_id]){
-                *tag_it = node_id;
-                ++tag_it;
-            }
+        for(auto& n:node_ids){
+            *tag_it = n;
+            ++tag_it;
         }
     }
 
@@ -107,22 +97,22 @@ void ViewHandler::update_view(const std::vector<double>& data, const std::vector
                 this->server->update_data(this->view_id, tags, data);
             }
         } else {
-            std::vector<double> mat(tags.size(), 1.0);
-            auto m = mat.begin();
-            auto d = data.cbegin();
-            for(const auto& g:this->mesh->geometries){
-                if(g->do_topopt){
-                    for(size_t i = 0; i < g->mesh.size(); ++i){
-                        *m = *d;
-                        ++m;
-                        ++d;
+            if(view_type == spview::defs::ELEMENTAL){
+                std::vector<double> mat(tags.size(), std::numeric_limits<double>::quiet_NaN());
+                auto m = mat.begin();
+                auto d = data.cbegin();
+                for(const auto& g:this->mesh->geometries){
+                    if(g->do_topopt){
+                        for(size_t i = 0; i < g->mesh.size(); ++i){
+                            *m = *d;
+                            ++m;
+                            ++d;
+                        }
                     }
                 }
-            }
-            if(view_type == spview::defs::ELEMENTAL){
                 this->server->update_data(this->view_id, tags, mat);
             } else if(view_type == spview::defs::NODAL){
-                this->server->update_data(this->view_id, tags, mat);
+                this->server->update_data(this->view_id, tags, data);
             }
         }
     } else if(this->view_type == spview::defs::ELEMENTAL && this->data_type == spview::defs::MATERIAL){
