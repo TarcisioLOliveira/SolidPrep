@@ -24,6 +24,7 @@
 #include "utils/delayed_pointer.hpp"
 #include <cstring>
 #include <json/json.h>
+#include <json/value.h>
 #include <memory>
 #include <vector>
 #define _USE_MATH_DEFINES
@@ -307,6 +308,11 @@ inline void add_stub_array(ProjectData* proj, const std::shared_ptr<projspec::Ar
                 array->set_cross_section(i, CrossSection());
             }
             break;
+        case projspec::TYPE_MATRIX:
+            for(size_t i = 0; i < size; ++i){
+                array->set_matrix(i, math::Matrix());
+            }
+            break;
     }
 }
 inline void add_stub(const projspec::DataEntry& r, projspec::DataMap* data){
@@ -345,6 +351,9 @@ inline void add_stub(const projspec::DataEntry& r, projspec::DataMap* data){
         case projspec::TYPE_CROSS_SECTION:
             data->set_cross_section(r.name, CrossSection());
             break;
+        case projspec::TYPE_MATRIX:
+            data->set_matrix(r.name, math::Matrix());
+            break;
     }
 }
 
@@ -362,6 +371,28 @@ projspec::DataMap ProjectData::generate_stub(const projspec::ObjectRequirements&
     }
 
     return data;
+};
+
+const auto get_matrix = [](const Json::Value& v, const projspec::MatrixRequirements* req)->math::Matrix{
+    logger::log_assert(req != nullptr, logger::ERROR, "matrix specifications for JSON file are missing");
+    logger::log_assert(v.size() == req->H, logger::ERROR, "inserted matrix has wrong number of rows, got {}, expected {}", v.size(), req->H);
+
+    math::Matrix M(req->H, req->W);
+    auto vi = v.begin();
+    for(size_t i = 0; i < req->H; ++i){
+        auto vij = vi->begin();
+        for(size_t j = 0; j < req->W; ++j){
+            logger::log_assert(vi->size() == req->W, logger::ERROR,
+                    "row {} of inserted matrix has incorrect size, got {}, expected {}",
+                    i, vi->size(), req->W);
+            
+            M(i, j) = vij->asDouble();
+            ++vij;
+        }
+        ++vi;
+    }
+
+    return M;
 };
 
 inline void add_data(const Json::Value& item, const projspec::DataEntry& r, projspec::DataMap* data);
@@ -431,6 +462,12 @@ inline void add_data_array(ProjectData* proj, const Json::Value& item, const std
                 ++i;
             }
             break;
+        case projspec::TYPE_MATRIX:
+            for(auto& it:item){
+                array->set_matrix(i, get_matrix(it, reqs->matrix_data.get()));
+                ++i;
+            }
+            break;
     }
 }
 inline void add_data(const Json::Value& item, const projspec::DataEntry& r, projspec::DataMap* data){
@@ -478,6 +515,10 @@ inline void add_data(const Json::Value& item, const projspec::DataEntry& r, proj
         case projspec::TYPE_CROSS_SECTION:
             data->set_cross_section(r.name, data->proj->get_cross_section(item));
             break;
+        case projspec::TYPE_MATRIX:{
+            data->set_matrix(r.name, get_matrix(item, r.matrix_data.get()));
+            break;
+        }
     }
 }
 
@@ -527,6 +568,7 @@ bool ProjectData::log_data(const Json::Value& doc, std::string name, projspec::D
             correct_type = logger::log_assert(doc[name.c_str()].isString(), error, "Value of key \"{}\" has wrong type, must be a string.", name);
             break;
         case projspec::TYPE_ARRAY:
+        case projspec::TYPE_MATRIX:
             correct_type = logger::log_assert(doc[name.c_str()].isArray(), error, "Value of key \"{}\" has wrong type, must be an array.", name);
             break;
         case projspec::TYPE_CROSS_SECTION:

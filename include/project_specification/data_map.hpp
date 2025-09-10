@@ -25,6 +25,7 @@
 #include <string>
 #include <unordered_map>
 #include "cross_section.hpp"
+#include "math/matrix.hpp"
 
 class ProjectData;
 
@@ -55,6 +56,9 @@ class DataArray{
     }
     inline void set_cross_section(size_t key, CrossSection value){
         this->cross_section_map[key] = value;
+    }
+    inline void set_matrix(size_t key, math::Matrix value){
+        this->matrix_map[key] = value;
     }
 
     inline std::string get_string(size_t key, const std::string& none = "") const{
@@ -106,6 +110,14 @@ class DataArray{
     inline CrossSection get_cross_section(size_t key, CrossSection none = CrossSection()) const{
         auto found = this->cross_section_map.find(key);
         if(found != this->cross_section_map.end()){
+            return found->second;
+        } else {
+            return none;
+        }
+    }
+    inline math::Matrix get_matrix(size_t key, math::Matrix none = math::Matrix()) const{
+        auto found = this->matrix_map.find(key);
+        if(found != this->matrix_map.end()){
             return found->second;
         } else {
             return none;
@@ -192,6 +204,7 @@ class DataArray{
     std::unordered_map<size_t, std::unique_ptr<DataMap>> object_map;
     std::unordered_map<size_t, std::unique_ptr<DataArray>> array_map;
     std::unordered_map<size_t, CrossSection> cross_section_map;
+    std::unordered_map<size_t, math::Matrix> matrix_map;
 };
 
 class DataMap{
@@ -223,6 +236,9 @@ class DataMap{
     inline void set_cross_section(const std::string& key, CrossSection value){
         this->cross_section_map[key] = value;
     }
+    inline void set_matrix(const std::string& key, math::Matrix value){
+        this->matrix_map[key] = value;
+    }
 
     inline bool exists_string(const std::string& key) const{
         return this->string_map.contains(key);
@@ -244,6 +260,9 @@ class DataMap{
     }
     inline bool exists_cross_section(const std::string& key) const{
         return this->cross_section_map.contains(key);
+    }
+    inline bool exists_matrix(const std::string& key) const{
+        return this->matrix_map.contains(key);
     }
 
     inline std::string get_string(const std::string& key, const std::string& none = "") const{
@@ -312,6 +331,14 @@ class DataMap{
             return none;
         }
     }
+    inline math::Matrix get_matrix(const std::string& key, math::Matrix none = math::Matrix()) const{
+        auto found = this->matrix_map.find(key);
+        if(found != this->matrix_map.end()){
+            return found->second;
+        } else {
+            return none;
+        }
+    }
     private:
     std::unordered_map<std::string, std::string> string_map;
     std::unordered_map<std::string, bool> bool_map;
@@ -320,6 +347,7 @@ class DataMap{
     std::unordered_map<std::string, std::unique_ptr<DataMap>> object_map;
     std::unordered_map<std::string, std::unique_ptr<DataArray>> array_map;
     std::unordered_map<std::string, CrossSection> cross_section_map;
+    std::unordered_map<std::string, math::Matrix> matrix_map;
 };
 
 }

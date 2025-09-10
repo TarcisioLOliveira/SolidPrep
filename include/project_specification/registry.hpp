@@ -81,12 +81,15 @@ enum DataType{
     TYPE_OBJECT,
     TYPE_RELATIVE_PATH,
     TYPE_CROSS_SECTION,
-    TYPE_POINTER
+    TYPE_POINTER,
+    TYPE_MATRIX
 };
 
 struct ArrayRequirements;
 
 struct ObjectRequirements;
+
+struct MatrixRequirements;
 
 struct DataEntry{
     std::string name;
@@ -95,6 +98,7 @@ struct DataEntry{
     std::vector<DataEntry> object_data = std::vector<DataEntry>();
     std::shared_ptr<ArrayRequirements> array_data = nullptr;
     std::function<bool(const RequirementConditions&)> required_if = nullptr;
+    std::shared_ptr<MatrixRequirements> matrix_data = nullptr;
 };
 
 struct ArrayRequirements{
@@ -102,11 +106,17 @@ struct ArrayRequirements{
     DataType type = TYPE_DOUBLE;
     std::vector<DataEntry> object_data = std::vector<DataEntry>();
     std::shared_ptr<ArrayRequirements> array_data = nullptr;
+    std::shared_ptr<MatrixRequirements> matrix_data = nullptr;
 };
 
 struct ObjectRequirements{
     std::string type_name;
     std::vector<DataEntry> object_entries;
+};
+
+struct MatrixRequirements{
+    size_t W;
+    size_t H;
 };
 
 class Registry{
