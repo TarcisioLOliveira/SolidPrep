@@ -120,24 +120,20 @@ double NRRDReader::get_averaged(const math::Vector& point) const{
     math::Vector pi(DIM);
     std::vector<size_t> pui(DIM);
     double avg = 0;
-    if(DIM == 3){
-        for(size_t i = 0; i < 2; ++i){
-            for(size_t j = 0; j < 2; ++j){
-                for(size_t k = 0; k < 2; ++k){
-                    pui[0] = ijk_uint[0] + i;
-                    pui[1] = ijk_uint[1] + j;
-                    pui[2] = ijk_uint[2] + k;
-                    pi[0] = pui[0];
-                    pi[1] = pui[1];
-                    pi[2] = pui[2];
-                    const double wi = dist(pi, ijk);
-                    w_sum += wi;
-                    avg += wi*this->get_data(pui); 
-                }
-            }
-        }
-    } else {
-        logger::log_assert(false, logger::ERROR, "NRRDReader get_averaged() currently does not support dimension {}", this->DIM);
+    size_t it_max = std::pow(2, DIM);
+    for(size_t it = 0; it < it_max; ++it){
+        size_t i = it % 2;
+        size_t j = (it / 2) % 2;
+        size_t k = (it / 4) % 2;
+        pui[0] = ijk_uint[0] + i;
+        pui[1] = ijk_uint[1] + j;
+        pui[2] = ijk_uint[2] + k;
+        pi[0] = pui[0];
+        pi[1] = pui[1];
+        pi[2] = pui[2];
+        const double wi = dist(pi, ijk);
+        w_sum += wi;
+        avg += wi*this->get_data(pui); 
     }
 
     return avg/w_sum;
