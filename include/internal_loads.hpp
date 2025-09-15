@@ -61,7 +61,7 @@ class InternalLoads{
     const math::Matrix rot3D;
     const std::array<double, 3> F;
     const std::array<double, 3> M;
-    const utils::DelayedPointerView<Material> mat;
+    utils::DelayedPointerView<Material> mat;
     const gp_Dir normal;
     const MeshElementFactory* elem_info;
     std::vector<const BoundaryElement*> submesh;

@@ -48,7 +48,7 @@ class Spring{
     const double thickness;
     const math::Matrix rot2D;
     const math::Matrix rot3D;
-    const utils::DelayedPointerView<Material> mat;
+    utils::DelayedPointerView<Material> mat;
     const gp_Dir normal;
     const MeshElementFactory* elem_info;
     std::vector<const BoundaryElement*> submesh;

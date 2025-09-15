@@ -22,6 +22,7 @@
 #include "logger.hpp"
 #include "math/matrix.hpp"
 #include "project_data.hpp"
+#include "utils/delayed_pointer.hpp"
 #include <functional>
 
 namespace field{
@@ -141,6 +142,42 @@ void PrincipalStress::generate(){
         }
         g->set_materials(iso_material);
     }
+    std::vector<size_t> int_loads_bkp_id;
+    std::vector<utils::DelayedPointerView<Material>> int_loads_bkp;
+    std::vector<size_t> spring_bkp_id;
+    std::vector<utils::DelayedPointerView<Material>> spring_bkp;
+    if(this->proj_data->internal_loads.size() > 0){
+        const size_t int_size = this->proj_data->internal_loads.size();
+        int_loads_bkp.reserve(int_size);
+        int_loads_bkp_id.reserve(int_size);
+        for(size_t i = 0; i < int_size; ++i){
+            auto& inti = this->proj_data->internal_loads[i];
+            if(inti.mat->get_field() == this){
+                int_loads_bkp_id.push_back(i);
+                int_loads_bkp.push_back(inti.mat);
+                inti.mat = iso_material[0];
+            }
+        }
+    }
+    if(this->proj_data->springs.size() > 0){
+        const size_t int_size = this->proj_data->springs.size();
+        spring_bkp.reserve(int_size);
+        spring_bkp_id.reserve(int_size);
+        for(size_t i = 0; i < int_size; ++i){
+            auto& inti = this->proj_data->springs[i];
+            if(inti.mat->get_field() == this){
+                spring_bkp_id.push_back(i);
+                spring_bkp.push_back(inti.mat);
+                inti.mat = iso_material[0];
+            }
+        }
+    }
+    bool update_boundary_conditions = false;
+    if(int_loads_bkp.size() > 0 || spring_bkp.size() > 0){
+        update_boundary_conditions = true;
+        mesh->apply_boundary_conditions(this->proj_data->forces, this->proj_data->supports, this->proj_data->springs, this->proj_data->internal_loads, this->proj_data->sub_problems);
+    }
+
 
     this->u.resize(mesh->max_dofs, 0);
     auto u_old = this->u;
@@ -171,12 +208,26 @@ void PrincipalStress::generate(){
                 auto& g = this->geoms[i];
                 g->set_materials(ortho_material[i]);
             }
+            if(int_loads_bkp.size() > 0){
+                for(size_t i = 0; i < int_loads_bkp.size(); ++i){
+                    auto& inti = this->proj_data->internal_loads[int_loads_bkp_id[i]];
+                    inti.mat = int_loads_bkp[i];
+                }
+            }
+            if(spring_bkp.size() > 0){
+                for(size_t i = 0; i < spring_bkp.size(); ++i){
+                    auto& inti = this->proj_data->springs[spring_bkp_id[i]];
+                    inti.mat = spring_bkp[i];
+                }
+            }
             this->first_run = false;
         }
         logger::quick_log("Iteration:", it, "du:", du, "c:", c, "dc:", std::abs(c - c_old), "dc/c:", std::abs(c - c_old)/std::abs(c));
         c_old = c;
 
-        mesh->apply_boundary_conditions(this->proj_data->forces, this->proj_data->supports, this->proj_data->springs, this->proj_data->internal_loads, this->proj_data->sub_problems);
+        if(update_boundary_conditions){
+            mesh->apply_boundary_conditions(this->proj_data->forces, this->proj_data->supports, this->proj_data->springs, this->proj_data->internal_loads, this->proj_data->sub_problems);
+        }
 
         ++it;
     }
