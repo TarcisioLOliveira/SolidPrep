@@ -45,17 +45,17 @@ void ViewHandler::update_view(const std::vector<double>& data, const std::vector
         tags.resize(this->elem_num);
         std::iota(tags.begin(), tags.end(), 0);
     } else if(this->view_type == spview::defs::ELEMENTAL){ // Elemental with select geometries
-        size_t size_offset = 0;
-        size_t tag_offset = 0;
-        for(size_t i = 0; i < this->mesh->geometries.size(); ++i){
-            const auto pos = std::find(geometries.begin(), geometries.end(), i);
-            const auto size = this->mesh->geometries.size();
-            if(pos < geometries.end()){
-                tags.resize(tags.size() + size);
-                std::iota(tags.begin()+size_offset, tags.begin()+size_offset+size, tag_offset);
-                size_offset += size;
+        size_t tag_size = 0;
+        for(auto& gi:geometries){
+            auto& g = this->mesh->geometries[gi];
+            tag_size += g->mesh.size();
+        }
+        tags.reserve(tag_size);
+        for(auto& gi:geometries){
+            auto& g = this->mesh->geometries[gi];
+            for(auto& e:g->mesh){
+                tags.push_back(e->id);
             }
-            tag_offset += size;
         }
     } else if(geometries.size() == 0){ // Not elemental
         tags.resize(this->node_num);
@@ -99,18 +99,22 @@ void ViewHandler::update_view(const std::vector<double>& data, const std::vector
         } else {
             if(view_type == spview::defs::ELEMENTAL){
                 std::vector<double> mat(tags.size(), std::numeric_limits<double>::quiet_NaN());
-                auto m = mat.begin();
-                auto d = data.cbegin();
-                for(const auto& g:this->mesh->geometries){
-                    if(g->do_topopt){
-                        for(size_t i = 0; i < g->mesh.size(); ++i){
-                            *m = *d;
-                            ++m;
-                            ++d;
+                if(geometries.size() == 0){
+                    auto m = mat.begin();
+                    auto d = data.cbegin();
+                    for(const auto& g:this->mesh->geometries){
+                        if(g->do_topopt){
+                            for(size_t i = 0; i < g->mesh.size(); ++i){
+                                *m = *d;
+                                ++m;
+                                ++d;
+                            }
                         }
                     }
+                    this->server->update_data(this->view_id, tags, mat);
+                } else {
+                    this->server->update_data(this->view_id, tags, data);
                 }
-                this->server->update_data(this->view_id, tags, mat);
             } else if(view_type == spview::defs::NODAL){
                 this->server->update_data(this->view_id, tags, data);
             }
