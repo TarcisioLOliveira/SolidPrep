@@ -4,6 +4,7 @@ set(SOURCES_FIELD
     orthotropic_flow.cpp
     principal_stress.cpp
     apparent_density.cpp
+    trabecular_cutoff.cpp
 )
 
 add_library(field OBJECT ${SOURCES_FIELD})
