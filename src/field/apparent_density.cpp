@@ -32,6 +32,10 @@ NRRDReader::NRRDReader():
 
 }
 
+void NRRDReader::unload(){
+    this->file.reset();
+}
+
 void NRRDReader::load(const std::string& file_path){
 
     if(this->file != nullptr && this->file->data != NULL){
@@ -259,6 +263,8 @@ void ApparentDensity::generate(){
     Mlu.solve(b);
 
     this->scaler = std::move(b);
+
+    this->nrrd.unload();
 }
 void ApparentDensity::initialize_views(Visualization* viz){
     this->density = viz->add_view("Apparent Density", spview::defs::ViewType::NODAL, spview::defs::DataType::DENSITY);

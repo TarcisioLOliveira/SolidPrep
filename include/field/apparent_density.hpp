@@ -37,6 +37,7 @@ class NRRDReader {
 
     void load(const std::string& file_path);
     double get_averaged(const math::Vector& point) const;
+    void unload();
 
     private:
     std::unique_ptr<Nrrd, std::function<void(Nrrd*)>> file;
