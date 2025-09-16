@@ -22,6 +22,7 @@
 #include "logger.hpp"
 #include "math/matrix.hpp"
 #include "project_data.hpp"
+#include <algorithm>
 #include <defs.hpp>
 
 namespace field{
@@ -193,13 +194,16 @@ void ApparentDensity::generate(){
     general_solver::MUMPSGeneral solver;
     solver.initialize_matrix(true, new_id);
     std::vector<long> pos(NODES_PER_ELEM);
+    double rho_o_min = 1e100, rho_o_max = -1e100;
     for(auto& g:this->geoms){
         for(auto& e:g->mesh){
             const auto pi = e->get_centroid();
             const math::Vector pv({pi.X(), pi.Y(), pi.Z()});
             const math::Vector Rp(R.T()*(pv - t));
-            const math::Vector Ni = (this->rho_func[0]*this->nrrd.get_averaged(Rp) + this->rho_func[1])
-                                    *e->source_1dof(this->thickness);
+            const double rho_i = (this->rho_func[0]*this->nrrd.get_averaged(Rp) + this->rho_func[1]);
+            rho_o_min = std::min(rho_o_min, rho_i);
+            rho_o_max = std::max(rho_o_max, rho_i);
+            const math::Vector Ni = rho_i*e->source_1dof(this->thickness);
 
             // Source vector
             for(size_t i = 0; i < NODES_PER_ELEM; ++i){
@@ -215,6 +219,46 @@ void ApparentDensity::generate(){
     }
     solver.compute();
     solver.solve(this->nodal_densities);
+
+    math::Matrix A(5, 5, 0);
+    math::Vector b(5, 0);
+
+    const double rho_n_min = *std::min_element(this->nodal_densities.cbegin(), this->nodal_densities.cend());
+    const double rho_n_max = *std::max_element(this->nodal_densities.cbegin(), this->nodal_densities.cend());
+
+    b[0] = rho_o_min;
+    b[1] = rho_o_max;
+    for(size_t j = 0; j < 5; ++j){
+        A(0, j) = std::pow(rho_n_min, j);
+        A(1, j) = std::pow(rho_n_max, j);
+    }
+    for(size_t j = 1; j < 5; ++j){
+        A(2, j) = j*std::pow(rho_n_min, j-1);
+        A(3, j) = j*std::pow(rho_n_max, j-1);
+    }
+    math::Vector rho_iv(NODES_PER_ELEM);
+    for(auto& g:this->geoms){
+        for(auto& e:g->mesh){
+            const auto pi = e->get_centroid();
+            for(size_t i = 0; i < NODES_PER_ELEM; ++i){
+                rho_iv[i] = this->nodal_densities[id_pos_map[e->nodes[i]->id]];
+            }
+            const double vi = e->get_volume(this->thickness);
+            const math::Vector Nc = e->get_Ni_1dof(pi);
+            const double rho_i = Nc.T()*rho_iv;
+            const math::Vector Ni = e->source_1dof(this->thickness);
+
+            b[4] += Ni.T()*rho_iv;
+            for(size_t j = 0; j < 5; ++j){
+                A(4, j) += vi*std::pow(rho_i, j);
+            }
+        }
+    }
+
+    math::LU Mlu(A);
+    Mlu.solve(b);
+
+    this->scaler = std::move(b);
 }
 void ApparentDensity::initialize_views(Visualization* viz){
     this->density = viz->add_view("Apparent Density", spview::defs::ViewType::NODAL, spview::defs::DataType::DENSITY);
@@ -236,8 +280,12 @@ double ApparentDensity::get(const MeshElement* e, const gp_Pnt& p) const{
         const auto n = this->id_pos_map.at(e->nodes[i]->id);
         v += Ni[i]*this->nodal_densities[n];
     }
+    double vr = 0;
+    for(size_t j = 0; j < 5; ++j){
+        vr += scaler[j]*std::pow(v, j);
+    }
 
-    return v;
+    return vr;
 }
 
 using namespace projspec;

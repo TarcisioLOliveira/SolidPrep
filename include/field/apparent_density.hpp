@@ -77,6 +77,7 @@ class ApparentDensity : public ScalarField {
     math::Vector t;
     double radius;
     std::array<double, 2> rho_func;
+    math::Vector scaler;
 
     std::map<size_t, size_t> id_pos_map;
     std::vector<double> nodal_densities;
