@@ -41,6 +41,7 @@ class Material{
         LINEAR_ELASTIC_ORTHOTROPIC,
         MANDIBLE,
         LINEAR_ELASTIC_ORTHOTROPIC_FIELD,
+        POWER_LAW_ISOTROPIC,
     };
     enum Class{
         ISOTROPIC,
