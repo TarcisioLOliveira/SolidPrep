@@ -46,17 +46,6 @@ TrabecularCutoff::TrabecularCutoff(const projspec::DataMap& data):
 
         this->density = static_cast<ScalarField*>(f);
         this->shell = utils::load_shape(data.get_string("shell"), 1);
-
-        // double Xmin, Ymin, Zmin, Xmax, Ymax, Zmax;
-
-        // Bnd_Box B;
-
-        // BRepBndLib::Add(this->shell, B);
-        // B.Get(Xmin, Ymin, Zmin, Xmax, Ymax, Zmax);
-
-        // logger::quick_log(Xmin, Ymin, Zmin, Xmax, Ymax, Zmax);
-        // logger::quick_log(Xmax - Xmin, Ymax - Ymin, Zmax - Zmin);
-        // exit(0);
     }
 }
 
@@ -65,7 +54,7 @@ void TrabecularCutoff::generate() {
     for(auto& g:this->geoms){
         elem_num += g->mesh.size();
     }
-    std::vector<double> map_tmp(elem_num);
+    std::vector<double> map_tmp(elem_num, 0);
     size_t elem_offset = 0;
     for(auto& g:this->geoms){
         #pragma omp parallel for
@@ -73,19 +62,12 @@ void TrabecularCutoff::generate() {
             const size_t map_pos = i + elem_offset;
             const auto& e = g->mesh[i];
             const double rho = this->density->get(e.get(), e->get_centroid());
-            if(rho > this->cutoff){
-                map_tmp[map_pos] = 0;
-            } else {
+            if(rho <= this->cutoff){
                 const auto c = e->get_centroid();
                 TopoDS_Vertex v = BRepBuilderAPI_MakeVertex(c);
                 BRepExtrema_DistShapeShape dss(v, this->shell, Extrema_ExtFlag_MIN);
-                double dist = 0;
-                if(dss.IsDone()){
-                    dist = dss.Value();
-                }
-                if(dist < this->bone_thickness){
-                    map_tmp[map_pos] = 0;
-                } else {
+                double dist = dss.Value();
+                if(dist > this->bone_thickness){
                     map_tmp[map_pos] = 1;
                 }
             }
