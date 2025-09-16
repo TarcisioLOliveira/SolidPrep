@@ -42,6 +42,12 @@ class Material{
         MANDIBLE,
         LINEAR_ELASTIC_ORTHOTROPIC_FIELD,
     };
+    enum Class{
+        ISOTROPIC,
+        TRANSVERSALLY_ISOTROPIC,
+        ORTHOTROPIC,
+        OTHER
+    };
 
     virtual ~Material() = default;
 
@@ -67,6 +73,7 @@ class Material{
     virtual std::array<double, 2> beam_EG_2D(const MeshElement* const e, const gp_Pnt& p, const math::Matrix& R) const = 0;
     virtual std::array<double, 4> beam_EG_3D(const MeshElement* const e, const gp_Pnt& p, const math::Matrix& R) const = 0;
 
+    virtual Class get_class() const = 0;
     virtual Type get_type() const{ return this->NONE; }
     virtual bool is_homogeneous() const{ return true; }
     virtual Field* get_field() const{ return nullptr; }

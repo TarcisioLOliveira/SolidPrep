@@ -41,7 +41,7 @@ PrincipalStress::PrincipalStress(const projspec::DataMap& data):
    
     if(!data.get_bool("STUB")){ 
         logger::log_assert(this->initial_material.get() != nullptr &&
-                initial_material->get_type() == Material::Type::LINEAR_ELASTIC_ISOTROPIC,
+                initial_material->get_class() == Material::Class::ISOTROPIC,
                 logger::ERROR,
                 "initial material chosen for principal stress field is not isotropic");
     }

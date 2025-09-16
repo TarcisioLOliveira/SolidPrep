@@ -72,6 +72,9 @@ class Mandible : public Material{
     virtual std::array<double, 2> beam_EG_2D(const MeshElement* const e, const gp_Pnt& p, const math::Matrix& R) const override;
     virtual std::array<double, 4> beam_EG_3D(const MeshElement* const e, const gp_Pnt& p, const math::Matrix& R) const override;
 
+    virtual Class get_class() const override{
+        return std::max(outer->get_class(), inner->get_class());
+    }
     virtual Type get_type() const override{ return this->MANDIBLE; }
     virtual bool is_homogeneous() const override{ return false; }
     virtual Field* get_field() const override{
