@@ -267,7 +267,9 @@ void ApparentDensity::generate(){
     this->nrrd.unload();
 }
 void ApparentDensity::initialize_views(Visualization* viz){
-    this->density = viz->add_view("Apparent Density", spview::defs::ViewType::NODAL, spview::defs::DataType::DENSITY);
+    if(this->show){
+        this->density = viz->add_view("Apparent Density", spview::defs::ViewType::NODAL, spview::defs::DataType::DENSITY);
+    }
 }
 void ApparentDensity::display_views() const{
     if(this->show){
