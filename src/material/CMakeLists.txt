@@ -6,6 +6,7 @@ set(SOURCES_MATERIAL
     mandible.cpp
     linear_elastic_orthotropic_field.cpp
     power_law_isotropic.cpp
+    power_law_orthotropic.cpp
 )
 
 add_library(material OBJECT ${SOURCES_MATERIAL})
