@@ -147,7 +147,7 @@ void SolverManager::calculate_displacements_adjoint(const Meshing* const mesh, s
 
 void SolverManager::update_D_matrices(const Meshing* const mesh, const std::vector<double>& density, double pc, double psi){
     logger::quick_log("Generating constitutive matrices...");
-    if(density.size() == 0 && this->D_matrices.size() > 0){
+    if(density.size() == 0 && this->D_matrices.size() > 0 && !this->force_update_materials){
         return;
     } else if(density.size() == 0){
         // Cache non-homogeneous matrices only

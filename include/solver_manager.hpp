@@ -41,6 +41,10 @@ class SolverManager{
     const std::vector<std::vector<double>>& sub_u = this->split_u;
     const std::vector<math::Matrix>& D_vec = this->D_matrices;
 
+    inline void update_materials(){
+        this->force_update_materials = true;
+    }
+
     private:
     size_t iteration = 0;
     size_t solve_step = 0;
@@ -49,6 +53,7 @@ class SolverManager{
     std::vector<double> old_densities;
     std::vector<math::Matrix> D_matrices;
     bool topopt = false;
+    bool force_update_materials = false;
     // Sorry
     // One vector per calculate_* called per subproblem
     std::vector<std::vector<std::vector<double>>> lambdas;
