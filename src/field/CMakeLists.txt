@@ -5,6 +5,7 @@ set(SOURCES_FIELD
     principal_stress.cpp
     apparent_density.cpp
     trabecular_cutoff.cpp
+    implant_region.cpp
 )
 
 add_library(field OBJECT ${SOURCES_FIELD})
