@@ -278,7 +278,15 @@ void ApparentDensity::display_views() const{
         for(auto& g:geoms){
             gi.push_back(g->id);
         }
-        this->density->update_view(this->nodal_densities, gi);
+        auto nodal_rho = this->nodal_densities;
+        for(auto& r:nodal_rho){
+            auto r_bkp = r;
+            r = this->scaler[0];
+            for(size_t j = 1; j < 5; ++j){
+                r += scaler[j]*std::pow(r_bkp, j);
+            }
+        }
+        this->density->update_view(nodal_rho, gi);
     }
 }
 double ApparentDensity::get(const MeshElement* e, const gp_Pnt& p) const{
@@ -288,8 +296,8 @@ double ApparentDensity::get(const MeshElement* e, const gp_Pnt& p) const{
         const auto n = this->id_pos_map.at(e->nodes[i]->id);
         v += Ni[i]*this->nodal_densities[n];
     }
-    double vr = 0;
-    for(size_t j = 0; j < 5; ++j){
+    double vr = this->scaler[0];
+    for(size_t j = 1; j < 5; ++j){
         vr += scaler[j]*std::pow(v, j);
     }
 
