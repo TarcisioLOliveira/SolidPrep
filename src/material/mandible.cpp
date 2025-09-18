@@ -329,7 +329,7 @@ double Mandible::ImplantRegion::get_implant_multiplier(const gp_Pnt& p) const{
     const gp_Vec v2 = v1 - l*this->normal;
     const double dist = v2.Magnitude();
     if(l >= 0 && l <= max_l){
-        const double r = (r1 - r2)*l/max_l + r1;
+        const double r = (r2 - r1)*l/max_l + r1;
         if(dist < r){
             return min_str;
         } else if(dist > r + decay_distance){
