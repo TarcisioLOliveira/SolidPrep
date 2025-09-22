@@ -32,7 +32,9 @@ ImplantRegion::ImplantRegion(const projspec::DataMap& data):
     a(data.get_array("coefficients")->get_double_array()),
     min_str(a[0]),
     a_orig(a),
-    a_len(a.size()){
+    a_len(a.size()),
+    show(data.get_bool("display", true))
+{
     
     if(!data.get_bool("STUB")){
         this->center_1 = gp_Pnt(
@@ -159,6 +161,7 @@ const bool ImplantRegion::reg = Factory<Field>::add(
         "implant_region",
         {
             DataEntry{.name = "density_field", .type = TYPE_INT, .required = true},
+            DataEntry{.name = "display", .type = TYPE_BOOL, .required = false},
             DataEntry{.name = "geometries", .type = TYPE_ARRAY, .required = true,
                          .array_data = std::shared_ptr<ArrayRequirements>(
                              new ArrayRequirements{

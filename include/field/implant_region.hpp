@@ -71,8 +71,6 @@ class ImplantRegion : public ScalarField {
     Visualization* viz;
 
     bool show;
-    size_t DIM;
-    size_t NODES_PER_ELEM;
 
     ViewHandler* density = nullptr;
 };
