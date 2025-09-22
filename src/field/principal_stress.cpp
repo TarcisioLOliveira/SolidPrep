@@ -240,14 +240,14 @@ void PrincipalStress::display_views() const{
         // Assuming per-element rotation matrix storage
         for(const auto& g:geoms){
             for(const auto& e:g->mesh){
-                const auto dirs = this->get_array(e.get(), e->get_centroid());
+                const auto dirs = this->get_matrix(e.get(), e->get_centroid());
                 for(size_t i = 0; i < nodes_per_elem; ++i){
                     const auto n = e->nodes[i];
                     const size_t id = id_pos_map.at(n->id);
                     for(size_t j = 0; j < 3; ++j){
-                        L_vecs[id*3 + j] += dirs[2].Coord(1+j);
-                        R_vecs[id*3 + j] += dirs[1].Coord(1+j);
-                        T_vecs[id*3 + j] += dirs[0].Coord(1+j);
+                        L_vecs[id*3 + j] += dirs(j,2);
+                        R_vecs[id*3 + j] += dirs(j,1);
+                        T_vecs[id*3 + j] += dirs(j,0);
                     }
                 }
             }

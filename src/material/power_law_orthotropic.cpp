@@ -91,7 +91,7 @@ math::Matrix PowerLawOrthotropic::stiffness_inverse_2D(const MeshElement* const 
 
     if(this->direction_field != nullptr){
         const auto M = this->direction_field->get_matrix(e, p);
-        const auto R = utils::basis_tensor_2D_inv_T(M);
+        const auto R = utils::basis_tensor_2D_inv_T(M.T());
         
         return R*S_2D*R.T();
     } else {
@@ -124,7 +124,7 @@ math::Matrix PowerLawOrthotropic::stiffness_inverse_3D(const MeshElement* const 
 
     if(this->direction_field != nullptr){
         const auto M = this->direction_field->get_matrix(e, p);
-        const auto R = utils::basis_tensor_3D_inv_T(M);
+        const auto R = utils::basis_tensor_3D_inv_T(M.T());
         
         return R*S_3D*R.T();
     } else {

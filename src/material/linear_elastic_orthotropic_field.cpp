@@ -119,28 +119,28 @@ LinearElasticOrthotropicField::LinearElasticOrthotropicField(const projspec::Dat
 }
 math::Matrix LinearElasticOrthotropicField::stiffness_2D(const MeshElement* const e, const gp_Pnt& p) const{
     const auto M = this->field->get_matrix(e, p);
-    const auto R = utils::basis_tensor_2D(M);
+    const auto R = utils::basis_tensor_2D(M.T());
     const auto& D = this->D_2D;
 
     return R*D*R.T();
 }
 math::Matrix LinearElasticOrthotropicField::stiffness_3D(const MeshElement* const e, const gp_Pnt& p) const{
     const auto M = this->field->get_matrix(e, p);
-    const auto R = utils::basis_tensor_3D(M);
+    const auto R = utils::basis_tensor_3D(M.T());
     const auto& D = this->D_3D;
 
     return R*D*R.T();
 }
 math::Matrix LinearElasticOrthotropicField::stiffness_inverse_2D(const MeshElement* const e, const gp_Pnt& p) const{
     const auto M = this->field->get_matrix(e, p);
-    const auto R = utils::basis_tensor_2D_inv_T(M);
+    const auto R = utils::basis_tensor_2D_inv_T(M.T());
     const auto& S = this->S_2D;
 
     return R*S*R.T();
 }
 math::Matrix LinearElasticOrthotropicField::stiffness_inverse_3D(const MeshElement* const e, const gp_Pnt& p) const{
     const auto M = this->field->get_matrix(e, p);
-    const auto R = utils::basis_tensor_3D_inv_T(M);
+    const auto R = utils::basis_tensor_3D_inv_T(M.T());
     const auto& S = this->S_3D;
 
     return R*S*R.T();
