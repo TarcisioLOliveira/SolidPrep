@@ -84,7 +84,9 @@ void TrabecularCutoff::generate() {
 }
 
 void TrabecularCutoff::initialize_views(Visualization* viz) {
-    this->distr = viz->add_view("Cortical/Trabecular", spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::DENSITY);
+    if(this->show){
+        this->distr = viz->add_view("Cortical/Trabecular", spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::DENSITY);
+    }
 }
 void TrabecularCutoff::display_views() const {
     if(this->show){
