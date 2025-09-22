@@ -7,6 +7,7 @@ set(SOURCES_MATERIAL
     linear_elastic_orthotropic_field.cpp
     power_law_isotropic.cpp
     power_law_orthotropic.cpp
+    bone.cpp
 )
 
 add_library(material OBJECT ${SOURCES_MATERIAL})

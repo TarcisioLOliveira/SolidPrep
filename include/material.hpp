@@ -43,6 +43,7 @@ class Material{
         LINEAR_ELASTIC_ORTHOTROPIC_FIELD,
         POWER_LAW_ISOTROPIC,
         POWER_LAW_ORTHOTROPIC,
+        BONE,
     };
     enum Class{
         ISOTROPIC,
