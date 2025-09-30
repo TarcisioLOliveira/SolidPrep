@@ -61,6 +61,8 @@ class PowerLawOrthotropic : public Material{
     }
 
     private:
+    math::Matrix S_2D_base(const MeshElement* const e, const gp_Pnt& p) const;
+    math::Matrix S_3D_base(const MeshElement* const e, const gp_Pnt& p) const;
     static const bool reg;
     ScalarField* density_field;
     CoordinateField* direction_field;

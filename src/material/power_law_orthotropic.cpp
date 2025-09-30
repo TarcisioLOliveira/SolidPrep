@@ -63,17 +63,7 @@ PowerLawOrthotropic::PowerLawOrthotropic(const projspec::DataMap& data):
 
     }
 }
-math::Matrix PowerLawOrthotropic::stiffness_2D(const MeshElement* const e, const gp_Pnt& p) const{
-    auto D_2D = this->stiffness_inverse_2D(e, p);
-    D_2D.invert_cholesky();
-    return D_2D;
-}
-math::Matrix PowerLawOrthotropic::stiffness_3D(const MeshElement* const e, const gp_Pnt& p) const{
-    auto D_3D = this->stiffness_inverse_3D(e, p);
-    D_3D.invert_cholesky();
-    return D_3D;
-}
-math::Matrix PowerLawOrthotropic::stiffness_inverse_2D(const MeshElement* const e, const gp_Pnt& p) const{
+math::Matrix PowerLawOrthotropic::S_2D_base(const MeshElement* const e, const gp_Pnt& p) const{
     math::Matrix S_2D(3,3);
     const double rho = this->density_field->get(e, p);
     const std::array<double, 2> E = {
@@ -89,16 +79,9 @@ math::Matrix PowerLawOrthotropic::stiffness_inverse_2D(const MeshElement* const 
     S_2D.data()[3] = Sxy; S_2D.data()[4] = 1/E[1];
     S_2D.data()[8] = 1/G;
 
-    if(this->direction_field != nullptr){
-        const auto M = this->direction_field->get_matrix(e, p);
-        const auto R = utils::basis_tensor_2D_inv_T(M.T());
-        
-        return R*S_2D*R.T();
-    } else {
-        return S_2D;
-    }
+    return S_2D;
 }
-math::Matrix PowerLawOrthotropic::stiffness_inverse_3D(const MeshElement* const e, const gp_Pnt& p) const{
+math::Matrix PowerLawOrthotropic::S_3D_base(const MeshElement* const e, const gp_Pnt& p) const{
     math::Matrix S_3D(6,6);
     const double rho = this->density_field->get(e, p);
     const std::array<double, 3> E = {
@@ -121,6 +104,49 @@ math::Matrix PowerLawOrthotropic::stiffness_inverse_3D(const MeshElement* const 
     S_3D.data()[21] = 1/G[0];
     S_3D.data()[28] = 1/G[1];
     S_3D.data()[35] = 1/G[2];
+
+    return S_3D;
+}
+math::Matrix PowerLawOrthotropic::stiffness_2D(const MeshElement* const e, const gp_Pnt& p) const{
+    auto D_2D = this->S_2D_base(e, p);
+    D_2D.invert_cholesky();
+
+    if(this->direction_field != nullptr){
+        const auto M = this->direction_field->get_matrix(e, p);
+        const auto R = utils::basis_tensor_2D(M.T());
+        
+        return R*D_2D*R.T();
+    } else {
+        return D_2D;
+    }
+}
+math::Matrix PowerLawOrthotropic::stiffness_3D(const MeshElement* const e, const gp_Pnt& p) const{
+    auto D_3D = this->S_3D_base(e, p);
+    D_3D.invert_cholesky();
+
+    if(this->direction_field != nullptr){
+        const auto M = this->direction_field->get_matrix(e, p);
+        const auto R = utils::basis_tensor_3D(M.T());
+        
+        return R*D_3D*R.T();
+    } else {
+        return D_3D;
+    }
+}
+math::Matrix PowerLawOrthotropic::stiffness_inverse_2D(const MeshElement* const e, const gp_Pnt& p) const{
+    const auto S_2D = this->S_2D_base(e, p);
+
+    if(this->direction_field != nullptr){
+        const auto M = this->direction_field->get_matrix(e, p);
+        const auto R = utils::basis_tensor_2D_inv_T(M.T());
+        
+        return R*S_2D*R.T();
+    } else {
+        return S_2D;
+    }
+}
+math::Matrix PowerLawOrthotropic::stiffness_inverse_3D(const MeshElement* const e, const gp_Pnt& p) const{
+    const auto S_3D = this->S_3D_base(e, p);
 
     if(this->direction_field != nullptr){
         const auto M = this->direction_field->get_matrix(e, p);
