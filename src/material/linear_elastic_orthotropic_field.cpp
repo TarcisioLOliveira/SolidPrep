@@ -172,7 +172,7 @@ std::array<double, 2> LinearElasticOrthotropicField::beam_EG_2D(const MeshElemen
     const auto Rt = utils::basis_tensor_2D_inv_T(R);
     const auto Sr = Rt*S*Rt.T();
 
-    return {1.0/Sr(0,0), 1.0/S(2,2)};
+    return {1.0/Sr(0,0), 1.0/Sr(2,2)};
 }
 std::array<double, 4> LinearElasticOrthotropicField::beam_EG_3D(const MeshElement* const e, const gp_Pnt& p, const math::Matrix& R) const{
     // Anisotropic Elasticity: Theory and Applications
@@ -182,7 +182,7 @@ std::array<double, 4> LinearElasticOrthotropicField::beam_EG_3D(const MeshElemen
     const auto Rt = utils::basis_tensor_3D_inv_T(R);
     const auto Sr = Rt*S*Rt.T();
 
-    return {1.0/S(0,0), 1.0/S(3,3), 1.0/S(4,4), 1.0/S(5,5)};
+    return {1.0/Sr(0,0), 1.0/Sr(3,3), 1.0/Sr(4,4), 1.0/Sr(5,5)};
 }
 
 std::vector<double> LinearElasticOrthotropicField::get_max_stresses(gp_Dir d) const{
