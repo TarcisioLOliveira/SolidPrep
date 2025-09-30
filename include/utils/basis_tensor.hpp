@@ -33,6 +33,9 @@ math::Matrix basis_tensor_2D_inv_T(const math::Matrix& R);
 math::Matrix basis_tensor_3D(const math::Matrix& R);
 math::Matrix basis_tensor_3D_inv_T(const math::Matrix& R);
 
+math::Matrix basis_tensor_3D_d1(const math::Matrix& R, const math::Matrix& dR);
+math::Matrix basis_tensor_3D_inv_T_d1(const math::Matrix& R, const math::Matrix& dR);
+
 }
 
 #endif
