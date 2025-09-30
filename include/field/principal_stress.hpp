@@ -22,7 +22,6 @@
 #define PRINCIPAL_STRESS_HPP
 
 #include <map>
-#include <unordered_map>
 #include <vector>
 #include "field.hpp"
 #include "math/matrix.hpp"
@@ -52,8 +51,6 @@ class PrincipalStress : public CoordinateField {
     inline virtual bool is_fea_dependent() const override{ return true; }
 
     private:
-    void generate_matrices(const std::vector<double>& u);
-
     static const bool reg;
     class UniqueNodeForView{
         public:
@@ -68,17 +65,17 @@ class PrincipalStress : public CoordinateField {
     utils::DelayedPointerView<Material> initial_material;
     const MeshElementFactory* elem_info;
     std::vector<Geometry*> geoms;
-    std::vector<double> matrices;
     double thickness;
     bool show;
     size_t DIM;
     size_t NODES_PER_ELEM;
     bool first_run = true;
-    bool lock = false;
+    std::vector<double> u;
     const size_t max_it;
     const bool use_strain;
 
-    std::map<size_t, size_t> elem_pos_map;
+    std::map<size_t, size_t> id_pos_map;
+    std::vector<UniqueNodeForView> node_view_list;
 
     Visualization* viz;
 
