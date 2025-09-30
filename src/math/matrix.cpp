@@ -27,6 +27,98 @@
 
 namespace math{
 
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////// MATRIX SLICE ////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+
+MatrixSlice& MatrixSlice::operator+=(const Matrix& m){
+    logger::log_assert(this->get_W() == m.get_W() && this->get_H() == m.get_H(),
+                       logger::ERROR,
+                       "incompatible dimensions in matrix sum: ({}, {}) and ({}, {})",
+                       this->get_H(), this->get_W(), m.get_H(), m.get_W());
+
+    for(size_t i = 0; i < this->get_H(); ++i){
+        for(size_t j = 0; j < this->get_W(); ++j){
+            this->at(i,j) += m(i, j);
+        }
+    }
+
+    return *this;
+}
+MatrixSlice& MatrixSlice::operator-=(const Matrix& m){
+    logger::log_assert(this->get_W() == m.get_W() && this->get_H() == m.get_H(),
+                       logger::ERROR,
+                       "incompatible dimensions in matrix sum: ({}, {}) and ({}, {})",
+                       this->get_H(), this->get_W(), m.get_H(), m.get_W());
+
+    for(size_t i = 0; i < this->get_H(); ++i){
+        for(size_t j = 0; j < this->get_W(); ++j){
+            this->at(i,j) -= m(i, j);
+        }
+    }
+
+    return *this;
+}
+MatrixSlice& MatrixSlice::operator+=(const MatrixTransposeView& m){
+    logger::log_assert(this->get_W() == m.get_W() && this->get_H() == m.get_H(),
+                       logger::ERROR,
+                       "incompatible dimensions in matrix sum: ({}, {}) and ({}, {})",
+                       this->get_H(), this->get_W(), m.get_H(), m.get_W());
+
+    for(size_t i = 0; i < this->get_H(); ++i){
+        for(size_t j = 0; j < this->get_W(); ++j){
+            this->at(i,j) += m(i, j);
+        }
+    }
+
+    return *this;
+}
+MatrixSlice& MatrixSlice::operator-=(const MatrixTransposeView& m){
+    logger::log_assert(this->get_W() == m.get_W() && this->get_H() == m.get_H(),
+                       logger::ERROR,
+                       "incompatible dimensions in matrix sum: ({}, {}) and ({}, {})",
+                       this->get_H(), this->get_W(), m.get_H(), m.get_W());
+
+    for(size_t i = 0; i < this->get_H(); ++i){
+        for(size_t j = 0; j < this->get_W(); ++j){
+            this->at(i,j) -= m(i, j);
+        }
+    }
+
+    return *this;
+}
+
+MatrixSlice& MatrixSlice::operator+=(const MatrixSlice& m){
+    logger::log_assert(this->get_W() == m.get_W() && this->get_H() == m.get_H(),
+                       logger::ERROR,
+                       "incompatible dimensions in matrix sum: ({}, {}) and ({}, {})",
+                       this->get_H(), this->get_W(), m.get_H(), m.get_W());
+
+    for(size_t i = 0; i < this->get_H(); ++i){
+        for(size_t j = 0; j < this->get_W(); ++j){
+            this->at(i,j) += m(i, j);
+        }
+    }
+
+    return *this;
+}
+MatrixSlice& MatrixSlice::operator-=(const MatrixSlice& m){
+    logger::log_assert(this->get_W() == m.get_W() && this->get_H() == m.get_H(),
+                       logger::ERROR,
+                       "incompatible dimensions in matrix sum: ({}, {}) and ({}, {})",
+                       this->get_H(), this->get_W(), m.get_H(), m.get_W());
+
+    for(size_t i = 0; i < this->get_H(); ++i){
+        for(size_t j = 0; j < this->get_W(); ++j){
+            this->at(i,j) -= m(i, j);
+        }
+    }
+
+    return *this;
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 //////////////////////////////// MATRIX ///////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
@@ -60,6 +152,15 @@ Matrix::Matrix(std::initializer_list<Scalar> m, size_t H, size_t W):
             "incorrect dimensions for Matrix");
 
     std::copy(m.begin(), m.end(), this->M);
+}
+Matrix::Matrix(const MatrixSlice& m):
+    H(m.get_H()), W(m.get_W()), M(new Scalar[W*H])
+{
+    for(size_t i = 0; i < H; ++i){
+        for(size_t j = 0; j < W; ++j){
+            this->at(i,j) = m(i, j);
+        }
+    }
 }
 
 void Matrix::fill(Scalar s){
@@ -175,6 +276,25 @@ Matrix& Matrix::operator=(Matrix&& m){
     m.M = nullptr;
 
     return *this;
+}
+Matrix& Matrix::operator=(const MatrixSlice& m){
+    const auto mW = m.get_W();
+    const auto mH = m.get_H();
+    if(W*H != mW*mH){
+        delete[] this->M;
+        this->M = new Scalar[mW*mH];
+    }
+    W = mW;
+    H = mH;
+
+    for(size_t i = 0; i < H; ++i){
+        for(size_t j = 0; j < W; ++j){
+            this->at(i,j) = m(i, j);
+        }
+    }
+
+    return *this;
+
 }
 
 Matrix& Matrix::operator=(const MatrixTransposeView& m){
@@ -296,6 +416,35 @@ Matrix& Matrix::operator-=(const MatrixTransposeView& m){
     return *this;
 }
 
+Matrix& Matrix::operator+=(const MatrixSlice& m){
+    logger::log_assert(W == m.get_W() && H == m.get_H(),
+                       logger::ERROR,
+                       "incompatible dimensions in matrix sum: ({}, {}) and ({}, {})",
+                       H, W, m.get_H(), m.get_W());
+
+    for(size_t i = 0; i < H; ++i){
+        for(size_t j = 0; j < W; ++j){
+            this->at(i,j) += m(i, j);
+        }
+    }
+
+    return *this;
+}
+Matrix& Matrix::operator-=(const MatrixSlice& m){
+    logger::log_assert(W == m.get_W() && H == m.get_H(),
+                       logger::ERROR,
+                       "incompatible dimensions in matrix difference: ({}, {}) and ({}, {})",
+                       H, W, m.get_H(), m.get_W());
+
+    for(size_t i = 0; i < H; ++i){
+        for(size_t j = 0; j < W; ++j){
+            this->at(i,j) -= m(i, j);
+        }
+    }
+
+    return *this;
+}
+
 Matrix& Matrix::operator*=(Scalar s){
     for(Scalar* mi = M; mi < M + W*H; ++mi){
         *mi *= s;
@@ -342,6 +491,39 @@ Matrix Matrix::operator*(const Matrix& m) const{
 
     return r;
 }
+Matrix Matrix::operator+(const MatrixSlice& m) const{
+    Matrix m2(*this);
+    m2 += m;
+
+    return m2;
+}
+Matrix Matrix::operator-(const MatrixSlice& m) const{
+    Matrix m2(*this);
+    m2 -= m;
+
+    return m2;
+}
+
+Matrix Matrix::operator*(const MatrixSlice& m) const{
+    logger::log_assert(W == m.get_H(),
+                       logger::ERROR,
+                       "incompatible dimensions in matrix multiplication: ({}, {}) and ({}, {})",
+                       H, W, m.get_H(), m.get_W());
+
+    Matrix r(H, m.get_W());
+
+    for(size_t i = 0; i < r.H; ++i){
+        for(size_t k = 0; k < this->W; ++k){
+            const double tmp = this->at(i,k);
+            for(size_t j = 0; j < r.W; ++j){
+                r(i,j) += tmp*m(k,j);
+            }
+        }
+    }
+
+    return r;
+}
+
 Matrix Matrix::operator*(const MatrixTransposeView& m) const{
     logger::log_assert(W == m.H,
                        logger::ERROR,
@@ -366,6 +548,35 @@ Vector Matrix::operator*(const VectorNonTransposed& v) const{
     logger::log_assert(W == v.get_N(), logger::ERROR,
             "matrix and vector have incompatible dimensions: ({}, {}), ({}, 1)",
             H, W, v.get_N());
+    Vector v2(H);
+    for(size_t j = 0; j < W; ++j){
+        const double tmp = v[j];
+        for(size_t i = 0; i < H; ++i){
+            v2[i] += this->at(i,j)*tmp;
+        }
+    }
+
+    return v2;
+}
+
+Vector Matrix::operator*(const VectorSlice& v) const{
+    logger::log_assert(W == v.size(), logger::ERROR,
+            "matrix and vector have incompatible dimensions: ({}, {}), ({}, 1)",
+            H, W, v.size());
+    Vector v2(H);
+    for(size_t j = 0; j < W; ++j){
+        const double tmp = v[j];
+        for(size_t i = 0; i < H; ++i){
+            v2[i] += this->at(i,j)*tmp;
+        }
+    }
+
+    return v2;
+}
+Vector Matrix::operator*(const VectorSliceView& v) const{
+    logger::log_assert(W == v.size(), logger::ERROR,
+            "matrix and vector have incompatible dimensions: ({}, {}), ({}, 1)",
+            H, W, v.size());
     Vector v2(H);
     for(size_t j = 0; j < W; ++j){
         const double tmp = v[j];
@@ -502,10 +713,83 @@ Matrix MatrixTransposeView::operator*(const Matrix& m) const{
     return r;
 }
 
+Matrix MatrixTransposeView::operator+(const MatrixSlice& m) const{
+    Matrix m2(m);
+    m2 += *this;
+
+    return m2;
+}
+Matrix MatrixTransposeView::operator-(const MatrixSlice& m) const{
+    const size_t mW = m.get_W();
+    const size_t mH = m.get_H();
+    logger::log_assert(W == mW && H == mH,
+                       logger::ERROR,
+                       "incompatible dimensions in matrix difference: ({}, {}) and ({}, {})",
+                       H, W, mH, mW);
+    Matrix m2(H, W);
+    for(size_t i = 0; i < H; ++i){
+        for(size_t j = 0; j < W; ++j){
+            m2(i,j) = this->at(i,j) -  m(i, j);
+        }
+    }
+
+    return m2;
+}
+Matrix MatrixTransposeView::operator*(const MatrixSlice& m) const{
+    const size_t mW = m.get_W();
+    const size_t mH = m.get_H();
+    logger::log_assert(W == mH,
+                       logger::ERROR,
+                       "incompatible dimensions in matrix multiplication: ({}, {}) and ({}, {})",
+                       H, W, mH, mW);
+
+    Matrix r(H, mW);
+
+    for(size_t i = 0; i < H; ++i){
+        for(size_t k = 0; k < this->W; ++k){
+            const double tmp = this->at(i,k);
+            for(size_t j = 0; j < mW; ++j){
+                r(i,j) += tmp*m(k,j);
+            }
+        }
+    }
+
+    return r;
+}
+
 Vector MatrixTransposeView::operator*(const VectorNonTransposed& v) const{
     logger::log_assert(W == v.get_N(), logger::ERROR,
             "matrix and vector have incompatible dimensions: ({}, {}), ({}, 1)",
             H, W, v.get_N());
+    Vector v2(H);
+    for(size_t j = 0; j < W; ++j){
+        const double tmp = v[j];
+        for(size_t i = 0; i < H; ++i){
+            v2[i] += this->at(i,j)*tmp;
+        }
+    }
+
+    return v2;
+}
+
+Vector MatrixTransposeView::operator*(const VectorSlice& v) const{
+    logger::log_assert(W == v.size(), logger::ERROR,
+            "matrix and vector have incompatible dimensions: ({}, {}), ({}, 1)",
+            H, W, v.size());
+    Vector v2(H);
+    for(size_t j = 0; j < W; ++j){
+        const double tmp = v[j];
+        for(size_t i = 0; i < H; ++i){
+            v2[i] += this->at(i,j)*tmp;
+        }
+    }
+
+    return v2;
+}
+Vector MatrixTransposeView::operator*(const VectorSliceView& v) const{
+    logger::log_assert(W == v.size(), logger::ERROR,
+            "matrix and vector have incompatible dimensions: ({}, {}), ({}, 1)",
+            H, W, v.size());
     Vector v2(H);
     for(size_t j = 0; j < W; ++j){
         const double tmp = v[j];
@@ -812,8 +1096,8 @@ Vector& Vector::operator-=(const VectorNonTransposed& v){
 Vector& Vector::operator=(const Vector& v){
     if(N != v.N){
         delete[] this->V;
-        this->V = new Scalar[N];
         this->N = v.N;
+        this->V = new Scalar[N];
     }
 
     std::copy(v.V, v.V + N, this->V);

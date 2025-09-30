@@ -22,8 +22,10 @@
 #define MATH_MATRIX_HPP
 
 #include "logger.hpp"
+#include "math/vector_view.hpp"
 #include <cstddef>
 #include <initializer_list>
+#include <numeric>
 #include <ostream>
 #include <utility>
 #include <vector>
@@ -40,6 +42,51 @@ class VectorAgnostic;
 class VectorTransposed;
 class VectorNonTransposed;
 
+class MatrixSlice{
+    public:
+    friend class Matrix;
+    MatrixSlice() = delete;
+    ~MatrixSlice() = default;
+
+    inline size_t get_H() const{
+        return this->pos_i.size();
+    }
+    inline size_t get_W() const{
+        return this->pos_j.size();
+    }
+
+    inline Scalar at(const size_t i, const size_t j) const{
+        return this->M[pos_i[i]*W + pos_j[j]];
+    }
+    inline Scalar& at(const size_t i, const size_t j){
+        return this->M[pos_i[i]*W + pos_j[j]];
+    }
+    inline Scalar operator()(const size_t i, const size_t j) const{
+        return this->M[pos_i[i]*W + pos_j[j]];
+    }
+    inline Scalar& operator()(const size_t i, const size_t j){
+        return this->M[pos_i[i]*W + pos_j[j]];
+    }
+
+    MatrixSlice& operator+=(const Matrix& m);
+    MatrixSlice& operator-=(const Matrix& m);
+    MatrixSlice& operator+=(const MatrixTransposeView& m);
+    MatrixSlice& operator-=(const MatrixTransposeView& m);
+    MatrixSlice& operator+=(const MatrixSlice& m);
+    MatrixSlice& operator-=(const MatrixSlice& m);
+
+    private:
+    MatrixSlice(Scalar* m, const size_t W, std::vector<size_t> pos_i, std::vector<size_t> pos_j):
+        pos_i(std::move(pos_i)),
+        pos_j(std::move(pos_j)),
+        W(W),
+        M(m)
+    {}
+    const std::vector<size_t> pos_i, pos_j;
+    const size_t W;
+    Scalar* M;
+};
+
 class Matrix{
     public:
     Matrix() = default;
@@ -47,6 +94,7 @@ class Matrix{
     Matrix(std::vector<Scalar> m, size_t H, size_t W);
     Matrix(std::initializer_list<Scalar> m, size_t H, size_t W);
     Matrix(size_t H, size_t W, Scalar s = 0);
+    Matrix(const MatrixSlice& m);
     ~Matrix();
     Matrix(const Matrix& m);
     Matrix(Matrix&& m);
@@ -54,6 +102,24 @@ class Matrix{
 
     static Matrix identity(size_t N);
     static Matrix diag(const Vector& v);
+
+    inline std::vector<size_t> all_i() const{
+        std::vector<size_t> pos_i(this->H);
+        std::iota(pos_i.begin(), pos_i.end(), 0);
+        return pos_i;
+    }
+    inline std::vector<size_t> all_j() const{
+        std::vector<size_t> pos_j(this->W);
+        std::iota(pos_j.begin(), pos_j.end(), 0);
+        return pos_j;
+    }
+
+    inline MatrixSlice slice(std::vector<size_t> pos_i, std::vector<size_t> pos_j){
+        return MatrixSlice(this->M, this->W, pos_i, pos_j);
+    }
+    inline MatrixSlice slice(std::vector<size_t> pos_i, std::vector<size_t> pos_j) const{
+        return MatrixSlice(this->M, this->W, pos_i, pos_j);
+    }
 
     inline size_t get_H() const{
         return this->H;
@@ -95,6 +161,7 @@ class Matrix{
     Matrix& operator=(const Matrix& m);
     Matrix& operator=(Matrix&& m);
     Matrix& operator=(const MatrixTransposeView& m);
+    Matrix& operator=(const MatrixSlice& m);
 
     inline const Matrix& operator+() const{
         return *this;
@@ -105,12 +172,21 @@ class Matrix{
     Matrix& operator-=(const Matrix& m);
     Matrix& operator+=(const MatrixTransposeView& m);
     Matrix& operator-=(const MatrixTransposeView& m);
+    Matrix& operator+=(const MatrixSlice& m);
+    Matrix& operator-=(const MatrixSlice& m);
 
     Matrix operator+(const Matrix& m) const;
     Matrix operator-(const Matrix& m) const;
     Matrix operator*(const Matrix& m) const;
+    Matrix operator+(const MatrixSlice& m) const;
+    Matrix operator-(const MatrixSlice& m) const;
+    Matrix operator*(const MatrixSlice& m) const;
     Matrix operator*(const MatrixTransposeView& m) const;
     Vector operator*(const VectorNonTransposed& v) const;
+    Vector operator*(const VectorSlice& v) const;
+    Vector operator*(const VectorSliceView& v) const;
+    template<typename P>
+    Vector operator*(const VectorSliceGeneralView<Scalar, P>& v) const;
 
     Matrix& operator*=(Scalar s);
     Matrix& operator/=(Scalar s);
@@ -164,7 +240,14 @@ class MatrixTransposeView{
     Matrix operator+(const Matrix& m) const;
     Matrix operator-(const Matrix& m) const;
     Matrix operator*(const Matrix& m) const;
+    Matrix operator+(const MatrixSlice& m) const;
+    Matrix operator-(const MatrixSlice& m) const;
+    Matrix operator*(const MatrixSlice& m) const;
     Vector operator*(const VectorNonTransposed& v) const;
+    Vector operator*(const VectorSlice& v) const;
+    Vector operator*(const VectorSliceView& v) const;
+    template<typename P>
+    Vector operator*(const VectorSliceGeneralView<Scalar, P>& v) const;
 
     Matrix operator*(Scalar s) const;
     Matrix operator/(Scalar s) const;
@@ -338,6 +421,40 @@ class VectorBase{
         double sum = 0;
         for(size_t i = 0; i < N; ++i){
             sum += V[i] * v.V[i];
+        }
+
+        return sum;
+    }
+    double dot(const VectorSlice& v) const{
+        logger::log_assert(N == v.size(), logger::ERROR,
+                "vectors have different sizes: {}, {}",
+                N, v.size());
+        double sum = 0;
+        for(size_t i = 0; i < N; ++i){
+            sum += V[i] * v[i];
+        }
+
+        return sum;
+    }
+    double dot(const VectorSliceView& v) const{
+        logger::log_assert(N == v.size(), logger::ERROR,
+                "vectors have different sizes: {}, {}",
+                N, v.size());
+        double sum = 0;
+        for(size_t i = 0; i < N; ++i){
+            sum += V[i] * v[i];
+        }
+
+        return sum;
+    }
+    template<typename P>
+    double dot(const VectorSliceGeneralView<Scalar, P>& v) const{
+        logger::log_assert(N == v.size(), logger::ERROR,
+                "vectors have different sizes: {}, {}",
+                N, v.size());
+        double sum = 0;
+        for(size_t i = 0; i < N; ++i){
+            sum += V[i] * v[i];
         }
 
         return sum;
@@ -664,6 +781,38 @@ class Eigen{
     Matrix eigenvectors;
     Vector eigenvalues;
 };
+
+
+template<typename P>
+Vector Matrix::operator*(const VectorSliceGeneralView<Scalar, P>& v) const{
+    logger::log_assert(W == v.size(), logger::ERROR,
+            "matrix and vector have incompatible dimensions: ({}, {}), ({}, 1)",
+            H, W, v.size());
+    Vector v2(H);
+    for(size_t j = 0; j < W; ++j){
+        const double tmp = v[j];
+        for(size_t i = 0; i < H; ++i){
+            v2[i] += this->at(i,j)*tmp;
+        }
+    }
+
+    return v2;
+}
+template<typename P>
+Vector MatrixTransposeView::operator*(const VectorSliceGeneralView<Scalar, P>& v) const{
+    logger::log_assert(W == v.size(), logger::ERROR,
+            "matrix and vector have incompatible dimensions: ({}, {}), ({}, 1)",
+            H, W, v.size());
+    Vector v2(H);
+    for(size_t j = 0; j < W; ++j){
+        const double tmp = v[j];
+        for(size_t i = 0; i < H; ++i){
+            v2[i] += this->at(i,j)*tmp;
+        }
+    }
+
+    return v2;
+}
 
 }
 
