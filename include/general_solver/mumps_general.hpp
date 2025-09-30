@@ -42,6 +42,7 @@ class MUMPSGeneral{
     void compute();
 
     void solve(std::vector<double>& x);
+    void solve_adjoint(std::vector<double>& x);
 
     inline void print_matrix() const{
         this->M.print_matrix();

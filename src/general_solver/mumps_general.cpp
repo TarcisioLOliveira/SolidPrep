@@ -137,6 +137,17 @@ void MUMPSGeneral::compute(){
 void MUMPSGeneral::solve(std::vector<double>& x){
     logger::log_assert(this->factorized, logger::ERROR, "matrix was not factorized");
 
+    this->config.ICNTL(9) = 1; // Do not use transposed matrix
+    this->config.job = 3; // Solve using decomposed matrix
+    this->config.rhs = x.data(); // Set right-hand side
+
+    dmumps_c(&this->config);
+}
+
+void MUMPSGeneral::solve_adjoint(std::vector<double>& x){
+    logger::log_assert(this->factorized, logger::ERROR, "matrix was not factorized");
+
+    this->config.ICNTL(9) = 2; // Use transposed matrix
     this->config.job = 3; // Solve using decomposed matrix
     this->config.rhs = x.data(); // Set right-hand side
 
