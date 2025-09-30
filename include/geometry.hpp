@@ -45,7 +45,7 @@ class Geometry{
     void get_stresses(const std::vector<double>& u, bool topopt, size_t& D_offset, const std::vector<math::Matrix>& D_cache, std::vector<double>::iterator& stress_it) const;
 
     inline void set_materials(std::vector<utils::DelayedPointerView<Material>> materials){
-        this->M = MultiMaterial(materials, this->type, this->with_void);
+        this->materials = MultiMaterial(materials, this->type, this->with_void);
     }
 
     /**
@@ -88,7 +88,7 @@ class Geometry{
     }
 
     TopoDS_Shape shape;
-    MultiMaterial& materials = this->M;
+    MultiMaterial materials;
     const MeshElementFactory* const element_type;
     const bool do_topopt;
     const bool with_void;
@@ -101,7 +101,6 @@ class Geometry{
     std::vector<MeshNode*> boundary_node_list; 
     private:
     const utils::ProblemType type;
-    MultiMaterial M;
 
     inline bool is_inside_2D(const gp_Pnt& p) const{
         BRepClass3d_SolidClassifier insider(this->shape, p, 0.01);
