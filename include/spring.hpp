@@ -42,6 +42,7 @@ class Spring{
     void generate_mesh(std::vector<BoundaryElement>& boundary_elements);
 
     math::Matrix get_K(const MeshElement* const e, const gp_Pnt& p) const;
+    math::Matrix get_dK(const math::Matrix& S, const math::Matrix& dS) const;
 
     const CrossSection S;
     const double A;

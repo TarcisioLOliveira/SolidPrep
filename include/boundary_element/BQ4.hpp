@@ -48,11 +48,13 @@ class BQ4 : public BoundaryMeshElement{
     BQ4(ElementShape s, const MeshElement* const parent);
 
     virtual math::Matrix get_K_ext(const math::Matrix& D, const gp_Pnt& center) const override;
-    virtual math::Vector get_normal_stresses(const math::Matrix& D, const std::vector<double>& u, const gp_Pnt& p, const gp_Pnt& center) const override;
     virtual math::Matrix get_stress_integrals(const math::Matrix& D, const gp_Pnt& center) const override;
     virtual math::Matrix get_equilibrium_partial(const math::Matrix& D, const gp_Pnt& center, const std::vector<size_t>& stresses) const override;
     virtual math::Vector get_dz_vector(const math::Matrix& S, const math::Matrix& D, const double Az, const double Bz, const gp_Pnt& center) const override;
-    virtual math::Vector get_force_vector(const math::Matrix& D, const std::vector<double>& u, const gp_Pnt& center, const math::Matrix& rot) const override;
+    virtual math::Matrix get_dz_vector_matrix(const math::Matrix& S, const math::Matrix& D, const gp_Pnt& center) const override;
+    virtual math::Matrix get_dz_vector_matrix_1d(const math::Matrix& S, const math::Matrix& D, const math::Matrix& dS, const math::Matrix& dD, const gp_Pnt& center) const override;
+    virtual math::Vector get_force_vector(const math::Matrix& D, const std::vector<double>& u, const gp_Pnt& center, const math::Matrix& rot, const bool transpose) const override;
+    virtual math::Matrix get_force_vector_matrix(const math::Matrix& D, const gp_Pnt& center, const math::Matrix& rot) const override;
 
     virtual math::Matrix diffusion_1dof(const math::Matrix& A) const override;
     virtual math::Matrix advection_1dof(const math::Vector& v) const override;

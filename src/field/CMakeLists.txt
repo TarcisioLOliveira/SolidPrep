@@ -6,6 +6,7 @@ set(SOURCES_FIELD
     apparent_density.cpp
     trabecular_cutoff.cpp
     implant_region.cpp
+    minimum_energy_orientation.cpp
 )
 
 add_library(field OBJECT ${SOURCES_FIELD})

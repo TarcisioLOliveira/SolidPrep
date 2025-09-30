@@ -615,11 +615,13 @@ class BoundaryMeshElement : public Element{
     virtual ~BoundaryMeshElement() = default;
 
     virtual math::Matrix get_K_ext(const math::Matrix& D, const gp_Pnt& center) const = 0;
-    virtual math::Vector get_normal_stresses(const math::Matrix& D, const std::vector<double>& u, const gp_Pnt& p, const gp_Pnt& center) const = 0;
     virtual math::Matrix get_stress_integrals(const math::Matrix& D, const gp_Pnt& center) const = 0;
     virtual math::Matrix get_equilibrium_partial(const math::Matrix& D, const gp_Pnt& center, const std::vector<size_t>& stresses) const = 0;
     virtual math::Vector get_dz_vector(const math::Matrix& S, const math::Matrix& D, const double Az, const double Bz, const gp_Pnt& center) const = 0;
-    virtual math::Vector get_force_vector(const math::Matrix& D, const std::vector<double>& u, const gp_Pnt& center, const math::Matrix& rot) const = 0;
+    virtual math::Matrix get_dz_vector_matrix(const math::Matrix& S, const math::Matrix& D, const gp_Pnt& center) const = 0;
+    virtual math::Matrix get_dz_vector_matrix_1d(const math::Matrix& S, const math::Matrix& D, const math::Matrix& dS, const math::Matrix& dD, const gp_Pnt& center) const = 0;
+    virtual math::Vector get_force_vector(const math::Matrix& D, const std::vector<double>& u, const gp_Pnt& center, const math::Matrix& rot, const bool transpose = false) const = 0;
+    virtual math::Matrix get_force_vector_matrix(const math::Matrix& D, const gp_Pnt& center, const math::Matrix& rot) const = 0;
 
     /**
      * Returns a 1 degree of freedom diffusion matrix.

@@ -23,6 +23,7 @@
 
 #include <memory>
 #include <gp_Dir.hxx>
+#include "general_solver/mumps_general.hpp"
 #include "material.hpp"
 #include "element.hpp"
 #include "element_factory.hpp"
@@ -32,27 +33,36 @@
 class Curvature{
     public:
 
-    Curvature(const Material* mat, math::Matrix rot2D, math::Matrix rot3D, const BoundaryMeshElementFactory* elem_info, double V_u, double V_v, double V_w, double M_u, double M_v, double M_w);
+    Curvature(const Material* mat, math::Matrix rot2D, math::Matrix rot3D, std::unique_ptr<BoundaryMeshElementFactory> elem_info, double V_u, double V_v, double V_w, double M_u, double M_v, double M_w);
 
     void generate_curvature_3D(const std::vector<std::unique_ptr<MeshNode>>& boundary_nodes, const std::vector<std::unique_ptr<BoundaryMeshElement>>& boundary_mesh, size_t reduced_vector_size, size_t full_vector_size);
+
+    void solve_adjoint_problem(const std::vector<std::unique_ptr<BoundaryMeshElement>>& boundary_mesh, const std::vector<double>& fea_u);
+
+    inline void set_calculate_adjoint(){
+        this->calculate_adjoint = true;
+    }
 
     inline gp_Pnt get_center() const{
         return this->center;
     }
-    void get_stress_3D(const BoundaryMeshElement* e, double& t_uw, double& t_vw, double& s_w) const;
 
-    math::Vector get_force_vector_3D(const BoundaryMeshElement* e) const;
+    math::Vector get_force_vector_3D(const BoundaryMeshElement* const e) const;
+    double get_adjoint_gradient(const std::vector<double>& fea_u, const math::Matrix& S, const math::Matrix& D, const math::Matrix& dS, const math::Matrix& dD, const BoundaryMeshElement* const e) const;
 
     private:
     const Material* mat;
     const math::Matrix rot2D;
-    const math::Matrix Lek_basis;
+    //const math::Matrix Lek_basis;
     const math::Matrix rot3D;
-    const BoundaryMeshElementFactory* elem_info;
+    const std::unique_ptr<BoundaryMeshElementFactory> elem_info;
     const double V_u, V_v, V_w;
     const double M_u, M_v, M_w;
     size_t reduced_vec_len;
     size_t full_vector_size;
+
+    bool calculate_adjoint = false;
+    general_solver::MUMPSGeneral solver;
 
     double Area   = 0;
     double EA     = 0;
@@ -70,13 +80,16 @@ class Curvature{
     double Kxz = 0;
 
     std::vector<double> u;
+    std::vector<double> u_bar;
+    math::Vector ABz;
+    math::Vector ABz_bar;
 
-    math::Matrix permute_shear_3D;
-    math::Matrix rotate_X_Z_3D;
-    math::Matrix rotate_X_Z_3D_inv;
+    //math::Matrix permute_shear_3D;
+    //math::Matrix rotate_X_Z_3D;
+    //math::Matrix rotate_X_Z_3D_inv;
 
-    math::Matrix permute_and_rotate_3D;
-    math::Matrix permute_and_rotate_3D_inv;
+    //math::Matrix permute_and_rotate_3D;
+    //math::Matrix permute_and_rotate_3D_inv;
 
     void calculate_stress_field_3D(const std::vector<std::unique_ptr<BoundaryMeshElement>>& boundary_mesh);
 
@@ -90,6 +103,10 @@ class Curvature{
     math::Matrix get_T_D_3D(const math::Matrix& S, const math::Matrix& D) const;
     math::Matrix get_DT_3D(const math::Matrix& S, const math::Matrix& D) const;
     math::Matrix get_TDT_3D(const math::Matrix& S, const math::Matrix& D) const;
+
+    math::Matrix get_T_D_3D_1d(const math::Matrix& S, const math::Matrix& D, const math::Matrix& dS, const math::Matrix& dD) const;
+    math::Matrix get_DT_3D_1d(const math::Matrix& S, const math::Matrix& D, const math::Matrix& dS, const math::Matrix& dD) const;
+    math::Matrix get_TDT_3D_1d(const math::Matrix& S, const math::Matrix& D, const math::Matrix& dS, const math::Matrix& dD) const;
 
     void get_B_tensors_3D(const MeshElement* const e, const gp_Pnt& p, math::Matrix& B4, math::Matrix& B3, math::Matrix& B2) const;
 
@@ -123,6 +140,20 @@ class Curvature{
         const double dx = px.X() - c_u;
         const double dy = px.Y() - c_v;
         return dx*dy/S(2,2);
+    }
+
+    inline double make_EI_uu_base_3D_1d(const math::Matrix& S, const math::Matrix& dS, const gp_Pnt& px) const{
+        const double dy = px.Y() - c_v;
+        return dy*dy*dS(2,2)/(S(2,2)*S(2,2));
+    }
+    inline double make_EI_vv_base_3D_1d(const math::Matrix& S, const math::Matrix& dS, const gp_Pnt& px) const{
+        const double dx = px.X() - c_u;
+        return dx*dx*dS(2,2)/(S(2,2)*S(2,2));
+    }
+    inline double make_EI_uv_base_3D_1d(const math::Matrix& S, const math::Matrix& dS, const gp_Pnt& px) const{
+        const double dx = px.X() - c_u;
+        const double dy = px.Y() - c_v;
+        return dx*dy*dS(2,2)/(S(2,2)*S(2,2));
     }
 
     inline gp_Pnt GLT_point(const utils::GLPointTri& glp, const std::array<gp_Pnt, 3>& px) const{

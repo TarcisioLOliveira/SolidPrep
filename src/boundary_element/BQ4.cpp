@@ -23,6 +23,7 @@
 #include "element/H8.hpp"
 #include "logger.hpp"
 #include "math/matrix.hpp"
+#include "math/slicer.hpp"
 #include "utils/gauss_legendre.hpp"
 #include "element_factory.hpp"
 
@@ -80,30 +81,6 @@ math::Matrix BQ4::get_K_ext(const math::Matrix & D, const gp_Pnt& center) const{
 
     return K;
 }
-math::Vector BQ4::get_normal_stresses(const math::Matrix& D, const std::vector<double>& u, const gp_Pnt& p, const gp_Pnt& center) const{
-    const auto eps = this->get_eps(p, center);
-    math::Vector S(3);
-    math::Vector vals(K_DIM + 6);
-    const size_t offset = u.size() - 6;
-    for(size_t i = 0; i < NODES_PER_ELEM; ++i){
-        size_t pos = this->nodes[i]->id;
-        for(size_t j = 0; j < NODE_DOF; ++j){
-            vals[i*NODE_DOF + j] = u[NODE_DOF*pos + j];
-        }
-    }
-    for(size_t i = 0; i < 6; ++i){
-        vals[K_DIM + i] = u[offset + i];
-    }
-
-    const auto E = eps*vals;
-    for(size_t i = 0; i < 3; ++i){
-        for(size_t j = 0; j < S_SIZE; ++j){
-            S[i] += D((i + 2), j)*E[j];
-        }
-    }
-
-    return S;
-}
 math::Matrix BQ4::get_stress_integrals(const math::Matrix & D, const gp_Pnt& center) const{
     // M_y M_x V_z M_z V_y V_x
     math::Matrix M(6, K_DIM + 6);
@@ -153,28 +130,81 @@ math::Matrix BQ4::get_equilibrium_partial(const math::Matrix & D, const gp_Pnt& 
 
     return K;
 }
-math::Vector BQ4::get_dz_vector(const math::Matrix & S, const math::Matrix & D, const double Az, const double Bz, const gp_Pnt& center) const{
+
+math::Matrix BQ4::get_dz_vector_matrix(const math::Matrix& S, const math::Matrix& D, const gp_Pnt& center) const{
     const size_t KW = this->K_DIM; // workaround that's necessary for some reason
-    math::Vector vec(KW, 0);
+    math::Matrix M(KW, 2);
+
+    const math::Vector mult({D(4,2)/(S(2,2)*D(2,2)),
+                             D(3,2)/(S(2,2)*D(2,2)),
+                             1.0/S(2,2)});
+
+    const std::vector<size_t> pos_j({0, 1});
     const auto& gsi = utils::GaussLegendre<4>::get();
     for(auto xi = gsi.begin(); xi < gsi.end(); ++xi){
         for(auto eta = gsi.begin(); eta < gsi.end(); ++eta){
             const gp_Pnt pi = this->norm_to_nat(xi->x, eta->x);
             const double dx = pi.X() - center.X();
             const double dy = pi.Y() - center.Y();
+
+            const math::Vector dxdy({dx, dy});
             const double detJ = std::abs(this->J(xi->x, eta->x).determinant());
             for(size_t i = 0; i < NODES_PER_ELEM; ++i){
                 const double N = this->N(pi.X(), pi.Y(), i);
-                vec[i*NODE_DOF + 0] += -(xi->w*eta->w*detJ)*N*D(4,2)*(Az*dx + Bz*dy)/(S(2,2)*D(2,2));
-                vec[i*NODE_DOF + 1] += -(xi->w*eta->w*detJ)*N*D(3,2)*(Az*dx + Bz*dy)/(S(2,2)*D(2,2));
-                vec[i*NODE_DOF + 2] += -(xi->w*eta->w*detJ)*N*(Az*dx + Bz*dy)/S(2,2);
+                const std::vector<size_t> seq({
+                    i*NODE_DOF + 0,
+                    i*NODE_DOF + 1,
+                    i*NODE_DOF + 2
+                });
+                M.slice(seq, pos_j) += -(xi->w*eta->w*detJ)*(mult*N*dxdy.T());
             }
         }
     }
 
-    return vec;
+    return M;
 }
-math::Vector BQ4::get_force_vector(const math::Matrix& D, const std::vector<double>& u, const gp_Pnt& center, const math::Matrix & rot) const{
+math::Vector BQ4::get_dz_vector(const math::Matrix & S, const math::Matrix & D, const double Az, const double Bz, const gp_Pnt& center) const{
+    const math::Vector ABz{Az, Bz};
+
+    return this->get_dz_vector_matrix(S, D, center)*ABz;
+}
+
+math::Matrix BQ4::get_dz_vector_matrix_1d(const math::Matrix& S, const math::Matrix& D, const math::Matrix& dS, const math::Matrix& dD, const gp_Pnt& center) const{
+    const size_t KW = this->K_DIM; // workaround that's necessary for some reason
+    math::Matrix M(KW, 2);
+
+    const double SD = S(2,2)*D(2,2);
+    const double dSD = S(2,2)*dD(2,2) + dS(2,2)*D(2,2);
+    const math::Vector mult({(dD(4,2)*SD - D(4,2)*dSD)/(SD*SD),
+                             (dD(3,2)*SD - D(3,2)*dSD)/(SD*SD),
+                             -dS(2,2)/(S(2,2)*S(2,2))});
+
+    const std::vector<size_t> pos_j({0, 1});
+    const auto& gsi = utils::GaussLegendre<4>::get();
+    for(auto xi = gsi.begin(); xi < gsi.end(); ++xi){
+        for(auto eta = gsi.begin(); eta < gsi.end(); ++eta){
+            const gp_Pnt pi = this->norm_to_nat(xi->x, eta->x);
+            const double dx = pi.X() - center.X();
+            const double dy = pi.Y() - center.Y();
+
+            const math::Vector dxdy({dx, dy});
+            const double detJ = std::abs(this->J(xi->x, eta->x).determinant());
+            for(size_t i = 0; i < NODES_PER_ELEM; ++i){
+                const double N = this->N(pi.X(), pi.Y(), i);
+                const std::vector<size_t> seq({
+                    i*NODE_DOF + 0,
+                    i*NODE_DOF + 1,
+                    i*NODE_DOF + 2
+                });
+                M.slice(seq, pos_j) += -(xi->w*eta->w*detJ)*(mult*N*dxdy.T());
+            }
+        }
+    }
+
+    return M;
+}
+
+math::Matrix BQ4::get_force_vector_matrix(const math::Matrix& D, const gp_Pnt& center, const math::Matrix& rot) const{
     const size_t KW_P = this->parent->get_element_info()->get_k_dimension();
     const bool is_H8 = this->parent->get_element_info()->get_gmsh_element_type() == 5;
 
@@ -198,25 +228,52 @@ math::Vector BQ4::get_force_vector(const math::Matrix& D, const std::vector<doub
 
     const element::H8::CubeSide cube_side = parent->get_cube_side(points);
 
-    math::Vector F(KW_P);
+    const auto EPS_L = K_DIM + 6;
+
+    const auto slice_i(math::slicer::sequence<size_t>(2, 5));
+    const auto slice_j(math::slicer::sequence<size_t>(0, EPS_L));
+    const math::Matrix P({0, 0, 1,
+                          0, 1, 0,
+                          1, 0, 0}, 3, 3);
+
+    math::Matrix M(KW_P, EPS_L);
 
     const auto& gsi = utils::GaussLegendre<5>::get();
     for(auto xi = gsi.begin(); xi < gsi.end(); ++xi){
         for(auto eta = gsi.begin(); eta < gsi.end(); ++eta){
             const gp_Pnt pi = this->norm_to_nat(xi->x, eta->x);
-            const math::Vector pv(rot*math::Vector{pi.X(), pi.Y(), pi.Z()});
-            const gp_Pnt pr(pv[0], pv[1], pv[2]);
-            auto S = this->get_normal_stresses(D, u, pi, center);
-            const math::Vector Sv{S[2], S[1], S[0]};
-            const math::Vector Sr(rot*Sv);
+
+            const auto eps = this->get_eps(pi, center);
+
+            const auto S(D*eps);
+
             const gp_Pnt p_H8 = parent->to_surface_point(xi->x, eta->x, cube_side);
             const auto N = this->parent->get_Ni(p_H8);
             const double detJ = std::abs(this->J(xi->x, eta->x).determinant());
-            F += (xi->w*eta->w*detJ)*N*Sr;
+            M += (xi->w*eta->w*detJ)*(N.T()*rot*P*S.slice(slice_i, slice_j));
         }
     }
 
-    return F;
+    return M;
+}
+
+math::Vector BQ4::get_force_vector(const math::Matrix& D, const std::vector<double>& u, const gp_Pnt& center, const math::Matrix& rot, const bool transpose) const{
+
+    const auto M(this->get_force_vector_matrix(D, center, rot));
+
+    if(transpose){
+        const size_t parent_node_num = this->parent->get_element_info()->get_nodes_per_element();
+        std::vector<long> pos(parent_node_num*NODE_DOF);
+        math::slicer::from_node_upos(this->parent->nodes, parent_node_num, NODE_DOF, pos);
+        const math::VectorSliceGeneralView us(u, pos);
+        return M.T()*us;
+    } else {
+        std::vector<size_t> pos(K_DIM + 6);
+        math::slicer::from_node_id(this->nodes, NODES_PER_ELEM, NODE_DOF, pos);
+        std::iota(pos.begin()+K_DIM, pos.end(), u.size() - 6);
+        const math::VectorSliceView us(u, pos);
+        return M*us;
+    }
 }
 
 math::Matrix BQ4::diffusion_1dof(const math::Matrix& M) const{

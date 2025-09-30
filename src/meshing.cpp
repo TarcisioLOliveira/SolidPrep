@@ -644,7 +644,9 @@ void Meshing::apply_internal_loads(std::vector<InternalLoads>& loads){
         }
     }
     for(auto& s:loads){
-        s.clear_curvature_data();
+        if(!s.get_calculate_adjoint()){
+            s.clear_curvature_data();
+        }
     }
 }
 

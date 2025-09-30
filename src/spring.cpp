@@ -66,6 +66,36 @@ math::Matrix Spring::get_K(const MeshElement* const e, const gp_Pnt& p) const{
     return math::Matrix();
 }
 
+math::Matrix Spring::get_dK(const math::Matrix& S, const math::Matrix& dS) const{
+    if(type == utils::PROBLEM_TYPE_2D){
+
+        std::array<double, 2> EG = {
+            -dS(0,0)/(S(0,0)*S(0,0)), 
+            -dS(2,2)/(S(2,2)*S(2,2))
+        };
+
+        math::Matrix Korig({EG[0]/L[0], 0,
+                            0, EG[1]/L[1]}, 2, 2);
+
+        return rot2D*Korig*rot2D.T();
+    } else if(type == utils::PROBLEM_TYPE_3D){
+
+        std::array<double, 3> EG = {
+            -dS(0,0)/(S(0,0)*S(0,0)), 
+            -dS(3,3)/(S(3,3)*S(3,3)), 
+            -dS(4,4)/(S(4,4)*S(4,4))
+        };
+
+        math::Matrix Korig({EG[0]/L[0], 0, 0,
+                            0, EG[1]/L[1], 0,
+                            0, 0, EG[2]/L[2]}, 3, 3);
+
+        return rot3D*Korig*rot3D.T();
+    }
+
+    return math::Matrix();
+}
+
 class PointSort{
     public:
     bool operator()(const std::unique_ptr<MeshNode>& n1, const std::unique_ptr<MeshNode>& n2) const{

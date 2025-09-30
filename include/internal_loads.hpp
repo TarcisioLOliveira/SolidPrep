@@ -47,9 +47,21 @@ class InternalLoads{
         this->boundary_nodes.clear();
         this->curvature.reset();
     }
+    inline void set_calculate_adjoint(){
+        this->calculate_adjoint = true;
+    }
+    inline bool get_calculate_adjoint() const{
+        return this->calculate_adjoint;
+    }
 
     void calculate_curvature(std::vector<BoundaryElement>& boundary_elements);
+    void curvature_adjoint(const std::vector<double>& u){
+        this->curvature->solve_adjoint_problem(this->boundary_mesh, u);
+    }
 
+    inline double get_adjoint_gradient(const std::vector<double>& fea_u, const math::Matrix& S, const math::Matrix& D, const math::Matrix& dS, const math::Matrix& dD, const BoundaryMeshElement* const e) const{
+        return this->curvature->get_adjoint_gradient(fea_u, S, D, dS, dD, e);
+    }
     void apply_load_2D(const std::vector<long>& node_positions, std::vector<double>& load_vector) const;
     void apply_load_3D(const std::vector<long>& node_positions, std::vector<double>& load_vector) const;
 
@@ -66,8 +78,11 @@ class InternalLoads{
     const MeshElementFactory* elem_info;
     std::vector<const BoundaryElement*> submesh;
     std::unique_ptr<Curvature> curvature;
+    std::vector<std::unique_ptr<MeshNode>> boundary_nodes;
+    std::vector<std::unique_ptr<BoundaryMeshElement>> boundary_mesh;
 
     private:
+    bool calculate_adjoint = false;
     const gp_Dir v;
     const gp_Dir w;
     const utils::ProblemType type;
@@ -76,8 +91,6 @@ class InternalLoads{
     gp_Pnt center;
     size_t phi_size;
 
-    std::vector<std::unique_ptr<MeshNode>> boundary_nodes;
-    std::vector<std::unique_ptr<BoundaryMeshElement>> boundary_mesh;
 
     std::vector<const Node*> line_nodes;
 

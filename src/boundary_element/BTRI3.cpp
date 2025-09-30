@@ -22,7 +22,9 @@
 #include "boundary_element/BTRI3.hpp"
 #include "element_factory.hpp"
 #include "logger.hpp"
+#include "math/slicer.hpp"
 #include "math/matrix.hpp"
+#include "math/vector_view.hpp"
 #include "utils/gauss_legendre.hpp"
 
 namespace boundary_element{
@@ -70,32 +72,7 @@ math::Matrix BTRI3::get_K_ext(const math::Matrix & D, const gp_Pnt& center) cons
     return K;
 }
 
-math::Vector BTRI3::get_normal_stresses(const math::Matrix& D, const std::vector<double>& u, const gp_Pnt& p, const gp_Pnt& center) const{
-    const auto eps = this->get_eps(p, center);
-    math::Vector S(3, 0);
-    math::Vector vals(K_DIM + 6, 0);
-    const size_t offset = u.size() - 6;
-    for(size_t i = 0; i < NODES_PER_ELEM; ++i){
-        size_t pos = this->nodes[i]->id;//u_pos[0];
-        for(size_t j = 0; j < NODE_DOF; ++j){
-            vals[i*NODE_DOF + j] = u[NODE_DOF*pos + j];
-        }
-    }
-    for(size_t i = 0; i < 6; ++i){
-        vals[K_DIM + i] = u[offset + i];
-    }
-
-    auto E = eps*vals;
-    for(size_t i = 0; i < 3; ++i){
-        for(size_t j = 0; j < S_SIZE; ++j){
-            S[i] += D((i + 2), j)*E[j];
-        }
-    }
-
-    return S;
-}
-
-math::Matrix BTRI3::get_stress_integrals(const math::Matrix & D, const gp_Pnt& center) const{
+math::Matrix BTRI3::get_stress_integrals(const math::Matrix& D, const gp_Pnt& center) const{
     // M_y M_x V_z M_z V_y V_x
     math::Matrix M(6, (K_DIM + 6), 0);
     math::Matrix E(S_SIZE, K_DIM + 6);
@@ -120,7 +97,7 @@ math::Matrix BTRI3::get_stress_integrals(const math::Matrix & D, const gp_Pnt& c
     return M;
 }
 
-math::Matrix BTRI3::get_equilibrium_partial(const math::Matrix & D, const gp_Pnt& center, const std::vector<size_t>& stresses) const{
+math::Matrix BTRI3::get_equilibrium_partial(const math::Matrix& D, const gp_Pnt& center, const std::vector<size_t>& stresses) const{
     const size_t KW = this->K_DIM; // workaround that's necessary for some reason
     math::Matrix K(KW, K_DIM + 6);
     const auto& gsi = utils::GaussLegendreTri<ORDER>::get();
@@ -142,46 +119,125 @@ math::Matrix BTRI3::get_equilibrium_partial(const math::Matrix & D, const gp_Pnt
     return K;
 }
 
-math::Vector BTRI3::get_dz_vector(const math::Matrix& S, const math::Matrix& D, const double Az, const double Bz, const gp_Pnt& center) const{
+math::Matrix BTRI3::get_dz_vector_matrix(const math::Matrix& S, const math::Matrix& D, const gp_Pnt& center) const{
     const size_t KW = this->K_DIM; // workaround that's necessary for some reason
-    math::Vector vec(KW);
+    math::Matrix M(KW, 2);
     const auto& gsi = utils::GaussLegendreTri<ORDER+1>::get();
+
+    const math::Vector mult({D(4,2)/(S(2,2)*D(2,2)),
+                             D(3,2)/(S(2,2)*D(2,2)),
+                             1.0/S(2,2)});
+
+    const std::vector<size_t> pos_j({0, 1});
     for(auto it = gsi.begin(); it < gsi.end(); ++it){
         const gp_Pnt pi = this->GS_point(it->a, it->b, it->c);
         const double dx = pi.X() - center.X();
         const double dy = pi.Y() - center.Y();
+
+        const math::Vector dxdy({dx, dy});
         for(size_t i = 0; i < NODES_PER_ELEM; ++i){
             const double N = this->N(pi, i);
-            vec[i*NODE_DOF + 0] += -it->w*N*D(4,2)*(Az*dx + Bz*dy)/(S(2,2)*D(2,2));
-            vec[i*NODE_DOF + 1] += -it->w*N*D(3,2)*(Az*dx + Bz*dy)/(S(2,2)*D(2,2));
-            vec[i*NODE_DOF + 2] += -it->w*N*(Az*dx + Bz*dy)/S(2,2);
+            const std::vector<size_t> seq({
+                i*NODE_DOF + 0,
+                i*NODE_DOF + 1,
+                i*NODE_DOF + 2
+            });
+            M.slice(seq, pos_j) += -it->w*(mult*N*dxdy.T());
         }
     }
-    vec *= this->delta;
+    M *= this->delta;
 
-    return vec;
+    return M;
 }
 
+math::Matrix BTRI3::get_dz_vector_matrix_1d(const math::Matrix& S, const math::Matrix& D, const math::Matrix& dS, const math::Matrix& dD, const gp_Pnt& center) const{
+    const size_t KW = this->K_DIM; // workaround that's necessary for some reason
+    math::Matrix M(KW, 2);
+    const auto& gsi = utils::GaussLegendreTri<ORDER+1>::get();
 
-math::Vector BTRI3::get_force_vector(const math::Matrix & D, const std::vector<double>& u, const gp_Pnt& center, const math::Matrix & rot) const{
+    const double SD = S(2,2)*D(2,2);
+    const double dSD = S(2,2)*dD(2,2) + dS(2,2)*D(2,2);
+    const math::Vector mult({(dD(4,2)*SD - D(4,2)*dSD)/(SD*SD),
+                             (dD(3,2)*SD - D(3,2)*dSD)/(SD*SD),
+                             -dS(2,2)/(S(2,2)*S(2,2))});
+
+    const std::vector<size_t> pos_j({0, 1});
+    for(auto it = gsi.begin(); it < gsi.end(); ++it){
+        const gp_Pnt pi = this->GS_point(it->a, it->b, it->c);
+        const double dx = pi.X() - center.X();
+        const double dy = pi.Y() - center.Y();
+
+        const math::Vector dxdy({dx, dy});
+        for(size_t i = 0; i < NODES_PER_ELEM; ++i){
+            const double N = this->N(pi, i);
+            const std::vector<size_t> seq({
+                i*NODE_DOF + 0,
+                i*NODE_DOF + 1,
+                i*NODE_DOF + 2
+            });
+            M.slice(seq, pos_j) += -it->w*(mult*N*dxdy.T());
+        }
+    }
+    M *= this->delta;
+
+    return M;
+}
+
+math::Vector BTRI3::get_dz_vector(const math::Matrix& S, const math::Matrix& D, const double Az, const double Bz, const gp_Pnt& center) const{
+    const math::Vector ABz{Az, Bz};
+
+    return this->get_dz_vector_matrix(S, D, center)*ABz;
+}
+
+math::Matrix BTRI3::get_force_vector_matrix(const math::Matrix& D, const gp_Pnt& center, const math::Matrix& rot) const{
     const size_t KW_P = this->parent->get_element_info()->get_k_dimension();
 
-    math::Vector F(KW_P);
+    const auto EPS_L = K_DIM + 6;
+
+    const auto slice_i(math::slicer::sequence<size_t>(2, 5));
+    const auto slice_j(math::slicer::sequence<size_t>(0, EPS_L));
+    const math::Matrix P({0, 0, 1,
+                          0, 1, 0,
+                          1, 0, 0}, 3, 3);
+
+    math::Matrix M(KW_P, EPS_L);
 
     const auto& gsi = utils::GaussLegendreTri<ORDER+2>::get();
     for(auto it = gsi.begin(); it < gsi.end(); ++it){
         const gp_Pnt pi = this->GS_point(it->a, it->b, it->c);
+
         const math::Vector pv(rot*math::Vector{pi.X(), pi.Y(), pi.Z()});
         const gp_Pnt pr(pv[0], pv[1], pv[2]);
-        auto S = this->get_normal_stresses(D, u, pi, center);
-        const math::Vector Sv{S[2], S[1], S[0]};
-        const math::Vector Sr(rot*Sv);
-        const auto N = this->parent->get_Ni(pr);
-        F += it->w*(N.T()*Sr);
-    }
-    F *= this->delta;
 
-    return F;
+        const auto eps = this->get_eps(pi, center);
+
+        const auto S(D*eps);
+
+        const auto N = this->parent->get_Ni(pr);
+        M += it->w*(N.T()*rot*P*S.slice(slice_i, slice_j));
+    }
+    M *= this->delta;
+
+    return M;
+}
+
+math::Vector BTRI3::get_force_vector(const math::Matrix& D, const std::vector<double>& u, const gp_Pnt& center, const math::Matrix& rot, const bool transpose) const{
+
+    const auto M(this->get_force_vector_matrix(D, center, rot));
+
+    if(transpose){
+        const size_t parent_node_num = this->parent->get_element_info()->get_nodes_per_element();
+        std::vector<long> pos(parent_node_num*NODE_DOF);
+        math::slicer::from_node_upos(this->parent->nodes, parent_node_num, NODE_DOF, pos);
+        const math::VectorSliceGeneralView us(u, pos);
+        return M.T()*us;
+    } else {
+        std::vector<size_t> pos(K_DIM + 6);
+        math::slicer::from_node_id(this->nodes, NODES_PER_ELEM, NODE_DOF, pos);
+        std::iota(pos.begin()+K_DIM, pos.end(), u.size() - 6);
+        const math::VectorSliceView us(u, pos);
+        return M*us;
+    }
 }
 
 

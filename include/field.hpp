@@ -82,7 +82,8 @@ class CoordinateField : public Field{
     public:
     enum class Class{
         ORTHOTROPIC_FLOW,
-        PRINCIPAL_STRESS
+        PRINCIPAL_STRESS,
+        MINIMUM_ENERGY_ORIENTATION
     };
     virtual ~CoordinateField() = default;
     inline virtual Type get_type() const override{
