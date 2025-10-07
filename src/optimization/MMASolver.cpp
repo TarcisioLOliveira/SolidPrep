@@ -457,9 +457,14 @@ void MMASolver::GenSub(const double *xval, const double *dfdx, const double *gx,
                 double dfdxp = std::max(0.0, dfdx[i]);
                 double dfdxm = std::max(0.0, -1.0 * dfdx[i]);
                 double xmamiinv = 1.0 / std::max(xmamieps, xmax[i] - xmin[i]);
-                double pq = 0.001 * std::abs(dfdx[i]) + raa0 * xmamiinv;
-                p0[i] = std::pow(upp[i] - xval[i], 2.0) * (dfdxp + pq);
-                q0[i] = std::pow(xval[i] - low[i], 2.0) * (dfdxm + pq);
+                //double pq = 0.001 * std::abs(dfdx[i]) + raa0 * xmamiinv;
+                //p0[i] = std::pow(upp[i] - xval[i], 2.0) * (dfdxp + pq);
+                //q0[i] = std::pow(xval[i] - low[i], 2.0) * (dfdxm + pq);
+                const double mult = std::atan(std::abs(dfdx[i]))*2/std::numbers::pi_v<double> + 1e-28;
+                const double m2 = 1.0/mult;
+                const double m1 = 1.0 + m2;
+                p0[i] = std::pow(upp[i] - xval[i], 2.0) * (m1*dfdxp + m2*dfdxm + raa0 * xmamiinv);
+                q0[i] = std::pow(xval[i] - low[i], 2.0) * (m2*dfdxp + m1*dfdxm + raa0 * xmamiinv);
             }
 
             // Constraints
@@ -467,9 +472,14 @@ void MMASolver::GenSub(const double *xval, const double *dfdx, const double *gx,
                 double dgdxp = std::max(0.0, dgdx[i * m + j]);
                 double dgdxm = std::max(0.0, -1.0 * dgdx[i * m + j]);
                 double xmamiinv = 1.0 / std::max(xmamieps, xmax[i] - xmin[i]);
-                double pq = 0.001 * std::abs(dgdx[i * m + j]) + raa0 * xmamiinv;
-                pij[i * m + j] = std::pow(upp[i] - xval[i], 2.0) * (dgdxp + pq);
-                qij[i * m + j] = std::pow(xval[i] - low[i], 2.0) * (dgdxm + pq);
+                //double pq = 0.001 * std::abs(dgdx[i * m + j]) + raa0 * xmamiinv;
+                //pij[i * m + j] = std::pow(upp[i] - xval[i], 2.0) * (dgdxp + pq);
+                //qij[i * m + j] = std::pow(xval[i] - low[i], 2.0) * (dgdxm + pq);
+                const double mult = std::atan(std::abs(dgdx[i * m + j]))*2/std::numbers::pi_v<double> + 1e-28;
+                const double m2 = 1.0/mult;
+                const double m1 = 1.0 + m2;
+                pij[i * m + j] = std::pow(upp[i] - xval[i], 2.0) * (m1*dgdxp + m2*dgdxm + raa0 * xmamiinv);
+                qij[i * m + j] = std::pow(xval[i] - low[i], 2.0) * (m2*dgdxp + m1*dgdxm + raa0 * xmamiinv);
             }
         }
 
