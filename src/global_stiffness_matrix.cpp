@@ -395,11 +395,21 @@ void GlobalStiffnessMatrix::add_frictionless_log(const Meshing * const mesh, con
     const size_t node_num = mesh->elem_info->get_nodes_per_element();
     const size_t bnum = mesh->elem_info->get_boundary_nodes_per_element();
     const size_t dof = mesh->elem_info->get_dof_per_node();
+    const size_t u_size = mesh->load_vector[0].size();
 
     const size_t kw = mesh->elem_info->get_k_dimension();
     std::vector<gp_Pnt> points(node_num);
     std::vector<long> u_pos(2*kw);
+    std::vector<long> Mn_pos(1, mesh->load_vector[0].size());
     if(!stub){
+        double constr = -this->LOG_TOL;
+        for(const auto& e:mesh->paired_boundary){
+            for(size_t i = 0; i < bnum; ++i){
+                points[i] = e.b1->nodes[i]->point;
+            }
+            constr += e.b1->parent->get_log_integ(e.b2->parent, u_ext, points, -e.b1->normal, HC, HK);
+        }
+        const double mult = this->LAG_DISPL_LOG + this->MU_LOG*constr;
         for(const auto& e:mesh->paired_boundary){
             for(size_t i = 0; i < bnum; ++i){
                 points[i] = e.b1->nodes[i]->point;
@@ -413,10 +423,26 @@ void GlobalStiffnessMatrix::add_frictionless_log(const Meshing * const mesh, con
                 }
             }
             //logger::quick_log(e.b1->geom_id, e.b2->geom_id);
-            const auto MM(e.b1->parent->get_MnMn_log(e.b2->parent, u_ext, points, -e.b1->normal, HC, HK));
+            const auto Kue = e.b1->parent->Kue_log(e.b2->parent, u_ext, points, -e.b1->normal, HC, HK);
+            const auto MM(mult*e.b1->parent->get_MnMn_log(e.b2->parent, u_ext, points, -e.b1->normal, HC, HK)
+                    + MU_LOG*Kue*Kue.T());
             this->insert_element_matrix(MM, u_pos);
+            this->insert_block_symmetric(Kue, u_pos, Mn_pos);
         }
         this->final_flush_matrix();
+    } else {
+        const math::Matrix Mn(2*kw, 1, 0);
+        for(const auto& e:mesh->paired_boundary){
+            for(size_t i = 0; i < node_num; ++i){
+                const auto n1 = e.b1->parent->nodes[i];
+                const auto n2 = e.b2->parent->nodes[i];
+                for(size_t j = 0; j < dof; ++j){
+                    u_pos[dof*i + j] = node_positions[n1->u_pos[j]];
+                    u_pos[dof*(node_num + i) + j] = node_positions[n2->u_pos[j]];
+                }
+            }
+            this->insert_block_symmetric(Mn, u_pos, Mn_pos);
+        }
     }
 }
 
@@ -615,39 +641,51 @@ void GlobalStiffnessMatrix::append_Ku_frictionless_simple(const Meshing* const m
     }
 }
 
-void GlobalStiffnessMatrix::append_Ku_frictionless_log(const Meshing* const mesh, const std::vector<double>& u, std::vector<double>& Ku) const{
+void GlobalStiffnessMatrix::append_Ku_frictionless_log(const Meshing* const mesh, const std::vector<double>& u_ext, std::vector<double>& Ku) const{
     const size_t node_num = mesh->elem_info->get_nodes_per_element();
     const size_t bnum = mesh->elem_info->get_boundary_nodes_per_element();
 
-    const size_t kw = mesh->elem_info->get_k_dimension();
     std::vector<gp_Pnt> points(node_num);
-    std::vector<long> u1_pos(kw);
-    std::vector<long> u2_pos(kw);
-    std::vector<long> l_pos(bnum);
-    std::vector<long> u_pos(2*kw);
+    double constr = -this->LOG_TOL;
     for(const auto& e:mesh->paired_boundary){
         for(size_t i = 0; i < bnum; ++i){
             points[i] = e.b1->nodes[i]->point;
         }
-        e.b1->parent->Ku_log(e.b2->parent, mesh->node_positions[0], u, points, -e.b1->normal, Ku, HC, HK);
+        constr += e.b1->parent->get_log_integ(e.b2->parent, u_ext, points, -e.b1->normal, HC, HK);
+    }
+    Ku.back() = constr;
+    const double mult = this->LAG_DISPL_LOG + this->MU_LOG*constr;
+    for(const auto& e:mesh->paired_boundary){
+        for(size_t i = 0; i < bnum; ++i){
+            points[i] = e.b1->nodes[i]->point;
+        }
+        e.b1->parent->Ku_log(mult, e.b2->parent, mesh->node_positions[0], u_ext, points, -e.b1->normal, Ku, HC, HK);
     }
 }
 
-void GlobalStiffnessMatrix::append_dKu_frictionless_log(const Meshing* const mesh, const std::vector<double>& u, const std::vector<double>& du, const double eta, std::vector<double>& Ku) const{
+void GlobalStiffnessMatrix::append_dKu_frictionless_log(const Meshing* const mesh, const std::vector<double>& u_ext, const std::vector<double>& u, const std::vector<double>& du, const double eta, std::vector<double>& Ku) const{
     (void)eta;
     const size_t node_num = mesh->elem_info->get_nodes_per_element();
     const size_t bnum = mesh->elem_info->get_boundary_nodes_per_element();
 
-    const size_t kw = mesh->elem_info->get_k_dimension();
     std::vector<gp_Pnt> points(node_num);
-    std::vector<long> u1_pos(kw);
-    std::vector<long> u2_pos(kw);
-    std::vector<long> l_pos(bnum);
-    std::vector<long> u_pos(2*kw);
+    double constr = -LOG_TOL;
+    double constr_deriv = 0;
     for(const auto& e:mesh->paired_boundary){
         for(size_t i = 0; i < bnum; ++i){
             points[i] = e.b1->nodes[i]->point;
         }
-        e.b1->parent->dKu_log(e.b2->parent, mesh->node_positions[0], u, du, points, -e.b1->normal, Ku, HC, HK);
+        constr += e.b1->parent->get_log_integ(e.b2->parent, u_ext, points, -e.b1->normal, HC, HK);
+        constr_deriv += e.b1->parent->get_log_integ_deriv(e.b2->parent, mesh->node_positions[0], u, du, points, -e.b1->normal, HC, HK);
+    }
+    Ku.back() = constr_deriv;
+    const double mult = this->LAG_DISPL_LOG + this->MU_LOG*constr;
+    const double mult_deriv = du.back() + this->MU_LOG*constr_deriv;
+    for(const auto& e:mesh->paired_boundary){
+        for(size_t i = 0; i < bnum; ++i){
+            points[i] = e.b1->nodes[i]->point;
+        }
+        e.b1->parent->Ku_log(mult_deriv, e.b2->parent, mesh->node_positions[0], u_ext, points, -e.b1->normal, Ku, HC, HK);
+        e.b1->parent->dKu_log(mult, e.b2->parent, mesh->node_positions[0], u, du, points, -e.b1->normal, Ku, HC, HK);
     }
 }

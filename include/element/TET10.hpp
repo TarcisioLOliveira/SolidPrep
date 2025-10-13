@@ -37,6 +37,7 @@ class TET10 : public MeshElementCommon3DTet<TET10>{
     static const size_t NODE_DOF       = 3;
     static const size_t NODES_PER_ELEM = 10;
     static const size_t K_DIM          = NODE_DOF*NODES_PER_ELEM;
+    static const size_t INTEG_ORDER    = 2;
 
     static const size_t BOUNDARY_NODES_PER_ELEM = 6;
     static const size_t BOUNDARY_GMSH_TYPE = 9;

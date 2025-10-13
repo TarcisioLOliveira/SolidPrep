@@ -31,6 +31,8 @@ void SolverManager::generate_matrix(const Meshing* const mesh, const std::vector
     bool needs_lambda = mesh->proj_data->contact_data.contact_type >= FiniteElement::ContactType::FRICTIONLESS_DISPL_SIMPLE;
     if(mesh->proj_data->contact_data.contact_type == FiniteElement::ContactType::FRICTIONLESS_DISPL_SIMPLE){
         l_num = l_num_orig;
+    } else if(mesh->proj_data->contact_data.contact_type == FiniteElement::ContactType::FRICTIONLESS_DISPL_LOG){
+        l_num = 1;
     } else if(mesh->proj_data->contact_data.contact_type == FiniteElement::ContactType::FRICTIONLESS_DISPL_CONSTR){
         l_num = 3*l_num_orig;
     }

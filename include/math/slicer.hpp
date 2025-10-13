@@ -51,6 +51,17 @@ inline std::vector<long> from_node_upos(const Node* const* nodes, size_t number_
 
     return ids;
 }
+inline std::vector<long> from_node_positions(const Node* const* nodes, size_t number_of_nodes, size_t dof, const std::vector<long>& node_positions){
+    std::vector<long> ids(number_of_nodes*dof);
+    for(size_t i = 0; i < number_of_nodes; ++i){
+        const auto n = nodes[i];
+        for(size_t j = 0; j < dof; ++j){
+            ids[i*dof + j] = node_positions[n->u_pos[j]];
+        }
+    }
+
+    return ids;
+}
 
 template<typename T>
 void from_node_id(const Node* const* nodes, size_t number_of_nodes, size_t dof, std::vector<T>& pos){

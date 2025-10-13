@@ -50,8 +50,8 @@ class GlobalStiffnessMatrix{
 
     void append_Ku_frictionless_simple(const Meshing* const mesh, const std::vector<double>& u, std::vector<double>& Ku) const;
 
-    void append_Ku_frictionless_log(const Meshing* const mesh, const std::vector<double>& u, std::vector<double>& Ku) const;
-    void append_dKu_frictionless_log(const Meshing* const mesh, const std::vector<double>& u, const std::vector<double>& du, const double eta, std::vector<double>& Ku) const;
+    void append_Ku_frictionless_log(const Meshing* const mesh, const std::vector<double>& u_ext, std::vector<double>& Ku) const;
+    void append_dKu_frictionless_log(const Meshing* const mesh, const std::vector<double>& u_ext, const std::vector<double>& u, const std::vector<double>& du, const double eta, std::vector<double>& Ku) const;
 
     inline void set_lag_displ_simple(double L){
         this->LAG_DISPL_SIMPLE = L;
@@ -59,6 +59,13 @@ class GlobalStiffnessMatrix{
     inline double get_lag_displ_simple() const{
         return this->LAG_DISPL_SIMPLE;
     }
+
+    double LAG_DISPL_LOG = 1e6;// CHANGE IN FINITE ELEMENT
+    //double LAG_S_LOG = 1;
+    const double LOG_TOL = 0;//1e-10;
+    //const double LOG_TOL = 1e-6;//1e-10;
+    double MU_LOG = 0;//1e5;
+    //const double MU_LOG = 1;
 
     virtual void dump_matrix(){}
 
@@ -68,10 +75,9 @@ class GlobalStiffnessMatrix{
     const double EPS_DISPL;
     double LAG_DISPL_SIMPLE = 1;
     bool first_time = true;
-    const double EPS_LOG = 1e-5;
-    const double K_LOG = 1;
-    const double HK = 1e5;
-    const double HC = 1;
+    const double HK = 1e10;
+    //const double HK = 1e4;
+    const double HC = 100;
 
     virtual void final_flush_matrix(){}
 

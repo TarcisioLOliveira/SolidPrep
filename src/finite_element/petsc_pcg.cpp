@@ -102,7 +102,7 @@ void PETScPCG::solve(std::vector<double>& load){
         PCFactorSetUseInPlace(this->pc, PETSC_TRUE);
         PCSetType(this->pc, PCJACOBI);
         PCJacobiSetType(this->pc, PC_JACOBI_DIAGONAL);
-        KSPSetTolerances(this->ksp, 1e-5, 1e-50, 1e19, 1e5);
+        KSPSetTolerances(this->ksp, 1e-5, 1e-50, 1e10, 1e5);
         //PCSetType(this->pc, PCHYPRE);
         //PCSetType(this->pc, PCKACZMARZ);
         //PCHYPRESetType(this->pc, "ams");
@@ -113,7 +113,14 @@ void PETScPCG::solve(std::vector<double>& load){
         //PCGAMGSetCoarseEqLim(this->pc, 1000);
         //PCGAMGSetLowMemoryFilter(this->pc, PETSC_TRUE);
         //
-        if(this->contact_type >= FiniteElement::ContactType::FRICTIONLESS_DISPL_SIMPLE){
+        if(this->contact_type == FiniteElement::ContactType::FRICTIONLESS_DISPL_LOG){
+            KSPSetTolerances(this->ksp, 1e-10, 1e-1, 1e10, 1e5);
+            PCJacobiSetUseAbs(this->pc, PETSC_TRUE);
+            PCJacobiSetFixDiagonal(this->pc, PETSC_TRUE);
+            PCJacobiSetType(this->pc, PC_JACOBI_ROWMAX);
+            KSPSetType(this->ksp, KSPMINRES);
+            KSPMINRESSetUseQLP(this->ksp, PETSC_TRUE);
+        } else if(this->contact_type >= FiniteElement::ContactType::FRICTIONLESS_DISPL_SIMPLE){
             PCJacobiSetUseAbs(this->pc, PETSC_TRUE);
             KSPSetType(this->ksp, KSPMINRES);
             KSPMINRESSetUseQLP(this->ksp, PETSC_TRUE);

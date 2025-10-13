@@ -75,6 +75,7 @@ class FiniteElement{
     const double rtol_abs;
     const double step_tol;
     const double start_lag_simple;
+    //const double LOG_TOL = 1e-4;
     GlobalStiffnessMatrix* matrix = nullptr;
     size_t u_size, l_num;
 

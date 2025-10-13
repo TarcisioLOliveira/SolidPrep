@@ -34,7 +34,11 @@ MUMPSSolver::MUMPSSolver(const projspec::DataMap& data):
     this->set_global_matrix(&this->gsm);
 
     this->config.job = -1; // Configuration initialization
-    this->config.sym = 1; // Hermitian matrix
+    if(this->contact_type == ContactType::FRICTIONLESS_DISPL_LOG){
+        this->config.sym = 2; // General symmetric matrix
+    } else {
+        this->config.sym = 1; // SPD matrix
+    }
     this->config.par = 1; // Host process also does computations
     this->config.comm_fortran = -987654; // Default communicator
     // No text output

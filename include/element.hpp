@@ -257,8 +257,11 @@ class MeshElement : public Element{
 
     virtual math::Matrix get_MnMn(const MeshElement* const e2, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds, const gp_Dir n) const = 0;
     virtual math::Matrix get_MnMn_log(const MeshElement* const e2, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds, const gp_Dir n, const double C, const double K) const = 0;
-    virtual void Ku_log(const MeshElement* const e2, const std::vector<long>& node_positions, const std::vector<double>& u, const std::vector<gp_Pnt>& bounds, const gp_Dir n, std::vector<double>& Ku, const double C, const double K) const = 0;
-    virtual void dKu_log(const MeshElement* const e2, const std::vector<long>& node_positions, const std::vector<double>& u, const std::vector<double>& du, const std::vector<gp_Pnt>& bounds, const gp_Dir n, std::vector<double>& dKu, const double C, const double K) const = 0;
+    virtual double get_log_integ(const MeshElement* const e2, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds, const gp_Dir n, const double C, const double K) const = 0;
+    virtual double get_log_integ_deriv(const MeshElement* const e2, const std::vector<long>& node_positions, const std::vector<double>& u, const std::vector<double>& du, const std::vector<gp_Pnt>& bounds, const gp_Dir n, const double C, const double K) const = 0;
+    virtual math::Matrix Kue_log(const MeshElement* const e2, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds, const gp_Dir n, const double C, const double K) const = 0;
+    virtual void Ku_log(const double mult, const MeshElement* const e2, const std::vector<long>& node_positions, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds, const gp_Dir n, std::vector<double>& Ku, const double C, const double K) const = 0;
+    virtual void dKu_log(const double mult, const MeshElement* const e2, const std::vector<long>& node_positions, const std::vector<double>& u, const std::vector<double>& du, const std::vector<gp_Pnt>& bounds, const gp_Dir n, std::vector<double>& dKu, const double C, const double K) const = 0;
 
     virtual math::Matrix get_Ni(const gp_Pnt& p) const = 0;
     virtual math::Vector get_Ni_1dof(const gp_Pnt& p) const{
@@ -574,21 +577,30 @@ class MeshElement : public Element{
         Element(std::vector<Node*>(nodes.begin(), nodes.end()))
         {}
 
-    const double x0 = 0;
+    const double x0 = 0;//-1e-3;
     inline double H(const double x, const double C, const double K) const{
         constexpr double pi = std::numbers::pi;
-        return C*(std::atan(K*(x + x0)) + pi/2)*(x*x + x)/pi + C*x/(pi*K);
+        const double dx = x - x0;
+        //const double h = C*(std::atan(K*dx) + pi/2)*(dx*dx + dx)/pi + C*dx/(pi*K);
+        const double h = C*(std::atan(K*dx) + pi/2)*dx*dx/pi;// + C*dx/(pi*K);
+        return h;
     }
     inline double dH(const double x, const double C, const double K) const{
         constexpr double pi = std::numbers::pi;
-        const double Kx = K*(x + x0);
-        return C*((K*(x*x - x))/(1 + Kx*Kx) + (std::atan(K*x) + pi/2)*(2*x - 1))/pi + C/(pi*K);
+        const double dx = x - x0;
+        const double Kx = K*dx;
+        //const double dh = C*((K*(dx*dx + dx))/(1 + Kx*Kx) + (std::atan(Kx) + pi/2)*(2*dx + 1))/pi + C/(pi*K);
+        const double dh = C*(K*(dx*dx)/(1 + Kx*Kx) + (std::atan(Kx) + pi/2)*(2*dx))/pi;// + C/(pi*K);
+        //return (dh > 1e-4) ? dh : 0;
+        return dh;
     }
     inline double ddH(const double x, const double C, const double K) const{
         constexpr double pi = std::numbers::pi;
-        const double Kx = K*(x + x0);
+        const double dx = x - x0;
+        const double Kx = K*dx;
         const double Kx_den = 1 + Kx*Kx;
-        return C*((2*Kx*Kx*Kx + 4*Kx + 2*K)/(Kx_den*Kx_den) + 2*(std::atan(K*x) + pi/2))/pi;
+        //return C*(2*K*(2*dx + 1)/Kx_den - 2*K*K*Kx*(dx*dx + dx)/(Kx_den*Kx_den) + 2*(std::atan(Kx) + pi/2))/pi;
+        return C*(4*Kx/Kx_den - 2*Kx*Kx*Kx/(Kx_den*Kx_den) + 2*(std::atan(Kx) + pi/2))/pi;
     }
 
     /**

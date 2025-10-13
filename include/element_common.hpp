@@ -39,6 +39,8 @@
 #include "element.hpp"
 #include "logger.hpp"
 #include "math/matrix.hpp"
+#include "math/slicer.hpp"
+#include "math/vector_view.hpp"
 #include "utils.hpp"
 #include "utils/gauss_legendre.hpp"
 #include <lapacke.h>
@@ -47,6 +49,376 @@ template<class T>
 class MeshElementCommon : public MeshElement{
     public:
     virtual ~MeshElementCommon() = default;
+
+    inline gp_Pnt GL_point_tri(double c1, double c2, double c3, const std::vector<gp_Pnt>& p) const{
+        return gp_Pnt(
+            c1*p[0].X() + c2*p[1].X() + c3*p[2].X(),
+            c1*p[0].Y() + c2*p[1].Y() + c3*p[2].Y(),
+            c1*p[0].Z() + c2*p[1].Z() + c3*p[2].Z()
+        );
+    }
+
+    inline gp_Pnt GL_point_2D(double c1, double c2, double c3) const{
+        return gp_Pnt(
+            c1*this->nodes[0]->point.X() + c2*this->nodes[1]->point.X() + c3*this->nodes[2]->point.X(),
+            c1*this->nodes[0]->point.Y() + c2*this->nodes[1]->point.Y() + c3*this->nodes[2]->point.Y(),
+            0
+        );
+    }
+
+    inline gp_Pnt GL_point_3D(double c1, double c2, double c3, double c4) const{
+        return gp_Pnt(
+            c1*this->nodes[0]->point.X() + c2*this->nodes[1]->point.X() + c3*this->nodes[2]->point.X() + c4*this->nodes[3]->point.X(),
+            c1*this->nodes[0]->point.Y() + c2*this->nodes[1]->point.Y() + c3*this->nodes[2]->point.Y() + c4*this->nodes[3]->point.Y(),
+            c1*this->nodes[0]->point.Z() + c2*this->nodes[1]->point.Z() + c3*this->nodes[2]->point.Z() + c4*this->nodes[3]->point.Z()
+        );
+    }
+
+    inline double N_norm(double x, double y, size_t i) const{
+        switch(i){
+            case 0:
+                return 0.25*(1-x)*(1-y);
+            case 1:
+                return 0.25*(1+x)*(1-y);
+            case 2:
+                return 0.25*(1+x)*(1+y);
+            case 3:
+                return 0.25*(1-x)*(1+y);
+        }
+        return 0;
+    }
+    inline gp_Pnt norm_to_nat(double xi, double eta) const{
+        double X = 0, Y = 0;
+        for(size_t i = 0; i < T::NODES_PER_ELEM; ++i){
+            const double Ni = N_norm(xi, eta, i);
+            X += Ni*this->nodes[i]->point.X();
+            Y += Ni*this->nodes[i]->point.Y();
+        }
+
+        return gp_Pnt(X, Y, 0);
+    }
+
+    template<size_t ORDER, typename R, typename F>
+    inline void area_integral(R& result, F func, const std::vector<gp_Pnt>& points) const{
+        //constexpr size_t ORDER = T::INTEG_ORDER;
+        //constexpr size_t NODES_PER_ELEM = T::NODES_PER_ELEM;
+        //constexpr size_t DOF = T::NODE_DOF;
+        //constexpr size_t KW = T::K_DIM;
+        //constexpr size_t DIM = T::DIM;
+        constexpr utils::ProblemType PROBLEM_TYPE = T::PROBLEM_TYPE;
+        constexpr Element::Shape SHAPE_TYPE = T::SHAPE_TYPE;
+
+        constexpr size_t P = (ORDER + 1)/2 + (ORDER + 1)%2;
+
+        if constexpr(PROBLEM_TYPE == utils::PROBLEM_TYPE_2D){
+            const double x[]{points[0].X(), points[1].X()};
+            const double y[]{points[0].Y(), points[1].Y()};
+            const double rnorm = 0.5*points[0].Distance(points[1]);
+
+            auto& gl = utils::GaussLegendre<P>::get();
+
+            for(auto xi = gl.begin(); xi < gl.end(); ++xi){
+                const double s = xi->x;
+                const double X = 0.5*(x[0]*(1-s) + x[1]*(1+s));
+                const double Y = 0.5*(y[0]*(1-s) + y[1]*(1+s));
+                result += xi->w*func(gp_Pnt(X, Y, 0));
+            }
+            result *= rnorm;
+        } else if constexpr(PROBLEM_TYPE == utils::PROBLEM_TYPE_3D){
+            if constexpr(SHAPE_TYPE == Element::Shape::TRI){
+                const auto& p = points;
+                gp_Vec v1(p[1], p[0]);
+                gp_Vec v2(p[2], p[0]);
+                const double drnorm = (v1.Crossed(v2)).Magnitude()/2;
+
+                auto& gl = utils::GaussLegendreTri<P>::get();
+                for(auto it = gl.begin(); it < gl.end(); ++it){
+                    const gp_Pnt p = this->GL_point_tri(it->a, it->b, it->c, points);
+                    result += it->w*func(p);
+                }
+                result *= drnorm;
+            } else if constexpr(SHAPE_TYPE == Element::Shape::QUAD){
+                logger::log_assert(false, logger::ERROR, "H8 integration not implemented");
+            }
+        }
+    }
+
+    template<size_t ORDER, typename R, typename F>
+    inline void volume_integral(R& result, F func, const double t) const{
+        //constexpr size_t ORDER = T::INTEG_ORDER;
+        //constexpr size_t NODES_PER_ELEM = T::NODES_PER_ELEM;
+        //constexpr size_t DOF = T::NODE_DOF;
+        //constexpr size_t KW = T::K_DIM;
+        //constexpr size_t DIM = T::DIM;
+        constexpr utils::ProblemType PROBLEM_TYPE = T::PROBLEM_TYPE;
+        constexpr Element::Shape SHAPE_TYPE = T::SHAPE_TYPE;
+
+        constexpr size_t P = (ORDER + 1)/2 + (ORDER + 1)%2;
+
+        if constexpr(PROBLEM_TYPE == utils::PROBLEM_TYPE_2D){
+            if constexpr(SHAPE_TYPE == Element::Shape::TRI){
+                auto& gl = utils::GaussLegendreTri<P>::get();
+                const auto V = this->get_volume(t);
+
+                for(auto it = gl.begin(); it < gl.end(); ++it){
+                    const gp_Pnt p = this->GL_point_2D(it->a, it->b, it->c);
+                    result += it->w*func(p);
+                }
+                result *= V;
+            } else if constexpr(SHAPE_TYPE == Element::Shape::QUAD){
+                const auto& GL = utils::GaussLegendre<P>::get();
+
+                for(auto xi = GL.begin(); xi < GL.end(); ++xi){
+                    for(auto eta = GL.begin(); eta < GL.end(); ++eta){
+                        const auto p = this->norm_to_nat(xi->x, eta->x);
+                        result += (xi->w*eta->w)*func(p);
+                    }
+                }
+            }
+        } else if constexpr(PROBLEM_TYPE == utils::PROBLEM_TYPE_3D){
+            if constexpr(SHAPE_TYPE == Element::Shape::TRI){
+                auto& gl = utils::GaussLegendreTet<P>::get();
+                const auto V = this->get_volume(t);
+
+                for(auto it = gl.begin(); it < gl.end(); ++it){
+                    const gp_Pnt p = this->GL_point_3D(it->a, it->b, it->c, it->d);
+                    result += it->w*func(p);
+                }
+                result *= V;
+            } else if constexpr(SHAPE_TYPE == Element::Shape::QUAD){
+                logger::log_assert(false, logger::ERROR, "H8 integration not implemented");
+            }
+        }
+    }
+
+    virtual double get_log_integ(const MeshElement* const e2, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds, const gp_Dir n, const double C, const double K) const override{
+        const size_t ORDER = T::INTEG_ORDER;
+        const size_t NODES_PER_ELEM = T::NODES_PER_ELEM;
+        const size_t DOF = T::NODE_DOF;
+        const size_t KW = T::K_DIM;
+        const size_t DIM = T::DIM;
+
+        math::VectorSliceGeneralView uv1(u_ext, math::slicer::from_node_upos(this->nodes, NODES_PER_ELEM, DOF));
+        math::VectorSliceGeneralView uv2(u_ext, math::slicer::from_node_upos(e2->nodes, NODES_PER_ELEM, DOF));
+
+        math::Vector NN(2*KW, 0);
+
+        constexpr size_t GN = 2*ORDER + 3;
+
+        double result = 0;
+        this->area_integral<GN>(result,
+        [&](const gp_Pnt& pi){
+            const auto N1 = this->get_Ni(pi);
+            const auto N2 = e2->get_Ni(pi);
+            double gp = 0;
+            math::Vector up1(N1*uv1);
+            math::Vector up2(N2*uv2);
+            for(size_t j = 0; j < DIM; ++j){
+                gp += (up2[j] - up1[j])*n.Coord(1+j);
+            }
+            const double log = this->H(gp, C, K);
+            return log;
+        },
+        bounds);
+
+        return result;
+    }
+    virtual double get_log_integ_deriv(const MeshElement* const e2, const std::vector<long>& node_positions, const std::vector<double>& u, const std::vector<double>& du, const std::vector<gp_Pnt>& bounds, const gp_Dir n, const double C, const double K) const override{
+        const size_t ORDER = T::INTEG_ORDER;
+        const size_t NODES_PER_ELEM = T::NODES_PER_ELEM;
+        const size_t DOF = T::NODE_DOF;
+        const size_t KW = T::K_DIM;
+        const size_t DIM = T::DIM;
+
+        math::VectorSliceGeneralView uv1(u, math::slicer::from_node_positions(this->nodes, NODES_PER_ELEM, DOF, node_positions));
+        math::VectorSliceGeneralView uv2(u, math::slicer::from_node_positions(e2->nodes, NODES_PER_ELEM, DOF, node_positions));
+        math::VectorSliceGeneralView duv1(du, math::slicer::from_node_positions(this->nodes, NODES_PER_ELEM, DOF, node_positions));
+        math::VectorSliceGeneralView duv2(du, math::slicer::from_node_positions(e2->nodes, NODES_PER_ELEM, DOF, node_positions));
+
+        math::Vector NN(2*KW, 0);
+
+        constexpr size_t GN = 2*ORDER + 3;
+
+        double result = 0;
+        this->area_integral<GN>(result,
+        [&](const gp_Pnt& pi){
+            const auto N1 = this->get_Ni(pi);
+            const auto N2 = e2->get_Ni(pi);
+            double gp = 0;
+            double dgp = 0;
+            math::Vector up1(N1*uv1);
+            math::Vector up2(N2*uv2);
+            math::Vector dup1(N1*duv1);
+            math::Vector dup2(N2*duv2);
+            for(size_t j = 0; j < DIM; ++j){
+                gp += (up2[j] - up1[j])*n.Coord(1+j);
+                dgp += (dup2[j] - dup1[j])*n.Coord(1+j);
+            }
+            const double log = this->dH(gp, C, K)*dgp;
+            return log;
+        },
+        bounds);
+
+        return result;
+    }
+    virtual math::Matrix get_MnMn_log(const MeshElement* const e2, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds, const gp_Dir n, const double C, const double K) const override{
+        const size_t ORDER = T::INTEG_ORDER;
+        const size_t NODES_PER_ELEM = T::NODES_PER_ELEM;
+        const size_t DOF = T::NODE_DOF;
+        const size_t KW = T::K_DIM;
+        const size_t DIM = T::DIM;
+
+        math::VectorSliceGeneralView uv1(u_ext, math::slicer::from_node_upos(this->nodes, NODES_PER_ELEM, DOF));
+        math::VectorSliceGeneralView uv2(u_ext, math::slicer::from_node_upos(e2->nodes, NODES_PER_ELEM, DOF));
+
+        math::Vector NN(2*KW, 0);
+        math::Matrix MnMn(2*KW, 2*KW, 0);
+
+        constexpr size_t GN = 2*ORDER + 1;
+
+        this->area_integral<GN>(MnMn,
+        [&](const gp_Pnt& pi){
+            const auto N1 = this->get_Ni(pi);
+            const auto N2 = e2->get_Ni(pi);
+            double gp = 0;
+            math::Vector up1(N1*uv1);
+            math::Vector up2(N2*uv2);
+            for(size_t j = 0; j < DIM; ++j){
+                gp += (up2[j] - up1[j])*n.Coord(1+j);
+            }
+            const double log = this->ddH(gp, C, K);
+            NN.fill(0);
+            for(size_t i = 0; i < KW; ++i){
+                for(size_t j = 0; j < DIM; ++j){
+                    NN[i] -= N1(j, i)*n.Coord(1+j);
+                    NN[i + KW] += N2(j, i)*n.Coord(1+j);
+                }
+            }
+            return (log*NN)*NN.T();
+        },
+        bounds);
+
+        return MnMn;
+    }
+    virtual math::Matrix Kue_log(const MeshElement* const e2, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds, const gp_Dir n, const double C, const double K) const override{
+        const size_t ORDER = T::INTEG_ORDER;
+        const size_t NODES_PER_ELEM = T::NODES_PER_ELEM;
+        const size_t DOF = T::NODE_DOF;
+        const size_t KW = T::K_DIM;
+        const size_t DIM = T::DIM;
+
+        math::VectorSliceGeneralView uv1(u_ext, math::slicer::from_node_upos(this->nodes, NODES_PER_ELEM, DOF));
+        math::VectorSliceGeneralView uv2(u_ext, math::slicer::from_node_upos(e2->nodes, NODES_PER_ELEM, DOF));
+
+        math::Matrix NN(2*KW, 1, 0);
+        math::Matrix Mn(2*KW, 1, 0);
+
+        constexpr size_t GN = 2*ORDER + 2;
+
+        this->area_integral<GN>(Mn,
+        [&](const gp_Pnt& pi){
+            const auto N1 = this->get_Ni(pi);
+            const auto N2 = e2->get_Ni(pi);
+            double gp = 0;
+            math::Vector up1(N1*uv1);
+            math::Vector up2(N2*uv2);
+            for(size_t j = 0; j < DIM; ++j){
+                gp += (up2[j] - up1[j])*n.Coord(1+j);
+            }
+            const double log = this->dH(gp, C, K);
+            NN.fill(0);
+            for(size_t i = 0; i < KW; ++i){
+                for(size_t j = 0; j < DIM; ++j){
+                    NN(i, 0) -= N1(j, i)*n.Coord(1+j);
+                    NN(i + KW, 0) += N2(j, i)*n.Coord(1+j);
+                }
+            }
+            return log*NN;
+        },
+        bounds);
+
+        return Mn;
+    }
+    virtual void Ku_log(const double mult, const MeshElement* const e2, const std::vector<long>& node_positions, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds, const gp_Dir n, std::vector<double>& Ku, const double C, const double K) const override{
+        const size_t NODES_PER_ELEM = T::NODES_PER_ELEM;
+        const size_t DOF = T::NODE_DOF;
+        const size_t KW = T::K_DIM;
+
+        const auto Mn = this->Kue_log(e2, u_ext, bounds, n, C, K);
+
+        for(size_t i = 0; i < NODES_PER_ELEM; ++i){
+            for(size_t j = 0; j < DOF; ++j){
+                const long n1 = node_positions[this->nodes[i]->u_pos[j]];
+                const long n2 = node_positions[e2->nodes[i]->u_pos[j]];
+                if(n1 >= 0){
+                    Ku[n1] += mult*Mn(i*DOF + j, 0);
+                }
+                if(n2 >= 0){
+                    Ku[n2] += mult*Mn(KW + i*DOF + j, 0);
+                }
+            }
+        }
+    }
+
+    virtual void dKu_log(const double mult, const MeshElement* const e2, const std::vector<long>& node_positions, const std::vector<double>& u, const std::vector<double>& du, const std::vector<gp_Pnt>& bounds, const gp_Dir n, std::vector<double>& dKu, const double C, const double K) const override{
+        const size_t ORDER = T::ORDER;
+        const size_t NODES_PER_ELEM = T::NODES_PER_ELEM;
+        const size_t DOF = T::NODE_DOF;
+        const size_t KW = T::K_DIM;
+        const size_t DIM = T::DIM;
+
+        math::VectorSliceGeneralView uv1(u, math::slicer::from_node_positions(this->nodes, NODES_PER_ELEM, DOF, node_positions));
+        math::VectorSliceGeneralView uv2(u, math::slicer::from_node_positions(e2->nodes, NODES_PER_ELEM, DOF, node_positions));
+        math::VectorSliceGeneralView duv1(du, math::slicer::from_node_positions(this->nodes, NODES_PER_ELEM, DOF, node_positions));
+        math::VectorSliceGeneralView duv2(du, math::slicer::from_node_positions(e2->nodes, NODES_PER_ELEM, DOF, node_positions));
+
+        math::Vector NN(2*KW, 0);
+        math::Vector Mn(2*KW, 0);
+
+        constexpr size_t GN = 2*ORDER + 2;
+
+        this->area_integral<GN>(Mn,
+        [&](const gp_Pnt& pi){
+            const auto N1 = this->get_Ni(pi);
+            const auto N2 = e2->get_Ni(pi);
+            double gp = 0;
+            double dgp = 0;
+            math::Vector up1(N1*uv1);
+            math::Vector up2(N2*uv2);
+            math::Vector dup1(N1*duv1);
+            math::Vector dup2(N2*duv2);
+            for(size_t j = 0; j < DIM; ++j){
+                gp += (up2[j] - up1[j])*n.Coord(1+j);
+                dgp += (dup2[j] - dup1[j])*n.Coord(1+j);
+            }
+            const double dlog = this->ddH(gp, C, K)*dgp;
+            NN.fill(0);
+            for(size_t i = 0; i < KW; ++i){
+                for(size_t j = 0; j < DIM; ++j){
+                    NN[i] -= N1(j, i)*n.Coord(1+j);
+                    NN[i + KW] += N2(j, i)*n.Coord(1+j);
+                }
+            }
+            return dlog*NN;
+        },
+        bounds);
+
+        const double drnorm = bounds[0].Distance(bounds[1]);
+        Mn *= drnorm;
+        for(size_t i = 0; i < NODES_PER_ELEM; ++i){
+            for(size_t j = 0; j < DOF; ++j){
+                const long n1 = node_positions[this->nodes[i]->u_pos[j]];
+                const long n2 = node_positions[e2->nodes[i]->u_pos[j]];
+                if(n1 >= 0){
+                    dKu[n1] += mult*Mn[i*DOF + j];
+                }
+                if(n2 >= 0){
+                    dKu[n2] += mult*Mn[KW + i*DOF + j];
+                }
+            }
+        }
+    }
+
 
     virtual math::Vector get_internal_loads(const math::Matrix& D, const double t, const std::vector<double>& u) const override{
         const size_t N = T::NODES_PER_ELEM;
@@ -445,210 +817,6 @@ class MeshElementCommon2D : public MeshElementCommon<T>{
         MnMn *= drnorm;
 
         return MnMn;
-    }
-    virtual math::Matrix get_MnMn_log(const MeshElement* const e2, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds, const gp_Dir n, const double C, const double K) const override{
-        const size_t ORDER = T::ORDER;
-        const size_t NODES_PER_ELEM = T::NODES_PER_ELEM;
-        const size_t DOF = T::NODE_DOF;
-        const size_t KW = T::K_DIM;
-        const size_t DIM = this->DIM;
-
-        math::Vector uv1(KW), uv2(KW);
-        for(size_t i = 0; i < NODES_PER_ELEM; ++i){
-            for(size_t j = 0; j < DOF; ++j){
-                uv1[i*DOF + j] = u_ext[this->nodes[i]->u_pos[j]];
-                uv2[i*DOF + j] = u_ext[e2->nodes[i]->u_pos[j]];
-            }
-        }
-        math::Vector NN(2*KW, 0);
-        math::Matrix MnMn(2*KW, 2*KW, 0);
-
-        constexpr size_t GN = 2*ORDER + 1;
-        const auto& GL = utils::GaussLegendre<GN>::get();
-
-        const gp_Pnt p1 = bounds[0];
-        const gp_Pnt p2 = bounds[1];
-
-        for(auto xi = GL.begin(); xi < GL.end(); ++xi){
-
-            const gp_Pnt pi(
-                p1.X() + (p2.X() - p1.X())*xi->x,
-                p1.Y() + (p2.Y() - p1.Y())*xi->x,
-                p1.Z() + (p2.Z() - p1.Z())*xi->x
-            );
-
-            const auto N1 = this->get_Ni(pi);
-            const auto N2 = e2->get_Ni(pi);
-            double gp = 0;
-            math::Vector up1(N1*uv1);
-            math::Vector up2(N2*uv2);
-            for(size_t j = 0; j < DIM; ++j){
-                gp += (up2[j] - up1[j])*n.Coord(1+j);
-            }
-            const double log = this->ddH(gp, C, K);
-            NN.fill(0);
-            for(size_t i = 0; i < KW; ++i){
-                for(size_t j = 0; j < DIM; ++j){
-                    NN[i] -= N1(j, i)*n.Coord(1+j);
-                    NN[i + KW] += N2(j, i)*n.Coord(1+j);
-                }
-            }
-            MnMn += (xi->w*log*NN)*NN.T();
-        }
-        const double drnorm = bounds[0].Distance(bounds[1]);
-        MnMn *= drnorm;
-
-        return MnMn;
-    }
-    virtual void Ku_log(const MeshElement* const e2, const std::vector<long>& node_positions, const std::vector<double>& u, const std::vector<gp_Pnt>& bounds, const gp_Dir n, std::vector<double>& Ku, const double C, const double K) const override{
-        const size_t ORDER = T::ORDER;
-        const size_t NODES_PER_ELEM = T::NODES_PER_ELEM;
-        const size_t DOF = T::NODE_DOF;
-        const size_t KW = T::K_DIM;
-        const size_t DIM = this->DIM;
-
-        math::Vector uv1(KW), uv2(KW);
-        for(size_t i = 0; i < NODES_PER_ELEM; ++i){
-            for(size_t j = 0; j < DOF; ++j){
-                const long n1 = node_positions[this->nodes[i]->u_pos[j]];
-                const long n2 = node_positions[e2->nodes[i]->u_pos[j]];
-                if(n1 >= 0){
-                    uv1[i*DOF + j]  =  u[n1];
-                }
-                if(n2 >= 0){
-                    uv2[i*DOF + j]  =  u[n2];
-                }
-            }
-        }
-
-        math::Vector NN(2*KW, 0);
-        math::Vector Mn(2*KW, 0);
-
-        constexpr size_t GN = 2*ORDER + 2;
-        const auto& GL = utils::GaussLegendre<GN>::get();
-
-        const gp_Pnt p1 = bounds[0];
-        const gp_Pnt p2 = bounds[1];
-
-        for(auto xi = GL.begin(); xi < GL.end(); ++xi){
-
-            const gp_Pnt pi(
-                p1.X() + (p2.X() - p1.X())*xi->x,
-                p1.Y() + (p2.Y() - p1.Y())*xi->x,
-                p1.Z() + (p2.Z() - p1.Z())*xi->x
-            );
-            const auto N1 = this->get_Ni(pi);
-            const auto N2 = e2->get_Ni(pi);
-            double gp = 0;
-            math::Vector up1(N1*uv1);
-            math::Vector up2(N2*uv2);
-            for(size_t j = 0; j < DIM; ++j){
-                gp += (up2[j] - up1[j])*n.Coord(1+j);
-            }
-            const double log = this->dH(gp, C, K);
-            if(log < -C/(std::numbers::pi*K)){
-                logger::quick_log(log);
-                exit(0);
-            }
-            NN.fill(0);
-            for(size_t i = 0; i < KW; ++i){
-                for(size_t j = 0; j < DIM; ++j){
-                    NN[i] -= N1(j, i)*n.Coord(1+j);
-                    NN[i + KW] += N2(j, i)*n.Coord(1+j);
-                }
-            }
-            Mn += (xi->w*log*NN);
-        }
-        const double drnorm = bounds[0].Distance(bounds[1]);
-        Mn *= drnorm;
-        for(size_t i = 0; i < NODES_PER_ELEM; ++i){
-            for(size_t j = 0; j < DOF; ++j){
-                const long n1 = node_positions[this->nodes[i]->u_pos[j]];
-                const long n2 = node_positions[e2->nodes[i]->u_pos[j]];
-                if(n1 >= 0){
-                    Ku[n1] = Mn[i*DOF + j];
-                }
-                if(n2 >= 0){
-                    Ku[n2] = Mn[KW + i*DOF + j];;
-                }
-            }
-        }
-    }
-    virtual void dKu_log(const MeshElement* const e2, const std::vector<long>& node_positions, const std::vector<double>& u, const std::vector<double>& du, const std::vector<gp_Pnt>& bounds, const gp_Dir n, std::vector<double>& dKu, const double C, const double K) const override{
-        const size_t ORDER = T::ORDER;
-        const size_t NODES_PER_ELEM = T::NODES_PER_ELEM;
-        const size_t DOF = T::NODE_DOF;
-        const size_t KW = T::K_DIM;
-        const size_t DIM = this->DIM;
-
-        math::Vector uv1(KW), uv2(KW);
-        math::Vector duv1(KW), duv2(KW);
-        for(size_t i = 0; i < NODES_PER_ELEM; ++i){
-            for(size_t j = 0; j < DOF; ++j){
-                const long n1 = node_positions[this->nodes[i]->u_pos[j]];
-                const long n2 = node_positions[e2->nodes[i]->u_pos[j]];
-                if(n1 >= 0){
-                    uv1[i*DOF + j]  =  u[n1];
-                    duv1[i*DOF + j] = du[n1];
-                }
-                if(n2 >= 0){
-                    uv2[i*DOF + j]  =  u[n2];
-                    duv2[i*DOF + j] = du[n2];
-                }
-            }
-        }
-        math::Vector NN(2*KW, 0);
-        math::Vector Mn(2*KW, 0);
-
-        constexpr size_t GN = 2*ORDER + 2;
-        const auto& GL = utils::GaussLegendre<GN>::get();
-
-        const gp_Pnt p1 = bounds[0];
-        const gp_Pnt p2 = bounds[1];
-
-        for(auto xi = GL.begin(); xi < GL.end(); ++xi){
-
-            const gp_Pnt pi(
-                p1.X() + (p2.X() - p1.X())*xi->x,
-                p1.Y() + (p2.Y() - p1.Y())*xi->x,
-                p1.Z() + (p2.Z() - p1.Z())*xi->x
-            );
-            const auto N1 = this->get_Ni(pi);
-            const auto N2 = e2->get_Ni(pi);
-            double gp = 0;
-            double dgp = 0;
-            math::Vector up1(N1*uv1);
-            math::Vector up2(N2*uv2);
-            math::Vector dup1(N1*duv1);
-            math::Vector dup2(N2*duv2);
-            for(size_t j = 0; j < DIM; ++j){
-                gp += (up2[j] - up1[j])*n.Coord(1+j);
-                dgp += (dup2[j] - dup1[j])*n.Coord(1+j);
-            }
-            const double dlog = this->ddH(gp, C, K)*dgp;
-            NN.fill(0);
-            for(size_t i = 0; i < KW; ++i){
-                for(size_t j = 0; j < DIM; ++j){
-                    NN[i] -= N1(j, i)*n.Coord(1+j);
-                    NN[i + KW] += N2(j, i)*n.Coord(1+j);
-                }
-            }
-            Mn += (xi->w*dlog*NN);
-        }
-        const double drnorm = bounds[0].Distance(bounds[1]);
-        Mn *= drnorm;
-        for(size_t i = 0; i < NODES_PER_ELEM; ++i){
-            for(size_t j = 0; j < DOF; ++j){
-                const long n1 = node_positions[this->nodes[i]->u_pos[j]];
-                const long n2 = node_positions[e2->nodes[i]->u_pos[j]];
-                if(n1 >= 0){
-                    dKu[n1] = Mn[i*DOF + j];
-                }
-                if(n2 >= 0){
-                    dKu[n2] = Mn[KW + i*DOF + j];;
-                }
-            }
-        }
     }
 
     protected:
@@ -1070,186 +1238,6 @@ class MeshElementCommon3DTet : public MeshElementCommon3D<T>{
         }
 
         return MnMn;
-    }
-    virtual math::Matrix get_MnMn_log(const MeshElement* const e2, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds, const gp_Dir n, const double C, const double K) const override{
-        const size_t ORDER = T::ORDER;
-        const size_t NODES_PER_ELEM = T::NODES_PER_ELEM;
-        const size_t DOF = T::NODE_DOF;
-        const size_t KW = T::K_DIM;
-        const size_t DIM = this->DIM;
-
-        math::Vector uv1(KW), uv2(KW);
-        for(size_t i = 0; i < NODES_PER_ELEM; ++i){
-            for(size_t j = 0; j < DOF; ++j){
-                uv1[i*DOF + j] = u_ext[this->nodes[i]->u_pos[j]];
-                uv2[i*DOF + j] = u_ext[e2->nodes[i]->u_pos[j]];
-            }
-        }
-        const auto& gli = utils::GaussLegendreTri<2*ORDER + 2>::get();
-        math::Vector NN(2*KW, 0);
-        math::Matrix MnMn(2*KW, 2*KW, 0);
-
-        for(auto it = gli.begin(); it != gli.end(); ++it){
-            const gp_Pnt pi = MeshElementCommon3DTet<T>::ECTRI_GL_to_point(*it, bounds);
-            const auto N1 = this->get_Ni(pi);
-            const auto N2 = e2->get_Ni(pi);
-            double gp = 0;
-            math::Vector up1(N1*uv1);
-            math::Vector up2(N2*uv2);
-            for(size_t j = 0; j < DIM; ++j){
-                gp += (up2[j] - up1[j])*n.Coord(1+j);
-            }
-            const double log = this->ddH(gp, C, K);
-            NN.fill(0);
-            for(size_t i = 0; i < KW; ++i){
-                for(size_t j = 0; j < DIM; ++j){
-                    NN[i] -= N1(j, i)*n.Coord(1+j);
-                    NN[i + KW] += N2(j, i)*n.Coord(1+j);
-                }
-            }
-            MnMn += (it->w*log*NN)*NN.T();
-        }
-        //for(size_t i = 0; i < KW; ++i){
-        //    for(size_t j = KW; j < 2*KW; ++j){
-        //        MnMn(i, j) *= -1.0;
-        //        MnMn(j, i) *= -1.0;
-        //    }
-        //}
-        const gp_Vec v1(bounds[0], bounds[1]);
-        const gp_Vec v2(bounds[0], bounds[2]);
-        const double A = 0.5*v1.Crossed(v2).Magnitude();
-        MnMn *= A;
-
-        return MnMn;
-    }
-    virtual void Ku_log(const MeshElement* const e2, const std::vector<long>& node_positions, const std::vector<double>& u, const std::vector<gp_Pnt>& bounds, const gp_Dir n, std::vector<double>& Ku, const double C, const double K) const override{
-        const size_t ORDER = T::ORDER;
-        const size_t NODES_PER_ELEM = T::NODES_PER_ELEM;
-        const size_t DOF = T::NODE_DOF;
-        const size_t KW = T::K_DIM;
-        const size_t DIM = this->DIM;
-
-        math::Vector uv1(KW), uv2(KW);
-        for(size_t i = 0; i < NODES_PER_ELEM; ++i){
-            for(size_t j = 0; j < DOF; ++j){
-                const long n1 = node_positions[this->nodes[i]->u_pos[j]];
-                const long n2 = node_positions[e2->nodes[i]->u_pos[j]];
-                if(n1 >= 0){
-                    uv1[i*DOF + j]  =  u[n1];
-                }
-                if(n2 >= 0){
-                    uv2[i*DOF + j]  =  u[n2];
-                }
-            }
-        }
-        const auto& gli = utils::GaussLegendreTri<2*ORDER + 2>::get();
-        math::Vector NN(2*KW, 0);
-        math::Vector Mn(2*KW, 0);
-
-        for(auto it = gli.begin(); it != gli.end(); ++it){
-            const gp_Pnt pi = MeshElementCommon3DTet<T>::ECTRI_GL_to_point(*it, bounds);
-            const auto N1 = this->get_Ni(pi);
-            const auto N2 = e2->get_Ni(pi);
-            double gp = 0;
-            math::Vector up1(N1*uv1);
-            math::Vector up2(N2*uv2);
-            for(size_t j = 0; j < DIM; ++j){
-                gp += (up2[j] - up1[j])*n.Coord(1+j);
-            }
-            const double log = this->dH(gp, C, K);
-            NN.fill(0);
-            for(size_t i = 0; i < KW; ++i){
-                for(size_t j = 0; j < DIM; ++j){
-                    NN[i] -= N1(j, i)*n.Coord(1+j);
-                    NN[i + KW] += N2(j, i)*n.Coord(1+j);
-                }
-            }
-            Mn += (it->w*log*NN);
-        }
-        const gp_Vec v1(bounds[0], bounds[1]);
-        const gp_Vec v2(bounds[0], bounds[2]);
-        const double A = 0.5*v1.Crossed(v2).Magnitude();
-        Mn *= A;
-        for(size_t i = 0; i < NODES_PER_ELEM; ++i){
-            for(size_t j = 0; j < DOF; ++j){
-                const long n1 = node_positions[this->nodes[i]->u_pos[j]];
-                const long n2 = node_positions[e2->nodes[i]->u_pos[j]];
-                if(n1 >= 0){
-                    Ku[n1] = Mn[i*DOF + j];
-                }
-                if(n2 >= 0){
-                    Ku[n2] = Mn[KW + i*DOF + j];;
-                }
-            }
-        }
-    }
-    virtual void dKu_log(const MeshElement* const e2, const std::vector<long>& node_positions, const std::vector<double>& u, const std::vector<double>& du, const std::vector<gp_Pnt>& bounds, const gp_Dir n, std::vector<double>& dKu, const double C, const double K) const override{
-        const size_t ORDER = T::ORDER;
-        const size_t NODES_PER_ELEM = T::NODES_PER_ELEM;
-        const size_t DOF = T::NODE_DOF;
-        const size_t KW = T::K_DIM;
-        const size_t DIM = this->DIM;
-
-        math::Vector uv1(KW), uv2(KW);
-        math::Vector duv1(KW), duv2(KW);
-        for(size_t i = 0; i < NODES_PER_ELEM; ++i){
-            for(size_t j = 0; j < DOF; ++j){
-                const long n1 = node_positions[this->nodes[i]->u_pos[j]];
-                const long n2 = node_positions[e2->nodes[i]->u_pos[j]];
-                if(n1 >= 0){
-                    uv1[i*DOF + j]  =  u[n1];
-                    duv1[i*DOF + j] = du[n1];
-                }
-                if(n2 >= 0){
-                    uv2[i*DOF + j]  =  u[n2];
-                    duv2[i*DOF + j] = du[n2];
-                }
-            }
-        }
-        const auto& gli = utils::GaussLegendreTri<2*ORDER + 2>::get();
-        math::Vector NN(2*KW, 0);
-        math::Vector Mn(2*KW, 0);
-
-        for(auto it = gli.begin(); it != gli.end(); ++it){
-            const gp_Pnt pi = MeshElementCommon3DTet<T>::ECTRI_GL_to_point(*it, bounds);
-            const auto N1 = this->get_Ni(pi);
-            const auto N2 = e2->get_Ni(pi);
-            double gp = 0;
-            double dgp = 0;
-            math::Vector up1(N1*uv1);
-            math::Vector up2(N2*uv2);
-            math::Vector dup1(N1*duv1);
-            math::Vector dup2(N2*duv2);
-            for(size_t j = 0; j < DIM; ++j){
-                gp += (up2[j] - up1[j])*n.Coord(1+j);
-                dgp += (dup2[j] - dup1[j])*n.Coord(1+j);
-            }
-            const double dlog = this->ddH(gp, C, K)*dgp;
-            NN.fill(0);
-            for(size_t i = 0; i < KW; ++i){
-                for(size_t j = 0; j < DIM; ++j){
-                    NN[i] -= N1(j, i)*n.Coord(1+j);
-                    NN[i + KW] += N2(j, i)*n.Coord(1+j);
-                }
-            }
-            Mn += (it->w*dlog*NN);
-        }
-        const gp_Vec v1(bounds[0], bounds[1]);
-        const gp_Vec v2(bounds[0], bounds[2]);
-        const double A = 0.5*v1.Crossed(v2).Magnitude();
-        Mn *= A;
-        for(size_t i = 0; i < NODES_PER_ELEM; ++i){
-            for(size_t j = 0; j < DOF; ++j){
-                const long n1 = node_positions[this->nodes[i]->u_pos[j]];
-                const long n2 = node_positions[e2->nodes[i]->u_pos[j]];
-                if(n1 >= 0){
-                    dKu[n1] = Mn[i*DOF + j];
-                }
-                if(n2 >= 0){
-                    dKu[n2] = Mn[KW + i*DOF + j];;
-                }
-            }
-        }
     }
 
     protected:

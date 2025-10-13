@@ -488,7 +488,7 @@ math::Matrix H8::get_MnMn_log(const MeshElement* const e2, const std::vector<dou
 
     return MnMn;
 }
-void H8::Ku_log(const MeshElement* const e2, const std::vector<long>& node_positions, const std::vector<double>& u, const std::vector<gp_Pnt>& bounds, const gp_Dir n, std::vector<double>& Ku, const double C, const double K) const{
+void H8::Ku_log(const double mult, const MeshElement* const e2, const std::vector<long>& node_positions, const std::vector<double>& u, const std::vector<gp_Pnt>& bounds, const gp_Dir n, std::vector<double>& Ku, const double C, const double K) const{
     const size_t DOF = NODE_DOF;
     const size_t KW = K_DIM;
 
@@ -551,15 +551,15 @@ void H8::Ku_log(const MeshElement* const e2, const std::vector<long>& node_posit
             const long n1 = node_positions[this->nodes[i]->u_pos[j]];
             const long n2 = node_positions[e2->nodes[i]->u_pos[j]];
             if(n1 >= 0){
-                Ku[n1] = Mn[i*DOF + j];
+                Ku[n1] = mult*Mn[i*DOF + j];
             }
             if(n2 >= 0){
-                Ku[n2] = Mn[KW + i*DOF + j];;
+                Ku[n2] = mult*Mn[KW + i*DOF + j];;
             }
         }
     }
 }
-void H8::dKu_log(const MeshElement* const e2, const std::vector<long>& node_positions, const std::vector<double>& u, const std::vector<double>& du, const std::vector<gp_Pnt>& bounds, const gp_Dir n, std::vector<double>& dKu, const double C, const double K) const{
+void H8::dKu_log(const double mult, const MeshElement* const e2, const std::vector<long>& node_positions, const std::vector<double>& u, const std::vector<double>& du, const std::vector<gp_Pnt>& bounds, const gp_Dir n, std::vector<double>& dKu, const double C, const double K) const{
     const size_t DOF = NODE_DOF;
     const size_t KW = K_DIM;
 
@@ -628,10 +628,10 @@ void H8::dKu_log(const MeshElement* const e2, const std::vector<long>& node_posi
             const long n1 = node_positions[this->nodes[i]->u_pos[j]];
             const long n2 = node_positions[e2->nodes[i]->u_pos[j]];
             if(n1 >= 0){
-                dKu[n1] = Mn[i*DOF + j];
+                dKu[n1] += mult*Mn[i*DOF + j];
             }
             if(n2 >= 0){
-                dKu[n2] = Mn[KW + i*DOF + j];;
+                dKu[n2] += mult*Mn[KW + i*DOF + j];;
             }
         }
     }
