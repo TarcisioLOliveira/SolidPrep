@@ -58,7 +58,9 @@ void SolverManager::generate_matrix(const Meshing* const mesh, const std::vector
             if(needs_lambda){
                 //std::fill(this->lambdas[i][0].begin(), this->lambdas[i][0].begin() + l_num_orig, 0.001);
                 //std::fill(this->lambdas[i][0].begin() + l_num_orig, this->lambdas[i][0].end(), 0.0);
+
                 std::fill(this->split_u[i].begin(), this->split_u[i].end(), 0.0);
+                std::fill(this->lambdas[i][0].begin() + l_num_orig, this->lambdas[i][0].end(), 0.0);
             }
         }
         auto& n = mesh->node_positions[i];

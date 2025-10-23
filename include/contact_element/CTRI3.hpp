@@ -53,10 +53,12 @@ class CTRI3 : public ContactMeshElement{
     virtual math::Vector fl3_eq(const math::Vector& ln_e, const math::Vector& lp1_e, const math::Vector& lp2_e, const math::Vector& u_e) const override;
     virtual math::Vector fl3_eq(const math::Vector& ln_e, const math::Vector& lp1_e, const math::Vector& lp2_e, const math::Vector& u_e, const size_t dof) const override;
 
+    virtual math::Matrix fl2_uu(const math::Vector& l_e, const math::Vector& u1, const math::Vector& u2) const override;
     virtual math::Matrix fl2_uL(const math::Vector& l_e, const math::Vector& u1, const math::Vector& u2) const override;
     virtual math::Matrix fl2_LL(const math::Vector& l_e, const math::Vector& u1, const math::Vector& u2) const override;
 
     virtual void fl2_Ku_lambda(const double EPS, const std::vector<long> u1_pos, const std::vector<long> u2_pos, const std::vector<long>& lu_pos, const std::vector<double>& u, std::vector<double>& Ku) const override;
+    virtual void fl2_dKu_lambda(const double EPS, const std::vector<long> u1_pos, const std::vector<long> u2_pos, const std::vector<long>& lu_pos, const std::vector<double>& u, const std::vector<double>& du, std::vector<double>& Ku) const override;
 
     virtual double get_area() const override{
         return this->delta;
@@ -88,6 +90,17 @@ class CTRI3 : public ContactMeshElement{
     double a[3], b[3], c[3], delta;
     size_t E_KW;
     math::Matrix R;
+    const double FL2_EPS = 1e-14;//1e-14;
+
+    double A(const double x) const{
+        return (1 + x/std::sqrt(x*x + FL2_EPS))/2;
+    }
+    double dA(const double x) const{
+        return FL2_EPS/(2*std::pow(x*x + FL2_EPS, 1.5));
+    }
+    double ddA(const double x) const{
+        return -3*FL2_EPS*x/(2*std::pow(x*x + FL2_EPS, 2.5));
+    }
 
     virtual gp_Dir get_d1() const{
         return gp_Dir(R(0,1), R(1,1), R(2,1));
