@@ -68,7 +68,7 @@ class EigenSparseAsymmetric : public GlobalStiffnessMatrix{
                 if(posj[j] < 0){
                     continue;
                 }
-                if(posi[i] > -1 && posj[j] > -1){
+                if(posi[i] > -1 && posj[j] > -1 && std::abs(k(i,j)) > 1e-10){
                     K.coeffRef(posi[i], posj[j]) += k(i, j);
                     K.coeffRef(posj[j], posi[i]) += k(i, j);
                 }
@@ -86,7 +86,44 @@ class EigenSparseAsymmetric : public GlobalStiffnessMatrix{
                 if(pos[j] < 0){
                     continue;
                 }
-                K.coeffRef(pos[i], pos[j]) += k(i, j);
+                if(std::abs(k(i,j)) > 1e-10){
+                    K.coeffRef(pos[i], pos[j]) += k(i, j);
+                }
+            }
+        }
+    }
+    inline virtual void reserve_block_symmetric(const math::Matrix& k, const std::vector<long>& posi, const std::vector<long>& posj) override{
+        const size_t w = posj.size();
+        const size_t h = posi.size();
+        for(size_t i = 0; i < h; ++i){
+            if(posi[i] < 0){
+                continue;
+            }
+            for(size_t j = 0; j < w; ++j){
+                if(posj[j] < 0){
+                    continue;
+                }
+                if(posi[i] > -1 && posj[j] > -1 && std::abs(k(i,j)) > 1e-10){
+                    K.coeffRef(posi[i], posj[j]) += 0;
+                    K.coeffRef(posj[j], posi[i]) += 0;
+                }
+            }
+        }
+    }
+
+    inline virtual void reserve_element_matrix(const math::Matrix& k, const std::vector<long>& pos) override{
+        const size_t w = pos.size();
+        for(size_t i = 0; i < w; ++i){
+            if(pos[i] < 0){
+                continue;
+            }
+            for(size_t j = 0; j < w; ++j){
+                if(pos[j] < 0){
+                    continue;
+                }
+                if(std::abs(k(i,j)) > 1e-10){
+                    K.coeffRef(pos[i], pos[j]) += 0;
+                }
             }
         }
     }

@@ -593,36 +593,67 @@ class MeshElement : public Element{
     const double x0 = 0;//-1e-3;
     inline double H(const double x, const double C, const double K) const{
         (void) K;
+        (void) C;
         //constexpr double pi = std::numbers::pi;
         //const double dx = x - x0;
         //const double h = C*(std::atan(K*dx) + pi/2)*(dx*dx + dx)/pi + C*dx/(pi*K);
         //const double h = C*(std::atan(K*dx) + pi/2)*dx*dx/pi;// + C*dx/(pi*K);
-        const double h = C*(A(x)*x*x)/2;
+        //const double h = C*(A(x)*x*x)/2;
         //const double h = C*(A(x)*x);
-        return h;
+        if(std::abs(K*x) < 345){
+            const double ln = std::log(1 + std::exp(K*x));
+            const double h = C*ln*(ln/(K*K));
+            return h;
+        } else if(x > 0){
+            return C*x;
+        } else {
+            return 0;
+        }
     }
     inline double dH(const double x, const double C, const double K) const{
         (void) K;
+        (void) C;
         //constexpr double pi = std::numbers::pi;
         //const double dx = x - x0;
         //const double Kx = K*dx;
         //const double dh = C*((K*(dx*dx + dx))/(1 + Kx*Kx) + (std::atan(Kx) + pi/2)*(2*dx + 1))/pi + C/(pi*K);
         //const double dh = C*(K*(dx*dx)/(1 + Kx*Kx) + (std::atan(Kx) + pi/2)*(2*dx))/pi;// + C/(pi*K);
         //return (dh > 1e-4) ? dh : 0;
-        const double dh = C*(dA(x)*x*x/2 + A(x)*x);
+        //const double dh = C*(dA(x)*x*x/2 + A(x)*x);
         //const double dh = C*(dA(x)*x + A(x));
-        return dh;
+        if(std::abs(K*x) < 345){
+            const double ekx1 = 1 + std::exp(K*x);
+            const double ekx_1 = 1 + std::exp(-K*x);
+            const double ln = std::log(ekx1);
+            const double dh = C*(ln/(K*ekx_1));
+            return dh;
+        } else if(x > 0){
+            return C;
+        } else {
+            return 0;
+        }
     }
     inline double ddH(const double x, const double C, const double K) const{
         (void) K;
+        (void) C;
         //constexpr double pi = std::numbers::pi;
         //const double dx = x - x0;
         //const double Kx = K*dx;
         //const double Kx_den = 1 + Kx*Kx;
         //return C*(2*K*(2*dx + 1)/Kx_den - 2*K*K*Kx*(dx*dx + dx)/(Kx_den*Kx_den) + 2*(std::atan(Kx) + pi/2))/pi;
         //return C*(4*Kx/Kx_den - 2*Kx*Kx*Kx/(Kx_den*Kx_den) + 2*(std::atan(Kx) + pi/2))/pi;
-        return C*(ddA(x)*x*x/2 + A(x) + 2*dA(x)*x);
+        //return C*(ddA(x)*x*x/2 + A(x) + 2*dA(x)*x);
         //return 0;//C*(ddA(x)*x + 2*dA(x));
+        if(std::abs(K*x) < 345){
+            const double ekx1 = 1 + std::exp(K*x);
+            const double e_kx = std::exp(-K*x);
+            const double ekx_1 = 1 + e_kx;
+            const double ln = std::log(ekx1);
+            const double ddh = C*((ln*e_kx + 1)/(ekx_1*ekx_1));
+            return ddh;
+        } else {
+            return 0;
+        }
     }
 
     /**

@@ -399,7 +399,7 @@ math::Matrix CTRI3::fl2_uu(const math::Vector& l_e, const math::Vector& u1, cons
         //const double a = 1e-7;
         //const double mult_uu = l*a/std::pow(gp*gp + a, 1.5);
         //const double mult_uu = l*(ddA(gp)*gp*gp/2 + A(gp) + 2*dA(gp)*gp);
-        const double mult_uu = l*(ddA(gp)*gp + 2*dA(gp));
+        const double mult_uu = l*ddh(gp);
         uu += (it->w*mult_uu)*(NN*NN.T());
     }
     uu *= this->delta;
@@ -459,7 +459,7 @@ math::Matrix CTRI3::fl2_uL(const math::Vector& l_e, const math::Vector& u1, cons
         //const double abs = std::sqrt(gp*gp + 1e-10);
         //const double mult_uL = (1 + gp/abs);
         //const double mult_uL = (dA(gp)*gp*gp/2 + A(gp)*gp);
-        const double mult_uL = (dA(gp)*gp + A(gp));
+        const double mult_uL = dh(gp);
         uL += (it->w*mult_uL)*(NN*Nl.T());
     }
     uL *= this->delta;
@@ -540,8 +540,8 @@ void CTRI3::fl2_Ku_lambda(const double EPS, const std::vector<long> u1_pos, cons
         //const double mult_LL = gp + abs;
         //const double mult_uL = l*(dA(gp)*gp*gp/2 + A(gp)*gp);
         //const double mult_LL = A(gp)*gp*gp/2;
-        const double mult_uL = l*(dA(gp)*gp + A(gp));
-        const double mult_LL = A(gp)*gp;
+        const double mult_uL = l*dh(gp);
+        const double mult_LL = h(gp);
         NN.fill(0);
         for(size_t i = 0; i < U_KW; ++i){
             for(size_t j = 0; j < DIM; ++j){
@@ -611,8 +611,8 @@ void CTRI3::fl2_dKu_lambda(const double EPS, const std::vector<long> u1_pos, con
         //const double mult_LL = (1 + gp/abs)*dgp;
         //const double mult_uL = l*(ddA(gp)*gp*gp/2 + A(gp) + 2*dA(gp)*gp)*dgp + dl*(dA(gp)*gp*gp/2 + A(gp)*gp);
         //const double mult_LL = (dA(gp)*gp*gp/2 + A(gp)*gp)*dgp;
-        const double mult_uL = dl*(dA(gp)*gp + A(gp)) + l*(ddA(gp)*gp + 2*dA(gp))*dgp;
-        const double mult_LL = (dA(gp)*gp + A(gp))*dgp;
+        const double mult_uL = dl*dh(gp) + l*ddh(gp)*dgp;
+        const double mult_LL = dh(gp)*dgp;
         NN.fill(0);
         for(size_t i = 0; i < U_KW; ++i){
             for(size_t j = 0; j < DIM; ++j){

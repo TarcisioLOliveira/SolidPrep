@@ -75,117 +75,149 @@ class COO{
     inline void restore_matrix(){
         std::copy(cooVal_bkp.begin(), cooVal_bkp.end(), cooVal.begin());
     }
+    inline void reserve_matrix_symmetric(const math::Matrix& M, const std::vector<long>& pos){
+        size_t W = pos.size();
+        logger::log_assert(this->coo_first_time, logger::ERROR, "cannot reserve coo space after coo structure is defined.");
+        const auto P = this->index_sort(pos);
+        size_t start_i = 0;
+        while(pos[P[start_i]] < 0){
+            ++start_i;
+        }
+        for(size_t i = start_i; i < W; ++i){
+            const auto Pi = pos[P[i]];
+            for(size_t j = start_i; j <= i; ++j){
+                const auto Pj = pos[P[j]];
+
+                const auto Mij = M(P[i], P[j]);
+
+                // Pi >= Pj
+                if(std::abs(Mij) > ZERO_TOL){
+                    this->data[Point(Pi, Pj)] += 0;
+                }
+            }
+        }
+    }
+    inline void reserve_matrix_general(const math::Matrix& M, const std::vector<long>& pos){
+        size_t W = pos.size();
+        logger::log_assert(this->coo_first_time, logger::ERROR, "cannot reserve coo space after coo structure is defined.");
+        const auto P = this->index_sort(pos);
+        size_t start_i = 0;
+        while(pos[P[start_i]] < 0){
+            ++start_i;
+        }
+        for(size_t i = start_i; i < W; ++i){
+            const auto Pi = pos[P[i]];
+            for(size_t j = start_i; j < W; ++j){
+                const auto Pj = pos[P[j]];
+
+                const auto Mij = M(P[i], P[j]);
+
+                // Pi >= Pj
+                if(std::abs(Mij) > ZERO_TOL){
+                    this->data[Point(Pi, Pj)] += 0;
+                }
+            }
+        }
+    }
+    inline void reserve_block(const math::Matrix& M, const std::vector<long>& pos_i, const std::vector<long>& pos_j, const bool transpose){
+        size_t Wi = pos_i.size();
+        size_t Wj = pos_j.size();
+        logger::log_assert(this->coo_first_time, logger::ERROR, "cannot reserve coo space after coo structure is defined.");
+        const auto Pi = this->index_sort(pos_i);
+        size_t start_i = 0;
+        while(pos_i[Pi[start_i]] < 0){
+            ++start_i;
+        }
+        const auto Pj = this->index_sort(pos_j);
+        size_t start_j = 0;
+        while(pos_j[Pj[start_j]] < 0){
+            ++start_j;
+        }
+        if(!transpose){
+            for(size_t i = start_i; i < Wi; ++i){
+                const auto pi = pos_i[Pi[i]];
+                for(size_t j = start_i; j < Wj; ++j){
+                    const auto pj = pos_j[Pj[j]];
+
+                    const auto Mij = M(Pi[i], Pj[j]);
+
+                    if(std::abs(Mij) > ZERO_TOL){
+                        this->data[Point(pi, pj)] += 0;
+                    }
+                }
+            }
+        } else {
+            for(size_t i = start_i; i < Wi; ++i){
+                const auto pi = pos_i[Pi[i]];
+                for(size_t j = start_i; j < Wj; ++j){
+                    const auto pj = pos_j[Pj[j]];
+
+                    const auto Mij = M(Pi[i], Pj[j]);
+
+                    if(std::abs(Mij) > ZERO_TOL){
+                        this->data[Point(pj, pi)] += 0;
+                    }
+                }
+            }
+        }
+    }
 
     inline void insert_matrix_symmetric(const math::Matrix& M, const std::vector<long>& pos){
         size_t W = pos.size();
         if(this->coo_first_time){
-            for(size_t i = 0; i < W; ++i){
-                if(pos[i] < 0){
-                    continue;
-                }
-                for(size_t j = 0; j <= i; ++j){
-                    if(pos[j] < 0){
-                        continue;
+            const auto P = this->index_sort(pos);
+            size_t start_i = 0;
+            while(pos[P[start_i]] < 0){
+                ++start_i;
+            }
+            for(size_t i = start_i; i < W; ++i){
+                const auto Pi = pos[P[i]];
+                for(size_t j = start_i; j <= i; ++j){
+                    const auto Pj = pos[P[j]];
+
+                    const auto Mij = M(P[i], P[j]);
+
+                    // Pi >= Pj
+                    if(std::abs(Mij) > ZERO_TOL){
+                        this->data[Point(Pi, Pj)] += Mij;
                     }
-                    //if(std::abs(M[i*W + j]) > 0){
-                        if(pos[i] >= pos[j]){
-                            this->data[Point(pos[i], pos[j])] += M(i, j);
-                        } else {
-                            this->data[Point(pos[j], pos[i])] += M(i, j);
-                        }
-                    //}
                 }
             }
         } else {
+            const auto P = this->index_sort(pos);
             for(size_t i = 0; i < W; ++i){
-                for(size_t j = 0; j <= i; ++j){
-                    if(pos[i] > -1 && pos[j] > -1){
-                        if(pos[i] >= pos[j]){
-                            this->add_coo(pos[i], pos[j], M(i, j));
-                        } else {
-                            this->add_coo(pos[j], pos[i], M(i, j));
-                        }
-                    }
+                if(pos[i] > -1){
+                    this->coo_add_row(i, pos[i], P, pos, M);
                 }
             }
-            //for(size_t i = 0; i < W; ++i){
-            //    if(pos[i] < 0){
-            //        continue;
-            //    }
-            //    size_t j = 0;
-            //    while(j <= i && (pos[j] < 0 || M[i*W+j] == 0)){
-            //        ++j;
-            //    }
-            //    // pos is not ordered!
-            //    while(j <= i){
-            //        bool found_one = false;
-            //        for(int c = cooRowPtr[pos[i]]; c < cooRowPtr[pos[i]+1]; ++c){
-            //            if(cooColInd[c] == pos[j] + offset){
-            //                found_one = true;
-            //                cooVal[c] += M[i*W+j];
-            //                do{
-            //                    ++j;
-            //                } while(j <= i && (pos[j] < 0 || M[i*W+j] == 0));
-            //                if(j > i){
-            //                    break;
-            //                }
-            //            }
-            //        }
-            //        if(!found_one){
-            //            do{
-            //                ++j;
-            //            } while(j <= i && (pos[j] < 0 || M[i*W+j] == 0));
-            //        }
-            //    }
-            //}
         }
     }
     inline void insert_matrix_general(const math::Matrix& M, const std::vector<long>& pos){
         size_t W = pos.size();
         if(this->coo_first_time){
-            for(size_t i = 0; i < W; ++i){
-                if(pos[i] < 0){
-                    continue;
-                }
-                for(size_t j = 0; j < W; ++j){
-                    if(pos[j] < 0){
-                        continue;
+            const auto P = this->index_sort(pos);
+            size_t start_i = 0;
+            while(pos[P[start_i]] < 0){
+                ++start_i;
+            }
+            for(size_t i = start_i; i < W; ++i){
+                const auto Pi = pos[P[i]];
+                for(size_t j = start_i; j < W; ++j){
+                    const auto Pj = pos[P[j]];
+
+                    const auto Mij = M(P[i], P[j]);
+
+                    // Pi >= Pj
+                    if(std::abs(Mij) > ZERO_TOL){
+                        this->data[Point(Pi, Pj)] += Mij;
                     }
-                    //if(std::abs(M[i*W + j]) > 0){
-                        this->data[Point(pos[i], pos[j])] += M(i, j);
-                    //}
                 }
             }
         } else {
+            const auto P = this->index_sort(pos);
             for(size_t i = 0; i < W; ++i){
-                if(pos[i] < 0){
-                    continue;
-                }
-                size_t j = 0;
-                while(j < W && pos[j] < 0){
-                    ++j;
-                }
-                // pos is not ordered!
-                while(j < W){
-                    bool found_one = false;
-                    for(int c = cooRowPtr[pos[i]]; c < cooRowPtr[pos[i]+1]; ++c){
-                        if(cooColInd[c] == pos[j] + offset){
-                            found_one = true;
-                            cooVal[c] += M(i, j);
-                            size_t j_prev = j;
-                            do{
-                                ++j;
-                            } while(j < W && pos[j] < 0);
-                            if(j >= W || pos[j] < pos[j_prev]){
-                                break;
-                            }
-                        }
-                    }
-                    if(!found_one){
-                        do{
-                            ++j;
-                        } while(j < W && pos[j] < 0);
-                    }
+                if(pos[i] > -1){
+                    this->coo_add_row(i, pos[i], P, pos, M);
                 }
             }
         }
@@ -194,98 +226,57 @@ class COO{
         size_t Wi = pos_i.size();
         size_t Wj = pos_j.size();
         if(this->coo_first_time){
+            const auto Pi = this->index_sort(pos_i);
+            size_t start_i = 0;
+            while(pos_i[Pi[start_i]] < 0){
+                ++start_i;
+            }
+            const auto Pj = this->index_sort(pos_j);
+            size_t start_j = 0;
+            while(pos_j[Pj[start_j]] < 0){
+                ++start_j;
+            }
             if(!transpose){
-                for(size_t i = 0; i < Wi; ++i){
-                    if(pos_i[i] < 0){
-                        continue;
-                    }
-                    for(size_t j = 0; j < Wj; ++j){
-                        if(pos_j[j] < 0){
-                            continue;
+                for(size_t i = start_i; i < Wi; ++i){
+                    const auto pi = pos_i[Pi[i]];
+                    for(size_t j = start_i; j < Wj; ++j){
+                        const auto pj = pos_j[Pj[j]];
+
+                        const auto Mij = M(Pi[i], Pj[j]);
+
+                        if(std::abs(Mij) > ZERO_TOL){
+                            this->data[Point(pi, pj)] += Mij;
                         }
-                        //if(std::abs(M[i*Wj + j]) > 0){
-                            this->data[Point(pos_i[i], pos_j[j])] += M(i, j);
-                        //}
                     }
                 }
             } else {
-                for(size_t i = 0; i < Wi; ++i){
-                    if(pos_i[i] < 0){
-                        continue;
-                    }
-                    for(size_t j = 0; j < Wj; ++j){
-                        if(pos_j[j] < 0){
-                            continue;
+                for(size_t i = start_i; i < Wi; ++i){
+                    const auto pi = pos_i[Pi[i]];
+                    for(size_t j = start_i; j < Wj; ++j){
+                        const auto pj = pos_j[Pj[j]];
+
+                        const auto Mij = M(Pi[i], Pj[j]);
+
+                        if(std::abs(Mij) > ZERO_TOL){
+                            this->data[Point(pj, pi)] += Mij;
                         }
-                        //if(std::abs(M[i*Wj + j]) > 0){
-                            this->data[Point(pos_j[j], pos_i[i])] += M(i, j);
-                        //}
                     }
                 }
             }
         } else {
             if(!transpose){
+                const auto P(this->index_sort(pos_j));
                 for(size_t i = 0; i < Wi; ++i){
-                    if(pos_i[i] < 0){
-                        continue;
-                    }
-                    size_t j = 0;
-                    while(j < Wj && pos_j[j] < 0){
-                        ++j;
-                    }
-                    // pos is not ordered!
-                    while(j < Wj){
-                        bool found_one = false;
-                        for(int c = cooRowPtr[pos_i[i]]; c < cooRowPtr[pos_i[i]+1]; ++c){
-                            if(cooColInd[c] == pos_j[j] + offset){
-                                found_one = true;
-                                cooVal[c] += M(i, j);
-                                size_t j_prev = j;
-                                do{
-                                    ++j;
-                                } while(j < Wj && pos_j[j] < 0);
-                                if(j >= Wj || pos_j[j] < pos_j[j_prev]){
-                                    break;
-                                }
-                            }
-                        }
-                        if(!found_one){
-                            do{
-                                ++j;
-                            } while(j < Wj && pos_j[j] < 0);
-                        }
+                    if(pos_i[i] > -1){
+                        this->coo_add_row(i, pos_i[i], P, pos_j, M);
                     }
                 }
             } else {
+                const auto P(this->index_sort(pos_i));
+                const math::Matrix MT = M.T();
                 for(size_t j = 0; j < Wj; ++j){
-                    if(pos_j[j] < 0){
-                        continue;
-                    }
-                    size_t i = 0;
-                    while(i < Wi && pos_i[i] < 0){
-                        ++i;
-                    }
-                    // pos is not ordered!
-                    while(i < Wi){
-                        bool found_one = false;
-                        for(int c = cooRowPtr[pos_j[j]]; c < cooRowPtr[pos_j[j]+1]; ++c){
-                            if(cooColInd[c] == pos_i[i] + offset){
-                                found_one = true;
-                                cooVal[c] += M(i, j);
-                                size_t i_prev = i;
-                                do{
-                                    ++i;
-                                } while(i < Wi && pos_i[i] < 0);
-                                if(i >= Wi || pos_i[i] < pos_i[i_prev]){
-                                    break;
-                                }
-                            }
-                        }
-                        if(!found_one){
-                            do{
-                                ++i;
-                            } while(i < Wi && pos_i[i] < 0);
-                        }
+                    if(pos_j[j] > -1){
+                        this->coo_add_row(j, pos_j[j], P, pos_i, MT);
                     }
                 }
             }
@@ -357,6 +348,47 @@ class COO{
     std::vector<INT> cooColInd;
     std::vector<double> cooVal;
     std::vector<double> cooVal_bkp;
+    const double ZERO_TOL = 1e-6;
+
+    inline std::vector<size_t> index_sort(const std::vector<long>& pos) const{
+        // https://stackoverflow.com/questions/1577475/c-sorting-and-keeping-track-of-indexes
+
+        std::vector<size_t> P(pos.size());
+        std::iota(P.begin(), P.end(), 0);
+        sort(P.begin(), P.end(), 
+            [&](size_t i, size_t j){
+                return pos[i] < pos[j];
+            }
+        );
+
+        return P;
+    };
+
+    inline void coo_add_row(const long i, const size_t row, const std::vector<size_t>& P, const std::vector<long>& pos, const math::Matrix& M){
+        size_t j = 0;
+        while(pos[P[j]] < 0){
+            ++j;
+        }
+        if(j >= pos.size()){
+            return;
+        }
+        for(int c = cooRowPtr[row]; c < cooRowPtr[row+1]; ++c){
+            const auto curr = pos[P[j]];
+            if(cooColInd[c] == curr + offset){
+                cooVal[c] += M(i, P[j]);
+                ++j;
+                if(j >= pos.size()){
+                    break;
+                }
+            } else if(cooColInd[c] > curr + offset){
+                ++j;
+                if(j >= pos.size()){
+                    break;
+                }
+                --c;
+            }
+        }
+    } 
 
 
     void map_full_dot_vector(const std::vector<double>& v, std::vector<double>& v_out) const;

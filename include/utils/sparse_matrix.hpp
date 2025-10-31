@@ -85,13 +85,13 @@ class SparseMatrix{
                 if(pos[j] < 0){
                     continue;
                 }
-                //if(M[i*W + j] != 0){
+                if(std::abs(M(i,j)) > 1e-10){
                     if(pos[i] >= pos[j]){
                         this->data[Point(pos[i], pos[j])] += M(i, j);
                     } else {
                         this->data[Point(pos[j], pos[i])] += M(i, j);
                     }
-                //}
+                }
             }
         }
     }
@@ -105,9 +105,9 @@ class SparseMatrix{
                 if(pos[j] < 0){
                     continue;
                 }
-                //if(M[i*W + j] != 0){
+                if(std::abs(M(i,j)) > 1e-10){
                     this->data[Point(pos[i], pos[j])] += M(i, j);
-                //}
+                }
             }
         }
     }
@@ -123,9 +123,9 @@ class SparseMatrix{
                     if(pos_j[j] < 0){
                         continue;
                     }
-                    //if(std::abs(M[i*Wj + j]) > 0){
+                    if(std::abs(M(i,j)) > 1e-10){
                         this->data[Point(pos_i[i], pos_j[j])] += M(i, j);
-                    //}
+                    }
                 }
             }
         } else {
@@ -137,9 +137,79 @@ class SparseMatrix{
                     if(pos_j[j] < 0){
                         continue;
                     }
-                    //if(std::abs(M[i*Wj + j]) > 0){
+                    if(std::abs(M(i,j)) > 1e-10){
                         this->data[Point(pos_j[j], pos_i[i])] += M(i, j);
-                    //}
+                    }
+                }
+            }
+        }
+    }
+    // Assumes you'll only use to_mumps_format(), so ku/kl are not calculated
+    inline void reserve_matrix_symmetric_mumps(const math::Matrix& M, const std::vector<long>& pos){
+        size_t W = pos.size();
+        for(size_t i = 0; i < W; ++i){
+            if(pos[i] < 0){
+                continue;
+            }
+            for(size_t j = 0; j <= i; ++j){
+                if(pos[j] < 0){
+                    continue;
+                }
+                if(std::abs(M(i,j)) > 1e-10){
+                    if(pos[i] >= pos[j]){
+                        this->data[Point(pos[i], pos[j])] += 0;
+                    } else {
+                        this->data[Point(pos[j], pos[i])] += 0;
+                    }
+                }
+            }
+        }
+    }
+    inline void reserve_matrix_general_mumps(const math::Matrix& M, const std::vector<long>& pos){
+        size_t W = pos.size();
+        for(size_t i = 0; i < W; ++i){
+            if(pos[i] < 0){
+                continue;
+            }
+            for(size_t j = 0; j < W; ++j){
+                if(pos[j] < 0){
+                    continue;
+                }
+                if(std::abs(M(i,j)) > 1e-10){
+                    this->data[Point(pos[i], pos[j])] += 0;
+                }
+            }
+        }
+    }
+    inline void reserve_block(const math::Matrix& M, const std::vector<long>& pos_i, const std::vector<long>& pos_j, const bool transpose){
+        size_t Wi = pos_i.size();
+        size_t Wj = pos_j.size();
+        if(!transpose){
+            for(size_t i = 0; i < Wi; ++i){
+                if(pos_i[i] < 0){
+                    continue;
+                }
+                for(size_t j = 0; j < Wj; ++j){
+                    if(pos_j[j] < 0){
+                        continue;
+                    }
+                    if(std::abs(M(i,j)) > 1e-10){
+                        this->data[Point(pos_i[i], pos_j[j])] += 0;
+                    }
+                }
+            }
+        } else {
+            for(size_t i = 0; i < Wi; ++i){
+                if(pos_i[i] < 0){
+                    continue;
+                }
+                for(size_t j = 0; j < Wj; ++j){
+                    if(pos_j[j] < 0){
+                        continue;
+                    }
+                    if(std::abs(M(i,j)) > 1e-10){
+                        this->data[Point(pos_j[j], pos_i[i])] += 0;
+                    }
                 }
             }
         }

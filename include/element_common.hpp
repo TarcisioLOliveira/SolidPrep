@@ -203,7 +203,7 @@ class MeshElementCommon : public MeshElement{
 
         math::Vector NN(2*KW, 0);
 
-        constexpr size_t GN = 3*ORDER + 3;
+        constexpr size_t GN = 5*ORDER + 1;
 
         double result = 0;
         this->area_integral<GN>(result,
@@ -237,7 +237,7 @@ class MeshElementCommon : public MeshElement{
 
         math::Vector NN(2*KW, 0);
 
-        constexpr size_t GN = 4*ORDER + 3;
+        constexpr size_t GN = 5*ORDER + 1;
 
         double result = 0;
         this->area_integral<GN>(result,
@@ -313,7 +313,7 @@ class MeshElementCommon : public MeshElement{
         math::Matrix NN(2*KW, 1, 0);
         math::Matrix Mn(2*KW, 1, 0);
 
-        constexpr size_t GN = 4*ORDER + 2;
+        constexpr size_t GN = 5*ORDER + 1;
 
         this->area_integral<GN>(Mn,
         [&](const gp_Pnt& pi){
@@ -375,7 +375,7 @@ class MeshElementCommon : public MeshElement{
         math::Vector NN(2*KW, 0);
         math::Vector Mn(2*KW, 0);
 
-        constexpr size_t GN = 4*ORDER + 2;
+        constexpr size_t GN = 5*ORDER + 1;
 
         this->area_integral<GN>(Mn,
         [&](const gp_Pnt& pi){
@@ -403,8 +403,6 @@ class MeshElementCommon : public MeshElement{
         },
         bounds);
 
-        const double drnorm = bounds[0].Distance(bounds[1]);
-        Mn *= drnorm;
         for(size_t i = 0; i < NODES_PER_ELEM; ++i){
             for(size_t j = 0; j < DOF; ++j){
                 const long n1 = node_positions[this->nodes[i]->u_pos[j]];

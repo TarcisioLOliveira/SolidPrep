@@ -91,6 +91,8 @@ class CTRI3 : public ContactMeshElement{
     size_t E_KW;
     math::Matrix R;
     const double FL2_EPS = 1e-14;//1e-14;
+    const double FL2_OFF = 1e-5;
+    const double FL2_K = 1e5;
 
     double A(const double x) const{
         return (1 + x/std::sqrt(x*x + FL2_EPS))/2;
@@ -100,6 +102,42 @@ class CTRI3 : public ContactMeshElement{
     }
     double ddA(const double x) const{
         return -3*FL2_EPS*x/(2*std::pow(x*x + FL2_EPS, 2.5));
+    }
+
+    double h(const double x) const{
+        //return A(x)*(x + FL2_OFF);
+        const double dx = x - FL2_OFF;
+        if(std::abs(FL2_K*dx) < 345){
+            return std::log(1.0 + std::exp(FL2_K*dx))/FL2_K;
+        } else if(x > 0){
+            return x;
+        } else {
+            return 0;
+        }
+    }
+
+    double dh(const double x) const{
+        //return dA(x)*(x + FL2_OFF) + A(x);
+        const double dx = x - FL2_OFF;
+        if(std::abs(FL2_K*dx) < 345){
+            return 1.0/(1.0 + std::exp(-FL2_K*dx));
+        } else if(x > 0){
+            return 1;
+        } else {
+            return 0;
+        }
+    }
+
+    double ddh(const double x) const{
+        //return ddA(x)*(x + FL2_OFF) + 2*dA(x);
+        const double dx = x - FL2_OFF;
+        if(std::abs(FL2_K*dx) < 345){
+            const double ekx = std::exp(-FL2_K*dx);
+            const double ekx1 = 1.0 + ekx;
+            return FL2_K*ekx/(ekx1*ekx1);
+        } else {
+            return 0;
+        }
     }
 
     virtual gp_Dir get_d1() const{

@@ -251,7 +251,7 @@ void FiniteElement::solve_frictionless_displ_log(const Meshing* const mesh, std:
     //             auto ni2 = mesh->node_positions[0][n2->u_pos[j]];
     //             if(std::abs(normal.Coord(1+j)) > 1e-10){
     //                 const double sign = (normal.Coord(1+j) > 0) ? 1 : -1;
-    //                 u[ni2] = -sign*(1e-5);
+    //                 u[ni2] = sign*(1e-3);
     //             }
     //         }
 
@@ -438,7 +438,9 @@ void FiniteElement::solve_frictionless_displ_log(const Meshing* const mesh, std:
 
                 rnorm = std::sqrt(cblas_ddot(r.size(), r.data(), 1, r.data(), 1));
 
-                return cblas_ddot(vec_size, Kd1.data(), 1, r.data(), 1)/rnorm;
+                const double g = cblas_ddot(vec_size, Kd1.data(), 1, r.data(), 1)/rnorm;
+                //logger::quick_log(rnorm, g, alpha);
+                return g;
             };
 
             const auto get_rnorm_est = [&](double alpha)->double{
@@ -459,13 +461,64 @@ void FiniteElement::solve_frictionless_displ_log(const Meshing* const mesh, std:
                 return rnorm;
             };
 
+            //logger::quick_log("EXPLORE VALUES");
+            //for(double a = 0; a <= 1; a += 0.01){
+            //    get_g(a);
+            //}
+            //logger::quick_log("END EXPLORE");
+
             double g1 = 0, g2 = 1;
             double a1 = 0, a2 = this->max_step;
+            const double search_step = 0.01;
+            //g1 = get_g(a1);
+            //g2 = get_g(a2);
+            //if(g1 < 0){
+            {
+                double prev_norm = get_rnorm_est(a1);
+                for(double a = a1 + search_step; a < this->max_step + 1e-7; a += search_step){
+                    const double g = get_g(a);
+                    const double curr_rnorm = get_rnorm_est(a); 
+                    if(curr_rnorm > prev_norm){
+                        a1 = a - search_step;
+                        a2 = a;
+                        break;
+                    }
+                    prev_norm = curr_rnorm;
+                }
+                //double min_a = a1;
+                //double min_norm = get_rnorm_est(a1);
+                //for(double a = a1 + search_step; a < this->max_step + 1e-7; a += search_step){
+                //    const double g = get_g(a);
+                //    const double curr_rnorm = get_rnorm_est(a); 
+                //    if(curr_rnorm < min_norm){
+                //        min_norm = curr_rnorm;
+                //        min_a = a;
+                //    }
+                //}
+                //a1 = min_a - search_step;
+                //a2 = min_a + search_step;
+            }
             g1 = get_g(a1);
-            double g0 = g1;
+            while(g1 > 0){
+                a1 -= 0.001;
+                g1 = get_g(a1);
+            }
             g2 = get_g(a2);
-            logger::quick_log("g1", g0, "a1", a1);
+            //} else {
+            //    for(double a = a1; a > -(this->max_step + 1e-7); a -= search_step){
+            //        const double g = get_g(a);
+            //        if(g < 0){
+            //            a1 = a;
+            //            a2 = a + search_step;
+            //            break;
+            //        }
+            //    }
+            //}
+            logger::quick_log("g1", g1, "a1", a1);
             logger::quick_log("g2", g2, "a2", a2);
+            if(g1 < 0 && g2 < 0){
+                a2 = a1;
+            }
             logger::quick_log("Improving starting points...");
             if(g1 > 0 && g2 > 0){
                 double rnorm_tmp = rnorm;
@@ -489,12 +542,21 @@ void FiniteElement::solve_frictionless_displ_log(const Meshing* const mesh, std:
                     logger::quick_log("g2", g2, "a2", a2);
                 }
             }
-            if(std::abs(g2/g1) > 1e3 && g2*g1 < 0){
-                while(g2*g1 < 0){
-                    a2 /= 2;
-                    g2 = get_g(a2);
+            if(std::abs(g2/g1) > 1e2 && g2*g1 < 0){
+                if(a2 == 0){
+                    a2 = a1;
+                    g2 = g1;
+                    while(g2*g1 > 0){
+                        a2 /= 2;
+                        g2 = get_g(a2);
+                    }
+                } else {
+                    while(g2*g1 < 0){
+                        a2 /= 2;
+                        g2 = get_g(a2);
+                    }
+                    a2 *= 2;
                 }
-                a2 *= 2;
                 logger::quick_log(a2, g2);
             }
             const double DIFF = 1e-2;
@@ -628,7 +690,11 @@ void FiniteElement::solve_frictionless_displ_log(const Meshing* const mesh, std:
             }
         }
         logger::quick_log("max_gp ", max_gp);
-        logger::quick_log("min_gp", min_gp);
+        if(min_gp < 0){
+            logger::quick_log("min_gp", min_gp);
+        } else {
+            logger::quick_log("min_gp ", min_gp);
+        }
 
         logger::log_assert(rnorm < 1e30, logger::ERROR, "Newton process diverged, increase rtol_abs and/or decrease mult");
         ++it;
@@ -880,7 +946,7 @@ void FiniteElement::solve_frictionless_displ_simple(const Meshing* const mesh, s
     //             auto ni2 = mesh->node_positions[0][n2->u_pos[j]];
     //             if(std::abs(normal.Coord(1+j)) > 1e-10 && (u[ni2] - u[ni1])*normal.Coord(1+j) <= 0){
     //                 const double sign = (normal.Coord(1+j) > 0) ? 1 : -1;
-    //                 u[ni2] = u[ni1] + sign*0;//1e-7;
+    //                 u[ni2] = u[ni1] + sign*1e-3;
     //             }
     //         }
 
@@ -959,6 +1025,7 @@ void FiniteElement::solve_frictionless_displ_simple(const Meshing* const mesh, s
     std::fill(S.begin() + u_size, S.end(), mma_step_l);
 
     rnorm = std::sqrt(cblas_ddot(r.size(), r.data(), 1, r.data(), 1));
+    double old_rnorm = rnorm;
     
     logger::quick_log("Initial ||r||", rnorm);
     double u_var = 0;
@@ -1201,7 +1268,25 @@ void FiniteElement::solve_frictionless_displ_simple(const Meshing* const mesh, s
 
                 rnorm = std::sqrt(cblas_ddot(r.size(), r.data(), 1, r.data(), 1));
                 
-                return cblas_ddot(vec_size, Kd1.data(), 1, r.data(), 1)/rnorm;
+                const double g = cblas_ddot(vec_size, Kd1.data(), 1, r.data(), 1)/rnorm;
+               //logger::quick_log(rnorm, g, alpha);
+                return g;
+
+                //for(size_t i = 0; i < vec_size; ++i){
+                //    u1[i] = u[i] + alpha*dr[i];
+                //}
+
+                //std::fill(Ku.begin(), Ku.end(), 0);
+                //this->matrix->dot_vector(u1, Ku);
+                //this->matrix->append_Ku_frictionless_simple(mesh, u1, Ku);
+                //for(size_t i = 0; i < vec_size; ++i){
+                //    r[i] = (Ku[i] - f[i]);
+                //}
+
+                //rnorm = std::sqrt(cblas_ddot(r.size(), r.data(), 1, r.data(), 1));
+                //const double g = cblas_ddot(vec_size, r.data(), 1, dr.data(), 1);
+                //logger::quick_log(rnorm, g, alpha);
+                //return g;
             };
             const auto get_rnorm_est = [&](double alpha)->double{
                 for(size_t i = 0; i < vec_size; ++i){
@@ -1220,13 +1305,38 @@ void FiniteElement::solve_frictionless_displ_simple(const Meshing* const mesh, s
                 return rnorm;
             };
 
+                //logger::quick_log("EXPLORE VALUES");
+                //for(double a = 0; a <= 1; a += 0.01){
+                //    get_g(a);
+                //}
+                //logger::quick_log("END EXPLORE");
+
                 double g1 = 0, g2 = 1;
                 double a1 = 0, a2 = this->max_step;
+                const double search_step = 0.01;
                 g1 = get_g(a1);
-                double g0 = g1;
                 g2 = get_g(a2);
-                logger::quick_log("g0", g0);
-                logger::quick_log("g2", g2);
+                if(g1 < 0){
+                    for(double a = a1; a < this->max_step + 1e-7; a += search_step){
+                        const double g = get_g(a);
+                        if(g > 0){
+                            a1 = a - search_step;
+                            a2 = a;
+                            break;
+                        }
+                    }
+                } else {
+                    for(double a = a1; a > -(this->max_step + 1e-7); a -= search_step){
+                        const double g = get_g(a);
+                        if(g < 0){
+                            a1 = a;
+                            a2 = a + search_step;
+                            break;
+                        }
+                    }
+                }
+                logger::quick_log("g1", g1, "a1", a1);
+                logger::quick_log("g2", g2, "a2", a2);
                 logger::quick_log("Improving starting points...");
                 if(g1 > 0 && g2 > 0){
                     double rnorm_tmp = rnorm;
@@ -1258,8 +1368,8 @@ void FiniteElement::solve_frictionless_displ_simple(const Meshing* const mesh, s
                     a2 *= 2;
                     logger::quick_log(a2, g2);
                 }
-                const double DIFF = 1e-2;
-                const double stop = DIFF*std::min(std::abs(g0), std::abs(g2));
+                const double DIFF = 1e-1;
+                const double stop = DIFF*std::min(std::abs(g1), std::abs(g2));
                 if(g2*g1 < 0){
                     logger::quick_log("Regula falsi...");
                     if(g1 > g2){
@@ -1298,7 +1408,6 @@ void FiniteElement::solve_frictionless_displ_simple(const Meshing* const mesh, s
                 }
 
 
-
             for(size_t i = 0; i < vec_size; ++i){
                 u[i] += step*dr[i];
             }
@@ -1316,6 +1425,8 @@ void FiniteElement::solve_frictionless_displ_simple(const Meshing* const mesh, s
             }
 
         rnorm = std::sqrt(cblas_ddot(r.size(), r.data(), 1, r.data(), 1));
+
+        old_rnorm = rnorm;
        
         std::copy(u.begin() + u_size, u.end(), lambda.begin());
 
@@ -1357,7 +1468,11 @@ void FiniteElement::solve_frictionless_displ_simple(const Meshing* const mesh, s
             }
         }
         logger::quick_log("max_gp ", max_gp);
-        logger::quick_log("min_gp", min_gp);
+        if(min_gp < 0){
+            logger::quick_log("min_gp", min_gp);
+        } else {
+            logger::quick_log("min_gp ", min_gp);
+        }
 
         logger::log_assert(rnorm < 1e30, logger::ERROR, "Newton process diverged, increase rtol_abs and/or decrease mult");
         ++it;

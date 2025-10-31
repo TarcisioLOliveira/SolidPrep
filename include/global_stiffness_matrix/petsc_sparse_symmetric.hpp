@@ -93,6 +93,16 @@ class PETScSparseSymmetricCPU : public PETScSparseSymmetric {
         MatSetValues(this->K, pos.size(), pos.data(), pos.size(), pos.data(), k.data(), ADD_VALUES);
     }
 
+    inline virtual void reserve_block_symmetric(const math::Matrix& k, const std::vector<long>& posi, const std::vector<long>& posj) override{
+        // Requires 64-bit indices
+        logger::log_assert(false, logger::ERROR, "global matrix reserving not implemented for CPU-based PETSc.");
+    }
+
+    inline virtual void reserve_element_matrix(const math::Matrix& k, const std::vector<long>& pos) override{
+        // Requires 64-bit indices
+        logger::log_assert(false, logger::ERROR, "global matrix reserving not implemented for CPU-based PETSc.");
+    }
+
     inline virtual void add_to_matrix(size_t i, size_t j, double val) override{
         // Requires 64-bit indices
         MatSetValue(this->K, i, j, val, ADD_VALUES);
@@ -132,6 +142,17 @@ class PETScSparseSymmetricCUDA : public PETScSparseSymmetric {
     inline virtual void insert_element_matrix(const math::Matrix& k, const std::vector<long>& pos) override{
         // Requires 64-bit indices
         this->K_coo.insert_matrix_general(k, pos);
+    }
+
+    inline virtual void reserve_block_symmetric(const math::Matrix& k, const std::vector<long>& posi, const std::vector<long>& posj) override{
+        // Requires 64-bit indices
+        this->K_coo.reserve_block(k, posi, posj, false);
+        this->K_coo.reserve_block(k, posi, posj, true);
+    }
+
+    inline virtual void reserve_element_matrix(const math::Matrix& k, const std::vector<long>& pos) override{
+        // Requires 64-bit indices
+        this->K_coo.reserve_matrix_general(k, pos);
     }
 
     virtual void final_flush_matrix() override{

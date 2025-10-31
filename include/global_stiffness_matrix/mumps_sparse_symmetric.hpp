@@ -66,6 +66,16 @@ class MUMPSSparseSymmetric : public GlobalStiffnessMatrix{
     inline virtual void insert_element_matrix(const math::Matrix& k, const std::vector<long>& pos) override{
         this->sK.insert_matrix_symmetric(k, pos);
     }
+    inline virtual void reserve_block_symmetric(const math::Matrix& k, const std::vector<long>& posi, const std::vector<long>& posj) override{
+        if(posi[0] > posj[0]){
+            this->sK.reserve_block(k, posi, posj, false);
+        } else {
+            this->sK.reserve_block(k, posi, posj, true);
+        }
+    }
+    inline virtual void reserve_element_matrix(const math::Matrix& k, const std::vector<long>& pos) override{
+        this->sK.reserve_matrix_symmetric(k, pos);
+    }
     inline virtual void add_to_matrix(size_t i, size_t j, double val) override{
         this->sK.add(i, j, val);
     }

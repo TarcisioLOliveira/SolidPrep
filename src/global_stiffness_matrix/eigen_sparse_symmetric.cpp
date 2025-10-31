@@ -64,6 +64,17 @@ class EigenSparseSymmetricTriplets : public GlobalStiffnessMatrix{
     virtual inline void insert_element_matrix(const math::Matrix& k, const std::vector<long>& pos) override{
         this->K.insert_matrix_symmetric_mumps(k, pos);
     }
+    inline virtual void reserve_block_symmetric(const math::Matrix& k, const std::vector<long>& posi, const std::vector<long>& posj) override{
+        // UNTESTED HEURISTIC!!!!!!!
+        if(posi[0] > posj[0]){
+            this->K.reserve_block(k, posi, posj, false);
+        } else {
+            this->K.reserve_block(k, posi, posj, true);
+        }
+    }
+    virtual inline void reserve_element_matrix(const math::Matrix& k, const std::vector<long>& pos) override{
+        this->K.reserve_matrix_symmetric_mumps(k, pos);
+    }
     inline virtual void add_to_matrix(size_t i, size_t j, double val) override{
         this->K.add(i, j, val);
     }
