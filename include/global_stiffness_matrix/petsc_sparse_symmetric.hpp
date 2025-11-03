@@ -94,11 +94,16 @@ class PETScSparseSymmetricCPU : public PETScSparseSymmetric {
     }
 
     inline virtual void reserve_block_symmetric(const math::Matrix& k, const std::vector<long>& posi, const std::vector<long>& posj) override{
+        (void) k;
+        (void) posi;
+        (void) posj;
         // Requires 64-bit indices
         logger::log_assert(false, logger::ERROR, "global matrix reserving not implemented for CPU-based PETSc.");
     }
 
     inline virtual void reserve_element_matrix(const math::Matrix& k, const std::vector<long>& pos) override{
+        (void) k;
+        (void) pos;
         // Requires 64-bit indices
         logger::log_assert(false, logger::ERROR, "global matrix reserving not implemented for CPU-based PETSc.");
     }

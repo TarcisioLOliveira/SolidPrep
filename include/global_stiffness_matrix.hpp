@@ -41,12 +41,8 @@ class GlobalStiffnessMatrix{
     void append_Ku_penalty(const Meshing* const mesh, const std::vector<long>& node_positions, const std::vector<double>& u_ext, const std::vector<double>& lambda, std::vector<double>& Ku) const;
     void append_dKu_penalty(const Meshing* const mesh, const std::vector<long>& node_positions, const std::vector<double>& u_ext, const std::vector<double>& lambda, const std::vector<double>& du, std::vector<double>& dKu) const;
 
-    virtual void add_frictionless_part2(const Meshing * const mesh, const std::vector<long>& node_positions, const std::vector<double>& u_ext, const std::vector<double>& lambda, const std::vector<math::Matrix>& D_cache, bool topopt, bool stub = false);
     virtual void add_frictionless_simple(const Meshing * const mesh, const std::vector<long>& node_positions, const std::vector<double>& u_ext, const std::vector<double>& lambda, const bool stub = false);
     virtual void add_frictionless_log(const Meshing * const mesh, const std::vector<long>& node_positions, const std::vector<double>& u_ext, bool stub = false);
-
-    void append_Ku_frictionless(const Meshing* const mesh, const std::vector<double>& u, std::vector<double>& Ku, const std::vector<math::Matrix>& D_cache, bool topopt) const;
-    void append_dKu_frictionless(const Meshing* const mesh, const std::vector<double>& u, const std::vector<double>& du, const double eta, std::vector<double>& Ku, const std::vector<math::Matrix>& D_cache, bool topopt) const;
 
     void append_Ku_frictionless_simple(const Meshing* const mesh, const std::vector<double>& u, std::vector<double>& Ku) const;
     void append_dKu_frictionless_simple(const Meshing* const mesh, const std::vector<double>& u, const std::vector<double>& du, std::vector<double>& Ku) const;
@@ -54,17 +50,12 @@ class GlobalStiffnessMatrix{
     void append_Ku_frictionless_log(const Meshing* const mesh, const std::vector<double>& u_ext, std::vector<double>& Ku) const;
     void append_dKu_frictionless_log(const Meshing* const mesh, const std::vector<double>& u_ext, const std::vector<double>& u, const std::vector<double>& du, const double eta, std::vector<double>& Ku) const;
 
-    inline void set_lag_displ_simple(double L){
-        (void)L;
-        //this->LAG_DISPL_SIMPLE = L;
-    }
     inline double get_lag_displ_simple() const{
         return this->LAG_DISPL_SIMPLE;
     }
 
     double LAG_DISPL_LOG = 1;// CHANGE IN FINITE ELEMENT
-    const double LOG_TOL = 1e-5;//1e-10;
-    double MU_LOG = 0;//1e5;// CHANGE IN FINITE ELEMENT
+    const double LOG_TOL = 1e-5;
 
     virtual void dump_matrix(){}
 

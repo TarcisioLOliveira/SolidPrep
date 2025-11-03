@@ -210,59 +210,17 @@ void Meshing::apply_boundary_conditions(const std::vector<Force>& forces,
         this->apply_supports();
     }
 
-    if(this->proj_data->contact_data.contact_type == FiniteElement::ContactType::FRICTIONLESS_DISPL_CONSTR){
-        for(size_t it = 0; it < this->node_positions.size(); ++it){
-            auto& v = this->node_positions[it];
-            long current = 0;
-            std::vector<bool> pos_set(this->node_list.size(), false);
-            for(size_t i = 0; i < this->node_list.size(); ++i){
-                const auto& n = this->node_list[i];
-                const size_t n_id = n->id;
-                const size_t on_id = this->to_rigid_map[n->id]->id;
-                if(pos_set[i]){
-                    continue;
-                }
-                if(n_id == on_id){
-                    pos_set[i] = true;
-                    for(size_t d = 0; d < dof; ++d){
-                        if(v[n_id*dof + d] >= 0){
-                            v[n_id*dof + d] = current;
-                            ++current;
-                        }
-                    }
-                } else if(on_id < n_id){
-                    pos_set[i] = true;
-                    for(size_t d = 0; d < dof; ++d){
-                        v[n_id*dof + d] = v[on_id*dof + d];
-                    }
-                } else {
-                    pos_set[i] = true;
-                    pos_set[on_id] = true;
-                    for(size_t d = 0; d < dof; ++d){
-                        if(v[n_id*dof + d] >= 0){
-                            v[n_id*dof + d] = current;
-                            v[on_id*dof + d] = current;
-                            ++current;
-                        }
-                    }
-                }
+    for(size_t it = 0; it < this->node_positions.size(); ++it){
+        auto& v = this->node_positions[it];
+        long current = 0;
+        for(auto& i:v){
+            if(i >= 0){
+                i = current;
+                ++current;
             }
-            this->dofs_per_subproblem[it] = current;
-            this->load_vector[it].resize(current, 0);
         }
-    } else {
-        for(size_t it = 0; it < this->node_positions.size(); ++it){
-            auto& v = this->node_positions[it];
-            long current = 0;
-            for(auto& i:v){
-                if(i >= 0){
-                    i = current;
-                    ++current;
-                }
-            }
-            this->dofs_per_subproblem[it] = current;
-            this->load_vector[it].resize(current, 0);
-        }
+        this->dofs_per_subproblem[it] = current;
+        this->load_vector[it].resize(current, 0);
     }
 
     logger::quick_log("loads");
@@ -446,7 +404,7 @@ void Meshing::populate_boundary_elements(const std::vector<ElementShape>& bounda
     // to use to_rigid_map to find overlapping nodes and generate intergeometry
     // boundary metadata
     if(this->proj_data->contact_data.contact_type != FiniteElement::ContactType::RIGID){
-        bool e1_ref = this->proj_data->contact_data.contact_type != FiniteElement::ContactType::FRICTIONLESS_DISPL_CONSTR;
+        bool e1_ref = true;
         std::vector<size_t> bnodes(N);
         for(auto& b:this->boundary_elements){
             bool found_equivalent = true;

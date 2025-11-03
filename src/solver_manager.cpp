@@ -33,8 +33,6 @@ void SolverManager::generate_matrix(const Meshing* const mesh, const std::vector
         l_num = l_num_orig;
     } else if(mesh->proj_data->contact_data.contact_type == FiniteElement::ContactType::FRICTIONLESS_DISPL_LOG){
         l_num = 1;
-    } else if(mesh->proj_data->contact_data.contact_type == FiniteElement::ContactType::FRICTIONLESS_DISPL_CONSTR){
-        l_num = 3*l_num_orig;
     }
     if(this->iteration == 0){
         this->lambdas.resize(mesh->sub_problems->size());
@@ -47,18 +45,12 @@ void SolverManager::generate_matrix(const Meshing* const mesh, const std::vector
         if(this->iteration == 0){
             if(needs_lambda){
                 this->lambdas[i].emplace_back(l_num, 0.00);
-                //std::fill(this->lambdas[i][0].begin(), this->lambdas[i][0].begin() + l_num_orig, 0.01);
-                //std::fill(this->lambdas[i][0].begin(), this->lambdas[i][0].begin() + l_num_orig, -14.0);
-                //std::fill(this->lambdas[i][0].begin(), this->lambdas[i][0].begin() + l_num_orig, -1e-3);
                 std::fill(this->lambdas[i][0].begin(), this->lambdas[i][0].begin() + l_num_orig, 0);
             } else {
                 this->lambdas[i].emplace_back();
             }
         } else {
             if(needs_lambda){
-                //std::fill(this->lambdas[i][0].begin(), this->lambdas[i][0].begin() + l_num_orig, 0.001);
-                //std::fill(this->lambdas[i][0].begin() + l_num_orig, this->lambdas[i][0].end(), 0.0);
-
                 std::fill(this->split_u[i].begin(), this->split_u[i].end(), 0.0);
                 std::fill(this->lambdas[i][0].begin() + l_num_orig, this->lambdas[i][0].end(), 0.0);
             }
@@ -81,11 +73,8 @@ void SolverManager::calculate_displacements_global(const Meshing* const mesh, st
 
 
         auto& ui = this->split_u[i];
-        this->solvers[i]->calculate_displacements(mesh, l, ui, this->lambdas[i][0], this->topopt, this->D_matrices);
+        this->solvers[i]->calculate_displacements(mesh, l, ui, this->lambdas[i][0]);
         mesh->extend_vector(i, l, ui);
-        if(mesh->proj_data->contact_data.contact_type == FiniteElement::ContactType::FRICTIONLESS_DISPL_CONSTR){
-            this->solvers[i]->apply_lambda(mesh, this->lambdas[i][0], ui);
-        }
         #pragma omp parallel for
         for(size_t j = 0; j < u.size(); ++j){
             u[j] += ui[j];
@@ -100,8 +89,6 @@ void SolverManager::calculate_displacements_adjoint(const Meshing* const mesh, s
     bool needs_lambda = mesh->proj_data->contact_data.contact_type >= FiniteElement::ContactType::FRICTIONLESS_DISPL_SIMPLE;
     if(mesh->proj_data->contact_data.contact_type == FiniteElement::ContactType::FRICTIONLESS_DISPL_SIMPLE){
         l_num = mesh->lag_node_map.size();
-    } else if(mesh->proj_data->contact_data.contact_type == FiniteElement::ContactType::FRICTIONLESS_DISPL_CONSTR){
-        l_num = 3*mesh->lag_node_map.size();
     }
     for(size_t i = 0; i < mesh->sub_problems->size(); ++i){
         if(this->iteration == 1){
@@ -124,11 +111,8 @@ void SolverManager::calculate_displacements_adjoint(const Meshing* const mesh, s
                     load_pos[p_new] = l[j];
                 }
             }
-            this->solvers[i]->calculate_displacements(mesh, load_pos, ui, this->lambdas[i][this->solve_step], this->topopt, this->D_matrices);
+            this->solvers[i]->calculate_displacements(mesh, load_pos, ui, this->lambdas[i][this->solve_step]);
             mesh->extend_vector(i, load_pos, u);
-            if(mesh->proj_data->contact_data.contact_type == FiniteElement::ContactType::FRICTIONLESS_DISPL_CONSTR){
-                this->solvers[i]->apply_lambda(mesh, this->lambdas[i][0], ui);
-            }
             #pragma omp parallel for
             for(size_t j = 0; j < n.size(); ++j){
                 const long p_new = n[j];
@@ -137,11 +121,8 @@ void SolverManager::calculate_displacements_adjoint(const Meshing* const mesh, s
                 }
             }
         } else if(l.size() == mesh->dofs_per_subproblem[i]){
-            this->solvers[i]->calculate_displacements(mesh, l, ui, this->lambdas[i][this->solve_step], this->topopt, this->D_matrices);
+            this->solvers[i]->calculate_displacements(mesh, l, ui, this->lambdas[i][this->solve_step]);
             mesh->extend_vector(i, l, u);
-            if(mesh->proj_data->contact_data.contact_type == FiniteElement::ContactType::FRICTIONLESS_DISPL_CONSTR){
-                this->solvers[i]->apply_lambda(mesh, this->lambdas[i][0], ui);
-            }
         } else {
             logger::log_assert(false, logger::ERROR, "incorrect load vector size, must be equal to mesh->max_dofs OR mesh->dofs_per_subproblem[i]");
         }

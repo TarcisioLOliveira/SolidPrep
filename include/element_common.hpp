@@ -417,46 +417,6 @@ class MeshElementCommon : public MeshElement{
         }
     }
 
-    virtual math::Matrix get_uu_fl2(const MeshElement* const e2, const math::Vector& u1, const math::Vector& u2, const std::vector<gp_Pnt>& bounds, const gp_Dir n) const override{
-        const size_t ORDER = T::ORDER;
-        const size_t KW = T::K_DIM;
-        const size_t DIM = T::DIM;
-
-        constexpr size_t GN = 3*ORDER + 1;
-
-        math::Vector NN(2*KW, 0);
-        math::Matrix MnMn(2*KW, 2*KW, 0);
-
-        const gp_Dir n2 = -n;
-
-        math::Vector up1(DIM), up2(DIM);
-        this->area_integral<GN>(MnMn,
-        [&](const gp_Pnt& pi){
-            const auto N1 = this->get_Ni(pi);
-            const auto N2 = e2->get_Ni(pi);
-            double gp = 0;
-            up1 = N1*u1;
-            up2 = N2*u2;
-            for(size_t j = 0; j < DIM; ++j){
-                gp += (up2[j] - up1[j])*n.Coord(1+j);
-            }
-            const double a = 1e-10;
-            const double mult = a/std::pow(gp*gp + a, 1.5);
-            NN.fill(0);
-            for(size_t i = 0; i < KW; ++i){
-                for(size_t j = 0; j < DIM; ++j){
-                    NN[i] -= N1(j, i)*n2.Coord(1+j);
-                    NN[i + KW] += N2(j, i)*n2.Coord(1+j);
-                }
-            }
-            return mult*(NN*NN.T());
-        },
-        bounds);
-
-        return MnMn;
-    }
-
-
     virtual math::Vector get_internal_loads(const math::Matrix& D, const double t, const std::vector<double>& u) const override{
         const size_t N = T::NODES_PER_ELEM;
         const size_t K_DIM = T::K_DIM;

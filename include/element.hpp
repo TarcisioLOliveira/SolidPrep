@@ -255,7 +255,6 @@ class MeshElement : public Element{
 
     virtual math::Matrix get_uu(const MeshElement* const e2, const std::vector<gp_Pnt>& bounds, const gp_Dir n) const = 0;
 
-    virtual math::Matrix get_uu_fl2(const MeshElement* const e2, const math::Vector& u1, const math::Vector& u2, const std::vector<gp_Pnt>& bounds, const gp_Dir n) const = 0;
     virtual math::Matrix get_MnMn(const MeshElement* const e2, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds, const gp_Dir n) const = 0;
     virtual math::Matrix get_MnMn_log(const MeshElement* const e2, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds, const gp_Dir n, const double C, const double K) const = 0;
     virtual double get_log_integ(const MeshElement* const e2, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds, const gp_Dir n, const double C, const double K) const = 0;
@@ -578,28 +577,7 @@ class MeshElement : public Element{
         Element(std::vector<Node*>(nodes.begin(), nodes.end()))
         {}
 
-    const double FL2_EPS = 1e-28;//1e-28;//1e-14;//1e-7;
-
-    double A(const double x) const{
-        return (1 + x/std::sqrt(x*x + FL2_EPS))/2;
-    }
-    double dA(const double x) const{
-        return FL2_EPS/(2*std::pow(x*x + FL2_EPS, 1.5));
-    }
-    double ddA(const double x) const{
-        return -3*FL2_EPS*x/(2*std::pow(x*x + FL2_EPS, 2.5));
-    }
-
-    const double x0 = 0;//-1e-3;
     inline double H(const double x, const double C, const double K) const{
-        (void) K;
-        (void) C;
-        //constexpr double pi = std::numbers::pi;
-        //const double dx = x - x0;
-        //const double h = C*(std::atan(K*dx) + pi/2)*(dx*dx + dx)/pi + C*dx/(pi*K);
-        //const double h = C*(std::atan(K*dx) + pi/2)*dx*dx/pi;// + C*dx/(pi*K);
-        //const double h = C*(A(x)*x*x)/2;
-        //const double h = C*(A(x)*x);
         if(std::abs(K*x) < 345){
             const double ln = std::log(1 + std::exp(K*x));
             const double h = C*ln*(ln/(K*K));
@@ -611,16 +589,6 @@ class MeshElement : public Element{
         }
     }
     inline double dH(const double x, const double C, const double K) const{
-        (void) K;
-        (void) C;
-        //constexpr double pi = std::numbers::pi;
-        //const double dx = x - x0;
-        //const double Kx = K*dx;
-        //const double dh = C*((K*(dx*dx + dx))/(1 + Kx*Kx) + (std::atan(Kx) + pi/2)*(2*dx + 1))/pi + C/(pi*K);
-        //const double dh = C*(K*(dx*dx)/(1 + Kx*Kx) + (std::atan(Kx) + pi/2)*(2*dx))/pi;// + C/(pi*K);
-        //return (dh > 1e-4) ? dh : 0;
-        //const double dh = C*(dA(x)*x*x/2 + A(x)*x);
-        //const double dh = C*(dA(x)*x + A(x));
         if(std::abs(K*x) < 345){
             const double ekx1 = 1 + std::exp(K*x);
             const double ekx_1 = 1 + std::exp(-K*x);
@@ -634,16 +602,6 @@ class MeshElement : public Element{
         }
     }
     inline double ddH(const double x, const double C, const double K) const{
-        (void) K;
-        (void) C;
-        //constexpr double pi = std::numbers::pi;
-        //const double dx = x - x0;
-        //const double Kx = K*dx;
-        //const double Kx_den = 1 + Kx*Kx;
-        //return C*(2*K*(2*dx + 1)/Kx_den - 2*K*K*Kx*(dx*dx + dx)/(Kx_den*Kx_den) + 2*(std::atan(Kx) + pi/2))/pi;
-        //return C*(4*Kx/Kx_den - 2*Kx*Kx*Kx/(Kx_den*Kx_den) + 2*(std::atan(Kx) + pi/2))/pi;
-        //return C*(ddA(x)*x*x/2 + A(x) + 2*dA(x)*x);
-        //return 0;//C*(ddA(x)*x + 2*dA(x));
         if(std::abs(K*x) < 345){
             const double ekx1 = 1 + std::exp(K*x);
             const double e_kx = std::exp(-K*x);
@@ -756,16 +714,8 @@ class ContactMeshElement : public Element{
 
     virtual math::Matrix get_frictionless_Ge() const = 0;
 
-    virtual math::Matrix fl3_uL(const math::Matrix& D, const math::Vector& ln_e) const = 0;
-    virtual math::Matrix fl3_LL(const math::Matrix& D, const math::Vector& ln_e, const math::Vector& lp1_e, const math::Vector& lp2_e, const std::vector<double>& u) const = 0;
-    virtual void fl3_Ku(const math::Matrix& D, const std::vector<long> u_pos, const std::vector<long>& lu_pos, const std::vector<double>& u, std::vector<double>& Ku) const = 0;
-    virtual void fl3_dKu(const math::Matrix& D, const double eta, const std::vector<long> u_pos, const std::vector<long>& lu_pos, const std::vector<double>& u, const std::vector<double>& du, std::vector<double>& Ku) const = 0;
-    virtual math::Vector fl3_eq(const math::Vector& ln_e, const math::Vector& lp1_e, const math::Vector& lp2_e, const math::Vector& u_e) const = 0;
-    virtual math::Vector fl3_eq(const math::Vector& ln_e, const math::Vector& lp1_e, const math::Vector& lp2_e, const math::Vector& u_e, const size_t dof) const = 0;
-
     virtual math::Matrix fl2_uu(const math::Vector& l_e, const math::Vector& u1, const math::Vector& u2) const = 0;
-    virtual math::Matrix fl2_uL(const math::Vector& l_e, const math::Vector& u1, const math::Vector& u2) const = 0;
-    virtual math::Matrix fl2_LL(const math::Vector& l_e, const math::Vector& u1, const math::Vector& u2) const = 0;
+    virtual math::Matrix fl2_uL(const math::Vector& u1, const math::Vector& u2) const = 0;
 
     virtual void fl2_Ku_lambda(const double EPS, const std::vector<long> u1_pos, const std::vector<long> u2_pos, const std::vector<long>& lu_pos, const std::vector<double>& u, std::vector<double>& Ku) const = 0;
     virtual void fl2_dKu_lambda(const double EPS, const std::vector<long> u1_pos, const std::vector<long> u2_pos, const std::vector<long>& lu_pos, const std::vector<double>& u, const std::vector<double>& du, std::vector<double>& Ku) const = 0;

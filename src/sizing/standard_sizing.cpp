@@ -101,7 +101,7 @@ TopoDS_Shape StandardSizing::boundary_expansion_approach(){
     std::vector<double> u0(u.size(), 0);
     std::vector<double> lambda;
     this->solver->generate_matrix(&mesh, mesh.load_vector[0].size(), 0, mesh.node_positions[0], false, std::vector<math::Matrix>(), u, std::vector<double>());
-    this->solver->calculate_displacements(&mesh, u, u0, lambda, false, std::vector<math::Matrix>());
+    this->solver->calculate_displacements(&mesh, u, u0, lambda);
 
     if(this->data->type == utils::PROBLEM_TYPE_2D){
         return this->expansion_2D(mesh, u, beams);
