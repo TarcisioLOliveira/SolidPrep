@@ -87,7 +87,7 @@ void FiniteElement::solve_frictionless_displ_log(const Meshing* const mesh, std:
     std::copy(load.begin(), load.end(), f.begin());
 
     mesh->extend_vector(0, load, f_ext);
-    mesh->extend_vector(0, u, u_ext);
+    //mesh->extend_vector(0, u, u_ext);
 
     double& LAG = this->matrix->LAG_DISPL_LOG;
     LAG = 1;
@@ -97,7 +97,7 @@ void FiniteElement::solve_frictionless_displ_log(const Meshing* const mesh, std:
     double step = 1.0;
 
 
-
+    this->reset_hessian();
     this->matrix->append_Ku_frictionless_log(mesh, u_ext, Ku);
     for(size_t i = 0; i < vec_size; ++i){
         r[i] = -(Ku[i] - f[i]);
@@ -165,102 +165,109 @@ void FiniteElement::solve_frictionless_displ_log(const Meshing* const mesh, std:
 
         double g1 = 0, g2 = 1;
         double a1 = 0, a2 = this->max_step;
-        const double search_step = 0.01;
-        {
-            double prev_norm = get_rnorm_est(a1);
-            for(double a = a1 + search_step; a < this->max_step + 1e-7; a += search_step){
-                const double curr_rnorm = get_rnorm_est(a); 
-                if(curr_rnorm > prev_norm){
-                    a1 = a - search_step;
-                    a2 = a;
-                    break;
-                }
-                prev_norm = curr_rnorm;
-            }
-        }
         g1 = get_g(a1);
-        while(g1 > 0){
-            a1 -= 0.001;
-            g1 = get_g(a1);
-        }
         g2 = get_g(a2);
-        logger::quick_log("g1", g1, "a1", a1);
-        logger::quick_log("g2", g2, "a2", a2);
-        if(g1 < 0 && g2 < 0){
-            a2 = a1;
-        }
-        logger::quick_log("Improving starting points...");
-        if(g1 > 0 && g2 > 0){
-            double rnorm_tmp = rnorm;
-            if(g1 < g2){
-                a1 = -rnorm_tmp/g1;
+        if(!(g1 < 0 && g2 < 0)){
+            const double search_step = 0.01;
+            {
+                double prev_norm = get_rnorm_est(a1);
+                for(double a = a1 + search_step; a < this->max_step + 1e-7; a += search_step){
+                    const double curr_rnorm = get_rnorm_est(a); 
+                    if(curr_rnorm > prev_norm){
+                        a1 = a - search_step;
+                        a2 = a;
+                        break;
+                    }
+                    prev_norm = curr_rnorm;
+                }
+            }
+            g1 = get_g(a1);
+            while(g1 > 0){
+                a1 -= 0.001;
                 g1 = get_g(a1);
-                rnorm_tmp = get_rnorm_est(a1);
-                while(g1 < 0 && a1 < -1){
-                    a1 *= 0.1;
-                    g1 = get_g(a1);
-                }
-                if(g1 > 0){
-                    a1 *= 10;
-                    g1 = get_g(a1);
-                }
-                logger::quick_log("g1", g1, "a1", a1);
-            } else {
-                a2 = -rnorm_tmp/g2;
-                g2 = get_g(a2);
-                rnorm_tmp = get_rnorm_est(a2);
-                logger::quick_log("g2", g2, "a2", a2);
             }
-        }
-        if(std::abs(g2/g1) > 1e2 && g2*g1 < 0){
-            if(a2 == 0){
+            g2 = get_g(a2);
+            logger::quick_log("g1", g1, "a1", a1);
+            logger::quick_log("g2", g2, "a2", a2);
+            if(g1 < 0 && g2 < 0){
                 a2 = a1;
-                g2 = g1;
-                while(g2*g1 > 0){
-                    a2 /= 2;
-                    g2 = get_g(a2);
-                }
-            } else {
-                while(g2*g1 < 0){
-                    a2 /= 2;
-                    g2 = get_g(a2);
-                }
-                a2 *= 2;
             }
-            logger::quick_log(a2, g2);
-        }
-        const double DIFF = 1e-2;
-        const double stop = DIFF*std::min(std::abs(g1), std::abs(g2));
-        if(g2*g1 < 0){
-            logger::quick_log("Regula falsi...");
-            if(g1 > g2){
-                std::swap(g1, g2);
-                std::swap(a1, a2);
-            }
-            // Regula falsi Illinois
-            while(std::min(std::abs(g2), std::abs(g1)) > stop){
-                double diff = 0.5*g2 - g1;
-                if(std::abs(diff) < 1e-13){
-                    break;
-                }
-                double c = (0.5*g2*a1 - g1*a2)/diff;
-                double gc = get_g(c);
-                if(gc > 0){
-                    a2 = c;
-                    g2 = gc;
+            logger::quick_log("Improving starting points...");
+            if(g1 > 0 && g2 > 0){
+                double rnorm_tmp = rnorm;
+                if(g1 < g2){
+                    a1 = -rnorm_tmp/g1;
+                    g1 = get_g(a1);
+                    rnorm_tmp = get_rnorm_est(a1);
+                    while(g1 < 0 && a1 < -1){
+                        a1 *= 0.1;
+                        g1 = get_g(a1);
+                    }
+                    if(g1 > 0){
+                        a1 *= 10;
+                        g1 = get_g(a1);
+                    }
+                    logger::quick_log("g1", g1, "a1", a1);
                 } else {
-                    a1 = c;
-                    g1 = gc;
+                    a2 = -rnorm_tmp/g2;
+                    g2 = get_g(a2);
+                    rnorm_tmp = get_rnorm_est(a2);
+                    logger::quick_log("g2", g2, "a2", a2);
                 }
             }
-            if(std::abs(g1) < std::abs(g2)){
-                a2 = a1;
-                logger::quick_log(a1, g1);
-            } else {
+            if(std::abs(g2/g1) > 1e2 && g2*g1 < 0){
+                if(a2 == 0){
+                    a2 = a1;
+                    g2 = g1;
+                    while(g2*g1 > 0){
+                        a2 /= 2;
+                        g2 = get_g(a2);
+                    }
+                } else {
+                    while(g2*g1 < 0){
+                        a2 /= 2;
+                        g2 = get_g(a2);
+                    }
+                    a2 *= 2;
+                }
                 logger::quick_log(a2, g2);
             }
-        } else if(g2 > 0 && g1 > 0){
-            a2 = 0;
+            const double DIFF = 1e-2;
+            const double stop = DIFF*std::min(std::abs(g1), std::abs(g2));
+            if(g2*g1 < 0){
+                logger::quick_log("Regula falsi...");
+                if(g1 > g2){
+                    std::swap(g1, g2);
+                    std::swap(a1, a2);
+                }
+                // Regula falsi Illinois
+                while(std::min(std::abs(g2), std::abs(g1)) > stop){
+                    double diff = 0.5*g2 - g1;
+                    if(std::abs(diff) < 1e-13){
+                        break;
+                    }
+                    double c = (0.5*g2*a1 - g1*a2)/diff;
+                    double gc = get_g(c);
+                    if(gc > 0){
+                        a2 = c;
+                        g2 = gc;
+                    } else {
+                        a1 = c;
+                        g1 = gc;
+                    }
+                }
+                if(std::abs(g1) < std::abs(g2)){
+                    a2 = a1;
+                    logger::quick_log(a1, g1);
+                } else {
+                    logger::quick_log(a2, g2);
+                }
+            } else if(g2 > 0 && g1 > 0){
+                a2 = 0;
+            }
+        } else {
+            logger::quick_log("g1", g1, "a1", a1);
+            logger::quick_log("g2", g2, "a2", a2);
         }
         logger::quick_log("Applying step...");
         step = this->max_step;
