@@ -32,9 +32,9 @@ class SolverManager{
     void generate_matrix(const Meshing* const mesh, const std::vector<double>& density = std::vector<double>(), double pc = 3, double psi = 0.5);
 
     // It is assumed that this is called once per iteration
-    void calculate_displacements_global(const Meshing* const mesh, std::vector<std::vector<double>>& load, std::vector<double>& u);
+    void calculate_displacements_global(const Meshing* const mesh, const std::vector<std::vector<double>>& load, std::vector<double>& u);
     // This may be called more than once per iteration
-    void calculate_displacements_adjoint(const Meshing* const mesh, std::vector<std::vector<double>>& load, std::vector<double>& u);
+    void calculate_displacements_adjoint(const Meshing* const mesh, const std::vector<std::vector<double>>& load, std::vector<double>& u);
 
     std::vector<double> calculate_reactions(const Meshing* const mesh, const std::vector<double>& u) const;
 

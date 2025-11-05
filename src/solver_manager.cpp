@@ -61,14 +61,15 @@ void SolverManager::generate_matrix(const Meshing* const mesh, const std::vector
     }
 }
 
-void SolverManager::calculate_displacements_global(const Meshing* const mesh, std::vector<std::vector<double>>& load, std::vector<double>& u){
+void SolverManager::calculate_displacements_global(const Meshing* const mesh, const std::vector<std::vector<double>>& load, std::vector<double>& u){
     ++this->iteration;
     u.resize(mesh->max_dofs, 0);
     std::fill(u.begin(), u.end(), 0);
+    std::vector<double> l(mesh->load_vector[0].size());
 
     this->split_u.resize(mesh->sub_problems->size());
     for(size_t i = 0; i < mesh->sub_problems->size(); ++i){
-        auto& l = load[i];
+        std::copy(load[i].begin(), load[i].end(), l.begin());
         this->split_u[i].resize(mesh->max_dofs, 0);
 
 
@@ -83,13 +84,14 @@ void SolverManager::calculate_displacements_global(const Meshing* const mesh, st
     this->solve_step = 1;
 }
 
-void SolverManager::calculate_displacements_adjoint(const Meshing* const mesh, std::vector<std::vector<double>>& load, std::vector<double>& u){
+void SolverManager::calculate_displacements_adjoint(const Meshing* const mesh, const std::vector<std::vector<double>>& load, std::vector<double>& u){
     logger::log_assert(this->iteration > 0, logger::ERROR, "calculate_displacements_global() must be called once before calculate_displacements_adjoint() each iteration");
     size_t l_num = 0;
     bool needs_lambda = mesh->proj_data->contact_data.contact_type >= FiniteElement::ContactType::FRICTIONLESS_DISPL_SIMPLE;
     if(mesh->proj_data->contact_data.contact_type == FiniteElement::ContactType::FRICTIONLESS_DISPL_SIMPLE){
         l_num = mesh->lag_node_map.size();
     }
+    std::vector<double> l(mesh->load_vector[0].size());
     for(size_t i = 0; i < mesh->sub_problems->size(); ++i){
         if(this->iteration == 1){
             if(needs_lambda){
@@ -98,7 +100,7 @@ void SolverManager::calculate_displacements_adjoint(const Meshing* const mesh, s
                 this->lambdas[i].emplace_back();
             }
         }
-        auto& l = load[i];
+        std::copy(load[i].begin(), load[i].end(), l.begin());
         auto& n = mesh->node_positions[i];
         this->split_u[i].resize(mesh->max_dofs, 0);
         auto& ui = this->split_u[i];
@@ -249,6 +251,7 @@ void SolverManager::update_D_matrices(const Meshing* const mesh, const std::vect
             }
         }
     }
+    this->force_update_materials = false;
     logger::quick_log("Done.");
 }
 
