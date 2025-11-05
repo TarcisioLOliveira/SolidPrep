@@ -45,6 +45,9 @@ class TrabecularCutoff : public ScalarField {
     inline virtual SubType get_sub_type() const override{
         return SubType::DOMAIN;
     }
+    inline virtual Class get_class() const override{
+        return Class::TRABECULAR_CUTOFF;
+    }
 
     private:
     static const bool reg;

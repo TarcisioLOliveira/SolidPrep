@@ -40,6 +40,17 @@ class ImplantRegion : public ScalarField {
     inline virtual SubType get_sub_type() const override{
         return SubType::DOMAIN;
     }
+    inline virtual Class get_class() const override{
+        return Class::IMPLANT_REGION;
+    }
+
+    void freeze(std::vector<double>& current_values, std::vector<double>& maximum_values);
+
+    inline void set_values(const std::vector<double>& new_vals){
+        if(this->frozen){
+            std::copy(new_vals.begin(), new_vals.end(), this->frozen_values.begin());
+        }
+    }
 
     private:
     static const bool reg;
@@ -67,6 +78,12 @@ class ImplantRegion : public ScalarField {
     size_t a_len;
     double max_l;
     ScalarField* density_field;
+
+    // Value freezing
+    bool frozen = false;
+    std::vector<double> frozen_values;
+    std::map<size_t, size_t> elem_id_to_value;
+    //
 
     Visualization* viz;
 

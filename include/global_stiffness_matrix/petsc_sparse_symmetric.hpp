@@ -67,16 +67,17 @@ class PETScSparseSymmetricCPU : public PETScSparseSymmetric {
         MatCopy(this->H, this->K, SAME_NONZERO_PATTERN);
     };
 
+    virtual void final_flush_matrix() override{
+        MatAssemblyBegin(this->K, MAT_FINAL_ASSEMBLY);
+        MatAssemblyEnd(this->K, MAT_FINAL_ASSEMBLY);
+    }
+
     protected:
     Mat H = 0;
     virtual void preallocate(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<math::Matrix>& D_cache, const std::vector<double>& u_ext, const std::vector<double>& lambda, const FiniteElement::ContactType type, const size_t mpi_id) override;
     virtual void assemble_matrix(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<math::Matrix>& D_cache, const std::vector<double>& u_ext, const std::vector<double>& lambda, const FiniteElement::ContactType type, const size_t mpi_id) override;
     inline virtual void zero() override{
         MatZeroEntries(this->K);
-    }
-    virtual void final_flush_matrix() override{
-        MatAssemblyBegin(this->K, MAT_FINAL_ASSEMBLY);
-        MatAssemblyEnd(this->K, MAT_FINAL_ASSEMBLY);
     }
 
     inline virtual void insert_block_symmetric(const math::Matrix& k, const std::vector<long>& posi, const std::vector<long>& posj) override{
@@ -129,6 +130,10 @@ class PETScSparseSymmetricCUDA : public PETScSparseSymmetric {
         this->K_coo.dump_matrix();
     }
 
+    virtual void final_flush_matrix() override{
+        MatSetValuesCOO(this->K, this->K_coo.vals.data(), INSERT_VALUES);
+    }
+
     protected:
     utils::COO<PetscInt> K_coo;
 
@@ -158,10 +163,6 @@ class PETScSparseSymmetricCUDA : public PETScSparseSymmetric {
     inline virtual void reserve_element_matrix(const math::Matrix& k, const std::vector<long>& pos) override{
         // Requires 64-bit indices
         this->K_coo.reserve_matrix_general(k, pos);
-    }
-
-    virtual void final_flush_matrix() override{
-        MatSetValuesCOO(this->K, this->K_coo.vals.data(), INSERT_VALUES);
     }
 
     inline virtual void add_to_matrix(size_t i, size_t j, double val) override{

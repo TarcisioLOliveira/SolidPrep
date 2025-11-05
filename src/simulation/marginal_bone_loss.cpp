@@ -19,6 +19,7 @@
  */
 
 #include "simulation/marginal_bone_loss.hpp"
+#include "field/implant_region.hpp"
 #include "logger.hpp"
 #include "material/mandible.hpp"
 #include "math/matrix.hpp"
@@ -30,7 +31,7 @@ namespace simulation{
 MarginalBoneLoss::MarginalBoneLoss(const projspec::DataMap& data):
     mesh(data.proj->topopt_mesher.get()),
     fem(data.proj->topopt_fea.get()),
-    pc(data.get_double("pc")),
+    proj(data.proj),
     t(data.get_array("traction")->get_double_array_fixed<RANGE_NUM>()),
     c(data.get_array("compression")->get_double_array_fixed<RANGE_NUM>()),
     s(data.get_array("shear")->get_double_array_fixed<RANGE_NUM>()),
@@ -38,10 +39,6 @@ MarginalBoneLoss::MarginalBoneLoss(const projspec::DataMap& data):
     K_g(this->get_K_g(s)),
     K_e2(this->get_K_e2(t, c)),
     problem_type(data.proj->type),
-    //a0(data.get_array("a0")->get_double_array()),
-    //a1(data.get_array("a1")->get_double_array()),
-    //a2(data.get_array("a2")->get_double_array()),
-    //a3(data.get_array("a3")->get_double_array()),
     eps_to_x(this->make_eps_to_x()),
     geom_id(data.get_int("mandible_geometry")),
     mandible(data.proj->geometries[geom_id].get()),
@@ -50,13 +47,16 @@ MarginalBoneLoss::MarginalBoneLoss(const projspec::DataMap& data):
     dv1_orig(data.get_double("volume_variation_rate")),
     dv2_orig(data.get_double("overload_volume_variation_rate"))
 {
-    logger::log_assert(mandible->materials.get_materials()[0]->get_type() == Material::MANDIBLE,
+    logger::log_assert(
+            mandible->materials.get_materials()[0]->get_type() == Material::POWER_LAW_ORTHOTROPIC ||
+            mandible->materials.get_materials()[0]->get_type() == Material::POWER_LAW_ISOTROPIC ||
+            mandible->materials.get_materials()[0]->get_type() == Material::BONE,
             logger::ERROR,
-            "geometry selected for marginal bone loss simulation must have a material of type \"mandible\"");
+            "geometry selected for marginal bone loss simulation must have a material of type \"bone\"");
 
     this->dv0 = dv1_orig*(this->c[0] - 0.0);
     this->dv1 = 0;
-    this->dv2 = dv1_orig*(this->c[2] - this->c[1]);
+    this->dv2 = 2*dv1_orig*(this->c[2] - this->c[1]);
     this->dv3 = -dv2_orig*(this->c[3] - this->c[2]);
 
     StrainVector3D eps(6);
@@ -65,8 +65,9 @@ MarginalBoneLoss::MarginalBoneLoss(const projspec::DataMap& data):
     this->lhs2_offset = this->LHS_3D(2, eps);
     eps[0] = -this->c[2];
     this->lhs3_offset = this->LHS_3D(3, eps);
+    this->max_dv2_x = (1 - this->lhs2_offset)/2;
 
-    this->max_dv2 = this->dv2*(1 - this->lhs2_offset);
+    this->max_dv2 = this->dv2*max_dv2_x;
 }
 
 
@@ -114,44 +115,51 @@ void MarginalBoneLoss::run(){
                 density_num = g->mesh.size();
                 v.resize(density_num);
                 for(size_t i = 0; i < density_num; ++i){
-                    v[i] = g->mesh[i]->get_volume(1);
+                    v[i] = g->mesh[i]->get_volume(proj->thickness);
                 }
             }
             elem_num += g->mesh.size();
             ++id;
         }
     }
-    std::vector<double> density(density_num, 1);
+    std::vector<double> density, max_density;
     std::vector<double> density_vector_view(elem_num, std::numeric_limits<double>::quiet_NaN());
     std::vector<double> stress(elem_num, std::numeric_limits<double>::quiet_NaN());
     std::vector<double> growth(elem_num, std::numeric_limits<double>::quiet_NaN());
 
     std::vector<double> u(this->mesh->max_dofs);
 
-    //material::Mandible* material = static_cast<material::Mandible*>(this->mandible->materials.get_materials()[0].get());
+    field::ImplantRegion* field = nullptr;
+    for(auto& f:this->proj->fields){
+        if(f->get_type() == Field::Type::SCALAR){
+            ScalarField* sf = static_cast<ScalarField*>(f.get());
+            if(sf->get_class() == ScalarField::Class::IMPLANT_REGION){
+                field = static_cast<field::ImplantRegion*>(sf);
+            }
+        }
+    }
+    logger::log_assert(field != nullptr, logger::ERROR, "marginal_bone_loss simulation requires an implant_region field");
+    field->freeze(density, max_density);
+    std::copy(density.begin(), density.end(), density_vector_view.begin() + mand_geom_offset);
+    this->density_view->update_view(density_vector_view);
 
-    // TODO: make this affect CT scan based material
+    const double MIN_DENSITY = 1e-1;
+
     double time_count = 0;
     while(time_count < this->time_limit){
 
         logger::quick_log("");
         logger::quick_log("Time:", time_count);
 
-        //material->set_maturation_alpha(alpha_count);
-        this->fem->generate_matrix(this->mesh, density, this->pc);
+        this->fem->update_materials();
+        this->fem->generate_matrix(this->mesh);
         this->fem->calculate_displacements_global(this->mesh, this->mesh->load_vector, u);
-
-        std::copy(density.begin(), density.end(), density_vector_view.begin() + mand_geom_offset);
-        this->density_view->update_view(density_vector_view);
 
         {
             auto s_it = stress.begin();
             size_t D_offset = 0;
             for(const auto& g:this->mesh->geometries){
                 g->get_stresses(u, false, D_offset, this->fem->D_vec, s_it);
-            }
-            for(size_t i = 0; i < density_num; ++i){
-                stress[i + mand_geom_offset] *= std::pow(density[i], this->pc);
             }
             this->stress_view->update_view(stress);
         }
@@ -162,12 +170,16 @@ void MarginalBoneLoss::run(){
             const double gi = this->get_density_variation(strain, v[i])*this->time_step;
             growth[mand_geom_offset + i] = gi;
             density[i] += gi;
-            if(density[i] < 0){
-                density[i] = 0;
-            } else if(density[i] > 1){
-                density[i] = 1;
+            if(density[i] < MIN_DENSITY){
+                density[i] = MIN_DENSITY;
+            } else if(density[i] > max_density[i]){
+                density[i] = max_density[i];
             }
         }
+        field->set_values(density);
+        std::copy(density.begin(), density.end(), density_vector_view.begin() + mand_geom_offset);
+        this->density_view->update_view(density_vector_view);
+
         this->growth_view->update_view(growth);
 
         time_count += this->time_step;
@@ -196,7 +208,7 @@ math::Vector MarginalBoneLoss::make_eps_to_x() const{
 }
 
 double MarginalBoneLoss::get_density_variation(const StrainVector3D& eps, const double v) const{
-    StrainVector3D lhs(RANGE_NUM);
+    math::Vector lhs(RANGE_NUM);
     for(size_t j = 0; j < RANGE_NUM; ++j){
         lhs[j] = this->LHS_3D(j, eps);
     }
@@ -205,10 +217,12 @@ double MarginalBoneLoss::get_density_variation(const StrainVector3D& eps, const 
         return dv0*(1 - lhs[0])/v;
     } else if(lhs[1] < 1){
         return 0;
-    } else if(lhs[2] < 1){
+    } else if(lhs[2] < max_dv2_x + this->lhs2_offset){
         return dv2*(lhs[2] - this->lhs2_offset)/v;
+    } else if(lhs[2] < 1){
+        return (max_dv2 - dv2*(lhs[2] - max_dv2_x))/v;
     } else {
-        return max_dv2 + dv3*(lhs[3] - this->lhs3_offset)/v;
+        return dv3*(lhs[3] - this->lhs3_offset)/v;
     }
 }
 
@@ -224,7 +238,6 @@ const bool MarginalBoneLoss::reg = Factory<Simulation>::add(
             DataEntry{.name = "volume_variation_rate", .type = TYPE_DOUBLE, .required = true},
             DataEntry{.name = "overload_volume_variation_rate", .type = TYPE_DOUBLE, .required = true},
             DataEntry{.name = "time_limit", .type = TYPE_DOUBLE, .required = true},
-            DataEntry{.name = "pc", .type = TYPE_DOUBLE, .required = true},
             DataEntry{.name = "mandible_geometry", .type = TYPE_INT, .required = true},
             DataEntry{.name = "traction", .type = TYPE_ARRAY, .required = true,
                          .array_data = std::shared_ptr<ArrayRequirements>(

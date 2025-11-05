@@ -46,7 +46,7 @@ class MarginalBoneLoss : public Simulation{
     static const bool reg;
     Meshing* mesh;
     SolverManager* fem;
-    const double pc;
+    ProjectData* proj;
     const Range t, c, s;
     const double rho_eps = 0.2;
     const double lhs_eps = 1e-30;
@@ -62,6 +62,7 @@ class MarginalBoneLoss : public Simulation{
     double lhs2_offset;
     double lhs3_offset;
     double max_dv2;
+    double max_dv2_x;
 
     ViewHandler* stress_view = nullptr;
     ViewHandler* density_view = nullptr;

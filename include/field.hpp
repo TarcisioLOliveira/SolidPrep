@@ -53,11 +53,17 @@ class Field{
 
 class ScalarField : public Field{
     public:
+    enum class Class{
+        APPARENT_DENSITY,
+        IMPLANT_REGION,
+        TRABECULAR_CUTOFF
+    };
     inline virtual Type get_type() const override{
         return Type::SCALAR;
     };
     virtual ~ScalarField() = default;
     virtual double get(const MeshElement* e, const gp_Pnt& p) const = 0;
+    virtual Class get_class() const = 0;
 };
 
 class VectorField : public Field{

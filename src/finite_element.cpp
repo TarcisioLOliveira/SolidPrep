@@ -63,6 +63,7 @@ void FiniteElement::calculate_displacements(const Meshing* const mesh, std::vect
 }
 
 void FiniteElement::solve_rigid(std::vector<double>& load){
+    this->matrix->final_flush_matrix();
     this->solve(load);
 }
 void FiniteElement::solve_frictionless_displ_log(const Meshing* const mesh, std::vector<double>& load){

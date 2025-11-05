@@ -59,6 +59,8 @@ class GlobalStiffnessMatrix{
 
     virtual void dump_matrix(){}
 
+    virtual void final_flush_matrix(){}
+
     protected:
     size_t W, N;
     const double EPS_PENALTY = 5e7;
@@ -68,7 +70,6 @@ class GlobalStiffnessMatrix{
     const double HK = 1e4;
     const double HC = 2e5;
 
-    virtual void final_flush_matrix(){}
 
     virtual void generate_base(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<math::Matrix>& D_cache, const std::vector<double>& u_ext, const std::vector<double>& lambda, const FiniteElement::ContactType type);
 

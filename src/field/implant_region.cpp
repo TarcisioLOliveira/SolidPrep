@@ -146,10 +146,40 @@ void ImplantRegion::display_views() const{
     }
 }
 double ImplantRegion::get(const MeshElement* e, const gp_Pnt& p) const{
-    const auto m = this->get_implant_multiplier(p);
-    const auto rho = this->density_field->get(e, p);
+    if(!this->frozen){
+        const auto m = this->get_implant_multiplier(p);
+        const auto rho = this->density_field->get(e, p);
 
-    return m*rho;
+        return m*rho;
+    } else {
+        return this->frozen_values[this->elem_id_to_value.at(e->id)];
+    }
+}
+
+
+void ImplantRegion::freeze(std::vector<double>& current_values, std::vector<double>& maximum_values){
+    this->frozen = true;
+
+    size_t elem_num = 0;
+    for(const auto& g:this->geoms){
+        elem_num += g->mesh.size();
+    }
+    current_values.resize(elem_num);
+    maximum_values.resize(elem_num);
+    this->frozen_values.resize(elem_num);
+    size_t id = 0;
+    for(const auto& g:this->geoms){
+        for(const auto& e:g->mesh){
+            const auto c = e->get_centroid();
+            maximum_values[id] = this->density_field->get(e.get(), c);
+            const auto m = this->get_implant_multiplier(c);
+            current_values[id] = m*maximum_values[id];
+            this->frozen_values[id] = current_values[id];
+            this->elem_id_to_value[e->id] = id;
+
+            ++id;
+        }
+    }
 }
 
 using namespace projspec;

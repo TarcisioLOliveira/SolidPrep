@@ -332,6 +332,7 @@ math::Matrix PrincipalStress::get_matrix(const MeshElement* e, const gp_Pnt& p) 
                 dirs(i, j) = eigen.eigenvectors(i, pos[j]);
             }
         }
+        return math::Matrix::identity(DIM);
         return dirs;
     }
 }
