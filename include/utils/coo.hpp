@@ -80,7 +80,7 @@ class COO{
         logger::log_assert(this->coo_first_time, logger::ERROR, "cannot reserve coo space after coo structure is defined.");
         const auto P = this->index_sort(pos);
         size_t start_i = 0;
-        while(pos[P[start_i]] < 0){
+        while(start_i < W && pos[P[start_i]] < 0){
             ++start_i;
         }
         for(size_t i = start_i; i < W; ++i){
@@ -102,7 +102,7 @@ class COO{
         logger::log_assert(this->coo_first_time, logger::ERROR, "cannot reserve coo space after coo structure is defined.");
         const auto P = this->index_sort(pos);
         size_t start_i = 0;
-        while(pos[P[start_i]] < 0){
+        while(start_i < W && pos[P[start_i]] < 0){
             ++start_i;
         }
         for(size_t i = start_i; i < W; ++i){
@@ -125,12 +125,12 @@ class COO{
         logger::log_assert(this->coo_first_time, logger::ERROR, "cannot reserve coo space after coo structure is defined.");
         const auto Pi = this->index_sort(pos_i);
         size_t start_i = 0;
-        while(pos_i[Pi[start_i]] < 0){
+        while(start_i < Wi && pos_i[Pi[start_i]] < 0){
             ++start_i;
         }
         const auto Pj = this->index_sort(pos_j);
         size_t start_j = 0;
-        while(pos_j[Pj[start_j]] < 0){
+        while(start_j < Wj && pos_j[Pj[start_j]] < 0){
             ++start_j;
         }
         if(!transpose){
@@ -167,7 +167,7 @@ class COO{
         if(this->coo_first_time){
             const auto P = this->index_sort(pos);
             size_t start_i = 0;
-            while(pos[P[start_i]] < 0){
+            while(start_i < W && pos[P[start_i]] < 0){
                 ++start_i;
             }
             for(size_t i = start_i; i < W; ++i){
@@ -197,7 +197,7 @@ class COO{
         if(this->coo_first_time){
             const auto P = this->index_sort(pos);
             size_t start_i = 0;
-            while(pos[P[start_i]] < 0){
+            while(start_i < W && pos[P[start_i]] < 0){
                 ++start_i;
             }
             for(size_t i = start_i; i < W; ++i){
@@ -228,12 +228,12 @@ class COO{
         if(this->coo_first_time){
             const auto Pi = this->index_sort(pos_i);
             size_t start_i = 0;
-            while(pos_i[Pi[start_i]] < 0){
+            while(start_i < Wi && pos_i[Pi[start_i]] < 0){
                 ++start_i;
             }
             const auto Pj = this->index_sort(pos_j);
             size_t start_j = 0;
-            while(pos_j[Pj[start_j]] < 0){
+            while(start_j < Wj && pos_j[Pj[start_j]] < 0){
                 ++start_j;
             }
             if(!transpose){
