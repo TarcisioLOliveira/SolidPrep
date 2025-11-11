@@ -28,7 +28,7 @@ void SolverManager::generate_matrix(const Meshing* const mesh, const std::vector
     this->update_D_matrices(mesh, density, pc, psi);
     size_t l_num = 0;
     const size_t l_num_orig = mesh->lag_node_map.size();
-    bool needs_lambda = mesh->proj_data->contact_data.contact_type >= FiniteElement::ContactType::FRICTIONLESS_DISPL_SIMPLE;
+    bool needs_lambda = mesh->proj_data->contact_data.contact_type >= FiniteElement::ContactType::FRICTIONLESS_PENALTY;
     if(mesh->proj_data->contact_data.contact_type == FiniteElement::ContactType::FRICTIONLESS_DISPL_SIMPLE){
         l_num = l_num_orig;
     } else if(mesh->proj_data->contact_data.contact_type == FiniteElement::ContactType::FRICTIONLESS_DISPL_LOG){
@@ -90,43 +90,33 @@ void SolverManager::calculate_displacements_adjoint(const Meshing* const mesh, c
     bool needs_lambda = mesh->proj_data->contact_data.contact_type >= FiniteElement::ContactType::FRICTIONLESS_DISPL_SIMPLE;
     if(mesh->proj_data->contact_data.contact_type == FiniteElement::ContactType::FRICTIONLESS_DISPL_SIMPLE){
         l_num = mesh->lag_node_map.size();
+    } else if(mesh->proj_data->contact_data.contact_type == FiniteElement::ContactType::FRICTIONLESS_DISPL_LOG){
+        l_num = 1;
     }
-    std::vector<double> l(mesh->load_vector[0].size());
+    std::vector<double> u_tmp(mesh->max_dofs, 0);
     for(size_t i = 0; i < mesh->sub_problems->size(); ++i){
         if(this->iteration == 1){
             if(needs_lambda){
-                this->lambdas[i].emplace_back(l_num, 0.01);
+                this->lambdas[i].emplace_back(l_num, 0);
             } else {
                 this->lambdas[i].emplace_back();
             }
         }
-        std::copy(load[i].begin(), load[i].end(), l.begin());
-        auto& n = mesh->node_positions[i];
-        this->split_u[i].resize(mesh->max_dofs, 0);
+        std::vector<double> l(mesh->load_vector[i].size());
         auto& ui = this->split_u[i];
-        if(l.size() == mesh->max_dofs){
-            std::vector<double> load_pos(mesh->dofs_per_subproblem[i]);
-            #pragma omp parallel for
-            for(size_t j = 0; j < n.size(); ++j){
-                const long p_new = n[j];
-                if(p_new >= 0){
-                    load_pos[p_new] = l[j];
-                }
-            }
-            this->solvers[i]->calculate_displacements(mesh, load_pos, ui, this->lambdas[i][this->solve_step]);
-            mesh->extend_vector(i, load_pos, u);
-            #pragma omp parallel for
-            for(size_t j = 0; j < n.size(); ++j){
-                const long p_new = n[j];
-                if(p_new >= 0){
-                    l[p_new] = load_pos[p_new];
-                }
-            }
-        } else if(l.size() == mesh->dofs_per_subproblem[i]){
-            this->solvers[i]->calculate_displacements(mesh, l, ui, this->lambdas[i][this->solve_step]);
-            mesh->extend_vector(i, l, u);
+        if(load[i].size() == mesh->max_dofs){
+            mesh->de_extend_vector(i, load[i], l);
+            this->solvers[i]->calculate_adjoint(mesh, l, ui, this->lambdas[i][this->solve_step]);
+        } else if(load[i].size() == mesh->dofs_per_subproblem[i]){
+            std::copy(load[i].begin(), load[i].end(), l.begin());
+            this->solvers[i]->calculate_adjoint(mesh, l, ui, this->lambdas[i][this->solve_step]);
         } else {
             logger::log_assert(false, logger::ERROR, "incorrect load vector size, must be equal to mesh->max_dofs OR mesh->dofs_per_subproblem[i]");
+        }
+        mesh->extend_vector(i, l, u_tmp);
+        #pragma omp parallel for
+        for(size_t j = 0; j < u.size(); ++j){
+            u[j] += u_tmp[j];
         }
     }
     ++this->solve_step;

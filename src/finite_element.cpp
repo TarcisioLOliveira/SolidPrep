@@ -62,8 +62,49 @@ void FiniteElement::calculate_displacements(const Meshing* const mesh, std::vect
     }
 }
 
+void FiniteElement::calculate_adjoint(const Meshing* const mesh, std::vector<double>& load, const std::vector<double>& u0, std::vector<double>& lambda){
+    (void) lambda;
+    switch(this->contact_type){
+        case RIGID:
+            this->solve_rigid(load);
+            break;
+        case FRICTIONLESS_PENALTY:
+            logger::log_assert(false, logger::ERROR, "adjoint equation for penalty contact not implemented");
+            //this->solve_frictionless_penalty(mesh, load, u0);
+            break;
+        case FRICTIONLESS_DISPL_LOG:
+            this->adjoint_frictionless_displ_log(mesh, load, lambda, u0);
+            break;
+        case FRICTIONLESS_DISPL_SIMPLE:
+            logger::log_assert(false, logger::ERROR, "adjoint equation for displ_simple contact not implemented");
+            //this->solve_frictionless_displ_simple(mesh, load, lambda, u0);
+            break;
+    }
+}
+
 void FiniteElement::solve_rigid(std::vector<double>& load){
     this->solve(load);
+}
+
+void FiniteElement::adjoint_frictionless_displ_log(const Meshing* const mesh, std::vector<double>& load, std::vector<double>& lambda, const std::vector<double>& u){
+    const size_t vec_size = this->u_size + 1;
+
+    std::vector<double> r(vec_size);
+    std::copy(load.begin(), load.end(), r.begin());
+
+    if(this->first_adjoint){
+        std::vector<double> u_ext(mesh->global_load_vector.size(), 0);
+        mesh->extend_vector(0, u, u_ext);
+
+        this->reset_hessian();
+        this->matrix->add_frictionless_log(mesh, mesh->node_positions[0], u_ext);
+        this->first_adjoint = false;
+    }
+        
+    this->solve(r);
+
+    std::copy(r.begin(), r.begin() + this->u_size, load.begin());
+    lambda[0] = r.back();
 }
 void FiniteElement::solve_frictionless_displ_log(const Meshing* const mesh, std::vector<double>& load){
     const size_t vec_size = this->u_size + 1;
@@ -95,6 +136,8 @@ void FiniteElement::solve_frictionless_displ_log(const Meshing* const mesh, std:
     double rnorm = 0;
 
     double step = 1.0;
+
+    this->first_adjoint = true;
 
 
     this->reset_hessian();

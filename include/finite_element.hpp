@@ -58,6 +58,8 @@ class FiniteElement{
 
     void calculate_displacements(const Meshing* const mesh, std::vector<double>& load, const std::vector<double>& u0, std::vector<double>& lambda);
 
+    void calculate_adjoint(const Meshing* const mesh, std::vector<double>& load, const std::vector<double>& u0, std::vector<double>& lambda);
+
     virtual std::vector<double> calculate_forces(const Meshing* const mesh, const std::vector<double>& displacements) const;
 
 
@@ -73,6 +75,7 @@ class FiniteElement{
     GlobalStiffnessMatrix* matrix = nullptr;
     size_t u_size, l_num;
     double max_step;
+    bool first_adjoint = true;
 
 
     virtual void generate_matrix_base(const Meshing* const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<math::Matrix>& D_cache, const std::vector<double>& u_ext, const std::vector<double>& lambda, const ContactType type) = 0;
@@ -83,8 +86,9 @@ class FiniteElement{
     void solve_rigid(std::vector<double>& load);
     void solve_frictionless_displ_simple(const Meshing* const mesh, std::vector<double>& load, std::vector<double>& lambda, const std::vector<double>& u0);
     void solve_frictionless_displ_log(const Meshing* const mesh, std::vector<double>& load);
-
     void solve_frictionless_penalty(const Meshing* const mesh, std::vector<double>& load, const std::vector<double>& u0);
+
+    void adjoint_frictionless_displ_log(const Meshing* const mesh, std::vector<double>& load, std::vector<double>& lambda, const std::vector<double>& u);
 
     private:
 };
