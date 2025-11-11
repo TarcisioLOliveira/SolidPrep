@@ -172,7 +172,7 @@ class ShapeHandler{
         std::map<size_t, long> id_mapping;
         size_t matrix_width;
         std::unique_ptr<general_solver::MUMPSGeneral> solver;
-        std::vector<double> b;
+        std::vector<std::vector<double>> b;
     };
     std::set<SuperimposedNodes*> apply_op(shape_op::ShapeOp* op) const;
 
@@ -182,7 +182,7 @@ class ShapeHandler{
     std::map<size_t, size_t> bound_to_shape_mapping;
     std::map<size_t, size_t> optimized_nodes_mapping;
     std::map<size_t, MeshElement*> node_to_elem_unique_mapping;
-    std::map<MeshElement*, std::vector<size_t>> elem_to_affected_node_mapping;
+    std::map<const MeshElement*, std::vector<size_t>> elem_to_affected_node_mapping;
 
     std::vector<AffectedNode> optimized_nodes;
     std::vector<BoundaryElement*> boundary_elements;
