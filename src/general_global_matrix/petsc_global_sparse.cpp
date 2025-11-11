@@ -23,41 +23,20 @@
 namespace general_global_matrix{
 
 PETScGlobalSparse::~PETScGlobalSparse(){
-    MatDestroy(&this->M);
+    MatDestroy(&this->PM);
 }
 
 void PETScGlobalSparse::initialize(size_t L){
     this->L = L;
-    MatCreate(PETSC_COMM_WORLD, &this->M);
-    MatSetType(this->M, MATMPIAIJ);
+    MatCreate(PETSC_COMM_WORLD, &this->PM);
+    MatSetType(this->PM, MATAIJCUSPARSE);
 
     MPI_Bcast(&L, 1, MPI_LONG, 0, MPI_COMM_WORLD);
 
-    MatSetSizes(this->M, PETSC_DECIDE, PETSC_DECIDE, L, L);
-    MatSetOption(this->M, MAT_STRUCTURALLY_SYMMETRIC, PETSC_TRUE);
+    MatSetSizes(this->PM, PETSC_DECIDE, PETSC_DECIDE, L, L);
+    MatSetOption(this->PM, MAT_STRUCTURALLY_SYMMETRIC, PETSC_TRUE);
+    MatSetOption(this->PM, MAT_KEEP_NONZERO_PATTERN, PETSC_TRUE);
 }
 
-void PETScGlobalSparse::begin_preallocation(){
-    MatCreate(PETSC_COMM_WORLD, &this->tmp);
-    MatSetType(tmp, MATPREALLOCATOR);
-    MatSetSizes(tmp, PETSC_DECIDE, PETSC_DECIDE, L, L);
-    MatSetOption(tmp, MAT_STRUCTURALLY_SYMMETRIC, PETSC_TRUE);
-    MatSetUp(tmp);
-
-    std::swap(tmp, M);
-}
-
-void PETScGlobalSparse::end_preallocation(){
-    std::swap(tmp, M);
-
-    MatAssemblyBegin(tmp, MAT_FINAL_ASSEMBLY);
-    MatAssemblyEnd(tmp, MAT_FINAL_ASSEMBLY);
-
-    MatPreallocatorPreallocate(tmp, PETSC_TRUE, this->M);
-
-    MatSetUp(this->M);
-
-    MatDestroy(&tmp);
-}
 
 }

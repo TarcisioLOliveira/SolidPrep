@@ -30,19 +30,42 @@ class PETScGeneralPCG{
     public:
     ~PETScGeneralPCG();
 
-    void initialize(general_global_matrix::PETScGlobalSparse* M, size_t L);
+    void initialize_matrix(bool spd, size_t L);
 
-    void set_rhs(std::vector<double> b);
+    void solve(std::vector<double>& b);
 
-    void solve(std::vector<double>& x);
+    inline void compute(){
+        this->M.set_up();
+    }
+
+    inline void add_element(const math::Matrix& matrix, const std::vector<long>& pos){
+        this->M.add_element(matrix, pos);
+    }
+    inline void add_element(const math::Matrix& matrix, const std::vector<long>& pos_i, const std::vector<long>& pos_j){
+        this->M.add_element(matrix, pos_i, pos_j);
+    }
+    inline void add_value(size_t i, size_t j, double val){
+        this->M.add_value(i, j, val);
+    }
+
+    inline void make_zero(){
+        this->M.make_zero();
+    }
+
+    inline void clear_matrix(){
+        this->M.clear_matrix();
+        this->setted = false;
+    }
 
     private:
-    general_global_matrix::PETScGlobalSparse* M;
+    general_global_matrix::PETScGlobalSparse M;
     Vec f = 0;
     Vec u = 0;
     PC pc = 0;
     KSP ksp = 0;
     size_t L = 0;
+    bool spd;
+    bool setted = false;
 };
 
 }

@@ -28,49 +28,48 @@ PETScGeneralPCG::~PETScGeneralPCG(){
 }
 
 
-void PETScGeneralPCG::initialize(general_global_matrix::PETScGlobalSparse* M, size_t L){
-    this->M = M;
+void PETScGeneralPCG::initialize_matrix(bool spd, size_t L){
+    this->spd = spd;
     this->L = L;
 
-    auto mat = M->get_matrix();
+    this->M.initialize(L);
+    auto mat = M.get_matrix();
 
     long n = 0, m = 0;
     MatGetLocalSize(mat, &n, &m);
     MPI_Bcast(&L, 1, MPI_LONG, 0, MPI_COMM_WORLD);
 
     VecCreateMPI(PETSC_COMM_WORLD, m, L, &this->f);
-    VecSetType(this->f, VECSTANDARD);
+    VecSetType(this->f, VECCUDA);
     VecSetUp(this->f);
 
     VecCreateMPI(PETSC_COMM_WORLD, m, L, &this->u);
-    VecSetType(this->u, VECSTANDARD);
+    VecSetType(this->u, VECCUDA);
     VecSetUp(this->u);
 
     KSPCreate(PETSC_COMM_WORLD, &this->ksp);
-    KSPSetType(this->ksp, KSPCGNE);
+    if(spd){
+        KSPSetType(this->ksp, KSPCG);
+    } else {
+        KSPSetType(this->ksp, KSPMINRES);
+    }
     KSPSetInitialGuessNonzero(this->ksp, PETSC_FALSE);
 
     KSPGetPC(this->ksp, &this->pc);
     PCSetType(this->pc, PCJACOBI);
+    PCJacobiSetType(this->pc, PC_JACOBI_DIAGONAL);
 
     KSPSetOperators(this->ksp, mat, mat);
-
-    KSPSetUp(this->ksp);
-    PCSetUp(this->pc);
 }
 
-void PETScGeneralPCG::set_rhs(std::vector<double> b){
+void PETScGeneralPCG::solve(std::vector<double>& b){
     int mpi_id = 0;
+    int mpi_size = 0;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi_id);
-
-    if(mpi_id != 0){
-        b.resize(L);
-    }
-    MPI_Bcast(b.data(), b.size(), MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
 
     long begin = 0, end = 0;
     VecGetOwnershipRange(this->f, &begin, &end);
-
     double* f_data = nullptr;
     VecGetArray(this->f, &f_data);
     for(auto d = 0; d < end - begin; ++d){
@@ -84,29 +83,15 @@ void PETScGeneralPCG::set_rhs(std::vector<double> b){
     VecAssemblyBegin(this->f);
     VecAssemblyEnd(this->f);
 
-}
-
-void PETScGeneralPCG::solve(std::vector<double>& x){
-    int mpi_id = 0;
-    int mpi_size = 0;
-    MPI_Comm_rank(MPI_COMM_WORLD, &mpi_id);
-    MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
-
-    long begin = 0, end = 0;
-    VecGetOwnershipRange(this->u, &begin, &end);
-    double* u_data = nullptr;
-    VecGetArray(this->u, &u_data);
-    for(auto d = 0; d < end - begin; ++d){
-        *(u_data+d) = x[begin+d];
-    }
-    VecRestoreArray(this->u, &u_data);
+    KSPSetUp(this->ksp);
+    PCSetUp(this->pc);
 
     KSPSolve(this->ksp, this->f, this->u);
 
-    auto mat = M->get_matrix();
+    auto mat = M.get_matrix();
     long n = 0, m = 0;
     MatGetLocalSize(mat, &n, &m);
-    VecGetOwnershipRange(this->f, &begin, &end);
+    VecGetOwnershipRange(this->u, &begin, &end);
 
     const double* load_data;
 
@@ -114,8 +99,8 @@ void PETScGeneralPCG::solve(std::vector<double>& x){
 
     if(mpi_size > 1){
         if(mpi_id == 0){
-            std::fill(x.begin(), x.end(), 0);
-            std::copy(load_data, load_data + m, x.begin());
+            std::fill(b.begin(), b.end(), 0);
+            std::copy(load_data, load_data + m, b.begin());
             std::vector<double> load_data2(2*m,0);
             long l = 0;
             long step = m;
@@ -124,7 +109,7 @@ void PETScGeneralPCG::solve(std::vector<double>& x){
                 MPI_Recv(&l, 1, MPI_DOUBLE, i, 111, MPI_COMM_WORLD, &mpi_status);
                 MPI_Recv(load_data2.data(), l, MPI_DOUBLE, i, 111, MPI_COMM_WORLD, &mpi_status);
                 for(long j = 0; j < m; ++j){
-                    x[j+step] += load_data2[j];
+                    b[j+step] += load_data2[j];
                 }
                 step += l;
             }
@@ -134,7 +119,7 @@ void PETScGeneralPCG::solve(std::vector<double>& x){
             MPI_Send(load_data, m, MPI_DOUBLE, 0, 111, MPI_COMM_WORLD);
         }
     } else {
-        std::copy(load_data, load_data + this->L, x.begin());
+        std::copy(load_data, load_data + this->L, b.begin());
     }
     MPI_Barrier(MPI_COMM_WORLD);
 

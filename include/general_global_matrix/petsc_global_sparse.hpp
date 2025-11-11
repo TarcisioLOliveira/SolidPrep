@@ -22,6 +22,7 @@
 #define PETSC_GLOBAL_SPARSE_HPP
 
 #include "math/matrix.hpp"
+#include "utils/coo.hpp"
 #include <vector>
 #include <petsc.h>
 
@@ -33,32 +34,55 @@ class PETScGlobalSparse{
 
     void initialize(size_t L);
 
-    void begin_preallocation();
-
-    void end_preallocation();
-
-    inline void add_element(const math::Matrix& matrix, const std::vector<long> pos){
-        MatSetValues(this->M, pos.size(), pos.data(), pos.size(), pos.data(), matrix.data(), ADD_VALUES);
+    inline void add_element(const math::Matrix& matrix, const std::vector<long>& pos){
+        this->M.insert_matrix_general(matrix, pos);
+    }
+    inline void add_element(const math::Matrix& matrix, const std::vector<long>& pos_i, const std::vector<long>& pos_j){
+        this->M.insert_block(matrix, pos_i, pos_j, false);
     }
 
-    inline void clear_matrix(){
-        MatZeroEntries(this->M);
+    inline void print_matrix() const{
+        for(size_t i = 0; i < L; ++i){
+            for(size_t j = 0; j < L; ++j){
+                std::cout << this->M.get(i,j) << " ";
+            }
+            std::cout << std::endl;
+        }
+    }
+    inline void add_value(size_t i, size_t j, double val){
+        this->M.add(i, j, val);
     }
 
     inline void set_up(){
-        MatAssemblyBegin(this->M, MAT_FINAL_ASSEMBLY);
-        MatAssemblyEnd(this->M, MAT_FINAL_ASSEMBLY);
+        if(!this->setted){
+            if(M.vals.size() == 0){
+                this->M.generate_coo(this->L);
+                MatSetPreallocationCOO(this->PM, this->M.nvals, this->M.rows.data(), this->M.cols.data());
+            }
+            MatSetValuesCOO(this->PM, this->M.vals.data(), INSERT_VALUES);
+            this->setted = true;
+        }
+    }
+
+    inline void make_zero(){
+        this->M.zero();
+    }
+
+    inline void clear_matrix(){
+        this->M.clear();
+        setted = false;
     }
 
     Mat get_matrix() const{
-        return M;
+        return PM;
     }
 
     private:
-    Mat M;
+    Mat PM;
     Mat tmp;
+    utils::COO<PetscInt> M = utils::COO<PetscInt>(0);
     size_t L;
-
+    bool setted = false;
 };
 
 }
