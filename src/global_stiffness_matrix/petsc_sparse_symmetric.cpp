@@ -209,7 +209,7 @@ void PETScSparseSymmetricCUDA::assemble_matrix(const Meshing * const mesh, const
         if(type > FiniteElement::ContactType::RIGID){
             this->K_coo.backup_matrix();
         }
-        //MatSetValuesCOO(this->K, this->K_coo.vals.data(), INSERT_VALUES);
+        MatSetValuesCOO(this->K, this->K_coo.vals.data(), INSERT_VALUES);
     }
 }
 
