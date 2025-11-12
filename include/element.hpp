@@ -506,6 +506,14 @@ class MeshElement : public Element{
      * @param dof Analyzed degree of freedom.
      */
     virtual double von_Mises_derivative_sh(const math::Matrix& D, double mult, const gp_Pnt& point, const std::vector<double>& u, const size_t n, const size_t dof) const = 0;
+
+    virtual math::Matrix diffusion_dim_dof(const double t, const math::Matrix& A) const = 0;
+    virtual math::Matrix get_dNi(const gp_Pnt& p) const{
+        (void)p;
+        return math::Matrix();
+    }
+
+
     /**
      * Returns a 1 degree of freedom diffusion matrix.
      * 

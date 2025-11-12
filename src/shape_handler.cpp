@@ -20,6 +20,7 @@
 
 #include "shape_handler.hpp"
 #include "general_solver/mumps_general.hpp"
+#include "general_solver/petsc_general_pcg.hpp"
 #include "logger.hpp"
 #include "math/matrix.hpp"
 #include "project_data.hpp"
@@ -36,6 +37,8 @@ void ShapeHandler::obtain_affected_nodes(){
     const bool rigid = (this->mesh->proj_data->contact_data.contact_type == FiniteElement::ContactType::RIGID);
     const size_t node_num = this->mesh->elem_info->get_nodes_per_element();
     const size_t bnode_num = this->mesh->elem_info->get_boundary_nodes_per_element();
+    const size_t dof = this->mesh->elem_info->get_dof_per_node();
+    const size_t s_size = this->mesh->elem_info->get_D_dimension();
     const size_t dim =
         (this->mesh->elem_info->get_problem_type() == utils::ProblemType::PROBLEM_TYPE_2D)
         ? 2 : 3;
@@ -180,7 +183,7 @@ void ShapeHandler::obtain_affected_nodes(){
                     auto e = it->second;
                     elem_set.insert(e);
                 }
-        }
+            }
             this->optimized_nodes.push_back(AffectedNode{std::move(node_ids), std::move(elems)});
         }
     }
@@ -202,7 +205,8 @@ void ShapeHandler::obtain_affected_nodes(){
     for(size_t i = 0; i < bnode_num; ++i){
         nodes[i] = this->mesh->node_list[this->boundary_elements[0]->nodes[i]->id].get();
     }
-    this->bound_to_shape_mapping[0] = 0;
+    std::map<size_t, size_t> bound_to_shape_mapping;
+    bound_to_shape_mapping[0] = 0;
     ElementShape es{std::move(nodes), this->boundary_elements[0]->normal};
 
     size_t shape_id = 1;
@@ -212,13 +216,13 @@ void ShapeHandler::obtain_affected_nodes(){
                     this->boundary_elements[j-1]->get_centroid(bnode_num),
                     Precision::Confusion())){
 
-            this->bound_to_shape_mapping[j] = shape_id - 1;
+            bound_to_shape_mapping[j] = shape_id - 1;
             continue;
         }
         for(size_t i = 0; i < bnode_num; ++i){
             nodes[i] = this->mesh->node_list[this->boundary_elements[j]->nodes[i]->id].get();
         }
-        this->bound_to_shape_mapping[j] = shape_id;
+        bound_to_shape_mapping[j] = shape_id;
         ElementShape es{std::move(nodes), this->boundary_elements[j]->normal};
         ++shape_id;
     }
@@ -319,9 +323,8 @@ void ShapeHandler::obtain_affected_nodes(){
     }
 
     // Generate linear problems
-    const math::Matrix A({1, 0, 0,
-                          0, 1, 0,
-                          0, 0, 1}, 3, 3);
+    const math::Matrix D(math::Matrix::identity(s_size));
+    const math::Matrix A(math::Matrix::identity(dim));
 
     std::set<SuperimposedNodes*> inter_geom;
     for(auto& e:mesh->inter_geometry_boundary){
@@ -331,164 +334,118 @@ void ShapeHandler::obtain_affected_nodes(){
     }
 
     for(auto& cluster:this->clusters){
-        cluster.solver = std::make_unique<general_solver::MUMPSGeneral>();
-        size_t idm = 0;
+        cluster.solver = std::make_unique<general_solver::PETScGeneralPCG>();
 
         // Go through boundary (in parallel)
         //      Set as id -1 the ones on boundary conditions (but not on inter_geom)
         // Go through domain
         //      If id != -1:
-        //          Add to domain_nodes
         //          Set id
 
-        // size_t num_bound_nodes = 0;
-        // for(auto g:cluster.geometries){ 
-        //     num_bound_nodes += g->boundary_node_list.size();
-        // }
+        size_t num_bound_nodes = 0;
+        for(auto& g:cluster.geometries){ 
+            num_bound_nodes += g->boundary_node_list.size();
+        }
 
-        // std::vector<bool> fixed_node(num_bound_nodes, false);
-        // size_t fixed_offset = 0;
-        // for(auto g:cluster.geometries){ 
-        //     #pragma omp parallel for
-        //     for(size_t i = 0; i < g->boundary_node_list.size(); ++i){
-        //         const auto& b = g->boundary_node_list[i];
-        //         const size_t bid = i + fixed_offset;
-        //         for(auto& f:this->mesh->proj_data->forces){
-        //             if(f.S.is_inside(b->point)){
-        //                 fixed_node[bid] = true;
-        //                 break;
-        //             }
-        //         }
-        //         if(!fixed_node[bid]){
-        //             for(auto& f:this->mesh->proj_data->supports){
-        //                 if(f.S.is_inside(b->point)){
-        //                     fixed_node[bid] = true;
-        //                     break;
-        //                 }
-        //             }
-        //         }
-        //         if(!fixed_node[bid]){
-        //             for(auto& f:this->mesh->proj_data->springs){
-        //                 if(f.S.is_inside(b->point)){
-        //                     fixed_node[bid] = true;
-        //                     break;
-        //                 }
-        //             }
-        //         }
-        //         if(!fixed_node[bid]){
-        //             for(auto& f:this->mesh->proj_data->internal_loads){
-        //                 if(f.S.is_inside(b->point)){
-        //                     fixed_node[bid] = true;
-        //                     break;
-        //                 }
-        //             }
-        //         }
-        //     }
-        //     fixed_offset += g->boundary_node_list.size();
-        // }
-        // fixed_offset = 0;
-        // for(auto g:cluster.geometries){ 
-        //     for(size_t i = 0; i < g->boundary_node_list.size(); ++i){
-        //         const auto& b = g->boundary_node_list[i];
-        //         const size_t bid = i + fixed_offset;
-        //         if(fixed_node[bid]){
-        //             cluster.id_mapping[b->id] = -1;
-        //         }
-        //     }
-        //     fixed_offset += g->boundary_node_list.size();
-        // }
-        // fixed_node.clear();
-        // std::set<Node*> domain_nodes_set;
-        // for(auto g:cluster.geometries){ 
-        //     for(size_t i = 0; i < g->node_list.size(); ++i){
-        //         const auto& n = g->node_list[i];
-        //         if(!cluster.id_mapping.contains(n->id)){
-        //             domain_nodes_set.insert(n);
-        //         }
-        //     }
-        // }
-        // for(const auto& n:domain_nodes_set){
-        //     cluster.id_mapping[n->id] = idm;
-        //     ++idm;
-        // }
-        // this->domain_nodes.insert(this->domain_nodes.begin(),
-        //                           domain_nodes_set.begin(),
-        //                           domain_nodes_set.end());
-
-        ///// OLD
-        std::set<SuperimposedNodes*> geom_union;
-        std::set<SuperimposedNodes*> unused_inner_bound;
-        for(auto g:cluster.geometries){ 
-            for(const auto& n:g->node_list){
-                cluster.id_mapping[n->id] = -1;
+        std::vector<bool> fixed_node(num_bound_nodes, false);
+        size_t fixed_offset = 0;
+        for(auto& g:cluster.geometries){ 
+            #pragma omp parallel for
+            for(size_t i = 0; i < g->boundary_node_list.size(); ++i){
+                const auto& b = g->boundary_node_list[i];
+                const size_t bid = i + fixed_offset;
+                for(const auto& f:this->mesh->proj_data->forces){
+                    if(f.S.is_inside(b->point)){
+                        fixed_node[bid] = true;
+                        break;
+                    }
+                }
+                if(!fixed_node[bid]){
+                    for(const auto& f:this->mesh->proj_data->supports){
+                        if(f.S.is_inside(b->point)){
+                            fixed_node[bid] = true;
+                            break;
+                        }
+                    }
+                }
+                if(!fixed_node[bid]){
+                    for(const auto& f:this->mesh->proj_data->springs){
+                        if(f.S.is_inside(b->point)){
+                            fixed_node[bid] = true;
+                            break;
+                        }
+                    }
+                }
+                if(!fixed_node[bid]){
+                    for(const auto& f:this->mesh->proj_data->internal_loads){
+                        if(f.S.is_inside(b->point)){
+                            fixed_node[bid] = true;
+                            break;
+                        }
+                    }
+                }
+                if(!fixed_node[bid]){
+                    bool found = false;
+                    for(const auto& f:this->optimized_nodes){
+                        for(auto& n:f.node_ids){
+                            if(b->id == n){
+                                found = true;
+                                fixed_node[bid] = true;
+                                break;
+                            }
+                        }
+                        if(found){
+                            break;
+                        }
+                    }
+                }
             }
+            fixed_offset += g->boundary_node_list.size();
+        }
+        fixed_offset = 0;
+        for(auto& g:cluster.geometries){ 
+            for(size_t i = 0; i < g->boundary_node_list.size(); ++i){
+                const auto& b = g->boundary_node_list[i];
+                const size_t bid = i + fixed_offset;
+                if(fixed_node[bid]){
+                    cluster.id_mapping[b->id] = -1;
+                }
+            }
+            fixed_offset += g->boundary_node_list.size();
+        }
+        fixed_node.clear();
+        std::set<SuperimposedNodes*> geom_union;
+        for(auto& g:cluster.geometries){
             geom_union.insert(node_list[g->id].begin(), node_list[g->id].end());
         }
+        size_t idm = 0;
         for(const auto& n:geom_union){
-            auto found = final_list.find(n);
-            if(found == final_list.end()){
-                auto found_inter = inter_geom.find(n);
-                if(found_inter != inter_geom.end()){
-                    unused_inner_bound.insert(n);
+            bool fixed = false;
+            for(auto& mn:n->nodes){
+                if(cluster.id_mapping[mn->id] < 0){
+                    fixed = true;
+                    break;
                 }
             }
-        }
-        for(const auto& n:unused_inner_bound){
-            for(auto& ni:n->nodes){
-                cluster.id_mapping[ni->id] = idm;
-            }
-            ++idm;
-        }
-        std::set<Node*> all_domain_nodes;
-        for(auto g:cluster.geometries){ 
-            std::set<Node*> domain_nodes;
-            domain_nodes.insert(g->node_list.begin(), g->node_list.end());
-            for(const auto& n:g->boundary_node_list){
-                auto it = domain_nodes.find(n);
-                if(it != domain_nodes.end()){
-                    domain_nodes.erase(it);
+            if(!fixed){
+                for(auto& mn:n->nodes){
+                    cluster.id_mapping[mn->id] = idm;
                 }
-            }
-            all_domain_nodes.insert(domain_nodes.begin(), domain_nodes.end());
-        }
-        for(const auto b:unused_inner_bound){
-            for(const auto n:b->nodes){
-                all_domain_nodes.insert(n);
-            }
-        }
-
-        for(const auto& n:all_domain_nodes){
-            auto& id = cluster.id_mapping[n->id];
-            if(id < 0){
-                id = idm;
                 ++idm;
             }
         }
-
-        this->domain_nodes.insert(this->domain_nodes.begin(),
-                                  all_domain_nodes.begin(),
-                                  all_domain_nodes.end());
-
-        // //////
-
-        cluster.matrix_width = idm;
-        cluster.solver->initialize_matrix(true, idm);
-        cluster.b.resize(dim);
-        for(auto& b:cluster.b){
-            b.resize(idm);
-        }
-
-        std::vector<long> pos(node_num);
-        for(auto g:cluster.geometries){ 
-            for(const auto& e:g->mesh){
-                for(size_t i = 0; i < node_num; ++i){
-                    pos[i] = cluster.id_mapping[e->nodes[i]->id];
+        for(auto& g:cluster.geometries){
+            for(auto& n:g->node_list){
+                if(!cluster.id_mapping.contains(n->id)){
+                    cluster.id_mapping[n->id] = idm;
+                    ++idm;
                 }
-                const auto k = e->diffusion_1dof(this->mesh->thickness, A);
-                cluster.solver->add_element(k, pos);
             }
         }
-        cluster.solver->compute();
+
+        cluster.matrix_width = dof*idm;
+        cluster.solver->initialize_matrix(true, cluster.matrix_width);
+        cluster.b.resize(cluster.matrix_width);
     }
 
     this->merged_nodes_mapping.clear();
@@ -496,6 +453,7 @@ void ShapeHandler::obtain_affected_nodes(){
 }
     
 void ShapeHandler::update_nodes(const std::vector<double>& dx){
+    logger::quick_log("Applying shape changes...");
     const size_t dof = this->mesh->elem_info->get_dof_per_node();
     const size_t bnum = this->mesh->elem_info->get_boundary_nodes_per_element();
     const size_t num = this->mesh->elem_info->get_nodes_per_element();
@@ -503,69 +461,111 @@ void ShapeHandler::update_nodes(const std::vector<double>& dx){
         (this->mesh->elem_info->get_problem_type() == utils::ProblemType::PROBLEM_TYPE_2D)
         ? 2 : 3;
 
-    const auto A = math::Matrix::identity(dim);
-
     // Update other nodes
-    math::Vector bn_vals(num);
+    math::Vector bn_vals(dof*num, 0);
+    math::Vector Fe(dof*num, 0);
     std::vector<gp_Pnt> pnts(bnum);
+    std::vector<long> pos(num*dof);
+    const math::Matrix D(math::Matrix::identity(dim*dim));
+    //math::Matrix D(dim*dim, dim*dim, 0);
+    //D(0,0) = 1;
+    //D(4,4) = 1;
+    //D(8,8) = 1;
+    auto A = math::Matrix::identity(dim);
     for(auto& cluster:this->clusters){
-        for(size_t dim_i = 0; dim_i < dim; ++dim_i){
-            std::fill(cluster.b[dim_i].begin(), cluster.b[dim_i].end(), 0);
-            for(const auto g:cluster.geometries){
-                for(const auto& e:g->mesh){
-                    if(this->elem_to_affected_node_mapping.contains(e.get())){
-                        const auto& nodes = this->elem_to_affected_node_mapping[e.get()];
-                        for(const auto ni:nodes){
-                            const auto opt_id = this->optimized_nodes_mapping.find(e->nodes[ni]->id);
-                            if(opt_id != this->optimized_nodes_mapping.end()){
-                                bn_vals[ni] = dx[dim*(opt_id->second) + dim_i];
-                            }
+        std::fill(cluster.b.begin(), cluster.b.end(), 0);
+
+        for(const auto g:cluster.geometries){
+            // Generate global matrix
+            for(const auto& e:g->mesh){
+                for(size_t i = 0; i < num; ++i){
+                    const auto id = cluster.id_mapping[e->nodes[i]->id];
+                    for(size_t dim_i = 0; dim_i < dof; ++dim_i){
+                        if(id < 0){
+                            pos[i*dof + dim_i] = -1;
+                        } else {
+                            pos[i*dof + dim_i] = dof*id + dim_i;
                         }
-                        // preset nodal values
-                        const math::Vector Fe = (e->diffusion_1dof(this->mesh->thickness, A))*bn_vals;
-                        for(size_t j = 0; j < num; ++j){
-                            const long global_id = cluster.id_mapping[e->nodes[j]->id];
-                            if(global_id > -1){
-                                cluster.b[dim_i][global_id] -= Fe[j];
-                            }
-                        }
-                        bn_vals.fill(0);
                     }
                 }
-                //for(const auto& e:g->boundary_mesh){
-                //    if(this->elem_to_affected_node_mapping.contains(e->parent)){
-                //        const auto& nodes = this->elem_to_affected_node_mapping[e->parent];
-                //        if(nodes.size() == bnum){
-                //            for(size_t i = 0; i < num; ++i){
-                //                if(this->optimized_nodes_mapping.contains(e->parent->nodes[i]->id)){
-                //                    const auto opt_id = this->optimized_nodes_mapping[e->parent->nodes[i]->id];
-                //                    bn_vals[i] = dx[dim*opt_id + dim_i];
-                //                } else {
-                //                    bn_vals[i] = 0;
-                //                }
-                //            }
-                //            for(size_t i = 0; i < bnum; ++i){
-                //                pnts[i] = e->nodes[i]->point;
-                //            }
-                //            //const math::Vector Fe = (e->parent->robin_1dof(this->mesh->thickness, pnts))*bn_vals;
-                //            const math::Vector Fe = (e->parent->diffusion_1dof(this->mesh->thickness, A))*bn_vals;
-                //            for(size_t j = 0; j < num; ++j){
-                //                const long global_id = cluster.id_mapping[e->parent->nodes[j]->id];
-                //                if(global_id > -1){
-                //                    cluster.b[dim_i][global_id] += Fe[j];
-                //                }
-                //            }
-                //        }
-                //    }
-                //}
+                const auto k = e->diffusion_dim_dof(this->mesh->thickness, D);
+                cluster.solver->add_element(k, pos);
+
+                if(this->elem_to_affected_node_mapping.contains(e.get())){
+                    for(size_t i = 0; i < num; ++i){
+                        if(this->optimized_nodes_mapping.contains(e->nodes[i]->id)){
+                            const auto opt_id = this->optimized_nodes_mapping[e->nodes[i]->id];
+                            for(size_t dim_i = 0; dim_i < dof; ++dim_i){
+                                bn_vals[dof*i + dim_i] = dx[dof*opt_id + dim_i];
+                            }
+                        }
+                    }
+                    const math::Vector Fe = k*bn_vals;
+                    for(size_t j = 0; j < num; ++j){
+                        const long global_id = cluster.id_mapping[e->nodes[j]->id];
+                        if(global_id > -1){
+                            for(size_t dim_i = 0; dim_i < dof; ++dim_i){
+                                cluster.b[dof*global_id + dim_i] -= Fe[dof*j + dim_i];
+                            }
+                        }
+                    }
+                    bn_vals.fill(0);
+                }
             }
-            cluster.solver->solve(cluster.b[dim_i]);
+            // Apply outer boundary constraint
+            for(const auto& b:g->boundary_mesh){
+                // Check if:
+                // - Not in optimization region
+                // - Not in intergeometry boundary (merged boundaries
+                //   within cluster are not subject to it, even if not
+                //   being optimized)
+                const auto found_pos = std::find(this->mesh->inter_geometry_boundary.begin(), this->mesh->inter_geometry_boundary.end(), b);
+                const bool is_in_intergeom = (found_pos != this->mesh->inter_geometry_boundary.end());
+                bool is_optimized = false;
+                if(this->elem_to_affected_node_mapping.contains(b->parent)){
+                    const auto& nodes = this->elem_to_affected_node_mapping[b->parent];
+                    if(nodes.size() == bnum){
+                        is_optimized = true;
+                    }
+                }
+                if(!is_in_intergeom && !is_optimized){
+                    for(size_t i = 0; i < bnum; ++i){
+                        pnts[i] = b->nodes[i]->point;
+                    }
+                    for(size_t dim_i = 0; dim_i < dim; ++dim_i){
+                        for(size_t dim_j = 0; dim_j < dim; ++dim_j){
+                            A(dim_i,dim_j) = b->normal.Coord(1+dim_i)*b->normal.Coord(1+dim_j);
+                        }
+                    }
+                    for(size_t i = 0; i < num; ++i){
+                        const auto id = cluster.id_mapping[b->parent->nodes[i]->id];
+                        for(size_t dim_i = 0; dim_i < dof; ++dim_i){
+                            if(id < 0){
+                                pos[i*dof + dim_i] = -1;
+                            } else {
+                                pos[i*dof + dim_i] = dof*id + dim_i;
+                            }
+                        }
+                    }
+                    const auto k = this->MU*b->parent->get_R(A, this->mesh->thickness, pnts);
+                    cluster.solver->add_element(k, pos);
+                }
+            }
         }
-        for(auto ni:this->domain_nodes){
-            const long global_id = cluster.id_mapping[ni->id];
-            if(global_id > -1){
-                for(size_t dim_i = 0; dim_i < dim; ++dim_i){
-                    ni->point.SetCoord(1+dim_i, ni->point.Coord(1+dim_i) + cluster.b[dim_i][global_id]);
+        
+        cluster.solver->compute();
+        cluster.solver->solve(cluster.b);
+        cluster.solver->make_zero();
+
+        // Apply nodal displacements
+        for(const auto g:cluster.geometries){
+            for(const auto& ni:g->node_list){
+                const long global_id = cluster.id_mapping[ni->id];
+                // GT9 breaks this, but I'll fix it later if needed
+                if(global_id > -1){
+                    for(size_t dim_i = 0; dim_i < dim; ++dim_i){
+                        ni->point.SetCoord(1+dim_i, ni->point.Coord(1+dim_i) + cluster.b[dim*global_id + dim_i]);
+                    }
                 }
             }
         }
@@ -576,8 +576,8 @@ void ShapeHandler::update_nodes(const std::vector<double>& dx){
         auto& nids = this->optimized_nodes[i].node_ids;
         for(auto& nid:nids){
             auto& n = this->mesh->node_list[nid];
-            for(size_t d = 0; d < dof; ++d){
-                n->point.SetCoord(1+d, n->point.Coord(1+d) + dx[i*dof + d]);
+            for(size_t d = 0; d < dim; ++d){
+                n->point.SetCoord(1+d, n->point.Coord(1+d) + dx[i*dim + d]);
             }
         }
     }
@@ -588,8 +588,8 @@ void ShapeHandler::update_nodes(const std::vector<double>& dx){
     // Update view
     for(size_t i = 0; i < this->mesh->node_list.size(); ++i){
         const auto& n = this->mesh->node_list[i];
-        for(size_t j = 0; j < 3; ++j){
-            this->shape_displacement[3*i + j] = n->point.Coord(1+j) - this->original_points[3*i + j];
+        for(size_t j = 0; j < dim; ++j){
+            this->shape_displacement[dim*i + j] = n->point.Coord(1+j) - this->original_points[dim*i + j];
         }
     }
 
@@ -600,6 +600,7 @@ void ShapeHandler::update_nodes(const std::vector<double>& dx){
             e->calculate_coefficients();
         }
     }
+    logger::quick_log("Done.");
 }
 
 std::set<ShapeHandler::SuperimposedNodes*> ShapeHandler::apply_op(shape_op::ShapeOp* op) const{

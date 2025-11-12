@@ -54,10 +54,13 @@ void PETScGeneralPCG::initialize_matrix(bool spd, size_t L){
         KSPSetType(this->ksp, KSPMINRES);
     }
     KSPSetInitialGuessNonzero(this->ksp, PETSC_FALSE);
-
+    KSPSetNormType(this->ksp, KSP_NORM_UNPRECONDITIONED);
+    
     KSPGetPC(this->ksp, &this->pc);
     PCSetType(this->pc, PCJACOBI);
     PCJacobiSetType(this->pc, PC_JACOBI_DIAGONAL);
+    PCFactorSetUseInPlace(this->pc, PETSC_TRUE);
+    PCFactorSetReuseOrdering(this->pc, PETSC_TRUE);
 
     KSPSetOperators(this->ksp, mat, mat);
 }
@@ -87,6 +90,17 @@ void PETScGeneralPCG::solve(std::vector<double>& b){
     PCSetUp(this->pc);
 
     KSPSolve(this->ksp, this->f, this->u);
+    KSPConvergedReason r;
+    KSPGetConvergedReason(this->ksp, &r);
+    logger::quick_log("Converged?", r);
+    {
+        double tmp = 0;
+        PetscInt its = 0;
+        KSPGetResidualNorm(this->ksp, &tmp);
+        KSPGetTotalIterations(this->ksp, &its);
+        logger::quick_log("Residual norm", tmp);
+        logger::quick_log("Total iterations", its);
+    }
 
     auto mat = M.get_matrix();
     long n = 0, m = 0;

@@ -64,6 +64,10 @@ class TET4 : public MeshElementCommon3DTet<TET4>{
 
     virtual math::Matrix get_Ni(const gp_Pnt& p) const override;
     virtual math::Vector get_Ni_1dof(const gp_Pnt& p) const override;
+    virtual math::Matrix get_dNi(const gp_Pnt& p) const override{
+        (void) p;
+        return this->dN_mat_dim_dof(this->C);
+    }
 
     virtual inline std::unique_ptr<MeshElementFactory> get_element_info() const override{
         return std::unique_ptr<MeshElementFactory>(new MeshElementFactoryImpl<TET4>());
@@ -133,6 +137,21 @@ class TET4 : public MeshElementCommon3DTet<TET4>{
         return math::Matrix({b[0], b[1], b[2], b[3],
                              c[0], c[1], c[2], c[3],
                              d[0], d[1], d[2], d[3]}, 3, 4);
+    }
+    inline math::Matrix dN_mat_dim_dof(const math::Matrix& M) const{
+        const double* const a = M.data();
+        const double* const b = a + NODES_PER_ELEM;
+        const double* const c = b + NODES_PER_ELEM;
+        const double* const d = c + NODES_PER_ELEM;
+        math::Matrix dN(DIM*DIM, DIM*NODES_PER_ELEM, 0);
+        for(size_t i = 0; i < DIM; ++i){
+            for(size_t j = 0; j < NODES_PER_ELEM; ++j){
+                dN(DIM*i + 0, j*DIM + i) = b[j];
+                dN(DIM*i + 1, j*DIM + i) = c[j];
+                dN(DIM*i + 2, j*DIM + i) = d[j];
+            }
+        }
+        return dN;
     }
     inline double dNdx_norm_surface(double x, double y, size_t i) const{
         (void)x;

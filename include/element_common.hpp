@@ -100,11 +100,6 @@ class MeshElementCommon : public MeshElement{
 
     template<size_t ORDER, typename R, typename F>
     inline void area_integral(R& result, F func, const std::vector<gp_Pnt>& points) const{
-        //constexpr size_t ORDER = T::INTEG_ORDER;
-        //constexpr size_t NODES_PER_ELEM = T::NODES_PER_ELEM;
-        //constexpr size_t DOF = T::NODE_DOF;
-        //constexpr size_t KW = T::K_DIM;
-        //constexpr size_t DIM = T::DIM;
         constexpr utils::ProblemType PROBLEM_TYPE = T::PROBLEM_TYPE;
         constexpr Element::Shape SHAPE_TYPE = T::SHAPE_TYPE;
 
@@ -145,11 +140,6 @@ class MeshElementCommon : public MeshElement{
 
     template<size_t ORDER, typename R, typename F>
     inline void volume_integral(R& result, F func, const double t) const{
-        //constexpr size_t ORDER = T::INTEG_ORDER;
-        //constexpr size_t NODES_PER_ELEM = T::NODES_PER_ELEM;
-        //constexpr size_t DOF = T::NODE_DOF;
-        //constexpr size_t KW = T::K_DIM;
-        //constexpr size_t DIM = T::DIM;
         constexpr utils::ProblemType PROBLEM_TYPE = T::PROBLEM_TYPE;
         constexpr Element::Shape SHAPE_TYPE = T::SHAPE_TYPE;
 
@@ -415,6 +405,23 @@ class MeshElementCommon : public MeshElement{
                 }
             }
         }
+    }
+    virtual math::Matrix diffusion_dim_dof(const double t, const math::Matrix& A) const override{
+        const size_t ORDER = T::INTEG_ORDER;
+        const size_t KW = T::K_DIM;
+
+        math::Matrix diff(KW, KW, 0);
+
+        constexpr size_t GN = ORDER;
+
+        this->volume_integral<GN>(diff,
+        [&](const gp_Pnt& pi){
+            const auto N(this->get_dNi(pi));
+            return N.T()*A*N;
+        }, 
+        t);
+
+        return diff;
     }
 
     virtual math::Vector get_internal_loads(const math::Matrix& D, const double t, const std::vector<double>& u) const override{

@@ -21,6 +21,7 @@
 #ifndef SHAPE_HANDLER_HPP
 #define SHAPE_HANDLER_HPP
 
+#include "general_solver/petsc_general_pcg.hpp"
 #include "meshing.hpp"
 #include "general_solver/mumps_general.hpp"
 #include <limits>
@@ -171,24 +172,19 @@ class ShapeHandler{
         std::set<Geometry*> geometries;
         std::map<size_t, long> id_mapping;
         size_t matrix_width;
-        std::unique_ptr<general_solver::MUMPSGeneral> solver;
-        std::vector<std::vector<double>> b;
+        std::unique_ptr<general_solver::PETScGeneralPCG> solver;
+        std::vector<double> b;
     };
     std::set<SuperimposedNodes*> apply_op(shape_op::ShapeOp* op) const;
 
     Meshing* mesh;
     std::vector<Geometry*> geometries;
 
-    std::map<size_t, size_t> bound_to_shape_mapping;
     std::map<size_t, size_t> optimized_nodes_mapping;
-    std::map<size_t, MeshElement*> node_to_elem_unique_mapping;
     std::map<const MeshElement*, std::vector<size_t>> elem_to_affected_node_mapping;
 
     std::vector<AffectedNode> optimized_nodes;
     std::vector<BoundaryElement*> boundary_elements;
-    std::vector<Node*> domain_nodes;
-    // Full boundary except for boundary conditions
-    bool full_boundary_optimization = true;
     std::vector<GeometryCluster> clusters;
 
     std::map<size_t, SuperimposedNodes*> merged_nodes_mapping;
@@ -198,6 +194,8 @@ class ShapeHandler{
     std::vector<double> shape_displacement;
 
     std::unique_ptr<shape_op::ShapeOp> root_op;
+
+    constexpr static double MU = 1e6;
 };
 
 #endif
