@@ -30,7 +30,6 @@ namespace function::node_shape_based{
 
 class GlobalStressHeaviside : public NodeShapeBasedFunction{
     public:
-    GlobalStressHeaviside(const Meshing* const mesh, SolverManager* fem, double max_stress, double C);
     GlobalStressHeaviside(const projspec::DataMap& data);
 
     virtual ~GlobalStressHeaviside() = default;

@@ -263,6 +263,9 @@ class MeshElement : public Element{
     virtual void Ku_log(const double mult, const MeshElement* const e2, const std::vector<long>& node_positions, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds, const gp_Dir n, std::vector<double>& Ku, const double C, const double K) const = 0;
     virtual void dKu_log(const double mult, const MeshElement* const e2, const std::vector<long>& node_positions, const std::vector<double>& u, const std::vector<double>& du, const std::vector<gp_Pnt>& bounds, const gp_Dir n, std::vector<double>& dKu, const double C, const double K) const = 0;
 
+    virtual double get_log_integ_dsh(const MeshElement* const e2, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds, const gp_Dir n, const double C, const double K, const size_t ni1, const size_t ni2, const size_t ni_dof) const = 0;
+    virtual math::Vector Kue_log_dsh(const MeshElement* const e2, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds, const gp_Dir n, const double C, const double K, const size_t ni1, const size_t ni2, const size_t ni_dof) const = 0;
+
     virtual math::Matrix get_Ni(const gp_Pnt& p) const = 0;
     virtual math::Vector get_Ni_1dof(const gp_Pnt& p) const{
         (void) p;
@@ -486,6 +489,13 @@ class MeshElement : public Element{
         return 0;
     }
     virtual math::Matrix get_dB_sh(const gp_Pnt& p, const size_t n, const size_t dof) const{
+        (void) p;
+        (void) n;
+        (void) dof;
+
+        return math::Matrix();
+    }
+    virtual math::Matrix get_dN_sh(const gp_Pnt& p, const size_t n, const size_t dof) const{
         (void) p;
         (void) n;
         (void) dof;

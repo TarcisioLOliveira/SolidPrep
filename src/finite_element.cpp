@@ -54,7 +54,7 @@ void FiniteElement::calculate_displacements(const Meshing* const mesh, std::vect
             this->solve_frictionless_penalty(mesh, load, u0);
             break;
         case FRICTIONLESS_DISPL_LOG:
-            this->solve_frictionless_displ_log(mesh, load);
+            this->solve_frictionless_displ_log(mesh, load, lambda);
             break;
         case FRICTIONLESS_DISPL_SIMPLE:
             this->solve_frictionless_displ_simple(mesh, load, lambda, u0);
@@ -86,16 +86,13 @@ void FiniteElement::solve_rigid(std::vector<double>& load){
     this->solve(load);
 }
 
-void FiniteElement::adjoint_frictionless_displ_log(const Meshing* const mesh, std::vector<double>& load, std::vector<double>& lambda, const std::vector<double>& u){
+void FiniteElement::adjoint_frictionless_displ_log(const Meshing* const mesh, std::vector<double>& load, std::vector<double>& lambda, const std::vector<double>& u_ext){
     const size_t vec_size = this->u_size + 1;
 
     std::vector<double> r(vec_size);
     std::copy(load.begin(), load.end(), r.begin());
 
     if(this->first_adjoint){
-        std::vector<double> u_ext(mesh->global_load_vector.size(), 0);
-        mesh->extend_vector(0, u, u_ext);
-
         this->reset_hessian();
         this->matrix->add_frictionless_log(mesh, mesh->node_positions[0], u_ext);
         this->first_adjoint = false;
@@ -106,7 +103,7 @@ void FiniteElement::adjoint_frictionless_displ_log(const Meshing* const mesh, st
     std::copy(r.begin(), r.begin() + this->u_size, load.begin());
     lambda[0] = r.back();
 }
-void FiniteElement::solve_frictionless_displ_log(const Meshing* const mesh, std::vector<double>& load){
+void FiniteElement::solve_frictionless_displ_log(const Meshing* const mesh, std::vector<double>& load, std::vector<double>& lambda){
     const size_t vec_size = this->u_size + 1;
     const size_t bnum = mesh->elem_info->get_boundary_nodes_per_element();
     const size_t dof = mesh->elem_info->get_dof_per_node();
@@ -133,6 +130,7 @@ void FiniteElement::solve_frictionless_displ_log(const Meshing* const mesh, std:
     double& LAG = this->matrix->LAG_DISPL_LOG;
     LAG = 1;
     u.back() = LAG;
+    lambda[0] = LAG;
     double rnorm = 0;
 
     double step = 1.0;
@@ -211,25 +209,25 @@ void FiniteElement::solve_frictionless_displ_log(const Meshing* const mesh, std:
         g1 = get_g(a1);
         g2 = get_g(a2);
         if(!(g1 < 0 && g2 < 0)){
-            const double search_step = 0.01;
-            {
-                double prev_norm = get_rnorm_est(a1);
-                for(double a = a1 + search_step; a < this->max_step + 1e-7; a += search_step){
-                    const double curr_rnorm = get_rnorm_est(a); 
-                    if(curr_rnorm > prev_norm){
-                        a1 = a - search_step;
-                        a2 = a;
-                        break;
-                    }
-                    prev_norm = curr_rnorm;
-                }
-            }
-            g1 = get_g(a1);
-            while(g1 > 0){
-                a1 -= 0.001;
-                g1 = get_g(a1);
-            }
-            g2 = get_g(a2);
+            //const double search_step = 0.01;
+            //{
+            //    double prev_norm = get_rnorm_est(a1);
+            //    for(double a = a1 + search_step; a < this->max_step + 1e-7; a += search_step){
+            //        const double curr_rnorm = get_rnorm_est(a); 
+            //        if(curr_rnorm > prev_norm){
+            //            a1 = a - search_step;
+            //            a2 = a;
+            //            break;
+            //        }
+            //        prev_norm = curr_rnorm;
+            //    }
+            //}
+            //g1 = get_g(a1);
+            //while(g1 > 0){
+            //    a1 -= 0.001;
+            //    g1 = get_g(a1);
+            //}
+            //g2 = get_g(a2);
             logger::quick_log("g1", g1, "a1", a1);
             logger::quick_log("g2", g2, "a2", a2);
             if(g1 < 0 && g2 < 0){
@@ -258,7 +256,7 @@ void FiniteElement::solve_frictionless_displ_log(const Meshing* const mesh, std:
                     logger::quick_log("g2", g2, "a2", a2);
                 }
             }
-            if(std::abs(g2/g1) > 1e2 && g2*g1 < 0){
+            if(std::abs(g2/g1) > 1e3 && g2*g1 < 0){
                 if(a2 == 0){
                     a2 = a1;
                     g2 = g1;
@@ -323,6 +321,7 @@ void FiniteElement::solve_frictionless_displ_log(const Meshing* const mesh, std:
             u[i] += step*dr[i];
         }
         LAG = u.back();
+        lambda[0] = LAG;
 
         std::fill(Ku.begin(), Ku.end(), 0);
         this->matrix->dot_vector(u, Ku);

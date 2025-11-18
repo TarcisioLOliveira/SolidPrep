@@ -62,6 +62,9 @@ class FiniteElement{
 
     virtual std::vector<double> calculate_forces(const Meshing* const mesh, const std::vector<double>& displacements) const;
 
+    inline const GlobalStiffnessMatrix* view_matrix() const{
+        return this->matrix;
+    }
 
     protected:
     inline void set_global_matrix(GlobalStiffnessMatrix* m){
@@ -85,10 +88,10 @@ class FiniteElement{
 
     void solve_rigid(std::vector<double>& load);
     void solve_frictionless_displ_simple(const Meshing* const mesh, std::vector<double>& load, std::vector<double>& lambda, const std::vector<double>& u0);
-    void solve_frictionless_displ_log(const Meshing* const mesh, std::vector<double>& load);
+    void solve_frictionless_displ_log(const Meshing* const mesh, std::vector<double>& load, std::vector<double>& lambda);
     void solve_frictionless_penalty(const Meshing* const mesh, std::vector<double>& load, const std::vector<double>& u0);
 
-    void adjoint_frictionless_displ_log(const Meshing* const mesh, std::vector<double>& load, std::vector<double>& lambda, const std::vector<double>& u);
+    void adjoint_frictionless_displ_log(const Meshing* const mesh, std::vector<double>& load, std::vector<double>& lambda, const std::vector<double>& u_ext);
 
     private:
 };

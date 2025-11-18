@@ -22,7 +22,9 @@
 #include "function.hpp"
 #include "logger.hpp"
 #include "math/matrix.hpp"
+#include "project_data.hpp"
 #include "utils.hpp"
+#include "global_stiffness_matrix.hpp"
 #include <BRepBuilderAPI_Transform.hxx>
 #include <GProp_GProps.hxx>
 #include <Interface_Static.hxx>
@@ -270,4 +272,42 @@ TopoDS_Shape NodeShapeBasedOptimizer::make_shape(const std::vector<Geometry*>& g
     return TopoDS_Shape();
 }
 
+void NodeShapeBasedOptimizer::contact_gradient(const Meshing* const mesh, const SolverManager* const fem, const std::vector<double>& u, const std::vector<double>& l, std::vector<double>& grad) const{
+    const size_t node_num = mesh->elem_info->get_nodes_per_element();
+    const size_t bnode_num = mesh->elem_info->get_boundary_nodes_per_element();
+    const size_t kw = mesh->elem_info->get_k_dimension();
+    const size_t dof = mesh->elem_info->get_dof_per_node();
 
+    if(mesh->proj_data->contact_data.contact_type == FiniteElement::ContactType::FRICTIONLESS_DISPL_LOG){
+        double C, K;
+        fem->view_matrix(0)->get_C_K_log(C, K);
+
+        math::Vector le_full(2*kw);
+        const auto& contact_nodes = this->shape_handler.get_contact_nodes();
+        const double lambda = fem->get_lambda(0)[0];
+        const double lambda_dsh = fem->get_lambda_adjoint(0)[0];
+
+        std::vector<gp_Pnt> pnts(bnode_num);
+        for(auto& shn:contact_nodes){
+            for(auto& pb:shn.elements){
+                const auto b1 = pb.e->b1;
+                const auto b2 = pb.e->b2;
+                for(size_t n = 0; n < bnode_num; ++n){
+                    pnts[n] = b1->nodes[n]->point;
+                }
+                for(size_t n = 0; n < node_num; ++n){
+                    for(size_t j = 0; j < dof; ++j){
+                        le_full[n*dof + j] = l[b1->parent->nodes[n]->u_pos[j]];
+                        le_full[kw + n*dof + j] = l[b2->parent->nodes[n]->u_pos[j]];
+                    }
+                }
+                for(size_t j = 0; j < dof; ++j){
+                    const auto dg = b1->parent->Kue_log_dsh(b2->parent, u, pnts, -b1->normal, C, K, pb.en1, pb.en2, j);
+                    const auto g = b1->parent->get_log_integ_dsh(b2->parent, u, pnts, -b1->normal, C, K, pb.en1, pb.en2, j);
+
+                    grad[shn.id*dof + j] -= lambda*le_full.T()*dg + lambda_dsh*g;
+                }
+            }
+        }
+    }
+}

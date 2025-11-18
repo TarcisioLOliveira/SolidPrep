@@ -28,7 +28,9 @@
 namespace function::node_shape_based{
 
 Compliance::Compliance(const projspec::DataMap& data):
-    mesh(data.proj->topopt_mesher.get()){}
+    mesh(data.proj->topopt_mesher.get()),
+    fem(data.proj->topopt_fea.get())
+    {}
 
 double Compliance::calculate(const NodeShapeBasedOptimizer* const op, const std::vector<double>& u){
     (void)op;
@@ -76,6 +78,7 @@ double Compliance::calculate_with_gradient(const NodeShapeBasedOptimizer* const 
             }
         }
     }
+    op->contact_gradient(mesh, fem, u, u, grad);
     const double c = cblas_ddot(u.size(), this->mesh->global_load_vector.data(), 1, u.data(), 1);
 
     return c;

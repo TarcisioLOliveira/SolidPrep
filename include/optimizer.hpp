@@ -177,8 +177,9 @@ class NodeShapeBasedOptimizer : public Optimizer{
         this->constraints = std::move(f);
     }
 
-    protected:
+    void contact_gradient(const Meshing* const mesh, const SolverManager* const fem, const std::vector<double>& u, const std::vector<double>& l, std::vector<double>& grad) const;
 
+    protected:
     std::vector<std::unique_ptr<NodeShapeBasedFunction>> objective;
     std::vector<double> objective_weights;
     std::vector<NodeShapeBasedConstraint> constraints;

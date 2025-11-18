@@ -322,10 +322,7 @@ void ShapeHandler::obtain_affected_nodes(){
         }
     }
 
-    // Generate linear problems
-    const math::Matrix D(math::Matrix::identity(s_size));
-    const math::Matrix A(math::Matrix::identity(dim));
-
+    // Find optimized nodes in boundary
     std::set<SuperimposedNodes*> inter_geom;
     for(auto& e:mesh->inter_geometry_boundary){
         for(size_t i = 0; i < bnode_num; ++i){
@@ -333,6 +330,59 @@ void ShapeHandler::obtain_affected_nodes(){
         }
     }
 
+    const auto get_rel_node_id = 
+        [](const Node *const *n, const size_t num, const gp_Pnt& p)->size_t{
+            for(size_t i = 0; i < num; ++i){
+                if(n[i]->point.IsEqual(p, Precision::Confusion())){
+                    return i;
+                }
+            }
+            return 0;
+        };
+    const auto get_rel_bnode_id = 
+        [](const MeshNode *const *n, const size_t num, const gp_Pnt& p)->size_t{
+            for(size_t i = 0; i < num; ++i){
+                if(n[i]->point.IsEqual(p, Precision::Confusion())){
+                    return i;
+                }
+            }
+            return 0;
+        };
+    std::list<AffectedContactNode> contact_tmp;
+    for(size_t i = 0; i < this->optimized_nodes.size(); ++i){
+        const auto& a = this->optimized_nodes[i];
+        const auto ni = a.node_ids[0];
+        if(inter_geom.contains(this->merged_nodes_mapping[ni])){
+            const gp_Pnt& p = mesh->node_list[ni]->point;
+            std::vector<AffectedPairedBoundary> elems_tmp;
+            elems_tmp.reserve(a.elements.size());
+            for(auto& e:a.elements){
+                for(auto& be:this->mesh->paired_boundary){
+                    if(e.e == be.b1->parent){
+                        AffectedPairedBoundary ab;
+                        ab.e = &be;
+                        ab.en1 = get_rel_node_id(be.b1->parent->nodes, node_num, p);
+                        ab.en2 = get_rel_node_id(be.b2->parent->nodes, node_num, p);
+                        ab.bn1 = get_rel_bnode_id(be.b1->nodes, bnode_num, p);
+                        ab.bn2 = get_rel_bnode_id(be.b2->nodes, bnode_num, p);
+                        elems_tmp.push_back(std::move(ab));
+                        break;
+                    }
+                }
+            }
+            elems_tmp.shrink_to_fit();
+            contact_tmp.emplace_back(i, std::move(elems_tmp));
+        }
+    }
+    this->optimized_contact_nodes.reserve(contact_tmp.size());
+    for(auto& c:contact_tmp){
+        this->optimized_contact_nodes.emplace_back(c.id, c.elements);
+    }
+    contact_tmp.clear();
+
+    // Generate linear problems
+    const math::Matrix D(math::Matrix::identity(s_size));
+    const math::Matrix A(math::Matrix::identity(dim));
     for(auto& cluster:this->clusters){
         cluster.solver = std::make_unique<general_solver::PETScGeneralPCG>();
 

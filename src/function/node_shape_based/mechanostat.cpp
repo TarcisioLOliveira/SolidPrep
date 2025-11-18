@@ -224,6 +224,7 @@ double Mechanostat::calculate_with_gradient(const NodeShapeBasedOptimizer* const
                 }
             }
         }
+        op->contact_gradient(mesh, fem, u, l, grad);
         logger::quick_log("Done.");
     }
 

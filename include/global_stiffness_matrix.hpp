@@ -53,6 +53,10 @@ class GlobalStiffnessMatrix{
     inline double get_lag_displ_simple() const{
         return this->LAG_DISPL_SIMPLE;
     }
+    inline void get_C_K_log(double& C, double& K) const{
+        C = HC;
+        K = HK;
+    }
 
     double LAG_DISPL_LOG = 1;// CHANGE IN FINITE ELEMENT
     const double LOG_TOL = 1e-5;
@@ -67,8 +71,8 @@ class GlobalStiffnessMatrix{
     const double EPS_DISPL;
     const double LAG_DISPL_SIMPLE;
     bool first_time = true;
-    const double HK = 1e4;
-    const double HC = 2e5;
+    const double HK = 1e5;
+    const double HC = 1e6;
 
 
     virtual void generate_base(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<math::Matrix>& D_cache, const std::vector<double>& u_ext, const std::vector<double>& lambda, const FiniteElement::ContactType type);

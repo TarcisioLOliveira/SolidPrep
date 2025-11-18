@@ -141,6 +141,19 @@ class ShapeHandler{
         const std::vector<size_t> node_ids;
         const std::vector<AffectedElement> elements;
     };
+    struct AffectedPairedBoundary{
+        public:
+        PairedBoundaryElements* e;
+        size_t en1;
+        size_t en2;
+        size_t bn1;
+        size_t bn2;
+    };
+    struct AffectedContactNode{
+        public:
+        const size_t id;
+        const std::vector<AffectedPairedBoundary> elements;
+    };
 
     struct SuperimposedNodes{
         public:
@@ -159,6 +172,9 @@ class ShapeHandler{
     }
     inline const std::vector<AffectedNode>& get_nodes() const{
         return this->optimized_nodes;
+    }
+    inline const std::vector<AffectedContactNode>& get_contact_nodes() const{
+        return this->optimized_contact_nodes;
     }
     inline size_t get_number_of_nodes() const{
         return this->optimized_nodes.size();
@@ -184,6 +200,7 @@ class ShapeHandler{
     std::map<const MeshElement*, std::vector<size_t>> elem_to_affected_node_mapping;
 
     std::vector<AffectedNode> optimized_nodes;
+    std::vector<AffectedContactNode> optimized_contact_nodes;
     std::vector<BoundaryElement*> boundary_elements;
     std::vector<GeometryCluster> clusters;
 

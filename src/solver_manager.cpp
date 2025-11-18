@@ -27,10 +27,9 @@ void SolverManager::generate_matrix(const Meshing* const mesh, const std::vector
     this->topopt = density.size() > 0;
     this->update_D_matrices(mesh, density, pc, psi);
     size_t l_num = 0;
-    const size_t l_num_orig = mesh->lag_node_map.size();
-    bool needs_lambda = mesh->proj_data->contact_data.contact_type >= FiniteElement::ContactType::FRICTIONLESS_PENALTY;
+    bool needs_lambda = mesh->proj_data->contact_data.contact_type > FiniteElement::ContactType::FRICTIONLESS_PENALTY;
     if(mesh->proj_data->contact_data.contact_type == FiniteElement::ContactType::FRICTIONLESS_DISPL_SIMPLE){
-        l_num = l_num_orig;
+        l_num = mesh->lag_node_map.size();
     } else if(mesh->proj_data->contact_data.contact_type == FiniteElement::ContactType::FRICTIONLESS_DISPL_LOG){
         l_num = 1;
     }
@@ -45,14 +44,14 @@ void SolverManager::generate_matrix(const Meshing* const mesh, const std::vector
         if(this->iteration == 0){
             if(needs_lambda){
                 this->lambdas[i].emplace_back(l_num, 0.00);
-                std::fill(this->lambdas[i][0].begin(), this->lambdas[i][0].begin() + l_num_orig, 0);
+                std::fill(this->lambdas[i][0].begin(), this->lambdas[i][0].end(), 0);
             } else {
                 this->lambdas[i].emplace_back();
             }
         } else {
             if(needs_lambda){
                 std::fill(this->split_u[i].begin(), this->split_u[i].end(), 0.0);
-                std::fill(this->lambdas[i][0].begin() + l_num_orig, this->lambdas[i][0].end(), 0.0);
+                std::fill(this->lambdas[i][0].begin(), this->lambdas[i][0].end(), 0.0);
             }
         }
         auto& n = mesh->node_positions[i];
@@ -87,7 +86,7 @@ void SolverManager::calculate_displacements_global(const Meshing* const mesh, co
 void SolverManager::calculate_displacements_adjoint(const Meshing* const mesh, const std::vector<std::vector<double>>& load, std::vector<double>& u){
     logger::log_assert(this->iteration > 0, logger::ERROR, "calculate_displacements_global() must be called once before calculate_displacements_adjoint() each iteration");
     size_t l_num = 0;
-    bool needs_lambda = mesh->proj_data->contact_data.contact_type >= FiniteElement::ContactType::FRICTIONLESS_DISPL_SIMPLE;
+    bool needs_lambda = mesh->proj_data->contact_data.contact_type > FiniteElement::ContactType::FRICTIONLESS_PENALTY;
     if(mesh->proj_data->contact_data.contact_type == FiniteElement::ContactType::FRICTIONLESS_DISPL_SIMPLE){
         l_num = mesh->lag_node_map.size();
     } else if(mesh->proj_data->contact_data.contact_type == FiniteElement::ContactType::FRICTIONLESS_DISPL_LOG){
@@ -95,7 +94,7 @@ void SolverManager::calculate_displacements_adjoint(const Meshing* const mesh, c
     }
     std::vector<double> u_tmp(mesh->max_dofs, 0);
     for(size_t i = 0; i < mesh->sub_problems->size(); ++i){
-        if(this->iteration == 1){
+        if(this->lambdas[i].size() <= this->solve_step){
             if(needs_lambda){
                 this->lambdas[i].emplace_back(l_num, 0);
             } else {

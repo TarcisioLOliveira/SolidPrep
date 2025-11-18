@@ -24,6 +24,7 @@
 #include "function.hpp"
 #include "meshing.hpp"
 #include "project_specification/data_map.hpp"
+#include "solver_manager.hpp"
 
 namespace function::node_shape_based{
 
@@ -39,6 +40,7 @@ class Compliance : public NodeShapeBasedFunction{
     private:
     static const bool reg;
     const Meshing* const mesh;
+    SolverManager* fem;
 };
 
 }

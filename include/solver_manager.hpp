@@ -45,6 +45,18 @@ class SolverManager{
         this->force_update_materials = true;
     }
 
+    const std::vector<double>& get_lambda(const size_t sub_prob) const{
+        return this->lambdas[sub_prob][0];
+    }
+
+    const std::vector<double>& get_lambda_adjoint(const size_t sub_prob) const{
+        return this->lambdas[sub_prob][this->solve_step-1];
+    }
+
+    inline const GlobalStiffnessMatrix* view_matrix(const size_t subp) const{
+        return this->solvers[subp]->view_matrix();
+    }
+
     private:
     size_t iteration = 0;
     size_t solve_step = 0;

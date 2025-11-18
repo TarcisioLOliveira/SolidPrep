@@ -28,8 +28,6 @@
 
 namespace function::node_shape_based{
 
-GlobalStressHeaviside::GlobalStressHeaviside(const Meshing* const mesh, SolverManager* fem, double max_stress, double C):
-    mesh(mesh), fem(fem), max_stress(max_stress), C(C){}
 GlobalStressHeaviside::GlobalStressHeaviside(const projspec::DataMap& data):
     mesh(data.proj->topopt_mesher.get()),
     fem(data.proj->topopt_fea.get()),
@@ -126,6 +124,7 @@ double GlobalStressHeaviside::calculate_with_gradient(const NodeShapeBasedOptimi
                 }
             }
         }
+        op->contact_gradient(mesh, fem, u, l, grad);
         logger::quick_log("Done.");
     }
 
