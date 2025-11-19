@@ -71,7 +71,7 @@ class GlobalStiffnessMatrix{
     const double EPS_DISPL;
     const double LAG_DISPL_SIMPLE;
     bool first_time = true;
-    const double HK = 1e5;
+    const double HK = 1e6;
     const double HC = 1e6;
 
 

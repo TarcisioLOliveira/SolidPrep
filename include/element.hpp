@@ -598,10 +598,10 @@ class MeshElement : public Element{
     inline double H(const double x, const double C, const double K) const{
         if(std::abs(K*x) < 345){
             const double ln = std::log(1 + std::exp(K*x));
-            const double h = C*ln*(ln/(K*K));
+            const double h = (C*ln*ln)/(K*K);
             return h;
         } else if(x > 0){
-            return C*x;
+            return C*x*x;
         } else {
             return 0;
         }
@@ -611,10 +611,10 @@ class MeshElement : public Element{
             const double ekx1 = 1 + std::exp(K*x);
             const double ekx_1 = 1 + std::exp(-K*x);
             const double ln = std::log(ekx1);
-            const double dh = C*(ln/(K*ekx_1));
+            const double dh = (2*C*ln)/(K*ekx_1);
             return dh;
         } else if(x > 0){
-            return C;
+            return 2*C*x;
         } else {
             return 0;
         }
@@ -625,8 +625,10 @@ class MeshElement : public Element{
             const double e_kx = std::exp(-K*x);
             const double ekx_1 = 1 + e_kx;
             const double ln = std::log(ekx1);
-            const double ddh = C*((ln*e_kx + 1)/(ekx_1*ekx_1));
+            const double ddh = 2*C*((ln*e_kx + 1)/(ekx_1*ekx_1));
             return ddh;
+        } else if(x > 0){
+            return 2*C;
         } else {
             return 0;
         }
