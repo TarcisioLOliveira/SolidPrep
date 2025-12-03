@@ -119,6 +119,9 @@ double NRRDReader::get_averaged(const math::Vector& point) const{
 
     for(size_t i = 0; i < this->DIM; ++i){
         ijk_uint[i] = ijk[i];
+        if(ijk[i] - static_cast<double>(ijk_uint[i]) < 0.5){
+            --ijk_uint[i];
+        }
     }
     std::vector<double> w(std::pow(2, this->DIM));
     double w_sum = 0;
