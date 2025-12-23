@@ -1,5 +1,5 @@
 /*
- *   Copyright (C) 2024 Tarcísio Ladeia de Oliveira.
+ *   Copyright (C) 2025 Tarcísio Ladeia de Oliveira.
  *
  *   This file is part of SolidPrep
  *
@@ -18,19 +18,16 @@
  *
  */
 
-#ifndef CTRI3_HPP
-#define CTRI3_HPP
+#ifndef STRI3_HPP
+#define STRI3_HPP
 
 #include "element.hpp"
-#include "logger.hpp"
-#include "material.hpp"
-#include <vector>
 #include "math/matrix.hpp"
 #include "utils.hpp"
 
-namespace contact_element{
+namespace shape_element{
 
-class CTRI3 : public ContactMeshElement{
+class STRI3 : public ShapeMeshElement{
     public:
     static const size_t ORDER          = 1;
     static const size_t GMSH_TYPE      = 2;
@@ -42,27 +39,17 @@ class CTRI3 : public ContactMeshElement{
     static const Element::Shape SHAPE_TYPE = Element::Shape::TRI;
     static const utils::ProblemType PROBLEM_TYPE = utils::PROBLEM_TYPE_3D;
 
-    CTRI3(ElementShape s, const MeshElement* const e1, const MeshElement* const e2, bool e1_base);
-
-    virtual math::Matrix get_frictionless_Ge() const override;
-
-    virtual math::Matrix fl2_uu(const math::Vector& l_e, const math::Vector& u1, const math::Vector& u2) const override;
-    virtual math::Matrix fl2_uL(const math::Vector& u1, const math::Vector& u2) const override;
-
-    virtual void fl2_Ku_lambda(const double EPS, const std::vector<long> u1_pos, const std::vector<long> u2_pos, const std::vector<long>& lu_pos, const std::vector<double>& u, std::vector<double>& Ku) const override;
-    virtual void fl2_dKu_lambda(const double EPS, const std::vector<long> u1_pos, const std::vector<long> u2_pos, const std::vector<long>& lu_pos, const std::vector<double>& u, const std::vector<double>& du, std::vector<double>& Ku) const override;
+    STRI3(ElementShape s);
 
     virtual math::Matrix diffusion_Ndof(const math::Matrix& A) const override;
     virtual math::Matrix absorption_Ndof() const override;
-    virtual math::Matrix diffusion_1dof(const math::Matrix& A) const override;
-    virtual math::Matrix absorption_1dof() const override;
 
     virtual double get_area() const override{
         return this->delta;
     }
 
     virtual gp_Pnt get_centroid() const override{
-        const size_t N = CTRI3::NODES_PER_ELEM;
+        const size_t N = STRI3::NODES_PER_ELEM;
 
         double x = 0;
         double y = 0;
@@ -131,7 +118,7 @@ class CTRI3 : public ContactMeshElement{
     }
 
     inline gp_Pnt R_GS_point(double c1, double c2, double c3) const{
-        const size_t N = CTRI3::NODES_PER_ELEM;
+        const size_t N = STRI3::NODES_PER_ELEM;
         std::array<double, N> x, y;
         std::fill(x.begin(), x.end(), 0);
         std::fill(y.begin(), y.end(), 0);

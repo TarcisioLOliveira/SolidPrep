@@ -492,7 +492,7 @@ class MeshElementCommon : public MeshElement{
     }
     virtual math::Matrix diffusion_dim_dof(const double t, const math::Matrix& A) const override{
         const size_t ORDER = T::INTEG_ORDER;
-        const size_t KW = T::K_DIM;
+        const size_t KW = T::DIM*T::NODES_PER_ELEM;
 
         math::Matrix diff(KW, KW, 0);
 

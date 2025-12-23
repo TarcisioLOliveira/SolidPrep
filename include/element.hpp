@@ -740,6 +740,11 @@ class ContactMeshElement : public Element{
     virtual void fl2_Ku_lambda(const double EPS, const std::vector<long> u1_pos, const std::vector<long> u2_pos, const std::vector<long>& lu_pos, const std::vector<double>& u, std::vector<double>& Ku) const = 0;
     virtual void fl2_dKu_lambda(const double EPS, const std::vector<long> u1_pos, const std::vector<long> u2_pos, const std::vector<long>& lu_pos, const std::vector<double>& u, const std::vector<double>& du, std::vector<double>& Ku) const = 0;
 
+    virtual math::Matrix diffusion_Ndof(const math::Matrix& A) const = 0;
+    virtual math::Matrix absorption_Ndof() const = 0;
+
+    virtual math::Matrix diffusion_1dof(const math::Matrix& A) const = 0;
+    virtual math::Matrix absorption_1dof() const = 0;
 
     virtual double get_area() const = 0;
 
@@ -765,6 +770,40 @@ class ContactMeshElement : public Element{
      */
     ContactMeshElement(const std::vector<MeshNode*>& nodes, const MeshElement* const e1, const MeshElement* const e2):
         Element(std::vector<Node*>(nodes.begin(), nodes.end())), e1(e1), e2(e2)
+        {}
+};
+
+class ShapeMeshElement : public Element{
+    public:
+    virtual ~ShapeMeshElement() = default;
+
+    virtual math::Matrix diffusion_Ndof(const math::Matrix& A) const = 0;
+    virtual math::Matrix absorption_Ndof() const = 0;
+
+    virtual double get_area() const = 0;
+
+    /**
+     * Calculates the centroid of the element.
+     *
+     * @return The centroid.
+     */
+    virtual gp_Pnt get_centroid() const = 0;
+    /**
+     * Calculates the normal of the element.
+     *
+     * @return The normal.
+     */
+    virtual gp_Dir get_normal() const = 0;
+    virtual const math::Matrix& get_R() const = 0;
+
+    protected:
+    /**
+     * Creates an element with the specified nodes.
+     *
+     * @param nodes List of nodes.
+     */
+    ShapeMeshElement(const std::vector<MeshNode*>& nodes):
+        Element(std::vector<Node*>(nodes.begin(), nodes.end()))
         {}
 };
 

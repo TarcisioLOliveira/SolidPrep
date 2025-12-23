@@ -921,7 +921,9 @@ std::unique_ptr<NodeShapeBasedOptimizer> ProjectData::load_shopt_optimizer(const
 
     this->log_data(json_data, "shape_set", projspec::TYPE_OBJECT, true); 
     auto shape_set = this->get_shape_operations(json_data["shape_set"]);
-    this->shape_handler = ShapeHandler(this->topopt_mesher.get(), std::move(geoms), std::move(shape_set));
+    this->log_data(json_data, "smoothing_radius", projspec::TYPE_DOUBLE, true); 
+    auto radius = json_data["smoothing_radius"].asDouble();
+    this->shape_handler = ShapeHandler(this->topopt_mesher.get(), std::move(geoms), std::move(shape_set), radius);
 
     std::vector<std::unique_ptr<NodeShapeBasedFunction>> objective;
     std::vector<double> weights;

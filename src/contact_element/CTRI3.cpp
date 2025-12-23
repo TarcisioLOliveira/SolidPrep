@@ -319,4 +319,42 @@ void CTRI3::fl2_dKu_lambda(const double EPS, const std::vector<long> u1_pos, con
     }
 }
 
+math::Matrix CTRI3::diffusion_Ndof(const math::Matrix& A) const{
+    const auto dN = this->dN_mat_dim_dof();
+
+    return this->delta*dN.T()*A*dN;
+}
+math::Matrix CTRI3::absorption_Ndof() const{
+    const auto& gli = utils::GaussLegendreTri<2*ORDER>::get();
+    math::Matrix NN(K_DIM, K_DIM);
+
+    for(auto it = gli.begin(); it != gli.end(); ++it){
+        const gp_Pnt rpi = this->R_GS_point(it->a, it->b, it->c);
+        const auto Nl = this->N_mat_3dof(rpi);
+        NN += it->w*(Nl.T()*Nl);
+    }
+    NN *= this->delta;
+
+    return NN;
+}
+
+math::Matrix CTRI3::diffusion_1dof(const math::Matrix& A) const{
+    const auto dN = this->dN_mat_1dof();
+
+    return this->delta*dN.T()*A*dN;
+}
+math::Matrix CTRI3::absorption_1dof() const{
+    const auto& gli = utils::GaussLegendreTri<2*ORDER>::get();
+    math::Matrix NN(NODES_PER_ELEM, NODES_PER_ELEM);
+
+    for(auto it = gli.begin(); it != gli.end(); ++it){
+        const gp_Pnt rpi = this->R_GS_point(it->a, it->b, it->c);
+        const auto Nl = this->N_mat_1dof(rpi);
+        NN += it->w*(Nl*Nl.T());
+    }
+    NN *= this->delta;
+
+    return NN;
+}
+
 }

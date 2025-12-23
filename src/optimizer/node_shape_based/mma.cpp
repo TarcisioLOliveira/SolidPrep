@@ -158,6 +158,8 @@ TopoDS_Shape MMA::optimize(SolverManager* fem, Meshing* mesh){
                 }
             }
         }
+        this->shape_handler.filter_gradient(df);
+
         MPI_Bcast(&ff, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
         if(M == 1){
             auto& c = this->constraints[0];
@@ -175,11 +177,15 @@ TopoDS_Shape MMA::optimize(SolverManager* fem, Meshing* mesh){
                     }
                 }
             }
+            this->shape_handler.filter_gradient(dg);
         } else if(M > 1){
             size_t g_id = 0;
             for(size_t i = 0; i < this->constraints.size(); ++i){
                 auto& c = this->constraints[i];
                 double val = c.fun->calculate_with_gradient(this, u, dgtmp);
+
+                this->shape_handler.filter_gradient(dgtmp);
+
                 for(size_t k = 0; k < c.types.size(); ++k){
                     if(c.types[k] == Constraint::Type::LESS_THAN){
                         g[g_id] = val - c.bounds[k];
@@ -222,6 +228,18 @@ TopoDS_Shape MMA::optimize(SolverManager* fem, Meshing* mesh){
 
             mma.Update(x.data(), df.data(), g.data(), dg.data(), xmin.data(), xmax.data());
 
+            ch = 0.0;
+            for(size_t i = 0; i < x.size(); ++i){
+                ch = std::max(ch, std::abs(x[i]));
+            }
+
+            this->shape_handler.filter_displacement(x);
+            //for (size_t i = 0; i < x.size(); ++i) {
+            //    if(std::abs(x[i]) > 1e-4){
+            //        logger::quick_log(i, std::abs(x[i]));
+            //    }
+            //}
+
             this->shape_handler.update_nodes(x);
 
             this->node_view->update_view(this->shape_handler.get_shape_displacement());
@@ -229,10 +247,6 @@ TopoDS_Shape MMA::optimize(SolverManager* fem, Meshing* mesh){
             // Update volumes after resizing elements
             this->get_volumes(mesh->geometries, mesh->thickness, this->volumes);
 
-            ch = 0.0;
-            for (size_t i = 0; i < x.size(); ++i) {
-                ch = std::max(ch, std::abs(x[i]));
-            }
             std::fill(x.begin(), x.end(), 0);
         }
         MPI_Bcast(&ch, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);

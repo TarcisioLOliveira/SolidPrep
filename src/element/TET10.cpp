@@ -44,6 +44,11 @@ std::unique_ptr<ContactMeshElementFactory> TET10::get_contact_element_info() {
     return std::unique_ptr<ContactMeshElementFactory>();
     //return std::unique_ptr<ContactMeshElementFactory>(new ContactMeshElementFactoryImpl<contact_element::CTRI6>());
 }
+std::unique_ptr<ShapeMeshElementFactory> TET10::get_shape_element_info() {
+    logger::log_assert(false, logger::ERROR, "STRI6 ELEMENT TYPE NOT IMPLEMENTED");
+    return std::unique_ptr<ShapeMeshElementFactory>();
+    //return std::unique_ptr<ShapeMeshElementFactory>(new ShapeMeshElementFactoryImpl<shape_element::STRI6>());
+}
 
 void TET10::get_coeffs(){
     constexpr size_t N = 4;

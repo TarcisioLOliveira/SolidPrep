@@ -42,6 +42,11 @@ std::unique_ptr<ContactMeshElementFactory> H8::get_contact_element_info() {
     return std::unique_ptr<ContactMeshElementFactory>();
     //return std::unique_ptr<ContactMeshElementFactory>(new ContactMeshElementFactoryImpl<contact_element::CQ4>());
 }
+std::unique_ptr<ShapeMeshElementFactory> H8::get_shape_element_info() {
+    logger::log_assert(false, logger::ERROR, "SQ4 ELEMENT TYPE NOT IMPLEMENTED");
+    return std::unique_ptr<ShapeMeshElementFactory>();
+    //return std::unique_ptr<ShapeMeshElementFactory>(new ShapeMeshElementFactoryImpl<shape_element::SQ4>());
+}
 
 math::Matrix H8::get_k(const math::Matrix & D, const double t) const{
     (void)t;

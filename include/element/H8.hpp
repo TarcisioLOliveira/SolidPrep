@@ -46,6 +46,7 @@ class H8 : public MeshElementCommon3DHex<H8>{
     static const size_t BOUNDARY_GMSH_TYPE = 3;
     static std::unique_ptr<BoundaryMeshElementFactory> get_boundary_element_info();
     static std::unique_ptr<ContactMeshElementFactory> get_contact_element_info();
+    static std::unique_ptr<ShapeMeshElementFactory> get_shape_element_info();
 
     static const spview::defs::ElementType SPVIEW_CODE = spview::defs::H8;
 

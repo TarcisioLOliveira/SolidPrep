@@ -462,31 +462,6 @@ void Meshing::populate_boundary_elements(const std::vector<ElementShape>& bounda
                 }
             }
         }
-        // std::vector<size_t> bnodes(N);
-        // // Not optimal, but easier to implement.
-        // // This is not working correctly and I don't know why.
-        // for(size_t i = 0; i < this->boundary_elements.size(); ++i){
-        //     const BoundaryElement* b = &this->boundary_elements[i];
-        //     const gp_Pnt c(b->get_centroid(N));
-        //     //double dist = 1e100;
-        //     //gp_Pnt c_test;
-        //     for(size_t j = i+1; j < this->boundary_elements.size(); ++j){
-        //         const BoundaryElement* b2 = &this->boundary_elements[j];
-        //         const gp_Pnt c2(b2->get_centroid(N));
-        //         //if(c.Distance(c2) < dist){
-        //         //    c_test = c2;
-        //         //    dist = c.Distance(c2);
-        //         //}
-        //         if(c.IsEqual(c2, Precision::Confusion())){
-        //             inter_geom.push_back(i);
-        //             inter_geom.push_back(j);
-        //             break;
-        //         }
-        //     }
-        //     //if(std::abs(c.X()) < 11 && std::abs(c.Z()) < 11 && std::abs(c.Y()) < 19){
-        //     //    logger::quick_log(c.X(), c.Y(), c.Z(), dist);
-        //     //}
-        // }
     }
     logger::quick_log("bound_elems", this->boundary_elements.size());
     if(inter_geom.size() > 0){

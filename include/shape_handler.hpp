@@ -162,10 +162,12 @@ class ShapeHandler{
     };
 
     ShapeHandler() = default;
-    ShapeHandler(Meshing* mesh, std::vector<Geometry*> geometries, std::unique_ptr<shape_op::ShapeOp> root_op);
+    ShapeHandler(Meshing* mesh, std::vector<Geometry*> geometries, std::unique_ptr<shape_op::ShapeOp> root_op, double smoothing_radius);
 
     void obtain_affected_nodes();
     void update_nodes(const std::vector<double>& dx);
+    void filter_displacement(std::vector<double>& dx);
+    void filter_gradient(std::vector<double>& df);
 
     inline const std::vector<double>& get_shape_displacement() const{
         return this->shape_displacement;
@@ -193,16 +195,22 @@ class ShapeHandler{
     };
     std::set<SuperimposedNodes*> apply_op(shape_op::ShapeOp* op) const;
 
+    std::unique_ptr<general_solver::MUMPSGeneral> helmholtz_solver;
+
+    void generate_helmholtz();
+
     Meshing* mesh;
     std::vector<Geometry*> geometries;
 
     std::map<size_t, size_t> optimized_nodes_mapping;
     std::map<const MeshElement*, std::vector<size_t>> elem_to_affected_node_mapping;
+    std::map<size_t, size_t> bound_to_shape_mapping;
 
     std::vector<AffectedNode> optimized_nodes;
     std::vector<AffectedContactNode> optimized_contact_nodes;
     std::vector<BoundaryElement*> boundary_elements;
     std::vector<GeometryCluster> clusters;
+    std::vector<ShapeMeshElement*> shape_mesh;
 
     std::map<size_t, SuperimposedNodes*> merged_nodes_mapping;
     std::vector<SuperimposedNodes> merged_nodes;
@@ -211,6 +219,8 @@ class ShapeHandler{
     std::vector<double> shape_displacement;
 
     std::unique_ptr<shape_op::ShapeOp> root_op;
+
+    double r = 1;
 
     constexpr static double MU = 1e6;
 };

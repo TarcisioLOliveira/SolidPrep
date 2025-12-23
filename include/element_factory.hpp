@@ -90,6 +90,7 @@ class MeshElementFactory{
     inline virtual size_t get_boundary_gmsh_element_type() const = 0;
     inline virtual std::unique_ptr<BoundaryMeshElementFactory> get_boundary_element_info() const = 0;
     inline virtual std::unique_ptr<ContactMeshElementFactory> get_contact_element_info() const = 0;
+    inline virtual std::unique_ptr<ShapeMeshElementFactory> get_shape_element_info() const = 0;
 };
 
 template<class T>
@@ -139,6 +140,9 @@ class MeshElementFactoryImpl : public MeshElementFactory{
     }
     inline std::unique_ptr<ContactMeshElementFactory> get_contact_element_info() const override{
         return T::get_contact_element_info();
+    }
+    inline std::unique_ptr<ShapeMeshElementFactory> get_shape_element_info() const override{
+        return T::get_shape_element_info();
     }
     inline spview::defs::ElementType get_spview_code() const override{
         return T::SPVIEW_CODE;
@@ -230,6 +234,65 @@ class ContactMeshElementFactoryImpl : public ContactMeshElementFactory{
     public:
     inline ContactMeshElement* make_element(const ElementShape& shape, const MeshElement* const e1, const MeshElement* const e2, bool e1_base) const override{
         return new T(shape, e1, e2, e1_base);
+    }
+    inline size_t get_k_dimension() const override{
+        return T::K_DIM;
+    }
+    inline size_t get_D_dimension() const override{
+        return T::S_SIZE;
+    }
+    inline size_t get_dof_per_node() const override{
+        return T::NODE_DOF;
+    }
+    inline size_t get_nodes_per_element() const override{
+        return T::NODES_PER_ELEM;
+    }
+    /**
+     * Necessary to use Gmsh's GUI. See:
+     * https://gmsh.info/doc/texinfo/gmsh.html#MSH-file-format
+     * 
+     * @return Gmsh element type number.
+     */
+    inline size_t get_gmsh_element_type() const override{
+        return T::GMSH_TYPE;
+    }
+    inline utils::ProblemType get_problem_type() const override{
+        return T::PROBLEM_TYPE;
+    }
+    inline size_t get_element_order() const override{
+        return T::ORDER;
+    }
+    inline Element::Shape get_shape_type() const override{
+        return T::SHAPE_TYPE;
+    }
+};
+
+class ShapeMeshElementFactory{
+    public:
+    virtual ~ShapeMeshElementFactory() = default;
+
+    inline virtual ShapeMeshElement* make_element(const ElementShape& shape) const = 0;
+    inline virtual size_t get_k_dimension() const = 0;
+    inline virtual size_t get_D_dimension() const = 0;
+    inline virtual size_t get_dof_per_node() const = 0;
+    inline virtual size_t get_nodes_per_element() const = 0;
+    /**
+     * Necessary to use Gmsh's GUI. See:
+     * https://gmsh.info/doc/texinfo/gmsh.html#MSH-file-format
+     * 
+     * @return Gmsh element type number.
+     */
+    inline virtual size_t get_gmsh_element_type() const = 0;
+    inline virtual size_t get_element_order() const = 0;
+    inline virtual utils::ProblemType get_problem_type() const = 0;
+    inline virtual Element::Shape get_shape_type() const = 0;
+};
+
+template<class T>
+class ShapeMeshElementFactoryImpl : public ShapeMeshElementFactory{
+    public:
+    inline ShapeMeshElement* make_element(const ElementShape& shape) const override{
+        return new T(shape);
     }
     inline size_t get_k_dimension() const override{
         return T::K_DIM;
