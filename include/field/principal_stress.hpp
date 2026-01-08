@@ -42,6 +42,10 @@ class PrincipalStress : public CoordinateField {
     virtual std::array<gp_Dir, 3> get_array(const MeshElement* e, const gp_Pnt& p) const override;
     virtual math::Matrix get_matrix(const MeshElement* e, const gp_Pnt& p) const override;
 
+    inline void set_max_it(size_t m){
+        this->max_it = m;
+    }
+
     inline virtual Class get_class() const override{
         return Class::PRINCIPAL_STRESS;
     }
@@ -71,7 +75,7 @@ class PrincipalStress : public CoordinateField {
     size_t NODES_PER_ELEM;
     bool first_run = true;
     std::vector<double> u;
-    const size_t max_it;
+    size_t max_it;
     const bool use_strain;
 
     std::map<size_t, size_t> id_pos_map;

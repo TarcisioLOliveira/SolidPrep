@@ -47,35 +47,46 @@ class MarginalBoneLoss : public Simulation{
     Meshing* mesh;
     SolverManager* fem;
     ProjectData* proj;
+    const Range base_range;
     const Range t, c, s;
     const double rho_eps = 0.2;
     const double lhs_eps = 1e-30;
     const Range K_e1, K_g, K_e2;
     const utils::ProblemType problem_type;
-    const math::Vector eps_to_x;
+    const double MAX_RHO = 2.5;
+    const double rho_d = MAX_RHO/360.0;
+
+    size_t elem_num = 0;
+    size_t mand_geom_offset = 0;
+    size_t density_num = 0;
 
     const size_t geom_id;
     Geometry* mandible;
     const double time_step, time_limit;
-    const double dv1_orig, dv2_orig;
-    double dv0, dv1, dv2, dv3;
-    double lhs2_offset;
-    double lhs3_offset;
-    double max_dv2;
-    double max_dv2_x;
+    double dv0;
+    double x0, x1, x2;
+    math::Vector coeff;
 
     ViewHandler* stress_view = nullptr;
     ViewHandler* density_view = nullptr;
     ViewHandler* growth_view = nullptr;
+    ViewHandler* strain_view = nullptr;
 
     Range get_K_e1(const Range& t, const Range& c) const;
     Range get_K_e2(const Range& t, const Range& c) const;
     Range get_K_g (const Range& s) const;
 
+    inline Range interval_mult(double mult, const Range& s) const{
+        Range r;
+        for(size_t i = 0; i < RANGE_NUM; ++i){
+            r[i] = mult*s[i];
+        }
+        return r;
+    }
+
     typedef math::Vector StrainVector3D;
 
-    math::Vector make_eps_to_x() const;
-    double get_density_variation(const StrainVector3D& eps, const double v) const;
+    double get_density_variation(const StrainVector3D& eps) const;
 
     inline double LHS_3D(const size_t i, const StrainVector3D& e) const{
         const double dexy = e[0] - e[1];
