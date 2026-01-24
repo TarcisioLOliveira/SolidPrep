@@ -92,7 +92,7 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
     Threads::Threads
     ${GSL_LIBRARIES}
     jsoncpp_lib
-    ${Teem_LIBRARY_DIRS}/libteem.so # ${Teem_LIBRARIES} does not use the full path
+    Teem::Teem
 )
 
 if(OpenMP_CXX_FOUND)

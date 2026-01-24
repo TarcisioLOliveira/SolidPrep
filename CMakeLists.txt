@@ -125,7 +125,7 @@ include_directories(
     ${PETSC_INCLUDE_DIRS}
     ${GSL_INCLUDE_DIR}
     ${JSON_INC_PATH}
-    ${Teem_INCLUDE_DIRS}
+    ${Teem_INSTALL_PREFIX}/include # Workaround
 )
 
 if(USE_CUDA)
