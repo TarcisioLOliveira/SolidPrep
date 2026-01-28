@@ -712,16 +712,17 @@ std::vector<std::unique_ptr<Geometry>> ProjectData::load_geometries(const Json::
         std::string absolute_path = folder_path;
         std::string geom_path = geom["file_path"].asString();
         absolute_path.append(geom_path);
+        bool do_topopt = false;
 
-        this->log_data(geom, "do_topopt", projspec::TYPE_BOOL, true);
+        if(this->log_data(geom, "do_topopt", projspec::TYPE_BOOL, this->do_topopt)){
+            do_topopt = geom["do_topopt"].asBool();
+        }
         this->log_data(geom, "material", projspec::TYPE_STRING, true);
 
         double scale = 1;
         if(this->log_data(geom, "scale", projspec::TYPE_DOUBLE, false)){
             scale = geom["scale"].asDouble();
         }
-
-        bool do_topopt = geom["do_topopt"].asBool();
 
         size_t alt_size = 0;
         if(this->log_data(geom, "alt_materials", projspec::TYPE_ARRAY, false)){
