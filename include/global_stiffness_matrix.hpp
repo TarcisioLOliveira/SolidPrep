@@ -29,7 +29,7 @@ class GlobalStiffnessMatrix{
     public:
     virtual ~GlobalStiffnessMatrix() = default;
     const double K_MIN = 1e-14;
-    GlobalStiffnessMatrix(double EPS_DISPL_SIMPLE);
+    GlobalStiffnessMatrix(const FiniteElement::ContactData& data);
 
     virtual void generate(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<math::Matrix>& D_cache, const std::vector<double>& u_ext, const std::vector<double>& lambda, const FiniteElement::ContactType type) = 0;
 
@@ -59,7 +59,7 @@ class GlobalStiffnessMatrix{
     }
 
     double LAG_DISPL_LOG = 1;// CHANGE IN FINITE ELEMENT
-    const double LOG_TOL = 1e-5;
+    const double LOG_TOL = 1e-6;
 
     virtual void dump_matrix(){}
 
@@ -71,8 +71,8 @@ class GlobalStiffnessMatrix{
     const double EPS_DISPL;
     const double LAG_DISPL_SIMPLE;
     bool first_time = true;
-    const double HK = 1e6;
-    const double HC = 1e6;
+    const double HK = 1e7;//1e6;
+    const double HC = 8e6;//1e6;
 
 
     virtual void generate_base(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<math::Matrix>& D_cache, const std::vector<double>& u_ext, const std::vector<double>& lambda, const FiniteElement::ContactType type);

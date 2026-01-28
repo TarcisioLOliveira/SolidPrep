@@ -29,12 +29,12 @@ namespace finite_element{
 
 MUMPSSolver::MUMPSSolver(const projspec::DataMap& data):
     FiniteElement(data.proj->contact_data),
-    gsm(data.proj->contact_data.EPS_DISPL_SIMPLE)
+    gsm(data.proj->contact_data)
 {
     this->set_global_matrix(&this->gsm);
 
     this->config.job = -1; // Configuration initialization
-    if(this->contact_type == ContactType::FRICTIONLESS_DISPL_LOG){
+    if(this->contact_data.contact_type == ContactType::FRICTIONLESS_DISPL_LOG){
         this->config.sym = 2; // General symmetric matrix
     } else {
         this->config.sym = 1; // SPD matrix

@@ -32,7 +32,7 @@ class EigenSparseSymmetricTriplets : public GlobalStiffnessMatrix{
     public:
     typedef Eigen::Triplet<double, std::ptrdiff_t> T;
 
-    EigenSparseSymmetricTriplets():GlobalStiffnessMatrix(1){}
+    EigenSparseSymmetricTriplets():GlobalStiffnessMatrix(FiniteElement::ContactData()){}
 
     virtual ~EigenSparseSymmetricTriplets() = default;
 

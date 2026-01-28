@@ -24,8 +24,10 @@
 #include "math/matrix.hpp"
 #include <limits>
 
-GlobalStiffnessMatrix::GlobalStiffnessMatrix(double EPS_DISPL_SIMPLE):
-    EPS_PENALTY(EPS_DISPL_SIMPLE), EPS_DISPL(EPS_DISPL_SIMPLE), LAG_DISPL_SIMPLE(EPS_DISPL_SIMPLE){
+GlobalStiffnessMatrix::GlobalStiffnessMatrix(const FiniteElement::ContactData& data):
+    EPS_PENALTY(data.EPS_DISPL_SIMPLE), EPS_DISPL(data.EPS_DISPL_SIMPLE), LAG_DISPL_SIMPLE(data.EPS_DISPL_SIMPLE),
+    HK(data.HK), HC(data.HC)
+    {
 
     }
 

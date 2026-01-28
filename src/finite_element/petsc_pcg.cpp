@@ -32,14 +32,13 @@ PETScPCG::PETScPCG(const projspec::DataMap& data):
     FiniteElement(data.proj->contact_data),
     gsm(nullptr)
 {
-    const auto EPS_DISPL = data.proj->contact_data.EPS_DISPL_SIMPLE;
     const std::string backend(data.get_string("backend"));
     if(backend == "cpu"){
         this->vec_type = VECSTANDARD;
-        this->gsm = std::make_unique<global_stiffness_matrix::PETScSparseSymmetricCPU>(EPS_DISPL);
+        this->gsm = std::make_unique<global_stiffness_matrix::PETScSparseSymmetricCPU>(data.proj->contact_data);
     } else if(backend == "cuda"){
         this->vec_type = VECCUDA;
-        this->gsm = std::make_unique<global_stiffness_matrix::PETScSparseSymmetricCUDA>(EPS_DISPL);
+        this->gsm = std::make_unique<global_stiffness_matrix::PETScSparseSymmetricCUDA>(data.proj->contact_data);
     } else {
         logger::log_assert(false, logger::ERROR, "undefined PETSc backend: {}", backend);
     }
@@ -116,14 +115,14 @@ void PETScPCG::solve(std::vector<double>& load){
         //PCGAMGSetCoarseEqLim(this->pc, 1000);
         //PCGAMGSetLowMemoryFilter(this->pc, PETSC_TRUE);
         //
-        if(this->contact_type == FiniteElement::ContactType::FRICTIONLESS_DISPL_LOG){
+        if(this->contact_data.contact_type == FiniteElement::ContactType::FRICTIONLESS_DISPL_LOG){
             KSPSetTolerances(this->ksp, 1e-2, 1e-50, 1e10, 1e5);
             PCJacobiSetUseAbs(this->pc, PETSC_TRUE);
             PCJacobiSetFixDiagonal(this->pc, PETSC_TRUE);
             PCJacobiSetType(this->pc, PC_JACOBI_ROWMAX);
             KSPSetType(this->ksp, KSPMINRES);
             //KSPMINRESSetUseQLP(this->ksp, PETSC_TRUE);
-        } else if(this->contact_type >= FiniteElement::ContactType::FRICTIONLESS_DISPL_SIMPLE){
+        } else if(this->contact_data.contact_type >= FiniteElement::ContactType::FRICTIONLESS_DISPL_SIMPLE){
             KSPSetTolerances(this->ksp, 1e-3, 1e-50, 1e10, 1e5);
             PCJacobiSetUseAbs(this->pc, PETSC_TRUE);
             PCJacobiSetFixDiagonal(this->pc, PETSC_TRUE);

@@ -29,11 +29,7 @@
 #include "utils.hpp"
 
 FiniteElement::FiniteElement(const ContactData& data)
-    :contact_type(data.contact_type),
-     rtol_abs(data.rtol_abs),
-     step_tol(data.step_tol),
-     start_lag_simple(data.EPS_DISPL_SIMPLE),
-     max_step(data.max_step)
+    : contact_data(data)
 {
 
 }
@@ -41,12 +37,12 @@ FiniteElement::FiniteElement(const ContactData& data)
 void FiniteElement::generate_matrix(const Meshing* const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<math::Matrix>& D_cache, const std::vector<double>& u_ext, const std::vector<double>& lambda){
     this->u_size = u_size;
     this->l_num = l_num;
-    this->generate_matrix_base(mesh, u_size, l_num, node_positions, topopt, D_cache, u_ext, lambda, this->contact_type);
+    this->generate_matrix_base(mesh, u_size, l_num, node_positions, topopt, D_cache, u_ext, lambda, this->contact_data.contact_type);
 
 }
 
 void FiniteElement::calculate_displacements(const Meshing* const mesh, std::vector<double>& load, const std::vector<double>& u0, std::vector<double>& lambda){
-    switch(this->contact_type){
+    switch(this->contact_data.contact_type){
         case RIGID:
             this->solve_rigid(load);
             break;
@@ -64,7 +60,7 @@ void FiniteElement::calculate_displacements(const Meshing* const mesh, std::vect
 
 void FiniteElement::calculate_adjoint(const Meshing* const mesh, std::vector<double>& load, const std::vector<double>& u0, std::vector<double>& lambda){
     (void) lambda;
-    switch(this->contact_type){
+    switch(this->contact_data.contact_type){
         case RIGID:
             this->solve_rigid(load);
             break;
@@ -145,7 +141,7 @@ void FiniteElement::solve_frictionless_displ_log(const Meshing* const mesh, std:
     }
     this->matrix->add_frictionless_log(mesh, mesh->node_positions[0], u_ext);
     rnorm = std::sqrt(cblas_ddot(r.size(), r.data(), 1, r.data(), 1));
-    step = this->max_step;
+    step = this->contact_data.max_step;
 
     double u_var = 0;
     do{
@@ -205,7 +201,7 @@ void FiniteElement::solve_frictionless_displ_log(const Meshing* const mesh, std:
         };
 
         double g1 = 0, g2 = 1;
-        double a1 = 0, a2 = this->max_step;
+        double a1 = 0, a2 = this->contact_data.max_step;
         g1 = get_g(a1);
         g2 = get_g(a2);
         if(!(g1 < 0 && g2 < 0)){
@@ -311,8 +307,8 @@ void FiniteElement::solve_frictionless_displ_log(const Meshing* const mesh, std:
             logger::quick_log("g2", g2, "a2", a2);
         }
         logger::quick_log("Applying step...");
-        step = this->max_step;
-        if(a2 != this->max_step){
+        step = this->contact_data.max_step;
+        if(a2 != this->contact_data.max_step){
             //step = 0.8*a2;
             step = 1.0*a2;
         }
@@ -392,7 +388,7 @@ void FiniteElement::solve_frictionless_displ_log(const Meshing* const mesh, std:
         if(step == 0){
             break;
         }
-    } while((rnorm > this->rtol_abs && std::abs(step) > this->step_tol) || it < 2);
+    } while((rnorm > this->contact_data.rtol_abs && std::abs(step) > this->contact_data.step_tol) || it < 2);
 
     std::copy(u.begin(), u.begin() + u_size, load.begin());
 }
@@ -435,7 +431,7 @@ void FiniteElement::solve_frictionless_displ_simple(const Meshing* const mesh, s
     std::copy(lambda.begin(), lambda.end(), u.begin() + u_size);
     double rnorm = 0;
 
-    double step = this->max_step;
+    double step = this->contact_data.max_step;
     const double LAG = this->matrix->get_lag_displ_simple();
 
     std::vector<gp_Pnt> points(bnum);
@@ -470,7 +466,7 @@ void FiniteElement::solve_frictionless_displ_simple(const Meshing* const mesh, s
         logger::quick_log("dr min max constr", *std::min_element(dr.begin()+u_size, dr.end()), *std::max_element(dr.begin()+u_size, dr.end()));
 
 
-        step = this->max_step;
+        step = this->contact_data.max_step;
         
         this->reset_hessian();
 
@@ -517,12 +513,12 @@ void FiniteElement::solve_frictionless_displ_simple(const Meshing* const mesh, s
         };
 
         double g1 = 0, g2 = 1;
-        double a1 = 0, a2 = this->max_step;
+        double a1 = 0, a2 = this->contact_data.max_step;
         const double search_step = 0.01;
         g1 = get_g(a1);
         g2 = get_g(a2);
         if(g1 < 0){
-            for(double a = a1; a < this->max_step + 1e-7; a += search_step){
+            for(double a = a1; a < this->contact_data.max_step + 1e-7; a += search_step){
                 const double g = get_g(a);
                 if(g > 0){
                     a1 = a - search_step;
@@ -531,7 +527,7 @@ void FiniteElement::solve_frictionless_displ_simple(const Meshing* const mesh, s
                 }
             }
         } else {
-            for(double a = a1; a > -(this->max_step + 1e-7); a -= search_step){
+            for(double a = a1; a > -(this->contact_data.max_step + 1e-7); a -= search_step){
                 const double g = get_g(a);
                 if(g < 0){
                     a1 = a;
@@ -607,8 +603,8 @@ void FiniteElement::solve_frictionless_displ_simple(const Meshing* const mesh, s
             a2 = 0;
         }
         logger::quick_log("Applying step...");
-        step = this->max_step;
-        if(a2 != this->max_step){
+        step = this->contact_data.max_step;
+        if(a2 != this->contact_data.max_step){
             step = 1.0*a2;
         }
 
@@ -682,7 +678,7 @@ void FiniteElement::solve_frictionless_displ_simple(const Meshing* const mesh, s
         if(step == 0){
             break;
         }
-    } while((rnorm > this->rtol_abs && std::abs(step) > this->step_tol) || it < 1);
+    } while((rnorm > this->contact_data.rtol_abs && std::abs(step) > this->contact_data.step_tol) || it < 1);
 
     std::copy(u.begin(), u.begin() + u_size, load.begin());
 }
@@ -777,7 +773,7 @@ void FiniteElement::solve_frictionless_penalty(const Meshing* const mesh, std::v
                     gp += (u2 - u1)*normal.Coord(1+j);
                 }
                 if(gp > 0){
-                    l[mesh->lag_node_map.at(n1->id)] += 1e-3*gp*this->start_lag_simple;
+                    l[mesh->lag_node_map.at(n1->id)] += 1e-3*gp*this->contact_data.EPS_DISPL_SIMPLE;
                 }
             }
         }
@@ -808,7 +804,7 @@ void FiniteElement::solve_frictionless_penalty(const Meshing* const mesh, std::v
     rnorm = std::sqrt(cblas_ddot(r.size(), r.data(), 1, r.data(), 1));
     logger::quick_log("Initial ||r||:", rnorm);
 
-    step = this->max_step;
+    step = this->contact_data.max_step;
     
     do{
 
@@ -983,7 +979,7 @@ void FiniteElement::solve_frictionless_penalty(const Meshing* const mesh, std::v
 
         logger::log_assert(rnorm < 1e30, logger::ERROR, "Newton process diverged, increase rtol_abs and/or decrease mult");
         ++it;
-    } while((rnorm > this->rtol_abs || it < 1) && step > 0 && it < 50);
+    } while((rnorm > this->contact_data.rtol_abs || it < 1) && step > 0 && it < 50);
 
     std::copy(u.begin(), u.begin() + u_size, load.begin());
 }
