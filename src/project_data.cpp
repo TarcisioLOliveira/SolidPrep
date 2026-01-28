@@ -1020,10 +1020,11 @@ CrossSection ProjectData::get_cross_section(const Json::Value& doc) const{
         }
     } else if(this->type == utils::PROBLEM_TYPE_3D) {
         bool has_rect = this->log_data(doc, "rectangle", projspec::TYPE_OBJECT, false);
+        bool has_circ = this->log_data(doc, "disc", projspec::TYPE_OBJECT, false);
         bool has_file = this->log_data(doc, "file", projspec::TYPE_OBJECT, false);
         bool has_point = this->log_data(doc, "point", projspec::TYPE_ARRAY, false);
 
-        logger::log_assert(has_rect || has_file || has_point, logger::ERROR, "invalid cross-section definition in configuration file.");
+        logger::log_assert(has_rect || has_circ || has_file || has_point, logger::ERROR, "invalid cross-section definition in configuration file.");
         if(has_rect){
             const auto& rect = doc["rectangle"];
             this->log_data(rect, "center", projspec::TYPE_ARRAY, true);
@@ -1047,6 +1048,27 @@ CrossSection ProjectData::get_cross_section(const Json::Value& doc) const{
                     n[2].asDouble()
                 ),
                 rect["rotation"].asDouble()
+            };
+            return CrossSection(r);
+        } else if(has_circ){
+            const auto& disc = doc["disc"];
+            this->log_data(disc, "center", projspec::TYPE_ARRAY, true);
+            this->log_data(disc, "normal", projspec::TYPE_ARRAY, true);
+            this->log_data(disc, "radius", projspec::TYPE_DOUBLE, true);
+            auto c = disc["center"];
+            auto n = disc["normal"];
+            CrossSection::Circle r{
+                disc["radius"].asDouble(),
+                gp_Pnt(
+                    c[0].asDouble(), 
+                    c[1].asDouble(),
+                    c[2].asDouble()
+                ),
+                gp_Dir(
+                    n[0].asDouble(), 
+                    n[1].asDouble(),
+                    n[2].asDouble()
+                )
             };
             return CrossSection(r);
         } else if(has_file) {

@@ -135,6 +135,25 @@ CrossSection::CrossSection(gp_Pnt p, utils::ProblemType type, double radius):
     this->get_bounding_box();
 }
 
+CrossSection::CrossSection(Circle c):
+    centroid(c.center), inertia(), normal(c.normal), max_dim(2*c.r), 
+    shape(), area(M_PI*c.r*c.r){
+
+    gp_Ax2 axis(c.center, c.normal);
+    gp_Circ circ(axis, c.r);
+    TopoDS_Edge edge = BRepBuilderAPI_MakeEdge(circ);
+    TopoDS_Wire wire = BRepBuilderAPI_MakeWire(edge);
+    TopoDS_Face face = BRepBuilderAPI_MakeFace(wire);
+    this->shape = face;
+
+    GProp_GProps props;
+    BRepGProp::SurfaceProperties(face, props);
+
+    this->inertia = props.MatrixOfInertia();
+
+    this->get_bounding_box();
+}
+
 CrossSection::CrossSection(Rectangle r):
     centroid(r.center), inertia(), normal(r.normal), max_dim(std::max(r.w, r.h)), 
     shape(), area(r.w*r.h){
