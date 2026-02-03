@@ -382,6 +382,8 @@ void FiniteElement::solve_frictionless_displ_log(const Meshing* const mesh, std:
         } else {
             logger::quick_log("min_gp ", min_gp);
         }
+        logger::quick_log("Gap ratio", std::abs(min_gp/max_gp)*100.0, "%");
+        logger::quick_log("");
 
         logger::log_assert(rnorm < 1e30, logger::ERROR, "Newton process diverged, increase rtol_abs and/or decrease mult");
         ++it;
