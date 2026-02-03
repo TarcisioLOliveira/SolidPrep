@@ -18,13 +18,15 @@
  *
  */
 
+#include <defs.hpp>
 #include <limits>
 #include <set>
 #include "view_handler.hpp"
 #include "logger.hpp"
 
 ViewHandler::ViewHandler(const Meshing* const mesh, spview::Server* server, const std::string& view_name, const spview::defs::ViewType view_type, const spview::defs::DataType data_type, utils::ProblemType problem_type, const size_t view_id)
-    : view_type(view_type), data_type(data_type), view_id(view_id), mesh(mesh),
+    : view_type((data_type != spview::defs::MESH) ? view_type : spview::defs::ELEMENTAL),
+      data_type(data_type), view_id(view_id), mesh(mesh),
       elem_num(this->get_number_of_elements()),
       node_num(this->get_number_of_nodes()),
       mat_color_num(this->get_number_of_material_colors()),
@@ -145,6 +147,16 @@ void ViewHandler::update_view(const std::vector<double>& data, const std::vector
             }
             this->server->update_data(this->view_id, tags, mat);
         }
+    } else if(this->data_type == spview::defs::MESH){
+        std::vector<double> mat(tags.size());
+        size_t mat_pos = 0;
+        size_t geom_id = 0;
+        for(const auto& g:this->mesh->geometries){
+            std::fill(mat.begin()+mat_pos, mat.begin()+mat_pos+g->mesh.size(), geom_id);
+            mat_pos += g->mesh.size();
+            ++geom_id;
+        }
+        this->server->update_data(this->view_id, tags, mat);
     } else if(this->view_type == spview::defs::NODAL && this->data_type == spview::defs::MATERIAL){
         if(this->mat_color_num == 2){
             this->server->update_data(this->view_id, tags, data);
