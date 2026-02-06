@@ -21,6 +21,7 @@
 #include "project_specification/data_map.hpp"
 #include "project_specification/registry.hpp"
 #include "shape_handler.hpp"
+#include "shape_operations.hpp"
 #include "utils/delayed_pointer.hpp"
 #include <cstring>
 #include <json/json.h>
@@ -313,6 +314,11 @@ inline void add_stub_array(ProjectData* proj, const std::shared_ptr<projspec::Ar
                 array->set_matrix(i, math::Matrix());
             }
             break;
+        case projspec::TYPE_SHAPE_OP:
+            for(size_t i = 0; i < size; ++i){
+                array->set_shape_op(i, shape_op::JsonRepresentation());
+            }
+            break;
     }
 }
 inline void add_stub(const projspec::DataEntry& r, projspec::DataMap* data){
@@ -353,6 +359,9 @@ inline void add_stub(const projspec::DataEntry& r, projspec::DataMap* data){
             break;
         case projspec::TYPE_MATRIX:
             data->set_matrix(r.name, math::Matrix());
+            break;
+        case projspec::TYPE_SHAPE_OP:
+            data->set_shape_op(r.name, shape_op::JsonRepresentation());
             break;
     }
 }
@@ -468,6 +477,12 @@ inline void add_data_array(ProjectData* proj, const Json::Value& item, const std
                 ++i;
             }
             break;
+        case projspec::TYPE_SHAPE_OP:
+            for(auto& it:item){
+                array->set_shape_op(i, shape_op::JsonRepresentation(&it));
+                ++i;
+            }
+            break;
     }
 }
 inline void add_data(const Json::Value& item, const projspec::DataEntry& r, projspec::DataMap* data){
@@ -515,10 +530,12 @@ inline void add_data(const Json::Value& item, const projspec::DataEntry& r, proj
         case projspec::TYPE_CROSS_SECTION:
             data->set_cross_section(r.name, data->proj->get_cross_section(item));
             break;
-        case projspec::TYPE_MATRIX:{
+        case projspec::TYPE_MATRIX:
             data->set_matrix(r.name, get_matrix(item, r.matrix_data.get()));
             break;
-        }
+        case projspec::TYPE_SHAPE_OP:
+            data->set_shape_op(r.name, shape_op::JsonRepresentation(&item));
+            break;
     }
 }
 
@@ -572,6 +589,7 @@ bool ProjectData::log_data(const Json::Value& doc, std::string name, projspec::D
             correct_type = logger::log_assert(doc[name.c_str()].isArray(), error, "Value of key \"{}\" has wrong type, must be an array.", name);
             break;
         case projspec::TYPE_CROSS_SECTION:
+        case projspec::TYPE_SHAPE_OP:
         case projspec::TYPE_OBJECT:
             correct_type = logger::log_assert(doc[name.c_str()].isObject(), error, "Value of key \"{}\" has wrong type, must be an object.", name);
             break;
@@ -918,7 +936,8 @@ std::unique_ptr<NodeShapeBasedOptimizer> ProjectData::load_shopt_optimizer(const
     }
 
     this->log_data(json_data, "shape_set", projspec::TYPE_OBJECT, true); 
-    auto shape_set = this->get_shape_operations(json_data["shape_set"]);
+    //auto shape_set = this->get_shape_operations(json_data["shape_set"]);
+    auto shape_set = shape_op::JsonRepresentation(&json_data["shape_set"]).construct();
     this->log_data(json_data, "smoothing_radius", projspec::TYPE_DOUBLE, true); 
     auto radius = json_data["smoothing_radius"].asDouble();
     this->shape_handler = ShapeHandler(this->topopt_mesher.get(), std::move(geoms), std::move(shape_set), radius);
@@ -1312,44 +1331,6 @@ std::vector<SubProblem> ProjectData::load_sub_problems(const Json::Value& doc){
     }
 
     return sub_problems;
-}
-
-std::unique_ptr<shape_op::ShapeOp> ProjectData::get_shape_operations(const Json::Value& doc) const{
-    this->log_data(doc, "type", projspec::TYPE_STRING, true);
-    const std::string type = doc["type"].asString();
-    if(type == "geometry"){
-        this->log_data(doc, "id", projspec::TYPE_INT, true);
-        const size_t id = doc["id"].asInt64();
-        logger::log_assert(id < this->geometries.size(), logger::ERROR,
-                "unknown geometry id: {}", id);
-        return std::make_unique<shape_op::Geometry>(id);
-    } else if(type == "union"){
-        this->log_data(doc, "shape1", projspec::TYPE_OBJECT, true);
-        this->log_data(doc, "shape2", projspec::TYPE_OBJECT, true);
-
-        return std::make_unique<shape_op::Union>(
-                    this->get_shape_operations(doc["shape1"]),
-                    this->get_shape_operations(doc["shape2"])
-                );
-    } else if(type == "intersection"){
-        this->log_data(doc, "shape1", projspec::TYPE_OBJECT, true);
-        this->log_data(doc, "shape2", projspec::TYPE_OBJECT, true);
-
-        return std::make_unique<shape_op::Intersection>(
-                    this->get_shape_operations(doc["shape1"]),
-                    this->get_shape_operations(doc["shape2"])
-                );
-    } else if(type == "difference"){
-        this->log_data(doc, "shape1", projspec::TYPE_OBJECT, true);
-        this->log_data(doc, "shape2", projspec::TYPE_OBJECT, true);
-
-        return std::make_unique<shape_op::Difference>(
-                    this->get_shape_operations(doc["shape1"]),
-                    this->get_shape_operations(doc["shape2"])
-                );
-    }
-
-    return nullptr;
 }
 
 std::unique_ptr<Simulation> ProjectData::load_simulation(const Json::Value& data,

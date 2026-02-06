@@ -24,6 +24,7 @@ set(SOURCES
     internal_loads.cpp
     solver_manager.cpp
     shape_handler.cpp
+    shape_operations.cpp
 )
 
 add_subdirectory(pathfinding)

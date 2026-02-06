@@ -43,21 +43,21 @@ struct ObjectType{
     bool array = false;
 };
 
-const static ObjectType SOLID_TYPE{"solid_type"};
-const static ObjectType ANALYSIS{"analysis"};
-const static ObjectType MATERIAL{"material", true}; // ARRAY
-const static ObjectType GEOMETRY{"geometry", true}; // ARRAY
-const static ObjectType FIELDS{"fields", true}; // ARRAY
-const static ObjectType SIMULATION{"simulation"};
-const static ObjectType FINITE_ELEMENT{"finite_element"};
-const static ObjectType SIZING{"sizing"};
-const static ObjectType MESHER{"mesher"};
-const static ObjectType SHAPE_OPT{"shape_opt"};
-const static ObjectType TOPOPT{"topopt"};
-const static ObjectType LOADS{"loads", true}; // ARRAY
-const static ObjectType SUPPORTS{"supports", true}; // ARRAY
-const static ObjectType SPRINGS{"springs", true}; // ARRAY
-const static ObjectType INTERNAL_LOADS{"internal_loads", true}; // ARRAY
+// const static ObjectType SOLID_TYPE{"solid_type"};
+// const static ObjectType ANALYSIS{"analysis"};
+// const static ObjectType MATERIAL{"material", true}; // ARRAY
+// const static ObjectType GEOMETRY{"geometry", true}; // ARRAY
+// const static ObjectType FIELDS{"fields", true}; // ARRAY
+// const static ObjectType SIMULATION{"simulation"};
+// const static ObjectType FINITE_ELEMENT{"finite_element"};
+// const static ObjectType SIZING{"sizing"};
+// const static ObjectType MESHER{"mesher"};
+// const static ObjectType SHAPE_OPT{"shape_opt"};
+// const static ObjectType TOPOPT{"topopt"};
+// const static ObjectType LOADS{"loads", true}; // ARRAY
+// const static ObjectType SUPPORTS{"supports", true}; // ARRAY
+// const static ObjectType SPRINGS{"springs", true}; // ARRAY
+// const static ObjectType INTERNAL_LOADS{"internal_loads", true}; // ARRAY
 
 }
 
@@ -82,7 +82,8 @@ enum DataType{
     TYPE_RELATIVE_PATH,
     TYPE_CROSS_SECTION,
     TYPE_POINTER,
-    TYPE_MATRIX
+    TYPE_MATRIX,
+    TYPE_SHAPE_OP
 };
 
 struct ArrayRequirements;

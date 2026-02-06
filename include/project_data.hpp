@@ -231,8 +231,6 @@ class ProjectData {
 
     Projection::Parameter get_projection_parameter(const Json::Value& doc) const;
 
-    std::unique_ptr<shape_op::ShapeOp> get_shape_operations(const Json::Value& doc) const;
-
     std::unique_ptr<Simulation> load_simulation(const Json::Value& doc,
                                                 const projspec::RequirementConditions& conds);
 

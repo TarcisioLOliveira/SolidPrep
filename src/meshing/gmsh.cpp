@@ -26,13 +26,80 @@
 #include <gmsh.h>
 #include <algorithm>
 #include "project_data.hpp"
+#include <iterator>
 #include <unordered_map>
 #include <BOPAlgo_Splitter.hxx>
 #include <BRepBuilderAPI_Copy.hxx>
 #include <TopoDS.hxx>
 #include <set>
+#include <vector>
 
 namespace meshing{
+
+BoundaryRefinement::BoundaryRefinement(const projspec::DataMap* const data){
+    if(data != nullptr){
+        this->min_dist = data->get_double("min_dist");
+        this->max_dist = data->get_double("max_dist");
+        this->min_size = data->get_double("min_size");
+        this->root_op = data->get_shape_op("region");
+    }
+}
+
+std::vector<double> BoundaryRefinement::get_faces(const gmsh::vectorpair& geoms) const{
+    auto tmp = this->get_faces_int(this->root_op.get(), geoms);
+    std::vector<double> conv(tmp.size());
+    std::copy(tmp.begin(), tmp.end(), conv.begin());
+
+    return conv;
+}
+
+std::vector<int> BoundaryRefinement::get_faces_int(shape_op::ShapeOp* op, const gmsh::vectorpair& geoms) const{
+    switch(op->get_type()){
+        case shape_op::Code::GEOMETRY:{
+            const size_t id = op->get_id();
+            logger::log_assert(id < geoms.size(), logger::ERROR,
+                    "unknown geometry id: {}", id);
+            std::vector<int> up, s;
+            gmsh::model::getAdjacencies(geoms[id].first, geoms[id].second, up, s);
+            std::sort(s.begin(), s.end());
+
+            return s;
+        }
+        case shape_op::Code::UNION:{
+            auto s1 = this->get_faces_int(op->first(), geoms);
+            auto s2 = this->get_faces_int(op->second(), geoms);
+            s1.insert(s1.end(), s2.begin(), s2.end());
+            s2.clear();
+            std::sort(s1.begin(), s1.end());
+            return s1;
+        }
+        case shape_op::Code::INTERSECTION:{
+            auto s1 = this->get_faces_int(op->first(), geoms);
+            auto s2 = this->get_faces_int(op->second(), geoms);
+            std::vector<int> result;
+            std::set_intersection(s1.begin(), s1.end(), s2.begin(), s2.end(), std::back_inserter(result));
+            s1.clear();
+            s2.clear();
+            return result;
+        }
+        case shape_op::Code::DIFFERENCE:{
+            auto s1 = this->get_faces_int(op->first(), geoms);
+            auto s2 = this->get_faces_int(op->second(), geoms);
+            std::vector<int> result;
+            std::set_difference(s1.begin(), s1.end(), s2.begin(), s2.end(), std::back_inserter(result));
+            s1.clear();
+            s2.clear();
+            return result;
+        }
+        case shape_op::Code::SHELL:{
+            logger::log_assert(false, logger::ERROR,
+                    "SHELL shape operation is currently not implemented");
+            return std::vector<int>();
+        }
+    }
+
+    return std::vector<int>();
+}
 
 Gmsh::Gmsh(const projspec::DataMap& data):
     Meshing(data.proj->geometries, 
@@ -41,8 +108,12 @@ Gmsh::Gmsh(const projspec::DataMap& data):
             data.proj->thickness),
     tmp_scale(data.get_double("tmp_scale", 1.0)),
     size(tmp_scale*data.get_double("element_size")),
+    size_from_curvature(data.get_double("size_from_curvature", 0)),
     algorithm2D(data.get_int("algorithm2D", 6)),
-    algorithm3D(data.get_int("algorithm3D", 4)){
+    algorithm3D(data.get_int("algorithm3D", 4)),
+    bound_ref(data.get_object("boundary_refinement"))    
+{
+
 
 }
 
@@ -121,9 +192,9 @@ void Gmsh::mesh(const std::vector<Force>& forces,
 
     const size_t order = this->elem_info->get_element_order();
     gmsh::option::setNumber("Mesh.ElementOrder", order);
-    if(order > 1){
-        gmsh::option::setNumber("Mesh.HighOrderOptimize", 2);
-    }
+    //if(order > 1){
+    //    gmsh::option::setNumber("Mesh.HighOrderOptimize", 2);
+    //}
     gmsh::option::setNumber("Mesh.Optimize", 1);
     //gmsh::option::setNumber("Mesh.OptimizeNetgen", 1);
     gmsh::option::setNumber("Mesh.OptimizeThreshold", 0.3);
@@ -137,7 +208,7 @@ void Gmsh::mesh(const std::vector<Force>& forces,
     gmsh::option::setNumber("Mesh.AngleToleranceFacetOverlap", 1);
     gmsh::option::setNumber("Mesh.MeshSizeExtendFromBoundary", 0);
     gmsh::option::setNumber("Mesh.MeshSizeFromPoints", 0);
-    gmsh::option::setNumber("Mesh.MeshSizeFromCurvature", 0);
+    gmsh::option::setNumber("Mesh.MeshSizeFromCurvature", this->size_from_curvature);
     gmsh::option::setNumber("Mesh.ToleranceInitialDelaunay", 1e-2);
     gmsh::option::setNumber("Mesh.LcIntegrationPrecision", 1e-7);
 
@@ -164,6 +235,7 @@ void Gmsh::mesh(const std::vector<Force>& forces,
         sec.Perform();
         sec.DumpErrors(std::cout);
         sh = sec.Shape();
+
     }
 
     std::vector<size_t> geom_elem_mapping, elem_node_tags, bound_elem_node_tags;
@@ -240,6 +312,36 @@ std::unordered_map<size_t, MeshNode*> Gmsh::gmsh_meshing(bool has_condition_insi
         gmsh::model::occ::importShapesNativePointer(static_cast<const void*>(&sh), vec);
         gmsh::model::occ::removeAllDuplicates();
         gmsh::model::occ::synchronize();
+
+        // Refine mesh close to contact boundary (optional)
+        if(this->geometries.size() > 1 && this->bound_ref.defined()){
+            //const size_t N = vec.size()-1;
+            //const size_t num_pairs = N*(N+1)/2;
+            std::vector<double> result = this->bound_ref.get_faces(vec);
+
+            gmsh::model::mesh::field::add("Distance", 1);
+            gmsh::model::mesh::field::setNumber(1, "Sampling", 100);
+            gmsh::model::mesh::field::setNumbers(1, "SurfacesList", result);
+
+            //this->contact_size = 0.2; // temp
+            gmsh::model::mesh::field::add("Threshold", 2);
+            gmsh::model::mesh::field::setNumber(2, "InField", 1);
+            gmsh::model::mesh::field::setNumber(2, "SizeMin", this->bound_ref.min_size);
+            gmsh::model::mesh::field::setNumber(2, "SizeMax", this->size);
+            gmsh::model::mesh::field::setNumber(2, "DistMin", this->bound_ref.min_dist);
+            gmsh::model::mesh::field::setNumber(2, "DistMax", this->bound_ref.max_dist);
+
+            //gmsh::model::mesh::field::add("AutomaticMeshSizeField", 3);
+            //gmsh::model::mesh::field::setNumber(3, "hMax", this->size);
+            //gmsh::model::mesh::field::setNumber(3, "hMin", 0);
+            //gmsh::model::mesh::field::setNumber(3, "nPointsPerCircle", this->size_from_curvature);
+
+            //gmsh::model::mesh::field::add("Min", 100);
+            //gmsh::model::mesh::field::setNumbers(100, "FieldsList", {2, 3});
+
+            gmsh::model::mesh::field::setAsBackgroundMesh(2);
+            // https://gitlab.onelab.info/gmsh/gmsh/blob/gmsh_4_15_0/tutorials/c++/t10.cpp#L48
+        }
 
         gmsh::model::mesh::generate(dim);
 
@@ -428,8 +530,17 @@ const bool Gmsh::reg = Factory<Meshing>::add(
         {
             DataEntry{.name = "element_size", .type = TYPE_DOUBLE, .required = true},
             DataEntry{.name = "tmp_scale", .type = TYPE_DOUBLE, .required = false},
+            DataEntry{.name = "size_from_curvature", .type = TYPE_DOUBLE, .required = false},
             DataEntry{.name = "algorithm2D", .type = TYPE_INT, .required = false},
-            DataEntry{.name = "algorithm3D", .type = TYPE_INT, .required = false}
+            DataEntry{.name = "algorithm3D", .type = TYPE_INT, .required = false},
+            DataEntry{.name = "boundary_refinement", .type = TYPE_OBJECT, .required = false,
+                .object_data = {
+                    DataEntry{.name = "min_dist", .type = TYPE_DOUBLE, .required = true},
+                    DataEntry{.name = "max_dist", .type = TYPE_DOUBLE, .required = true},
+                    DataEntry{.name = "min_size", .type = TYPE_DOUBLE, .required = true},
+                    DataEntry{.name = "region", .type = TYPE_SHAPE_OP, .required = true},
+                }
+            }
         }
     }
 );

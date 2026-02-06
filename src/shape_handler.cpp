@@ -794,24 +794,24 @@ std::set<ShapeHandler::SuperimposedNodes*> ShapeHandler::apply_op(shape_op::Shap
         case shape_op::Code::INTERSECTION:{
             auto s1 = this->apply_op(op->first());
             auto s2 = this->apply_op(op->second());
-            std::vector<SuperimposedNodes*> result_vec(std::min(s1.size(), s2.size()));
+            std::vector<SuperimposedNodes*> result_vec;
             std::set<SuperimposedNodes*> result;
-            auto input_end = std::set_intersection(s1.begin(), s1.end(), s2.begin(), s2.end(), result_vec.begin());
+            std::set_intersection(s1.begin(), s1.end(), s2.begin(), s2.end(), std::back_inserter(result_vec));
             s1.clear();
             s2.clear();
-            result.insert(result_vec.begin(), input_end);
+            result.insert(result_vec.begin(), result_vec.end());
             result_vec.clear();
             return result;
         }
         case shape_op::Code::DIFFERENCE:{
             auto s1 = this->apply_op(op->first());
             auto s2 = this->apply_op(op->second());
-            std::vector<SuperimposedNodes*> result_vec(s1.size());
+            std::vector<SuperimposedNodes*> result_vec;
             std::set<SuperimposedNodes*> result;
-            auto input_end = std::set_difference(s1.begin(), s1.end(), s2.begin(), s2.end(), result_vec.begin());
+            std::set_difference(s1.begin(), s1.end(), s2.begin(), s2.end(), std::back_inserter(result_vec));
             s1.clear();
             s2.clear();
-            result.insert(result_vec.begin(), input_end);
+            result.insert(result_vec.begin(), result_vec.end());
             result_vec.clear();
             return result;
         }

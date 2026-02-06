@@ -21,113 +21,11 @@
 #ifndef SHAPE_HANDLER_HPP
 #define SHAPE_HANDLER_HPP
 
+#include <set>
 #include "general_solver/petsc_general_pcg.hpp"
 #include "meshing.hpp"
 #include "general_solver/mumps_general.hpp"
-#include <limits>
-#include <set>
-
-namespace shape_op{
-
-enum class Code{
-    UNION,
-    INTERSECTION,
-    DIFFERENCE,
-    GEOMETRY,
-    SHELL
-};
-
-class ShapeOp{
-    public:
-    ShapeOp(std::unique_ptr<ShapeOp> s1, std::unique_ptr<ShapeOp> s2):
-        s1(std::move(s1)), s2(std::move(s2)){}
-
-    virtual ~ShapeOp() = default;
-
-    virtual Code get_type() const = 0;
-    inline ShapeOp* first() const{
-        return s1.get();
-    }
-    inline ShapeOp* second() const{
-        return s2.get();
-    }
-    virtual size_t get_id() const{
-        return std::numeric_limits<size_t>::max();
-    }
-
-    private:
-    std::unique_ptr<ShapeOp> s1, s2;
-};
-
-class Union : public ShapeOp{
-    public:
-    Union(std::unique_ptr<ShapeOp> s1, std::unique_ptr<ShapeOp> s2):
-        ShapeOp(std::move(s1), std::move(s2)){}
-
-    virtual ~Union() = default;
-    virtual Code get_type() const override{
-        return Code::UNION;
-    }
-};
-
-class Intersection : public ShapeOp{
-    public:
-    Intersection(std::unique_ptr<ShapeOp> s1, std::unique_ptr<ShapeOp> s2):
-        ShapeOp(std::move(s1), std::move(s2)){}
-
-    virtual ~Intersection() = default;
-    virtual Code get_type() const override{
-        return Code::INTERSECTION;
-    }
-};
-
-class Difference : public ShapeOp{
-    public:
-    Difference(std::unique_ptr<ShapeOp> s1, std::unique_ptr<ShapeOp> s2):
-        ShapeOp(std::move(s1), std::move(s2)){}
-
-    virtual ~Difference() = default;
-    virtual Code get_type() const override{
-        return Code::DIFFERENCE;
-    }
-};
-
-class Geometry : public ShapeOp{
-    public:
-    Geometry(size_t id):
-        ShapeOp(nullptr, nullptr), id(id){}
-
-    virtual ~Geometry() = default;
-    virtual Code get_type() const override{
-        return Code::GEOMETRY;
-    }
-    virtual size_t get_id() const override{
-        return this->id;
-    }
-
-    private:
-    const size_t id;
-};
-
-class Shell : public ShapeOp{
-    public:
-    Shell(size_t id):
-        ShapeOp(nullptr, nullptr), id(id){}
-
-    virtual ~Shell() = default;
-    virtual Code get_type() const override{
-        return Code::SHELL;
-    }
-    virtual size_t get_id() const override{
-        return this->id;
-    }
-
-    private:
-    const size_t id;
-};
-
-
-};
+#include "shape_operations.hpp"
 
 class ShapeHandler{
     public:

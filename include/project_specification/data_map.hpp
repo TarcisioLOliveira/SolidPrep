@@ -26,6 +26,8 @@
 #include <unordered_map>
 #include "cross_section.hpp"
 #include "math/matrix.hpp"
+#include "shape_handler.hpp"
+#include "shape_operations.hpp"
 
 class ProjectData;
 
@@ -55,10 +57,13 @@ class DataArray{
         this->array_map[key] = std::move(value);
     }
     inline void set_cross_section(size_t key, CrossSection value){
-        this->cross_section_map[key] = value;
+        this->cross_section_map[key] = std::move(value);
     }
     inline void set_matrix(size_t key, math::Matrix value){
-        this->matrix_map[key] = value;
+        this->matrix_map[key] = std::move(value);
+    }
+    inline void set_shape_op(size_t key, shape_op::JsonRepresentation value){
+        this->shape_op_map[key] = std::move(value);
     }
 
     inline std::string get_string(size_t key, const std::string& none = "") const{
@@ -119,6 +124,14 @@ class DataArray{
         auto found = this->matrix_map.find(key);
         if(found != this->matrix_map.end()){
             return found->second;
+        } else {
+            return none;
+        }
+    }
+    inline std::unique_ptr<shape_op::ShapeOp> get_shape_op(size_t key, std::unique_ptr<shape_op::ShapeOp> none = nullptr){
+        auto found = this->shape_op_map.find(key);
+        if(found != this->shape_op_map.end()){
+            return found->second.construct();
         } else {
             return none;
         }
@@ -205,6 +218,7 @@ class DataArray{
     std::unordered_map<size_t, std::unique_ptr<DataArray>> array_map;
     std::unordered_map<size_t, CrossSection> cross_section_map;
     std::unordered_map<size_t, math::Matrix> matrix_map;
+    std::unordered_map<size_t, shape_op::JsonRepresentation> shape_op_map;
 };
 
 class DataMap{
@@ -234,10 +248,13 @@ class DataMap{
         this->array_map[key] = std::move(value);
     }
     inline void set_cross_section(const std::string& key, CrossSection value){
-        this->cross_section_map[key] = value;
+        this->cross_section_map[key] = std::move(value);
     }
     inline void set_matrix(const std::string& key, math::Matrix value){
-        this->matrix_map[key] = value;
+        this->matrix_map[key] = std::move(value);
+    }
+    inline void set_shape_op(const std::string& key, shape_op::JsonRepresentation value){
+        this->shape_op_map[key] = std::move(value);
     }
 
     inline bool exists_string(const std::string& key) const{
@@ -263,6 +280,9 @@ class DataMap{
     }
     inline bool exists_matrix(const std::string& key) const{
         return this->matrix_map.contains(key);
+    }
+    inline bool exists_shape_op(const std::string& key) const{
+        return this->shape_op_map.contains(key);
     }
 
     inline std::string get_string(const std::string& key, const std::string& none = "") const{
@@ -339,6 +359,14 @@ class DataMap{
             return none;
         }
     }
+    inline std::unique_ptr<shape_op::ShapeOp> get_shape_op(const std::string& key, std::unique_ptr<shape_op::ShapeOp> none = nullptr) const{
+        auto found = this->shape_op_map.find(key);
+        if(found != this->shape_op_map.end()){
+            return found->second.construct();
+        } else {
+            return none;
+        }
+    }
     private:
     std::unordered_map<std::string, std::string> string_map;
     std::unordered_map<std::string, bool> bool_map;
@@ -348,6 +376,7 @@ class DataMap{
     std::unordered_map<std::string, std::unique_ptr<DataArray>> array_map;
     std::unordered_map<std::string, CrossSection> cross_section_map;
     std::unordered_map<std::string, math::Matrix> matrix_map;
+    std::unordered_map<std::string, shape_op::JsonRepresentation> shape_op_map;
 };
 
 }
