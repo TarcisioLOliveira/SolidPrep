@@ -252,7 +252,7 @@ void FiniteElement::solve_frictionless_displ_log(const Meshing* const mesh, std:
                     logger::quick_log("g2", g2, "a2", a2);
                 }
             }
-            if(std::abs(g2/g1) > 1e3 && g2*g1 < 0){
+            if(std::abs(g2/g1) > 1e2 && g2*g1 < 0){
                 if(a2 == 0){
                     a2 = a1;
                     g2 = g1;
@@ -262,10 +262,11 @@ void FiniteElement::solve_frictionless_displ_log(const Meshing* const mesh, std:
                     }
                 } else {
                     while(g2*g1 < 0){
-                        a2 /= 2;
+                        a2 *= 0.7;
                         g2 = get_g(a2);
                     }
-                    a2 *= 2;
+                    a2 /= 0.7;
+                    g2 = get_g(a2);
                 }
                 logger::quick_log(a2, g2);
             }
