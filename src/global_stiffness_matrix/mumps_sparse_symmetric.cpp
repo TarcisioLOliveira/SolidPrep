@@ -31,7 +31,7 @@ void MUMPSSparseSymmetric::generate(const Meshing * const mesh, const size_t u_s
     this->sK.zero();
     this->generate_base(mesh, u_size, l_num, node_positions, topopt, D_cache, u_ext, lambda, type);
     size_t M = u_size;
-    if(type != FiniteElement::ContactType::RIGID){
+    if(type == FiniteElement::ContactType::FRICTIONLESS_DISPL_SIMPLE){
         M += l_num;
     }
     if(this->first_time){

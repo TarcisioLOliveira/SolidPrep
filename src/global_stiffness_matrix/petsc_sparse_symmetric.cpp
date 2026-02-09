@@ -58,7 +58,7 @@ void PETScSparseSymmetricCPU::preallocate(const Meshing * const mesh, const size
     MatSetType(this->K, MATAIJ);
 
     long M = u_size;
-    if(type != FiniteElement::ContactType::RIGID){
+    if(type == FiniteElement::ContactType::FRICTIONLESS_DISPL_SIMPLE){
         M += l_num;
     }
     MPI_Bcast(&M, 1, MPI_LONG, 0, MPI_COMM_WORLD);
@@ -180,7 +180,7 @@ void PETScSparseSymmetricCUDA::preallocate(const Meshing * const mesh, const siz
     MatSetType(this->K, MATAIJCUSPARSE);
 
     long M = u_size;
-    if(type != FiniteElement::ContactType::RIGID){
+    if(type == FiniteElement::ContactType::FRICTIONLESS_DISPL_SIMPLE){
         M += l_num;
     }
     MPI_Bcast(&M, 1, MPI_LONG, 0, MPI_COMM_WORLD);

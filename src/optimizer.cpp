@@ -285,7 +285,6 @@ void NodeShapeBasedOptimizer::contact_gradient(const Meshing* const mesh, const 
         math::Vector le_full(2*kw);
         const auto& contact_nodes = this->shape_handler.get_contact_nodes();
         const double lambda = fem->get_lambda(0)[0];
-        const double lambda_dsh = fem->get_lambda_adjoint(0)[0];
 
         std::vector<gp_Pnt> pnts(bnode_num);
         for(auto& shn:contact_nodes){
@@ -302,10 +301,9 @@ void NodeShapeBasedOptimizer::contact_gradient(const Meshing* const mesh, const 
                     }
                 }
                 for(size_t j = 0; j < dof; ++j){
-                    const auto dg = b1->parent->Kue_log_dsh(b2->parent, u, pnts, -b1->normal, C, K, pb.en1, pb.en2, j);
-                    const auto g = b1->parent->get_log_integ_dsh(b2->parent, u, pnts, -b1->normal, C, K, pb.en1, pb.en2, j);
+                    const auto dg = b1->parent->Kue_log_dsh(b2->parent, u, pnts, -b1->normal, C, K, lambda, pb.en1, pb.en2, j);
 
-                    grad[shn.id*dof + j] -= lambda*le_full.T()*dg + lambda_dsh*g;
+                    grad[shn.id*dof + j] -= le_full.T()*dg;
                 }
             }
         }

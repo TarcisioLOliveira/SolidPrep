@@ -96,7 +96,7 @@ void EigenSparseSymmetric::generate(const Meshing * const mesh, const size_t u_s
     this->l_num = l_num;
     if(this->first_time){
         size_t matrix_width = u_size;
-        if(type != FiniteElement::ContactType::RIGID){
+        if(type == FiniteElement::ContactType::FRICTIONLESS_DISPL_SIMPLE){
             matrix_width += l_num;
         }
         this->K = Mat(matrix_width, matrix_width);

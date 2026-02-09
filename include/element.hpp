@@ -256,15 +256,15 @@ class MeshElement : public Element{
     virtual math::Matrix get_uu(const MeshElement* const e2, const std::vector<gp_Pnt>& bounds, const gp_Dir n) const = 0;
 
     virtual math::Matrix get_MnMn(const MeshElement* const e2, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds, const gp_Dir n) const = 0;
-    virtual math::Matrix get_MnMn_log(const MeshElement* const e2, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds, const gp_Dir n, const double C, const double K) const = 0;
-    virtual double get_log_integ(const MeshElement* const e2, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds, const gp_Dir n, const double C, const double K) const = 0;
-    virtual double get_log_integ_deriv(const MeshElement* const e2, const std::vector<long>& node_positions, const std::vector<double>& u, const std::vector<double>& du, const std::vector<gp_Pnt>& bounds, const gp_Dir n, const double C, const double K) const = 0;
-    virtual math::Matrix Kue_log(const MeshElement* const e2, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds, const gp_Dir n, const double C, const double K) const = 0;
-    virtual void Ku_log(const double mult, const MeshElement* const e2, const std::vector<long>& node_positions, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds, const gp_Dir n, std::vector<double>& Ku, const double C, const double K) const = 0;
-    virtual void dKu_log(const double mult, const MeshElement* const e2, const std::vector<long>& node_positions, const std::vector<double>& u, const std::vector<double>& du, const std::vector<gp_Pnt>& bounds, const gp_Dir n, std::vector<double>& dKu, const double C, const double K) const = 0;
 
-    virtual double get_log_integ_dsh(const MeshElement* const e2, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds, const gp_Dir n, const double C, const double K, const size_t ni1, const size_t ni2, const size_t ni_dof) const = 0;
-    virtual math::Vector Kue_log_dsh(const MeshElement* const e2, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds, const gp_Dir n, const double C, const double K, const size_t ni1, const size_t ni2, const size_t ni_dof) const = 0;
+    virtual double get_log_integ(const MeshElement* const e2, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds, const gp_Dir n, const double K) const = 0;
+
+    virtual math::Matrix get_MnMn_log(const MeshElement* const e2, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds, const gp_Dir n, const double MU, const double K, const double L) const = 0;
+    virtual math::Matrix Kue_log(const MeshElement* const e2, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds, const gp_Dir n, const double MU, const double K, const double L) const = 0;
+    virtual void Ku_log(const MeshElement* const e2, const std::vector<long>& node_positions, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds, const gp_Dir n, std::vector<double>& Ku, const double MU, const double K, const double L) const = 0;
+    virtual void dKu_log(const MeshElement* const e2, const std::vector<long>& node_positions, const std::vector<double>& u, const std::vector<double>& du, const std::vector<gp_Pnt>& bounds, const gp_Dir n, std::vector<double>& dKu, const double MU, const double K, const double L) const = 0;
+
+    virtual math::Vector Kue_log_dsh(const MeshElement* const e2, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds, const gp_Dir n, const double MU, const double K, const double L, const size_t ni1, const size_t ni2, const size_t ni_dof) const = 0;
 
     virtual math::Matrix get_Ni(const gp_Pnt& p) const = 0;
     virtual math::Vector get_Ni_1dof(const gp_Pnt& p) const{
@@ -595,40 +595,30 @@ class MeshElement : public Element{
         Element(std::vector<Node*>(nodes.begin(), nodes.end()))
         {}
 
-    inline double H(const double x, const double C, const double K) const{
-        if(std::abs(K*x) < 345){
-            const double ln = std::log(1 + std::exp(K*x));
-            const double h = (C*ln*ln)/(K*K);
+    inline double H(const double x, const double K) const{
+        if(std::abs(K*x) < 2*345){
+            const double h = std::log(1.0 + std::exp(K*x))/K;
             return h;
         } else if(x > 0){
-            return C*x*x;
+            return x;
         } else {
             return 0;
         }
     }
-    inline double dH(const double x, const double C, const double K) const{
-        if(std::abs(K*x) < 345){
-            const double ekx1 = 1 + std::exp(K*x);
-            const double ekx_1 = 1 + std::exp(-K*x);
-            const double ln = std::log(ekx1);
-            const double dh = (2*C*ln)/(K*ekx_1);
+    inline double dH(const double x, const double K) const{
+        if(std::abs(K*x) < 2*345){
+            const double dh = 1.0/(1.0 + std::exp(-K*x));
             return dh;
         } else if(x > 0){
-            return 2*C*x;
+            return 1;
         } else {
             return 0;
         }
     }
-    inline double ddH(const double x, const double C, const double K) const{
-        if(std::abs(K*x) < 345){
-            const double ekx1 = 1 + std::exp(K*x);
-            const double e_kx = std::exp(-K*x);
-            const double ekx_1 = 1 + e_kx;
-            const double ln = std::log(ekx1);
-            const double ddh = 2*C*((ln*e_kx + 1)/(ekx_1*ekx_1));
+    inline double ddH(const double x, const double K) const{
+        if(std::abs(K*x) < 2*345){
+            const double ddh = K/(2.0*(std::cosh(K*x) + 1.0));
             return ddh;
-        } else if(x > 0){
-            return 2*C;
         } else {
             return 0;
         }
