@@ -119,7 +119,7 @@ void PETScPCG::solve(std::vector<double>& load){
             KSPSetTolerances(this->ksp, 1e-2, 1e-50, 1e10, 1e5);
             //PCJacobiSetUseAbs(this->pc, PETSC_TRUE);
             //PCJacobiSetFixDiagonal(this->pc, PETSC_TRUE);
-            PCJacobiSetType(this->pc, PC_JACOBI_ROWMAX);
+            //PCJacobiSetType(this->pc, PC_JACOBI_ROWMAX);
             //KSPSetType(this->ksp, KSPMINRES);
             //KSPMINRESSetUseQLP(this->ksp, PETSC_TRUE);
         } else if(this->contact_data.contact_type >= FiniteElement::ContactType::FRICTIONLESS_DISPL_SIMPLE){

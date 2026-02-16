@@ -181,7 +181,7 @@ class MeshElementCommon : public MeshElement{
         }
     }
 
-    virtual double get_log_integ(const MeshElement* const e2, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds, const gp_Dir n, const double K) const override{
+    virtual double get_log_integ(const MeshElement* const e2, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds, const gp_Dir n, const double MU, const double K, const math::Vector& L) const override{
         const size_t ORDER = T::INTEG_ORDER;
         const size_t NODES_PER_ELEM = T::NODES_PER_ELEM;
         const size_t DOF = T::NODE_DOF;
@@ -190,7 +190,7 @@ class MeshElementCommon : public MeshElement{
         math::VectorSliceGeneralView uv1(u_ext, math::slicer::from_node_upos(this->nodes, NODES_PER_ELEM, DOF));
         math::VectorSliceGeneralView uv2(u_ext, math::slicer::from_node_upos(e2->nodes, NODES_PER_ELEM, DOF));
 
-        constexpr size_t GN = 5*ORDER + 1;
+        constexpr size_t GN = 3*ORDER + 8;
 
         double result = 0;
         this->area_integral<GN>(result,
@@ -203,14 +203,16 @@ class MeshElementCommon : public MeshElement{
             for(size_t j = 0; j < DIM; ++j){
                 gp += (up2[j] - up1[j])*n.Coord(1+j);
             }
+            const auto N1d = this->get_Ni_1dof(pi);
+            const double l = N1d.T()*L;
             const double log = this->H(gp, K);
-            return log;
+            return l*log + MU*log*log/2.0;
         },
         bounds);
 
         return result;
     }
-    virtual math::Matrix get_MnMn_log(const MeshElement* const e2, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds, const gp_Dir n, const double MU, const double K, const double L) const override{
+    virtual math::Matrix get_MnMn_log(const MeshElement* const e2, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds, const gp_Dir n, const double MU, const double K, const math::Vector& L) const override{
         const size_t ORDER = T::INTEG_ORDER;
         const size_t NODES_PER_ELEM = T::NODES_PER_ELEM;
         const size_t DOF = T::NODE_DOF;
@@ -223,7 +225,7 @@ class MeshElementCommon : public MeshElement{
         math::Vector NN(2*KW, 0);
         math::Matrix MnMn(2*KW, 2*KW, 0);
 
-        constexpr size_t GN = 5*ORDER + 1;
+        constexpr size_t GN = 3*ORDER + 8;
 
         this->area_integral<GN>(MnMn,
         [&](const gp_Pnt& pi){
@@ -235,10 +237,12 @@ class MeshElementCommon : public MeshElement{
             for(size_t j = 0; j < DIM; ++j){
                 gp += (up2[j] - up1[j])*n.Coord(1+j);
             }
+            const auto N1d = this->get_Ni_1dof(pi);
+            const double l = N1d.T()*L;
             const double h1 = this->H(gp, K);
             const double h2 = this->dH(gp, K);
             const double h3 = this->ddH(gp, K);
-            const double log = (L + MU*h1)*h3 + MU*h2*h2;
+            const double log = (l + MU*h1)*h3 + MU*h2*h2;
             NN.fill(0);
             for(size_t i = 0; i < KW; ++i){
                 for(size_t j = 0; j < DIM; ++j){
@@ -252,7 +256,7 @@ class MeshElementCommon : public MeshElement{
 
         return MnMn;
     }
-    virtual math::Matrix Kue_log(const MeshElement* const e2, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds, const gp_Dir n, const double MU, const double K, const double L) const override{
+    virtual math::Matrix Kue_log(const MeshElement* const e2, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds, const gp_Dir n, const double MU, const double K, const math::Vector& L) const override{
         const size_t ORDER = T::INTEG_ORDER;
         const size_t NODES_PER_ELEM = T::NODES_PER_ELEM;
         const size_t DOF = T::NODE_DOF;
@@ -265,7 +269,7 @@ class MeshElementCommon : public MeshElement{
         math::Matrix NN(2*KW, 1, 0);
         math::Matrix Mn(2*KW, 1, 0);
 
-        constexpr size_t GN = 5*ORDER + 1;
+        constexpr size_t GN = 3*ORDER + 8;
 
         this->area_integral<GN>(Mn,
         [&](const gp_Pnt& pi){
@@ -277,9 +281,11 @@ class MeshElementCommon : public MeshElement{
             for(size_t j = 0; j < DIM; ++j){
                 gp += (up2[j] - up1[j])*n.Coord(1+j);
             }
+            const auto N1d = this->get_Ni_1dof(pi);
+            const double l = N1d.T()*L;
             const double h1 = this->H(gp, K);
             const double h2 = this->dH(gp, K);
-            const double log = (L + MU*h1)*h2;
+            const double log = (l + MU*h1)*h2;
             NN.fill(0);
             for(size_t i = 0; i < KW; ++i){
                 for(size_t j = 0; j < DIM; ++j){
@@ -293,7 +299,7 @@ class MeshElementCommon : public MeshElement{
 
         return Mn;
     }
-    virtual void Ku_log(const MeshElement* const e2, const std::vector<long>& node_positions, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds, const gp_Dir n, std::vector<double>& Ku, const double MU, const double K, const double L) const override{
+    virtual void Ku_log(const MeshElement* const e2, const std::vector<long>& node_positions, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds, const gp_Dir n, std::vector<double>& Ku, const double MU, const double K, const math::Vector& L) const override{
         const size_t NODES_PER_ELEM = T::NODES_PER_ELEM;
         const size_t DOF = T::NODE_DOF;
         const size_t KW = T::K_DIM;
@@ -313,7 +319,7 @@ class MeshElementCommon : public MeshElement{
             }
         }
     }
-    virtual math::Vector Kue_log_dsh(const MeshElement* const e2, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds, const gp_Dir n, const double MU, const double K, const double L, const size_t ni1, const size_t ni2, const size_t ni_dof) const override{
+    virtual math::Vector Kue_log_dsh(const MeshElement* const e2, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds, const gp_Dir n, const double MU, const double K, const math::Vector& L, const size_t ni1, const size_t ni2, const size_t ni_dof) const override{
         const size_t ORDER = T::INTEG_ORDER;
         const size_t NODES_PER_ELEM = T::NODES_PER_ELEM;
         const size_t DOF = T::NODE_DOF;
@@ -326,7 +332,7 @@ class MeshElementCommon : public MeshElement{
         math::Vector NN(2*KW, 0);
         math::Vector Mn(2*KW, 0);
 
-        constexpr size_t GN = 5*ORDER + 1;
+        constexpr size_t GN = 3*ORDER + 8;
 
         this->area_integral<GN>(Mn,
         [&](const gp_Pnt& pi){
@@ -344,16 +350,21 @@ class MeshElementCommon : public MeshElement{
                 gp += (up2[j] - up1[j])*n.Coord(1+j);
                 dgp += (dup2[j] - dup1[j])*n.Coord(1+j);
             }
+            const auto N1d = this->get_Ni_1dof(pi);
+            const auto dN1d = this->get_dN_1dof_sh(pi, ni1, ni_dof); // NEED Ni_1dof_dsh!!!!!!!!!!!!!!!!!!!!
+            const double l = N1d.T()*L;
+            const double dl = dN1d.T()*L;
             const double h1 = this->H(gp, K);
             const double h2 = this->dH(gp, K);
             const double h3 = this->ddH(gp, K);
-            const double log1 = (L + MU*h1)*h3 + MU*h2*h2;
-            const double log2 = (L + MU*h1)*h2;
+            const double log1 = (l + MU*h1)*h3 + MU*h2*h2;
+            const double log2 = (l + MU*h1)*h2;
+            const double log3 = dl*h2;
             NN.fill(0);
             for(size_t i = 0; i < KW; ++i){
                 for(size_t j = 0; j < DIM; ++j){
-                    NN[i] -= (log1*dgp*N1(j, i) + log2*dN1(j, i))*n.Coord(1+j);
-                    NN[i + KW] += (log1*dgp*N2(j, i) + log2*dN2(j, i))*n.Coord(1+j);
+                    NN[i] -= (log1*dgp*N1(j, i) + log2*dN1(j, i) + log3*N1(j, i))*n.Coord(1+j);
+                    NN[i + KW] += (log1*dgp*N2(j, i) + log2*dN2(j, i) + log3*N2(j, i))*n.Coord(1+j);
                 }
             }
             return NN;
@@ -363,7 +374,7 @@ class MeshElementCommon : public MeshElement{
         return Mn;
     }
 
-    virtual void dKu_log(const MeshElement* const e2, const std::vector<long>& node_positions, const std::vector<double>& u, const std::vector<double>& du, const std::vector<gp_Pnt>& bounds, const gp_Dir n, std::vector<double>& dKu, const double MU, const double K, const double L) const override{
+    virtual void dKu_log(const MeshElement* const e2, const std::vector<long>& node_positions, const std::vector<double>& u, const std::vector<double>& du, const std::vector<gp_Pnt>& bounds, const gp_Dir n, std::vector<double>& dKu, const double MU, const double K, const math::Vector& L) const override{
         const size_t ORDER = T::ORDER;
         const size_t NODES_PER_ELEM = T::NODES_PER_ELEM;
         const size_t DOF = T::NODE_DOF;
@@ -378,7 +389,7 @@ class MeshElementCommon : public MeshElement{
         math::Vector NN(2*KW, 0);
         math::Vector Mn(2*KW, 0);
 
-        constexpr size_t GN = 5*ORDER + 1;
+        constexpr size_t GN = 3*ORDER + 8;
 
         this->area_integral<GN>(Mn,
         [&](const gp_Pnt& pi){
@@ -394,10 +405,12 @@ class MeshElementCommon : public MeshElement{
                 gp += (up2[j] - up1[j])*n.Coord(1+j);
                 dgp += (dup2[j] - dup1[j])*n.Coord(1+j);
             }
+            const auto N1d = this->get_Ni_1dof(pi);
+            const double l = N1d.T()*L;
             const double h1 = this->H(gp, K);
             const double h2 = this->dH(gp, K);
             const double h3 = this->ddH(gp, K);
-            const double dlog = ((L + MU*h1)*h3 + MU*h2*h2)*dgp;
+            const double dlog = ((l + MU*h1)*h3 + MU*h2*h2)*dgp;
             NN.fill(0);
             for(size_t i = 0; i < KW; ++i){
                 for(size_t j = 0; j < DIM; ++j){

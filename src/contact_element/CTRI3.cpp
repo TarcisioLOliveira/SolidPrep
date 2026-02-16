@@ -21,6 +21,7 @@
 #include <lapacke.h>
 #include "contact_element/CTRI3.hpp"
 #include "math/matrix.hpp"
+#include "math/slicer.hpp"
 #include "utils/gauss_legendre.hpp"
 #include "element_factory.hpp"
 
@@ -353,6 +354,56 @@ math::Matrix CTRI3::absorption_1dof() const{
         NN += it->w*(Nl*Nl.T());
     }
     NN *= this->delta;
+
+    return NN;
+}
+
+math::Vector CTRI3::lambda_source_log(const std::vector<double>& u_ext, const gp_Dir n, const double K) const{
+
+    auto e_info = this->e1->get_element_info();
+    const auto P_N = e_info->get_nodes_per_element();
+
+    math::VectorSliceGeneralView uv1(u_ext, math::slicer::from_node_upos(this->e1->nodes, P_N, NODE_DOF));
+    math::VectorSliceGeneralView uv2(u_ext, math::slicer::from_node_upos(this->e2->nodes, P_N, NODE_DOF));
+    
+    math::Vector NN(NODES_PER_ELEM);
+
+    //const auto& gli = utils::GaussLegendreTri<6>::get();
+    //for(auto it = gli.begin(); it != gli.end(); ++it){
+    //    const gp_Pnt pi = this->GS_point(it->a, it->b, it->c);
+    //    const gp_Pnt rpi = this->R_GS_point(it->a, it->b, it->c);
+    //    const auto Nl = this->N_mat_1dof(rpi);
+    //    const auto N1 = this->e1->get_Ni(pi);
+    //    const auto N2 = this->e2->get_Ni(pi);
+    //    double gp = 0;
+    //    math::Vector up1(N1*uv1);
+    //    math::Vector up2(N2*uv2);
+    //    for(size_t j = 0; j < DIM; ++j){
+    //        gp += (up2[j] - up1[j])*n.Coord(1+j);
+    //    }
+    //    const double h1 = this->H(gp, K);
+    //    NN += (it->w*h1)*Nl;
+    //}
+    //NN *= this->delta;
+
+    std::array<double, NODES_PER_ELEM> w;
+    for(size_t i = 0; i < NODES_PER_ELEM; ++i){
+        std::fill(w.begin(), w.end(), 0.0);
+        w[i] = 1;
+        const gp_Pnt pi = this->GS_point(w[0], w[1], w[2]);
+        const gp_Pnt rpi = this->R_GS_point(w[0], w[1], w[2]);
+        const auto Nl = this->N_mat_1dof(rpi);
+        const auto N1 = this->e1->get_Ni(pi);
+        const auto N2 = this->e2->get_Ni(pi);
+        double gp = 0;
+        math::Vector up1(N1*uv1);
+        math::Vector up2(N2*uv2);
+        for(size_t j = 0; j < DIM; ++j){
+            gp += (up2[j] - up1[j])*n.Coord(1+j);
+        }
+        const double h1 = this->H(gp, K);
+        NN[i] = h1;
+    }
 
     return NN;
 }

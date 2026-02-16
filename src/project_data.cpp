@@ -625,10 +625,10 @@ FiniteElement::ContactData ProjectData::get_contact_data(const Json::Value& doc)
         } else if(data.contact_type == FiniteElement::ContactType::FRICTIONLESS_DISPL_LOG){
             this->log_data(doc, "step_tol", projspec::TYPE_DOUBLE, true);
             this->log_data(doc, "K", projspec::TYPE_DOUBLE, true);
-            this->log_data(doc, "C", projspec::TYPE_DOUBLE, true);
+            this->log_data(doc, "MU", projspec::TYPE_DOUBLE, true);
             data.step_tol = doc["step_tol"].asDouble();
             data.HK = doc["K"].asDouble();
-            data.HC = doc["C"].asDouble();
+            data.HMU = doc["MU"].asDouble();
             if(this->log_data(doc, "max_step", projspec::TYPE_DOUBLE, false)){
                 data.max_step = doc["max_step"].asDouble();
             }

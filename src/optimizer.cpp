@@ -279,13 +279,14 @@ void NodeShapeBasedOptimizer::contact_gradient(const Meshing* const mesh, const 
     const size_t dof = mesh->elem_info->get_dof_per_node();
 
     if(mesh->proj_data->contact_data.contact_type == FiniteElement::ContactType::FRICTIONLESS_DISPL_LOG){
-        double C, K;
-        fem->view_matrix(0)->get_C_K_log(C, K);
+        const double MU = fem->view_matrix(0)->HMU;
+        const double K = fem->view_matrix(0)->HK;
 
         math::Vector le_full(2*kw);
         const auto& contact_nodes = this->shape_handler.get_contact_nodes();
-        const double lambda = fem->get_lambda(0)[0];
+        const auto& lambda = fem->get_lambda(0);
 
+        math::Vector L(bnode_num);
         std::vector<gp_Pnt> pnts(bnode_num);
         for(auto& shn:contact_nodes){
             for(auto& pb:shn.elements){
@@ -293,6 +294,7 @@ void NodeShapeBasedOptimizer::contact_gradient(const Meshing* const mesh, const 
                 const auto b2 = pb.e->b2;
                 for(size_t n = 0; n < bnode_num; ++n){
                     pnts[n] = b1->nodes[n]->point;
+                    L[n] = lambda[mesh->lag_node_map.at(b1->nodes[n]->id)];
                 }
                 for(size_t n = 0; n < node_num; ++n){
                     for(size_t j = 0; j < dof; ++j){
@@ -301,7 +303,7 @@ void NodeShapeBasedOptimizer::contact_gradient(const Meshing* const mesh, const 
                     }
                 }
                 for(size_t j = 0; j < dof; ++j){
-                    const auto dg = b1->parent->Kue_log_dsh(b2->parent, u, pnts, -b1->normal, C, K, lambda, pb.en1, pb.en2, j);
+                    const auto dg = b1->parent->Kue_log_dsh(b2->parent, u, pnts, -b1->normal, MU, K, L, pb.en1, pb.en2, j);
 
                     grad[shn.id*dof + j] -= le_full.T()*dg;
                 }

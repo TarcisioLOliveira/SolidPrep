@@ -432,7 +432,68 @@ math::Matrix H8::get_MnMn(const MeshElement* const e2, const std::vector<double>
 
     return MnMn;
 }
-math::Matrix H8::get_MnMn_log(const MeshElement* const e2, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds, const gp_Dir n, const double MU, const double K, const double L) const{
+
+double H8::get_log_integ(const MeshElement* const e2, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds, const gp_Dir n, const double MU, const double K, const math::Vector& L) const{
+    const size_t DOF = NODE_DOF;
+    const size_t KW = K_DIM;
+
+    std::array<double, BOUNDARY_NODES_PER_ELEM> x, y, z;
+    const gp_Pnt c(this->get_centroid());
+    for(size_t i = 0; i < BOUNDARY_NODES_PER_ELEM; ++i){
+        x[i] = bounds[i].X() - c.X();
+        y[i] = bounds[i].Y() - c.Y();
+        z[i] = bounds[i].Z() - c.Z();
+    }
+
+    math::Vector uv1(KW), uv2(KW);
+    for(size_t i = 0; i < NODES_PER_ELEM; ++i){
+        for(size_t j = 0; j < DOF; ++j){
+            uv1[i*DOF + j] = u_ext[this->nodes[i]->u_pos[j]];
+            uv2[i*DOF + j] = u_ext[e2->nodes[i]->u_pos[j]];
+        }
+    }
+    math::Vector NN(2*KW, 0);
+
+    double integ = 0;
+
+    constexpr size_t GN = 3*ORDER + 8;
+    const auto& GL = utils::GaussLegendre<GN>::get();
+
+    const CubeSide cs = this->get_cube_side(bounds);
+
+    for(auto xi = GL.begin(); xi < GL.end(); ++xi){
+        for(auto eta = GL.begin(); eta < GL.end(); ++eta){
+
+            const auto drnorm = this->surface_drnorm(xi->x, eta->x, x, y, z);
+            const gp_Pnt pi = this->to_surface_point(xi->x, eta->x, cs);
+
+            const auto N1 = this->get_Ni(pi);
+            const auto N2 = e2->get_Ni(pi);
+            double gp = 0;
+            math::Vector up1(N1*uv1);
+            math::Vector up2(N2*uv2);
+            for(size_t j = 0; j < DIM; ++j){
+                gp += (up2[j] - up1[j])*n.Coord(1+j);
+            }
+            const auto N1d = this->get_Ni_1dof(pi);
+            const double l = N1d.T()*L;
+            const double h1 = this->H(gp, K);
+            const double log = l*h1 + MU*h1*h1/2.0;
+            NN.fill(0);
+            for(size_t i = 0; i < KW; ++i){
+                for(size_t j = 0; j < DIM; ++j){
+                    NN[i] -= N1(j, i)*n.Coord(1+j);
+                    NN[i + KW] += N2(j, i)*n.Coord(1+j);
+                }
+            }
+            integ += xi->w*eta->w*drnorm*log;
+        }
+    }
+
+    return integ;
+}
+
+math::Matrix H8::get_MnMn_log(const MeshElement* const e2, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds, const gp_Dir n, const double MU, const double K, const math::Vector& L) const{
     const size_t DOF = NODE_DOF;
     const size_t KW = K_DIM;
 
@@ -454,7 +515,7 @@ math::Matrix H8::get_MnMn_log(const MeshElement* const e2, const std::vector<dou
     math::Vector NN(2*KW, 0);
     math::Matrix MnMn(2*KW, 2*KW, 0);
 
-    constexpr size_t GN = 2*ORDER + 1;
+    constexpr size_t GN = 3*ORDER + 8;
     const auto& GL = utils::GaussLegendre<GN>::get();
 
     const CubeSide cs = this->get_cube_side(bounds);
@@ -473,10 +534,12 @@ math::Matrix H8::get_MnMn_log(const MeshElement* const e2, const std::vector<dou
             for(size_t j = 0; j < DIM; ++j){
                 gp += (up2[j] - up1[j])*n.Coord(1+j);
             }
+            const auto N1d = this->get_Ni_1dof(pi);
+            const double l = N1d.T()*L;
             const double h1 = this->H(gp, K);
             const double h2 = this->dH(gp, K);
             const double h3 = this->ddH(gp, K);
-            const double log = (L + MU*h1)*h3 + MU*h2*h2;
+            const double log = (l + MU*h1)*h3 + MU*h2*h2;
             NN.fill(0);
             for(size_t i = 0; i < KW; ++i){
                 for(size_t j = 0; j < DIM; ++j){
@@ -490,7 +553,7 @@ math::Matrix H8::get_MnMn_log(const MeshElement* const e2, const std::vector<dou
 
     return MnMn;
 }
-void H8::Ku_log(const MeshElement* const e2, const std::vector<long>& node_positions, const std::vector<double>& u, const std::vector<gp_Pnt>& bounds, const gp_Dir n, std::vector<double>& Ku, const double MU, const double K, const double L) const{
+void H8::Ku_log(const MeshElement* const e2, const std::vector<long>& node_positions, const std::vector<double>& u, const std::vector<gp_Pnt>& bounds, const gp_Dir n, std::vector<double>& Ku, const double MU, const double K, const math::Vector& L) const{
     const size_t DOF = NODE_DOF;
     const size_t KW = K_DIM;
 
@@ -519,7 +582,7 @@ void H8::Ku_log(const MeshElement* const e2, const std::vector<long>& node_posit
     math::Vector NN(2*KW, 0);
     math::Vector Mn(2*KW, 0);
 
-    constexpr size_t GN = 2*ORDER + 2;
+    constexpr size_t GN = 3*ORDER + 8;
     const auto& GL = utils::GaussLegendre<GN>::get();
 
     const CubeSide cs = this->get_cube_side(bounds);
@@ -537,9 +600,11 @@ void H8::Ku_log(const MeshElement* const e2, const std::vector<long>& node_posit
             for(size_t j = 0; j < DIM; ++j){
                 gp += (up2[j] - up1[j])*n.Coord(1+j);
             }
+            const auto N1d = this->get_Ni_1dof(pi);
+            const double l = N1d.T()*L;
             const double h1 = this->H(gp, K);
             const double h2 = this->dH(gp, K);
-            const double log = (L + MU*h1)*h2;
+            const double log = (l + MU*h1)*h2;
             NN.fill(0);
             for(size_t i = 0; i < KW; ++i){
                 for(size_t j = 0; j < DIM; ++j){
@@ -563,7 +628,7 @@ void H8::Ku_log(const MeshElement* const e2, const std::vector<long>& node_posit
         }
     }
 }
-void H8::dKu_log(const MeshElement* const e2, const std::vector<long>& node_positions, const std::vector<double>& u, const std::vector<double>& du, const std::vector<gp_Pnt>& bounds, const gp_Dir n, std::vector<double>& dKu, const double MU, const double K, const double L) const{
+void H8::dKu_log(const MeshElement* const e2, const std::vector<long>& node_positions, const std::vector<double>& u, const std::vector<double>& du, const std::vector<gp_Pnt>& bounds, const gp_Dir n, std::vector<double>& dKu, const double MU, const double K, const math::Vector& L) const{
     const size_t DOF = NODE_DOF;
     const size_t KW = K_DIM;
 
@@ -594,7 +659,7 @@ void H8::dKu_log(const MeshElement* const e2, const std::vector<long>& node_posi
     math::Vector NN(2*KW, 0);
     math::Vector Mn(2*KW, 0);
 
-    constexpr size_t GN = 2*ORDER + 1;
+    constexpr size_t GN = 3*ORDER + 8;
     const auto& GL = utils::GaussLegendre<GN>::get();
 
     const CubeSide cs = this->get_cube_side(bounds);
@@ -616,10 +681,12 @@ void H8::dKu_log(const MeshElement* const e2, const std::vector<long>& node_posi
                 gp += (up2[j] - up1[j])*n.Coord(1+j);
                 dgp += (dup2[j] - dup1[j])*n.Coord(1+j);
             }
+            const auto N1d = this->get_Ni_1dof(pi);
+            const double l = N1d.T()*L;
             const double h1 = this->H(gp, K);
             const double h2 = this->dH(gp, K);
             const double h3 = this->ddH(gp, K);
-            const double dlog = ((L + MU*h1)*h3 + MU*h2*h2)*dgp;
+            const double dlog = ((l + MU*h1)*h3 + MU*h2*h2)*dgp;
             NN.fill(0);
             for(size_t i = 0; i < KW; ++i){
                 for(size_t j = 0; j < DIM; ++j){

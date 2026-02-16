@@ -34,11 +34,7 @@ MUMPSSolver::MUMPSSolver(const projspec::DataMap& data):
     this->set_global_matrix(&this->gsm);
 
     this->config.job = -1; // Configuration initialization
-    if(this->contact_data.contact_type == ContactType::FRICTIONLESS_DISPL_LOG){
-        this->config.sym = 2; // General symmetric matrix
-    } else {
-        this->config.sym = 1; // SPD matrix
-    }
+    this->config.sym = 1; // SPD matrix
     this->config.par = 1; // Host process also does computations
     this->config.comm_fortran = -987654; // Default communicator
     // No text output
@@ -90,7 +86,10 @@ void MUMPSSolver::generate_matrix_base(const Meshing* const mesh, const size_t u
     int mpi_id = 0;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi_id);
 
-    long M = u_size + l_num;
+    size_t M = u_size;
+    if(type == FiniteElement::ContactType::FRICTIONLESS_DISPL_SIMPLE){
+        M += l_num;
+    }
     if(mpi_id == 0){
         this->gsm.generate(mesh, u_size, l_num, node_positions, topopt, D_cache, u_ext, lambda, type);
 

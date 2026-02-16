@@ -57,6 +57,8 @@ class CTRI3 : public ContactMeshElement{
     virtual math::Matrix diffusion_1dof(const math::Matrix& A) const override;
     virtual math::Matrix absorption_1dof() const override;
 
+    virtual math::Vector lambda_source_log(const std::vector<double>& u_ext, const gp_Dir n, const double K) const override;
+
     virtual double get_area() const override{
         return this->delta;
     }

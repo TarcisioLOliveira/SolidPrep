@@ -23,6 +23,7 @@
 #include <Eigen/Core>
 #include <Eigen/SparseCore>
 #include "finite_element.hpp"
+#include "general_solver/mumps_general.hpp"
 #include "logger.hpp"
 #include "global_stiffness_matrix.hpp"
 #include "math/matrix.hpp"
@@ -69,7 +70,7 @@ void FiniteElement::calculate_adjoint(const Meshing* const mesh, std::vector<dou
             //this->solve_frictionless_penalty(mesh, load, u0);
             break;
         case FRICTIONLESS_DISPL_LOG:
-            this->adjoint_frictionless_displ_log(mesh, load, u0);
+            this->adjoint_frictionless_displ_log(mesh, load, lambda, u0);
             break;
         case FRICTIONLESS_DISPL_SIMPLE:
             logger::log_assert(false, logger::ERROR, "adjoint equation for displ_simple contact not implemented");
@@ -82,7 +83,7 @@ void FiniteElement::solve_rigid(std::vector<double>& load){
     this->solve(load);
 }
 
-void FiniteElement::adjoint_frictionless_displ_log(const Meshing* const mesh, std::vector<double>& load, const std::vector<double>& u_ext){
+void FiniteElement::adjoint_frictionless_displ_log(const Meshing* const mesh, std::vector<double>& load, std::vector<double>& lambda, const std::vector<double>& u_ext){
     const size_t vec_size = this->u_size;
 
     std::vector<double> r(vec_size);
@@ -90,7 +91,7 @@ void FiniteElement::adjoint_frictionless_displ_log(const Meshing* const mesh, st
 
     if(this->first_adjoint){
         this->reset_hessian();
-        this->matrix->add_frictionless_log(mesh, mesh->node_positions[0], u_ext);
+        this->matrix->add_frictionless_log(mesh, mesh->node_positions[0], lambda, u_ext);
         this->first_adjoint = false;
     }
         
@@ -102,6 +103,7 @@ void FiniteElement::solve_frictionless_displ_log(const Meshing* const mesh, std:
     const size_t vec_size = this->u_size;
     const size_t bnum = mesh->elem_info->get_boundary_nodes_per_element();
     const size_t dof = mesh->elem_info->get_dof_per_node();
+    const size_t l_num = mesh->lag_node_map.size();
 
     double E = 0;
     size_t it = 0;
@@ -115,37 +117,43 @@ void FiniteElement::solve_frictionless_displ_log(const Meshing* const mesh, std:
     std::vector<double> Ku(vec_size, 0);
     std::vector<double> Kd1(vec_size, 0);
     std::vector<double> u_ext(mesh->global_load_vector.size(), 0);
-    std::vector<double> f_ext(mesh->global_load_vector.size(), 0);
 
     std::copy(load.begin(), load.end(), f.begin());
 
-    mesh->extend_vector(0, load, f_ext);
-    //mesh->extend_vector(0, u, u_ext);
+    std::vector<double> lambda_source(l_num);
 
-    double& LAG = this->matrix->LAG_DISPL_LOG;
-    LAG = 0;
-    lambda[0] = LAG;
+    // // Generate lambda update matrix
+    // general_solver::MUMPSGeneral lambda_update;
+    // lambda_update.initialize_matrix(true, l_num);
+    // {
+    //     const math::Matrix A = math::Matrix::identity(dof);
+    //     std::vector<long> pos(bnum);
+    //     for(const auto& e:mesh->paired_boundary){
+    //         for(size_t i = 0; i < bnum; ++i){
+    //             pos[i] = mesh->lag_node_map.at(e.b1->nodes[i]->id);
+    //         }
+    //         const auto K = 0.5*e.elem->diffusion_1dof(A) + e.elem->absorption_1dof();
+    //         lambda_update.add_element(K, pos);
+    //     }
+    //     lambda_update.compute();
+    // }
+
     double rnorm = 0;
 
     double step = 1.0;
 
     this->first_adjoint = true;
 
-
     this->reset_hessian();
-    this->matrix->append_Ku_frictionless_log(mesh, u_ext, Ku);
+    this->matrix->append_Ku_frictionless_log(mesh, u_ext, lambda, Ku);
     for(size_t i = 0; i < vec_size; ++i){
         r[i] = -(Ku[i] - f[i]);
     }
-    this->matrix->add_frictionless_log(mesh, mesh->node_positions[0], u_ext);
+    this->matrix->add_frictionless_log(mesh, mesh->node_positions[0], u_ext, lambda);
     rnorm = std::sqrt(cblas_ddot(r.size(), r.data(), 1, r.data(), 1));
     step = this->contact_data.max_step;
 
-    double h_integ = 0;
-
-    double u_var = 0;
     do{
-        u_var = 0;
         // Solve linear subproblem
         logger::quick_log("r min max", *std::min_element(r.begin(), r.begin()+u_size), *std::max_element(r.begin(), r.begin()+u_size));
         logger::quick_log("u min max", *std::min_element(u.begin(), u.begin()+u_size), *std::max_element(u.begin(), u.begin()+u_size));
@@ -169,8 +177,8 @@ void FiniteElement::solve_frictionless_displ_log(const Meshing* const mesh, std:
             std::fill(Kd1.begin(), Kd1.end(), 0);
             this->matrix->dot_vector(u1, Ku);
             this->matrix->dot_vector(dr, Kd1);
-            this->matrix->append_Ku_frictionless_log(mesh, u_ext, Ku);
-            this->matrix->append_dKu_frictionless_log(mesh, u1, dr, alpha, Kd1);
+            this->matrix->append_Ku_frictionless_log(mesh, u_ext, lambda, Ku);
+            this->matrix->append_dKu_frictionless_log(mesh, u1, dr, lambda, Kd1);
             for(size_t i = 0; i < vec_size; ++i){
                 r[i] = (Ku[i] - f[i]);
             }
@@ -188,7 +196,7 @@ void FiniteElement::solve_frictionless_displ_log(const Meshing* const mesh, std:
             mesh->extend_vector(0, u1, u_ext);
             std::fill(Ku.begin(), Ku.end(), 0);
             this->matrix->dot_vector(u1, Ku);
-            this->matrix->append_Ku_frictionless_log(mesh, u_ext, Ku);
+            this->matrix->append_Ku_frictionless_log(mesh, u_ext, lambda, Ku);
             for(size_t i = 0; i < vec_size; ++i){
                 r[i] = (Ku[i] - f[i]);
             }
@@ -202,81 +210,78 @@ void FiniteElement::solve_frictionless_displ_log(const Meshing* const mesh, std:
         double a1 = 0, a2 = this->contact_data.max_step;
         g1 = get_g(a1);
         g2 = get_g(a2);
-        if(!(g1 < 0 && g2 < 0)){
-            //const double search_step = 0.01;
-            //{
-            //    double prev_norm = get_rnorm_est(a1);
-            //    for(double a = a1 + search_step; a < this->max_step + 1e-7; a += search_step){
-            //        const double curr_rnorm = get_rnorm_est(a); 
-            //        if(curr_rnorm > prev_norm){
-            //            a1 = a - search_step;
-            //            a2 = a;
-            //            break;
-            //        }
-            //        prev_norm = curr_rnorm;
-            //    }
-            //}
-            //g1 = get_g(a1);
-            //while(g1 > 0){
-            //    a1 -= 0.001;
-            //    g1 = get_g(a1);
-            //}
-            //g2 = get_g(a2);
-            logger::quick_log("g1", g1, "a1", a1);
-            logger::quick_log("g2", g2, "a2", a2);
-            if(g1 < 0 && g2 < 0){
-                a2 = a1;
-            }
-            logger::quick_log("Improving starting points...");
-            if(g1 > 0 && g2 > 0){
-                double rnorm_tmp = rnorm;
-                if(g1 < g2){
-                    a1 = -rnorm_tmp/g1;
-                    g1 = get_g(a1);
-                    rnorm_tmp = get_rnorm_est(a1);
-                    while(g1 < 0 && a1 < -1){
-                        a1 *= 0.1;
+        logger::quick_log("g1", g1, "a1", a1);
+        logger::quick_log("g2", g2, "a2", a2);
+        if(!(g1 < 0 && g2 < 0) && !(std::abs(g1/g2) > 1e1 && g2 < 0.1)){
+            if((g1 > 0 && g2 > 0) || std::abs(g2/g1) > 1e1 || std::abs(g1/g2) > 1e1){
+                logger::quick_log("Improving starting points...");
+                if(g1 > 0 && g2 > 0){
+                    double rnorm_tmp = rnorm;
+                    if(g1 < g2){
+                        a1 = -rnorm_tmp/g1;
                         g1 = get_g(a1);
-                    }
-                    if(g1 > 0){
-                        a1 *= 10;
-                        g1 = get_g(a1);
-                    }
-                    logger::quick_log("g1", g1, "a1", a1);
-                } else {
-                    a2 = -rnorm_tmp/g2;
-                    g2 = get_g(a2);
-                    rnorm_tmp = get_rnorm_est(a2);
-                    logger::quick_log("g2", g2, "a2", a2);
-                }
-            }
-            if(std::abs(g2/g1) > 1e1 && g2*g1 < 0){
-                if(a2 == 0){
-                    a2 = a1;
-                    g2 = g1;
-                    while(g2*g1 > 0){
-                        a2 /= 2;
+                        rnorm_tmp = get_rnorm_est(a1);
+                        while(g1 < 0 && a1 < -1){
+                            a1 *= 0.1;
+                            g1 = get_g(a1);
+                        }
+                        if(g1 > 0){
+                            a1 *= 10;
+                            g1 = get_g(a1);
+                        }
+                    } else {
+                        a2 = -rnorm_tmp/g2;
                         g2 = get_g(a2);
+                        rnorm_tmp = get_rnorm_est(a2);
                     }
-                } else {
+                }
+                if(std::abs(g2/g1) > 1e1 && g2*g1 < 0){
                     double mtp = 0.8;
                     while(true){
-                        while(g2*g1 < 0){
+                        while(g2*g1 < 0 && std::abs(g2/g1) > 1e1){
                             a2 *= mtp;
                             g2 = get_g(a2);
                         }
-                        a2 /= mtp;
-                        g2 = get_g(a2);
+                        if(g2*g1 > 0){
+                            a2 /= mtp;
+                            g2 = get_g(a2);
+                        }
                         if(std::abs(g2/g1) > 1e1){
-                            mtp *= 1.1;
+                            mtp = (mtp - 1.0)*0.8 + 1.0;
                         } else {
                             break;
                         }
                     }
+                } else if(std::abs(g1/g2) > 1e1 && g2*g1 < 0){
+                    double mtp = 1.5;
+                    a1 = 0.1;//-0.8*g1/(g2-g1);
+                    g1 = get_g(a1);
+                    while(g1 > 0){
+                        a1 *= 0.1;
+                        g1 = get_g(a1);
+                    }
+                    if(g2*g1 < 0){
+                        while(true){
+                            while(g2*g1 < 0 && std::abs(g1/g2) > 1e1 && a1 < 1.0){
+                                a1 *= mtp;
+                                g1 = get_g(a1);
+                            }
+                            if(g2*g1 > 0){
+                                a1 /= mtp;
+                                g1 = get_g(a1);
+                            }
+                            if(std::abs(g1/g2) > 1e1){
+                                mtp = (mtp - 1.0)*0.8 + 1.0;
+                            } else {
+                                break;
+                            }
+                        }
+                    }
                 }
-                logger::quick_log(a2, g2);
+                logger::quick_log("g1", g1, "a1", a1);
+                logger::quick_log("g2", g2, "a2", a2);
             }
-            const double DIFF = 1e-2;
+            const double DIFF = 1e-1;
             const double stop = DIFF*std::min(std::abs(g1), std::abs(g2));
             if(g2*g1 < 0){
                 logger::quick_log("Regula falsi...");
@@ -309,10 +314,8 @@ void FiniteElement::solve_frictionless_displ_log(const Meshing* const mesh, std:
             } else if(g2 > 0 && g1 > 0){
                 a2 = 0;
             }
-        } else {
-            logger::quick_log("g1", g1, "a1", a1);
-            logger::quick_log("g2", g2, "a2", a2);
         }
+
         logger::quick_log("Applying step...");
         step = this->contact_data.max_step;
         if(a2 != this->contact_data.max_step){
@@ -323,39 +326,51 @@ void FiniteElement::solve_frictionless_displ_log(const Meshing* const mesh, std:
             u[i] += step*dr[i];
         }
         mesh->extend_vector(0, u, u_ext);
-        h_integ = this->matrix->constraint_frictionless_log(mesh, u_ext);
-        LAG += step*this->contact_data.HC*h_integ;
-        lambda[0] = LAG;
+
+        // Generate lambda update problem
+        {
+            const double MU = this->matrix->HMU;
+            const double K = this->matrix->HK;
+            for(const auto& e:mesh->paired_boundary){
+                const auto f = e.elem->lambda_source_log(u_ext, -e.b1->normal, K);
+
+                for(size_t i = 0; i < bnum; ++i){
+                    const auto pos = mesh->lag_node_map.at(e.b1->nodes[i]->id);
+                    lambda_source[pos] = std::max(lambda_source[pos], MU*f[i]);
+                    //lambda_source[pos] += MU*f[i];
+                }
+            }
+            logger::quick_log("Min delta lambda:", *std::min_element(lambda_source.begin(), lambda_source.end()));
+            logger::quick_log("Max delta lambda:", *std::max_element(lambda_source.begin(), lambda_source.end()));
+            //lambda_update.solve(lambda_source);
+            for(size_t i = 0; i < l_num; ++i){
+                lambda[i] += step*lambda_source[i];
+            }
+            std::fill(lambda_source.begin(), lambda_source.end(), 0.0);
+        }
 
         std::fill(Ku.begin(), Ku.end(), 0);
         this->matrix->dot_vector(u, Ku);
+        E = this->matrix->constraint_frictionless_log(mesh, u_ext, lambda);
+        for(size_t i = 0; i < vec_size; ++i){
+            E += u[i]*(Ku[i]/2.0 - f[i]);
+        }
 
-        this->matrix->append_Ku_frictionless_log(mesh, u_ext, Ku);
+        this->matrix->append_Ku_frictionless_log(mesh, u_ext, lambda, Ku);
         for(size_t i = 0; i < vec_size; ++i){
             r[i] = -(Ku[i] - f[i]);
         }
 
-        logger::quick_log("Constraint:", h_integ);
-        logger::quick_log("Multiplier:", LAG);
-
         rnorm = std::sqrt(cblas_ddot(r.size(), r.data(), 1, r.data(), 1));
        
-        this->matrix->add_frictionless_log(mesh, mesh->node_positions[0], u_ext);
-        E = 0;
-        // This is definitely wrong, but works as an estimate
-        for(size_t i = 0; i < vec_size; ++i){
-            E += u[i]*(Ku[i]/2 - f[i]);
-        }
+        this->matrix->add_frictionless_log(mesh, mesh->node_positions[0], u_ext, lambda);
 
         logger::quick_log("Iteration:", it);
         logger::quick_log("Potential energy:", E);
         logger::quick_log("||r||", rnorm);
-        const double Kd1norm = std::sqrt(cblas_ddot(Kd1.size(), Kd1.data(), 1, Kd1.data(), 1));
-        logger::quick_log("||Kd1||:", Kd1norm);
         logger::quick_log("step:", step);
-        logger::quick_log("du:", u_var);
-        //logger::quick_log("MU", this->matrix->HC);
-        //this->matrix->HC *= 1.1;
+        logger::quick_log("Min lambda:", *std::min_element(lambda.begin(), lambda.end()));
+        logger::quick_log("Max lambda:", *std::max_element(lambda.begin(), lambda.end()));
         logger::quick_log("");
         double max_gp = -1e100;
         double min_gp = 1e100;

@@ -31,7 +31,7 @@ void SolverManager::generate_matrix(const Meshing* const mesh, const std::vector
     if(mesh->proj_data->contact_data.contact_type == FiniteElement::ContactType::FRICTIONLESS_DISPL_SIMPLE){
         l_num = mesh->lag_node_map.size();
     } else if(mesh->proj_data->contact_data.contact_type == FiniteElement::ContactType::FRICTIONLESS_DISPL_LOG){
-        l_num = 1;
+        l_num = mesh->lag_node_map.size();
     }
     if(this->iteration == 0){
         this->lambdas.resize(mesh->sub_problems->size());
@@ -90,7 +90,7 @@ void SolverManager::calculate_displacements_adjoint(const Meshing* const mesh, c
     if(mesh->proj_data->contact_data.contact_type == FiniteElement::ContactType::FRICTIONLESS_DISPL_SIMPLE){
         l_num = mesh->lag_node_map.size();
     } else if(mesh->proj_data->contact_data.contact_type == FiniteElement::ContactType::FRICTIONLESS_DISPL_LOG){
-        l_num = 1;
+        l_num = mesh->lag_node_map.size();
     }
     std::vector<double> u_tmp(mesh->max_dofs, 0);
     for(size_t i = 0; i < mesh->sub_problems->size(); ++i){

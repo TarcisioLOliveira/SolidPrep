@@ -55,6 +55,7 @@ class TET4 : public MeshElementCommon3DTet<TET4>{
     virtual math::Matrix get_dk_sh(const math::Matrix& D, const double t, const size_t n, const size_t dof) const override;
     virtual math::Matrix get_dB_sh(const gp_Pnt& p, const size_t n, const size_t dof) const override;
     virtual math::Matrix get_dN_sh(const gp_Pnt& p, const size_t n, const size_t dof) const override;
+    virtual math::Vector get_dN_1dof_sh(const gp_Pnt& p, const size_t n, const size_t dof) const override;
     virtual void calculate_coefficients() override;
 
     virtual math::Matrix diffusion_1dof(const double t, const math::Matrix& A) const override;

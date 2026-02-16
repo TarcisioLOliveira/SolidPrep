@@ -49,7 +49,7 @@ class FiniteElement{
         double step_tol = 0;
         double EPS_DISPL_SIMPLE = 0;
         double HK = 0;
-        double HC = 0;
+        double HMU = 0;
     };
 
     FiniteElement(const ContactData& data);
@@ -89,7 +89,7 @@ class FiniteElement{
     void solve_frictionless_displ_log(const Meshing* const mesh, std::vector<double>& load, std::vector<double>& lambda);
     void solve_frictionless_penalty(const Meshing* const mesh, std::vector<double>& load, const std::vector<double>& u0);
 
-    void adjoint_frictionless_displ_log(const Meshing* const mesh, std::vector<double>& load, const std::vector<double>& u_ext);
+    void adjoint_frictionless_displ_log(const Meshing* const mesh, std::vector<double>& load, std::vector<double>& lambda, const std::vector<double>& u_ext);
 
     private:
 };

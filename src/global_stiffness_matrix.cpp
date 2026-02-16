@@ -24,9 +24,9 @@
 #include <limits>
 
 GlobalStiffnessMatrix::GlobalStiffnessMatrix(const FiniteElement::ContactData& data):
-    HC(data.HC),
-    EPS_PENALTY(data.EPS_DISPL_SIMPLE), EPS_DISPL(data.EPS_DISPL_SIMPLE), LAG_DISPL_SIMPLE(data.EPS_DISPL_SIMPLE),
-    HK(data.HK) 
+    HK(data.HK),
+    HMU(data.HMU),
+    EPS_PENALTY(data.EPS_DISPL_SIMPLE), EPS_DISPL(data.EPS_DISPL_SIMPLE), LAG_DISPL_SIMPLE(data.EPS_DISPL_SIMPLE)
     {
 
     }
@@ -62,6 +62,7 @@ void GlobalStiffnessMatrix::generate_base(const Meshing * const mesh, const size
         // Only if using coordinate field?
         const size_t dof      = mesh->elem_info->get_dof_per_node();
         const size_t node_num = mesh->elem_info->get_nodes_per_element();
+        const size_t bnum     = mesh->elem_info->get_boundary_nodes_per_element();
 
         std::vector<long> u_pos(dof*node_num);
         const math::Matrix k(u_pos.size(), u_pos.size(), 1);
@@ -79,7 +80,23 @@ void GlobalStiffnessMatrix::generate_base(const Meshing * const mesh, const size
             }
         }
         if(type == FiniteElement::ContactType::FRICTIONLESS_DISPL_LOG){
-            this->add_frictionless_log(mesh, node_positions, u_ext, true);
+
+            this->lag_pos_cache.resize(mesh->paired_boundary.size()*node_num, -1);
+            size_t cur_id = 0;
+            for(const auto& e:mesh->paired_boundary){
+                for(size_t i = 0; i < node_num; ++i){
+                    for(size_t j = 0; j < bnum; ++j){
+                        if(e.b1->parent->nodes[i] == e.b1->nodes[j]){
+                            const auto id = mesh->lag_node_map.at(e.b1->parent->nodes[i]->id);
+                            this->lag_pos_cache[cur_id*node_num + i] = id;
+                            break;
+                        }
+                    }
+                }
+                ++cur_id;
+            }
+
+            this->add_frictionless_log(mesh, node_positions, u_ext, lambda, true);
         } else if(type == FiniteElement::ContactType::FRICTIONLESS_DISPL_SIMPLE){
             const std::vector<double> empty_lambda(lambda.size(), 0);
             this->add_frictionless_simple(mesh, node_positions, u_ext, empty_lambda, true);
@@ -332,7 +349,7 @@ void GlobalStiffnessMatrix::append_dKu_penalty(const Meshing* const mesh, const 
         }
     }
 }
-void GlobalStiffnessMatrix::add_frictionless_log(const Meshing * const mesh, const std::vector<long>& node_positions, const std::vector<double>& u_ext, bool stub){
+void GlobalStiffnessMatrix::add_frictionless_log(const Meshing * const mesh, const std::vector<long>& node_positions, const std::vector<double>& u_ext, const std::vector<double>& lambda, bool stub){
     const size_t node_num = mesh->elem_info->get_nodes_per_element();
     const size_t bnum = mesh->elem_info->get_boundary_nodes_per_element();
     const size_t dof = mesh->elem_info->get_dof_per_node();
@@ -345,12 +362,23 @@ void GlobalStiffnessMatrix::add_frictionless_log(const Meshing * const mesh, con
 
     const size_t kw = mesh->elem_info->get_k_dimension();
     std::vector<gp_Pnt> points(node_num);
+    math::Vector L(node_num);
     std::vector<long> u_pos(2*kw);
     std::vector<long> Mn_pos(1, u_size);
+    size_t cur_id = 0;
     for(const auto& e:mesh->paired_boundary){
         for(size_t i = 0; i < bnum; ++i){
             points[i] = e.b1->nodes[i]->point;
         }
+        for(size_t i = 0; i < node_num; ++i){
+            const auto id = this->lag_pos_cache[cur_id*node_num + i];
+            if(id > -1){
+                L[i] = lambda[id];
+            } else {
+                L[i] = 0;
+            }
+        }
+        ++cur_id;
         for(size_t i = 0; i < node_num; ++i){
             const auto n1 = e.b1->parent->nodes[i];
             const auto n2 = e.b2->parent->nodes[i];
@@ -360,10 +388,10 @@ void GlobalStiffnessMatrix::add_frictionless_log(const Meshing * const mesh, con
             }
         }
         if(!stub){
-            const auto MM(e.b1->parent->get_MnMn_log(e.b2->parent, u_ext, points, -e.b1->normal, HC, HK, this->LAG_DISPL_LOG));
+            const auto MM(e.b1->parent->get_MnMn_log(e.b2->parent, u_ext, points, -e.b1->normal, HMU, HK, L));
             this->insert_element_matrix(MM, u_pos);
         } else {
-            const auto MM(1e8*e.b1->parent->get_MnMn_log(e.b2->parent, u_ext_zero, points, -e.b1->normal, HC, HK, this->LAG_DISPL_LOG));
+            const auto MM(e.b1->parent->get_MnMn_log(e.b2->parent, u_ext_zero, points, -e.b1->normal, HMU, HK, L));
             this->reserve_element_matrix(MM, u_pos);
         }
     }
@@ -489,45 +517,77 @@ void GlobalStiffnessMatrix::append_dKu_frictionless_simple(const Meshing* const 
     }
 }
 
-double GlobalStiffnessMatrix::constraint_frictionless_log(const Meshing* const mesh, const std::vector<double>& u_ext) const{
+double GlobalStiffnessMatrix::constraint_frictionless_log(const Meshing* const mesh, const std::vector<double>& u_ext, const std::vector<double>& lambda) const{
     const size_t node_num = mesh->elem_info->get_nodes_per_element();
     const size_t bnum = mesh->elem_info->get_boundary_nodes_per_element();
 
     std::vector<gp_Pnt> points(node_num);
+    math::Vector L(node_num);
+    size_t cur_id = 0;
     double constr = -this->LOG_TOL;
     for(const auto& e:mesh->paired_boundary){
         for(size_t i = 0; i < bnum; ++i){
             points[i] = e.b1->nodes[i]->point;
         }
-        constr += e.b1->parent->get_log_integ(e.b2->parent, u_ext, points, -e.b1->normal, HK);
+        for(size_t i = 0; i < node_num; ++i){
+            const auto id = this->lag_pos_cache[cur_id*node_num + i];
+            if(id > -1){
+                L[i] = lambda[id];
+            } else {
+                L[i] = 0;
+            }
+        }
+        ++cur_id;
+        constr += e.b1->parent->get_log_integ(e.b2->parent, u_ext, points, -e.b1->normal, HMU, HK, L);
     }
 
     return constr;
 }
 
-void GlobalStiffnessMatrix::append_Ku_frictionless_log(const Meshing* const mesh, const std::vector<double>& u_ext, std::vector<double>& Ku) const{
+void GlobalStiffnessMatrix::append_Ku_frictionless_log(const Meshing* const mesh, const std::vector<double>& u_ext, const std::vector<double>& lambda, std::vector<double>& Ku) const{
     const size_t node_num = mesh->elem_info->get_nodes_per_element();
     const size_t bnum = mesh->elem_info->get_boundary_nodes_per_element();
 
     std::vector<gp_Pnt> points(node_num);
+    math::Vector L(node_num);
+    size_t cur_id = 0;
     for(const auto& e:mesh->paired_boundary){
         for(size_t i = 0; i < bnum; ++i){
             points[i] = e.b1->nodes[i]->point;
         }
-        e.b1->parent->Ku_log(e.b2->parent, mesh->node_positions[0], u_ext, points, -e.b1->normal, Ku, HC, HK, this->LAG_DISPL_LOG);
+        for(size_t i = 0; i < node_num; ++i){
+            const auto id = this->lag_pos_cache[cur_id*node_num + i];
+            if(id > -1){
+                L[i] = lambda[id];
+            } else {
+                L[i] = 0;
+            }
+        }
+        ++cur_id;
+        e.b1->parent->Ku_log(e.b2->parent, mesh->node_positions[0], u_ext, points, -e.b1->normal, Ku, HMU, HK, L);
     }
 }
 
-void GlobalStiffnessMatrix::append_dKu_frictionless_log(const Meshing* const mesh, const std::vector<double>& u, const std::vector<double>& du, const double eta, std::vector<double>& Ku) const{
-    (void)eta;
+void GlobalStiffnessMatrix::append_dKu_frictionless_log(const Meshing* const mesh, const std::vector<double>& u, const std::vector<double>& du, const std::vector<double>& lambda, std::vector<double>& Ku) const{
     const size_t node_num = mesh->elem_info->get_nodes_per_element();
     const size_t bnum = mesh->elem_info->get_boundary_nodes_per_element();
 
     std::vector<gp_Pnt> points(node_num);
+    math::Vector L(node_num);
+    size_t cur_id = 0;
     for(const auto& e:mesh->paired_boundary){
         for(size_t i = 0; i < bnum; ++i){
             points[i] = e.b1->nodes[i]->point;
         }
-        e.b1->parent->dKu_log(e.b2->parent, mesh->node_positions[0], u, du, points, -e.b1->normal, Ku, HC, HK, this->LAG_DISPL_LOG);
+        for(size_t i = 0; i < node_num; ++i){
+            const auto id = this->lag_pos_cache[cur_id*node_num + i];
+            if(id > -1){
+                L[i] = lambda[id];
+            } else {
+                L[i] = 0;
+            }
+        }
+        ++cur_id;
+        e.b1->parent->dKu_log(e.b2->parent, mesh->node_positions[0], u, du, points, -e.b1->normal, Ku, HMU, HK, L);
     }
 }

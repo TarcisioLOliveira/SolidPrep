@@ -198,7 +198,7 @@ class Meshing{
     std::vector<SubProblem>* sub_problems;
     std::vector<BoundaryElement*> inter_geometry_boundary;
     std::vector<PairedBoundaryElements> paired_boundary;
-    std::map<size_t, long> lag_node_map;
+    std::unordered_map<size_t, long> lag_node_map;
     std::unordered_map<const MeshElement*, const Geometry*> elem_geom_mapping;
     std::map<const MeshElement*, ContactElementMetadata> contact_data;
 

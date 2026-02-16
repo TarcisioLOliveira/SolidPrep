@@ -277,6 +277,11 @@ math::Matrix TET4::get_dN_sh(const gp_Pnt& p, const size_t n, const size_t dof) 
 
     return this->N_mat(p.X(), p.Y(), p.Z(), C2);
 }
+math::Vector TET4::get_dN_1dof_sh(const gp_Pnt& p, const size_t n, const size_t dof) const{
+    const auto C2 = this->get_C_derivative(n, dof);
+
+    return this->N_mat_1dof(p.X(), p.Y(), p.Z(), C2);
+}
 
 math::Vector TET4::get_Ni_1dof(const gp_Pnt& p) const {
     return this->N_mat_1dof(p.X(), p.Y(), p.Z(), C);
