@@ -1,0 +1,112 @@
+{
+    "solid_type": "3D", // or "3D"
+    "analysis":{
+        "meshing": false,
+        "gen": false,
+        "topopt": false,
+        "fea": true,
+        "shape_opt": false,
+        "simulation": false
+    },
+    "contact_type":{
+        "type": "frictionless_displ_log",
+
+        "rtol_abs": 0.15,
+        "step_tol": 1e-10,
+
+        "K": 1e7,
+        "MU": 1e7
+    },
+    "material":[
+        {
+            "name": "steel",
+            "type": "linear_elastic_isotropic",
+            "Smax": 100.0,
+            "Tmax": 75.0,
+            "density": 7670,
+            "E": 186.0,
+            "nu": 0.29
+        },
+        {
+            "name": "ABS",
+            "type": "linear_elastic_isotropic",
+            "Smax": 100.0,
+            "Tmax": 75.0,
+            "E": 2.35,
+            "nu": 0.364,
+            "density": 1070
+        }
+    ],
+    "geometry":[
+        {
+            // 100x40x40
+            "file_path": "prism-thread.step", // Relative path from problem definition file's path
+            "scale": 1, // [mm]
+            "material": "ABS"
+        },
+        {
+            // 20x60x20
+            "file_path": "insert-thread.step", // Relative path from problem definition file's path
+            "scale": 1, // [mm]
+            "material": "steel"
+        }
+    ],
+    "finite_element":{
+        "type": "mumps",
+        "backend": "cuda"
+    },
+    "mesher":{
+        "type": "gmsh",
+        "file_path": "thread.spm",
+        "element_size": 1.5,
+        "element_type": "TET4",
+        "algorithm2D": 8, // Gmsh Mesh.Algorithm, optional
+        "algorithm3D": 10 // Gmsh Mesh.Algorithm3D, optional
+    },
+    "loads":[
+        {
+            "region":{
+                "disc":{
+                    "center": [0,60,0], // [mm], set to scale
+                    "normal": [0,1,0],
+                    "radius": 10, // [mm]
+                }
+            },
+            "cut_into_shape": false,
+            "load": [0, -20, 0] // [N]
+        },
+        {
+            "region":{
+                "rectangle":{
+                    "center": [-50,0,0], // [mm], set to scale
+                    "normal": [-1,0,0],
+                    "w": 40, // [mm]
+                    "h": 40, // [mm]
+                    "rotation": 0 // [°]
+                }
+            },
+            "cut_into_shape": false,
+            "load": [-100, 0, 0] // [N]
+        }
+    ],
+    "supports":[
+        {
+            "X": true,  // X forces
+            "Y": true,  // Y forces
+            "Z": true,  // Z forces
+            "MX": true, // rotations around X (e.g. GT9 elements)
+            "MY": true, // rotations around Y (e.g. GT9 elements)
+            "MZ": true, // rotations around Z (e.g. GT9 elements)
+            "cut_into_shape": false,
+            "region":{
+                "rectangle":{
+                    "center": [50,0,0], // [mm], set to scale
+                    "normal": [1,0,0],
+                    "w": 40, // [mm]
+                    "h": 40, // [mm]
+                    "rotation": 0 // [°]
+                }
+            }
+        }
+    ]
+}
