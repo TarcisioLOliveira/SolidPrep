@@ -87,8 +87,8 @@ math::Matrix BTRI3::get_stress_integrals(const math::Matrix& D, const gp_Pnt& ce
             M(0, i) += it->w*E(2, i)*dx;
             M(1, i) += it->w*E(2, i)*dy;
             M(2, i) += it->w*E(2, i);
-            M(3, i) += it->w*(E(3, i)*dx - E(4, i)*dy);
-            M(4, i) += it->w*E(3, i);
+            M(3, i) += it->w*(E(5, i)*dx - E(4, i)*dy);
+            M(4, i) += it->w*E(5, i);
             M(5, i) += it->w*E(4, i);
         }
     }
@@ -124,9 +124,14 @@ math::Matrix BTRI3::get_dz_vector_matrix(const math::Matrix& S, const math::Matr
     math::Matrix M(KW, 2);
     const auto& gsi = utils::GaussLegendreTri<ORDER+1>::get();
 
-    const math::Vector mult({D(4,2)/(S(2,2)*D(2,2)),
-                             D(3,2)/(S(2,2)*D(2,2)),
-                             1.0/S(2,2)});
+    //const math::Vector mult({D(4,2)/(S(2,2)*D(2,2)),
+    //                         D(3,2)/(S(2,2)*D(2,2)),
+    //                         1.0/S(2,2)});
+    const math::Vector mult({
+            0,//1.0/S(2,2),
+            0,//1.0/S(2,2),
+            1.0/S(2,2)
+            });
 
     const std::vector<size_t> pos_j({0, 1});
     for(auto it = gsi.begin(); it < gsi.end(); ++it){
@@ -155,10 +160,13 @@ math::Matrix BTRI3::get_dz_vector_matrix_1d(const math::Matrix& S, const math::M
     math::Matrix M(KW, 2);
     const auto& gsi = utils::GaussLegendreTri<ORDER+1>::get();
 
-    const double SD = S(2,2)*D(2,2);
-    const double dSD = S(2,2)*dD(2,2) + dS(2,2)*D(2,2);
-    const math::Vector mult({(dD(4,2)*SD - D(4,2)*dSD)/(SD*SD),
-                             (dD(3,2)*SD - D(3,2)*dSD)/(SD*SD),
+    //const double SD = S(2,2)*D(2,2);
+    //const double dSD = S(2,2)*dD(2,2) + dS(2,2)*D(2,2);
+    //const math::Vector mult({(dD(4,2)*SD - D(4,2)*dSD)/(SD*SD),
+    //                         (dD(3,2)*SD - D(3,2)*dSD)/(SD*SD),
+    //                         -dS(2,2)/(S(2,2)*S(2,2))});
+    const math::Vector mult({0.0,
+                             0.0,
                              -dS(2,2)/(S(2,2)*S(2,2))});
 
     const std::vector<size_t> pos_j({0, 1});
@@ -194,10 +202,11 @@ math::Matrix BTRI3::get_force_vector_matrix(const math::Matrix& D, const gp_Pnt&
 
     const auto EPS_L = K_DIM + 6;
 
-    const auto slice_i(math::slicer::sequence<size_t>(2, 5));
+    //const auto slice_i(math::slicer::sequence<size_t>(2, 5));
+    const std::vector<size_t> slice_i{2, 4, 5};
     const auto slice_j(math::slicer::sequence<size_t>(0, EPS_L));
-    const math::Matrix P({0, 0, 1,
-                          0, 1, 0,
+    const math::Matrix P({0, 1, 0,
+                          0, 0, 1,
                           1, 0, 0}, 3, 3);
 
     math::Matrix M(KW_P, EPS_L);

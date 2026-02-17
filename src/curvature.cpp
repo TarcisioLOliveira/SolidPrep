@@ -38,10 +38,10 @@ Curvature::Curvature(const Material* mat, math::Matrix rot2D, math::Matrix rot3D
     //     1, 0,  0}, 3, 3),
     rot3D(std::move(rot3D)), 
     elem_info(std::move(elem_info)),
-    V_u(-V_w), V_v(V_v), V_w(V_u),
-    M_u(-M_w), 
+    V_u(V_w), V_v(V_v), V_w(-V_u),
+    M_u(M_w), 
     M_v(M_v),
-    M_w(M_u)
+    M_w(-M_u)
 {
 
     //this->permute_shear_3D = math::Matrix(
@@ -332,9 +332,9 @@ void Curvature::calculate_stress_field_3D(const std::vector<std::unique_ptr<Boun
 
         //const auto K = e->get_K_ext(TDT, this->center);
         const auto St = e->get_stress_integrals(DT, this->center);
-        const auto tau_xz_dz = e->get_equilibrium_partial(TDT, this->center, {0, 5});
-        const auto tau_yz_dz = e->get_equilibrium_partial(TDT, this->center, {1, 5});
-        const auto sigma_z_dz = e->get_equilibrium_partial(TDT, this->center, {3, 4});
+        const auto tau_xz_dz = e->get_equilibrium_partial(TDT, this->center, {0, 3});
+        const auto tau_yz_dz = e->get_equilibrium_partial(TDT, this->center, {1, 3});
+        const auto sigma_z_dz = e->get_equilibrium_partial(TDT, this->center, {4, 5});
         //solver.add_element(K, posi, posj);
         solver.add_element(St, pos_last, posj);
         solver.add_element(tau_xz_dz + tau_yz_dz + sigma_z_dz, posi, posj);

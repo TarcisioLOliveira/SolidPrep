@@ -27,7 +27,7 @@
 #include <set>
 
 inline math::Matrix Lek_rot3D(math::Matrix L, math::Matrix R){
-    return L*R;
+    return R*L;//L*R;
 }
 
 InternalLoads::InternalLoads(CrossSection cross_section, double thickness, gp_Dir normal, gp_Dir v, gp_Dir w, utils::DelayedPointerView<Material> mat, std::array<double, 3> F, std::array<double, 3> M, MeshElementFactory* elem, utils::ProblemType type):
@@ -37,9 +37,9 @@ InternalLoads::InternalLoads(CrossSection cross_section, double thickness, gp_Di
     rot2D({normal.X(), v.X(),
            normal.Y(), v.Y()}, 2, 2),
     Lek_basis(
-        {0, 0, -1,
+        {0, 0, 1,
          0, 1, 0,
-         1, 0, 0}, 3, 3),
+         -1, 0, 0}, 3, 3),
     rot3D(Lek_rot3D(Lek_basis,
         math::Matrix(
         {normal.X(), v.X(), w.X(),
