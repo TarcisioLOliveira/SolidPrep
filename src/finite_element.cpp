@@ -51,7 +51,7 @@ void FiniteElement::calculate_displacements(const Meshing* const mesh, std::vect
             this->solve_frictionless_penalty(mesh, load, u0);
             break;
         case FRICTIONLESS_DISPL_LOG:
-            this->solve_frictionless_displ_log(mesh, load, lambda);
+            this->solve_frictionless_displ_log(mesh, load, lambda, u0);
             break;
         case FRICTIONLESS_DISPL_SIMPLE:
             this->solve_frictionless_displ_simple(mesh, load, lambda, u0);
@@ -99,7 +99,7 @@ void FiniteElement::adjoint_frictionless_displ_log(const Meshing* const mesh, st
 
     std::copy(r.begin(), r.begin() + this->u_size, load.begin());
 }
-void FiniteElement::solve_frictionless_displ_log(const Meshing* const mesh, std::vector<double>& load, std::vector<double>& lambda){
+void FiniteElement::solve_frictionless_displ_log(const Meshing* const mesh, std::vector<double>& load, std::vector<double>& lambda, const std::vector<double>& u0){
     const size_t vec_size = this->u_size;
     const size_t bnum = mesh->elem_info->get_boundary_nodes_per_element();
     const size_t dof = mesh->elem_info->get_dof_per_node();
@@ -110,33 +110,18 @@ void FiniteElement::solve_frictionless_displ_log(const Meshing* const mesh, std:
 
     std::vector<double> f(vec_size, 0);
     std::vector<double> u(vec_size, 0);
+    mesh->de_extend_vector(0, u0, u);
     std::vector<double> r(vec_size);
     std::vector<double> dr(vec_size);
     std::vector<double> u1(vec_size);
 
     std::vector<double> Ku(vec_size, 0);
     std::vector<double> Kd1(vec_size, 0);
-    std::vector<double> u_ext(mesh->global_load_vector.size(), 0);
+    std::vector<double> u_ext(u0);
 
     std::copy(load.begin(), load.end(), f.begin());
 
     std::vector<double> lambda_source(l_num);
-
-    // // Generate lambda update matrix
-    // general_solver::MUMPSGeneral lambda_update;
-    // lambda_update.initialize_matrix(true, l_num);
-    // {
-    //     const math::Matrix A = math::Matrix::identity(dof);
-    //     std::vector<long> pos(bnum);
-    //     for(const auto& e:mesh->paired_boundary){
-    //         for(size_t i = 0; i < bnum; ++i){
-    //             pos[i] = mesh->lag_node_map.at(e.b1->nodes[i]->id);
-    //         }
-    //         const auto K = 0.5*e.elem->diffusion_1dof(A) + e.elem->absorption_1dof();
-    //         lambda_update.add_element(K, pos);
-    //     }
-    //     lambda_update.compute();
-    // }
 
     double rnorm = 0;
 
@@ -144,7 +129,12 @@ void FiniteElement::solve_frictionless_displ_log(const Meshing* const mesh, std:
 
     this->first_adjoint = true;
 
+    for(auto& l:lambda){
+        l *= 0.9;
+    }
+
     this->reset_hessian();
+    this->matrix->dot_vector(u, Ku);
     this->matrix->append_Ku_frictionless_log(mesh, u_ext, lambda, Ku);
     for(size_t i = 0; i < vec_size; ++i){
         r[i] = -(Ku[i] - f[i]);
@@ -212,7 +202,7 @@ void FiniteElement::solve_frictionless_displ_log(const Meshing* const mesh, std:
         g2 = get_g(a2);
         logger::quick_log("g1", g1, "a1", a1);
         logger::quick_log("g2", g2, "a2", a2);
-        if(!(g1 < 0 && g2 < 0) && !(std::abs(g1/g2) > 1e1 && g2 < 0.1)){
+        if(!(g1 < 0 && g2 < 0) && !(std::abs(g1/g2) > 1e2 && g2 < 0.1)){
             if((g1 > 0 && g2 > 0) || std::abs(g2/g1) > 1e1 || std::abs(g1/g2) > 1e1){
                 logger::quick_log("Improving starting points...");
                 if(g1 > 0 && g2 > 0){
@@ -342,7 +332,6 @@ void FiniteElement::solve_frictionless_displ_log(const Meshing* const mesh, std:
             }
             logger::quick_log("Min delta lambda:", *std::min_element(lambda_source.begin(), lambda_source.end()));
             logger::quick_log("Max delta lambda:", *std::max_element(lambda_source.begin(), lambda_source.end()));
-            //lambda_update.solve(lambda_source);
             for(size_t i = 0; i < l_num; ++i){
                 lambda[i] += step*lambda_source[i];
             }
@@ -411,7 +400,7 @@ void FiniteElement::solve_frictionless_displ_log(const Meshing* const mesh, std:
         if(step == 0){
             break;
         }
-    } while((rnorm > this->contact_data.rtol_abs && std::abs(step) > this->contact_data.step_tol) || it < 2);
+    } while((rnorm > this->contact_data.rtol_abs && std::abs(step) > this->contact_data.step_tol));// || it < 2);
 
     std::copy(u.begin(), u.begin() + u_size, load.begin());
 }

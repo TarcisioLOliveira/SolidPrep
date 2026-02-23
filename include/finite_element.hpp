@@ -86,7 +86,7 @@ class FiniteElement{
 
     void solve_rigid(std::vector<double>& load);
     void solve_frictionless_displ_simple(const Meshing* const mesh, std::vector<double>& load, std::vector<double>& lambda, const std::vector<double>& u0);
-    void solve_frictionless_displ_log(const Meshing* const mesh, std::vector<double>& load, std::vector<double>& lambda);
+    void solve_frictionless_displ_log(const Meshing* const mesh, std::vector<double>& load, std::vector<double>& lambda, const std::vector<double>& u0);
     void solve_frictionless_penalty(const Meshing* const mesh, std::vector<double>& load, const std::vector<double>& u0);
 
     void adjoint_frictionless_displ_log(const Meshing* const mesh, std::vector<double>& load, std::vector<double>& lambda, const std::vector<double>& u_ext);
