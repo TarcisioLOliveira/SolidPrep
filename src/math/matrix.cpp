@@ -1034,6 +1034,26 @@ VectorTransposeView Vector::T() const{
     return VectorTransposeView(N, V);
 }
 
+Vector Vector::cross(const VectorAgnostic& v) const{
+    logger::log_assert((this->N == 3 || this->N == 2) &&
+                       v.get_N() == this->N,
+                       logger::ERROR,
+                       "incorrect vector dimensions for cross product: {}, {}",
+                       this->N, v.get_N());
+
+    if(this->N == 3){
+        return math::Vector(
+            {V[1]*v[2] - V[2]*v[1],
+           -(V[0]*v[2] - V[2]*v[0]),
+             V[0]*v[1] - V[1]*v[0]});
+    } else {
+        return math::Vector(
+            {0,
+             0,
+             V[0]*v[1] - V[1]*v[0]});
+    }
+}
+
 Vector Vector::operator*(Scalar s) const{
     Vector v(*this);
     v *= s;

@@ -405,6 +405,13 @@ class VectorBase{
         return this->N;
     }
 
+    double norm() const{
+        double sum = 0;
+        for(size_t i = 0; i < N; ++i){
+            sum += V[i] * V[i];
+        }
+        return std::sqrt(sum);
+    }
     bool is_equal(const VectorAgnostic& v, Scalar eps = 1e-7) const{
         if(N != v.N) return false;
         for(size_t i = 0; i < N; ++i){
@@ -547,6 +554,20 @@ class VectorMut : public VectorBase<size_t, Scalar>{
         std::fill(V, V + N, s);
     }
 
+    void normalize(){
+        const double norm = this->norm();
+        for(size_t i = 0; i < this->N; ++i){
+            this->V[i] /= norm;
+        }
+    }
+
+    T normalized() const{
+        T nv(*this);
+        nv.normalize();
+
+        return nv;
+    }
+
     T& operator=(const VectorAgnostic& v){
         this->N = v.N;
         delete[] this->V;
@@ -630,6 +651,8 @@ class Vector : public VectorMut<Vector>{
     Vector(VectorMut<Vector>&& v);
 
     VectorTransposeView T() const;
+
+    Vector cross(const VectorAgnostic& v) const;
 
     Vector operator*(Scalar s) const;
     Vector operator/(Scalar s) const;

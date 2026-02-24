@@ -182,6 +182,10 @@ TEST_CASE( "Vector: operations" ) {
         6, 8, -1, 0,
         -3, 4, 5, -6,
         }, 3, 4);
+    auto m6 = math::Vector({8, 4, 1});
+    auto m7 = math::Vector({1, 5});
+    auto m8 = math::Vector({8, 4});
+    auto m9 = math::Vector({-1, 7});
 
     REQUIRE( m1 + m2 == math::Vector({11, 11, 8}) );
     REQUIRE( m1 - m2 == math::Vector({-9, -7, -2}) );
@@ -245,6 +249,36 @@ TEST_CASE( "Vector: operations" ) {
     REQUIRE( m4.T() * m5.T() * m2 == 186 );
     REQUIRE( m4.T() * m5.T() * m3 * m5 * m4 == 14364 );
     REQUIRE( m1.T() * m5 * m5.T() * m2 == 7781 );
+
+    REQUIRE( m1.norm() == 3.7416573867739413 );
+    REQUIRE( m2.norm() == 14.352700094407323 );
+    REQUIRE( m4.norm() == 13.490737563232042 );
+    REQUIRE( m6.norm() == 9.0 );
+    REQUIRE( m7.norm() == 5.0990195135927845 );
+    REQUIRE( m8.norm() == 8.94427190999916 );
+    REQUIRE( m9.norm() == 7.0710678118654755 );
+
+    REQUIRE( m1.normalized() == math::Vector({0.2672612419124244, 0.5345224838248488, 0.8017837257372732}) );
+    REQUIRE( m2.normalized() == math::Vector({0.6967330142916177, 0.6270597128624559, 0.34836650714580886}) );
+    REQUIRE( m4.normalized() == math::Vector({0.29649972666444047, -0.4447495899966607, 0.5188745216627708, -0.667124384994991}) );
+    REQUIRE( m6.normalized() == math::Vector({0.8888888888888888, 0.4444444444444444, 0.1111111111111111}) );
+    REQUIRE( m7.normalized() == math::Vector({0.19611613513818404, 0.9805806756909202}) );
+    REQUIRE( m8.normalized() == math::Vector({0.8944271909999159, 0.4472135954999579}) );
+    REQUIRE( m9.normalized() == math::Vector({-0.1414213562373095, 0.9899494936611665}) );
+
+    REQUIRE( m1.cross(m2) == math::Vector({-17, 25, -11}) );
+    REQUIRE( m2.cross(m1) == math::Vector({17, -25, 11}) );
+    REQUIRE( m1.cross(m6) == math::Vector({-10, 23, -12}) );
+    REQUIRE( m6.cross(m1) == math::Vector({10, -23, 12}) );
+    REQUIRE( m2.cross(m6) == math::Vector({-11, 30, -32}) );
+    REQUIRE( m6.cross(m2) == math::Vector({11, -30, 32}) );
+
+    REQUIRE( m7.cross(m8) == math::Vector({0, 0, -36}) );
+    REQUIRE( m8.cross(m7) == math::Vector({0, 0, 36}) );
+    REQUIRE( m7.cross(m9) == math::Vector({0, 0, 12}) );
+    REQUIRE( m9.cross(m7) == math::Vector({0, 0, -12}) );
+    REQUIRE( m8.cross(m9) == math::Vector({0, 0, 60}) );
+    REQUIRE( m9.cross(m8) == math::Vector({0, 0, -60}) );
 }
 
 TEST_CASE( "LU" ) {
