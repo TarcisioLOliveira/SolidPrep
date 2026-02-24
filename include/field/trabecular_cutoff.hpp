@@ -25,12 +25,59 @@
 #include <unordered_map>
 #include <vector>
 #include "field.hpp"
+#include "math/matrix.hpp"
 #include "project_specification/data_map.hpp"
 
 namespace field{
 
 class TrabecularCutoff : public ScalarField {
     public:
+    class BoundaryApproximation{
+        public:
+        BoundaryApproximation() = default;
+        BoundaryApproximation(const projspec::DataMap* const data, const TopoDS_Shape& shell);
+        bool is_inside(const gp_Pnt& p) const;
+
+        private:
+        bool defined = false;
+        // Parameters
+        math::Vector center1, center2;
+        math::Vector long_dir, v_dir, h_dir;
+        // Follows POV of long_dir
+        double th_top, th_bot, th_left, th_right;
+        size_t pts_long, pts_v;
+
+        double spacing_l;
+
+        // Data
+        struct DistPair{
+            // Longitudinal: top, bottom;
+            // Vertical: left, right;
+            double d1, d2; 
+        };
+        std::vector<std::vector<DistPair>> bounds;
+        struct VerticalBounds{
+            math::Vector p1;
+            double l;
+            double spacing_v;
+        };
+        std::vector<VerticalBounds> base_points;
+
+        inline math::Vector to_vector(const gp_Pnt& p) const{
+            return {p.X(), p.Y(), p.Z()};
+        }
+
+        inline gp_Pnt to_occt_point(const math::Vector& v) const{
+            return gp_Pnt(v[0], v[1], v[2]);
+        }
+        inline gp_Vec to_occt_vec(const math::Vector& v) const{
+            return gp_Vec(v[0], v[1], v[2]);
+        }
+        inline gp_Dir to_occt_dir(const math::Vector& v) const{
+            return gp_Dir(v[0], v[1], v[2]);
+        }
+    };
+
     virtual ~TrabecularCutoff() = default;
     TrabecularCutoff(const projspec::DataMap& data);
 
@@ -61,8 +108,8 @@ class TrabecularCutoff : public ScalarField {
     const double cutoff;
 
     TopoDS_Shape shell;
-    const double bone_thickness;
 
+    BoundaryApproximation inner_bounds;
 
     ViewHandler* distr = nullptr;
 };
