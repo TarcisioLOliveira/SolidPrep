@@ -312,12 +312,13 @@ void FiniteElement::solve_frictionless_displ_log(const Meshing* const mesh, std:
             step = 1.0*a2;
         }
 
+
         for(size_t i = 0; i < vec_size; ++i){
             u[i] += step*dr[i];
         }
         mesh->extend_vector(0, u, u_ext);
 
-        // Generate lambda update problem
+        // Generate lambda update
         {
             const double MU = this->matrix->HMU;
             const double K = this->matrix->HK;
@@ -326,8 +327,7 @@ void FiniteElement::solve_frictionless_displ_log(const Meshing* const mesh, std:
 
                 for(size_t i = 0; i < bnum; ++i){
                     const auto pos = mesh->lag_node_map.at(e.b1->nodes[i]->id);
-                    lambda_source[pos] = std::max(lambda_source[pos], MU*f[i]);
-                    //lambda_source[pos] += MU*f[i];
+                    lambda_source[pos] += MU*f[i];
                 }
             }
             logger::quick_log("Min delta lambda:", *std::min_element(lambda_source.begin(), lambda_source.end()));

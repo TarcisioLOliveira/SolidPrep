@@ -365,45 +365,25 @@ math::Vector CTRI3::lambda_source_log(const std::vector<double>& u_ext, const gp
 
     math::VectorSliceGeneralView uv1(u_ext, math::slicer::from_node_upos(this->e1->nodes, P_N, NODE_DOF));
     math::VectorSliceGeneralView uv2(u_ext, math::slicer::from_node_upos(this->e2->nodes, P_N, NODE_DOF));
-    
+
     math::Vector NN(NODES_PER_ELEM);
 
-    //const auto& gli = utils::GaussLegendreTri<6>::get();
-    //for(auto it = gli.begin(); it != gli.end(); ++it){
-    //    const gp_Pnt pi = this->GS_point(it->a, it->b, it->c);
-    //    const gp_Pnt rpi = this->R_GS_point(it->a, it->b, it->c);
-    //    const auto Nl = this->N_mat_1dof(rpi);
-    //    const auto N1 = this->e1->get_Ni(pi);
-    //    const auto N2 = this->e2->get_Ni(pi);
-    //    double gp = 0;
-    //    math::Vector up1(N1*uv1);
-    //    math::Vector up2(N2*uv2);
-    //    for(size_t j = 0; j < DIM; ++j){
-    //        gp += (up2[j] - up1[j])*n.Coord(1+j);
-    //    }
-    //    const double h1 = this->H(gp, K);
-    //    NN += (it->w*h1)*Nl;
-    //}
-    //NN *= this->delta;
+    math::Vector nv({n.X(), n.Y(), n.Z()});
 
-    std::array<double, NODES_PER_ELEM> w;
-    for(size_t i = 0; i < NODES_PER_ELEM; ++i){
-        std::fill(w.begin(), w.end(), 0.0);
-        w[i] = 1;
-        const gp_Pnt pi = this->GS_point(w[0], w[1], w[2]);
-        const gp_Pnt rpi = this->R_GS_point(w[0], w[1], w[2]);
+    const auto& gli = utils::GaussLegendreTri<6>::get();
+    for(auto it = gli.begin(); it != gli.end(); ++it){
+        const gp_Pnt pi = this->GS_point(it->a, it->b, it->c);
+        const gp_Pnt rpi = this->R_GS_point(it->a, it->b, it->c);
         const auto Nl = this->N_mat_1dof(rpi);
         const auto N1 = this->e1->get_Ni(pi);
         const auto N2 = this->e2->get_Ni(pi);
-        double gp = 0;
         math::Vector up1(N1*uv1);
         math::Vector up2(N2*uv2);
-        for(size_t j = 0; j < DIM; ++j){
-            gp += (up2[j] - up1[j])*n.Coord(1+j);
-        }
+        double gp = (up2 - up1).dot(nv);
         const double h1 = this->H(gp, K);
-        NN[i] = h1;
+        NN += (it->w*h1)*Nl;
     }
+    NN *= this->delta;
 
     return NN;
 }

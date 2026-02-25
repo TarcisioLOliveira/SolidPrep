@@ -211,6 +211,13 @@ class Element{
         } else {
             return 0;
         }
+        //(void)K;
+        //(void)x;
+        //if(x >= 0){
+        //    return std::max(x, 1e-10);
+        //} else {
+        //    return 0;
+        //}
     }
     inline double dH(const double x, const double K) const{
         if(std::abs(K*x) < KX_LIM){
@@ -221,6 +228,13 @@ class Element{
         } else {
             return 0;
         }
+        //(void)K;
+        //(void)x;
+        //if(x >= 0){
+        //    return 1;
+        //} else {
+        //    return 0;
+        //}
     }
     inline double ddH(const double x, const double K) const{
         if(std::abs(K*x) < KX_LIM){
@@ -229,6 +243,9 @@ class Element{
         } else {
             return 0;
         }
+        //(void)K;
+        //(void)x;
+        //return 0;
     }
 };
 
