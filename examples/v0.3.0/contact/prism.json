@@ -52,7 +52,7 @@
         }
     ],
     "finite_element":{
-        "type": "mumps",
+        "type": "petsc_pcg",
         "backend": "cuda"
     },
     "mesher":{
