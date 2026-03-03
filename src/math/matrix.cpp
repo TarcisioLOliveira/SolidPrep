@@ -272,6 +272,7 @@ Matrix& Matrix::operator=(const Matrix& m){
 Matrix& Matrix::operator=(Matrix&& m){
     W = m.W;
     H = m.H;
+    delete[] this->M;
     M = m.M;
     m.M = nullptr;
 
@@ -842,9 +843,13 @@ std::ostream& operator<<(std::ostream& output, const MatrixTransposeView& m){
 
 LU::LU(Matrix& m, bool copy):
     N((m.get_W() == m.get_H()) ? m.get_W() : 0),
-    M((copy) ? ((N > 0) ? new Scalar[N] : nullptr) : m.data()),
+    M((copy) ? ((N > 0) ? new Scalar[N*N] : nullptr) : m.data()),
     ipiv(N, 0),
     copy(copy){
+
+    if(copy){
+        std::copy(m.data(), m.data()+N*N, this->M);
+    }
 
     logger::log_assert(N > 0 && M != nullptr, logger::ERROR,
         "unable to factorize matrix, not square");
@@ -908,9 +913,13 @@ void LU::solve_transposed(Matrix& m) const{
 
 Cholesky::Cholesky(Matrix& m, bool copy):
     N((m.get_W() == m.get_H()) ? m.get_W() : 0),
-    M((copy) ? ((N > 0) ? new Scalar[N] : nullptr) : m.data()),
+    M((copy) ? ((N > 0) ? new Scalar[N*N] : nullptr) : m.data()),
     ipiv(N, 0),
     copy(copy){
+
+    if(copy){
+        std::copy(m.data(), m.data()+N*N, this->M);
+    }
 
     logger::log_assert(N > 0 && M != nullptr, logger::ERROR,
         "unable to factorize matrix, not square");
@@ -985,42 +994,38 @@ VectorTransposed::VectorTransposed(const VectorTransposeView& v):
 ///////////////////////////////////////////////////////////////////////////////
 
 Vector::Vector(Scalar* v, size_t N):
-    VectorMut(N, new Scalar[N]){
+    VectorMut(N){
 
     std::copy(v, v + N, this->V);
 }
 Vector::Vector(std::vector<Scalar> v):
-    VectorMut(v.size(), new Scalar[v.size()]){
+    VectorMut(v.size()){
 
     std::copy(v.begin(), v.begin() + N, this->V);
 }
 Vector::Vector(std::initializer_list<Scalar> v):
-    VectorMut(v.size(), new Scalar[v.size()]){
+    VectorMut(v.size()){
 
     std::copy(v.begin(), v.begin() + N, this->V);
 }
 Vector::Vector(size_t N, Scalar s):
-    VectorMut(N, new Scalar[N]){
+    VectorMut(N){
 
     this->fill(s);
 }
-Vector::~Vector(){
-    delete[] this->V;
-}
 Vector::Vector(const VectorAgnostic& v):
-    VectorMut(v.N, new Scalar[v.N]){
+    VectorMut(v.N){
 
     std::copy(v.V, v.V + N, this->V);
 }
 Vector::Vector(const Vector& v):
-    VectorMut(v.N, new Scalar[v.N]){
+    VectorMut(v.N){
 
     std::copy(v.V, v.V + N, this->V);
 }
 Vector::Vector(Vector&& v):
-    VectorMut(v.N, v.V){
+    VectorMut(v.N, std::forward<Scalar*>(v.V)){
     
-    v.V = nullptr;
 }
 Vector::Vector(const VectorMut<Vector>& v):
     VectorMut(v){
@@ -1155,33 +1160,29 @@ VectorTranspose::VectorTranspose(VectorMut<VectorTranspose>&& v):
     VectorMut(std::forward<VectorMut<VectorTranspose>>(v)){}
 
 VectorTranspose::VectorTranspose(const VectorAgnostic& v):
-    VectorMut(v.N, new Scalar[v.N]){
+    VectorMut(v.N){
 
     std::copy(v.V, v.V + N, this->V);
 }
 VectorTranspose::VectorTranspose(const VectorTranspose& v):
-    VectorMut(v.N, new Scalar[v.N]){
+    VectorMut(v.N){
 
     std::copy(v.V, v.V + N, this->V);
 }
 VectorTranspose::VectorTranspose(VectorTranspose&& v):
-    VectorMut(v.N, v.V){
+    VectorMut(v.N, std::forward<Scalar*>(v.V)){
     
-    v.V = nullptr;
 }
 VectorTranspose::VectorTranspose(size_t N, Scalar s):
-    VectorMut(N, new Scalar[N]){
+    VectorMut(N){
 
     this->fill(s);
-}
-VectorTranspose::~VectorTranspose(){
-    delete[] this->V;
 }
 VectorTranspose& VectorTranspose::operator=(const VectorTranspose& v){
     if(N != v.N){
         delete[] this->V;
-        this->V = new Scalar[N];
         this->N = v.N;
+        this->V = new Scalar[N];
     }
 
     std::copy(v.V, v.V + N, this->V);

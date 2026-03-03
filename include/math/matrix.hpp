@@ -523,7 +523,9 @@ class VectorConst : public VectorBase<const size_t, const Scalar>{
 template<class T>
 class VectorMut : public VectorBase<size_t, Scalar>{
     public:
-    virtual ~VectorMut() = default;
+    virtual ~VectorMut(){
+        delete[] this->V;
+    }
 
     inline Scalar& at(const size_t i){
         return this->V[i];
@@ -623,8 +625,12 @@ class VectorMut : public VectorBase<size_t, Scalar>{
 
     protected:
     VectorMut() = default;
-    VectorMut(size_t N, Scalar* V):
-        VectorBase(N, V){}
+    VectorMut(size_t N):
+        VectorBase(N, new Scalar[N]){}
+    VectorMut(size_t N, Scalar*&& v):
+        VectorBase(N, v){
+        v = nullptr;     
+    }
     VectorMut(const VectorMut& v):
         VectorBase(v.N, new Scalar[v.N]){
         std::copy(v.V, v.V + N, this->V);
@@ -643,7 +649,7 @@ class Vector : public VectorMut<Vector>{
     Vector(std::vector<Scalar> v);
     Vector(std::initializer_list<Scalar> v);
     Vector(size_t N, Scalar s = 0);
-    virtual ~Vector();
+    virtual ~Vector() = default;
     Vector(const VectorAgnostic& v);
     Vector(const Vector& v);
     Vector(Vector&& v);
@@ -675,7 +681,7 @@ class Vector : public VectorMut<Vector>{
 class VectorTranspose : public VectorMut<VectorTranspose>{
     friend class VectorTransposeView;
     public:
-    ~VectorTranspose();
+    ~VectorTranspose() = default;
     VectorTranspose(const VectorMut<VectorTranspose>& v);
     VectorTranspose(VectorMut<VectorTranspose>&& v);
     VectorTranspose(const VectorAgnostic& v);
