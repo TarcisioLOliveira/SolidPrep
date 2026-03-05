@@ -139,18 +139,57 @@ bool TrabecularCutoff::BoundaryApproximation::is_inside(const gp_Pnt& p) const{
         const double w1_v = rp1_v - id1_v;
         const double w2_v = rp2_v - id2_v;
 
-        const double w_d1 = (1.0 - w_l)*((1.0 - w1_v)*bounds[id1][id1_v].d1 + w1_v*bounds[id1][id1_v + 1].d1) +
-                                    w_l*((1.0 - w2_v)*bounds[id2][id2_v].d1 + w2_v*bounds[id2][id2_v + 1].d1);
-        const double w_d2 = (1.0 - w_l)*((1.0 - w1_v)*bounds[id1][id1_v].d2 + w1_v*bounds[id1][id1_v + 1].d2) +
-                                    w_l*((1.0 - w2_v)*bounds[id2][id2_v].d2 + w2_v*bounds[id2][id2_v + 1].d2);
+        if(id1_v < this->bounds[id1].size() - 1 && id2_v < this->bounds[id2].size() - 1){
+            const double w_d1 = (1.0 - w_l)*((1.0 - w1_v)*bounds[id1][id1_v].d1 + w1_v*bounds[id1][id1_v + 1].d1) +
+                                        w_l*((1.0 - w2_v)*bounds[id2][id2_v].d1 + w2_v*bounds[id2][id2_v + 1].d1);
+            const double w_d2 = (1.0 - w_l)*((1.0 - w1_v)*bounds[id1][id1_v].d2 + w1_v*bounds[id1][id1_v + 1].d2) +
+                                        w_l*((1.0 - w2_v)*bounds[id2][id2_v].d2 + w2_v*bounds[id2][id2_v + 1].d2);
 
-        const auto ref_v = (1.0 - w_l)*(relp2_1.dot(v_dir)*v_dir + this->base_points[id1].p1) +
-                                   w_l*(relp2_2.dot(v_dir)*v_dir + this->base_points[id2].p1);
+            const auto ref_v = (1.0 - w_l)*(relp2_1.dot(v_dir)*v_dir + this->base_points[id1].p1) +
+                                       w_l*(relp2_2.dot(v_dir)*v_dir + this->base_points[id2].p1);
 
-        const auto relpos_v = (pv - ref_v).dot(h_dir);
+            const auto relpos_v = (pv - ref_v).dot(h_dir);
 
-        if(relpos_v < w_d2 || relpos_v > w_d1){
-            return false;
+            if(relpos_v < w_d2 || relpos_v > w_d1){
+                return false;
+            }
+        } else {
+            size_t p1, p2, p3;
+            size_t ref1, ref2, ref3;
+            if(id1_v < this->bounds[id1].size() - 1){
+                p1 = id1_v;
+                ref1 = id1;
+                p2 = id1_v + 1;
+                ref2 = id1;
+                p3 = id2_v;
+                ref3 = id2;
+            } else {
+                p1 = id1_v;
+                ref1 = id1;
+                p2 = id2_v;
+                ref2 = id2;
+                p3 = id2_v + 1;
+                ref3 = id2;
+            }
+            const auto refp1 = this->base_points[ref1].p1 + v_dir*this->base_points[ref1].spacing_v*p1;
+            const auto refp2 = this->base_points[ref2].p1 + v_dir*this->base_points[ref2].spacing_v*p2;
+            const auto refp3 = this->base_points[ref3].p1 + v_dir*this->base_points[ref3].spacing_v*p3;
+            const auto proj_p = (refp1 - pv).dot(h_dir)*h_dir + pv;
+            math::Matrix M(
+                {refp1[0], refp2[0], refp3[0],
+                 refp1[1], refp2[1], refp3[1],
+                 refp1[2], refp2[2], refp3[2]}, 3, 3);
+            math::LU solver(M);
+            auto w = proj_p;
+            solver.solve(w);
+            const auto w_d1 = w[0]*bounds[ref1][p1].d1 + w[1]*bounds[ref2][p2].d1 + w[2]*bounds[ref3][p3].d1;
+            const auto w_d2 = w[0]*bounds[ref1][p1].d2 + w[1]*bounds[ref2][p2].d2 + w[2]*bounds[ref3][p3].d2;
+
+            const auto relpos_v = (pv - proj_p).dot(h_dir);
+
+            if(relpos_v < w_d2 || relpos_v > w_d1){
+                return false;
+            }
         }
     }
     return true;
