@@ -55,8 +55,9 @@ cmake ..
 make
 ```
 
-The program has not been tested on Windows nor MacOS. It should work, but it is 
-possible that some modifications may be needed.
+Currently only works on Linux due to some technical matters. PETSc and MUMPS 
+apparently work better on Linux too, so it is the better choice in this case.
+
 
 ## Using SolidPrep
 
