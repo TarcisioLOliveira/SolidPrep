@@ -39,7 +39,7 @@ class MUMPSGlobalSparse{
         this->spd = spd;
         this->L = L;
         this->setted = false;
-        this->M.clear();
+        this->M.zero();
     }
 
     inline std::vector<int>& get_rows(){

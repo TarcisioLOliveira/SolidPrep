@@ -235,7 +235,7 @@ void Gmsh::mesh(const std::vector<Force>& forces,
         sec.Perform();
         sec.DumpErrors(std::cout);
         sh = sec.Shape();
-
+        utils::shape_to_file("test.stp", sh);
     }
 
     std::vector<size_t> geom_elem_mapping, elem_node_tags, bound_elem_node_tags;

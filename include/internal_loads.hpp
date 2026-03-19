@@ -77,7 +77,7 @@ class InternalLoads{
     const gp_Dir normal;
     const MeshElementFactory* elem_info;
     std::vector<const BoundaryElement*> submesh;
-    std::unique_ptr<Curvature> curvature;
+    std::unique_ptr<Curvature> curvature = nullptr;
     std::vector<std::unique_ptr<MeshNode>> boundary_nodes;
     std::vector<std::unique_ptr<BoundaryMeshElement>> boundary_mesh;
 

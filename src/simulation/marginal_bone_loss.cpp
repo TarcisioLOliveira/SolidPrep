@@ -24,6 +24,7 @@
 #include "logger.hpp"
 #include "math/matrix.hpp"
 #include <algorithm>
+#include <numeric>
 #include "project_data.hpp"
 
 namespace simulation{
@@ -119,10 +120,15 @@ void MarginalBoneLoss::run(){
             if(id == this->geom_id){
                 mand_geom_offset = elem_num;
                 density_num = g->mesh.size();
+                this->v.resize(density_num);
+                for(size_t i = 0; i < density_num; ++i){
+                    this->v[i] = g->mesh[i]->get_volume(this->mesh->thickness);
+                }
             }
             elem_num += g->mesh.size();
             ++id;
         }
+        this->v_ref = std::accumulate(this->v.begin(), this->v.end(), 0.0)/density_num;
     }
 
     std::vector<double> density, max_density;
@@ -152,12 +158,11 @@ void MarginalBoneLoss::run(){
     field->freeze(density, max_density);
     max_density.clear();
     std::copy(density.begin(), density.end(), density_vector_view.begin() + mand_geom_offset);
-    std::fill(max_density.begin(), max_density.end(), MAX_RHO);
     this->density_view->update_view(density_vector_view);
 
     dir_field->set_max_it(1);
 
-    const double MIN_DENSITY = 1e-1;
+    const double MIN_DENSITY = 0.05;
 
     double time_count = 0;
     while(time_count < this->time_limit){
@@ -165,7 +170,6 @@ void MarginalBoneLoss::run(){
         logger::quick_log("");
         logger::quick_log("Time:", time_count);
 
-        this->fem->update_materials();
         this->mesh->apply_boundary_conditions(this->proj->forces, this->proj->supports, this->proj->springs, this->proj->internal_loads, this->proj->sub_problems);
         dir_field->generate();
         this->fem->generate_matrix(this->mesh);
@@ -185,11 +189,12 @@ void MarginalBoneLoss::run(){
             const auto strain = 1e6*e->get_strain_vector(e->get_centroid(), u);
             const double gi = this->get_density_variation(strain)*this->time_step;
             const double old_d = density[i];
+            // Scale proportionally to volume
             density[i] += gi;
             if(density[i] < MIN_DENSITY){
                 density[i] = MIN_DENSITY;
             } else if(density[i] > this->MAX_RHO){
-                density[i] = max_density[i];
+                density[i] = this->MAX_RHO;
             }
             growth[this->mand_geom_offset + i] = density[i] - old_d;
             density_vector_view[i + this->mand_geom_offset] = density[i];

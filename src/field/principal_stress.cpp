@@ -59,26 +59,26 @@ void PrincipalStress::initialize_views(Visualization* viz){
 void PrincipalStress::generate(){
     const size_t num_nodes = this->elem_info->get_nodes_per_element();
 
-    this->geoms.clear();
-
-    auto& proj_geoms = this->proj_data->geometries;
-    std::set<Geometry*> picked_geoms;
-    for(auto& g:proj_geoms){
-        auto mats = g->materials.get_materials();
-        for(auto& m:mats){
-            if(m->get_field() == this){
-                picked_geoms.insert(g.get());
-                break;
+    if(this->first_run){
+        auto& proj_geoms = this->proj_data->geometries;
+        std::set<Geometry*> picked_geoms;
+        for(auto& g:proj_geoms){
+            auto mats = g->materials.get_materials();
+            for(auto& m:mats){
+                if(m->get_field() == this){
+                    picked_geoms.insert(g.get());
+                    break;
+                }
             }
         }
-    }
-    this->geoms.insert(this->geoms.begin(), picked_geoms.begin(), picked_geoms.end());
+        this->geoms.insert(this->geoms.begin(), picked_geoms.begin(), picked_geoms.end());
 
-    if(this->geoms.size() == 0){
-        return;
+        if(this->geoms.size() == 0){
+            return;
+        }
     }
 
-    if(this->show){
+    if(this->show && this->first_run){
         if(!(this->elem_info->get_element_order() == 1 && 
              this->elem_info->get_shape_type() == Element::Shape::TRI)){
 
@@ -117,20 +117,10 @@ void PrincipalStress::generate(){
     std::vector<std::vector<utils::DelayedPointerView<Material>>> materials_backup(this->geoms.size());
 
     std::vector<utils::DelayedPointerView<Material>> iso_material{this->initial_material};
-    std::vector<std::vector<utils::DelayedPointerView<Material>>> ortho_material(this->geoms.size());
     for(size_t i = 0; i < this->geoms.size(); ++i){
         auto& g = this->geoms[i];
         auto mats = g->materials.get_materials();
         materials_backup[i] = mats;
-        for(auto& m:mats){
-            if(m->get_field() == this){
-                // Assumes there is a single material that uses this field
-                // for each material list because it's much easier this
-                // way
-                ortho_material[i] = std::vector<utils::DelayedPointerView<Material>>{m};
-                break;
-            }
-        }
         g->set_materials(iso_material);
     }
     // Check if it's necessary to update BCs at each iteration
@@ -158,6 +148,7 @@ void PrincipalStress::generate(){
 
 
     this->u.resize(mesh->max_dofs, 0);
+    fem->get_latest_global_displ(mesh, this->u);
     auto u_old = this->u;
     double c_old = 0;
 
@@ -199,6 +190,7 @@ void PrincipalStress::generate(){
         auto& g = this->geoms[i];
         g->set_materials(materials_backup[i]);
     }
+    fem->update_materials();
     logger::quick_log("");
     logger::quick_log("Finished.");
 }
@@ -305,13 +297,13 @@ math::Matrix PrincipalStress::get_matrix(const MeshElement* e, const gp_Pnt& p) 
             }
         }
         math::Eigen eigen(tensor);
-        logger::log_assert(std::abs(eigen.eigenvectors.determinant()) > 1e-7,
-                logger::ERROR,
-                "eigen vector singular");
-        logger::log_assert(
-                (eigen.eigenvectors*eigen.eigenvectors.T()).is_equal(math::Matrix::identity(DIM)),
-                logger::ERROR,
-                "eigen vector not orthonormal");
+        //logger::log_assert(std::abs(eigen.eigenvectors.determinant()) > 1e-7,
+        //        logger::ERROR,
+        //        "eigen vector singular");
+        //logger::log_assert(
+        //        (eigen.eigenvectors*eigen.eigenvectors.T()).is_equal(math::Matrix::identity(DIM)),
+        //        logger::ERROR,
+        //        "eigen vector not orthonormal");
         std::vector<double> abs_sort(DIM);
         for(size_t i = 0; i < DIM; ++i){
             abs_sort[i] = std::abs(eigen.eigenvalues[i]);

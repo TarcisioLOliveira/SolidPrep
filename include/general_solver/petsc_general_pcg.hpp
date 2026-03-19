@@ -29,10 +29,15 @@ namespace general_solver{
 class PETScGeneralPCG{
     public:
     ~PETScGeneralPCG();
+    PETScGeneralPCG(bool insert_all = false):
+        M(insert_all)
+    {}
 
     void initialize_matrix(bool spd, size_t L);
 
     void solve(std::vector<double>& b);
+    
+    void solve_adjoint(std::vector<double>& b);
 
     inline void compute(){
         this->M.set_up();

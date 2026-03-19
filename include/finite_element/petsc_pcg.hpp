@@ -44,7 +44,7 @@ class PETScPCG : public FiniteElement{
     virtual void reset_hessian() override;
 
     std::unique_ptr<global_stiffness_matrix::PETScSparseSymmetric> gsm;
-    Vec u;
+    Vec u = 0;
     Vec f = 0;
     PC pc = 0;
     KSP ksp = 0;

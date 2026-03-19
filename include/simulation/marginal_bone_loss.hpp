@@ -54,11 +54,13 @@ class MarginalBoneLoss : public Simulation{
     const Range K_e1, K_g, K_e2;
     const utils::ProblemType problem_type;
     const double MAX_RHO = 2.5;
-    const double rho_d = MAX_RHO/360.0;
+    double rho_d = MAX_RHO/360.0;
 
     size_t elem_num = 0;
     size_t mand_geom_offset = 0;
     size_t density_num = 0;
+    std::vector<double> v;
+    double v_ref;
 
     const size_t geom_id;
     Geometry* mandible;

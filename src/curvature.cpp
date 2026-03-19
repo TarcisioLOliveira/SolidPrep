@@ -19,7 +19,6 @@
  */
 
 #include "curvature.hpp"
-#include <Eigen/Dense>
 #include <vector>
 #include "general_solver/mumps_general.hpp"
 #include "logger.hpp"
@@ -128,7 +127,11 @@ void Curvature::generate_curvature_3D(const std::vector<std::unique_ptr<MeshNode
     this->reduced_vec_len = reduced_vector_size;
     this->full_vector_size = full_vector_size;
 
-    this->u.resize(3*full_vector_size + 6, 0); 
+    const size_t u_size = 3*full_vector_size + 6;
+    if(this->u.size() != u_size){
+        this->u.resize(u_size, 0); 
+        solver.initialize_matrix(false, u_size);
+    }
 
     this->calculate_stress_field_3D(boundary_mesh);
 }
@@ -304,8 +307,8 @@ void Curvature::calculate_stress_field_3D(const std::vector<std::unique_ptr<Boun
     constexpr size_t MAX_B = 6;
 
     const size_t u_offset = this->u.size() - MAX_B;
-
-    solver.initialize_matrix(false, this->u.size());
+    std::fill(this->u.begin(), this->u.end(), 0.0);
+    this->solver.make_zero();
 
     const size_t K_DIM = this->elem_info->get_k_dimension();
     const size_t NODE_DOF = this->elem_info->get_dof_per_node();
@@ -404,12 +407,6 @@ void Curvature::calculate_stress_field_3D(const std::vector<std::unique_ptr<Boun
     logger::quick_log("Kyz", Kyz);
     logger::quick_log("Kxz", Kxz);
     logger::quick_log("");
-
-    if(!this->calculate_adjoint){
-        this->solver.clear_matrix();
-    } else {
-        this->u_bar.resize(this->u.size(), 0);
-    }
 }
 
 void Curvature::solve_adjoint_problem(const std::vector<std::unique_ptr<BoundaryMeshElement>>& boundary_mesh, const std::vector<double>& fea_u){
@@ -419,6 +416,8 @@ void Curvature::solve_adjoint_problem(const std::vector<std::unique_ptr<Boundary
     const size_t NODE_DOF = this->elem_info->get_dof_per_node();
     const size_t NODES_PER_ELEM = this->elem_info->get_nodes_per_element();
     const size_t u_offset = this->u.size() - 6;
+    this->u_bar.resize(this->u.size(), 0);
+    std::fill(this->u_bar.begin(), this->u_bar.end(), 0.0);
 
     std::vector<size_t> posi(K_DIM + 6);
     for(size_t i = 0; i < 6; ++i){

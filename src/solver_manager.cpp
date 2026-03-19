@@ -35,8 +35,6 @@ void SolverManager::generate_matrix(const Meshing* const mesh, const std::vector
     }
     if(this->iteration == 0){
         this->lambdas.resize(mesh->sub_problems->size());
-    }
-    if(this->iteration == 0){
         this->split_u.resize(mesh->sub_problems->size());
         this->split_u[0].resize(mesh->max_dofs, 0);
     }
@@ -44,7 +42,6 @@ void SolverManager::generate_matrix(const Meshing* const mesh, const std::vector
         if(this->iteration == 0){
             if(needs_lambda){
                 this->lambdas[i].emplace_back(l_num, 0.00);
-                std::fill(this->lambdas[i][0].begin(), this->lambdas[i][0].end(), 0);
             } else {
                 this->lambdas[i].emplace_back();
             }
@@ -92,7 +89,9 @@ void SolverManager::calculate_displacements_adjoint(const Meshing* const mesh, c
     } else if(mesh->proj_data->contact_data.contact_type == FiniteElement::ContactType::FRICTIONLESS_DISPL_LOG){
         l_num = mesh->lag_node_map.size();
     }
+    std::fill(u.begin(), u.end(), 0);
     std::vector<double> u_tmp(mesh->max_dofs, 0);
+    std::vector<double> ui(load.size(), 0);
     for(size_t i = 0; i < mesh->sub_problems->size(); ++i){
         if(this->lambdas[i].size() <= this->solve_step){
             if(needs_lambda){
@@ -102,7 +101,7 @@ void SolverManager::calculate_displacements_adjoint(const Meshing* const mesh, c
             }
         }
         std::vector<double> l(mesh->load_vector[i].size());
-        auto& ui = this->split_u[i];
+        std::fill(ui.begin(), ui.end(), 0.0);
         if(load[i].size() == mesh->max_dofs){
             mesh->de_extend_vector(i, load[i], l);
             this->solvers[i]->calculate_adjoint(mesh, l, ui, this->lambdas[i][this->solve_step]);
@@ -119,6 +118,20 @@ void SolverManager::calculate_displacements_adjoint(const Meshing* const mesh, c
         }
     }
     ++this->solve_step;
+}
+
+void SolverManager::get_latest_global_displ(const Meshing* const mesh, std::vector<double>& global_u) const{
+    global_u.resize(mesh->max_dofs, 0.0);
+    if(this->split_u.size() > 0){
+        std::fill(global_u.begin(), global_u.end(), 0.0);
+        for(size_t i = 0; i < mesh->sub_problems->size(); ++i){
+            auto& ui = this->split_u[i];
+            #pragma omp parallel for
+            for(size_t j = 0; j < global_u.size(); ++j){
+                global_u[j] += ui[j];
+            }
+        }
+    }
 }
 
 void SolverManager::update_D_matrices(const Meshing* const mesh, const std::vector<double>& density, double pc, double psi){

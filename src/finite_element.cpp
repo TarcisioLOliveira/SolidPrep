@@ -129,9 +129,9 @@ void FiniteElement::solve_frictionless_displ_log(const Meshing* const mesh, std:
 
     this->first_adjoint = true;
 
-    for(auto& l:lambda){
-        l *= 0.9;
-    }
+    //for(auto& l:lambda){
+    //    l *= 0.9;
+    //}
 
     this->reset_hessian();
     this->matrix->dot_vector(u, Ku);

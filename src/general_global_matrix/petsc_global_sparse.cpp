@@ -26,15 +26,23 @@ PETScGlobalSparse::~PETScGlobalSparse(){
     MatDestroy(&this->PM);
 }
 
-void PETScGlobalSparse::initialize(size_t L){
+void PETScGlobalSparse::initialize(bool spd, size_t L){
     this->L = L;
+    this->M.clear();
+    if(this->PM != 0){
+        MatDestroy(&this->PM);
+    }
     MatCreate(PETSC_COMM_WORLD, &this->PM);
     MatSetType(this->PM, MATAIJCUSPARSE);
 
     MPI_Bcast(&L, 1, MPI_LONG, 0, MPI_COMM_WORLD);
 
     MatSetSizes(this->PM, PETSC_DECIDE, PETSC_DECIDE, L, L);
-    MatSetOption(this->PM, MAT_STRUCTURALLY_SYMMETRIC, PETSC_TRUE);
+    if(spd){
+        MatSetOption(this->PM, MAT_SPD_ETERNAL, PETSC_TRUE);
+    } else {
+        MatSetOption(this->PM, MAT_SYMMETRIC, PETSC_FALSE);
+    }
     MatSetOption(this->PM, MAT_KEEP_NONZERO_PATTERN, PETSC_TRUE);
 }
 

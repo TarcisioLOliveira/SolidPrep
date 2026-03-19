@@ -90,8 +90,6 @@ void PETScSparseSymmetricCPU::preallocate(const Meshing * const mesh, const size
 
     MatPreallocatorPreallocate(tmp, PETSC_TRUE, this->K);
 
-    MatSetUp(this->K);
-
     MatDestroy(&tmp);
 }
 
@@ -197,8 +195,6 @@ void PETScSparseSymmetricCUDA::preallocate(const Meshing * const mesh, const siz
     this->K_coo.generate_coo(M);
 
     MatSetPreallocationCOO(this->K, this->K_coo.nvals, this->K_coo.rows.data(), this->K_coo.cols.data());
-
-    MatSetUp(this->K);
 }
 void PETScSparseSymmetricCUDA::assemble_matrix(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<math::Matrix>& D_cache, const std::vector<double>& u_ext, const std::vector<double>& lambda, const FiniteElement::ContactType type, const size_t mpi_id){
 
@@ -209,7 +205,9 @@ void PETScSparseSymmetricCUDA::assemble_matrix(const Meshing * const mesh, const
         if(type > FiniteElement::ContactType::RIGID){
             this->K_coo.backup_matrix();
         }
-        MatSetValuesCOO(this->K, this->K_coo.vals.data(), INSERT_VALUES);
+        if(type == FiniteElement::ContactType::RIGID){
+            this->final_flush_matrix();
+        }
     }
 }
 

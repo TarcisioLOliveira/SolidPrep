@@ -55,14 +55,15 @@ InternalLoads::InternalLoads(CrossSection cross_section, double thickness, gp_Di
 }
 
 void InternalLoads::calculate_curvature(std::vector<BoundaryElement>& boundary_elements){
-    auto boundary_elem_info = this->elem_info->get_boundary_element_info();
-    this->curvature = std::make_unique<Curvature>(mat.get(), rot2D, rot3D, std::move(boundary_elem_info), F[0], F[1], F[2], M[0], M[1], M[2]);
-    if(this->calculate_adjoint){
-        this->curvature->set_calculate_adjoint();
+    if(this->curvature == nullptr){
+        auto boundary_elem_info = this->elem_info->get_boundary_element_info();
+        this->generate_mesh(boundary_elements);
+        this->curvature = std::make_unique<Curvature>(mat.get(), rot2D, rot3D, std::move(boundary_elem_info), F[0], F[1], F[2], M[0], M[1], M[2]);
+        if(this->calculate_adjoint){
+            this->curvature->set_calculate_adjoint();
+        }
     }
-    this->generate_mesh(boundary_elements);
     this->curvature->generate_curvature_3D(this->boundary_nodes, this->boundary_mesh, this->phi_size, this->boundary_nodes.size());
-
 }
 
 void InternalLoads::apply_load_2D(const std::vector<long>& node_positions, std::vector<double>& load_vector) const{

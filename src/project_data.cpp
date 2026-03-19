@@ -78,6 +78,9 @@ ProjectData::ProjectData(std::string project_file){
         const auto& analysis = settings["analysis"];
         if(this->log_data(analysis, "simulation", projspec::TYPE_BOOL, false)){
             this->do_simulation = analysis["simulation"].asBool();
+            if(this->log_data(analysis, "meshing", projspec::TYPE_BOOL, false)){
+                this->do_meshing = analysis["meshing"].asBool();
+            }
         }
         if(!this->do_simulation){
             if(this->log_data(analysis, "gen", projspec::TYPE_BOOL, false)){
@@ -1213,15 +1216,24 @@ std::vector<Spring> ProjectData::get_springs(const Json::Value& doc){
         auto v = f["v"];
         std::string mat_name(f["material"].asString());
 
-        std::array<double, 3> l{L[0].asDouble(), L[1].asDouble(), 0};
-        gp_Dir nv(normal[0].asDouble(), normal[1].asDouble(), 0);
-        gp_Dir vv(v[0].asDouble(), v[1].asDouble(), 0);
-        gp_Dir wv(0, 0, 1);
+
+
+        auto mat(this->get_material(mat_name));
+
+        this->log_data(f, "region", projspec::TYPE_OBJECT, true);
+        auto S = this->get_cross_section(f["region"]);
 
         if(this->type == utils::PROBLEM_TYPE_2D){
             logger::log_assert(L.size() == 2, logger::ERROR, "Length vector must have exactly two dimensions in 2D problems");
             logger::log_assert(normal.size() == 2, logger::ERROR, "Normal vector must have exactly two dimensions in 2D problems");
             logger::log_assert(v.size() == 2, logger::ERROR, "'v' vector must have exactly two dimensions in 2D problems");
+
+            std::array<double, 3> l{L[0].asDouble(), L[1].asDouble(), 0};
+            gp_Dir nv(normal[0].asDouble(), normal[1].asDouble(), 0);
+            gp_Dir vv(v[0].asDouble(), v[1].asDouble(), 0);
+            gp_Dir wv(0, 0, 1);
+
+            springs.emplace_back(S, this->thickness, nv, vv, wv, mat, l, this->topopt_element, this->type);
         } else if(this->type == utils::PROBLEM_TYPE_3D) {
             logger::log_assert(L.size() == 3, logger::ERROR, "Length vector must have exactly three dimensions in 3D problems");
             logger::log_assert(normal.size() == 3, logger::ERROR, "Normal vector must have exactly three dimensions in 3D problems");
@@ -1230,18 +1242,13 @@ std::vector<Spring> ProjectData::get_springs(const Json::Value& doc){
             auto w = f["w"];
             logger::log_assert(w.size() == 3, logger::ERROR, "'w' vector must have exactly two dimensions in 3D problems");
 
-            l[2] = L[2].asDouble();
-            nv.SetZ(normal[2].asDouble());
-            vv.SetZ(v[2].asDouble());
+            std::array<double, 3> l{L[0].asDouble(), L[1].asDouble(), L[2].asDouble()};
+            gp_Dir nv(normal[0].asDouble(), normal[1].asDouble(), normal[2].asDouble());
+            gp_Dir vv(v[0].asDouble(), v[1].asDouble(), v[2].asDouble());
+            gp_Dir wv (w[0].asDouble(), w[1].asDouble(), w[2].asDouble());
 
-            wv = gp_Dir(w[0].asDouble(), w[1].asDouble(), w[2].asDouble());
+            springs.emplace_back(S, this->thickness, nv, vv, wv, mat, l, this->topopt_element, this->type);
         }
-
-        auto mat(this->get_material(mat_name));
-
-        this->log_data(f, "region", projspec::TYPE_OBJECT, true);
-        auto S = this->get_cross_section(f["region"]);
-        springs.emplace_back(S, this->thickness, nv, vv, wv, mat, l, this->topopt_element, this->type);
     }
     return springs;
 }

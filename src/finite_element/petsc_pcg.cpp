@@ -49,6 +49,7 @@ PETScPCG::~PETScPCG(){
     VecDestroy(&this->f);
     VecDestroy(&this->u);
     KSPDestroy(&this->ksp);
+    PCDestroy(&this->pc);
 }
 
 void PETScPCG::generate_matrix_base(const Meshing* const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<math::Matrix>& D_cache, const std::vector<double>& u_ext, const std::vector<double>& lambda, const ContactType type){
@@ -195,13 +196,13 @@ void PETScPCG::solve(std::vector<double>& load){
     //MatIsSymmetric(K, 1e-7, &is_sym);
     //logger::quick_log("is symmetric?", is_sym);
 
-    if(!this->setup){
+    //if(!this->setup){
         KSPSetOperators(this->ksp, K, K);
 
         KSPSetUp(this->ksp);
         PCSetUp(this->pc);
         this->setup = true;
-    }
+    //}
 
     KSPSolve(this->ksp, this->f, this->u);
     KSPConvergedReason r;
@@ -209,11 +210,14 @@ void PETScPCG::solve(std::vector<double>& load){
     logger::quick_log("Converged?", r);
     {
         double tmp = 0;
+        PetscInt total_its = 0;
         PetscInt its = 0;
         KSPGetResidualNorm(this->ksp, &tmp);
-        KSPGetTotalIterations(this->ksp, &its);
+        KSPGetTotalIterations(this->ksp, &total_its);
+        KSPGetIterationNumber(this->ksp, &its);
         logger::quick_log("Residual norm", tmp);
-        logger::quick_log("Total iterations", its);
+        logger::quick_log("Iterations", its);
+        logger::quick_log("Total iterations", total_its);
     }
 
     const double* load_data;

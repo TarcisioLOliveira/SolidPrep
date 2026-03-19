@@ -24,6 +24,7 @@
 #include <memory>
 #include <gp_Dir.hxx>
 #include "general_solver/mumps_general.hpp"
+#include "general_solver/petsc_general_pcg.hpp"
 #include "material.hpp"
 #include "element.hpp"
 #include "element_factory.hpp"
@@ -62,7 +63,8 @@ class Curvature{
     size_t full_vector_size;
 
     bool calculate_adjoint = false;
-    general_solver::MUMPSGeneral solver;
+    //general_solver::MUMPSGeneral solver;
+    general_solver::PETScGeneralPCG solver = general_solver::PETScGeneralPCG(true);
 
     double Area   = 0;
     double EA     = 0;

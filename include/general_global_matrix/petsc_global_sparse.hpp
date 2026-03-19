@@ -31,8 +31,13 @@ namespace general_global_matrix{
 class PETScGlobalSparse{
     public:
     ~PETScGlobalSparse();
+    PETScGlobalSparse(bool insert_all = false):
+       M(0, insert_all) 
+    {
 
-    void initialize(size_t L);
+    }
+
+    void initialize(bool spd, size_t L);
 
     inline void add_element(const math::Matrix& matrix, const std::vector<long>& pos){
         this->M.insert_matrix_general(matrix, pos);
@@ -66,6 +71,7 @@ class PETScGlobalSparse{
 
     inline void make_zero(){
         this->M.zero();
+        setted = false;
     }
 
     inline void clear_matrix(){
@@ -78,9 +84,8 @@ class PETScGlobalSparse{
     }
 
     private:
-    Mat PM;
-    Mat tmp;
-    utils::COO<PetscInt> M = utils::COO<PetscInt>(0);
+    Mat PM = 0;
+    utils::COO<PetscInt> M;
     size_t L;
     bool setted = false;
 };

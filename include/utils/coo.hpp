@@ -49,8 +49,9 @@ class COO{
         }
     };
 
-    COO(INT offset = 0):
-        offset(offset){}
+    COO(INT offset = 0, bool insert_all = false):
+        offset(offset), insert_all(insert_all){
+    }
 
     inline void dot_vector(const std::vector<double>& v, std::vector<double>& v_out, const bool full_matrix) const{
         if(this->coo_first_time){
@@ -91,7 +92,7 @@ class COO{
                 const auto Mij = M(P[i], P[j]);
 
                 // Pi >= Pj
-                if(std::abs(Mij) > ZERO_TOL){
+                if((std::abs(Mij) > ZERO_TOL) || this->insert_all){
                     this->data[Point(Pi, Pj)] += 0;
                 }
             }
@@ -113,7 +114,7 @@ class COO{
                 const auto Mij = M(P[i], P[j]);
 
                 // Pi >= Pj
-                if(std::abs(Mij) > ZERO_TOL){
+                if((std::abs(Mij) > ZERO_TOL) || this->insert_all){
                     this->data[Point(Pi, Pj)] += 0;
                 }
             }
@@ -141,7 +142,7 @@ class COO{
 
                     const auto Mij = M(Pi[i], Pj[j]);
 
-                    if(std::abs(Mij) > ZERO_TOL){
+                    if((std::abs(Mij) > ZERO_TOL) || this->insert_all){
                         this->data[Point(pi, pj)] += 0;
                     }
                 }
@@ -154,7 +155,7 @@ class COO{
 
                     const auto Mij = M(Pi[i], Pj[j]);
 
-                    if(std::abs(Mij) > ZERO_TOL){
+                    if((std::abs(Mij) > ZERO_TOL) || this->insert_all){
                         this->data[Point(pj, pi)] += 0;
                     }
                 }
@@ -178,7 +179,7 @@ class COO{
                     const auto Mij = M(P[i], P[j]);
 
                     // Pi >= Pj
-                    if(std::abs(Mij) > ZERO_TOL){
+                    if((std::abs(Mij) > ZERO_TOL) || this->insert_all){
                         this->data[Point(Pi, Pj)] += Mij;
                     }
                 }
@@ -208,7 +209,7 @@ class COO{
                     const auto Mij = M(P[i], P[j]);
 
                     // Pi >= Pj
-                    if(std::abs(Mij) > ZERO_TOL){
+                    if((std::abs(Mij) > ZERO_TOL) || this->insert_all){
                         this->data[Point(Pi, Pj)] += Mij;
                     }
                 }
@@ -244,7 +245,7 @@ class COO{
 
                         const auto Mij = M(Pi[i], Pj[j]);
 
-                        if(std::abs(Mij) > ZERO_TOL){
+                        if((std::abs(Mij) > ZERO_TOL) || this->insert_all){
                             this->data[Point(pi, pj)] += Mij;
                         }
                     }
@@ -257,7 +258,7 @@ class COO{
 
                         const auto Mij = M(Pi[i], Pj[j]);
 
-                        if(std::abs(Mij) > ZERO_TOL){
+                        if((std::abs(Mij) > ZERO_TOL) || this->insert_all){
                             this->data[Point(pj, pi)] += Mij;
                         }
                     }
@@ -349,6 +350,7 @@ class COO{
     std::vector<double> cooVal;
     std::vector<double> cooVal_bkp;
     const double ZERO_TOL = 1e-6;
+    const bool insert_all;
 
     inline std::vector<size_t> index_sort(const std::vector<long>& pos) const{
         // https://stackoverflow.com/questions/1577475/c-sorting-and-keeping-track-of-indexes

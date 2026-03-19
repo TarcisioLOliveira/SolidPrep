@@ -576,11 +576,11 @@ void Meshing::apply_internal_loads(std::vector<InternalLoads>& loads){
             }
         }
     }
-    for(auto& s:loads){
-        if(!s.get_calculate_adjoint()){
-            s.clear_curvature_data();
-        }
-    }
+    //for(auto& s:loads){
+    //    if(!s.get_calculate_adjoint()){
+    //        s.clear_curvature_data();
+    //    }
+    //}
 }
 
 
