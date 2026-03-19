@@ -37,6 +37,9 @@ class GlobalStiffnessMatrix{
 
     virtual void reset_hessian() = 0;
 
+    virtual void add_nonlinear_bcs(const Meshing * const mesh, const std::vector<long>& node_positions, const std::vector<double>& u_ext);
+    void append_Ku_nl_bcs(const Meshing* const mesh, const std::vector<long>& node_positions, const std::vector<double>& u_ext, const std::vector<double>& u_ext_mult, std::vector<double>& Ku) const;
+
     virtual void add_contacts(const Meshing * const mesh, const std::vector<long>& node_positions, const std::vector<double>& u_ext);
     void append_Ku_penalty(const Meshing* const mesh, const std::vector<long>& node_positions, const std::vector<double>& u_ext, const std::vector<double>& lambda, std::vector<double>& Ku) const;
     void append_dKu_penalty(const Meshing* const mesh, const std::vector<long>& node_positions, const std::vector<double>& u_ext, const std::vector<double>& lambda, const std::vector<double>& du, std::vector<double>& dKu) const;

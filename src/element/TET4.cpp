@@ -123,26 +123,6 @@ math::Matrix TET4::get_nodal_density_gradient(gp_Pnt p) const{
     return this->dN_mat_1dof(this->C);
 }
 
-math::Matrix TET4::get_R(const math::Matrix& K, const double t, const std::vector<gp_Pnt>& points) const{
-    (void)t;
-    math::Matrix R(K_DIM, K_DIM);
-
-    auto& gl = utils::GaussLegendreTri<2>::get();
-
-    const auto& p = points;
-    gp_Vec v1(p[1], p[0]);
-    gp_Vec v2(p[2], p[0]);
-    const double drnorm = (v1.Crossed(v2)).Magnitude()/2;
-    for(auto it = gl.begin(); it < gl.end(); ++it){
-        gp_Pnt pi = this->GL_point_tri(it->a, it->b, it->c, points);
-        const auto NN = N_mat(pi.X(), pi.Y(), pi.Z(), this->C);
-        R += it->w*(NN.T()*K*NN);
-    }
-    R *= drnorm;
-
-    return R;
-}
-
 math::Matrix TET4::diffusion_1dof(const double t, const math::Matrix& A) const{
     (void)t;
     const auto B = this->dN_mat_1dof(this->C);

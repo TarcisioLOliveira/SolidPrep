@@ -180,7 +180,11 @@ ProjectData::ProjectData(std::string project_file){
     if(this->log_data(settings, "springs", projspec::TYPE_ARRAY, false)){
         this->springs = this->get_springs(settings["springs"]);
     }
-    logger::log_assert(this->supports.size() > 0 || this->springs.size() > 0, logger::ERROR,
+    if(this->log_data(settings, "contact_springs", projspec::TYPE_ARRAY, false)){
+        this->contact_springs = this->get_contact_springs(settings["contact_springs"]);
+        logger::log_assert(this->contact_data.rtol_abs > 0, logger::ERROR, "using nonlinear boundary conditions such as contact springs requires setting rtol_abs > 0");
+    }
+    logger::log_assert(this->supports.size() > 0 || this->springs.size() > 0 || this->contact_springs.size() > 0, logger::ERROR,
                        "a support or spring must be specified to prevent matrix singularity.");
     if(this->log_data(settings, "internal_loads", projspec::TYPE_ARRAY, false)){
         this->internal_loads = this->get_internal_loads(settings["internal_loads"]);
@@ -608,7 +612,6 @@ FiniteElement::ContactData ProjectData::get_contact_data(const Json::Value& doc)
             data.contact_type = FiniteElement::ContactType::RIGID;
         } else {
             this->log_data(doc, "rtol_abs", projspec::TYPE_DOUBLE, true);
-            data.rtol_abs = doc["rtol_abs"].asDouble();
             if(type == "frictionless_penalty"){
                 data.contact_type = FiniteElement::ContactType::FRICTIONLESS_PENALTY;
             } else if(type == "frictionless_displ_log"){
@@ -619,12 +622,17 @@ FiniteElement::ContactData ProjectData::get_contact_data(const Json::Value& doc)
                 logger::log_assert(false, logger::ERROR, "unknown contact type: {}", type);
             }
         }
+
+        if(this->log_data(doc, "rtol_abs", projspec::TYPE_DOUBLE, false)){
+            data.rtol_abs = doc["rtol_abs"].asDouble();
+        }
+        if(this->log_data(doc, "max_step", projspec::TYPE_DOUBLE, false)){
+            data.max_step = doc["max_step"].asDouble();
+        }
+
         if(data.contact_type == FiniteElement::ContactType::FRICTIONLESS_PENALTY){
             this->log_data(doc, "opt_weight", projspec::TYPE_DOUBLE, true);
             data.EPS_DISPL_SIMPLE = doc["opt_weight"].asDouble();
-            if(this->log_data(doc, "max_step", projspec::TYPE_DOUBLE, false)){
-                data.max_step = doc["max_step"].asDouble();
-            }
         } else if(data.contact_type == FiniteElement::ContactType::FRICTIONLESS_DISPL_LOG){
             this->log_data(doc, "step_tol", projspec::TYPE_DOUBLE, true);
             this->log_data(doc, "K", projspec::TYPE_DOUBLE, true);
@@ -632,17 +640,11 @@ FiniteElement::ContactData ProjectData::get_contact_data(const Json::Value& doc)
             data.step_tol = doc["step_tol"].asDouble();
             data.HK = doc["K"].asDouble();
             data.HMU = doc["MU"].asDouble();
-            if(this->log_data(doc, "max_step", projspec::TYPE_DOUBLE, false)){
-                data.max_step = doc["max_step"].asDouble();
-            }
         } else if(data.contact_type >= FiniteElement::ContactType::FRICTIONLESS_DISPL_SIMPLE){
             this->log_data(doc, "step_tol", projspec::TYPE_DOUBLE, true);
             this->log_data(doc, "opt_weight", projspec::TYPE_DOUBLE, true);
             data.step_tol = doc["step_tol"].asDouble();
             data.EPS_DISPL_SIMPLE = doc["opt_weight"].asDouble();
-            if(this->log_data(doc, "max_step", projspec::TYPE_DOUBLE, false)){
-                data.max_step = doc["max_step"].asDouble();
-            }
         }
     }
     return data;
@@ -1202,6 +1204,59 @@ std::vector<Support> ProjectData::get_support(const Json::Value& doc) const{
 
 std::vector<Spring> ProjectData::get_springs(const Json::Value& doc){
     std::vector<Spring> springs;
+    for(auto& f : doc){
+        logger::log_assert(f.isObject(), logger::ERROR, "Each load must be stored as a JSON object");
+        this->log_data(f, "L", projspec::TYPE_ARRAY, true);
+        this->log_data(f, "normal", projspec::TYPE_ARRAY, true);
+        this->log_data(f, "v", projspec::TYPE_ARRAY, true);
+        if(this->type == utils::PROBLEM_TYPE_3D) {
+            this->log_data(f, "w", projspec::TYPE_ARRAY, true);
+        }
+        this->log_data(f, "material", projspec::TYPE_STRING, true);
+        auto L = f["L"];
+        auto normal = f["normal"];
+        auto v = f["v"];
+        std::string mat_name(f["material"].asString());
+
+
+
+        auto mat(this->get_material(mat_name));
+
+        this->log_data(f, "region", projspec::TYPE_OBJECT, true);
+        auto S = this->get_cross_section(f["region"]);
+
+        if(this->type == utils::PROBLEM_TYPE_2D){
+            logger::log_assert(L.size() == 2, logger::ERROR, "Length vector must have exactly two dimensions in 2D problems");
+            logger::log_assert(normal.size() == 2, logger::ERROR, "Normal vector must have exactly two dimensions in 2D problems");
+            logger::log_assert(v.size() == 2, logger::ERROR, "'v' vector must have exactly two dimensions in 2D problems");
+
+            std::array<double, 3> l{L[0].asDouble(), L[1].asDouble(), 0};
+            gp_Dir nv(normal[0].asDouble(), normal[1].asDouble(), 0);
+            gp_Dir vv(v[0].asDouble(), v[1].asDouble(), 0);
+            gp_Dir wv(0, 0, 1);
+
+            springs.emplace_back(S, this->thickness, nv, vv, wv, mat, l, this->topopt_element, this->type);
+        } else if(this->type == utils::PROBLEM_TYPE_3D) {
+            logger::log_assert(L.size() == 3, logger::ERROR, "Length vector must have exactly three dimensions in 3D problems");
+            logger::log_assert(normal.size() == 3, logger::ERROR, "Normal vector must have exactly three dimensions in 3D problems");
+            logger::log_assert(v.size() == 3, logger::ERROR, "'v' vector must have exactly three dimensions in 3D problems");
+
+            auto w = f["w"];
+            logger::log_assert(w.size() == 3, logger::ERROR, "'w' vector must have exactly two dimensions in 3D problems");
+
+            std::array<double, 3> l{L[0].asDouble(), L[1].asDouble(), L[2].asDouble()};
+            gp_Dir nv(normal[0].asDouble(), normal[1].asDouble(), normal[2].asDouble());
+            gp_Dir vv(v[0].asDouble(), v[1].asDouble(), v[2].asDouble());
+            gp_Dir wv (w[0].asDouble(), w[1].asDouble(), w[2].asDouble());
+
+            springs.emplace_back(S, this->thickness, nv, vv, wv, mat, l, this->topopt_element, this->type);
+        }
+    }
+    return springs;
+}
+
+std::vector<ContactSpring> ProjectData::get_contact_springs(const Json::Value& doc){
+    std::vector<ContactSpring> springs;
     for(auto& f : doc){
         logger::log_assert(f.isObject(), logger::ERROR, "Each load must be stored as a JSON object");
         this->log_data(f, "L", projspec::TYPE_ARRAY, true);

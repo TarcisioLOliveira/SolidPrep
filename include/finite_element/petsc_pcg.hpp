@@ -51,6 +51,7 @@ class PETScPCG : public FiniteElement{
     bool first_time = true;
     bool setup = false;
     std::string vec_type = VECSTANDARD;
+    bool nonlinear_boundary_conditions = false;
 };
 
 }

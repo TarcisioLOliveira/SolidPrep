@@ -44,6 +44,7 @@
 #include "function.hpp"
 #include "optimizer.hpp"
 #include "spring.hpp"
+#include "contact_spring.hpp"
 #include "internal_loads.hpp"
 #include "field.hpp"
 #include "solver_manager.hpp"
@@ -89,6 +90,7 @@ class ProjectData {
     std::vector<Force> forces;
     std::vector<Support> supports;
     std::vector<Spring> springs;
+    std::vector<ContactSpring> contact_springs;
     std::vector<InternalLoads> internal_loads;
     std::unique_ptr<FiniteElement> sizer_fea;
     std::unique_ptr<TopologyOptimization> topopt;
@@ -161,6 +163,8 @@ class ProjectData {
                                     const projspec::RequirementConditions& conds);
 
     std::vector<Spring> get_springs(const Json::Value& doc);
+
+    std::vector<ContactSpring> get_contact_springs(const Json::Value& doc);
 
     std::vector<InternalLoads> get_internal_loads(const Json::Value& doc);
 

@@ -139,11 +139,13 @@ math::Matrix TRI3::get_nodal_density_gradient(gp_Pnt p) const{
 }
 
 
-math::Matrix TRI3::get_R(const math::Matrix& Km, const double t, const std::vector<gp_Pnt>& points) const{
+math::Matrix TRI3::get_R(const math::Matrix& Km, const std::vector<gp_Pnt>& points) const{
     const double x[]{points[0].X(), points[1].X()};
     const double y[]{points[0].Y(), points[1].Y()};
 
     const double* K = Km.data();
+
+    const double t = 1.0;
 
     math::Matrix R({
     K[0]*t*std::sqrt(x[0]*x[0] - 2*x[0]*x[1] + x[1]*x[1] + y[0]*y[0] - 2*y[0]*y[1] + y[1]*y[1])*(3*a[0]*a[0] + 3*a[0]*b[0]*x[0] + 3*a[0]*b[0]*x[1] + 3*a[0]*c[0]*y[0] + 3*a[0]*c[0]*y[1] + b[0]*b[0]*x[0]*x[0] + b[0]*b[0]*x[0]*x[1] + b[0]*b[0]*x[1]*x[1] + 2*b[0]*c[0]*x[0]*y[0] + b[0]*c[0]*x[0]*y[1] + b[0]*c[0]*x[1]*y[0] + 2*b[0]*c[0]*x[1]*y[1] + c[0]*c[0]*y[0]*y[0] + c[0]*c[0]*y[0]*y[1] + c[0]*c[0]*y[1]*y[1])/(12*delta*delta)

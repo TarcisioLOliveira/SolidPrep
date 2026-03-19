@@ -24,6 +24,7 @@
 #include "material.hpp"
 #include "math/matrix.hpp"
 #include <gp_Pnt.hxx>
+#include <limits>
 #include <vector>
 #include <TopoDS_Shape.hxx>
 #include <TopoDS_Edge.hxx>
@@ -335,12 +336,23 @@ class MeshElement : public Element{
      * Creates and returns the elemental Robin matrix.
      *
      * @param K Stiffness matrix.
+     * @param points Points that define the boundary.
+     *
+     * @return The element stiffness matrix.
+     */
+    virtual math::Matrix get_R(const math::Matrix& K, const std::vector<gp_Pnt>& points) const = 0;
+    /**
+     * Creates and returns the elemental Robin matrix (contact spring).
+     *
+     * @param K Stiffness matrix.
      * @param t Geometry thickness.
      * @param points Points that define the boundary.
      *
      * @return The element stiffness matrix.
      */
-    virtual math::Matrix get_R(const math::Matrix& K, const double t, const std::vector<gp_Pnt>& points) const = 0;
+    virtual math::Matrix get_R_contact(const math::Matrix& K, const std::vector<gp_Pnt>& points, const math::Vector normal, const std::vector<double>& u_ext) const = 0;
+
+    virtual math::Vector get_Ku_cs(const math::Matrix& K, const std::vector<gp_Pnt>& points, const math::Vector normal, const std::vector<double>& u_ext, const std::vector<double>& u_ext_mult) const = 0;
     /**
      * Calculates the internal load vector of the element.
      *

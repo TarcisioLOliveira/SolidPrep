@@ -54,6 +54,7 @@ PETScPCG::~PETScPCG(){
 
 void PETScPCG::generate_matrix_base(const Meshing* const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<math::Matrix>& D_cache, const std::vector<double>& u_ext, const std::vector<double>& lambda, const ContactType type){
     this->gsm->generate(mesh, u_size, l_num, node_positions, topopt, D_cache, u_ext, lambda, type);
+    this->nonlinear_boundary_conditions = mesh->nonlinear_boundary_conditions;
     this->setup = false;
 }
 
@@ -116,7 +117,7 @@ void PETScPCG::solve(std::vector<double>& load){
         //PCGAMGSetCoarseEqLim(this->pc, 1000);
         //PCGAMGSetLowMemoryFilter(this->pc, PETSC_TRUE);
         //
-        if(this->contact_data.contact_type == FiniteElement::ContactType::FRICTIONLESS_DISPL_LOG){
+        if(this->contact_data.contact_type == FiniteElement::ContactType::FRICTIONLESS_DISPL_LOG || this->nonlinear_boundary_conditions){
             KSPSetTolerances(this->ksp, 1e-2, 1e-50, 1e10, 1e5);
             //PCJacobiSetUseAbs(this->pc, PETSC_TRUE);
             //PCJacobiSetFixDiagonal(this->pc, PETSC_TRUE);

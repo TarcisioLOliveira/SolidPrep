@@ -336,7 +336,7 @@ math::Matrix Q4S::get_nodal_density_gradient(gp_Pnt p) const{
                          DIM, NODES_PER_ELEM);
 }
 
-math::Matrix Q4S::get_R(const math::Matrix& Km, const double t, const std::vector<gp_Pnt>& points) const{
+math::Matrix Q4S::get_R(const math::Matrix& Km, const std::vector<gp_Pnt>& points) const{
     const gp_Pnt p0 = this->normalize(points[0]);
     const gp_Pnt p1 = this->normalize(points[1]);
 
@@ -344,6 +344,7 @@ math::Matrix Q4S::get_R(const math::Matrix& Km, const double t, const std::vecto
     const std::array<double, 2> y{p0.Y(), p1.Y()};
 
     const double* K = Km.data();
+    const double t = 1.0;
 
     math::Matrix R({
     K[0]*t*std::sqrt(x[0]*x[0] - 2*x[0]*x[1] + x[1]*x[1] + y[0]*y[0] - 2*y[0]*y[1] + y[1]*y[1])*(30*a*a*b*b - 30*a*a*b*(y[0] + y[1]) + 10*a*a*(y[0]*y[0] + y[0]*y[1] + y[1]*y[1]) - 30*a*b*b*(x[0] + x[1]) + 20*a*b*(2*x[0]*y[0] + x[0]*y[1] + x[1]*y[0] + 2*x[1]*y[1]) - 5*a*(3*x[0]*y[0]*y[0] + 2*x[0]*y[0]*y[1] + x[0]*y[1]*y[1] + x[1]*y[0]*y[0] + 2*x[1]*y[0]*y[1] + 3*x[1]*y[1]*y[1]) + 10*b*b*(x[0]*x[0] + x[0]*x[1] + x[1]*x[1]) - 5*b*(3*x[0]*x[0]*y[0] + x[0]*x[0]*y[1] + 2*x[0]*x[1]*y[0] + 2*x[0]*x[1]*y[1] + x[1]*x[1]*y[0] + 3*x[1]*x[1]*y[1]) + 6*x[0]*x[0]*y[0]*y[0] + 3*x[0]*x[0]*y[0]*y[1] + x[0]*x[0]*y[1]*y[1] + 3*x[0]*x[1]*y[0]*y[0] + 4*x[0]*x[1]*y[0]*y[1] + 3*x[0]*x[1]*y[1]*y[1] + x[1]*x[1]*y[0]*y[0] + 3*x[1]*x[1]*y[0]*y[1] + 6*x[1]*x[1]*y[1]*y[1])/(480*a*a*b*b)

@@ -25,6 +25,7 @@ set(SOURCES
     solver_manager.cpp
     shape_handler.cpp
     shape_operations.cpp
+    contact_spring.cpp
 )
 
 add_subdirectory(pathfinding)

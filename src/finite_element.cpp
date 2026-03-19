@@ -20,14 +20,12 @@
 
 #include <algorithm>
 #include <cblas.h>
-#include <Eigen/Core>
-#include <Eigen/SparseCore>
 #include "finite_element.hpp"
-#include "general_solver/mumps_general.hpp"
 #include "logger.hpp"
 #include "global_stiffness_matrix.hpp"
 #include "math/matrix.hpp"
 #include "utils.hpp"
+#include "project_data.hpp"
 
 FiniteElement::FiniteElement(const ContactData& data)
     : contact_data(data)
@@ -45,7 +43,11 @@ void FiniteElement::generate_matrix(const Meshing* const mesh, const size_t u_si
 void FiniteElement::calculate_displacements(const Meshing* const mesh, std::vector<double>& load, const std::vector<double>& u0, std::vector<double>& lambda){
     switch(this->contact_data.contact_type){
         case RIGID:
-            this->solve_rigid(load);
+            if(!mesh->nonlinear_boundary_conditions){
+                this->solve_rigid(load);
+            } else {
+                this->solve_rigid_nonlinear(mesh, load, u0);
+            }
             break;
         case FRICTIONLESS_PENALTY:
             this->solve_frictionless_penalty(mesh, load, u0);
@@ -63,7 +65,12 @@ void FiniteElement::calculate_adjoint(const Meshing* const mesh, std::vector<dou
     (void) lambda;
     switch(this->contact_data.contact_type){
         case RIGID:
-            this->solve_rigid(load);
+            if(!mesh->nonlinear_boundary_conditions){
+                this->solve_rigid(load);
+            } else {
+                logger::log_assert(false, logger::ERROR, "adjoint equation for nonlinear BCs not implemented");
+                //this->solve_rigid_nonlinear(mesh, load, u0);
+            }
             break;
         case FRICTIONLESS_PENALTY:
             logger::log_assert(false, logger::ERROR, "adjoint equation for penalty contact not implemented");
@@ -81,6 +88,157 @@ void FiniteElement::calculate_adjoint(const Meshing* const mesh, std::vector<dou
 
 void FiniteElement::solve_rigid(std::vector<double>& load){
     this->solve(load);
+}
+
+void FiniteElement::solve_rigid_nonlinear(const Meshing* const mesh, std::vector<double>& load, const std::vector<double>& u0){
+    const size_t vec_size = this->u_size;
+
+    double E = 0;
+    size_t it = 0;
+
+    std::vector<double> f(vec_size, 0);
+    std::vector<double> u(vec_size, 0);
+    mesh->de_extend_vector(0, u0, u);
+    std::vector<double> r(vec_size);
+    std::vector<double> dr(vec_size);
+    std::vector<double> u1(vec_size);
+
+    std::vector<double> Ku(vec_size, 0);
+    std::vector<double> Kd1(vec_size, 0);
+    std::vector<double> u_ext(u0);
+    std::vector<double> du_ext(u_ext.size());
+
+    std::copy(load.begin(), load.end(), f.begin());
+
+    double rnorm = 0;
+
+    double step = 1.0;
+
+    this->first_adjoint = true;
+
+    const auto get_g = [&](double alpha)->double{
+        for(size_t i = 0; i < vec_size; ++i){
+            u1[i] = u[i] + alpha*dr[i];
+        }
+        mesh->extend_vector(0, u1, u_ext);
+        std::fill(Ku.begin(), Ku.end(), 0);
+        std::fill(Kd1.begin(), Kd1.end(), 0);
+        this->matrix->dot_vector(u1, Ku);
+        this->matrix->dot_vector(dr, Kd1);
+        this->matrix->append_Ku_nl_bcs(mesh, mesh->node_positions[0], u_ext, u_ext, Ku);
+        this->matrix->append_Ku_nl_bcs(mesh, mesh->node_positions[0], u_ext, du_ext, Kd1);
+        for(size_t i = 0; i < vec_size; ++i){
+            r[i] = (Ku[i] - f[i]);
+        }
+
+        rnorm = std::sqrt(cblas_ddot(r.size(), r.data(), 1, r.data(), 1));
+
+        const double g = cblas_ddot(vec_size, Kd1.data(), 1, r.data(), 1)/rnorm;
+        return g;
+    };
+
+    const auto get_rnorm_est = [&](double alpha)->double{
+        for(size_t i = 0; i < vec_size; ++i){
+            u1[i] = u[i] + alpha*dr[i];
+        }
+        mesh->extend_vector(0, u1, u_ext);
+        std::fill(Ku.begin(), Ku.end(), 0);
+        this->matrix->dot_vector(u1, Ku);
+        this->matrix->append_Ku_nl_bcs(mesh, mesh->node_positions[0], u_ext, u_ext, Ku);
+        for(size_t i = 0; i < vec_size; ++i){
+            r[i] = (Ku[i] - f[i]);
+        }
+
+        rnorm = std::sqrt(cblas_ddot(r.size(), r.data(), 1, r.data(), 1));
+
+        return rnorm;
+    };
+
+    this->reset_hessian();
+    this->matrix->dot_vector(u, Ku);
+    this->matrix->append_Ku_nl_bcs(mesh, mesh->node_positions[0], u_ext, u_ext, Ku);
+    for(size_t i = 0; i < vec_size; ++i){
+        r[i] = -(Ku[i] - f[i]);
+    }
+    this->matrix->add_nonlinear_bcs(mesh, mesh->node_positions[0], u_ext);
+    rnorm = std::sqrt(cblas_ddot(r.size(), r.data(), 1, r.data(), 1));
+    step = this->contact_data.max_step;
+
+    do{
+        // Solve linear subproblem
+        logger::quick_log("r min max", *std::min_element(r.begin(), r.begin()+u_size), *std::max_element(r.begin(), r.begin()+u_size));
+        logger::quick_log("u min max", *std::min_element(u.begin(), u.begin()+u_size), *std::max_element(u.begin(), u.begin()+u_size));
+        this->matrix->final_flush_matrix();
+        this->solve(r);
+
+        this->reset_hessian();
+        std::copy(r.begin(), r.end(), dr.begin());
+        mesh->extend_vector(0, dr, du_ext);
+
+        double drnorm = std::sqrt(cblas_ddot(dr.size(), dr.data(), 1, dr.data(), 1));
+
+        logger::quick_log("drnorm", drnorm);
+        logger::quick_log("dr min max", *std::min_element(dr.begin(), dr.end()), *std::max_element(dr.begin(), dr.end()));
+
+        logger::quick_log("Applying step...");
+        step = this->regula_falsi(get_g, get_rnorm_est, rnorm);
+        //step = this->contact_data.max_step;
+
+        for(size_t i = 0; i < vec_size; ++i){
+            u[i] += step*dr[i];
+        }
+        mesh->extend_vector(0, u, u_ext);
+
+        // Generate lambda update
+        // {
+        //     const double MU = this->matrix->HMU;
+        //     const double K = this->matrix->HK;
+        //     for(const auto& e:mesh->paired_boundary){
+        //         const auto f = e.elem->lambda_source_log(u_ext, -e.b1->normal, K);
+
+        //         for(size_t i = 0; i < bnum; ++i){
+        //             const auto pos = mesh->lag_node_map.at(e.b1->nodes[i]->id);
+        //             lambda_source[pos] += MU*f[i];
+        //         }
+        //     }
+        //     logger::quick_log("Min delta lambda:", *std::min_element(lambda_source.begin(), lambda_source.end()));
+        //     logger::quick_log("Max delta lambda:", *std::max_element(lambda_source.begin(), lambda_source.end()));
+        //     for(size_t i = 0; i < l_num; ++i){
+        //         lambda[i] += step*lambda_source[i];
+        //     }
+        //     std::fill(lambda_source.begin(), lambda_source.end(), 0.0);
+        // }
+
+        std::fill(Ku.begin(), Ku.end(), 0);
+        this->matrix->dot_vector(u, Ku);
+        this->matrix->append_Ku_nl_bcs(mesh, mesh->node_positions[0], u_ext, u_ext, Ku);
+        for(size_t i = 0; i < vec_size; ++i){
+            r[i] = -(Ku[i] - f[i]);
+        }
+        E = 0;
+        for(size_t i = 0; i < vec_size; ++i){
+            E += u[i]*(Ku[i]/2.0 - f[i]);
+        }
+
+        rnorm = std::sqrt(cblas_ddot(r.size(), r.data(), 1, r.data(), 1));
+       
+        this->matrix->add_nonlinear_bcs(mesh, mesh->node_positions[0], u_ext);
+
+        logger::quick_log("Iteration:", it);
+        logger::quick_log("Potential energy:", E);
+        logger::quick_log("||r||", rnorm);
+        logger::quick_log("step:", step);
+        logger::quick_log("");
+        logger::quick_log("");
+
+        logger::log_assert(rnorm < 1e30, logger::ERROR, "Newton process diverged, increase rtol_abs and/or decrease mult");
+        ++it;
+        if(step == 0){
+            break;
+        }
+    } while((rnorm > this->contact_data.rtol_abs && std::abs(step) > this->contact_data.step_tol));// || it < 2);
+
+    std::copy(u.begin(), u.begin() + u_size, load.begin());
 }
 
 void FiniteElement::adjoint_frictionless_displ_log(const Meshing* const mesh, std::vector<double>& load, std::vector<double>& lambda, const std::vector<double>& u_ext){
@@ -129,6 +287,45 @@ void FiniteElement::solve_frictionless_displ_log(const Meshing* const mesh, std:
 
     this->first_adjoint = true;
 
+    const auto get_g = [&](double alpha)->double{
+        for(size_t i = 0; i < vec_size; ++i){
+            u1[i] = u[i] + alpha*dr[i];
+        }
+        mesh->extend_vector(0, u1, u_ext);
+        std::fill(Ku.begin(), Ku.end(), 0);
+        std::fill(Kd1.begin(), Kd1.end(), 0);
+        this->matrix->dot_vector(u1, Ku);
+        this->matrix->dot_vector(dr, Kd1);
+        this->matrix->append_Ku_frictionless_log(mesh, u_ext, lambda, Ku);
+        this->matrix->append_dKu_frictionless_log(mesh, u1, dr, lambda, Kd1);
+        for(size_t i = 0; i < vec_size; ++i){
+            r[i] = (Ku[i] - f[i]);
+        }
+
+        rnorm = std::sqrt(cblas_ddot(r.size(), r.data(), 1, r.data(), 1));
+
+        const double g = cblas_ddot(vec_size, Kd1.data(), 1, r.data(), 1)/rnorm;
+        return g;
+    };
+
+    const auto get_rnorm_est = [&](double alpha)->double{
+        for(size_t i = 0; i < vec_size; ++i){
+            u1[i] = u[i] + alpha*dr[i];
+        }
+        mesh->extend_vector(0, u1, u_ext);
+        std::fill(Ku.begin(), Ku.end(), 0);
+        this->matrix->dot_vector(u1, Ku);
+        this->matrix->append_Ku_frictionless_log(mesh, u_ext, lambda, Ku);
+        for(size_t i = 0; i < vec_size; ++i){
+            r[i] = (Ku[i] - f[i]);
+        }
+
+        rnorm = std::sqrt(cblas_ddot(r.size(), r.data(), 1, r.data(), 1));
+
+        return rnorm;
+    };
+
+
     //for(auto& l:lambda){
     //    l *= 0.9;
     //}
@@ -157,157 +354,9 @@ void FiniteElement::solve_frictionless_displ_log(const Meshing* const mesh, std:
         logger::quick_log("drnorm", drnorm);
         logger::quick_log("dr min max", *std::min_element(dr.begin(), dr.end()), *std::max_element(dr.begin(), dr.end()));
 
-
-        const auto get_g = [&](double alpha)->double{
-            for(size_t i = 0; i < vec_size; ++i){
-                u1[i] = u[i] + alpha*dr[i];
-            }
-            mesh->extend_vector(0, u1, u_ext);
-            std::fill(Ku.begin(), Ku.end(), 0);
-            std::fill(Kd1.begin(), Kd1.end(), 0);
-            this->matrix->dot_vector(u1, Ku);
-            this->matrix->dot_vector(dr, Kd1);
-            this->matrix->append_Ku_frictionless_log(mesh, u_ext, lambda, Ku);
-            this->matrix->append_dKu_frictionless_log(mesh, u1, dr, lambda, Kd1);
-            for(size_t i = 0; i < vec_size; ++i){
-                r[i] = (Ku[i] - f[i]);
-            }
-
-            rnorm = std::sqrt(cblas_ddot(r.size(), r.data(), 1, r.data(), 1));
-
-            const double g = cblas_ddot(vec_size, Kd1.data(), 1, r.data(), 1)/rnorm;
-            return g;
-        };
-
-        const auto get_rnorm_est = [&](double alpha)->double{
-            for(size_t i = 0; i < vec_size; ++i){
-                u1[i] = u[i] + alpha*dr[i];
-            }
-            mesh->extend_vector(0, u1, u_ext);
-            std::fill(Ku.begin(), Ku.end(), 0);
-            this->matrix->dot_vector(u1, Ku);
-            this->matrix->append_Ku_frictionless_log(mesh, u_ext, lambda, Ku);
-            for(size_t i = 0; i < vec_size; ++i){
-                r[i] = (Ku[i] - f[i]);
-            }
-
-            rnorm = std::sqrt(cblas_ddot(r.size(), r.data(), 1, r.data(), 1));
-
-            return rnorm;
-        };
-
-        double g1 = 0, g2 = 1;
-        double a1 = 0, a2 = this->contact_data.max_step;
-        g1 = get_g(a1);
-        g2 = get_g(a2);
-        logger::quick_log("g1", g1, "a1", a1);
-        logger::quick_log("g2", g2, "a2", a2);
-        if(!(g1 < 0 && g2 < 0) && !(std::abs(g1/g2) > 1e2 && g2 < 0.1)){
-            if((g1 > 0 && g2 > 0) || std::abs(g2/g1) > 1e1 || std::abs(g1/g2) > 1e1){
-                logger::quick_log("Improving starting points...");
-                if(g1 > 0 && g2 > 0){
-                    double rnorm_tmp = rnorm;
-                    if(g1 < g2){
-                        a1 = -rnorm_tmp/g1;
-                        g1 = get_g(a1);
-                        rnorm_tmp = get_rnorm_est(a1);
-                        while(g1 < 0 && a1 < -1){
-                            a1 *= 0.1;
-                            g1 = get_g(a1);
-                        }
-                        if(g1 > 0){
-                            a1 *= 10;
-                            g1 = get_g(a1);
-                        }
-                    } else {
-                        a2 = -rnorm_tmp/g2;
-                        g2 = get_g(a2);
-                        rnorm_tmp = get_rnorm_est(a2);
-                    }
-                }
-                if(std::abs(g2/g1) > 1e1 && g2*g1 < 0){
-                    double mtp = 0.8;
-                    while(true){
-                        while(g2*g1 < 0 && std::abs(g2/g1) > 1e1){
-                            a2 *= mtp;
-                            g2 = get_g(a2);
-                        }
-                        if(g2*g1 > 0){
-                            a2 /= mtp;
-                            g2 = get_g(a2);
-                        }
-                        if(std::abs(g2/g1) > 1e1){
-                            mtp = (mtp - 1.0)*0.8 + 1.0;
-                        } else {
-                            break;
-                        }
-                    }
-                } else if(std::abs(g1/g2) > 1e1 && g2*g1 < 0){
-                    double mtp = 1.5;
-                    a1 = 0.1;//-0.8*g1/(g2-g1);
-                    g1 = get_g(a1);
-                    while(g1 > 0){
-                        a1 *= 0.1;
-                        g1 = get_g(a1);
-                    }
-                    if(g2*g1 < 0){
-                        while(true){
-                            while(g2*g1 < 0 && std::abs(g1/g2) > 1e1 && a1 < 1.0){
-                                a1 *= mtp;
-                                g1 = get_g(a1);
-                            }
-                            if(g2*g1 > 0){
-                                a1 /= mtp;
-                                g1 = get_g(a1);
-                            }
-                            if(std::abs(g1/g2) > 1e1){
-                                mtp = (mtp - 1.0)*0.8 + 1.0;
-                            } else {
-                                break;
-                            }
-                        }
-                    }
-                }
-                logger::quick_log("g1", g1, "a1", a1);
-                logger::quick_log("g2", g2, "a2", a2);
-            }
-            const double DIFF = 1e-1;
-            const double stop = DIFF*std::min(std::abs(g1), std::abs(g2));
-            if(g2*g1 < 0){
-                logger::quick_log("Regula falsi...");
-                if(g1 > g2){
-                    std::swap(g1, g2);
-                    std::swap(a1, a2);
-                }
-                // Regula falsi Illinois
-                while(std::min(std::abs(g2), std::abs(g1)) > stop){
-                    double diff = 0.5*g2 - g1;
-                    if(std::abs(diff) < 1e-13){
-                        break;
-                    }
-                    double c = (0.5*g2*a1 - g1*a2)/diff;
-                    double gc = get_g(c);
-                    if(gc > 0){
-                        a2 = c;
-                        g2 = gc;
-                    } else {
-                        a1 = c;
-                        g1 = gc;
-                    }
-                }
-                if(std::abs(g1) < std::abs(g2)){
-                    a2 = a1;
-                    logger::quick_log(a1, g1);
-                } else {
-                    logger::quick_log(a2, g2);
-                }
-            } else if(g2 > 0 && g1 > 0){
-                a2 = 0;
-            }
-        }
-
         logger::quick_log("Applying step...");
         step = this->contact_data.max_step;
+        const double a2 = this->regula_falsi(get_g, get_rnorm_est, rnorm);
         if(a2 != this->contact_data.max_step){
             step = 1.0*a2;
         }

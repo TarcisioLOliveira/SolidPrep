@@ -123,25 +123,6 @@ math::Matrix TET10::get_nodal_density_gradient(gp_Pnt p) const{
     return this->dN_mat_1dof(p);
 }
 
-math::Matrix TET10::get_R(const math::Matrix & K, const double t, const std::vector<gp_Pnt>& points) const{
-    (void)t;
-    math::Matrix R(K_DIM, K_DIM);
-
-    const auto& p = points;
-    gp_Vec v1(p[1], p[0]);
-    gp_Vec v2(p[2], p[0]);
-    const double delta = v1.Crossed(v2).Magnitude()/2;
-    const auto& gli = utils::GaussLegendreTri<4>::get();
-    for(auto it = gli.begin(); it < gli.end(); ++it){
-        const gp_Pnt p = this->GL_point_2D(it->a, it->b, it->c, points);
-        const auto NN(this->N_mat(p));
-        R += it->w*NN.T()*K*NN;
-    }
-    R *= delta;
-
-    return R;
-}
-
 math::Matrix TET10::diffusion_1dof(const double t, const math::Matrix& A) const{
     (void)t;
 

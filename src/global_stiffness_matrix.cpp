@@ -21,6 +21,7 @@
 #include "global_stiffness_matrix.hpp"
 #include "logger.hpp"
 #include "math/matrix.hpp"
+#include "math/slicer.hpp"
 #include <limits>
 
 GlobalStiffnessMatrix::GlobalStiffnessMatrix(const FiniteElement::ContactData& data):
@@ -96,7 +97,7 @@ void GlobalStiffnessMatrix::generate_base(const Meshing * const mesh, const size
                 ++cur_id;
             }
 
-            this->add_frictionless_log(mesh, node_positions, u_ext, lambda, true);
+            //this->add_frictionless_log(mesh, node_positions, u_ext, lambda, true);
         } else if(type == FiniteElement::ContactType::FRICTIONLESS_DISPL_SIMPLE){
             const std::vector<double> empty_lambda(lambda.size(), 0);
             this->add_frictionless_simple(mesh, node_positions, u_ext, empty_lambda, true);
@@ -152,7 +153,6 @@ void GlobalStiffnessMatrix::add_geometry(const Meshing* const mesh, const std::v
 }
 
 void GlobalStiffnessMatrix::add_springs(const Meshing * const mesh, const std::vector<long>& node_positions){
-    const double t = mesh->thickness;
     const size_t dof      = mesh->elem_info->get_dof_per_node();
     const size_t node_num = mesh->elem_info->get_nodes_per_element();
     const size_t bnode_num = mesh->elem_info->get_boundary_nodes_per_element();
@@ -175,8 +175,82 @@ void GlobalStiffnessMatrix::add_springs(const Meshing * const mesh, const std::v
                     u_pos[i*dof + j] = node_positions[p];
                 }
             }
-            const math::Matrix R(e->get_R(K, t, points));
+            const math::Matrix R(e->get_R(K, points));
             this->insert_element_matrix(R, u_pos);
+        }
+    }
+}
+
+void GlobalStiffnessMatrix::add_nonlinear_bcs(const Meshing * const mesh, const std::vector<long>& node_positions, const std::vector<double>& u_ext){
+    const size_t dof      = mesh->elem_info->get_dof_per_node();
+    const size_t node_num = mesh->elem_info->get_nodes_per_element();
+    const size_t bnode_num = mesh->elem_info->get_boundary_nodes_per_element();
+
+    std::vector<gp_Pnt> points(bnode_num);
+    std::vector<long> u_pos(dof*node_num);
+
+    // Contact springs
+    for(size_t it = 0; it < mesh->contact_springs->size(); ++it){
+        const auto& cs = mesh->contact_springs->at(it);
+        const math::Vector normal({
+            cs.normal.X(),
+            cs.normal.Y(),
+            cs.normal.Z()
+        });
+
+        for(const auto& b : mesh->contact_springs->at(it).submesh){
+            const auto c = b->get_centroid(bnode_num);
+            const auto& K = mesh->contact_springs->at(it).get_K(b->parent, c);
+            const auto& e = b->parent;
+            for(size_t i = 0; i < bnode_num; ++i){
+                points[i] = b->nodes[i]->point;
+            }
+            for(size_t i = 0; i < node_num; ++i){
+                const auto& n = e->nodes[i];
+                for(size_t j = 0; j < dof; ++j){
+                    const size_t p = n->id*dof + j;
+                    u_pos[i*dof + j] = node_positions[p];
+                }
+            }
+            const math::Matrix R(e->get_R_contact(K, points, normal, u_ext));
+            this->insert_element_matrix(R, u_pos);
+        }
+    }
+}
+
+void GlobalStiffnessMatrix::append_Ku_nl_bcs(const Meshing* const mesh, const std::vector<long>& node_positions, const std::vector<double>& u_ext, const std::vector<double>& u_ext_mult, std::vector<double>& Ku) const{
+    const size_t node_num = mesh->elem_info->get_nodes_per_element();
+    const size_t bnode_num = mesh->elem_info->get_boundary_nodes_per_element();
+    const size_t dof = mesh->elem_info->get_dof_per_node();
+
+    std::vector<gp_Pnt> points(node_num);
+
+    // Contact springs
+    for(size_t it = 0; it < mesh->contact_springs->size(); ++it){
+        const auto& cs = mesh->contact_springs->at(it);
+        const math::Vector normal({
+            cs.normal.X(),
+            cs.normal.Y(),
+            cs.normal.Z()
+        });
+
+        for(const auto& b : mesh->contact_springs->at(it).submesh){
+            const auto c = b->get_centroid(bnode_num);
+            const auto& K = mesh->contact_springs->at(it).get_K(b->parent, c);
+            const auto& e = b->parent;
+            for(size_t i = 0; i < bnode_num; ++i){
+                points[i] = b->nodes[i]->point;
+            }
+            const math::Vector Kue(e->get_Ku_cs(K, points, normal, u_ext, u_ext_mult));
+            for(size_t i = 0; i < node_num; ++i){
+                for(size_t j = 0; j < dof; ++j){
+                    const size_t p = e->nodes[i]->id*dof + j;
+                    const auto pos = node_positions[p];
+                    if(pos >= 0){
+                        Ku[pos] += Kue[i*dof + j];
+                    }
+                }
+            }
         }
     }
 }

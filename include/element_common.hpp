@@ -181,6 +181,62 @@ class MeshElementCommon : public MeshElement{
         }
     }
 
+    math::Matrix get_R(const math::Matrix& K, const std::vector<gp_Pnt>& points) const{
+        const size_t ORDER = T::INTEG_ORDER;
+        const size_t K_DIM = T::K_DIM;
+
+        math::Matrix R(K_DIM, K_DIM);
+
+        constexpr size_t GN = 2*ORDER;
+
+        this->area_integral<GN>(R,
+        [&](const gp_Pnt& pi){
+            const auto NN = this->get_Ni(pi);
+            return NN.T()*K*NN;
+        },
+        points);
+
+        return R;
+    }
+
+    math::Matrix get_R_contact(const math::Matrix& K, const std::vector<gp_Pnt>& points, const math::Vector normal, const std::vector<double>& u_ext) const override{
+        const size_t ORDER = T::INTEG_ORDER;
+        const size_t NODES_PER_ELEM = T::NODES_PER_ELEM;
+        const size_t DOF = T::NODE_DOF;
+        const size_t K_DIM = T::K_DIM;
+
+        math::VectorSliceGeneralView uv(u_ext, math::slicer::from_node_upos(this->nodes, NODES_PER_ELEM, DOF));
+
+        math::Matrix R(K_DIM, K_DIM);
+        math::Matrix empty(K_DIM, K_DIM);
+
+        constexpr size_t GN = 3*ORDER + 8;
+
+        this->area_integral<GN>(R,
+            [&](const gp_Pnt& pi){
+                const auto NN = this->get_Ni(pi);
+                const auto ux = NN*uv;
+                const double g = ux.dot(normal);
+                if(g >= 0){
+                    return NN.T()*K*NN;
+                } else {
+                    return empty;
+                }
+            },
+            points);
+
+        return R;
+    }
+    math::Vector get_Ku_cs(const math::Matrix& K, const std::vector<gp_Pnt>& points, const math::Vector normal, const std::vector<double>& u_ext, const std::vector<double>& u_ext_mult) const override{
+        const size_t NODES_PER_ELEM = T::NODES_PER_ELEM;
+        const size_t DOF = T::NODE_DOF;
+
+        math::VectorSliceGeneralView uv(u_ext, math::slicer::from_node_upos(this->nodes, NODES_PER_ELEM, DOF));
+        math::VectorSliceGeneralView muv(u_ext_mult, math::slicer::from_node_upos(this->nodes, NODES_PER_ELEM, DOF));
+        
+        return this->get_R_contact(K, points, normal, u_ext)*muv;
+    }
+
     virtual double get_log_integ(const MeshElement* const e2, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds, const gp_Dir n, const double MU, const double K, const math::Vector& L) const override{
         const size_t ORDER = T::INTEG_ORDER;
         const size_t NODES_PER_ELEM = T::NODES_PER_ELEM;

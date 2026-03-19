@@ -102,7 +102,7 @@ void PETScSparseSymmetricCPU::assemble_matrix(const Meshing * const mesh, const 
     MatAssemblyEnd(this->K, MAT_FINAL_ASSEMBLY);
 
     if(mpi_id == 0){
-        if(type > FiniteElement::ContactType::RIGID){
+        if(type > FiniteElement::ContactType::RIGID && !mesh->nonlinear_boundary_conditions){
             if(this->H == 0){
                 MatConvert(this->K, MATSAME, MAT_INITIAL_MATRIX, &this->H);
             } else {
@@ -202,10 +202,9 @@ void PETScSparseSymmetricCUDA::assemble_matrix(const Meshing * const mesh, const
         if(!this->first_time){
             this->generate_base(mesh, u_size, l_num, node_positions, topopt, D_cache, u_ext, lambda, type);
         }
-        if(type > FiniteElement::ContactType::RIGID){
+        if(type > FiniteElement::ContactType::RIGID || mesh->nonlinear_boundary_conditions){
             this->K_coo.backup_matrix();
-        }
-        if(type == FiniteElement::ContactType::RIGID){
+        } else {
             this->final_flush_matrix();
         }
     }

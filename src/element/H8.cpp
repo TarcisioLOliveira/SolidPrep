@@ -140,8 +140,7 @@ math::Matrix H8::get_Nf(const double t, const std::vector<gp_Pnt>& points) const
     return Nf;
 }
 
-math::Matrix H8::get_R(const math::Matrix & K, const double t, const std::vector<gp_Pnt>& points) const{
-    (void)t;
+math::Matrix H8::get_R(const math::Matrix & K, const std::vector<gp_Pnt>& points) const{
 
     std::array<double, BOUNDARY_NODES_PER_ELEM> x, y, z;
     const gp_Pnt c(this->get_centroid());

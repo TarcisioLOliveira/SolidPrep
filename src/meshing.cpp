@@ -158,6 +158,7 @@ void Meshing::apply_boundary_conditions(const std::vector<Force>& forces,
                                         const std::vector<Support>& supports,
                                         std::vector<Spring>& springs,
                                         std::vector<InternalLoads>& internal_loads,
+                                        std::vector<ContactSpring>& contact_springs,
                                         std::vector<SubProblem>& sub_problems){
     (void) forces;
 
@@ -231,6 +232,13 @@ void Meshing::apply_boundary_conditions(const std::vector<Force>& forces,
         this->apply_springs(springs);
     }
     this->springs = &springs;
+
+    if(contact_springs.size() > 0){
+        logger::quick_log("contact_springs");
+        this->nonlinear_boundary_conditions = true;
+        this->apply_contact_springs(contact_springs);
+    }
+    this->contact_springs = &contact_springs;
 
     if(internal_loads.size() > 0){
         logger::quick_log("internal_loads");
@@ -553,6 +561,12 @@ void Meshing::apply_supports(){
 
 void Meshing::apply_springs(std::vector<Spring>& springs){
     for(auto& s:springs){
+        s.generate_mesh(this->boundary_elements);
+    }
+}
+
+void Meshing::apply_contact_springs(std::vector<ContactSpring>& contact_springs){
+    for(auto& s:contact_springs){
         s.generate_mesh(this->boundary_elements);
     }
 }

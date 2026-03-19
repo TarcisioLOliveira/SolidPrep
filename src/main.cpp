@@ -95,7 +95,7 @@ int main(int argc, char* argv[]){
                 f->generate();
             }
         }
-        proj->topopt_mesher->apply_boundary_conditions(proj->forces, proj->supports, proj->springs, proj->internal_loads, proj->sub_problems);
+        proj->topopt_mesher->apply_boundary_conditions(proj->forces, proj->supports, proj->springs, proj->internal_loads, proj->contact_springs, proj->sub_problems);
         for(auto& f:proj->fields){
             if(f->is_fea_dependent()){
                 f->generate();

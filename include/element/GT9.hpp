@@ -62,7 +62,7 @@ class GT9 : public MeshElementCommon2DTri<GT9>{
 
     virtual math::Matrix get_k(const math::Matrix& D, const double t) const override;
     virtual math::Matrix get_nodal_density_gradient(gp_Pnt p) const override;
-    virtual math::Matrix get_R(const math::Matrix& K, const double t, const std::vector<gp_Pnt>& points) const override;
+    virtual math::Matrix get_R(const math::Matrix& K, const std::vector<gp_Pnt>& points) const override;
     virtual math::Matrix get_B(const gp_Pnt& point) const override;
 
     virtual math::Matrix diffusion_1dof(const double t, const math::Matrix& A) const override;

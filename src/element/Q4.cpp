@@ -101,7 +101,7 @@ math::Matrix Q4::get_Nf(const double t, const std::vector<gp_Pnt>& points) const
     return Nf;
 }
 
-math::Matrix Q4::get_R(const math::Matrix& K, const double t, const std::vector<gp_Pnt>& points) const{
+math::Matrix Q4::get_R(const math::Matrix& K, const std::vector<gp_Pnt>& points) const{
     const double x[]{points[0].X(), points[1].X()};
     const double y[]{points[0].Y(), points[1].Y()};
     const double rnorm = 0.5*points[0].Distance(points[1]);
@@ -117,7 +117,7 @@ math::Matrix Q4::get_R(const math::Matrix& K, const double t, const std::vector<
         const auto NN = N_mat(X, Y);
         R += xi->w*NN.T()*K*NN;
     }
-    R *= t*rnorm;
+    R *= rnorm;
 
     return R;
 }

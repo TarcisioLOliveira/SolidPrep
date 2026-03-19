@@ -24,6 +24,7 @@
 #include <TopoDS_Shape.hxx>
 #include <unordered_map>
 #include <map>
+#include "contact_spring.hpp"
 #include "element.hpp"
 #include <vector>
 #include "support.hpp"
@@ -157,6 +158,7 @@ class Meshing{
                                            const std::vector<Support>& supports,
                                            std::vector<Spring>& springs,
                                            std::vector<InternalLoads>& internal_loads,
+                                           std::vector<ContactSpring>& contact_springs,
                                            std::vector<SubProblem>& sub_problems);
 
     /**
@@ -195,12 +197,14 @@ class Meshing{
     std::vector<MeshNode*> boundary_node_list;
     std::vector<Spring>* springs;
     std::vector<InternalLoads>* internal_loads;
+    std::vector<ContactSpring>* contact_springs;
     std::vector<SubProblem>* sub_problems;
     std::vector<BoundaryElement*> inter_geometry_boundary;
     std::vector<PairedBoundaryElements> paired_boundary;
     std::unordered_map<size_t, long> lag_node_map;
     std::unordered_map<const MeshElement*, const Geometry*> elem_geom_mapping;
     std::map<const MeshElement*, ContactElementMetadata> contact_data;
+    bool nonlinear_boundary_conditions = false;
 
     std::vector<double> global_load_vector;
     // Subproblems
@@ -290,6 +294,13 @@ class Meshing{
      * @param springs List of springs to be applied.
      */
     void apply_springs(std::vector<Spring>& springs);
+
+    /**
+     * Generate positioning information for contact spring boundary condition.
+     *
+     * @param contact springs List of contact springs to be applied.
+     */
+    void apply_contact_springs(std::vector<ContactSpring>& contact_springs);
 
     /**
      * Calculate and apply internal loads to load vector;

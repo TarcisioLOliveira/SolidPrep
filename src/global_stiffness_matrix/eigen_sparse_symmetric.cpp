@@ -108,7 +108,7 @@ void EigenSparseSymmetric::generate(const Meshing * const mesh, const size_t u_s
         std::fill(this->K.valuePtr(), this->K.valuePtr() + this->K.nonZeros(), 0);
         this->generate_base(mesh, u_size, l_num, node_positions, topopt, D_cache, u_ext, lambda, type);
     }
-    if(type > FiniteElement::ContactType::RIGID){
+    if(type > FiniteElement::ContactType::RIGID || mesh->nonlinear_boundary_conditions){
         this->K_bkp = K;
     }
     logger::quick_log("Done.");
