@@ -40,7 +40,11 @@ Curvature::Curvature(const Material* mat, math::Matrix rot2D, math::Matrix rot3D
     V_u(V_w), V_v(V_v), V_w(-V_u),
     M_u(M_w), 
     M_v(M_v),
-    M_w(-M_u)
+    M_w(-M_u),
+    rot2D_D(utils::basis_tensor_2D(this->rot2D)),
+    rot2D_S(utils::basis_tensor_2D_inv_T(this->rot2D)),
+    rot3D_D(utils::basis_tensor_3D(this->rot3D)),
+    rot3D_S(utils::basis_tensor_3D_inv_T(this->rot3D))
 {
 
     //this->permute_shear_3D = math::Matrix(
@@ -544,13 +548,13 @@ math::Vector Curvature::integrate_surface_3D(const std::vector<std::unique_ptr<B
 
 math::Matrix Curvature::get_S_3D(const MeshElement* const e, const gp_Pnt& p) const{
     auto S = this->mat->stiffness_inverse_3D(e, p);
-    //this->mat->rotate_S(S, this->permute_and_rotate_3D_inv);
+    this->mat->rotate_S(S, this->rot3D_S);
 
     return S;
 }
 math::Matrix Curvature::get_D_3D(const MeshElement* const e, const gp_Pnt& p) const{
     auto D = this->mat->stiffness_3D(e, p);
-    //this->mat->rotate_D(D, this->permute_and_rotate_3D);
+    this->mat->rotate_D(D, this->rot3D_D);
 
     return D;
 }

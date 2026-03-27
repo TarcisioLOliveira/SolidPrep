@@ -62,6 +62,11 @@ class Curvature{
     size_t reduced_vec_len;
     size_t full_vector_size;
 
+    const math::Matrix rot2D_D;
+    const math::Matrix rot2D_S;
+    const math::Matrix rot3D_D;
+    const math::Matrix rot3D_S;
+
     bool calculate_adjoint = false;
     //general_solver::MUMPSGeneral solver;
     general_solver::PETScGeneralPCG solver = general_solver::PETScGeneralPCG(true);
