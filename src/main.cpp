@@ -18,6 +18,7 @@
  *
  */
 
+#include <fenv.h>
 #include <bits/chrono.h>
 #include <STEPCAFControl_Writer.hxx>
 #include <STEPControl_StepModelType.hxx>
@@ -27,6 +28,7 @@
 #include <gmsh.h>
 #include <petsc.h>
 #include "meshing/gmsh.hpp"
+#include "utils/basis_tensor.hpp"
 #include "visualization.hpp"
 #include <string>
 #include <chrono>
@@ -63,6 +65,8 @@ int main(int argc, char* argv[]){
     }
     std::unique_ptr<Visualization> v;
 
+    const bool von_mises_only = false;
+
     double size_time = 0;
 
     Message::DefaultMessenger()->RemovePrinters(STANDARD_TYPE(Message_PrinterOStream));
@@ -90,6 +94,7 @@ int main(int argc, char* argv[]){
     // May be removed to use Gmsh with MPI
     if(mpi_id == 0){
         proj->topopt_mesher->mesh(proj->forces, proj->supports, proj->springs);
+        //feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
         for(auto& f:proj->fields){
             if(!f->is_fea_dependent()){
                 f->generate();
@@ -199,7 +204,7 @@ int main(int argc, char* argv[]){
                 auto strainview_X  = v->add_view("Normal Strain (X axis)", spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::STRESS);
                 auto strainview_Y  = v->add_view("Normal Strain (Y axis)", spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::STRESS);
                 auto strainview_XY = v->add_view("Shear Strain",           spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::STRESS);
-                auto displ = v->add_view("Displacement",           spview::defs::ViewType::VECTOR, spview::defs::DataType::OTHER);
+                auto displ = v->add_view("Displacement",           spview::defs::ViewType::VECTOR, spview::defs::DataType::DISPLACEMENT);
                 auto force = v->add_view("Force",           spview::defs::ViewType::VECTOR, spview::defs::DataType::OTHER);
 
                 for(auto& f:proj->fields){
@@ -223,121 +228,234 @@ int main(int argc, char* argv[]){
                 v->wait();
                 v->end();
             } else if(proj->type == utils::PROBLEM_TYPE_3D){
-                std::vector<double> stresses;
-                std::vector<double> stressesX;
-                std::vector<double> stressesY;
-                std::vector<double> stressesZ;
-                std::vector<double> stressesXY;
-                std::vector<double> stressesXZ;
-                std::vector<double> stressesYZ;
-                std::vector<double> strainX;
-                std::vector<double> strainY;
-                std::vector<double> strainZ;
-                std::vector<double> strainXY;
-                std::vector<double> strainXZ;
-                std::vector<double> strainYZ;
                 size_t s_size = 0;
                 for(auto& g:proj->geometries){
                     s_size += g->mesh.size();
                 }
-                stresses  .reserve(s_size);
-                stressesX .reserve(s_size);
-                stressesY .reserve(s_size);
-                stressesZ .reserve(s_size);
-                stressesXY.reserve(s_size);
-                stressesXZ.reserve(s_size);
-                stressesYZ.reserve(s_size);
-                strainX .reserve(s_size);
-                strainY .reserve(s_size);
-                strainZ .reserve(s_size);
-                strainXY.reserve(s_size);
-                strainXZ.reserve(s_size);
-                strainYZ.reserve(s_size);
-                double max_stress = 0;
-                gp_Pnt max_point(0,0,0);
-                for(auto& g:proj->geometries){
-                    for(auto& e:g->mesh){
-                        const gp_Pnt c = e->get_centroid();
-                        const auto D = g->materials.get_D(e.get(), c);
-                        stresses.push_back(e->get_stress_at(D, e->get_centroid(), u));
-                        if(stresses.back() > max_stress){
-                            max_stress = stresses.back();
-                            max_point = c;
+                if(von_mises_only){
+                    std::vector<double> stresses;
+                    std::vector<double> strainVM;
+                    std::vector<double> strainMa;
+                    std::vector<double> strainMi;
+                    stresses.reserve(s_size);
+                    strainVM.reserve(s_size);
+                    strainMa.reserve(s_size);
+                    strainMi.reserve(s_size);
+                    double max_stress = 0;
+                    gp_Pnt max_point(0,0,0);
+                    for(auto& g:proj->geometries){
+                        for(auto& e:g->mesh){
+                            const gp_Pnt c = e->get_centroid();
+                            const auto D = g->materials.get_D(e.get(), c);
+                            stresses.push_back(e->get_stress_at(D, e->get_centroid(), u));
+                            if(stresses.back() > max_stress){
+                                max_stress = stresses.back();
+                                max_point = c;
+                            }
+                            strainVM.push_back(e->get_strain_VM(c, u));
+                            auto principal = e->get_principal_strains(c, u);
+                            strainMa.push_back(principal[2]);
+                            strainMi.push_back(principal[0]);
                         }
-                        auto tensor = e->get_stress_tensor(D, e->get_centroid(), u);
-                        stressesX.push_back(tensor.data()[0]);
-                        stressesY.push_back(tensor.data()[4]);
-                        stressesZ.push_back(tensor.data()[8]);
-                        stressesXY.push_back(tensor.data()[1]);
-                        stressesXZ.push_back(tensor.data()[2]);
-                        stressesYZ.push_back(tensor.data()[5]);
-                        tensor = e->get_strain_tensor(e->get_centroid(), u);
-                        strainX.push_back(tensor.data()[0]);
-                        strainY.push_back(tensor.data()[4]);
-                        strainZ.push_back(tensor.data()[8]);
-                        strainXY.push_back(tensor.data()[1]);
-                        strainXZ.push_back(tensor.data()[2]);
-                        strainYZ.push_back(tensor.data()[5]);
                     }
-                }
+                    auto reactions = proj->topopt_fea->calculate_reactions(proj->topopt_mesher.get(), u);
 
-                logger::quick_log("Max stress: ", max_stress, " at ", max_point.X(), max_point.Y(), max_point.Z());
-                if(proj->generate_beams){
+                    logger::quick_log("Max stress: ", max_stress, " at ", max_point.X(), max_point.Y(), max_point.Z());
+                    if(proj->generate_beams){
+                        logger::quick_log("");
+                        logger::quick_log("Sizing time: ", size_time, " minutes");
+                        logger::quick_log("");
+                    }
                     logger::quick_log("");
-                    logger::quick_log("Sizing time: ", size_time, " minutes");
+                    logger::quick_log("FEA time: ", fea_duration, " minutes");
                     logger::quick_log("");
+                    logger::quick_log("Compliance: ", cblas_ddot(u.size(), u.data(), 1, proj->topopt_mesher->global_load_vector.data(), 1));
+                    logger::quick_log("");
+
+                    // Display results
+                    v->load_mesh(proj->topopt_mesher.get(), proj->type);
+
+                    auto stressview_VM = v->add_view("Von Mises Stress",        spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::STRESS);
+                    auto strainview_VM  = v->add_view("Von Mises Strain",  spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::STRESS);
+                    auto strainview_Ma  = v->add_view("Maximum Principal Strain",  spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::STRESS);
+                    auto strainview_Mi  = v->add_view("Minimum Principal Strain",  spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::STRESS);
+                    auto force = v->add_view("Force",           spview::defs::ViewType::VECTOR, spview::defs::DataType::OTHER);
+                    auto react = v->add_view("Reactions",           spview::defs::ViewType::VECTOR, spview::defs::DataType::OTHER);
+
+                    for(auto& f:proj->fields){
+                        f->initialize_views(v.get());
+                    }
+
+                    stressview_VM->update_view(stresses);
+                    strainview_VM->update_view(strainVM);
+                    strainview_Ma->update_view(strainMa);
+                    strainview_Mi->update_view(strainMi);
+                    force->update_view(proj->topopt_mesher->global_load_vector);
+                    react->update_view(reactions);
+
+                    for(auto& f:proj->fields){
+                        f->display_views();
+                    }
+
+                    stresses.clear();
+                    strainVM.clear();
+                    strainMa.clear();
+                    strainMi.clear();
+
+                    v->wait();
+                    v->end();
+                } else {
+                    std::vector<double> stresses;
+                    //std::vector<double> stressesX;
+                    //std::vector<double> stressesY;
+                    //std::vector<double> stressesZ;
+                    //std::vector<double> stressesXY;
+                    //std::vector<double> stressesXZ;
+                    //std::vector<double> stressesYZ;
+                    std::vector<double> strainVM;
+                    std::vector<double> strainMa;
+                    std::vector<double> strainMi;
+                    //std::vector<double> strainX;
+                    //std::vector<double> strainY;
+                    //std::vector<double> strainZ;
+                    //std::vector<double> strainXY;
+                    //std::vector<double> strainXZ;
+                    //std::vector<double> strainYZ;
+                    stresses  .reserve(s_size);
+                    //stressesX .reserve(s_size);
+                    //stressesY .reserve(s_size);
+                    //stressesZ .reserve(s_size);
+                    //stressesXY.reserve(s_size);
+                    //stressesXZ.reserve(s_size);
+                    //stressesYZ.reserve(s_size);
+                    strainVM.reserve(s_size);
+                    strainMa.reserve(s_size);
+                    strainMi.reserve(s_size);
+                    //strainX .reserve(s_size);
+                    //strainY .reserve(s_size);
+                    //strainZ .reserve(s_size);
+                    //strainXY.reserve(s_size);
+                    //strainXZ.reserve(s_size);
+                    //strainYZ.reserve(s_size);
+                    double max_stress = 0;
+                    gp_Pnt max_point(0,0,0);
+                    for(auto& g:proj->geometries){
+                        for(auto& e:g->mesh){
+                            const gp_Pnt c = e->get_centroid();
+                            const auto D = g->materials.get_D(e.get(), c);
+                            stresses.push_back(e->get_stress_at(D, c, u));
+                            if(stresses.back() > max_stress){
+                                max_stress = stresses.back();
+                                max_point = c;
+                            }
+                            auto tensor = e->get_stress_tensor(D, c, u);
+                            //stressesX.push_back(tensor.data()[0]);
+                            //stressesY.push_back(tensor.data()[4]);
+                            //stressesZ.push_back(tensor.data()[8]);
+                            //stressesXY.push_back(tensor.data()[1]);
+                            //stressesXZ.push_back(tensor.data()[2]);
+                            //stressesYZ.push_back(tensor.data()[5]);
+                            tensor = e->get_strain_tensor(c, u);
+                            strainVM.push_back(e->get_strain_VM(c, u));
+                            auto principal = e->get_principal_strains(c, u);
+                            strainMa.push_back(principal[2]);
+                            strainMi.push_back(principal[0]);
+                            //strainX.push_back(tensor.data()[0]);
+                            //strainY.push_back(tensor.data()[4]);
+                            //strainZ.push_back(tensor.data()[8]);
+                            //strainXY.push_back(tensor.data()[1]);
+                            //strainXZ.push_back(tensor.data()[2]);
+                            //strainYZ.push_back(tensor.data()[5]);
+                        }
+                    }
+                    auto reactions = proj->topopt_fea->calculate_reactions(proj->topopt_mesher.get(), u);
+
+                    logger::quick_log("Max stress: ", max_stress, " at ", max_point.X(), max_point.Y(), max_point.Z());
+                    if(proj->generate_beams){
+                        logger::quick_log("");
+                        logger::quick_log("Sizing time: ", size_time, " minutes");
+                        logger::quick_log("");
+                    }
+                    logger::quick_log("");
+                    logger::quick_log("FEA time: ", fea_duration, " minutes");
+                    logger::quick_log("");
+                    logger::quick_log("Compliance: ", cblas_ddot(u.size(), u.data(), 1, proj->topopt_mesher->global_load_vector.data(), 1));
+                    logger::quick_log("");
+
+                    // Display results
+                    v->load_mesh(proj->topopt_mesher.get(), proj->type);
+
+                    auto meshview = v->add_view("Mesh",        spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::MESH);
+                    auto stressview_VM = v->add_view("Von Mises Stress",        spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::STRESS);
+                    //auto stressview_X  = v->add_view("Normal Stress (X axis)",  spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::STRESS);
+                    //auto stressview_Y  = v->add_view("Normal Stress (Y axis)",  spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::STRESS);
+                    //auto stressview_Z  = v->add_view("Normal Stress (Z axis)",  spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::STRESS);
+                    //auto stressview_XY = v->add_view("Shear Stress (XY plane)", spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::STRESS);
+                    //auto stressview_XZ = v->add_view("Shear Stress (XZ plane)", spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::STRESS);
+                    //auto stressview_YZ = v->add_view("Shear Stress (YZ plane)", spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::STRESS);
+                    auto strainview_VM  = v->add_view("Von Mises Strain",  spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::STRESS);
+                    auto strainview_Ma  = v->add_view("Maximum Principal Strain",  spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::STRESS);
+                    auto strainview_Mi  = v->add_view("Minimum Principal Strain",  spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::STRESS);
+                    //auto strainview_X  = v->add_view("Normal Strain (X axis)",  spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::STRESS);
+                    //auto strainview_Y  = v->add_view("Normal Strain (Y axis)",  spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::STRESS);
+                    //auto strainview_Z  = v->add_view("Normal Strain (Z axis)",  spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::STRESS);
+                    //auto strainview_XY = v->add_view("Shear Strain (XY plane)", spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::STRESS);
+                    //auto strainview_XZ = v->add_view("Shear Strain (XZ plane)", spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::STRESS);
+                    //auto strainview_YZ = v->add_view("Shear Strain (YZ plane)", spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::STRESS);
+                    auto displ = v->add_view("Displacement",           spview::defs::ViewType::VECTOR, spview::defs::DataType::DISPLACEMENT);
+                    auto force = v->add_view("Force",           spview::defs::ViewType::VECTOR, spview::defs::DataType::OTHER);
+                    auto react = v->add_view("Reactions",           spview::defs::ViewType::VECTOR, spview::defs::DataType::OTHER);
+
+                    for(auto& f:proj->fields){
+                        f->initialize_views(v.get());
+                    }
+
+                    meshview->update_view(stresses);
+                    stressview_VM->update_view(stresses);
+                    //stressview_X ->update_view(stressesX);
+                    //stressview_Y ->update_view(stressesY);
+                    //stressview_Z ->update_view(stressesZ);
+                    //stressview_XY->update_view(stressesXY);
+                    //stressview_XZ->update_view(stressesXZ);
+                    //stressview_YZ->update_view(stressesYZ);
+                    strainview_VM->update_view(strainVM);
+                    strainview_Ma->update_view(strainMa);
+                    strainview_Mi->update_view(strainMi);
+                    //strainview_X ->update_view(strainX);
+                    //strainview_Y ->update_view(strainY);
+                    //strainview_Z ->update_view(strainZ);
+                    //strainview_XY->update_view(strainXY);
+                    //strainview_XZ->update_view(strainXZ);
+                    //strainview_YZ->update_view(strainYZ);
+                    displ->update_view(u);
+                    force->update_view(proj->topopt_mesher->global_load_vector);
+                    react->update_view(reactions);
+
+                    for(auto& f:proj->fields){
+                        f->display_views();
+                    }
+
+                    stresses  .clear();
+                    //stressesX .clear();
+                    //stressesY .clear();
+                    //stressesZ .clear();
+                    //stressesXY.clear();
+                    //stressesXZ.clear();
+                    //stressesYZ.clear();
+                    strainVM.clear();
+                    strainMa.clear();
+                    strainMi.clear();
+                    //strainX .clear();
+                    //strainY .clear();
+                    //strainZ .clear();
+                    //strainXY.clear();
+                    //strainXZ.clear();
+                    //strainYZ.clear();
+                    reactions.clear();
+
+                    v->wait();
+                    v->end();
                 }
-                logger::quick_log("");
-                logger::quick_log("FEA time: ", fea_duration, " minutes");
-                logger::quick_log("");
-                logger::quick_log("Compliance: ", cblas_ddot(u.size(), u.data(), 1, proj->topopt_mesher->global_load_vector.data(), 1));
-                logger::quick_log("");
-
-                // Display results
-                v->load_mesh(proj->topopt_mesher.get(), proj->type);
-
-                auto stressview_VM = v->add_view("Von Mises Stress",        spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::STRESS);
-                auto stressview_X  = v->add_view("Normal Stress (X axis)",  spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::STRESS);
-                auto stressview_Y  = v->add_view("Normal Stress (Y axis)",  spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::STRESS);
-                auto stressview_Z  = v->add_view("Normal Stress (Z axis)",  spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::STRESS);
-                auto stressview_XY = v->add_view("Shear Stress (XY plane)", spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::STRESS);
-                auto stressview_XZ = v->add_view("Shear Stress (XZ plane)", spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::STRESS);
-                auto stressview_YZ = v->add_view("Shear Stress (YZ plane)", spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::STRESS);
-                auto strainview_X  = v->add_view("Normal Strain (X axis)",  spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::STRESS);
-                auto strainview_Y  = v->add_view("Normal Strain (Y axis)",  spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::STRESS);
-                auto strainview_Z  = v->add_view("Normal Strain (Z axis)",  spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::STRESS);
-                auto strainview_XY = v->add_view("Shear Strain (XY plane)", spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::STRESS);
-                auto strainview_XZ = v->add_view("Shear Strain (XZ plane)", spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::STRESS);
-                auto strainview_YZ = v->add_view("Shear Strain (YZ plane)", spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::STRESS);
-                auto displ = v->add_view("Displacement",           spview::defs::ViewType::VECTOR, spview::defs::DataType::OTHER);
-                auto force = v->add_view("Force",           spview::defs::ViewType::VECTOR, spview::defs::DataType::OTHER);
-
-                for(auto& f:proj->fields){
-                    f->initialize_views(v.get());
-                }
-
-                stressview_VM->update_view(stresses);
-                stressview_X ->update_view(stressesX);
-                stressview_Y ->update_view(stressesY);
-                stressview_Z ->update_view(stressesZ);
-                stressview_XY->update_view(stressesXY);
-                stressview_XZ->update_view(stressesXZ);
-                stressview_YZ->update_view(stressesYZ);
-                strainview_X ->update_view(strainX);
-                strainview_Y ->update_view(strainY);
-                strainview_Z ->update_view(strainZ);
-                strainview_XY->update_view(strainXY);
-                strainview_XZ->update_view(strainXZ);
-                strainview_YZ->update_view(strainYZ);
-                displ->update_view(u);
-                force->update_view(proj->topopt_mesher->global_load_vector);
-
-                for(auto& f:proj->fields){
-                    f->display_views();
-                }
-
-                v->wait();
-                v->end();
             }
         }
     } else if(proj->do_topopt){
