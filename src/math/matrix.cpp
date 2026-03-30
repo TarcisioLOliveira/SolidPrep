@@ -19,6 +19,7 @@
  */
 
 #include <algorithm>
+#include <ios>
 #include <lapacke.h>
 #include <utility>
 #include "math/matrix.hpp"
@@ -622,7 +623,7 @@ Matrix Matrix::operator-() const{
 std::ostream& operator<<(std::ostream& output, const Matrix& m){
     for(size_t i = 0; i < m.get_H(); ++i){
         for(size_t j = 0; j < m.get_W(); ++j){
-            output << m(i,j) << " ";
+            output << std::setw(13) << m(i,j) << " ";
         }
         output << std::endl;
     }
@@ -830,7 +831,7 @@ bool MatrixTransposeView::operator!=(const MatrixTransposeView&& m) const{
 std::ostream& operator<<(std::ostream& output, const MatrixTransposeView& m){
     for(size_t i = 0; i < m.get_H(); ++i){
         for(size_t j = 0; j < m.get_W(); ++j){
-            output << m(i,j) << " ";
+            output << std::setw(13) << m(i,j) << " ";
         }
         output << std::endl;
     }
@@ -1434,7 +1435,7 @@ VectorView VectorTransposeView::T() const{
 std::ostream& operator<<(std::ostream& output, const VectorAgnostic& v){
     const size_t N = v.get_N();
     for(size_t i = 0; i < N; ++i){
-        output << v[i] << " ";
+        output << std::setw(13) << v[i] << " ";
     }
     output << std::endl;
 

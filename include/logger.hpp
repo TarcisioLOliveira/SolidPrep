@@ -21,6 +21,8 @@
 #ifndef LOGGER_HPP
 #define LOGGER_HPP
 
+#include <iomanip>
+#include <ios>
 #include <sstream>
 #include <string>
 #include <iostream>
@@ -41,7 +43,7 @@ namespace logger{
         std::stringstream ss;
         for(size_t i = 0; i < M; ++i){
             for(size_t j = 0; j < N; ++j){
-                ss << v[i*N + j] << " ";
+                ss << std::setw(13) << std::scientific << v[i*N + j] << " ";
             }
             ss << std::endl;
         }
