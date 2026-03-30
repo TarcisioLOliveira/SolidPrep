@@ -49,8 +49,14 @@ class PETScGeneralPCG{
     inline void add_element(const math::Matrix& matrix, const std::vector<long>& pos_i, const std::vector<long>& pos_j){
         this->M.add_element(matrix, pos_i, pos_j);
     }
+    inline void add_element_symmetric(const math::Matrix& matrix, const std::vector<long>& pos_i, const std::vector<long>& pos_j){
+        this->M.add_element_symmetric(matrix, pos_i, pos_j);
+    }
     inline void add_value(size_t i, size_t j, double val){
         this->M.add_value(i, j, val);
+    }
+    inline double get_value(size_t i, size_t j) const{
+        return this->M.get_value(i, j);
     }
 
     inline void make_zero(){

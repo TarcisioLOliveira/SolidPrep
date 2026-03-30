@@ -68,8 +68,8 @@ class Curvature{
     const math::Matrix rot3D_S;
 
     bool calculate_adjoint = false;
-    //general_solver::MUMPSGeneral solver;
-    general_solver::PETScGeneralPCG solver = general_solver::PETScGeneralPCG(true);
+    general_solver::MUMPSGeneral solver;
+    //general_solver::PETScGeneralPCG solver = general_solver::PETScGeneralPCG(true);
 
     double Area   = 0;
     double EA     = 0;
@@ -83,13 +83,16 @@ class Curvature{
     double A, B, C;
     double theta;
 
-    double Kyz = 0;
-    double Kxz = 0;
+    double Al = 0;
+    double Bl = 0;
 
     std::vector<double> u;
     std::vector<double> u_bar;
     math::Vector ABz;
     math::Vector ABz_bar;
+
+    const size_t MAX_B = 6;
+    const size_t U_SIZE_EXT = 2*MAX_B;
 
     //math::Matrix permute_shear_3D;
     //math::Matrix rotate_X_Z_3D;

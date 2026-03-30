@@ -61,11 +61,14 @@ void PETScGeneralPCG::initialize_matrix(bool spd, size_t L){
         KSPSetType(this->ksp, KSPCG);
     } else {
         //KSPSetType(this->ksp, KSPMINRES);
+        //KSPMINRESSetUseQLP(this->ksp, PETSC_TRUE);
 
         // GMRES leaks memory with PreAllocateVectors, but I didn't test it
         // with it. BCGS seems to be much better anyway.
         //KSPSetType(this->ksp, KSPGMRES);
         //KSPGMRESSetPreAllocateVectors(this->ksp);
+        //KSPGMRESSetRestart(this->ksp, 2000);
+        //KSPGMRESSetCGSRefinementType(this->ksp, KSP_GMRES_CGS_REFINE_ALWAYS);
         KSPSetType(this->ksp, KSPBCGS);
 
         KSPSetTolerances(this->ksp, 1e-7, 1e-50, 1e10, 1e5);
@@ -80,7 +83,9 @@ void PETScGeneralPCG::initialize_matrix(bool spd, size_t L){
     if(spd){
         PCJacobiSetType(this->pc, PC_JACOBI_DIAGONAL);
     } else {
-        PCJacobiSetType(this->pc, PC_JACOBI_ROWMAX);
+        //PCJacobiSetType(this->pc, PC_JACOBI_ROWMAX);
+        PCJacobiSetType(this->pc, PC_JACOBI_ROWL1);
+        PCJacobiSetFixDiagonal(this->pc, PETSC_TRUE); 
     }
 
     KSPSetOperators(this->ksp, mat, mat);

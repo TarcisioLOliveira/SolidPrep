@@ -69,7 +69,15 @@ class MUMPSGlobalSparse{
         }
     }
     inline void add_element(const math::Matrix& matrix, const std::vector<long>& pos_i, const std::vector<long>& pos_j){
+        if(spd){
+            this->add_element_symmetric(matrix, pos_i, pos_j);
+        } else {
+            this->M.insert_block(matrix, pos_i, pos_j, false);
+        }
+    }
+    inline void add_element_symmetric(const math::Matrix& matrix, const std::vector<long>& pos_i, const std::vector<long>& pos_j){
         this->M.insert_block(matrix, pos_i, pos_j, false);
+        this->M.insert_block(matrix, pos_i, pos_j, true);
     }
     inline void add_value(size_t i, size_t j, double val){
         if(spd){
@@ -79,6 +87,17 @@ class MUMPSGlobalSparse{
             this->M.add(i, j, val);
         } else {
             this->M.add(i, j, val);
+        }
+    }
+
+    inline double get_value(size_t i, size_t j){
+        if(spd){
+            if(j > i){
+                std::swap(i, j);
+            }
+            return this->M.get(i, j);
+        } else {
+            return this->M.get(i, j);
         }
     }
 

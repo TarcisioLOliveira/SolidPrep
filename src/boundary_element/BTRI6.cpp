@@ -69,13 +69,13 @@ BTRI6::BTRI6(ElementShape s, const MeshElement* const parent):
 }
 
 math::Matrix BTRI6::get_K_ext(const math::Matrix & D, const gp_Pnt& center) const{
-    math::Matrix K(K_DIM, K_DIM + 6);
-    const auto& gsi = utils::GaussLegendreTri<2*(ORDER-1)>::get();
+    math::Matrix K(K_DIM + 6, K_DIM + 6);
+    const auto& gsi = utils::GaussLegendreTri<2*(ORDER-1)+4>::get();
     for(auto it = gsi.begin(); it < gsi.end(); ++it){
         const gp_Pnt pi = this->GS_point(it->a, it->b, it->c);
         const auto eps = this->get_eps(pi, center);
-        const auto deps = this->get_deps(pi);
-        K += it->w*(deps.T()*D*eps);
+        //const auto deps = this->get_deps(pi);
+        K += it->w*(eps.T()*D*eps);
     }
     K *= this->delta;
 
@@ -85,7 +85,7 @@ math::Matrix BTRI6::get_stress_integrals(const math::Matrix & D, const gp_Pnt& c
     // M_y M_x V_z M_z V_y V_x
     math::Matrix M(6, K_DIM + 6);
     math::Matrix E(S_SIZE, K_DIM + 6);
-    const auto& gsi = utils::GaussLegendreTri<ORDER>::get();
+    const auto& gsi = utils::GaussLegendreTri<ORDER+4>::get();
     for(auto it = gsi.begin(); it < gsi.end(); ++it){
         const gp_Pnt pi = this->GS_point(it->a, it->b, it->c);
         const double dx = pi.X() - center.X();
@@ -96,9 +96,9 @@ math::Matrix BTRI6::get_stress_integrals(const math::Matrix & D, const gp_Pnt& c
             M(0, i) += it->w*E(2, i)*dx;
             M(1, i) += it->w*E(2, i)*dy;
             M(2, i) += it->w*E(2, i);
-            M(3, i) += it->w*(E(3, i)*dx - E(4, i)*dy);
-            M(4, i) += it->w*E(3, i);
-            M(5, i) += it->w*E(4, i);
+            M(3, i) += it->w*(E(5, i)*dx - E(4, i)*dy);
+            M(4, i) += it->w*E(4, i);
+            M(5, i) += it->w*E(5, i);
         }
     }
     M *= this->delta;
@@ -199,15 +199,15 @@ math::Matrix BTRI6::get_force_vector_matrix(const math::Matrix& D, const gp_Pnt&
 
     const auto EPS_L = K_DIM + 6;
 
-    const auto slice_i(math::slicer::sequence<size_t>(2, 5));
+    const std::vector<size_t> slice_i{2, 4, 5};
     const auto slice_j(math::slicer::sequence<size_t>(0, EPS_L));
-    const math::Matrix P({0, 0, 1,
-                          0, 1, 0,
+    const math::Matrix P({0, 1, 0,
+                          0, 0, 1,
                           1, 0, 0}, 3, 3);
 
     math::Matrix M(KW_P, EPS_L);
 
-    const auto& gsi = utils::GaussLegendreTri<ORDER+2>::get();
+    const auto& gsi = utils::GaussLegendreTri<ORDER+4>::get();
     for(auto it = gsi.begin(); it < gsi.end(); ++it){
         const gp_Pnt pi = this->GS_point(it->a, it->b, it->c);
 
@@ -239,7 +239,7 @@ math::Vector BTRI6::get_force_vector(const math::Matrix& D, const std::vector<do
     } else {
         std::vector<size_t> pos(K_DIM + 6);
         math::slicer::from_node_id(this->nodes, NODES_PER_ELEM, NODE_DOF, pos);
-        std::iota(pos.begin()+K_DIM, pos.end(), u.size() - 6);
+        std::iota(pos.begin()+K_DIM, pos.end(), u.size() - 2*6);
         const math::VectorSliceView us(u, pos);
         return M*us;
     }

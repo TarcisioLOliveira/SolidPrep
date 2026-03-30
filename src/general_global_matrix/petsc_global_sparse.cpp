@@ -39,6 +39,7 @@ void PETScGlobalSparse::initialize(bool spd, size_t L){
 
     MatSetSizes(this->PM, PETSC_DECIDE, PETSC_DECIDE, L, L);
     if(spd){
+        MatSetOption(this->PM, MAT_SPD, PETSC_TRUE);
         MatSetOption(this->PM, MAT_SPD_ETERNAL, PETSC_TRUE);
     } else {
         MatSetOption(this->PM, MAT_SYMMETRIC, PETSC_FALSE);

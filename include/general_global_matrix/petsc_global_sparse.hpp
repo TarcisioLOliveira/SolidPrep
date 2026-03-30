@@ -45,6 +45,14 @@ class PETScGlobalSparse{
     inline void add_element(const math::Matrix& matrix, const std::vector<long>& pos_i, const std::vector<long>& pos_j){
         this->M.insert_block(matrix, pos_i, pos_j, false);
     }
+    inline void add_element_symmetric(const math::Matrix& matrix, const std::vector<long>& pos_i, const std::vector<long>& pos_j){
+        this->M.insert_block(matrix, pos_i, pos_j, false);
+        this->M.insert_block(matrix, pos_i, pos_j, true);
+    }
+
+    inline double get_value(size_t i, size_t j) const{
+        return this->M.get(i, j);
+    }
 
     inline void print_matrix() const{
         for(size_t i = 0; i < L; ++i){

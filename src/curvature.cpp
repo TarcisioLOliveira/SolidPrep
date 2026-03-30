@@ -131,7 +131,7 @@ void Curvature::generate_curvature_3D(const std::vector<std::unique_ptr<MeshNode
     this->reduced_vec_len = reduced_vector_size;
     this->full_vector_size = full_vector_size;
 
-    const size_t u_size = 3*full_vector_size + 6;
+    const size_t u_size = 3*full_vector_size + U_SIZE_EXT;
     if(this->u.size() != u_size){
         this->u.resize(u_size, 0); 
         solver.initialize_matrix(false, u_size);
@@ -308,9 +308,7 @@ double Curvature::get_adjoint_gradient(const std::vector<double>& fea_u, const m
 }
 
 void Curvature::calculate_stress_field_3D(const std::vector<std::unique_ptr<BoundaryMeshElement>>& boundary_mesh){
-    constexpr size_t MAX_B = 6;
-
-    const size_t u_offset = this->u.size() - MAX_B;
+    const size_t u_offset = this->u.size() - U_SIZE_EXT;
     std::fill(this->u.begin(), this->u.end(), 0.0);
     this->solver.make_zero();
 
@@ -319,81 +317,88 @@ void Curvature::calculate_stress_field_3D(const std::vector<std::unique_ptr<Boun
     const size_t NODES_PER_ELEM = this->elem_info->get_nodes_per_element();
 
     std::vector<long> posi(K_DIM);
-    std::vector<long> posj(K_DIM + 6);
-    std::vector<long> pos_last(6);
+    std::vector<long> posj(K_DIM + MAX_B);
+    std::vector<long> pos_last(MAX_B);
 
-    for(size_t i = 0; i < 6; ++i){
+    for(size_t i = 0; i < MAX_B; ++i){
         posj[K_DIM + i] = u_offset + i;
-        pos_last[i] = u_offset + i;
+        pos_last[i] = u_offset + MAX_B + i;
     }
 
     for(const auto& e:boundary_mesh){
         const gp_Pnt centroid = e->get_centroid();
         const gp_Pnt c = utils::change_point(centroid, this->rot3D);
         const auto D = this->get_D_3D(e->parent, c);
-        const auto S = this->get_S_3D(e->parent, c);
-        const auto TDT = this->get_TDT_3D(S, D);
-        const auto DT = this->get_DT_3D(S, D);
+        //const auto S = this->get_S_3D(e->parent, c);
+        //const auto TDT = this->get_TDT_3D(S, D);
+        //const auto DT = this->get_DT_3D(S, D);
         math::slicer::from_node_id(e->nodes, NODES_PER_ELEM, NODE_DOF, posi);
         std::copy(posi.begin(), posi.end(), posj.begin());
 
-        //const auto K = e->get_K_ext(TDT, this->center);
-        const auto St = e->get_stress_integrals(DT, this->center);
-        const auto tau_xz_dz = e->get_equilibrium_partial(TDT, this->center, {0, 3});
-        const auto tau_yz_dz = e->get_equilibrium_partial(TDT, this->center, {1, 3});
-        const auto sigma_z_dz = e->get_equilibrium_partial(TDT, this->center, {4, 5});
-        //solver.add_element(K, posi, posj);
-        solver.add_element(St, pos_last, posj);
-        solver.add_element(tau_xz_dz + tau_yz_dz + sigma_z_dz, posi, posj);
+        const auto K = e->get_K_ext(D, this->center);
+        const auto St = e->get_stress_integrals(D, this->center);
+        //const auto tau_xz_dz = e->get_equilibrium_partial(TDT, this->center, {0, 3});
+        //const auto tau_yz_dz = e->get_equilibrium_partial(TDT, this->center, {1, 3});
+        //const auto sigma_z_dz = e->get_equilibrium_partial(TDT, this->center, {4, 5});
+        solver.add_element(K, posj, posj);
+        solver.add_element_symmetric(St, pos_last, posj);
+        //solver.add_element(tau_xz_dz + tau_yz_dz + sigma_z_dz, posi, posj);
+    }
+
+    for(size_t i = 0; i < MAX_B; ++i){
+        for(size_t j = 0; j < MAX_B; ++j){
+            std::cout << solver.get_value(u_offset + MAX_B + i, u_offset + j) << " ";
+        }
+        std::cout << std::endl;
     }
 
     solver.compute();
-    if(V_v != 0 || V_u != 0){
+    //if(V_v != 0 || V_u != 0){
 
-        math::Vector vv{V_u, -V_v};
-        math::Matrix EI({EI_vv, EI_uv,
-                         EI_uv, EI_uu}, 2, 2);
+    //    math::Vector vv{V_u, -V_v};
+    //    math::Matrix EI({EI_vv, EI_uv,
+    //                     EI_uv, EI_uu}, 2, 2);
 
-        math::LU lu(EI);
-        lu.solve(vv);
+    //    math::LU lu(EI);
+    //    lu.solve(vv);
 
-        const double Az = vv[0];
-        const double Bz = vv[1];
-        if(this->calculate_adjoint){
-            this->ABz = vv;
-            this->ABz_bar = math::Vector(vv.get_N(), 0);
-        }
+    //    const double Az = vv[0];
+    //    const double Bz = vv[1];
+    //    if(this->calculate_adjoint){
+    //        this->ABz = vv;
+    //        this->ABz_bar = math::Vector(vv.get_N(), 0);
+    //    }
 
-        std::vector<size_t> posu(NODES_PER_ELEM*NODE_DOF);
-        for(const auto& e:boundary_mesh){
-            const gp_Pnt centroid = e->get_centroid();
-            const gp_Pnt c = utils::change_point(centroid, this->rot3D);
-            const auto S = this->get_S_3D(e->parent, c);
-            const auto D = this->get_D_3D(e->parent, c);
+    //    std::vector<size_t> posu(NODES_PER_ELEM*NODE_DOF);
+    //    for(const auto& e:boundary_mesh){
+    //        const gp_Pnt centroid = e->get_centroid();
+    //        const gp_Pnt c = utils::change_point(centroid, this->rot3D);
+    //        const auto S = this->get_S_3D(e->parent, c);
+    //        const auto D = this->get_D_3D(e->parent, c);
 
-            const auto dz = e->get_dz_vector(S, D, Az, Bz, this->center);
+    //        const auto dz = e->get_dz_vector(S, D, Az, Bz, this->center);
 
-            math::slicer::from_node_id(e->nodes, NODES_PER_ELEM, NODE_DOF, posu);
-            math::VectorSlice us(this->u, posu);
-            us += dz;
-        }
-    }
+    //        math::slicer::from_node_id(e->nodes, NODES_PER_ELEM, NODE_DOF, posu);
+    //        math::VectorSlice us(this->u, posu);
+    //        us += dz;
+    //    }
+    //}
 
     // A B C theta Kyz Kxz
-    this->u[u_offset + 0] = -M_v;
-    this->u[u_offset + 1] = -M_u;
+    this->u[u_offset + MAX_B + 0] = -M_v;
+    this->u[u_offset + MAX_B + 1] = -M_u;
 
     // C
-    this->u[u_offset + 2] = -V_w;
+    this->u[u_offset + MAX_B + 2] = -V_w;
 
     // theta
-    this->u[u_offset + 3] = -M_w;
-
-    // t_yz
-    this->u[u_offset + 4] = V_v;
+    this->u[u_offset + MAX_B + 3] = -M_w;
 
     // t_xz
-    this->u[u_offset + 5] = -V_u;
+    this->u[u_offset + MAX_B + 4] = -V_u;
+
+    // t_yz
+    this->u[u_offset + MAX_B + 5] = V_v;
 
     solver.solve(this->u);
 
@@ -401,15 +406,24 @@ void Curvature::calculate_stress_field_3D(const std::vector<std::unique_ptr<Boun
     this->B     = this->u[u_offset + 1];
     this->C     = this->u[u_offset + 2];
     this->theta = this->u[u_offset + 3];
-    this->Kyz   = this->u[u_offset + 4];
-    this->Kxz   = this->u[u_offset + 5];
+    this->Al    = this->u[u_offset + 4];
+    this->Bl    = this->u[u_offset + 5];
+
+    //this->u[u_offset + 0] = 0;
+    //this->u[u_offset + 1] = 0;
+    //this->u[u_offset + 2] = 0;
+    //this->u[u_offset + 3] = 0;
+    //this->u[u_offset + 4] = 0;
+    //this->u[u_offset + 5] = 0;
+
+    //std::fill(u.begin(), u.begin()+u_offset, 0);
 
     logger::quick_log("A", A);
     logger::quick_log("B", B);
     logger::quick_log("C", C);
     logger::quick_log("theta", theta);
-    logger::quick_log("Kyz", Kyz);
-    logger::quick_log("Kxz", Kxz);
+    logger::quick_log("A'", Al);
+    logger::quick_log("B'", Bl);
     logger::quick_log("");
 }
 

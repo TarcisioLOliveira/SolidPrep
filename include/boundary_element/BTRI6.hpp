@@ -125,30 +125,30 @@ class BTRI6 : public BoundaryMeshElement{
             {{dN(0,i),       0,       0, 0, 0, 0,  0, 0, 0},
              {      0, dN(1,i),       0, 0, 0, 0,  0, 0, 0},
              {      0,       0,       0, x, y, 1,  0, 0, 0},
-             {      0,       0, dN(1,i), 0, 0, 0, -x, 1, 0},
-             {      0,       0, dN(0,i), 0, 0, 0,  y, 0, 1},
-             {dN(1,i), dN(0,i),       0, 0, 0, 0,  0, 0, 0}};
+             {dN(1,i), dN(0,i),       0, 0, 0, 0,  0, 0, 0},
+             {      0,       0, dN(0,i), 0, 0, 0, -y, x*x, 0},
+             {      0,       0, dN(1,i), 0, 0, 0,  x, 0, y*y},
         */
 
         M(2, K_DIM + 0) = x;
         M(2, K_DIM + 1) = y;
         M(2, K_DIM + 2) = 1;
 
-        M(3, K_DIM + 3) = -x;
-        M(3, K_DIM + 4) = 1;
+        M(4, K_DIM + 3) = -y;
+        M(4, K_DIM + 4) = x*x;
 
-        M(4, K_DIM + 3) = y;
-        M(4, K_DIM + 5) = 1;
+        M(5, K_DIM + 3) = x;
+        M(5, K_DIM + 5) = y*y;
 
         for(size_t i = 0; i < NODES_PER_ELEM; ++i){
             M(0, i*NODE_DOF + 0) = dN(0, i);
             M(1, i*NODE_DOF + 1) = dN(1, i);
 
-            M(3, i*NODE_DOF + 2) = dN(1, i);
-            M(4, i*NODE_DOF + 2) = dN(0, i);
+            M(3, i*NODE_DOF + 0) = dN(1, i);
+            M(3, i*NODE_DOF + 1) = dN(0, i);
 
-            M(5, i*NODE_DOF + 0) = dN(1, i);
-            M(5, i*NODE_DOF + 1) = dN(0, i);
+            M(4, i*NODE_DOF + 2) = dN(0, i);
+            M(5, i*NODE_DOF + 2) = dN(1, i);
         }
 
         return M;
@@ -161,11 +161,11 @@ class BTRI6 : public BoundaryMeshElement{
             M(0, i*NODE_DOF + 0) = dN(0, i);
             M(1, i*NODE_DOF + 1) = dN(1, i);
 
-            M(3, i*NODE_DOF + 2) = dN(1, i);
-            M(4, i*NODE_DOF + 2) = dN(0, i);
+            M(3, i*NODE_DOF + 0) = dN(1, i);
+            M(3, i*NODE_DOF + 1) = dN(0, i);
 
-            M(5, i*NODE_DOF + 0) = dN(1, i);
-            M(5, i*NODE_DOF + 1) = dN(0, i);
+            M(4, i*NODE_DOF + 2) = dN(0, i);
+            M(5, i*NODE_DOF + 2) = dN(1, i);
         }
 
         return M;
