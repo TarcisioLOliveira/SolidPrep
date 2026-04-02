@@ -28,6 +28,7 @@ void MUMPSSparseSymmetric::generate(const Meshing * const mesh, const size_t u_s
     logger::quick_log("Generating stiffness matrix...");
     this->u_size = u_size;
     this->l_num = l_num;
+    this->symmetric = (mesh->internal_loads2 == nullptr || mesh->internal_loads2->size() == 0);
     this->sK.zero();
     this->generate_base(mesh, u_size, l_num, node_positions, topopt, D_cache, u_ext, lambda, type);
     size_t M = u_size;

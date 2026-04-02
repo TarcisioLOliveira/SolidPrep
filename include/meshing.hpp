@@ -27,6 +27,7 @@
 #include "contact_spring.hpp"
 #include "element.hpp"
 #include <vector>
+#include "internal_loads2.hpp"
 #include "support.hpp"
 #include "force.hpp"
 #include "spring.hpp"
@@ -159,6 +160,7 @@ class Meshing{
                                            std::vector<Spring>& springs,
                                            std::vector<InternalLoads>& internal_loads,
                                            std::vector<ContactSpring>& contact_springs,
+                                           std::vector<InternalLoads2>& internal_loads2,
                                            std::vector<SubProblem>& sub_problems);
 
     /**
@@ -197,6 +199,7 @@ class Meshing{
     std::vector<MeshNode*> boundary_node_list;
     std::vector<Spring>* springs;
     std::vector<InternalLoads>* internal_loads;
+    std::vector<InternalLoads2>* internal_loads2;
     std::vector<ContactSpring>* contact_springs;
     std::vector<SubProblem>* sub_problems;
     std::vector<BoundaryElement*> inter_geometry_boundary;
@@ -205,6 +208,7 @@ class Meshing{
     std::unordered_map<const MeshElement*, const Geometry*> elem_geom_mapping;
     std::map<const MeshElement*, ContactElementMetadata> contact_data;
     bool nonlinear_boundary_conditions = false;
+    size_t il2_offset = 0;
 
     std::vector<double> global_load_vector;
     // Subproblems

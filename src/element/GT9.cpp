@@ -219,7 +219,7 @@ t*(2*D[0]*b[0]*b[0]*b[2]*b[2] - 2*D[0]*b[0]*b[1]*b[2]*b[2] + 2*D[0]*b[1]*b[1]*b[
     return K;
 }
 
-math::Matrix GT9::get_B(const gp_Pnt& point) const{
+math::Matrix GT9::get_B_base(const gp_Pnt& point) const{
     const double L0 = (a[0] + b[0]*point.X() + c[0]*point.Y())/(2*delta);
     const double L1 = (a[1] + b[1]*point.X() + c[1]*point.Y())/(2*delta);
     const double L2 = (a[2] + b[2]*point.X() + c[2]*point.Y())/(2*delta);
@@ -331,27 +331,6 @@ math::Matrix GT9::get_nodal_density_gradient(gp_Pnt p) const{
     (void)p;
     
     return this->dN_mat_1dof();
-}
-
-math::Matrix GT9::get_R(const math::Matrix& K, const std::vector<gp_Pnt>& points) const{
-    const double x[]{points[0].X(), points[1].X()};
-    const double y[]{points[0].Y(), points[1].Y()};
-    const double rnorm = 0.5*points[0].Distance(points[1]);
-
-    math::Matrix R(K_DIM, K_DIM);
-    constexpr size_t GN = 5;
-    const auto& GL = utils::GaussLegendre<GN>::get();
-
-    for(auto xi = GL.begin(); xi < GL.end(); ++xi){
-        const double s = xi->x;
-        const double X = 0.5*(x[0]*(1-s) + x[1]*(1+s));
-        const double Y = 0.5*(y[0]*(1-s) + y[1]*(1+s));
-        const auto NN = N_mat(X, Y);
-        R += xi->w*NN.T()*K*NN;
-    }
-    R *= rnorm;
-
-    return R;
 }
 
 math::Matrix GT9::diffusion_1dof(const double t, const math::Matrix& Am) const{
@@ -552,7 +531,7 @@ math::Matrix GT9::get_MnMn(const MeshElement* const e2, const std::vector<double
     return MnMn;
 }
 
-math::Matrix GT9::get_Ni(const gp_Pnt& p) const{
+math::Matrix GT9::get_Ni_base(const gp_Pnt& p) const{
     return this->N_mat(p.X(), p.Y());
 }
 

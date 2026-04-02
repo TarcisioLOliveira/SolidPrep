@@ -159,6 +159,7 @@ void Meshing::apply_boundary_conditions(const std::vector<Force>& forces,
                                         std::vector<Spring>& springs,
                                         std::vector<InternalLoads>& internal_loads,
                                         std::vector<ContactSpring>& contact_springs,
+                                        std::vector<InternalLoads2>& internal_loads2,
                                         std::vector<SubProblem>& sub_problems){
     (void) forces;
 
@@ -220,6 +221,8 @@ void Meshing::apply_boundary_conditions(const std::vector<Force>& forces,
                 ++current;
             }
         }
+        this->il2_offset = current;
+        current += internal_loads2.size()*6;
         this->dofs_per_subproblem[it] = current;
         this->load_vector[it].resize(current, 0);
     }
@@ -245,6 +248,17 @@ void Meshing::apply_boundary_conditions(const std::vector<Force>& forces,
         this->apply_internal_loads(internal_loads);
     }
     this->internal_loads = &internal_loads;
+
+    if(internal_loads2.size() > 0){
+        logger::quick_log("internal_loads2");
+        this->internal_loads2 = &internal_loads2;
+
+        size_t il2_id = 0;
+        for(auto& i:internal_loads2){
+            i.initialize(this, il2_id, this->load_vector[0]);
+            ++il2_id;
+        }
+    }
 
     for(size_t i = 0; i < this->node_positions.size(); ++i){
         const auto& n = this->node_positions[i];

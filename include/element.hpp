@@ -21,16 +21,16 @@
 #ifndef ELEMENT_HPP
 #define ELEMENT_HPP
 
-#include "material.hpp"
-#include "math/matrix.hpp"
-#include <gp_Pnt.hxx>
-#include <limits>
 #include <vector>
+#include <memory>
+#include <gp_Pnt.hxx>
 #include <TopoDS_Shape.hxx>
 #include <TopoDS_Edge.hxx>
-#include <memory>
+#include "material.hpp"
+#include "math/matrix.hpp"
 
 class BoundaryElement;
+class InternalLoads2;
 
 /**
  * Basic node superclass.
@@ -309,18 +309,65 @@ class MeshElement : public Element{
 
     virtual math::Matrix get_MnMn(const MeshElement* const e2, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds, const gp_Dir n) const = 0;
 
-    virtual double get_log_integ(const MeshElement* const e2, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds, const gp_Dir n, const double MU, const double K, const math::Vector& L) const = 0;
-    virtual math::Matrix get_MnMn_log(const MeshElement* const e2, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds, const gp_Dir n, const double MU, const double K, const math::Vector& L) const = 0;
-    virtual math::Matrix Kue_log(const MeshElement* const e2, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds, const gp_Dir n, const double MU, const double K, const math::Vector& L) const = 0;
-    virtual void Ku_log(const MeshElement* const e2, const std::vector<long>& node_positions, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds, const gp_Dir n, std::vector<double>& Ku, const double MU, const double K, const math::Vector& L) const = 0;
-    virtual void dKu_log(const MeshElement* const e2, const std::vector<long>& node_positions, const std::vector<double>& u, const std::vector<double>& du, const std::vector<gp_Pnt>& bounds, const gp_Dir n, std::vector<double>& dKu, const double MU, const double K, const math::Vector& L) const = 0;
+    virtual double get_log_integ(const MeshElement* const e2, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds, const gp_Dir n, const double MU, const double K, const double t, const math::Vector& L) const = 0;
+    virtual math::Matrix get_MnMn_log(const MeshElement* const e2, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds, const gp_Dir n, const double MU, const double K, const double t, const math::Vector& L) const = 0;
+    virtual math::Matrix Kue_log(const MeshElement* const e2, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds, const gp_Dir n, const double MU, const double K, const double t, const math::Vector& L) const = 0;
+    virtual void Ku_log(const MeshElement* const e2, const std::vector<long>& node_positions, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds, const gp_Dir n, std::vector<double>& Ku, const double MU, const double K, const double t, const math::Vector& L) const = 0;
+    virtual void dKu_log(const MeshElement* const e2, const std::vector<long>& node_positions, const std::vector<double>& u, const std::vector<double>& du, const std::vector<gp_Pnt>& bounds, const gp_Dir n, std::vector<double>& dKu, const double MU, const double K, const double t, const math::Vector& L) const = 0;
+
+    virtual math::Matrix get_B_il2(const gp_Pnt& p, const math::Matrix& R) const {
+        (void) p;
+        (void) R;
+
+        return math::Matrix();
+    }
 
     virtual math::Vector Kue_log_dsh(const MeshElement* const e2, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds, const gp_Dir n, const double MU, const double K, const math::Vector& L, const size_t ni1, const size_t ni2, const size_t ni_dof) const = 0;
 
-    virtual math::Matrix get_Ni(const gp_Pnt& p) const = 0;
     virtual math::Vector get_Ni_1dof(const gp_Pnt& p) const{
         (void) p;
         return math::Vector();
+    }
+
+    /**
+     * Creates and returns the elemental stiffness matrix.
+     *
+     * @param Rm 3x3 rotation matrix.
+     * @param Rt 6x6 flattened rank-4 rotation tensor.
+     *
+     * @return Internal loads evaluated matrix at a point p.
+     */
+    virtual math::Matrix internal_loads_matrix(const gp_Pnt& p, const math::Vector& c, const math::Matrix& Rm, const math::Matrix& RD) const = 0;
+
+    virtual math::Matrix constraint_matrix(const math::Vector& c, const math::Matrix& Rm, const math::Matrix& RD, const math::Matrix& D, const std::vector<gp_Pnt>& bounds) const = 0;
+
+    virtual math::Vector calculate_internal_loads(const math::Vector& c, const math::Matrix& Rm, const math::Matrix& RD, const math::Matrix& D, const gp_Dir& n, const std::vector<double>& u_ext, const math::Vector& params, const std::vector<gp_Pnt>& bounds) const = 0;
+
+    virtual math::Matrix il2_strain_matrix(const math::Vector& c, const math::Matrix& Rm, const math::Matrix& RD, const math::Matrix& D, const std::vector<gp_Pnt>& bounds) const = 0;
+
+    virtual math::Matrix il2_param_load(const math::Vector& c, const math::Matrix& Rm, const math::Matrix& RD, const math::Matrix& D, const gp_Dir& n, const std::vector<gp_Pnt>& bounds) const = 0;
+
+    virtual math::Vector il2_strain_load(const math::Vector& c, const math::Matrix& Rm, const math::Matrix& RD, const math::Matrix& D, const math::Vector& base_strain, const std::vector<gp_Pnt>& bounds) const = 0;
+
+    virtual math::Vector internal_loads_grad(const math::Vector& mult, const math::Vector& c, const math::Matrix& RD, const math::Matrix& Rt, const math::Matrix& D, const std::vector<gp_Pnt>& bounds) const = 0;
+
+    virtual math::Matrix internal_loads_hess(const math::Vector& c, const math::Matrix& Rm, const math::Matrix& RD, const math::Matrix& D, const gp_Dir& n, const std::vector<gp_Pnt>& bounds) const = 0;
+
+    inline math::Matrix il2_M(const gp_Pnt& p, const math::Vector& c, const math::Matrix& Rm) const {
+        const math::Vector pv({p.X(), p.Y(), p.Z()});
+        const math::Vector p2 = Rm*pv - c;
+        const double x = p2[0];
+        const double y = p2[1];
+        const math::Matrix M({
+             0, 0, 0, 0, 0,  0,
+             0, 0, 0, 0, 0,  0,
+             1, 0, 0, x, y,  0,
+             0, 0, 0, 0, 0,  0,
+             0, 0, x*x, 0, 0, -y,
+             0, y*y, 0, 0, 0,  x
+        }, 6, 6);
+
+        return M;
     }
 
     /**
@@ -340,7 +387,7 @@ class MeshElement : public Element{
      *
      * @return The element stiffness matrix.
      */
-    virtual math::Matrix get_R(const math::Matrix& K, const std::vector<gp_Pnt>& points) const = 0;
+    virtual math::Matrix get_R(const math::Matrix& K, const double t, const std::vector<gp_Pnt>& points) const = 0;
     /**
      * Creates and returns the elemental Robin matrix (contact spring).
      *
@@ -350,9 +397,9 @@ class MeshElement : public Element{
      *
      * @return The element stiffness matrix.
      */
-    virtual math::Matrix get_R_contact(const math::Matrix& K, const std::vector<gp_Pnt>& points, const math::Vector normal, const std::vector<double>& u_ext) const = 0;
+    virtual math::Matrix get_R_contact(const math::Matrix& K, const double t, const std::vector<gp_Pnt>& points, const math::Vector normal, const std::vector<double>& u_ext) const = 0;
 
-    virtual math::Vector get_Ku_cs(const math::Matrix& K, const std::vector<gp_Pnt>& points, const math::Vector normal, const std::vector<double>& u_ext, const std::vector<double>& u_ext_mult) const = 0;
+    virtual math::Vector get_Ku_cs(const math::Matrix& K, const double t, const std::vector<gp_Pnt>& points, const math::Vector normal, const std::vector<double>& u_ext, const std::vector<double>& u_ext_mult) const = 0;
     /**
      * Calculates the internal load vector of the element.
      *
@@ -527,15 +574,6 @@ class MeshElement : public Element{
      */
     virtual math::Matrix get_nodal_density_gradient(gp_Pnt p) const = 0;
 
-    /**
-     * Gets the linear displacement matrix (B).
-     *
-     * @param point Point where it's measured at.
-     *
-     * @return B matrix.
-     */
-    virtual math::Matrix get_B(const gp_Pnt& point) const = 0;
-
     virtual math::Matrix get_dk_sh(const math::Matrix& D, const double t, const size_t n, const size_t dof) const{
         (void) D;
         (void) t;
@@ -654,6 +692,19 @@ class MeshElement : public Element{
      */
     virtual inline MeshNode* get_node(size_t node) const{ return static_cast<MeshNode*>(this->nodes[node]);}
 
+    /**
+     * Gets the linear displacement matrix (B).
+     *
+     * @param point Point where it's measured at.
+     *
+     * @return B matrix.
+     */
+    math::Matrix get_B(const gp_Pnt& p) const;
+    math::Matrix get_Ni(const gp_Pnt& p) const;
+
+    virtual math::Matrix get_B_base(const gp_Pnt& p) const = 0;
+    virtual math::Matrix get_Ni_base(const gp_Pnt& p) const = 0;
+
     protected:
     /**
      * Creates an element with the specified nodes.
@@ -673,7 +724,11 @@ class MeshElement : public Element{
      *
      * @return The interpolation matrix for nodal forces, Nf.
      */
-    virtual math::Matrix get_Nf(const double t, const std::vector<gp_Pnt>& points) const = 0;
+    virtual math::Matrix get_Nf(const double t, const std::vector<gp_Pnt>& points) const{
+        (void)t;
+        (void)points;
+        return math::Matrix();
+    }
 };
 
 namespace utils{

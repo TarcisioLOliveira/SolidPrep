@@ -70,51 +70,40 @@ void TET4::calculate_coefficients(){
     this->V = this->get_volume(1.0);
 }
 
-math::Matrix TET4::get_k(const math::Matrix& D, const double t) const{
-    (void)t;
-
-    const auto B = this->B(this->C);
-
-    return this->V*(B.T()*D*B);
-}
-math::Matrix TET4::get_B(const gp_Pnt& point) const{
+math::Matrix TET4::get_B_base(const gp_Pnt& point) const{
     (void)point;
     return this->B(this->C);
 }
 
-math::Matrix TET4::get_Nf(const double t, const std::vector<gp_Pnt>& points) const{
-    (void)t;
+math::Matrix TET4::get_B_il2(const gp_Pnt& p, const math::Matrix& R) const {
+    (void) p;
+    const double* const A = this->C.data();
+    const double* const B = A + NODES_PER_ELEM;
+    const double* const C = B + NODES_PER_ELEM;
+    const double* const D = C + NODES_PER_ELEM;
 
-    const gp_Vec v1(points[0], points[1]);
-    const gp_Vec v2(points[0], points[2]);
+    std::array<double, NODES_PER_ELEM> b, c, d;
 
-    const double AA = v1.Crossed(v2).Magnitude()/6;
-    double A[4] = {0,0,0,0};
-    for(size_t i = 0; i < 4; ++i){
-        for(size_t j = 0; j < 3; ++j){
-            if(points[j].IsEqual(this->nodes[i]->point, Precision::Confusion())){
-                A[i] = AA;
-                break;
-            }
-        }
+    math::Matrix M = math::Matrix::identity(DIM);
+    M(DIM-1, DIM-1) = 0;
+    for(size_t i = 0; i < NODES_PER_ELEM; ++i){
+        math::Vector grad({B[i], C[i], D[i]});
+        grad = R.T()*M*R*grad;
+        b[i] = grad[0];
+        c[i] = grad[1];
+        d[i] = grad[2];
     }
 
-    math::Matrix Nf({
-        A[0],  0,  0,
-         0, A[0],  0,
-         0,  0, A[0],
-        A[1],  0,  0,
-         0, A[1],  0,
-         0,  0, A[1],
-        A[2],  0,  0,
-         0, A[2],  0,
-         0,  0, A[2],
-        A[3],  0,  0,
-         0, A[3],  0,
-         0,  0, A[3]
-    }, K_DIM, DIM);
+    math::Matrix Bm({
+        b[0], 0, 0, b[1], 0, 0, b[2], 0, 0, b[3], 0, 0,
+        0, c[0], 0, 0, c[1], 0, 0, c[2], 0, 0, c[3], 0,
+        0, 0, d[0], 0, 0, d[1], 0, 0, d[2], 0, 0, d[3],
+        c[0], b[0], 0, c[1], b[1], 0, c[2], b[2], 0, c[3], b[3], 0,
+        d[0], 0, b[0], d[1], 0, b[1], d[2], 0, b[2], d[3], 0, b[3],
+        0, d[0], c[0], 0, d[1], c[1], 0, d[2], c[2], 0, d[3], c[3]
+    }, S_SIZE, K_DIM);
 
-    return Nf;
+    return Bm;
 }
 
 math::Matrix TET4::get_nodal_density_gradient(gp_Pnt p) const{
@@ -223,7 +212,7 @@ math::Vector TET4::flow_1dof(const double t, const MeshNode** nodes) const{
     return M;
 }
 
-math::Matrix TET4::get_Ni(const gp_Pnt& p) const{
+math::Matrix TET4::get_Ni_base(const gp_Pnt& p) const{
     return this->N_mat(p.X(), p.Y(), p.Z(), this->C);
 }
 

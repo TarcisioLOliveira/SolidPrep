@@ -19,6 +19,7 @@
  */
 
 #include "element.hpp"
+#include "internal_loads2.hpp"
 
 
 BeamNode* BeamNodeFactory::make_node(gp_Pnt p, size_t id, double dim, gp_Dir n, BeamNodeType t){
@@ -26,4 +27,11 @@ BeamNode* BeamNodeFactory::make_node(gp_Pnt p, size_t id, double dim, gp_Dir n, 
         return new BeamNode2D(p, id, dim, n);
     }
     return nullptr;
+}
+
+math::Matrix MeshElement::get_B(const gp_Pnt& p) const{
+    return this->get_B_base(p);
+}
+math::Matrix MeshElement::get_Ni(const gp_Pnt& p) const{
+    return this->get_Ni_base(p);
 }

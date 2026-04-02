@@ -34,7 +34,7 @@ MUMPSSolver::MUMPSSolver(const projspec::DataMap& data):
     this->set_global_matrix(&this->gsm);
 
     this->config.job = -1; // Configuration initialization
-    this->config.sym = 1; // SPD matrix
+    //this->config.sym = 1; // SPD matrix
     this->config.par = 1; // Host process also does computations
     this->config.comm_fortran = -987654; // Default communicator
     // No text output
@@ -67,12 +67,6 @@ MUMPSSolver::MUMPSSolver(const projspec::DataMap& data):
     this->config.ICNTL(21) = 0; // assembled
     // Complete factorization
     this->config.ICNTL(19) = 0;
-    dmumps_c(&this->config);
-    // No text output, but for real now
-    this->config.ICNTL(1) = 0;
-    this->config.ICNTL(2) = 0;
-    this->config.ICNTL(3) = 0;
-    this->config.ICNTL(4) = 0;
 }
 
 MUMPSSolver::~MUMPSSolver(){
@@ -85,6 +79,23 @@ MUMPSSolver::~MUMPSSolver(){
 void MUMPSSolver::generate_matrix_base(const Meshing* const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<math::Matrix>& D_cache, const std::vector<double>& u_ext, const std::vector<double>& lambda, const ContactType type){
     int mpi_id = 0;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi_id);
+    this->spd_matrix = (mesh->internal_loads2 == nullptr || mesh->internal_loads2->size() == 0);
+
+    if(this->spd_matrix){
+        this->config.sym = 1; // SPD matrix
+    } else {
+        this->config.sym = 0; // Asymmetric matrix
+    }
+
+    if(this->first_time){
+        this->config.job = -1;
+        dmumps_c(&this->config);
+    }
+    // No text output, but for real now
+    this->config.ICNTL(1) = 0;
+    this->config.ICNTL(2) = 0;
+    this->config.ICNTL(3) = 0;
+    this->config.ICNTL(4) = 0;
 
     size_t M = u_size;
     if(type == FiniteElement::ContactType::FRICTIONLESS_DISPL_SIMPLE){

@@ -49,9 +49,8 @@ class TET10 : public MeshElementCommon3DTet<TET10>{
 
     TET10(ElementShape s);
 
-    virtual math::Matrix get_k(const math::Matrix& D, const double t) const override;
     virtual math::Matrix get_nodal_density_gradient(gp_Pnt p) const override;
-    virtual math::Matrix get_B(const gp_Pnt& point) const override;
+    virtual math::Matrix get_B_base(const gp_Pnt& point) const override;
 
     virtual math::Matrix diffusion_1dof(const double t, const math::Matrix& A) const override;
     virtual math::Matrix advection_1dof(const double t, const math::Vector& v) const override;
@@ -59,7 +58,8 @@ class TET10 : public MeshElementCommon3DTet<TET10>{
     virtual math::Vector source_1dof(const double t) const override;
     virtual math::Vector flow_1dof(const double t, const MeshNode** nodes) const override;
 
-    virtual math::Matrix get_Ni(const gp_Pnt& p) const override;
+    virtual math::Matrix get_Ni_base(const gp_Pnt& p) const override;
+    virtual math::Vector get_Ni_1dof(const gp_Pnt& p) const override;
 
     virtual inline std::unique_ptr<MeshElementFactory> get_element_info() const override{
         return std::unique_ptr<MeshElementFactory>(new MeshElementFactoryImpl<TET10>());
@@ -67,7 +67,6 @@ class TET10 : public MeshElementCommon3DTet<TET10>{
 
     private:
     static const bool reg;
-    virtual math::Matrix get_Nf(const double t, const std::vector<gp_Pnt>& points) const override;
 
     inline gp_Pnt GL_point(double c1, double c2, double c3, double c4) const{
         return gp_Pnt(

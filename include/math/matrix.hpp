@@ -74,6 +74,9 @@ class MatrixSlice{
     MatrixSlice& operator-=(const MatrixTransposeView& m);
     MatrixSlice& operator+=(const MatrixSlice& m);
     MatrixSlice& operator-=(const MatrixSlice& m);
+    MatrixSlice& operator=(const Matrix& m);
+    MatrixSlice& operator=(const MatrixTransposeView& m);
+    MatrixSlice& operator=(const MatrixSlice& m);
 
     private:
     MatrixSlice(Scalar* m, const size_t W, std::vector<size_t> pos_i, std::vector<size_t> pos_j):
@@ -317,7 +320,8 @@ inline Matrix&& operator*(Scalar s, Matrix&& m){
     return std::forward<Matrix>(m);
 }
 inline Matrix operator*(Scalar s, MatrixTransposeView&& m){
-    return m*s;
+    Matrix M(m);
+    return M*s;
 }
 
 class VectorAgnostic{

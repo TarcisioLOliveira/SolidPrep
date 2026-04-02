@@ -44,7 +44,7 @@ void FiniteElement::calculate_displacements(const Meshing* const mesh, std::vect
     switch(this->contact_data.contact_type){
         case RIGID:
             if(!mesh->nonlinear_boundary_conditions){
-                this->solve_rigid(load);
+                this->solve_rigid(mesh, load);
             } else {
                 this->solve_rigid_nonlinear(mesh, load, u0);
             }
@@ -66,7 +66,7 @@ void FiniteElement::calculate_adjoint(const Meshing* const mesh, std::vector<dou
     switch(this->contact_data.contact_type){
         case RIGID:
             if(!mesh->nonlinear_boundary_conditions){
-                this->solve_rigid(load);
+                this->solve_rigid(mesh, load);
             } else {
                 logger::log_assert(false, logger::ERROR, "adjoint equation for nonlinear BCs not implemented");
                 //this->solve_rigid_nonlinear(mesh, load, u0);
@@ -86,12 +86,27 @@ void FiniteElement::calculate_adjoint(const Meshing* const mesh, std::vector<dou
     }
 }
 
-void FiniteElement::solve_rigid(std::vector<double>& load){
+void FiniteElement::solve_rigid(const Meshing* const mesh, std::vector<double>& load){
     this->solve(load);
+
+    std::vector<double> u_ext(mesh->max_dofs);
+    mesh->extend_vector(0, load, u_ext);
+
+    size_t il_id = 0;
+    math::Vector pdiff(6);
+    for(auto& il:*(mesh->internal_loads2)){
+        for(size_t i = 0; i < 6; ++i){
+            pdiff[i] = load[mesh->il2_offset + il_id*6 + i];
+        }
+        il.update_multipliers(pdiff, 1.0, true);
+
+        ++il_id;
+    }
 }
 
 void FiniteElement::solve_rigid_nonlinear(const Meshing* const mesh, std::vector<double>& load, const std::vector<double>& u0){
     const size_t vec_size = this->u_size;
+    const size_t il_param_offset = vec_size - mesh->internal_loads2->size()*6;
 
     double E = 0;
     size_t it = 0;
@@ -125,8 +140,8 @@ void FiniteElement::solve_rigid_nonlinear(const Meshing* const mesh, std::vector
         std::fill(Kd1.begin(), Kd1.end(), 0);
         this->matrix->dot_vector(u1, Ku);
         this->matrix->dot_vector(dr, Kd1);
-        this->matrix->append_Ku_nl_bcs(mesh, mesh->node_positions[0], u_ext, u_ext, Ku);
-        this->matrix->append_Ku_nl_bcs(mesh, mesh->node_positions[0], u_ext, du_ext, Kd1);
+        this->matrix->append_Ku_nl_bcs(mesh, mesh->node_positions[0], u_ext, Ku);
+        this->matrix->append_dKu_nl_bcs(mesh, mesh->node_positions[0], u_ext, du_ext, dr, Kd1);
         for(size_t i = 0; i < vec_size; ++i){
             r[i] = (Ku[i] - f[i]);
         }
@@ -144,7 +159,7 @@ void FiniteElement::solve_rigid_nonlinear(const Meshing* const mesh, std::vector
         mesh->extend_vector(0, u1, u_ext);
         std::fill(Ku.begin(), Ku.end(), 0);
         this->matrix->dot_vector(u1, Ku);
-        this->matrix->append_Ku_nl_bcs(mesh, mesh->node_positions[0], u_ext, u_ext, Ku);
+        this->matrix->append_Ku_nl_bcs(mesh, mesh->node_positions[0], u_ext, Ku);
         for(size_t i = 0; i < vec_size; ++i){
             r[i] = (Ku[i] - f[i]);
         }
@@ -156,7 +171,8 @@ void FiniteElement::solve_rigid_nonlinear(const Meshing* const mesh, std::vector
 
     this->reset_hessian();
     this->matrix->dot_vector(u, Ku);
-    this->matrix->append_Ku_nl_bcs(mesh, mesh->node_positions[0], u_ext, u_ext, Ku);
+    this->matrix->append_Ku_nl_bcs(mesh, mesh->node_positions[0], u_ext, Ku);
+    //this->matrix->append_il2_f(mesh, f);
     for(size_t i = 0; i < vec_size; ++i){
         r[i] = -(Ku[i] - f[i]);
     }
@@ -181,13 +197,24 @@ void FiniteElement::solve_rigid_nonlinear(const Meshing* const mesh, std::vector
         logger::quick_log("dr min max", *std::min_element(dr.begin(), dr.end()), *std::max_element(dr.begin(), dr.end()));
 
         logger::quick_log("Applying step...");
-        step = this->regula_falsi(get_g, get_rnorm_est, rnorm);
-        //step = this->contact_data.max_step;
+        //step = this->regula_falsi(get_g, get_rnorm_est, rnorm);
+        step = this->contact_data.max_step;
 
         for(size_t i = 0; i < vec_size; ++i){
             u[i] += step*dr[i];
         }
         mesh->extend_vector(0, u, u_ext);
+
+        size_t il_id = 0;
+        math::Vector pdiff(6);
+        for(auto& il:*(mesh->internal_loads2)){
+            for(size_t i = 0; i < 6; ++i){
+                pdiff[i] = dr[il_param_offset + il_id*6 + i];
+            }
+            il.update_multipliers(pdiff, step, true);
+
+            ++il_id;
+        }
 
         // Generate lambda update
         // {
@@ -211,8 +238,8 @@ void FiniteElement::solve_rigid_nonlinear(const Meshing* const mesh, std::vector
 
         std::fill(Ku.begin(), Ku.end(), 0);
         this->matrix->dot_vector(u, Ku);
-        this->matrix->append_Ku_nl_bcs(mesh, mesh->node_positions[0], u_ext, u_ext, Ku);
-        for(size_t i = 0; i < vec_size; ++i){
+        this->matrix->append_Ku_nl_bcs(mesh, mesh->node_positions[0], u_ext, Ku);
+        for(size_t i = 0; i < mesh->il2_offset; ++i){
             r[i] = -(Ku[i] - f[i]);
         }
         E = 0;
@@ -233,6 +260,7 @@ void FiniteElement::solve_rigid_nonlinear(const Meshing* const mesh, std::vector
 
         logger::log_assert(rnorm < 1e30, logger::ERROR, "Newton process diverged, increase rtol_abs and/or decrease mult");
         ++it;
+
         if(step == 0){
             break;
         }

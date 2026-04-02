@@ -119,6 +119,49 @@ MatrixSlice& MatrixSlice::operator-=(const MatrixSlice& m){
 
     return *this;
 }
+MatrixSlice& MatrixSlice::operator=(const Matrix& m){
+    logger::log_assert(this->get_W() == m.get_W() && this->get_H() == m.get_H(),
+                       logger::ERROR,
+                       "incompatible dimensions in matrix sum: ({}, {}) and ({}, {})",
+                       this->get_H(), this->get_W(), m.get_H(), m.get_W());
+
+    for(size_t i = 0; i < this->get_H(); ++i){
+        for(size_t j = 0; j < this->get_W(); ++j){
+            this->at(i,j) = m(i, j);
+        }
+    }
+
+    return *this;
+}
+MatrixSlice& MatrixSlice::operator=(const MatrixTransposeView& m){
+    logger::log_assert(this->get_W() == m.get_W() && this->get_H() == m.get_H(),
+                       logger::ERROR,
+                       "incompatible dimensions in matrix sum: ({}, {}) and ({}, {})",
+                       this->get_H(), this->get_W(), m.get_H(), m.get_W());
+
+    for(size_t i = 0; i < this->get_H(); ++i){
+        for(size_t j = 0; j < this->get_W(); ++j){
+            this->at(i,j) = m(i, j);
+        }
+    }
+
+    return *this;
+}
+
+MatrixSlice& MatrixSlice::operator=(const MatrixSlice& m){
+    logger::log_assert(this->get_W() == m.get_W() && this->get_H() == m.get_H(),
+                       logger::ERROR,
+                       "incompatible dimensions in matrix sum: ({}, {}) and ({}, {})",
+                       this->get_H(), this->get_W(), m.get_H(), m.get_W());
+
+    for(size_t i = 0; i < this->get_H(); ++i){
+        for(size_t j = 0; j < this->get_W(); ++j){
+            this->at(i,j) = m(i, j);
+        }
+    }
+
+    return *this;
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 //////////////////////////////// MATRIX ///////////////////////////////////////

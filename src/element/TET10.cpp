@@ -81,42 +81,8 @@ void TET10::get_coeffs(){
     std::copy(M.data()+12, M.data()+16, d);
 }
 
-math::Matrix TET10::get_k(const math::Matrix& D, const double t) const{
-    (void)t;
-    
-    math::Matrix K(K_DIM, K_DIM);
-
-    const auto& gli = utils::GaussLegendreTet<2>::get();
-    for(auto it = gli.begin(); it < gli.end(); ++it){
-        const gp_Pnt p = this->GL_point(it->a, it->b, it->c, it->d);
-        const auto B(this->B_mat(p));
-        K += it->w*B.T()*D*B;
-    }
-    K *= this->V;
-
-    return K;
-}
-math::Matrix TET10::get_B(const gp_Pnt& point) const{
+math::Matrix TET10::get_B_base(const gp_Pnt& point) const{
     return this->B_mat(point);
-}
-
-math::Matrix TET10::get_Nf(const double t, const std::vector<gp_Pnt>& points) const{
-    (void)t;
-
-    const gp_Vec v1(points[0], points[1]);
-    const gp_Vec v2(points[0], points[2]);
-
-    const double delta = v1.Crossed(v2).Magnitude()/2;
-    math::Matrix Nf(NODE_DOF, K_DIM);
-    const auto& gli = utils::GaussLegendreTri<3>::get();
-    for(auto it = gli.begin(); it < gli.end(); ++it){
-        const gp_Pnt p = this->GL_point_2D(it->a, it->b, it->c, points);
-        const auto NN(this->N_mat(p));
-        Nf += it->w*NN;
-    }
-    Nf *= delta;
-
-    return Nf;
 }
 
 math::Matrix TET10::get_nodal_density_gradient(gp_Pnt p) const{
@@ -207,8 +173,12 @@ math::Vector TET10::flow_1dof(const double t, const MeshNode** nodes) const{
     return M;
 }
 
-math::Matrix TET10::get_Ni(const gp_Pnt& p) const{
+math::Matrix TET10::get_Ni_base(const gp_Pnt& p) const{
     return this->N_mat(p);
+}
+
+math::Vector TET10::get_Ni_1dof(const gp_Pnt& p) const {
+    return this->N_mat_1dof(p);
 }
 
 }

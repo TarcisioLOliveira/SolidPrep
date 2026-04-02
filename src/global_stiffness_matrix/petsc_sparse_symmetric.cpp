@@ -184,8 +184,13 @@ void PETScSparseSymmetricCUDA::preallocate(const Meshing * const mesh, const siz
     MPI_Bcast(&M, 1, MPI_LONG, 0, MPI_COMM_WORLD);
 
     MatSetSizes(this->K, PETSC_DECIDE, PETSC_DECIDE, M, M);
-    MatSetOption(this->K, MAT_SPD, PETSC_TRUE);
-    MatSetOption(this->K, MAT_SPD_ETERNAL, PETSC_TRUE);
+    if((mesh->internal_loads2 == nullptr || mesh->internal_loads2->size() == 0)){
+        MatSetOption(this->K, MAT_SPD, PETSC_TRUE);
+        MatSetOption(this->K, MAT_SPD_ETERNAL, PETSC_TRUE);
+    } else {
+        MatSetOption(this->K, MAT_SPD, PETSC_FALSE);
+        MatSetOption(this->K, MAT_SYMMETRIC, PETSC_FALSE);
+    }
     MatSetOption(this->K, MAT_KEEP_NONZERO_PATTERN, PETSC_TRUE);
 
     if(mpi_id == 0){

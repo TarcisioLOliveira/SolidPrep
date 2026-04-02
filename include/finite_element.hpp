@@ -83,7 +83,7 @@ class FiniteElement{
     virtual void solve(std::vector<double>& load) = 0;
     virtual void reset_hessian() = 0;
 
-    void solve_rigid(std::vector<double>& load);
+    void solve_rigid(const Meshing* const mesh, std::vector<double>& load);
     void solve_rigid_nonlinear(const Meshing* const mesh, std::vector<double>& load, const std::vector<double>& u0);
     void solve_frictionless_displ_simple(const Meshing* const mesh, std::vector<double>& load, std::vector<double>& lambda, const std::vector<double>& u0);
     void solve_frictionless_displ_log(const Meshing* const mesh, std::vector<double>& load, std::vector<double>& lambda, const std::vector<double>& u0);
@@ -170,7 +170,7 @@ class FiniteElement{
                 logger::quick_log("g1", g1, "a1", a1);
                 logger::quick_log("g2", g2, "a2", a2);
             }
-            const double DIFF = 1e-1;
+            const double DIFF = 1e-2;
             const double stop = DIFF*std::min(std::abs(g1), std::abs(g2));
             if(g2*g1 < 0){
                 logger::quick_log("Regula falsi...");

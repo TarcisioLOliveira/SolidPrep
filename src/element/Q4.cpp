@@ -101,27 +101,6 @@ math::Matrix Q4::get_Nf(const double t, const std::vector<gp_Pnt>& points) const
     return Nf;
 }
 
-math::Matrix Q4::get_R(const math::Matrix& K, const std::vector<gp_Pnt>& points) const{
-    const double x[]{points[0].X(), points[1].X()};
-    const double y[]{points[0].Y(), points[1].Y()};
-    const double rnorm = 0.5*points[0].Distance(points[1]);
-
-    math::Matrix R(K_DIM, K_DIM);
-    constexpr size_t GN = 3;
-    const auto& GL = utils::GaussLegendre<GN>::get();
-
-    for(auto xi = GL.begin(); xi < GL.end(); ++xi){
-        const double s = xi->x;
-        const double X = 0.5*(x[0]*(1-s) + x[1]*(1+s));
-        const double Y = 0.5*(y[0]*(1-s) + y[1]*(1+s));
-        const auto NN = N_mat(X, Y);
-        R += xi->w*NN.T()*K*NN;
-    }
-    R *= rnorm;
-
-    return R;
-}
-
 math::Matrix Q4::diffusion_1dof(const double t, const math::Matrix& A) const{
     constexpr size_t N = Q4::NODES_PER_ELEM;
     std::array<double, N> x, y;
@@ -251,7 +230,7 @@ math::Vector Q4::flow_1dof(const double t, const MeshNode** nodes) const{
     return M;
 };
 
-math::Matrix Q4::get_B(const gp_Pnt& point) const{
+math::Matrix Q4::get_B_base(const gp_Pnt& point) const{
     const double x = point.X();
     const double y = point.Y();
 
@@ -313,7 +292,7 @@ math::Matrix Q4::get_nodal_density_gradient(gp_Pnt p) const{
     return this->dN_mat_1dof(p.X(), p.Y());
 }
 
-math::Matrix  Q4::get_Ni(const gp_Pnt& p) const{
+math::Matrix  Q4::get_Ni_base(const gp_Pnt& p) const{
     return this->N_mat(p.X(), p.Y());
 }
 

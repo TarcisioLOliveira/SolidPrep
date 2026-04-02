@@ -90,7 +90,7 @@ math::Matrix H8::get_nodal_density_gradient(gp_Pnt p) const{
     return this->dN_mat_1dof(p.X(), p.Y(), p.Z(), x, y, z);
 }
 
-math::Matrix H8::get_B(const gp_Pnt& point) const{
+math::Matrix H8::get_B_base(const gp_Pnt& point) const{
     constexpr size_t N = H8::NODES_PER_ELEM;
     std::array<double, N> x, y, z;
     const gp_Pnt c(this->get_centroid());
@@ -140,7 +140,8 @@ math::Matrix H8::get_Nf(const double t, const std::vector<gp_Pnt>& points) const
     return Nf;
 }
 
-math::Matrix H8::get_R(const math::Matrix & K, const std::vector<gp_Pnt>& points) const{
+math::Matrix H8::get_R(const math::Matrix &K, const double t, const std::vector<gp_Pnt>& points) const{
+    (void)t;
 
     std::array<double, BOUNDARY_NODES_PER_ELEM> x, y, z;
     const gp_Pnt c(this->get_centroid());
@@ -432,7 +433,8 @@ math::Matrix H8::get_MnMn(const MeshElement* const e2, const std::vector<double>
     return MnMn;
 }
 
-double H8::get_log_integ(const MeshElement* const e2, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds, const gp_Dir n, const double MU, const double K, const math::Vector& L) const{
+double H8::get_log_integ(const MeshElement* const e2, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds, const gp_Dir n, const double MU, const double K, const double t, const math::Vector& L) const{
+    (void)t;
     const size_t DOF = NODE_DOF;
     const size_t KW = K_DIM;
 
@@ -492,7 +494,8 @@ double H8::get_log_integ(const MeshElement* const e2, const std::vector<double>&
     return integ;
 }
 
-math::Matrix H8::get_MnMn_log(const MeshElement* const e2, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds, const gp_Dir n, const double MU, const double K, const math::Vector& L) const{
+math::Matrix H8::get_MnMn_log(const MeshElement* const e2, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds, const gp_Dir n, const double MU, const double K, const double t, const math::Vector& L) const{
+    (void)t;
     const size_t DOF = NODE_DOF;
     const size_t KW = K_DIM;
 
@@ -552,7 +555,8 @@ math::Matrix H8::get_MnMn_log(const MeshElement* const e2, const std::vector<dou
 
     return MnMn;
 }
-void H8::Ku_log(const MeshElement* const e2, const std::vector<long>& node_positions, const std::vector<double>& u, const std::vector<gp_Pnt>& bounds, const gp_Dir n, std::vector<double>& Ku, const double MU, const double K, const math::Vector& L) const{
+void H8::Ku_log(const MeshElement* const e2, const std::vector<long>& node_positions, const std::vector<double>& u, const std::vector<gp_Pnt>& bounds, const gp_Dir n, std::vector<double>& Ku, const double MU, const double K, const double t, const math::Vector& L) const{
+    (void)t;
     const size_t DOF = NODE_DOF;
     const size_t KW = K_DIM;
 
@@ -627,7 +631,8 @@ void H8::Ku_log(const MeshElement* const e2, const std::vector<long>& node_posit
         }
     }
 }
-void H8::dKu_log(const MeshElement* const e2, const std::vector<long>& node_positions, const std::vector<double>& u, const std::vector<double>& du, const std::vector<gp_Pnt>& bounds, const gp_Dir n, std::vector<double>& dKu, const double MU, const double K, const math::Vector& L) const{
+void H8::dKu_log(const MeshElement* const e2, const std::vector<long>& node_positions, const std::vector<double>& u, const std::vector<double>& du, const std::vector<gp_Pnt>& bounds, const gp_Dir n, std::vector<double>& dKu, const double MU, const double K, const double t, const math::Vector& L) const{
+    (void)t;
     const size_t DOF = NODE_DOF;
     const size_t KW = K_DIM;
 
@@ -788,7 +793,7 @@ gp_Pnt H8::to_surface_point(const double xi, const double eta, const H8::CubeSid
     return {0,0,0};
 }
 
-math::Matrix H8::get_Ni(const gp_Pnt& p) const{
+math::Matrix H8::get_Ni_base(const gp_Pnt& p) const{
     return this->N_mat_norm(p.X(), p.Y(), p.Z());
 }
 

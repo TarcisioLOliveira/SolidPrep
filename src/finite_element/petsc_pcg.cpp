@@ -50,11 +50,14 @@ PETScPCG::~PETScPCG(){
     VecDestroy(&this->u);
     KSPDestroy(&this->ksp);
     PCDestroy(&this->pc);
+    
+    MatDestroy(&this->N);
 }
 
 void PETScPCG::generate_matrix_base(const Meshing* const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<math::Matrix>& D_cache, const std::vector<double>& u_ext, const std::vector<double>& lambda, const ContactType type){
     this->gsm->generate(mesh, u_size, l_num, node_positions, topopt, D_cache, u_ext, lambda, type);
     this->nonlinear_boundary_conditions = mesh->nonlinear_boundary_conditions;
+    this->spd_matrix = (mesh->internal_loads2 == nullptr || mesh->internal_loads2->size() == 0);
     this->setup = false;
 }
 
@@ -71,41 +74,81 @@ void PETScPCG::solve(std::vector<double>& load){
     MatGetLocalSize(K, &n, &m);
     MPI_Bcast(&M, 1, MPI_LONG, 0, MPI_COMM_WORLD);
     if(this->first_time){
-        // DMDACreate1d(PETSC_COMM_WORLD, DM_BOUNDARY_NONE, M, 1, 1, NULL, &this->dm);
-        // DMSetVecType(this->dm, VECSTANDARD);
-        // DMSetUp(this->dm);
 
         VecCreateMPI(PETSC_COMM_WORLD, m, M, &this->u);
         VecSetType(this->u, this->vec_type.c_str());
-        //VecSetSizes(this->u[0], PETSC_DECIDE, M);
-        //DMCreateGlobalVector(this->dm, &this->u[0]);
         VecSetUp(this->u);
 
         VecCreateMPI(PETSC_COMM_WORLD, m, M, &this->f);
         VecSetType(this->f, this->vec_type.c_str());
-        //VecSetSizes(this->f, PETSC_DECIDE, M);
-        //DMCreateGlobalVector(this->dm, &this->f);
         VecSetUp(this->f);
 
         KSPCreate(PETSC_COMM_WORLD, &this->ksp);
-        KSPSetType(this->ksp, KSPCG);
-        //KSPSetType(this->ksp, KSPCHEBYSHEV);
-        //KSPSetType(this->ksp, KSPCR);
-        //KSPSetType(this->ksp, KSPMINRES);
-        //KSPSetType(this->ksp, KSPPREONLY);
-        KSPCGSetType(this->ksp, KSP_CG_HERMITIAN);
-
-        // Setting this to true may make the solver diverge
-        KSPSetInitialGuessNonzero(this->ksp, PETSC_FALSE);
+        KSPSetNormType(this->ksp, KSP_NORM_UNPRECONDITIONED);
 
         KSPGetPC(this->ksp, &this->pc);
-        KSPSetNormType(this->ksp, KSP_NORM_UNPRECONDITIONED);
         PCFactorSetUseInPlace(this->pc, PETSC_TRUE);
-        PCSetType(this->pc, PCJACOBI);
-        PCJacobiSetType(this->pc, PC_JACOBI_DIAGONAL);
-        KSPSetTolerances(this->ksp, 1e-5, 1e-50, 1e10, 1e5);
-
+        KSPSetInitialGuessNonzero(this->ksp, PETSC_FALSE);
         PCFactorSetReuseOrdering(this->pc, PETSC_TRUE);
+
+        if(this->spd_matrix){
+            PCSetType(this->pc, PCJACOBI);
+
+            KSPSetType(this->ksp, KSPCG);
+            KSPCGSetType(this->ksp, KSP_CG_SYMMETRIC);
+            PCJacobiSetType(this->pc, PC_JACOBI_DIAGONAL);
+            KSPSetTolerances(this->ksp, 1e-5, 1e-50, 1e10, 1e5);
+            KSPSetInitialGuessNonzero(this->ksp, PETSC_FALSE);
+        } else {
+            KSPSetNormType(this->ksp, KSP_NORM_UNPRECONDITIONED);
+            //PCSetType(this->pc, PCNONE);
+            PCSetType(this->pc, PCJACOBI);
+            PCJacobiSetType(this->pc, PC_JACOBI_ROWMAX);
+            PCJacobiSetUseAbs(this->pc, PETSC_TRUE);
+            PCJacobiSetFixDiagonal(this->pc, PETSC_TRUE);
+
+            //MatCreateNormal(K, &this->N);
+            
+            //KSPSetType(this->ksp, KSPLSQR); // Currently the most reliable one, but pretty slow
+            //KSPSetType(this->ksp, KSPCGNE);
+
+                                              
+            //PCSetType(this->pc, PCICC);
+            //PCFactorSetLevels(this->pc, 0);
+
+            //KSPSetPCSide(this->ksp, PC_RIGHT);
+
+            //KSPSetType(this->ksp, KSPMINRES);
+            //KSPSetType(this->ksp, KSPBCGS);
+            
+            //KSPSetType(this->ksp, KSPBCGSL);
+            //KSPSetType(this->ksp, KSPIBCGS);
+
+            KSPSetType(this->ksp, KSPDGMRES); // Already a bit better than GMRES
+            KSPGMRESSetPreAllocateVectors(this->ksp);
+            KSPGMRESSetRestart(this->ksp, 600);
+            KSPGMRESSetCGSRefinementType(this->ksp, KSP_GMRES_CGS_REFINE_IFNEEDED);
+            
+            KSPSetTolerances(this->ksp, 1e-5, 1e-50, 1e10, 1e5);
+            
+            //KSPSetInitialGuessNonzero(this->ksp, PETSC_TRUE);
+            //long begin = 0, end = 0;
+            //VecGetOwnershipRange(this->u, &begin, &end);
+            //double* u_data = nullptr;
+            //VecGetArray(this->u, &u_data);
+            //for(auto d = 0; d < end - begin; ++d){
+            //    *(u_data+d) = 0.001;
+            //}
+            //VecRestoreArray(this->u, &u_data);
+
+            //PetscViewerAndFormat *vf;
+            //PetscViewerAndFormatCreate(PETSC_VIEWER_STDOUT_WORLD, PETSC_VIEWER_DEFAULT, &vf);
+            //KSPMonitorSet(this->ksp, (PetscErrorCode (*)(KSP, PetscInt, PetscReal, void *))KSPMonitorResidual, vf, (PetscCtxDestroyFn *)PetscViewerAndFormatDestroy);
+        }
+
+        // Setting this to true may make the solver diverge
+        //KSPSetInitialGuessNonzero(this->ksp, PETSC_FALSE);
+
 
         //PCSetType(this->pc, PCHYPRE);
         //PCSetType(this->pc, PCKACZMARZ);
@@ -198,7 +241,11 @@ void PETScPCG::solve(std::vector<double>& load){
     //logger::quick_log("is symmetric?", is_sym);
 
     //if(!this->setup){
+    if(this->spd_matrix){
         KSPSetOperators(this->ksp, K, K);
+    } else {
+        KSPSetOperators(this->ksp, K, K);
+    }
 
         KSPSetUp(this->ksp);
         PCSetUp(this->pc);

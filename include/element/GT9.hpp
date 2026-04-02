@@ -62,8 +62,7 @@ class GT9 : public MeshElementCommon2DTri<GT9>{
 
     virtual math::Matrix get_k(const math::Matrix& D, const double t) const override;
     virtual math::Matrix get_nodal_density_gradient(gp_Pnt p) const override;
-    virtual math::Matrix get_R(const math::Matrix& K, const std::vector<gp_Pnt>& points) const override;
-    virtual math::Matrix get_B(const gp_Pnt& point) const override;
+    virtual math::Matrix get_B_base(const gp_Pnt& point) const override;
 
     virtual math::Matrix diffusion_1dof(const double t, const math::Matrix& A) const override;
     virtual math::Matrix advection_1dof(const double t, const math::Vector& v) const override;
@@ -71,7 +70,7 @@ class GT9 : public MeshElementCommon2DTri<GT9>{
     virtual math::Vector source_1dof(const double t) const override;
     virtual math::Vector flow_1dof(const double t, const MeshNode** nodes) const override;
 
-    virtual math::Matrix get_Ni(const gp_Pnt& p) const override;
+    virtual math::Matrix get_Ni_base(const gp_Pnt& p) const override;
 
     virtual math::Matrix get_uu(const MeshElement* const e2, const std::vector<gp_Pnt>& bounds, const gp_Dir n) const override;
     virtual math::Matrix get_MnMn(const MeshElement* const e2, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds, const gp_Dir n) const override;

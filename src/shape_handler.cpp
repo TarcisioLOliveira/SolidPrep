@@ -686,7 +686,7 @@ void ShapeHandler::update_nodes(const std::vector<double>& dx){
                             }
                         }
                     }
-                    const auto k = this->MU*b->parent->get_R(A, pnts);
+                    const auto k = this->MU*b->parent->get_R(A, this->mesh->thickness, pnts);
                     cluster.solver->add_element(k, pos);
                 }
             }

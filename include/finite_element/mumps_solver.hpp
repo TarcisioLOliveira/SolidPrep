@@ -52,6 +52,7 @@ class MUMPSSolver : public FiniteElement{
     size_t l_num = 0;
     bool first_time = true;
     bool factorized = false;
+    bool spd_matrix = true;
 };
 
 }

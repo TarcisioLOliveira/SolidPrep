@@ -47,9 +47,8 @@ class TET4 : public MeshElementCommon3DTet<TET4>{
 
     TET4(ElementShape s);
 
-    virtual math::Matrix get_k(const math::Matrix& D, const double t) const override;
     virtual math::Matrix get_nodal_density_gradient(gp_Pnt p) const override;
-    virtual math::Matrix get_B(const gp_Pnt& point) const override;
+    virtual math::Matrix get_B_base(const gp_Pnt& point) const override;
 
     virtual math::Matrix get_dk_sh(const math::Matrix& D, const double t, const size_t n, const size_t dof) const override;
     virtual math::Matrix get_dB_sh(const gp_Pnt& p, const size_t n, const size_t dof) const override;
@@ -64,12 +63,13 @@ class TET4 : public MeshElementCommon3DTet<TET4>{
     virtual math::Vector source_1dof(const double t) const override;
     virtual math::Vector flow_1dof(const double t, const MeshNode** nodes) const override;
 
-    virtual math::Matrix get_Ni(const gp_Pnt& p) const override;
+    virtual math::Matrix get_Ni_base(const gp_Pnt& p) const override;
     virtual math::Vector get_Ni_1dof(const gp_Pnt& p) const override;
     virtual math::Matrix get_dNi(const gp_Pnt& p) const override{
         (void) p;
         return this->dN_mat_dim_dof(this->C);
     }
+    virtual math::Matrix get_B_il2(const gp_Pnt& p, const math::Matrix& R) const override;
 
     virtual inline std::unique_ptr<MeshElementFactory> get_element_info() const override{
         return std::unique_ptr<MeshElementFactory>(new MeshElementFactoryImpl<TET4>());
@@ -77,7 +77,6 @@ class TET4 : public MeshElementCommon3DTet<TET4>{
 
     private:
     static const bool reg;
-    virtual math::Matrix get_Nf(const double t, const std::vector<gp_Pnt>& points) const override;
 
     math::Matrix C;
     double V;

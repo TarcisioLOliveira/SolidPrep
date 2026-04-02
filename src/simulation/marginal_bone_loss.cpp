@@ -170,7 +170,7 @@ void MarginalBoneLoss::run(){
         logger::quick_log("");
         logger::quick_log("Time:", time_count);
 
-        this->mesh->apply_boundary_conditions(this->proj->forces, this->proj->supports, this->proj->springs, this->proj->internal_loads, this->proj->contact_springs, this->proj->sub_problems);
+        this->mesh->apply_boundary_conditions(this->proj->forces, this->proj->supports, this->proj->springs, this->proj->internal_loads, this->proj->contact_springs, this->proj->internal_loads2, this->proj->sub_problems);
         dir_field->generate();
         this->fem->generate_matrix(this->mesh);
         this->fem->calculate_displacements_global(this->mesh, this->mesh->load_vector, u);
