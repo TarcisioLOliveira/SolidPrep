@@ -72,9 +72,11 @@ void SolverManager::calculate_displacements_global(const Meshing* const mesh, co
         auto& ui = this->split_u[i];
         this->solvers[i]->calculate_displacements(mesh, l, ui, this->lambdas[i][0]);
         mesh->extend_vector(i, l, ui);
-        for(size_t i = 0; i < mesh->internal_loads2->size(); ++i){
-            auto& il = mesh->internal_loads2->at(i);
-            il.calculate_constraints(ui, true);
+        if(mesh->internal_loads2 != nullptr){
+            for(size_t i = 0; i < mesh->internal_loads2->size(); ++i){
+                auto& il = mesh->internal_loads2->at(i);
+                il.calculate_constraints(ui, true);
+            }
         }
         #pragma omp parallel for
         for(size_t j = 0; j < u.size(); ++j){
