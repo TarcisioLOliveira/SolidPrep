@@ -22,6 +22,7 @@
 #define INTERNAL_LOADS_2_HPP
 
 #include <array>
+#include <unordered_map>
 #include "material.hpp"
 #include "math/matrix.hpp"
 #include "utils.hpp"
@@ -41,49 +42,10 @@ class InternalLoads2{
     InternalLoads2(CrossSection cross_section, double thickness, gp_Dir normal, gp_Dir v, gp_Dir w, utils::DelayedPointerView<Material> mat, std::array<double, 3> F, std::array<double, 3> M, utils::ProblemType type);
     InternalLoads2(InternalLoads2&&) = default;
 
-    void initialize(const Meshing* const mesh, size_t il_id, std::vector<double>& load);
+    void initialize(const Meshing* const mesh, size_t& max_dofs);
+    void apply_constraints(std::vector<double>& load) const;
 
-    inline math::Matrix get_B_ext(const gp_Pnt& p) const{
-        const math::Vector pv({p.X(), p.Y(), p.Z()});
-        if(this->type == utils::PROBLEM_TYPE_3D){
-            const math::Vector p2 = this->rot3D*pv - this->center;
-            const double x = p2[0];
-            const double y = p2[1];
-            const double z = p2[2];
-
-            const math::Matrix M({
-             0, 0, 0, 0, 2*x*z, y*z,
-             0, 0, 0, 0, x*z, 2*y*z,
-             x, y, 1, 0, 0, 0,
-             0, 0, 0, 0, y*z, x*z,
-             0, 0, 0, -y, x*x, x*y,
-             0, 0, 0,  x, x*y, y*y
-            }, 6, 6);
-
-            return rot3D_D.T()*M;
-        } else {
-            return math::Matrix();
-        }
-    }
-    inline math::Matrix get_N_ext(const gp_Pnt& p) const{
-        const math::Vector pv({p.X(), p.Y(), p.Z()});
-        if(this->type == utils::PROBLEM_TYPE_3D){
-            const math::Vector p2 = this->rot3D*pv - this->center;
-            const double x = p2[0];
-            const double y = p2[1];
-            const double z = p2[2];
-
-            const math::Matrix M({
-             0, 0, 0, -y*z, x*x*z, x*y*z,
-             0, 0, 0,  x*z, x*y*z, y*y*z,
-             x*z, y*z, z, 0, 0, 0
-            }, 3, 6);
-
-            return rot3D.T()*M;
-        } else {
-            return math::Matrix();
-        }
-    }
+    math::Matrix get_F_mat(const BoundaryElement* b) const;
 
     math::Vector calculate_internal_loads(const std::vector<double>& u_ext) const;
     math::Vector calculate_constraints(const std::vector<double>& u_ext, bool print = false) const;
@@ -92,6 +54,7 @@ class InternalLoads2{
     void update_multipliers(const math::Vector& params_diff, double alpha, bool print = false);
 
     math::Matrix get_constr(const BoundaryElement* b) const;
+    math::Matrix get_constr2(const BoundaryElement* b) const;
 
     math::Vector get_grad(const BoundaryElement* b, const math::Vector& mult) const;
     math::Matrix get_hess(const BoundaryElement* b) const;
@@ -119,6 +82,12 @@ class InternalLoads2{
     const double MU;
     math::Vector params = math::Vector(6);
     math::Vector base_strain;
+
+    std::unordered_map<size_t, size_t> F_id_map;
+
+    size_t F_total_dof;
+    size_t constraint_offset;
+    size_t il2_offset;
 
     private:
     const gp_Dir v;

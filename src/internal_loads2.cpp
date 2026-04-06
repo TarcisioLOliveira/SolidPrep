@@ -18,6 +18,7 @@
  *
  */
 
+#include <set>
 #include "internal_loads2.hpp"
 #include "math/matrix.hpp"
 #include "meshing.hpp"
@@ -58,13 +59,16 @@ InternalLoads2::InternalLoads2(CrossSection cross_section, double thickness, gp_
 }
 
 
-void InternalLoads2::initialize(const Meshing* const mesh, size_t il_id, std::vector<double>& load){
+void InternalLoads2::initialize(const Meshing* const mesh, size_t& max_dofs){
     size_t bound_nodes_per_elem = mesh->elem_info->get_boundary_nodes_per_element();
 
     const auto& boundary_elements = mesh->boundary_elements;
 
     this->elem_info = mesh->elem_info;
     this->BOUNDARY_NODE_NUM = elem_info->get_boundary_nodes_per_element();
+    const size_t node_num = elem_info->get_nodes_per_element();
+    const size_t s_size = elem_info->get_D_dimension();
+    const size_t dim = (this->type == utils::PROBLEM_TYPE_2D) ? 2 : 3;
 
     // Get associated boundary elements
 
@@ -84,16 +88,32 @@ void InternalLoads2::initialize(const Meshing* const mesh, size_t il_id, std::ve
     this->submesh.resize(num_elems);
     size_t cur_elem = 0;
     ElementShape sh;
+    std::set<Node*> unique_nodes;
     
     sh.nodes.resize(bound_nodes_per_elem);
     auto boundary_elem_info = mesh->elem_info->get_boundary_element_info();
     for(size_t i = 0; i < boundary_elements.size(); ++i){
         if(apply_spring[i]){
             this->submesh[cur_elem] = &boundary_elements[i];
+            for(size_t n = 0; n < node_num; ++n){
+                unique_nodes.insert(boundary_elements[i].parent->nodes[n]);
+            }
 
             ++cur_elem;
         }
     }
+
+    this->il2_offset = max_dofs;
+    this->F_total_dof = unique_nodes.size()*dim;
+    this->constraint_offset = this->il2_offset + this->F_total_dof;
+
+    size_t cur_id = 0;
+    for(const auto& n:unique_nodes){
+        this->F_id_map[n->id] = cur_id;
+        ++cur_id;
+    }
+    
+    max_dofs += this->F_total_dof + 2*s_size;
 
     const auto fn_A =
         [this](const math::Matrix& S, const gp_Pnt& px)->double{
@@ -138,52 +158,39 @@ void InternalLoads2::initialize(const Meshing* const mesh, size_t il_id, std::ve
     logger::quick_log("c_v: ", center[1]);
 
 
+}
+
+void InternalLoads2::apply_constraints(std::vector<double>& load) const{
     if(this->type == utils::PROBLEM_TYPE_2D){
 
     } else {
-        //const size_t bnum = this->elem_info->get_boundary_nodes_per_element();
-        //const size_t node_num = this->elem_info->get_nodes_per_element();
-        //const size_t dof = this->elem_info->get_dof_per_node();
-        //std::vector<gp_Pnt> bounds(bnum);
-
-        //math::Matrix M(6,6);
-        //for(const auto& b:this->submesh){
-        //    for(size_t i = 0; i < bnum; ++i){
-        //        bounds[i] = b->nodes[i]->point;
-        //    }
-        //    const auto D = this->mat->stiffness_3D(b->parent, b->parent->get_centroid());
-        //    M += b->parent->il2_strain_matrix(center, this->rot3D, rot3D_D, D, bounds);
-        //}
-
-        //math::LU lu(M);
         math::Vector V = this->get_loads();
-        //const size_t il_size = mesh->internal_loads2->size();
         for(size_t i = 0; i < 6; ++i){
-            //load[mesh->il2_offset + 6*(il_size + il_id) + i] = V[i];
-            load[mesh->il2_offset + 6*il_id + i] = V[i];
+            load[this->constraint_offset + i] = V[i];
         }
+        for(size_t i = 0; i < 6; ++i){
+            load[this->constraint_offset + 6 + i] = V[i];
+        }
+    }
+}
 
-        //lu.solve(V);
-        //this->base_strain = V;
-        //logger::quick_log("Base strain:");
-        //logger::quick_log(this->base_strain);
+math::Matrix InternalLoads2::get_F_mat(const BoundaryElement* b) const{
+    std::vector<gp_Pnt> bounds(BOUNDARY_NODE_NUM);
+    for(size_t i = 0; i < BOUNDARY_NODE_NUM; ++i){
+        bounds[i] = b->nodes[i]->point;
+    }
 
-        //for(const auto& b:this->submesh){
-        //    for(size_t i = 0; i < bnum; ++i){
-        //        bounds[i] = b->nodes[i]->point;
-        //    }
-        //    const auto D = this->mat->stiffness_3D(b->parent, b->parent->get_centroid());
-        //    const auto fe = b->parent->il2_strain_load(center, rot3D, rot3D_D, D, base_strain, bounds);
-        //    for(size_t i = 0; i < node_num; ++i){
-        //        const size_t id = b->parent->nodes[i]->id;
-        //        for(size_t j = 0; j < dof; ++j){
-        //            const long p = mesh->node_positions[0][dof*id + j];
-        //            if(p >= 0){
-        //                load[p] -= fe[dof*i + j];
-        //            }
-        //        }
-        //    }
-        //}
+    if(this->type == utils::PROBLEM_TYPE_2D){
+        auto NN = -b->parent->get_R(this->rot2D, this->thickness, bounds);
+
+        return NN; 
+    } else {
+        auto NN = -b->parent->get_R(this->rot3D, this->thickness, bounds);
+
+        return NN; 
+        //const auto D = this->mat->stiffness_3D(b->parent, b->get_centroid(BOUNDARY_NODE_NUM));
+        //auto hess = b->parent->internal_loads_hess(center, rot3D, rot3D_D, D, this->normal, bounds);
+        //return hess;
     }
 }
 
@@ -272,13 +279,18 @@ math::Matrix InternalLoads2::get_constr(const BoundaryElement* b) const{
     for(size_t i = 0; i < BOUNDARY_NODE_NUM; ++i){
         bounds[i] = b->nodes[i]->point;
     }
-    if(this->type == utils::PROBLEM_TYPE_2D){
-        const auto D = this->mat->stiffness_2D(b->parent, b->get_centroid(BOUNDARY_NODE_NUM));
-        return b->parent->constraint_matrix(this->center, this->rot2D, this->rot2D_D, D, bounds);
-    } else {
-        const auto D = this->mat->stiffness_3D(b->parent, b->get_centroid(BOUNDARY_NODE_NUM));
-        return b->parent->constraint_matrix(this->center, this->rot3D, this->rot3D_D, D, bounds);
+    return b->parent->constraint_matrix_alt(this->center, this->rot3D, bounds);
+    //const auto D = this->mat->stiffness_3D(b->parent, b->get_centroid(BOUNDARY_NODE_NUM));
+    //return b->parent->constraint_matrix(this->center, this->rot3D, this->rot3D_D, D, bounds);
+}
+math::Matrix InternalLoads2::get_constr2(const BoundaryElement* b) const{
+    std::vector<gp_Pnt> bounds(BOUNDARY_NODE_NUM);
+    for(size_t i = 0; i < BOUNDARY_NODE_NUM; ++i){
+        bounds[i] = b->nodes[i]->point;
     }
+    //return b->parent->constraint_matrix_alt(this->center, this->rot3D, bounds);
+    const auto D = this->mat->stiffness_3D(b->parent, b->get_centroid(BOUNDARY_NODE_NUM));
+    return b->parent->constraint_matrix(this->center, this->rot3D, this->rot3D_D, D, bounds);
 }
 math::Vector InternalLoads2::get_grad(const BoundaryElement* b, const math::Vector& mult) const{
     std::vector<gp_Pnt> bounds(BOUNDARY_NODE_NUM);
@@ -301,29 +313,11 @@ math::Matrix InternalLoads2::get_hess(const BoundaryElement* b) const{
     if(this->type == utils::PROBLEM_TYPE_2D){
         const auto D = this->mat->stiffness_2D(b->parent, b->get_centroid(BOUNDARY_NODE_NUM));
         auto hess =  b->parent->internal_loads_hess(center, rot2D, rot2D_D, D, this->normal, bounds);
-        //const auto load = b->parent->il2_param_load(center, rot2D, rot2D_D, D, normal, bounds);
-        //const size_t K_DIM = load.get_H();
-        //const size_t S_SIZE = load.get_W();
-        //for(size_t i = 0; i < K_DIM; ++i){
-        //    for(size_t j = 0; j < S_SIZE; ++j){
-        //       hess(i, j + K_DIM) = load(i, j);
-        //       hess(j + K_DIM, i) = load(i, j);
-        //    }
-        //}
 
         return hess; 
     } else {
         const auto D = this->mat->stiffness_3D(b->parent, b->get_centroid(BOUNDARY_NODE_NUM));
         auto hess = b->parent->internal_loads_hess(center, rot3D, rot3D_D, D, this->normal, bounds);
-        //const auto load = b->parent->il2_param_load(center, rot3D, rot3D_D, D, normal, bounds);
-        //const size_t K_DIM = load.get_H();
-        //const size_t S_SIZE = load.get_W();
-        //for(size_t i = 0; i < K_DIM; ++i){
-        //    for(size_t j = 0; j < S_SIZE; ++j){
-        //       hess(i, j + K_DIM) = load(i, j);
-        //       hess(j + K_DIM, i) = load(i, j);
-        //    }
-        //} 
 
         return hess; 
     }

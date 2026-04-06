@@ -22,6 +22,7 @@
 #include "logger.hpp"
 #include "math/matrix.hpp"
 #include "math/slicer.hpp"
+#include "utils.hpp"
 #include <limits>
 
 GlobalStiffnessMatrix::GlobalStiffnessMatrix(const FiniteElement::ContactData& data):
@@ -107,64 +108,75 @@ void GlobalStiffnessMatrix::generate_base(const Meshing * const mesh, const size
             const std::vector<double> empty_lambda(lambda.size(), 0);
             this->add_frictionless_simple(mesh, node_positions, u_ext, empty_lambda, true);
         }
-        // Internal loads 2
-        if(mesh->internal_loads2->size() > 0){
-            const size_t dof      = mesh->elem_info->get_dof_per_node();
-            const size_t node_num = mesh->elem_info->get_nodes_per_element();
-            const size_t s_size   = mesh->elem_info->get_D_dimension();
-            //const size_t il2_num  = mesh->internal_loads2->size();
+        // // Internal loads 2
+        // if(mesh->internal_loads2->size() > 0){
+        //     const size_t dof      = mesh->elem_info->get_dof_per_node();
+        //     const size_t node_num = mesh->elem_info->get_nodes_per_element();
+        //     const size_t s_size   = mesh->elem_info->get_D_dimension();
+        //     //const size_t il2_num  = mesh->internal_loads2->size();
 
-            std::vector<long> u_pos(dof*node_num);
-            std::vector<long> s_pos(s_size);
-            math::Matrix M(s_size, u_pos.size());
-            size_t il_id = 0;
-            for(const auto& il:*(mesh->internal_loads2)){
-                for(size_t i = 0; i < 6; ++i){
-                    s_pos[i] = mesh->il2_offset + s_size*il_id + i;
-                }
-                for(const auto& b:il.submesh){
-                    for(size_t i = 0; i < node_num; ++i){
-                        const auto& n = b->parent->nodes[i];
-                        for(size_t j = 0; j < dof; ++j){
-                            const size_t p = n->id*dof + j;
-                            u_pos[i*dof + j] = node_positions[p];
-                        }
-                    }
-                    this->reserve_block_symmetric(M, s_pos, u_pos);
-                }
-                ++il_id;
-            }
-        }
+        //     std::vector<long> u_pos(dof*node_num);
+        //     std::vector<long> s_pos(s_size);
+        //     math::Matrix M(s_size, u_pos.size());
+        //     size_t il_id = 0;
+        //     for(const auto& il:*(mesh->internal_loads2)){
+        //         for(size_t i = 0; i < 6; ++i){
+        //             s_pos[i] = mesh->il2_offset + s_size*il_id + i;
+        //         }
+        //         for(const auto& b:il.submesh){
+        //             for(size_t i = 0; i < node_num; ++i){
+        //                 const auto& n = b->parent->nodes[i];
+        //                 for(size_t j = 0; j < dof; ++j){
+        //                     const size_t p = n->id*dof + j;
+        //                     u_pos[i*dof + j] = node_positions[p];
+        //                 }
+        //             }
+        //             this->reserve_block_symmetric(M, s_pos, u_pos);
+        //         }
+        //         ++il_id;
+        //     }
+        // }
     }
     // Internal loads 2
     if(mesh->internal_loads2->size() > 0){
         const size_t dof      = mesh->elem_info->get_dof_per_node();
         const size_t node_num = mesh->elem_info->get_nodes_per_element();
         const size_t s_size   = mesh->elem_info->get_D_dimension();
-        //const size_t il2_num  = mesh->internal_loads2->size();
+        const auto prob_type = mesh->elem_info->get_problem_type();
+        const size_t dim = (prob_type == utils::PROBLEM_TYPE_2D) ? 2 : 3;
 
         std::vector<long> u_pos(dof*node_num);
+        std::vector<long> f_pos(dof*node_num);
         std::vector<long> s_pos(s_size);
-        math::Matrix M(s_size, u_pos.size());
-        size_t il_id = 0;
+        std::vector<long> s_pos2(s_size);
         for(const auto& il:*(mesh->internal_loads2)){
             for(size_t i = 0; i < 6; ++i){
-                s_pos[i] = mesh->il2_offset + s_size*il_id + i;
+                s_pos[i] = il.constraint_offset + i;
+                s_pos2[i] = il.constraint_offset + s_size + i;
             }
             for(const auto& b:il.submesh){
                 for(size_t i = 0; i < node_num; ++i){
                     const auto& n = b->parent->nodes[i];
+                    const size_t f_id = il.F_id_map.at(n->id);
                     for(size_t j = 0; j < dof; ++j){
                         const size_t p = n->id*dof + j;
                         u_pos[i*dof + j] = node_positions[p];
                     }
+                    for(size_t j = 0; j < dim; ++j){
+                        const size_t fp = f_id*dim + j;
+                        f_pos[i*dim + j] = il.il2_offset + fp;
+                    }
                 }
-                const auto H = il.get_hess(b);
+                //const auto H = il.get_hess(b);
+                //this->insert_element_matrix(H, u_pos);
+                const auto F = il.get_F_mat(b);
                 const auto M = il.get_constr(b);
-                this->insert_element_matrix(H, u_pos);
-                this->insert_block_symmetric(M, s_pos, u_pos);
+                const auto M2 = il.get_constr2(b);
+                this->insert_block_symmetric(F, u_pos, f_pos);
+                this->insert_block_symmetric(M, s_pos, f_pos);
+                this->insert_block_symmetric(M2, s_pos2, u_pos);
+                //this->insert_block_symmetric(M, s_pos, u_pos);
             }
-            ++il_id;
         }
     }
     if(topopt){

@@ -89,19 +89,19 @@ void FiniteElement::calculate_adjoint(const Meshing* const mesh, std::vector<dou
 void FiniteElement::solve_rigid(const Meshing* const mesh, std::vector<double>& load){
     this->solve(load);
 
-    std::vector<double> u_ext(mesh->max_dofs);
-    mesh->extend_vector(0, load, u_ext);
+    //std::vector<double> u_ext(mesh->max_dofs);
+    //mesh->extend_vector(0, load, u_ext);
 
-    size_t il_id = 0;
-    math::Vector pdiff(6);
-    for(auto& il:*(mesh->internal_loads2)){
-        for(size_t i = 0; i < 6; ++i){
-            pdiff[i] = load[mesh->il2_offset + il_id*6 + i];
-        }
-        il.update_multipliers(pdiff, 1.0, true);
+    //size_t il_id = 0;
+    //math::Vector pdiff(6);
+    //for(auto& il:*(mesh->internal_loads2)){
+    //    for(size_t i = 0; i < 6; ++i){
+    //        pdiff[i] = load[mesh->il2_offset + il_id*6 + i];
+    //    }
+    //    il.update_multipliers(pdiff, 1.0, true);
 
-        ++il_id;
-    }
+    //    ++il_id;
+    //}
 }
 
 void FiniteElement::solve_rigid_nonlinear(const Meshing* const mesh, std::vector<double>& load, const std::vector<double>& u0){

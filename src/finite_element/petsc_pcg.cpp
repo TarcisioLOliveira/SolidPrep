@@ -50,8 +50,6 @@ PETScPCG::~PETScPCG(){
     VecDestroy(&this->u);
     KSPDestroy(&this->ksp);
     PCDestroy(&this->pc);
-    
-    MatDestroy(&this->N);
 }
 
 void PETScPCG::generate_matrix_base(const Meshing* const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<math::Matrix>& D_cache, const std::vector<double>& u_ext, const std::vector<double>& lambda, const ContactType type){
@@ -91,25 +89,24 @@ void PETScPCG::solve(std::vector<double>& load){
         KSPSetInitialGuessNonzero(this->ksp, PETSC_FALSE);
         PCFactorSetReuseOrdering(this->pc, PETSC_TRUE);
 
-        if(this->spd_matrix){
-            PCSetType(this->pc, PCJACOBI);
+        PCSetType(this->pc, PCJACOBI);
+        PCJacobiSetType(this->pc, PC_JACOBI_DIAGONAL);
+        PCJacobiSetUseAbs(this->pc, PETSC_TRUE);
+        PCJacobiSetFixDiagonal(this->pc, PETSC_TRUE);
 
+        if(this->spd_matrix){
             KSPSetType(this->ksp, KSPCG);
             KSPCGSetType(this->ksp, KSP_CG_SYMMETRIC);
-            PCJacobiSetType(this->pc, PC_JACOBI_DIAGONAL);
             KSPSetTolerances(this->ksp, 1e-5, 1e-50, 1e10, 1e5);
             KSPSetInitialGuessNonzero(this->ksp, PETSC_FALSE);
         } else {
-            KSPSetNormType(this->ksp, KSP_NORM_UNPRECONDITIONED);
-            //PCSetType(this->pc, PCNONE);
-            PCSetType(this->pc, PCJACOBI);
-            PCJacobiSetType(this->pc, PC_JACOBI_ROWMAX);
-            PCJacobiSetUseAbs(this->pc, PETSC_TRUE);
-            PCJacobiSetFixDiagonal(this->pc, PETSC_TRUE);
+            //KSPSetTolerances(this->ksp, 1e-10, 1e-50, 1e10, 1e6);
+            KSPSetTolerances(this->ksp, 1e-5, 1e-50, 1e10, 1e6);
+            PCJacobiSetType(this->pc, PC_JACOBI_ROWL1);
 
-            //MatCreateNormal(K, &this->N);
-            
-            //KSPSetType(this->ksp, KSPLSQR); // Currently the most reliable one, but pretty slow
+            KSPSetType(this->ksp, KSPMINRES);
+            //KSPMINRESSetUseQLP(this->ksp, PETSC_TRUE);
+
             //KSPSetType(this->ksp, KSPCGNE);
 
                                               
@@ -124,12 +121,12 @@ void PETScPCG::solve(std::vector<double>& load){
             //KSPSetType(this->ksp, KSPBCGSL);
             //KSPSetType(this->ksp, KSPIBCGS);
 
-            KSPSetType(this->ksp, KSPDGMRES); // Already a bit better than GMRES
-            KSPGMRESSetPreAllocateVectors(this->ksp);
-            KSPGMRESSetRestart(this->ksp, 600);
-            KSPGMRESSetCGSRefinementType(this->ksp, KSP_GMRES_CGS_REFINE_IFNEEDED);
-            
-            KSPSetTolerances(this->ksp, 1e-5, 1e-50, 1e10, 1e5);
+            //KSPSetType(this->ksp, KSPDGMRES); // Already a bit better than GMRES
+            //KSPGMRESSetPreAllocateVectors(this->ksp);
+            //KSPGMRESSetRestart(this->ksp, 600);
+            //KSPGMRESSetCGSRefinementType(this->ksp, KSP_GMRES_CGS_REFINE_IFNEEDED);
+            //
+            //KSPSetTolerances(this->ksp, 1e-5, 1e-50, 1e10, 1e5);
             
             //KSPSetInitialGuessNonzero(this->ksp, PETSC_TRUE);
             //long begin = 0, end = 0;
@@ -172,6 +169,7 @@ void PETScPCG::solve(std::vector<double>& load){
             PCJacobiSetUseAbs(this->pc, PETSC_TRUE);
             PCJacobiSetFixDiagonal(this->pc, PETSC_TRUE);
             PCJacobiSetType(this->pc, PC_JACOBI_ROWMAX);
+
             KSPSetType(this->ksp, KSPMINRES);
             //KSPMINRESSetUseQLP(this->ksp, PETSC_TRUE);
 
@@ -241,11 +239,7 @@ void PETScPCG::solve(std::vector<double>& load){
     //logger::quick_log("is symmetric?", is_sym);
 
     //if(!this->setup){
-    if(this->spd_matrix){
         KSPSetOperators(this->ksp, K, K);
-    } else {
-        KSPSetOperators(this->ksp, K, K);
-    }
 
         KSPSetUp(this->ksp);
         PCSetUp(this->pc);

@@ -55,45 +55,27 @@ class MUMPSSparseSymmetric : public GlobalStiffnessMatrix{
     bool first_time = true;
     utils::COO<int> sK = utils::COO<int>(1);
     size_t u_size, l_num;
-    bool symmetric = true;
+    bool spd = true;
 
     inline virtual void insert_block_symmetric(const math::Matrix& k, const std::vector<long>& posi, const std::vector<long>& posj) override{
-        if(this->symmetric){
-            if(posi[0] > posj[0]){
-                this->sK.insert_block(k, posi, posj, false);
-            } else {
-                this->sK.insert_block(k, posi, posj, true);
-            }
-        } else {
+        if(posi[0] > posj[0]){
             this->sK.insert_block(k, posi, posj, false);
+        } else {
             this->sK.insert_block(k, posi, posj, true);
         }
     }
     inline virtual void insert_element_matrix(const math::Matrix& k, const std::vector<long>& pos) override{
-        if(this->symmetric){
-            this->sK.insert_matrix_symmetric(k, pos);
-        } else {
-            this->sK.insert_matrix_general(k, pos);
-        }
+        this->sK.insert_matrix_symmetric(k, pos);
     }
     inline virtual void reserve_block_symmetric(const math::Matrix& k, const std::vector<long>& posi, const std::vector<long>& posj) override{
-        if(this->symmetric){
-            if(posi[0] > posj[0]){
-                this->sK.reserve_block(k, posi, posj, false);
-            } else {
-                this->sK.reserve_block(k, posi, posj, true);
-            }
-        } else {
+        if(posi[0] > posj[0]){
             this->sK.reserve_block(k, posi, posj, false);
+        } else {
             this->sK.reserve_block(k, posi, posj, true);
         }
     }
     inline virtual void reserve_element_matrix(const math::Matrix& k, const std::vector<long>& pos) override{
-        if(this->symmetric){
-            this->sK.reserve_matrix_symmetric(k, pos);
-        } else {
-            this->sK.reserve_matrix_general(k, pos);
-        }
+        this->sK.reserve_matrix_symmetric(k, pos);
     }
     inline virtual void add_to_matrix(size_t i, size_t j, double val) override{
         this->sK.add(i, j, val);

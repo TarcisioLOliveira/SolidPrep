@@ -212,9 +212,10 @@ void Meshing::apply_boundary_conditions(const std::vector<Force>& forces,
         this->apply_supports();
     }
 
-    for(size_t it = 0; it < this->node_positions.size(); ++it){
+    size_t current = 0;
+    {
+        const size_t it = 0;
         auto& v = this->node_positions[it];
-        long current = 0;
         for(auto& i:v){
             if(i >= 0){
                 i = current;
@@ -222,13 +223,28 @@ void Meshing::apply_boundary_conditions(const std::vector<Force>& forces,
             }
         }
         this->il2_offset = current;
-        current += internal_loads2.size()*6;
-        this->dofs_per_subproblem[it] = current;
-        this->load_vector[it].resize(current, 0);
     }
+
+    if(internal_loads2.size() > 0){
+        logger::quick_log("internal_loads2");
+        this->internal_loads2 = &internal_loads2;
+
+        for(auto& i:internal_loads2){
+            i.initialize(this, current);
+        }
+    }
+    this->dofs_per_subproblem[0] = current;
+    this->load_vector[0].resize(current, 0);
 
     logger::quick_log("loads");
     this->generate_load_vector();
+
+    if(internal_loads2.size() > 0){
+        logger::quick_log("internal_loads2");
+        for(auto& i:internal_loads2){
+            i.apply_constraints(this->load_vector[0]);
+        }
+    }
 
     if(springs.size() > 0){
         logger::quick_log("springs");
@@ -248,17 +264,6 @@ void Meshing::apply_boundary_conditions(const std::vector<Force>& forces,
         this->apply_internal_loads(internal_loads);
     }
     this->internal_loads = &internal_loads;
-
-    if(internal_loads2.size() > 0){
-        logger::quick_log("internal_loads2");
-        this->internal_loads2 = &internal_loads2;
-
-        size_t il2_id = 0;
-        for(auto& i:internal_loads2){
-            i.initialize(this, il2_id, this->load_vector[0]);
-            ++il2_id;
-        }
-    }
 
     for(size_t i = 0; i < this->node_positions.size(); ++i){
         const auto& n = this->node_positions[i];

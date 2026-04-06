@@ -97,9 +97,9 @@ class MarginalBoneLoss : public Simulation{
         const double ex = e[0];
         const double ey = e[1];
         const double ez = e[2];
-        const double gxy = e[3];
-        const double gyz = e[4];
-        const double gxz = e[5];
+        const double gxy = 0.5*e[3];
+        const double gyz = 0.5*e[4];
+        const double gxz = 0.5*e[5];
 
         return std::sqrt(K_e1[i]*(dexy*dexy + deyz*deyz + dezx*dezx) + 2*K_g[i]*(gxy*gxy + gyz*gyz + gxz*gxz) + lhs_eps)
                 + K_e2[i]*(ex + ey + ez);

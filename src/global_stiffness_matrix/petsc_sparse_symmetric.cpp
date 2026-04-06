@@ -189,7 +189,7 @@ void PETScSparseSymmetricCUDA::preallocate(const Meshing * const mesh, const siz
         MatSetOption(this->K, MAT_SPD_ETERNAL, PETSC_TRUE);
     } else {
         MatSetOption(this->K, MAT_SPD, PETSC_FALSE);
-        MatSetOption(this->K, MAT_SYMMETRIC, PETSC_FALSE);
+        MatSetOption(this->K, MAT_SYMMETRIC, PETSC_TRUE);
     }
     MatSetOption(this->K, MAT_KEEP_NONZERO_PATTERN, PETSC_TRUE);
 

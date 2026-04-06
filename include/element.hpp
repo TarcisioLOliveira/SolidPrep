@@ -339,6 +339,8 @@ class MeshElement : public Element{
      */
     virtual math::Matrix internal_loads_matrix(const gp_Pnt& p, const math::Vector& c, const math::Matrix& Rm, const math::Matrix& RD) const = 0;
 
+    virtual math::Matrix constraint_matrix_alt(const math::Vector& c, const math::Matrix& Rm, const std::vector<gp_Pnt>& bounds) const = 0;
+
     virtual math::Matrix constraint_matrix(const math::Vector& c, const math::Matrix& Rm, const math::Matrix& RD, const math::Matrix& D, const std::vector<gp_Pnt>& bounds) const = 0;
 
     virtual math::Vector calculate_internal_loads(const math::Vector& c, const math::Matrix& Rm, const math::Matrix& RD, const math::Matrix& D, const gp_Dir& n, const std::vector<double>& u_ext, const math::Vector& params, const std::vector<gp_Pnt>& bounds) const = 0;

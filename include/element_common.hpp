@@ -240,6 +240,44 @@ class MeshElementCommon : public MeshElement{
         
         return math::Matrix(3, T::K_DIM);
     }
+    virtual math::Matrix constraint_matrix_alt(const math::Vector& c, const math::Matrix& Rm, const std::vector<gp_Pnt>& bounds) const override{
+        const size_t ORDER = T::INTEG_ORDER;
+        const size_t K_DIM = T::K_DIM;
+
+        constexpr size_t GN = 1 + ORDER;
+        math::Matrix result(6, K_DIM);
+
+        this->area_integral<GN>(result,
+            [&](const gp_Pnt& pi){
+                const math::Vector pv({pi.X(), pi.Y(), pi.Z()});
+                const math::Vector p2 = Rm.T()*pv - c;
+                const double x = p2[0];
+                const double y = p2[1];
+                //const math::Matrix Ms({
+                //     0, 0, x, 0,  0, 0,
+                //     0, 0, y, 0,  0, 0,
+                //     0, 0, 1, 0,  0, 0,
+                //     0, 0, 0, 0, -y, x,
+                //     0, 0, 0, 0,  1, 0,
+                //     0, 0, 0, 0,  0, 1
+                //}, 6, 6);
+                const math::Matrix Ms({
+                      0, 0, x,
+                      0, 0, y,
+                      0, 0, 1,
+                     -y, x, 0,
+                      1, 0, 0,
+                      0, 1, 0
+                }, 6, 3);
+
+                const auto N = this->get_Ni(pi);
+
+                return Ms*N;
+            },
+            bounds, 1.0);
+
+        return result;
+    }
     virtual math::Matrix constraint_matrix(const math::Vector& c, const math::Matrix& Rm, const math::Matrix& RD, const math::Matrix& D, const std::vector<gp_Pnt>& bounds) const override{
         const size_t ORDER = T::INTEG_ORDER;
         const size_t K_DIM = T::K_DIM;
@@ -279,16 +317,8 @@ class MeshElementCommon : public MeshElement{
         const size_t DOF = T::NODE_DOF;
 
         math::VectorSliceGeneralView uv(u_ext, math::slicer::from_node_upos(this->nodes, NODES_PER_ELEM, DOF));
-        //constexpr size_t GN = std::max(2 + (ORDER-1), 1 + ORDER);
-        constexpr size_t GN = 3 + (ORDER - 1);
 
-        math::Vector mult(NODES_PER_ELEM*DOF + 6);
-        for(size_t i = 0; i < NODES_PER_ELEM*DOF; ++i){
-            mult[i] = uv[i];
-        }
-        for(size_t i = 0; i < 6; ++i){
-            mult[i + NODES_PER_ELEM*DOF] = params[i];
-        }
+        constexpr size_t GN = 1 + (ORDER - 1);
 
         math::Vector result(6);
 
@@ -297,12 +327,6 @@ class MeshElementCommon : public MeshElement{
                 0, n.Y(),     0, n.X(),     0, n.Z(),
                 0,     0, n.Z(),     0, n.X(), n.Y()
             }, 3, 6);
-
-        //auto C = math::Matrix::identity(6);
-        //const auto Dr = RD*D*RD.T();
-        //const auto S = Dr.get_inverted_cholesky();
-        //C(2,2) = 1.0/(S(2,2)*Dr(2,2));
-        //C = RD.T()*C*RD;
 
         const math::Vector nv({n.X(), n.Y(), n.Z()});
 
@@ -320,6 +344,14 @@ class MeshElementCommon : public MeshElement{
                      0, 0, 0, 0,  1, 0,
                      0, 0, 0, 0,  0, 1
                 }, 6, 6);
+                //const math::Matrix Ms({
+                //      0, 0, x,
+                //      0, 0, y,
+                //      0, 0, 1,
+                //     -y, x, 0,
+                //      1, 0, 0,
+                //      0, 1, 0
+                //}, 6, 3);
                 // const auto M(this->il2_M(pi, c, Rm));
                 // const auto N = this->get_Ni(pi);
 
@@ -337,6 +369,9 @@ class MeshElementCommon : public MeshElement{
 
                 //return math::Vector({Sn[2], Sn[0], Sn[1], Sn[2]*x, Sn[2]*y, Sn[1]*x - Sn[0]*y});
                 //const auto M(this->il2_M(pi, c, Rm));
+                //const auto S = this->_get_stress_vector(D, pi, u_ext);
+                //const auto Sn = Ms*RD*S;
+
                 const auto S = this->_get_stress_vector(D, pi, u_ext);
                 const auto Sn = Ms*RD.T()*S;
 
@@ -388,9 +423,8 @@ class MeshElementCommon : public MeshElement{
                 const auto B = this->get_B(pi);
                 const auto N = this->get_Ni(pi);
                 const auto M = -(N.T()*Mn*D*B);
-                const auto MT = M.T();
 
-                return M;// + MT;// + M.T();
+                return M;
             },
             bounds, 1.0);
 
@@ -490,11 +524,11 @@ class MeshElementCommon : public MeshElement{
 
     math::Matrix get_R(const math::Matrix& K, const double t, const std::vector<gp_Pnt>& points) const{
         const size_t ORDER = T::INTEG_ORDER;
-        const size_t K_DIM = this->get_KW_ext();
+        const size_t K_DIM = T::K_DIM;
 
         math::Matrix R(K_DIM, K_DIM);
 
-        constexpr size_t GN = 2*std::max(2ul, ORDER);
+        constexpr size_t GN = 2*ORDER;
 
         this->area_integral<GN>(R,
         [&](const gp_Pnt& pi){
@@ -510,7 +544,7 @@ class MeshElementCommon : public MeshElement{
         const size_t ORDER = T::INTEG_ORDER;
         const size_t NODES_PER_ELEM = T::NODES_PER_ELEM;
         const size_t DOF = T::NODE_DOF;
-        const size_t K_DIM = this->get_KW_ext();
+        const size_t K_DIM = T::K_DIM;
 
         math::VectorSliceGeneralView uv(u_ext, math::slicer::from_node_upos(this->nodes, NODES_PER_ELEM, DOF));
 
@@ -998,6 +1032,13 @@ class MeshElementCommon : public MeshElement{
         math::Matrix S(N, N);
         for(size_t i = 0; i < indices.size(); ++i){
             S.data()[i] = results[indices[i]];
+        }
+        for(size_t i = 0; i < N; ++i){
+            for(size_t j = 0; j < N; ++j){
+                if(i != j){
+                    S(i, j) *= 0.5;
+                }
+            }
         }
 
         return S;

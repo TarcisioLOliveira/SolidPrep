@@ -84,7 +84,7 @@ void MUMPSSolver::generate_matrix_base(const Meshing* const mesh, const size_t u
     if(this->spd_matrix){
         this->config.sym = 1; // SPD matrix
     } else {
-        this->config.sym = 0; // Asymmetric matrix
+        this->config.sym = 2; // General symmetric matrix
     }
 
     if(this->first_time){
