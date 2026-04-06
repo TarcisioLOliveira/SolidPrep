@@ -240,7 +240,7 @@ class COO{
             if(!transpose){
                 for(size_t i = start_i; i < Wi; ++i){
                     const auto pi = pos_i[Pi[i]];
-                    for(size_t j = start_i; j < Wj; ++j){
+                    for(size_t j = start_j; j < Wj; ++j){
                         const auto pj = pos_j[Pj[j]];
 
                         const auto Mij = M(Pi[i], Pj[j]);
@@ -253,7 +253,7 @@ class COO{
             } else {
                 for(size_t i = start_i; i < Wi; ++i){
                     const auto pi = pos_i[Pi[i]];
-                    for(size_t j = start_i; j < Wj; ++j){
+                    for(size_t j = start_j; j < Wj; ++j){
                         const auto pj = pos_j[Pj[j]];
 
                         const auto Mij = M(Pi[i], Pj[j]);
