@@ -24,7 +24,6 @@
 #include <memory>
 #include <string>
 #include <vector>
-#include "internal_loads2.hpp"
 #include "meshing/mesh_file.hpp"
 #include "project_specification/data_map.hpp"
 #include "project_specification/registry.hpp"
@@ -51,6 +50,8 @@
 #include "solver_manager.hpp"
 #include "sub_problem.hpp"
 #include "simulation.hpp"
+#include "internal_loads2.hpp"
+#include "internal_loads3.hpp"
 
 /**
  * Reads and stores project data.
@@ -94,6 +95,7 @@ class ProjectData {
     std::vector<ContactSpring> contact_springs;
     std::vector<InternalLoads> internal_loads;
     std::vector<InternalLoads2> internal_loads2;
+    std::vector<InternalLoads3> internal_loads3;
     std::unique_ptr<FiniteElement> sizer_fea;
     std::unique_ptr<TopologyOptimization> topopt;
     std::unique_ptr<SolverManager> topopt_fea;
@@ -171,6 +173,8 @@ class ProjectData {
     std::vector<InternalLoads> get_internal_loads(const Json::Value& doc);
 
     std::vector<InternalLoads2> get_internal_loads2(const Json::Value& doc);
+
+    std::vector<InternalLoads3> get_internal_loads3(const Json::Value& doc);
 
     std::vector<SubProblem> load_sub_problems(const Json::Value& doc);
 

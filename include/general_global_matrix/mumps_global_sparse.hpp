@@ -62,18 +62,18 @@ class MUMPSGlobalSparse{
     }
 
     inline void add_element(const math::Matrix& matrix, const std::vector<long>& pos){
-        if(spd){
+        //if(spd){
             this->M.insert_matrix_symmetric(matrix, pos);
-        } else {
-            this->M.insert_matrix_general(matrix, pos);
-        }
+        //} else {
+        //    this->M.insert_matrix_general(matrix, pos);
+        //}
     }
     inline void add_element(const math::Matrix& matrix, const std::vector<long>& pos_i, const std::vector<long>& pos_j){
-        if(spd){
+        //if(spd){
             this->add_element_symmetric(matrix, pos_i, pos_j);
-        } else {
-            this->M.insert_block(matrix, pos_i, pos_j, false);
-        }
+        //} else {
+        //    this->M.insert_block(matrix, pos_i, pos_j, false);
+        //}
     }
     inline void add_element_symmetric(const math::Matrix& matrix, const std::vector<long>& pos_i, const std::vector<long>& pos_j){
         this->M.insert_block(matrix, pos_i, pos_j, false);

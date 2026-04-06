@@ -185,12 +185,12 @@ math::Matrix InternalLoads2::get_F_mat(const BoundaryElement* b) const{
 
         return NN; 
     } else {
-        auto NN = -b->parent->get_R(this->rot3D, this->thickness, bounds);
+        //auto NN = -b->parent->get_R(this->rot3D, this->thickness, bounds);
 
-        return NN; 
-        //const auto D = this->mat->stiffness_3D(b->parent, b->get_centroid(BOUNDARY_NODE_NUM));
-        //auto hess = b->parent->internal_loads_hess(center, rot3D, rot3D_D, D, this->normal, bounds);
-        //return hess;
+        //return NN; 
+        const auto D = this->mat->stiffness_3D(b->parent, b->get_centroid(BOUNDARY_NODE_NUM));
+        auto hess = b->parent->internal_loads_hess(center, rot3D, rot3D_D, D, this->normal, bounds);
+        return hess;
     }
 }
 
@@ -205,7 +205,7 @@ math::Vector InternalLoads2::calculate_internal_loads(const std::vector<double>&
                 bounds[i] = e->nodes[i]->point;
             }
             const auto D = this->mat->stiffness_2D(e->parent, e->parent->get_centroid());
-            result += e->parent->calculate_internal_loads(this->center, this->rot2D, this->rot2D_D, D, this->normal, u_ext, params, bounds);
+            result += e->parent->calculate_internal_loads(this->center, this->rot2D, this->rot2D_D, D, this->normal, u_ext, bounds);
         }
     } else {
         for(const auto& e:this->submesh){
@@ -213,7 +213,7 @@ math::Vector InternalLoads2::calculate_internal_loads(const std::vector<double>&
                 bounds[i] = e->nodes[i]->point;
             }
             const auto D = this->mat->stiffness_3D(e->parent, e->parent->get_centroid());
-            result += e->parent->calculate_internal_loads(this->center, this->rot3D, this->rot3D_D, D, this->normal, u_ext, params, bounds);
+            result += e->parent->calculate_internal_loads(this->center, this->rot3D, this->rot3D_D, D, this->normal, u_ext, bounds);
         }
     }
 
@@ -279,9 +279,9 @@ math::Matrix InternalLoads2::get_constr(const BoundaryElement* b) const{
     for(size_t i = 0; i < BOUNDARY_NODE_NUM; ++i){
         bounds[i] = b->nodes[i]->point;
     }
-    return b->parent->constraint_matrix_alt(this->center, this->rot3D, bounds);
-    //const auto D = this->mat->stiffness_3D(b->parent, b->get_centroid(BOUNDARY_NODE_NUM));
-    //return b->parent->constraint_matrix(this->center, this->rot3D, this->rot3D_D, D, bounds);
+    //return b->parent->constraint_matrix_alt(this->center, this->rot3D, bounds);
+    const auto D = this->mat->stiffness_3D(b->parent, b->get_centroid(BOUNDARY_NODE_NUM));
+    return b->parent->constraint_matrix(this->center, this->rot3D, this->rot3D_D, D, bounds);
 }
 math::Matrix InternalLoads2::get_constr2(const BoundaryElement* b) const{
     std::vector<gp_Pnt> bounds(BOUNDARY_NODE_NUM);

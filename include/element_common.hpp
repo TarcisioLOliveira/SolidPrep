@@ -203,6 +203,47 @@ class MeshElementCommon : public MeshElement{
         return k;
     }
 
+    virtual math::Matrix get_k_face(const math::Matrix& D, const double t, const std::vector<gp_Pnt>& points) const override{
+        const size_t KW = this->get_KW_ext();
+        const size_t ORDER = T::INTEG_ORDER;
+
+        constexpr size_t GN = 2*(ORDER - 1);
+
+        math::Matrix k(KW, KW);
+
+        this->area_integral<GN>(k, [&](const gp_Pnt& pi){
+                const auto B = this->get_B(pi);
+                return B.T()*D*B;
+            }, points, t);
+
+        return k;
+    }
+
+    virtual math::Vector stress_to_force(const math::Matrix& D, const gp_Dir& n, const math::Vector& ue, const double t, const std::vector<gp_Pnt>& points) const override{
+        const size_t KW = this->get_KW_ext();
+        const size_t ORDER = T::INTEG_ORDER;
+
+        constexpr size_t GN = ORDER + (ORDER - 1);
+
+        math::Vector F(KW);
+
+        const math::Matrix Mn({
+            n.X(),     0,     0, n.Y(), n.Z(),     0,
+                0, n.Y(),     0, n.X(),     0, n.Z(),
+                0,     0, n.Z(),     0, n.X(), n.Y()
+            }, 3, 6);
+
+        this->area_integral<GN>(F, [&](const gp_Pnt& pi){
+                const auto N = this->get_Ni(pi);
+                const auto B = this->get_B(pi);
+
+                return N.T()*Mn*D*B*ue;
+
+            }, points, t);
+
+        return F;
+    }
+
     virtual math::Vector get_f(const double t, const math::Vector& vec, const std::vector<gp_Pnt>& points) const override{
         const size_t KW = this->get_KW_ext();
         const size_t ORDER = T::INTEG_ORDER;
@@ -311,7 +352,7 @@ class MeshElementCommon : public MeshElement{
         return result;
     }
 
-    virtual math::Vector calculate_internal_loads(const math::Vector& c, const math::Matrix& Rm, const math::Matrix& RD, const math::Matrix& D, const gp_Dir& n, const std::vector<double>& u_ext, const math::Vector& params, const std::vector<gp_Pnt>& bounds) const override{
+    virtual math::Vector calculate_internal_loads(const math::Vector& c, const math::Matrix& Rm, const math::Matrix& RD, const math::Matrix& D, const gp_Dir& n, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds) const override{
         const size_t ORDER = T::INTEG_ORDER;
         const size_t NODES_PER_ELEM = T::NODES_PER_ELEM;
         const size_t DOF = T::NODE_DOF;

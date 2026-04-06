@@ -180,7 +180,7 @@ void PrincipalStress::generate(){
         c_old = c;
 
         if(update_boundary_conditions){
-            mesh->apply_boundary_conditions(this->proj_data->forces, this->proj_data->supports, this->proj_data->springs, this->proj_data->internal_loads, this->proj_data->contact_springs, this->proj_data->internal_loads2, this->proj_data->sub_problems);
+            mesh->apply_boundary_conditions(this->proj_data->forces, this->proj_data->supports, this->proj_data->springs, this->proj_data->internal_loads, this->proj_data->contact_springs, this->proj_data->internal_loads2, this->proj_data->internal_loads3, this->proj_data->sub_problems);
         }
 
         ++it;

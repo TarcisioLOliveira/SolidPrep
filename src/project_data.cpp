@@ -192,6 +192,9 @@ ProjectData::ProjectData(std::string project_file){
     if(this->log_data(settings, "internal_loads2", projspec::TYPE_ARRAY, false)){
         this->internal_loads2 = this->get_internal_loads2(settings["internal_loads2"]);
     }
+    if(this->log_data(settings, "internal_loads3", projspec::TYPE_ARRAY, false)){
+        this->internal_loads3 = this->get_internal_loads3(settings["internal_loads3"]);
+    }
     if(this->log_data(settings, "sub_problems", projspec::TYPE_ARRAY, false)){
         this->sub_problems = this->load_sub_problems(settings);
     } else {
@@ -1368,6 +1371,61 @@ std::vector<InternalLoads> ProjectData::get_internal_loads(const Json::Value& do
 
 std::vector<InternalLoads2> ProjectData::get_internal_loads2(const Json::Value& doc){
     std::vector<InternalLoads2> internal_loads;
+    for(auto& f : doc){
+        logger::log_assert(f.isObject(), logger::ERROR, "Each load must be stored as a JSON object");
+        this->log_data(f, "F", projspec::TYPE_ARRAY, true);
+        this->log_data(f, "M", projspec::TYPE_ARRAY, true);
+        this->log_data(f, "normal", projspec::TYPE_ARRAY, true);
+        this->log_data(f, "v", projspec::TYPE_ARRAY, true);
+        if(this->type == utils::PROBLEM_TYPE_3D) {
+            this->log_data(f, "w", projspec::TYPE_ARRAY, true);
+        }
+        this->log_data(f, "material", projspec::TYPE_STRING, true);
+        auto normal = f["normal"];
+        auto v = f["v"];
+        auto Fa = f["F"];
+        auto Ma = f["M"];
+        std::string mat_name(f["material"].asString());
+
+        std::array<double, 3> F{Fa[0].asDouble(), Fa[1].asDouble(), 0};
+        std::array<double, 3> M{Ma[0].asDouble(), Ma[1].asDouble(), 0};
+        gp_Dir nv(normal[0].asDouble(), normal[1].asDouble(), 0);
+        gp_Dir vv(v[0].asDouble(), v[1].asDouble(), 0);
+        gp_Dir wv(0, 0, 1);
+
+        if(this->type == utils::PROBLEM_TYPE_2D){
+            logger::log_assert(normal.size() == 2, logger::ERROR, "Normal vector must have exactly two dimensions in 2D problems");
+            logger::log_assert(v.size() == 2, logger::ERROR, "'v' vector must have exactly two dimensions in 2D problems");
+            logger::log_assert(Fa.size() == 2, logger::ERROR, "Force vector must have exactly two dimensions in 2D problems");
+            logger::log_assert(Ma.size() == 2, logger::ERROR, "Moment vector must have exactly two dimensions in 2D problems");
+        } else if(this->type == utils::PROBLEM_TYPE_3D) {
+            logger::log_assert(normal.size() == 3, logger::ERROR, "Normal vector must have exactly three dimensions in 3D problems");
+            logger::log_assert(v.size() == 3, logger::ERROR, "'v' vector must have exactly three dimensions in 3D problems");
+            logger::log_assert(Fa.size() == 3, logger::ERROR, "Force vector must have exactly three dimensions in 3D problems");
+            logger::log_assert(Ma.size() == 3, logger::ERROR, "Moment vector must have exactly three dimensions in 3D problems");
+
+            auto w = f["w"];
+            logger::log_assert(w.size() == 3, logger::ERROR, "'w' vector must have exactly two dimensions in 3D problems");
+
+            nv.SetZ(normal[2].asDouble());
+            vv.SetZ(v[2].asDouble());
+            F[2] = Fa[2].asDouble();
+            M[2] = Ma[2].asDouble();
+
+            wv = gp_Dir(w[0].asDouble(), w[1].asDouble(), w[2].asDouble());
+        }
+
+        auto mat(this->get_material(mat_name));
+
+        this->log_data(f, "region", projspec::TYPE_OBJECT, true);
+        auto S = this->get_cross_section(f["region"]);
+        internal_loads.emplace_back(S, this->thickness, nv, vv, wv, mat, F, M, this->type);
+    }
+    return internal_loads;
+}
+
+std::vector<InternalLoads3> ProjectData::get_internal_loads3(const Json::Value& doc){
+    std::vector<InternalLoads3> internal_loads;
     for(auto& f : doc){
         logger::log_assert(f.isObject(), logger::ERROR, "Each load must be stored as a JSON object");
         this->log_data(f, "F", projspec::TYPE_ARRAY, true);

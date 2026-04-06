@@ -160,6 +160,7 @@ void Meshing::apply_boundary_conditions(const std::vector<Force>& forces,
                                         std::vector<InternalLoads>& internal_loads,
                                         std::vector<ContactSpring>& contact_springs,
                                         std::vector<InternalLoads2>& internal_loads2,
+                                        std::vector<InternalLoads3>& internal_loads3,
                                         std::vector<SubProblem>& sub_problems){
     (void) forces;
 
@@ -264,6 +265,16 @@ void Meshing::apply_boundary_conditions(const std::vector<Force>& forces,
         this->apply_internal_loads(internal_loads);
     }
     this->internal_loads = &internal_loads;
+
+    if(internal_loads3.size() > 0){
+        logger::quick_log("internal_loads3");
+        this->internal_loads3 = &internal_loads3;
+
+        for(auto& i:internal_loads3){
+            i.initialize(this);
+            i.apply_load(this->node_positions[0], this->load_vector[0]);
+        }
+    }
 
     for(size_t i = 0; i < this->node_positions.size(); ++i){
         const auto& n = this->node_positions[i];

@@ -40,7 +40,7 @@ void MUMPSGeneral::initialize_matrix(bool spd, size_t L){
     if(spd){
         this->config.sym = 1; // Hermitian matrix
     } else {
-        this->config.sym = 0; // Unsymmetric matrix
+        this->config.sym = 2; // Symmetric matrix
     }
     this->config.job = -1; // Configuration initialization
     this->config.par = 1; // Host process also does computations

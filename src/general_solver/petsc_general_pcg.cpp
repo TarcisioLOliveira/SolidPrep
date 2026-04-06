@@ -60,7 +60,7 @@ void PETScGeneralPCG::initialize_matrix(bool spd, size_t L){
     if(spd){
         KSPSetType(this->ksp, KSPCG);
     } else {
-        //KSPSetType(this->ksp, KSPMINRES);
+        KSPSetType(this->ksp, KSPMINRES);
         //KSPMINRESSetUseQLP(this->ksp, PETSC_TRUE);
 
         // GMRES leaks memory with PreAllocateVectors, but I didn't test it
@@ -69,7 +69,7 @@ void PETScGeneralPCG::initialize_matrix(bool spd, size_t L){
         //KSPGMRESSetPreAllocateVectors(this->ksp);
         //KSPGMRESSetRestart(this->ksp, 2000);
         //KSPGMRESSetCGSRefinementType(this->ksp, KSP_GMRES_CGS_REFINE_ALWAYS);
-        KSPSetType(this->ksp, KSPBCGS);
+        //KSPSetType(this->ksp, KSPBCGS);
 
         KSPSetTolerances(this->ksp, 1e-7, 1e-50, 1e10, 1e5);
     }

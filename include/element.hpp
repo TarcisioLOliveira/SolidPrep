@@ -329,6 +329,10 @@ class MeshElement : public Element{
         return math::Vector();
     }
 
+    virtual math::Matrix get_k_face(const math::Matrix& D, const double t, const std::vector<gp_Pnt>& points) const = 0;
+
+    virtual math::Vector stress_to_force(const math::Matrix& D, const gp_Dir& n, const math::Vector& ue, const double t, const std::vector<gp_Pnt>& points) const = 0;
+
     /**
      * Creates and returns the elemental stiffness matrix.
      *
@@ -343,7 +347,7 @@ class MeshElement : public Element{
 
     virtual math::Matrix constraint_matrix(const math::Vector& c, const math::Matrix& Rm, const math::Matrix& RD, const math::Matrix& D, const std::vector<gp_Pnt>& bounds) const = 0;
 
-    virtual math::Vector calculate_internal_loads(const math::Vector& c, const math::Matrix& Rm, const math::Matrix& RD, const math::Matrix& D, const gp_Dir& n, const std::vector<double>& u_ext, const math::Vector& params, const std::vector<gp_Pnt>& bounds) const = 0;
+    virtual math::Vector calculate_internal_loads(const math::Vector& c, const math::Matrix& Rm, const math::Matrix& RD, const math::Matrix& D, const gp_Dir& n, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds) const = 0;
 
     virtual math::Matrix il2_strain_matrix(const math::Vector& c, const math::Matrix& Rm, const math::Matrix& RD, const math::Matrix& D, const std::vector<gp_Pnt>& bounds) const = 0;
 

@@ -27,6 +27,7 @@ set(SOURCES
     shape_operations.cpp
     contact_spring.cpp
     internal_loads2.cpp
+    internal_loads3.cpp
 )
 
 add_subdirectory(pathfinding)
