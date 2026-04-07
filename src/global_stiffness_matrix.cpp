@@ -135,8 +135,9 @@ void GlobalStiffnessMatrix::generate_base(const Meshing * const mesh, const size
                             f_pos[i*dof + j] = il.il2_offset + fp;
                         }
                     }
-                    this->reserve_block_symmetric(F, u_pos, f_pos);
-                    this->reserve_block_symmetric(M, s_pos, u_pos);
+                    this->reserve_element_matrix(F, f_pos);
+                    //this->reserve_block_symmetric(F, u_pos, f_pos);
+                    //this->reserve_block_symmetric(M, s_pos, u_pos);
                     this->reserve_block_symmetric(M, s_pos2, u_pos);
                 }
             }
@@ -147,7 +148,7 @@ void GlobalStiffnessMatrix::generate_base(const Meshing * const mesh, const size
         const size_t dof      = mesh->elem_info->get_dof_per_node();
         const size_t node_num = mesh->elem_info->get_nodes_per_element();
         const size_t s_size   = mesh->elem_info->get_D_dimension();
-        const auto prob_type = mesh->elem_info->get_problem_type();
+        //const auto prob_type = mesh->elem_info->get_problem_type();
         //const size_t dim = (prob_type == utils::PROBLEM_TYPE_2D) ? 2 : 3;
 
         std::vector<long> u_pos(dof*node_num);
@@ -167,20 +168,27 @@ void GlobalStiffnessMatrix::generate_base(const Meshing * const mesh, const size
                         const size_t p = n->id*dof + j;
                         u_pos[i*dof + j] = node_positions[p];
                     }
-                    for(size_t j = 0; j < dof; ++j){
-                        const size_t fp = f_id*dof + j;
-                        f_pos[i*dof + j] = il.il2_offset + fp;
+                    if(f_id >= 0){
+                        for(size_t j = 0; j < dof; ++j){
+                            const size_t fp = f_id*dof + j;
+                            f_pos[i*dof + j] = il.il2_offset + fp;
+                        }
+                    } else {
+                        for(size_t j = 0; j < dof; ++j){
+                            f_pos[i*dof + j] = -1;
+                        }
                     }
                 }
                 //const auto H = il.get_hess(b);
                 //this->insert_element_matrix(H, u_pos);
+                const auto K = il.get_K_mat(b);
                 const auto F = il.get_F_mat(b);
                 const auto M = il.get_constr(b);
                 const auto M2 = il.get_constr2(b);
+                this->insert_element_matrix(K, f_pos);
                 this->insert_block_symmetric(F, u_pos, f_pos);
                 this->insert_block_symmetric(M, s_pos, f_pos);
                 this->insert_block_symmetric(M2, s_pos2, u_pos);
-                //this->insert_block_symmetric(M, s_pos, u_pos);
             }
         }
     }

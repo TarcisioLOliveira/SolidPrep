@@ -197,23 +197,19 @@ void FiniteElement::solve_rigid_nonlinear(const Meshing* const mesh, std::vector
         logger::quick_log("dr min max", *std::min_element(dr.begin(), dr.end()), *std::max_element(dr.begin(), dr.end()));
 
         logger::quick_log("Applying step...");
-        //step = this->regula_falsi(get_g, get_rnorm_est, rnorm);
-        step = this->contact_data.max_step;
+        step = this->regula_falsi(get_g, get_rnorm_est, rnorm);
+        //step = this->contact_data.max_step;
 
         for(size_t i = 0; i < vec_size; ++i){
             u[i] += step*dr[i];
         }
         mesh->extend_vector(0, u, u_ext);
 
-        size_t il_id = 0;
-        math::Vector pdiff(6);
-        for(auto& il:*(mesh->internal_loads2)){
-            for(size_t i = 0; i < 6; ++i){
-                pdiff[i] = dr[il_param_offset + il_id*6 + i];
+        if(mesh->internal_loads2 != nullptr){
+            for(size_t i = 0; i < mesh->internal_loads2->size(); ++i){
+                auto& il = mesh->internal_loads2->at(i);
+                il.calculate_constraints(u_ext, true);
             }
-            il.update_multipliers(pdiff, step, true);
-
-            ++il_id;
         }
 
         // Generate lambda update
@@ -239,7 +235,7 @@ void FiniteElement::solve_rigid_nonlinear(const Meshing* const mesh, std::vector
         std::fill(Ku.begin(), Ku.end(), 0);
         this->matrix->dot_vector(u, Ku);
         this->matrix->append_Ku_nl_bcs(mesh, mesh->node_positions[0], u_ext, Ku);
-        for(size_t i = 0; i < mesh->il2_offset; ++i){
+        for(size_t i = 0; i < vec_size; ++i){
             r[i] = -(Ku[i] - f[i]);
         }
         E = 0;

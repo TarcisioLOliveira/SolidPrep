@@ -101,24 +101,27 @@ void PETScPCG::solve(std::vector<double>& load){
             KSPSetInitialGuessNonzero(this->ksp, PETSC_FALSE);
         } else {
             //KSPSetTolerances(this->ksp, 1e-10, 1e-50, 1e10, 1e6);
-            KSPSetTolerances(this->ksp, 1e-5, 1e-50, 1e10, 1e6);
-            PCJacobiSetType(this->pc, PC_JACOBI_ROWL1);
+            KSPSetTolerances(this->ksp, 1e-5, 1e-50, 1e20, 1e5);
+            PCJacobiSetType(this->pc, PC_JACOBI_ROWMAX);
 
             KSPSetType(this->ksp, KSPMINRES);
-            //KSPMINRESSetUseQLP(this->ksp, PETSC_TRUE);
+
+            //KSPSetType(this->ksp, KSPSYMMLQ);
+            //KSPSetNormType(this->ksp, KSP_NORM_PRECONDITIONED);
 
             //KSPSetType(this->ksp, KSPCGNE);
 
-                                              
             //PCSetType(this->pc, PCICC);
             //PCFactorSetLevels(this->pc, 0);
 
             //KSPSetPCSide(this->ksp, PC_RIGHT);
 
-            //KSPSetType(this->ksp, KSPMINRES);
             //KSPSetType(this->ksp, KSPBCGS);
             
             //KSPSetType(this->ksp, KSPBCGSL);
+            //KSPBCGSLSetEll(this->ksp, 20);
+            //KSPBCGSLSetUsePseudoinverse(this->ksp, PETSC_TRUE);
+            //KSPBCGSLSetPol(this->ksp, PETSC_TRUE);
             //KSPSetType(this->ksp, KSPIBCGS);
 
             //KSPSetType(this->ksp, KSPDGMRES); // Already a bit better than GMRES
@@ -134,7 +137,7 @@ void PETScPCG::solve(std::vector<double>& load){
             //double* u_data = nullptr;
             //VecGetArray(this->u, &u_data);
             //for(auto d = 0; d < end - begin; ++d){
-            //    *(u_data+d) = 0.001;
+            //    *(u_data+d) = 0.00001;
             //}
             //VecRestoreArray(this->u, &u_data);
 

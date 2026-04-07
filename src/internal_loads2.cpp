@@ -72,48 +72,54 @@ void InternalLoads2::initialize(const Meshing* const mesh, size_t& max_dofs){
 
     // Get associated boundary elements
 
-    std::vector<bool> apply_spring(boundary_elements.size());
-    size_t num_elems = 0;
-    // Fill apply_spring concurrently
-    // (CrossSection::is_inside() is pretty slow, unfortunately
-    #pragma omp parallel for reduction(+:num_elems)
-    for(size_t i = 0; i < boundary_elements.size(); ++i){
-        const auto& e = boundary_elements[i];
-        apply_spring[i] = this->S.is_inside(e.get_centroid(bound_nodes_per_elem));
-        if(apply_spring[i]){
-            ++num_elems;
-        }
-    }
-
-    this->submesh.resize(num_elems);
-    size_t cur_elem = 0;
-    ElementShape sh;
-    std::set<Node*> unique_nodes;
-    
-    sh.nodes.resize(bound_nodes_per_elem);
-    auto boundary_elem_info = mesh->elem_info->get_boundary_element_info();
-    for(size_t i = 0; i < boundary_elements.size(); ++i){
-        if(apply_spring[i]){
-            this->submesh[cur_elem] = &boundary_elements[i];
-            for(size_t n = 0; n < node_num; ++n){
-                unique_nodes.insert(boundary_elements[i].parent->nodes[n]);
+    if(this->submesh.size() == 0){
+        std::vector<bool> apply_spring(boundary_elements.size());
+        size_t num_elems = 0;
+        // Fill apply_spring concurrently
+        // (CrossSection::is_inside() is pretty slow, unfortunately
+        #pragma omp parallel for reduction(+:num_elems)
+        for(size_t i = 0; i < boundary_elements.size(); ++i){
+            const auto& e = boundary_elements[i];
+            apply_spring[i] = this->S.is_inside(e.get_centroid(bound_nodes_per_elem));
+            if(apply_spring[i]){
+                ++num_elems;
             }
-
-            ++cur_elem;
         }
-    }
 
-    this->il2_offset = max_dofs;
-    this->F_total_dof = unique_nodes.size()*dim;
-    this->constraint_offset = this->il2_offset + this->F_total_dof;
+        this->submesh.resize(num_elems);
+        size_t cur_elem = 0;
+        ElementShape sh;
+        
+        sh.nodes.resize(bound_nodes_per_elem);
+        auto boundary_elem_info = mesh->elem_info->get_boundary_element_info();
+        for(size_t i = 0; i < boundary_elements.size(); ++i){
+            if(apply_spring[i]){
+                this->submesh[cur_elem] = &boundary_elements[i];
+                for(size_t n = 0; n < node_num; ++n){
+                    this->F_id_map[boundary_elements[i].parent->nodes[n]->id] = -1;
+                }
+                for(size_t n = 0; n < BOUNDARY_NODE_NUM; ++n){
+                    this->F_id_map[boundary_elements[i].nodes[n]->id] = 0;
+                }
 
-    size_t cur_id = 0;
-    for(const auto& n:unique_nodes){
-        this->F_id_map[n->id] = cur_id;
-        ++cur_id;
+                ++cur_elem;
+            }
+        }
+
+
+        size_t cur_id = 0;
+        for(auto& n:F_id_map){
+            if(n.second == 0){
+                n.second = cur_id;
+                ++cur_id;
+            }
+        }
+        
+        this->il2_offset = max_dofs;
+        this->F_total_dof = cur_id*dim;
+        this->constraint_offset = this->il2_offset + this->F_total_dof;
+        max_dofs += this->F_total_dof + 2*s_size;
     }
-    
-    max_dofs += this->F_total_dof + 2*s_size;
 
     const auto fn_A =
         [this](const math::Matrix& S, const gp_Pnt& px)->double{
@@ -156,6 +162,7 @@ void InternalLoads2::initialize(const Meshing* const mesh, size_t& max_dofs){
     logger::quick_log("EA_w", EA_w);
     logger::quick_log("c_u: ", center[0]);
     logger::quick_log("c_v: ", center[1]);
+    logger::quick_log("");
 
 
 }
@@ -167,8 +174,6 @@ void InternalLoads2::apply_constraints(std::vector<double>& load) const{
         math::Vector V = this->get_loads();
         for(size_t i = 0; i < 6; ++i){
             load[this->constraint_offset + i] = V[i];
-        }
-        for(size_t i = 0; i < 6; ++i){
             load[this->constraint_offset + 6 + i] = V[i];
         }
     }
@@ -185,12 +190,42 @@ math::Matrix InternalLoads2::get_F_mat(const BoundaryElement* b) const{
 
         return NN; 
     } else {
-        //auto NN = -b->parent->get_R(this->rot3D, this->thickness, bounds);
+        auto NN = -b->parent->get_R(this->rot3D, this->thickness, bounds);
 
-        //return NN; 
-        const auto D = this->mat->stiffness_3D(b->parent, b->get_centroid(BOUNDARY_NODE_NUM));
-        auto hess = b->parent->internal_loads_hess(center, rot3D, rot3D_D, D, this->normal, bounds);
-        return hess;
+        return NN; 
+        //const auto D = this->mat->stiffness_3D(b->parent, b->get_centroid(BOUNDARY_NODE_NUM));
+        //auto hess = b->parent->internal_loads_hess(center, rot3D, rot3D_D, D, this->normal, bounds);
+        //return hess;
+    }
+}
+
+math::Matrix InternalLoads2::get_K_mat(const BoundaryElement* b) const{
+    std::vector<gp_Pnt> bounds(BOUNDARY_NODE_NUM);
+    for(size_t i = 0; i < BOUNDARY_NODE_NUM; ++i){
+        bounds[i] = b->nodes[i]->point;
+    }
+
+    if(this->type == utils::PROBLEM_TYPE_2D){
+        auto NN = -b->parent->get_R(this->rot2D, this->thickness, bounds);
+
+        return NN; 
+    } else {
+        const auto S = this->mat->stiffness_inverse_3D(b->parent, b->get_centroid(BOUNDARY_NODE_NUM));
+        const math::Matrix M(
+                {0, 0, 0,
+                 0, 0, 0,
+                 0, 0, 1,
+                 0, 0, 0,
+                 1, 0, 0,
+                 0, 1, 0}, 6, 3);
+        //const auto Sr = rot3D*M.T()*S*M*rot3D.T();
+        const auto Sr = M.T()*rot3D_S*S*rot3D_S.T()*M;
+        auto NN = -b->parent->get_R(Sr, this->thickness, bounds);
+
+        return NN; 
+        //const auto D = this->mat->stiffness_3D(b->parent, b->get_centroid(BOUNDARY_NODE_NUM));
+        //auto hess = -b->parent->get_k_face(D, this->thickness, bounds);
+        //return hess;
     }
 }
 
@@ -279,16 +314,15 @@ math::Matrix InternalLoads2::get_constr(const BoundaryElement* b) const{
     for(size_t i = 0; i < BOUNDARY_NODE_NUM; ++i){
         bounds[i] = b->nodes[i]->point;
     }
-    //return b->parent->constraint_matrix_alt(this->center, this->rot3D, bounds);
-    const auto D = this->mat->stiffness_3D(b->parent, b->get_centroid(BOUNDARY_NODE_NUM));
-    return b->parent->constraint_matrix(this->center, this->rot3D, this->rot3D_D, D, bounds);
+    return b->parent->constraint_matrix_alt(this->center, this->rot3D, bounds);
+    //const auto D = this->mat->stiffness_3D(b->parent, b->get_centroid(BOUNDARY_NODE_NUM));
+    //return b->parent->constraint_matrix(this->center, this->rot3D, this->rot3D_D, D, bounds);
 }
 math::Matrix InternalLoads2::get_constr2(const BoundaryElement* b) const{
     std::vector<gp_Pnt> bounds(BOUNDARY_NODE_NUM);
     for(size_t i = 0; i < BOUNDARY_NODE_NUM; ++i){
         bounds[i] = b->nodes[i]->point;
     }
-    //return b->parent->constraint_matrix_alt(this->center, this->rot3D, bounds);
     const auto D = this->mat->stiffness_3D(b->parent, b->get_centroid(BOUNDARY_NODE_NUM));
     return b->parent->constraint_matrix(this->center, this->rot3D, this->rot3D_D, D, bounds);
 }

@@ -46,6 +46,7 @@ class InternalLoads2{
     void apply_constraints(std::vector<double>& load) const;
 
     math::Matrix get_F_mat(const BoundaryElement* b) const;
+    math::Matrix get_K_mat(const BoundaryElement* b) const;
 
     math::Vector calculate_internal_loads(const std::vector<double>& u_ext) const;
     math::Vector calculate_constraints(const std::vector<double>& u_ext, bool print = false) const;
