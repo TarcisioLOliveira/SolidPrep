@@ -582,7 +582,7 @@ class MeshElementCommon : public MeshElement{
     }
 
     math::Matrix get_R_contact(const math::Matrix& K, const double t, const std::vector<gp_Pnt>& points, const math::Vector normal, const std::vector<double>& u_ext) const override{
-        const size_t ORDER = T::INTEG_ORDER;
+        //const size_t ORDER = T::INTEG_ORDER;
         const size_t NODES_PER_ELEM = T::NODES_PER_ELEM;
         const size_t DOF = T::NODE_DOF;
         const size_t K_DIM = T::K_DIM;
@@ -592,7 +592,7 @@ class MeshElementCommon : public MeshElement{
         math::Matrix R(K_DIM, K_DIM);
         math::Matrix empty(K_DIM, K_DIM);
 
-        constexpr size_t GN = 3*ORDER + 8;
+        constexpr size_t GN = 3 + 8; //3*ORDER + 8;
 
         this->area_integral<GN>(R,
             [&](const gp_Pnt& pi){

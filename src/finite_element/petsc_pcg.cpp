@@ -131,7 +131,7 @@ void PETScPCG::solve(std::vector<double>& load){
             //
             //KSPSetTolerances(this->ksp, 1e-5, 1e-50, 1e10, 1e5);
             
-            //KSPSetInitialGuessNonzero(this->ksp, PETSC_TRUE);
+            KSPSetInitialGuessNonzero(this->ksp, PETSC_TRUE);
             //long begin = 0, end = 0;
             //VecGetOwnershipRange(this->u, &begin, &end);
             //double* u_data = nullptr;
@@ -162,6 +162,8 @@ void PETScPCG::solve(std::vector<double>& load){
         //
         if(this->contact_data.contact_type == FiniteElement::ContactType::FRICTIONLESS_DISPL_LOG || this->nonlinear_boundary_conditions){
             KSPSetTolerances(this->ksp, 1e-2, 1e-50, 1e10, 1e5);
+            KSPSetInitialGuessNonzero(this->ksp, PETSC_FALSE);
+
             //PCJacobiSetUseAbs(this->pc, PETSC_TRUE);
             //PCJacobiSetFixDiagonal(this->pc, PETSC_TRUE);
             //PCJacobiSetType(this->pc, PC_JACOBI_ROWMAX);
@@ -169,6 +171,8 @@ void PETScPCG::solve(std::vector<double>& load){
             //KSPMINRESSetUseQLP(this->ksp, PETSC_TRUE);
         } else if(this->contact_data.contact_type >= FiniteElement::ContactType::FRICTIONLESS_DISPL_SIMPLE){
             KSPSetTolerances(this->ksp, 1e-3, 1e-50, 1e10, 1e5);
+            KSPSetInitialGuessNonzero(this->ksp, PETSC_FALSE);
+
             PCJacobiSetUseAbs(this->pc, PETSC_TRUE);
             PCJacobiSetFixDiagonal(this->pc, PETSC_TRUE);
             PCJacobiSetType(this->pc, PC_JACOBI_ROWMAX);

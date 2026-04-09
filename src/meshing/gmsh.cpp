@@ -195,7 +195,7 @@ void Gmsh::mesh(const std::vector<Force>& forces,
     //if(order > 1){
     //    gmsh::option::setNumber("Mesh.HighOrderOptimize", 2);
     //}
-    gmsh::option::setNumber("Mesh.Optimize", 1);
+    //gmsh::option::setNumber("Mesh.Optimize", 1);
     //gmsh::option::setNumber("Mesh.OptimizeNetgen", 1);
     gmsh::option::setNumber("Mesh.OptimizeThreshold", 0.3);
     gmsh::option::setNumber("Geometry.Tolerance", 1e-4);
@@ -211,6 +211,11 @@ void Gmsh::mesh(const std::vector<Force>& forces,
     gmsh::option::setNumber("Mesh.MeshSizeFromCurvature", this->size_from_curvature);
     gmsh::option::setNumber("Mesh.ToleranceInitialDelaunay", 1e-2);
     gmsh::option::setNumber("Mesh.LcIntegrationPrecision", 1e-7);
+
+    //gmsh::option::setNumber("General.Verbosity", 99);
+
+    //gmsh::option::setNumber("Geometry.OCCFixDegenerated", 1);
+    //gmsh::option::setString("Geometry.OCCTargetUnit", "mm");
 
     // Quad/hex recombination
     if(this->elem_info->get_shape_type() == Element::Shape::QUAD){
@@ -262,6 +267,7 @@ std::unordered_map<size_t, MeshNode*> Gmsh::gmsh_meshing(bool has_condition_insi
     const size_t bound_type = elem_type->get_boundary_gmsh_element_type();
     const auto problem_type = this->elem_info->get_problem_type();
     const size_t nodes_per_elem = this->elem_info->get_nodes_per_element();
+    const size_t order = this->elem_info->get_element_order();
 
     size_t dim = 0;
     if(problem_type == utils::PROBLEM_TYPE_2D){
@@ -343,7 +349,18 @@ std::unordered_map<size_t, MeshNode*> Gmsh::gmsh_meshing(bool has_condition_insi
             // https://gitlab.onelab.info/gmsh/gmsh/blob/gmsh_4_15_0/tutorials/c++/t10.cpp#L48
         }
 
+
         gmsh::model::mesh::generate(dim);
+        if(order == 1){
+            gmsh::model::mesh::optimize();
+            gmsh::model::mesh::optimize("Relocate3D");
+            gmsh::model::mesh::optimize("UntangleMeshGeometry");
+        } else {
+            //gmsh::model::mesh::optimize();
+            gmsh::model::mesh::optimize("Relocate3D");
+            //gmsh::model::mesh::optimize("HighOrder");
+            gmsh::model::mesh::optimize("HighOrderFastCurving");
+        }
 
         std::vector<int> elem_types;
         gmsh::model::mesh::getElementTypes(elem_types);
