@@ -151,7 +151,7 @@ double LinearElasticOrthotropicField::beam_E_2D(const MeshElement* const e, cons
     // (Ting, 1996)
 
     const auto S = this->stiffness_inverse_2D(e, p);
-    const auto Rt = utils::basis_tensor_2D_inv_T(R);
+    const auto Rt = utils::basis_tensor_2D_inv_T(R.T());
 
     return 1.0/(Rt*S*Rt.T())(0,0);
 }
@@ -160,7 +160,7 @@ double LinearElasticOrthotropicField::beam_E_3D(const MeshElement* const e, cons
     // (Ting, 1996)
 
     auto S = this->stiffness_inverse_3D(e, p);
-    const auto Rt = utils::basis_tensor_3D_inv_T(R);
+    const auto Rt = utils::basis_tensor_3D_inv_T(R.T());
 
     return 1.0/(Rt*S*Rt.T())(0,0);
 }
@@ -169,7 +169,7 @@ std::array<double, 2> LinearElasticOrthotropicField::beam_EG_2D(const MeshElemen
     // (Ting, 1996)
 
     auto S = this->stiffness_inverse_2D(e, p);
-    const auto Rt = utils::basis_tensor_2D_inv_T(R);
+    const auto Rt = utils::basis_tensor_2D_inv_T(R.T());
     const auto Sr = Rt*S*Rt.T();
 
     return {1.0/Sr(0,0), 1.0/Sr(2,2)};
@@ -179,7 +179,7 @@ std::array<double, 4> LinearElasticOrthotropicField::beam_EG_3D(const MeshElemen
     // (Ting, 1996)
 
     auto S = this->stiffness_inverse_3D(e, p);
-    const auto Rt = utils::basis_tensor_3D_inv_T(R);
+    const auto Rt = utils::basis_tensor_3D_inv_T(R.T());
     const auto Sr = Rt*S*Rt.T();
 
     return {1.0/Sr(0,0), 1.0/Sr(3,3), 1.0/Sr(4,4), 1.0/Sr(5,5)};

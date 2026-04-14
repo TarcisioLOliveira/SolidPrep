@@ -345,7 +345,7 @@ class MeshElementCommon : public MeshElement{
                 //const auto I = this->internal_loads_matrix(pi, c, Rm, RD);
                 auto I = this->get_B(pi);
 
-                return Ms*RD.T()*D*I;
+                return Ms*RD*D*I;
             },
             bounds, 1.0);
 
@@ -414,7 +414,7 @@ class MeshElementCommon : public MeshElement{
                 //const auto Sn = Ms*RD*S;
 
                 const auto S = this->_get_stress_vector(D, pi, u_ext);
-                const auto Sn = Ms*RD.T()*S;
+                const auto Sn = Ms*RD*S;
 
                 return Sn;
             },

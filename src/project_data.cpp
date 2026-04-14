@@ -1377,6 +1377,11 @@ std::vector<InternalLoads2> ProjectData::get_internal_loads2(const Json::Value& 
         this->log_data(f, "M", projspec::TYPE_ARRAY, true);
         this->log_data(f, "normal", projspec::TYPE_ARRAY, true);
         this->log_data(f, "v", projspec::TYPE_ARRAY, true);
+
+        this->log_data(f, "calculate_from_last_point", projspec::TYPE_BOOL, true);
+        bool calc = f["calculate_from_last_point"].asBool();
+        this->log_data(f, "P_prev", projspec::TYPE_ARRAY, calc);
+        this->log_data(f, "inverted", projspec::TYPE_BOOL, calc);
         if(this->type == utils::PROBLEM_TYPE_3D) {
             this->log_data(f, "w", projspec::TYPE_ARRAY, true);
         }
@@ -1385,10 +1390,17 @@ std::vector<InternalLoads2> ProjectData::get_internal_loads2(const Json::Value& 
         auto v = f["v"];
         auto Fa = f["F"];
         auto Ma = f["M"];
+        auto Pa = f["P_prev"];
         std::string mat_name(f["material"].asString());
+        bool inverted = f["inverted"].asBool();
 
         std::array<double, 3> F{Fa[0].asDouble(), Fa[1].asDouble(), 0};
         std::array<double, 3> M{Ma[0].asDouble(), Ma[1].asDouble(), 0};
+        std::array<double, 3> P;
+        if(calc){
+            P[0] = Pa[0].asDouble();
+            P[1] = Pa[1].asDouble();
+        }
         gp_Dir nv(normal[0].asDouble(), normal[1].asDouble(), 0);
         gp_Dir vv(v[0].asDouble(), v[1].asDouble(), 0);
         gp_Dir wv(0, 0, 1);
@@ -1398,11 +1410,15 @@ std::vector<InternalLoads2> ProjectData::get_internal_loads2(const Json::Value& 
             logger::log_assert(v.size() == 2, logger::ERROR, "'v' vector must have exactly two dimensions in 2D problems");
             logger::log_assert(Fa.size() == 2, logger::ERROR, "Force vector must have exactly two dimensions in 2D problems");
             logger::log_assert(Ma.size() == 2, logger::ERROR, "Moment vector must have exactly two dimensions in 2D problems");
+            if(calc)
+            logger::log_assert(Pa.size() == 2, logger::ERROR, "Previous point must have exactly two dimensions in 2D problems");
         } else if(this->type == utils::PROBLEM_TYPE_3D) {
             logger::log_assert(normal.size() == 3, logger::ERROR, "Normal vector must have exactly three dimensions in 3D problems");
             logger::log_assert(v.size() == 3, logger::ERROR, "'v' vector must have exactly three dimensions in 3D problems");
             logger::log_assert(Fa.size() == 3, logger::ERROR, "Force vector must have exactly three dimensions in 3D problems");
             logger::log_assert(Ma.size() == 3, logger::ERROR, "Moment vector must have exactly three dimensions in 3D problems");
+            if(calc)
+                logger::log_assert(Pa.size() == 3, logger::ERROR, "Previous point must have exactly three dimensions in 3D problems");
 
             auto w = f["w"];
             logger::log_assert(w.size() == 3, logger::ERROR, "'w' vector must have exactly two dimensions in 3D problems");
@@ -1411,6 +1427,9 @@ std::vector<InternalLoads2> ProjectData::get_internal_loads2(const Json::Value& 
             vv.SetZ(v[2].asDouble());
             F[2] = Fa[2].asDouble();
             M[2] = Ma[2].asDouble();
+            if(calc){
+                P[2] = Pa[2].asDouble();
+            }
 
             wv = gp_Dir(w[0].asDouble(), w[1].asDouble(), w[2].asDouble());
         }
@@ -1419,7 +1438,7 @@ std::vector<InternalLoads2> ProjectData::get_internal_loads2(const Json::Value& 
 
         this->log_data(f, "region", projspec::TYPE_OBJECT, true);
         auto S = this->get_cross_section(f["region"]);
-        internal_loads.emplace_back(S, this->thickness, nv, vv, wv, mat, F, M, this->type);
+        internal_loads.emplace_back(S, this->thickness, nv, vv, wv, mat, F, M, P, inverted, calc, this->type);
     }
     return internal_loads;
 }

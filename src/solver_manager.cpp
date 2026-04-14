@@ -45,11 +45,11 @@ void SolverManager::generate_matrix(const Meshing* const mesh, const std::vector
             } else {
                 this->lambdas[i].emplace_back();
             }
-        } else {
-            if(needs_lambda && mesh->proj_data->contact_data.contact_type != FiniteElement::ContactType::FRICTIONLESS_DISPL_LOG){
-                std::fill(this->split_u[i].begin(), this->split_u[i].end(), 0.0);
-                std::fill(this->lambdas[i][0].begin(), this->lambdas[i][0].end(), 0.0);
-            }
+        //} else {
+        //    if(needs_lambda && mesh->proj_data->contact_data.contact_type != FiniteElement::ContactType::FRICTIONLESS_DISPL_LOG){
+        //        std::fill(this->split_u[i].begin(), this->split_u[i].end(), 0.0);
+        //        std::fill(this->lambdas[i][0].begin(), this->lambdas[i][0].end(), 0.0);
+        //    }
         }
         auto& n = mesh->node_positions[i];
         auto& l = mesh->load_vector[i];

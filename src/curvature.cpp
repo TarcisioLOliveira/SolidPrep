@@ -41,10 +41,10 @@ Curvature::Curvature(const Material* mat, math::Matrix rot2D, math::Matrix rot3D
     M_u(M_w), 
     M_v(M_v),
     M_w(-M_u),
-    rot2D_D(utils::basis_tensor_2D(this->rot2D)),
-    rot2D_S(utils::basis_tensor_2D_inv_T(this->rot2D)),
-    rot3D_D(utils::basis_tensor_3D(this->rot3D)),
-    rot3D_S(utils::basis_tensor_3D_inv_T(this->rot3D))
+    rot2D_D(utils::basis_tensor_2D(this->rot2D.T())),
+    rot2D_S(utils::basis_tensor_2D_inv_T(this->rot2D.T())),
+    rot3D_D(utils::basis_tensor_3D(this->rot3D.T())),
+    rot3D_S(utils::basis_tensor_3D_inv_T(this->rot3D.T()))
 {
 
     //this->permute_shear_3D = math::Matrix(

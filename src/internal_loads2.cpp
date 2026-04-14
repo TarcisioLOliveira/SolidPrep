@@ -30,7 +30,7 @@ inline math::Matrix Lek_rot3D(math::Matrix L, math::Matrix R){
     return R*L;//L*R;
 }
 
-InternalLoads2::InternalLoads2(CrossSection cross_section, double thickness, gp_Dir normal, gp_Dir v, gp_Dir w, utils::DelayedPointerView<Material> mat, std::array<double, 3> F, std::array<double, 3> M, utils::ProblemType type):
+InternalLoads2::InternalLoads2(CrossSection cross_section, double thickness, gp_Dir normal, gp_Dir v, gp_Dir w, utils::DelayedPointerView<Material> mat, std::array<double, 3> F, std::array<double, 3> M, std::array<double, 3> P_last, bool inverted, bool calculate, utils::ProblemType type):
     S(std::move(cross_section)), 
     A(S.get_area()),
     thickness(thickness),
@@ -45,16 +45,20 @@ InternalLoads2::InternalLoads2(CrossSection cross_section, double thickness, gp_
         {normal.X(), v.X(), w.X(),
          normal.Y(), v.Y(), w.Y(),
          normal.Z(), v.Z(), w.Z()}, 3, 3))),
-    rot2D_D(utils::basis_tensor_2D(rot2D)),
-    rot2D_S(utils::basis_tensor_2D_inv_T(rot2D)),
-    rot3D_D(utils::basis_tensor_3D(rot3D)),
-    rot3D_S(utils::basis_tensor_3D_inv_T(rot3D)),
-    F({F[0], F[1], F[2]}), M({M[0], M[1], M[2]}),
+    rot2D_D(utils::basis_tensor_2D(rot2D.T())),
+    rot2D_S(utils::basis_tensor_2D_inv_T(rot2D.T())),
+    rot3D_D(utils::basis_tensor_3D(rot3D.T())),
+    rot3D_S(utils::basis_tensor_3D_inv_T(rot3D.T())),
+    F({F[0], F[1], F[2]}), M(3),
     mat(mat),
     normal(normal),
-    MU(1),
     v(v), w(w),
-    type(type){
+    type(type),
+    M_orig({M[0], M[1], M[2]}),
+    P_prev({P_last[0], P_last[1], P_last[2]}),
+    inverted_calc(inverted),
+    calculate_from_last_point(calculate)
+{
 
 }
 
@@ -114,12 +118,11 @@ void InternalLoads2::initialize(const Meshing* const mesh, size_t& max_dofs){
                 ++cur_id;
             }
         }
-        
         this->il2_offset = max_dofs;
         this->F_total_dof = cur_id*dim;
         this->constraint_offset = this->il2_offset + this->F_total_dof;
-        max_dofs += this->F_total_dof + 2*s_size;
     }
+    max_dofs += this->F_total_dof + 2*s_size;
 
     const auto fn_A =
         [this](const math::Matrix& S, const gp_Pnt& px)->double{
@@ -153,6 +156,16 @@ void InternalLoads2::initialize(const Meshing* const mesh, size_t& max_dofs){
     this->center[1] = EA_v/EA;
     this->center[2] = EA_w/EA;
 
+    if(this->calculate_from_last_point){
+        if(!this->inverted_calc){
+            this->M = -((this->center - this->P_prev).cross(this->F) + this->M_orig);
+        } else {
+            this->M = ((this->center - this->P_prev).cross(this->F) + this->M_orig);
+        }
+    } else {
+        this->M = this->M_orig;
+    }
+
     this->center = this->rot3D.T()*this->center;
 
     logger::quick_log("A: ", A);
@@ -162,7 +175,11 @@ void InternalLoads2::initialize(const Meshing* const mesh, size_t& max_dofs){
     logger::quick_log("EA_w", EA_w);
     logger::quick_log("c_u: ", center[0]);
     logger::quick_log("c_v: ", center[1]);
-    logger::quick_log("");
+    logger::quick_log("c_w: ", center[2]);
+    logger::quick_log("F");
+    logger::quick_log(this->F);
+    logger::quick_log("M");
+    logger::quick_log(this->M);
 
 
 }
@@ -210,7 +227,8 @@ math::Matrix InternalLoads2::get_K_mat(const BoundaryElement* b) const{
 
         return NN; 
     } else {
-        const auto S = this->mat->stiffness_inverse_3D(b->parent, b->get_centroid(BOUNDARY_NODE_NUM));
+        //const auto S = this->mat->stiffness_inverse_3D(b->parent, b->get_centroid(BOUNDARY_NODE_NUM));
+        const auto S = this->mat->stiffness_inverse_3D(b->parent, b->parent->get_centroid());
         const math::Matrix M(
                 {0, 0, 0,
                  0, 0, 0,
@@ -239,7 +257,7 @@ math::Vector InternalLoads2::calculate_internal_loads(const std::vector<double>&
             for(size_t i = 0; i < bnum; ++i){
                 bounds[i] = e->nodes[i]->point;
             }
-            const auto D = this->mat->stiffness_2D(e->parent, e->parent->get_centroid());
+            const auto D = this->mat->stiffness_2D(e->parent, e->get_centroid(BOUNDARY_NODE_NUM));
             result += e->parent->calculate_internal_loads(this->center, this->rot2D, this->rot2D_D, D, this->normal, u_ext, bounds);
         }
     } else {
@@ -247,6 +265,7 @@ math::Vector InternalLoads2::calculate_internal_loads(const std::vector<double>&
             for(size_t i = 0; i < bnum; ++i){
                 bounds[i] = e->nodes[i]->point;
             }
+            //const auto D = this->mat->stiffness_3D(e->parent, e->get_centroid(BOUNDARY_NODE_NUM));
             const auto D = this->mat->stiffness_3D(e->parent, e->parent->get_centroid());
             result += e->parent->calculate_internal_loads(this->center, this->rot3D, this->rot3D_D, D, this->normal, u_ext, bounds);
         }
@@ -260,7 +279,7 @@ math::Vector InternalLoads2::calculate_constraints(const std::vector<double>& u_
 
     if(print){
         logger::quick_log("Internal loads:");
-        logger::quick_log("My Mx Fz Mz Fx Fy");
+        logger::quick_log("My Mz Fx Mx Fz Fy");
         logger::quick_log(result);
     }
 
@@ -276,37 +295,22 @@ math::Vector InternalLoads2::calculate_constraints(const std::vector<double>& u_
 
 math::Vector InternalLoads2::calculate_multipliers(const std::vector<double>& u_ext, bool print) const{
     auto c = this->calculate_constraints(u_ext, print);
-    const math::Vector result = this->lambda + this->MU*c;
-    if(print){
-        logger::quick_log("IL multipliers:");
-        logger::quick_log("My Mx Fz Mz Fx Fy");
-        logger::quick_log(result);
-    }
 
-    return result;
+    return math::Vector(6);
 }
 math::Vector InternalLoads2::get_loads() const{
 
-    const auto f = this->Lek_basis.T()*this->F;
-    const auto m = this->Lek_basis.T()*this->M;
+    const auto f = this->F;//this->rot3D.T()*this->F;//this->Lek_basis.T()*this->F;
+    const auto m = this->M;//this->rot3D.T()*this->M;//this->Lek_basis.T()*this->M;
 
     return {
-        m[1],
-        m[0],
-        f[2],
-        m[2],
-        f[0],
-        f[1]
+        -m[1],//-m[1],//-m[1],
+        -m[2],// m[0],//-m[2],
+         f[0],// f[2],// f[0],
+         m[0],// m[2],// m[0],
+        -f[2],// f[0],//-f[2],
+         f[1] // f[1] // f[1] 
     };
-}
-void InternalLoads2::update_multipliers(const math::Vector& params_diff, double alpha, bool print){
-    this->params += alpha*params_diff;
-    if(print){
-        logger::quick_log("IL params:");
-        logger::quick_log("A B C theta A' B':");
-        //logger::quick_log("C Kxz Kyz A B theta");
-        logger::quick_log(this->params);
-    }
 }
 
 math::Matrix InternalLoads2::get_constr(const BoundaryElement* b) const{
@@ -323,7 +327,8 @@ math::Matrix InternalLoads2::get_constr2(const BoundaryElement* b) const{
     for(size_t i = 0; i < BOUNDARY_NODE_NUM; ++i){
         bounds[i] = b->nodes[i]->point;
     }
-    const auto D = this->mat->stiffness_3D(b->parent, b->get_centroid(BOUNDARY_NODE_NUM));
+    //const auto D = this->mat->stiffness_3D(b->parent, b->get_centroid(BOUNDARY_NODE_NUM));
+    const auto D = this->mat->stiffness_3D(b->parent, b->parent->get_centroid());
     return b->parent->constraint_matrix(this->center, this->rot3D, this->rot3D_D, D, bounds);
 }
 math::Vector InternalLoads2::get_grad(const BoundaryElement* b, const math::Vector& mult) const{
@@ -335,7 +340,8 @@ math::Vector InternalLoads2::get_grad(const BoundaryElement* b, const math::Vect
         const auto D = this->mat->stiffness_2D(b->parent, b->get_centroid(BOUNDARY_NODE_NUM));
         return b->parent->internal_loads_grad(mult, this->center, this->rot2D, this->rot2D_D, D, bounds);
     } else {
-        const auto D = this->mat->stiffness_3D(b->parent, b->get_centroid(BOUNDARY_NODE_NUM));
+        //const auto D = this->mat->stiffness_3D(b->parent, b->get_centroid(BOUNDARY_NODE_NUM));
+        const auto D = this->mat->stiffness_3D(b->parent, b->parent->get_centroid());
         return b->parent->internal_loads_grad(mult, this->center, this->rot3D, this->rot3D_D, D, bounds);
     }
 }
@@ -350,7 +356,8 @@ math::Matrix InternalLoads2::get_hess(const BoundaryElement* b) const{
 
         return hess; 
     } else {
-        const auto D = this->mat->stiffness_3D(b->parent, b->get_centroid(BOUNDARY_NODE_NUM));
+        //const auto D = this->mat->stiffness_3D(b->parent, b->get_centroid(BOUNDARY_NODE_NUM));
+        const auto D = this->mat->stiffness_3D(b->parent, b->parent->get_centroid());
         auto hess = b->parent->internal_loads_hess(center, rot3D, rot3D_D, D, this->normal, bounds);
 
         return hess; 
@@ -422,10 +429,12 @@ void InternalLoads2::GS_tri(const MeshElement* const e, const std::array<gp_Pnt,
             (p[0].Z() + p[1].Z() + p[2].Z())/3.0);
     math::Matrix S;
     if(this->type == utils::PROBLEM_TYPE_2D){
-        S = this->mat->stiffness_inverse_2D(e, centroid);
+        //S = this->mat->stiffness_inverse_2D(e, centroid);
+        S = this->mat->stiffness_inverse_2D(e, e->get_centroid());
         this->mat->rotate_S(S, this->rot2D_S);
     } else {
-        S = this->mat->stiffness_inverse_3D(e, centroid);
+        //S = this->mat->stiffness_inverse_3D(e, centroid);
+        S = this->mat->stiffness_inverse_3D(e, e->get_centroid());
         this->mat->rotate_S(S, this->rot3D_S);
     }
     const double drnorm = (v1.Crossed(v2)).Magnitude()/2;
@@ -447,10 +456,12 @@ void InternalLoads2::GS_quad(const MeshElement* const e, const std::array<gp_Pnt
             (p[0].Z() + p[1].Z() + p[2].Z() + p[3].Z())/4.0);
     math::Matrix S;
     if(this->type == utils::PROBLEM_TYPE_2D){
-        S = this->mat->stiffness_inverse_2D(e, centroid);
+        //S = this->mat->stiffness_inverse_2D(e, centroid);
+        S = this->mat->stiffness_inverse_2D(e, e->get_centroid());
         this->mat->rotate_S(S, this->rot2D_S);
     } else {
-        S = this->mat->stiffness_inverse_3D(e, centroid);
+        //S = this->mat->stiffness_inverse_3D(e, centroid);
+        S = this->mat->stiffness_inverse_3D(e, e->get_centroid());
         this->mat->rotate_S(S, this->rot3D_S);
     }
     const auto& gsi = utils::GaussLegendre<2>::get();

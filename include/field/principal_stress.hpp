@@ -73,6 +73,7 @@ class PrincipalStress : public CoordinateField {
     bool show;
     size_t DIM;
     size_t NODES_PER_ELEM;
+    size_t DOF;
     bool first_run = true;
     std::vector<double> u;
     size_t max_it;

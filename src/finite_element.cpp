@@ -106,7 +106,6 @@ void FiniteElement::solve_rigid(const Meshing* const mesh, std::vector<double>& 
 
 void FiniteElement::solve_rigid_nonlinear(const Meshing* const mesh, std::vector<double>& load, const std::vector<double>& u0){
     const size_t vec_size = this->u_size;
-    const size_t il_param_offset = vec_size - mesh->internal_loads2->size()*6;
 
     double E = 0;
     size_t it = 0;

@@ -163,7 +163,7 @@ void GlobalStiffnessMatrix::generate_base(const Meshing * const mesh, const size
             for(const auto& b:il.submesh){
                 for(size_t i = 0; i < node_num; ++i){
                     const auto& n = b->parent->nodes[i];
-                    const size_t f_id = il.F_id_map.at(n->id);
+                    const auto f_id = il.F_id_map.at(n->id);
                     for(size_t j = 0; j < dof; ++j){
                         const size_t p = n->id*dof + j;
                         u_pos[i*dof + j] = node_positions[p];

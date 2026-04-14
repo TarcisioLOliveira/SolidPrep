@@ -21,6 +21,7 @@
 #include "field/principal_stress.hpp"
 #include "logger.hpp"
 #include "math/matrix.hpp"
+#include "math/slicer.hpp"
 #include "project_data.hpp"
 #include "utils/delayed_pointer.hpp"
 #include <functional>
@@ -36,6 +37,7 @@ PrincipalStress::PrincipalStress(const projspec::DataMap& data):
     show(data.get_bool("display", true)),
     DIM((elem_info->get_problem_type() == utils::PROBLEM_TYPE_2D) ? 2 : 3),
     NODES_PER_ELEM(elem_info->get_nodes_per_element()),
+    DOF(elem_info->get_dof_per_node()),
     max_it(data.get_int("max_it")),
     use_strain(data.get_bool("use_strain"))
     {
@@ -58,6 +60,10 @@ void PrincipalStress::initialize_views(Visualization* viz){
 
 void PrincipalStress::generate(){
     const size_t num_nodes = this->elem_info->get_nodes_per_element();
+
+    if(this->max_it == 0){
+        return;
+    }
 
     if(this->first_run){
         auto& proj_geoms = this->proj_data->geometries;
@@ -117,11 +123,13 @@ void PrincipalStress::generate(){
     std::vector<std::vector<utils::DelayedPointerView<Material>>> materials_backup(this->geoms.size());
 
     std::vector<utils::DelayedPointerView<Material>> iso_material{this->initial_material};
-    for(size_t i = 0; i < this->geoms.size(); ++i){
-        auto& g = this->geoms[i];
-        auto mats = g->materials.get_materials();
-        materials_backup[i] = mats;
-        g->set_materials(iso_material);
+    if(!this->use_strain){
+        for(size_t i = 0; i < this->geoms.size(); ++i){
+            auto& g = this->geoms[i];
+            auto mats = g->materials.get_materials();
+            materials_backup[i] = mats;
+            g->set_materials(iso_material);
+        }
     }
     // Check if it's necessary to update BCs at each iteration
     bool update_boundary_conditions = false;
@@ -150,7 +158,9 @@ void PrincipalStress::generate(){
     this->u.resize(mesh->max_dofs, 0);
     fem->get_latest_global_displ(mesh, this->u);
     auto u_old = this->u;
+    auto u_tmp = this->u;
     double c_old = 0;
+    double c0 = 0;
 
     double du = 1.0;
     size_t it = 0;
@@ -160,23 +170,34 @@ void PrincipalStress::generate(){
         fem->update_materials();
         fem->generate_matrix(mesh);
 
-        fem->calculate_displacements_global(mesh, mesh->load_vector, this->u);
+        fem->calculate_displacements_global(mesh, mesh->load_vector, u_tmp);
 
         du = 0;
         for(size_t i = 0; i < mesh->max_dofs; ++i){
+            u[i] = u_tmp[i];
             du = std::max(du, std::abs(u[i] - u_old[i]));
             u_old[i] = u[i];
         }
 
         double c = 0;
-        for(size_t i = 0; i < this->u.size(); ++i){
-            c += this->u[i]*mesh->global_load_vector[i];
+        for(const auto& g:this->geoms){
+            for(const auto& e:g->mesh){
+                const math::VectorSliceGeneralView uv(this->u, math::slicer::from_node_upos(e->nodes, NODES_PER_ELEM, DOF));
+                const auto D = g->materials.get_D(e.get(), e->get_centroid());
+                const auto K = e->get_k(D, this->proj_data->thickness);
+
+                c += 0.5*((K*uv).dot(uv));
+            }
         }
+        //for(size_t i = 0; i < this->u.size(); ++i){
+        //    c += this->u[i]*mesh->global_load_vector[i];
+        //}
 
         if(it == 0){
+            c0 = c;
             this->first_run = false;
         }
-        logger::quick_log("Iteration:", it, "du:", du, "c:", c, "dc:", std::abs(c - c_old), "dc/c:", std::abs(c - c_old)/std::abs(c));
+        logger::quick_log("Iteration:", it, "du:", du, "c:", c, "dc:", std::abs(c - c_old), "c/c0", c/c0);
         c_old = c;
 
         if(update_boundary_conditions){
@@ -186,9 +207,11 @@ void PrincipalStress::generate(){
         ++it;
     }
 
-    for(size_t i = 0; i < this->geoms.size(); ++i){
-        auto& g = this->geoms[i];
-        g->set_materials(materials_backup[i]);
+    if(!this->use_strain){
+        for(size_t i = 0; i < this->geoms.size(); ++i){
+            auto& g = this->geoms[i];
+            g->set_materials(materials_backup[i]);
+        }
     }
     fem->update_materials();
     logger::quick_log("");
@@ -308,7 +331,7 @@ math::Matrix PrincipalStress::get_matrix(const MeshElement* e, const gp_Pnt& p) 
         for(size_t i = 0; i < DIM; ++i){
             abs_sort[i] = std::abs(eigen.eigenvalues[i]);
         }
-        std::sort(abs_sort.begin(), abs_sort.end(), std::less<double>());
+        std::sort(abs_sort.begin(), abs_sort.end(), std::greater<double>());
         std::vector<size_t> pos(DIM);
         for(size_t i = 0; i < DIM; ++i){
             for(size_t j = 0; j < DIM; ++j){

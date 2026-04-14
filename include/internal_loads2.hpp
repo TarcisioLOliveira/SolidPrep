@@ -39,7 +39,7 @@ class InternalLoads2{
     // ASSUMES CROSS SECTION IS PLANE
     // ASSUMES this->normal == this->S.normal
 
-    InternalLoads2(CrossSection cross_section, double thickness, gp_Dir normal, gp_Dir v, gp_Dir w, utils::DelayedPointerView<Material> mat, std::array<double, 3> F, std::array<double, 3> M, utils::ProblemType type);
+    InternalLoads2(CrossSection cross_section, double thickness, gp_Dir normal, gp_Dir v, gp_Dir w, utils::DelayedPointerView<Material> mat, std::array<double, 3> F, std::array<double, 3> M, std::array<double, 3> P_last, bool inverted, bool calculate, utils::ProblemType type);
     InternalLoads2(InternalLoads2&&) = default;
 
     void initialize(const Meshing* const mesh, size_t& max_dofs);
@@ -52,7 +52,6 @@ class InternalLoads2{
     math::Vector calculate_constraints(const std::vector<double>& u_ext, bool print = false) const;
     math::Vector calculate_multipliers(const std::vector<double>& u_ext, bool print = false) const;
     math::Vector get_loads() const;
-    void update_multipliers(const math::Vector& params_diff, double alpha, bool print = false);
 
     math::Matrix get_constr(const BoundaryElement* b) const;
     math::Matrix get_constr2(const BoundaryElement* b) const;
@@ -74,17 +73,13 @@ class InternalLoads2{
     const math::Matrix rot2D_S;
     const math::Matrix rot3D_D;
     const math::Matrix rot3D_S;
-    const math::Vector F;
-    const math::Vector M;
+    math::Vector F;
+    math::Vector M;
     utils::DelayedPointerView<Material> mat;
     const gp_Dir normal;
     std::vector<const BoundaryElement*> submesh;
-    math::Vector lambda = math::Vector(6);
-    const double MU;
-    math::Vector params = math::Vector(6);
-    math::Vector base_strain;
 
-    std::unordered_map<size_t, size_t> F_id_map;
+    std::unordered_map<size_t, long> F_id_map;
 
     size_t F_total_dof;
     size_t constraint_offset;
@@ -97,6 +92,11 @@ class InternalLoads2{
     math::Vector center = math::Vector(3);
     const MeshElementFactory* elem_info;
     size_t BOUNDARY_NODE_NUM;
+
+    math::Vector M_orig;
+    math::Vector P_prev;
+    bool inverted_calc;
+    bool calculate_from_last_point;
     
 
     math::Vector integrate_surface_3D(const Meshing* const mesh, const std::vector<std::function<double(const math::Matrix& S, const gp_Pnt& px)>>& fn) const;

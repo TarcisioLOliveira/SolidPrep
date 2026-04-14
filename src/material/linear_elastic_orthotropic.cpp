@@ -83,7 +83,7 @@ double LinearElasticOrthotropic::beam_E_2D(const MeshElement* const e, const gp_
     (void)p;
     (void)e;
 
-    const auto Rt = utils::basis_tensor_2D(R);
+    const auto Rt = utils::basis_tensor_2D(R.T());
     const auto& S = this->S_2D;
 
     return 1.0/(Rt*S*Rt.T())(0,0);
@@ -94,7 +94,7 @@ double LinearElasticOrthotropic::beam_E_3D(const MeshElement* const e, const gp_
     (void)p;
     (void)e;
 
-    const auto Rt = utils::basis_tensor_3D(R);
+    const auto Rt = utils::basis_tensor_3D(R.T());
     const auto& S = this->S_3D;
 
     return 1.0/(Rt*S*Rt.T())(0,0);
@@ -105,7 +105,7 @@ std::array<double, 2> LinearElasticOrthotropic::beam_EG_2D(const MeshElement* co
     (void)p;
     (void)e;
 
-    const auto Rt = utils::basis_tensor_2D(R);
+    const auto Rt = utils::basis_tensor_2D(R.T());
     const auto& S = this->S_2D;
     const auto Sr = Rt*S*Rt.T();
 
@@ -117,7 +117,7 @@ std::array<double, 4> LinearElasticOrthotropic::beam_EG_3D(const MeshElement* co
     (void)p;
     (void)e;
 
-    const auto Rt = utils::basis_tensor_3D(R);
+    const auto Rt = utils::basis_tensor_3D(R.T());
     const auto& S = this->S_3D;
     const auto Sr = Rt*S*Rt.T();
 

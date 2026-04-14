@@ -1103,6 +1103,10 @@ Vector Vector::cross(const VectorAgnostic& v) const{
     }
 }
 
+Vector Vector::operator-() const{
+    return (*this)*(-1);
+}
+
 Vector Vector::operator*(Scalar s) const{
     Vector v(*this);
     v *= s;

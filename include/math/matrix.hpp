@@ -664,6 +664,8 @@ class Vector : public VectorMut<Vector>{
 
     Vector cross(const VectorAgnostic& v) const;
 
+    Vector operator-() const;
+
     Vector operator*(Scalar s) const;
     Vector operator/(Scalar s) const;
 
