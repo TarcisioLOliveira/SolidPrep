@@ -23,6 +23,7 @@
 #include "math/matrix.hpp"
 #include "utils.hpp"
 #include "meshing.hpp"
+#include "utils/basis_tensor.hpp"
 #include <memory>
 #include <set>
 
@@ -35,35 +36,31 @@ Spring::Spring(CrossSection cross_section, double thickness, gp_Dir normal, gp_D
     rot3D({normal.X(), v.X(), w.X(),
            normal.Y(), v.Y(), w.Y(),
            normal.Z(), v.Z(), w.Z()}, 3, 3),
+    rot2D_S(utils::basis_tensor_2D_inv_T(rot2D.T())),
+    rot3D_S(utils::basis_tensor_3D_inv_T(rot3D.T())),
     mat(mat),
     normal(normal),
     elem_info(elem),
     v(v), w(w), L(L), 
-    type(type){
+    type(type),
+    mmat({mat}, type, false)
+{
 
 }
 
-math::Matrix Spring::get_K(const MeshElement* const e, const gp_Pnt& p) const{
+math::Matrix Spring::get_K(const BoundaryElement* const b) const{
+    const size_t bnode_num = this->elem_info->get_boundary_nodes_per_element();
+    std::vector<gp_Pnt> points(bnode_num);
+
+    for(size_t i = 0; i < bnode_num; ++i){
+        points[i] = b->nodes[i]->point;
+    }
     if(type == utils::PROBLEM_TYPE_2D){
-
-        auto EG = mat->beam_EG_2D(e, p, this->rot2D);
-
-        math::Matrix Korig({EG[0]/L[0], 0,
-                            0, EG[1]/L[1]}, 2, 2);
-
-        return rot2D*Korig*rot2D.T();
-    } else if(type == utils::PROBLEM_TYPE_3D){
-
-        auto EG = mat->beam_EG_3D(e, p, this->rot3D);
-
-        math::Matrix Korig({EG[0]/L[0], 0, 0,
-                            0, EG[1]/L[1], 0,
-                            0, 0, EG[2]/L[2]}, 3, 3);
-
-        return rot3D*Korig*rot3D.T();
+        return b->parent->get_R_spring(this->mmat, rot2D_S, rot2D, L, thickness, points);
+    } else {
+        return b->parent->get_R_spring(this->mmat, rot3D_S, rot3D, L, thickness, points);
     }
 
-    return math::Matrix();
 }
 
 math::Matrix Spring::get_dK(const math::Matrix& S, const math::Matrix& dS) const{

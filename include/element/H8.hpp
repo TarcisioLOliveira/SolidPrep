@@ -65,7 +65,7 @@ class H8 : public MeshElementCommon3DHex<H8>{
 
     H8(ElementShape s);
 
-    virtual math::Matrix get_k(const math::Matrix& D, const double t) const override;
+    virtual math::Matrix get_k(const MultiMaterial& mat, const double t) const override;
     virtual math::Matrix get_nodal_density_gradient(gp_Pnt p) const override;
     virtual math::Matrix get_R(const math::Matrix& K, const double t, const std::vector<gp_Pnt>& points) const override;
     virtual math::Matrix get_B_base(const gp_Pnt& point) const override;

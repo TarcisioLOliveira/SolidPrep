@@ -25,6 +25,7 @@
 #include <unordered_map>
 #include "material.hpp"
 #include "math/matrix.hpp"
+#include "multimaterial.hpp"
 #include "utils.hpp"
 #include "cross_section.hpp"
 #include "element_factory.hpp"
@@ -53,11 +54,10 @@ class InternalLoads2{
     math::Vector calculate_multipliers(const std::vector<double>& u_ext, bool print = false) const;
     math::Vector get_loads() const;
 
+    void check_results(const std::vector<double>& u) const;
+
     math::Matrix get_constr(const BoundaryElement* b) const;
     math::Matrix get_constr2(const BoundaryElement* b) const;
-
-    math::Vector get_grad(const BoundaryElement* b, const math::Vector& mult) const;
-    math::Matrix get_hess(const BoundaryElement* b) const;
 
     inline math::Vector get_center() const{
         return this->center;
@@ -78,12 +78,19 @@ class InternalLoads2{
     utils::DelayedPointerView<Material> mat;
     const gp_Dir normal;
     std::vector<const BoundaryElement*> submesh;
+    double D;
 
     std::unordered_map<size_t, long> F_id_map;
 
     size_t F_total_dof;
     size_t constraint_offset;
+    size_t xc_offset;
+    size_t n_offset;
     size_t il2_offset;
+
+
+    math::Matrix Mc;
+    std::vector<bool> assume_xc;
 
     private:
     const gp_Dir v;
@@ -97,6 +104,7 @@ class InternalLoads2{
     math::Vector P_prev;
     bool inverted_calc;
     bool calculate_from_last_point;
+    MultiMaterial mmat;
     
 
     math::Vector integrate_surface_3D(const Meshing* const mesh, const std::vector<std::function<double(const math::Matrix& S, const gp_Pnt& px)>>& fn) const;

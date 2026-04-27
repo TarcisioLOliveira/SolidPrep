@@ -44,7 +44,6 @@
 #include "element/GT9.hpp"
 #include "element/TRI3.hpp"
 #include "element/Q4.hpp"
-#include "element/Q4S.hpp"
 #include "element/TET4.hpp"
 #include "element/H8.hpp"
 #include "element/TET10.hpp"
@@ -157,9 +156,6 @@ ProjectData::ProjectData(std::string project_file){
             logger::log_assert(file.good(), logger::ERROR, "file not found: {}", absolute_path);
             std::getline(file, this->element_name);
             file.close();
-        }
-        if(this->element_name == "Q4S"){
-            logger::log_assert(!this->do_shape_opt, logger::ERROR, "Q4S not supported for shape optimization as it assumes element shapes are rectangular");
         }
         this->topopt_element = projspec::ElementRegistry::get(this->element_name);
         logger::log_assert(this->topopt_element != nullptr, logger::ERROR, "element type not found: {}", this->element_name);
@@ -1001,11 +997,6 @@ std::unique_ptr<MeshElementFactory> ProjectData::get_element_type(const std::str
     } else if(name == "Q4"){
         return std::unique_ptr<MeshElementFactory>(static_cast<MeshElementFactory*>(
                     new MeshElementFactoryImpl<element::Q4>()
-                ));
-    } else if(name == "Q4S"){
-        logger::log_assert(!this->do_shape_opt, logger::ERROR, "Q4S not supported for shape optimization, as it assumes element shapes are rectangular");
-        return std::unique_ptr<MeshElementFactory>(static_cast<MeshElementFactory*>(
-                    new MeshElementFactoryImpl<element::Q4S>()
                 ));
     } else if(name == "TET4"){
         return std::unique_ptr<MeshElementFactory>(static_cast<MeshElementFactory*>(

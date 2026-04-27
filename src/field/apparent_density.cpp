@@ -268,6 +268,20 @@ void ApparentDensity::generate(){
     this->scaler = std::move(b);
 
     this->nrrd.unload();
+
+    for(auto& g:this->geoms){
+        for(auto& n:g->node_list){
+            const auto ni = this->id_pos_map.at(n->id);
+            double& v = this->nodal_densities[ni];
+
+            double vr = this->scaler[0];
+            for(size_t j = 1; j < 5; ++j){
+                vr += scaler[j]*std::pow(v, j);
+            }
+
+            v = vr;
+        }
+    }
 }
 void ApparentDensity::initialize_views(Visualization* viz){
     if(this->show){
@@ -299,12 +313,12 @@ double ApparentDensity::get(const MeshElement* e, const gp_Pnt& p) const{
         const auto n = this->id_pos_map.at(e->nodes[i]->id);
         v += Ni[i]*this->nodal_densities[n];
     }
-    double vr = this->scaler[0];
-    for(size_t j = 1; j < 5; ++j){
-        vr += scaler[j]*std::pow(v, j);
-    }
+    //double vr = this->scaler[0];
+    //for(size_t j = 1; j < 5; ++j){
+    //    vr += scaler[j]*std::pow(v, j);
+    //}
 
-    return vr;
+    return v;
 }
 
 using namespace projspec;

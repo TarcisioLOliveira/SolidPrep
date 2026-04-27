@@ -809,7 +809,7 @@ inline VectorTranspose operator*(Scalar s, VectorTransposeView&& v){
 
 class Eigen{
     public:
-    Eigen(Matrix A);
+    Eigen(Matrix A, double tol = 1e-7);
 
     Matrix square_root() const;
 

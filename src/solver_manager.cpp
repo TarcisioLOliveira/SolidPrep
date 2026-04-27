@@ -75,7 +75,7 @@ void SolverManager::calculate_displacements_global(const Meshing* const mesh, co
         if(mesh->internal_loads2 != nullptr){
             for(size_t i = 0; i < mesh->internal_loads2->size(); ++i){
                 auto& il = mesh->internal_loads2->at(i);
-                il.calculate_constraints(ui, true);
+                il.check_results(l);
             }
         }
         #pragma omp parallel for
@@ -141,6 +141,7 @@ void SolverManager::get_latest_global_displ(const Meshing* const mesh, std::vect
 }
 
 void SolverManager::update_D_matrices(const Meshing* const mesh, const std::vector<double>& density, double pc, double psi){
+    return;
     logger::quick_log("Generating constitutive matrices...");
     if(density.size() == 0 && this->D_matrices.size() > 0 && !this->force_update_materials){
         return;
@@ -270,52 +271,36 @@ std::vector<double> SolverManager::calculate_reactions(const Meshing* const mesh
     const size_t k_size    = mesh->elem_info->get_k_dimension();
     std::vector<double> f(u.size(),0);
 
-    size_t D_offset = 0;
     std::vector<long> u_pos(k_size);
     std::vector<double> F(dof);
     for(auto& g : mesh->geometries){
-        if(!g->materials.get_materials()[0]->is_homogeneous()){
-            size_t it = 0;
-            for(const auto& e:g->mesh){
-                for(size_t i = 0; i < node_num; ++i){
-                    const auto& n = e->nodes[i];
-                    for(size_t j = 0; j < dof; ++j){
-                        u_pos[i*dof + j] = n->u_pos[j];
-                    }
-                }
-                const auto& D = this->D_matrices[D_offset + it];
-                const math::Matrix k = e->get_k(D, t);
-                ++it;
-                for(size_t i = 0; i < k_size; ++i){
-                    for(size_t j = 0; j < k_size; ++j){
-                        if(u_pos[i] > -1 && u_pos[j] > -1){
-                            const double val = k(i, j)*u[u_pos[j]];
-                            f[u_pos[i]] += val;
-                            F[i % dof] += val;
-                        }
-                    }                    
+        std::vector<math::Matrix> k(g->mesh.size());
+        #pragma omp parallel for
+        for(size_t i = 0; i < g->mesh.size(); ++i){
+            const auto& e = g->mesh[i];
+            k[i] = e->get_k(g->materials, t);
+        }
+
+        for(size_t ei = 0; ei < g->mesh.size(); ++ei){
+            const auto& e = g->mesh[ei];
+            for(size_t i = 0; i < node_num; ++i){
+                const auto& n = e->nodes[i];
+                for(size_t j = 0; j < dof; ++j){
+                    u_pos[i*dof + j] = n->u_pos[j];
                 }
             }
-            D_offset += g->mesh.size();
-        } else {
-            const auto D = g->materials.get_D(g->mesh.front().get(), g->mesh.front()->get_centroid());
-            for(auto& e : g->mesh){
-                for(size_t i = 0; i < node_num; ++i){
-                    const auto& n = e->nodes[i];
-                    for(size_t j = 0; j < dof; ++j){
-                        u_pos[i*dof + j] = n->u_pos[j];
+            const auto& ke = k[ei];
+            for(size_t i = 0; i < k_size; ++i){
+                if(u_pos[i] < 0){
+                    continue;
+                }
+                for(size_t j = 0; j < k_size; ++j){
+                    if(u_pos[j] > -1){
+                        const double val = ke(i, j)*u[u_pos[j]];
+                        f[u_pos[i]] += val;
+                        F[i % dof] += val;
                     }
-                }
-                const math::Matrix k = e->get_k(D, t);
-                for(size_t i = 0; i < k_size; ++i){
-                    for(size_t j = 0; j < k_size; ++j){
-                        if(u_pos[i] > -1 && u_pos[j] > -1){
-                            const double val = k(i, j)*u[u_pos[j]];
-                            f[u_pos[i]] += val;
-                            F[i % dof] += val;
-                        }
-                    }                    
-                }
+                }                    
             }
         }
     }

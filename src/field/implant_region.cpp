@@ -33,6 +33,7 @@ ImplantRegion::ImplantRegion(const projspec::DataMap& data):
     min_str(a[0]),
     a_orig(a),
     a_len(a.size()),
+    NODES_PER_ELEM(elem_info->get_nodes_per_element()),
     show(data.get_bool("display", true))
 {
     
@@ -152,34 +153,51 @@ double ImplantRegion::get(const MeshElement* e, const gp_Pnt& p) const{
 
         return m*rho;
     } else {
-        return this->frozen_values[this->elem_id_to_value.at(e->id)];
+        const auto Ni = e->get_Ni_1dof(p);
+        double v = 0;
+        for(size_t i = 0; i < NODES_PER_ELEM; ++i){
+            const auto n = this->id_pos_map.at(e->nodes[i]->id);
+            v += Ni[i]*this->frozen_values[n];
+        }
+        return v;
     }
 }
 
 
-void ImplantRegion::freeze(std::vector<double>& current_values, std::vector<double>& maximum_values){
-    this->frozen = true;
-
-    size_t elem_num = 0;
-    for(const auto& g:this->geoms){
-        elem_num += g->mesh.size();
-    }
-    current_values.resize(elem_num);
-    maximum_values.resize(elem_num);
-    this->frozen_values.resize(elem_num);
-    size_t id = 0;
-    for(const auto& g:this->geoms){
-        for(const auto& e:g->mesh){
-            const auto c = e->get_centroid();
-            maximum_values[id] = this->density_field->get(e.get(), c);
-            const auto m = this->get_implant_multiplier(c);
-            current_values[id] = m*maximum_values[id];
-            this->frozen_values[id] = current_values[id];
-            this->elem_id_to_value[e->id] = id;
-
-            ++id;
+void ImplantRegion::freeze(std::vector<double>& current_values){
+    std::set<size_t> node_ids;
+    for(auto& g:this->geoms){
+        for(auto& n:g->node_list){
+            node_ids.insert(n->id);
         }
     }
+    size_t new_id = 0;
+    for(auto& n:node_ids){
+        id_pos_map[n] = new_id;
+        ++new_id;
+    }
+    this->frozen_values.resize(new_id, 0);
+
+
+    std::map<const Node*, const MeshElement*> node_to_elem;
+    for(auto& g:this->geoms){
+        for(auto& e:g->mesh){
+            for(size_t i = 0; i < NODES_PER_ELEM; ++i){
+                node_to_elem[e->nodes[i]] = e.get();
+            }
+        }
+    }
+
+    current_values.resize(new_id);
+    this->frozen_values.resize(new_id);
+    for(const auto& p:node_to_elem){
+        const auto id = this->id_pos_map[p.first->id];
+        const auto val = this->get(p.second, p.first->point);
+        this->frozen_values[id] = val;
+        current_values[id] = val;
+    }
+
+    this->frozen = true;
 }
 
 using namespace projspec;

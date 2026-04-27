@@ -28,7 +28,6 @@
 #include <gmsh.h>
 #include <petsc.h>
 #include "meshing/gmsh.hpp"
-#include "utils/basis_tensor.hpp"
 #include "visualization.hpp"
 #include <string>
 #include <chrono>
@@ -50,6 +49,9 @@ int main(int argc, char* argv[]){
     
     int mpi_id = 0;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi_id);
+
+    const size_t OMP_NUM = omp_get_max_threads();
+    //logger::quick_log("OMP MAX THREADS", OMP_NUM);
 
 #ifdef USE_BLIS
     bli_init();
@@ -94,6 +96,8 @@ int main(int argc, char* argv[]){
     // May be removed to use Gmsh with MPI
     if(mpi_id == 0){
         proj->topopt_mesher->mesh(proj->forces, proj->supports, proj->springs);
+        // Workaround. Gmsh sets this to 1, for some reason.
+        omp_set_num_threads(OMP_NUM);
         //feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
         for(auto& f:proj->fields){
             if(!f->is_fea_dependent()){
@@ -405,6 +409,54 @@ int main(int argc, char* argv[]){
                     auto displ = v->add_view("Displacement",           spview::defs::ViewType::VECTOR, spview::defs::DataType::DISPLACEMENT);
                     auto force = v->add_view("Force",           spview::defs::ViewType::VECTOR, spview::defs::DataType::OTHER);
                     auto react = v->add_view("Reactions",           spview::defs::ViewType::VECTOR, spview::defs::DataType::OTHER);
+
+                    for(const auto& s:proj->supports){
+                        std::set<const MeshNode*> snodes;
+                        math::Vector rf(3);
+                        for(const auto& n:proj->topopt_mesher->boundary_node_list){
+                            if(s.S.is_inside(n->point)){
+                                for(size_t i = 0; i < 3; ++i){
+                                    rf[i] += reactions[n->id*3 + i];
+                                }
+                            }
+                        }
+                        logger::quick_log("SUPPORT REACTION");
+                        logger::quick_log(rf);
+                    }
+
+                    for(const auto& s:proj->internal_loads2){
+                        std::set<const MeshNode*> snodes;
+                        for(const auto& e:s.submesh){
+                            for(size_t i = 0; i < 3; ++i){
+                                snodes.insert(e->nodes[i]);
+                            }
+                        }
+                        math::Vector rf(3);
+                        for(const auto& n:snodes){
+                            for(size_t i = 0; i < 3; ++i){
+                                rf[i] += reactions[n->id*3 + i];
+                            }
+                        }
+                        logger::quick_log("IL2 REACTION");
+                        logger::quick_log(rf);
+                    }
+
+                    for(const auto& s:proj->springs){
+                        std::set<const MeshNode*> snodes;
+                        for(const auto& e:s.submesh){
+                            for(size_t i = 0; i < 3; ++i){
+                                snodes.insert(e->nodes[i]);
+                            }
+                        }
+                        math::Vector rf(3);
+                        for(const auto& n:snodes){
+                            for(size_t i = 0; i < 3; ++i){
+                                rf[i] += reactions[n->id*3 + i];
+                            }
+                        }
+                        logger::quick_log("SPRING REACTION");
+                        logger::quick_log(rf);
+                    }
 
                     for(auto& f:proj->fields){
                         f->initialize_views(v.get());

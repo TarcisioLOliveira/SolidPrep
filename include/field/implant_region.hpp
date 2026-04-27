@@ -44,7 +44,7 @@ class ImplantRegion : public ScalarField {
         return Class::IMPLANT_REGION;
     }
 
-    void freeze(std::vector<double>& current_values, std::vector<double>& maximum_values);
+    void freeze(std::vector<double>& current_values);
 
     inline void set_values(const std::vector<double>& new_vals){
         if(this->frozen){
@@ -83,6 +83,9 @@ class ImplantRegion : public ScalarField {
     bool frozen = false;
     std::vector<double> frozen_values;
     std::map<size_t, size_t> elem_id_to_value;
+    std::map<size_t, size_t> id_pos_map;
+
+    const size_t NODES_PER_ELEM;
     //
 
     Visualization* viz;

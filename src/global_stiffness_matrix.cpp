@@ -34,9 +34,10 @@ GlobalStiffnessMatrix::GlobalStiffnessMatrix(const FiniteElement::ContactData& d
     }
 
 void GlobalStiffnessMatrix::generate_base(const Meshing * const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<math::Matrix>& D_cache, const std::vector<double>& u_ext, const std::vector<double>& lambda, const FiniteElement::ContactType type){
-    size_t D_offset = 0;
-    (void)lambda;
-    (void)l_num;
+    //size_t D_offset = 0;
+    (void) lambda;
+    (void) l_num;
+    (void) D_cache;
 
     /*
     size_t L = u_size;
@@ -48,12 +49,12 @@ void GlobalStiffnessMatrix::generate_base(const Meshing * const mesh, const size
     }
     */
     for(auto& g : mesh->geometries){
-        if((topopt && g->do_topopt) || !g->materials.get_materials()[0]->is_homogeneous()){
-            this->add_geometry(mesh, node_positions, g, D_offset, D_cache);
-            D_offset += g->mesh.size();
-        } else {
-            this->add_geometry(mesh, node_positions, g);
-        }
+        //if((topopt && g->do_topopt) || !g->materials.get_materials()[0]->is_homogeneous()){
+        //    this->add_geometry(mesh, node_positions, g, D_offset, D_cache);
+        //    D_offset += g->mesh.size();
+        //} else {
+        this->add_geometry(mesh, node_positions, g);
+        //}
     }
     if(mesh->springs->size() > 0){
         this->add_springs(mesh, node_positions);
@@ -109,7 +110,8 @@ void GlobalStiffnessMatrix::generate_base(const Meshing * const mesh, const size
             const size_t dof      = mesh->elem_info->get_dof_per_node();
             const size_t node_num = mesh->elem_info->get_nodes_per_element();
             const size_t s_size   = mesh->elem_info->get_D_dimension();
-            //const size_t il2_num  = mesh->internal_loads2->size();
+            const auto prob_type = mesh->elem_info->get_problem_type();
+            const size_t dim = (prob_type == utils::PROBLEM_TYPE_2D) ? 2 : 3;
 
             std::vector<long> u_pos(dof*node_num);
             std::vector<long> f_pos(dof*node_num);
@@ -118,27 +120,33 @@ void GlobalStiffnessMatrix::generate_base(const Meshing * const mesh, const size
             math::Matrix M(s_size, u_pos.size(), 1);
             math::Matrix F(u_pos.size(), u_pos.size(), 1);
             for(const auto& il:*(mesh->internal_loads2)){
-                for(size_t i = 0; i < 6; ++i){
+                for(size_t i = 0; i < s_size; ++i){
                     s_pos[i] = il.constraint_offset + i;
                     s_pos2[i] = il.constraint_offset + s_size + i;
                 }
                 for(const auto& b:il.submesh){
                     for(size_t i = 0; i < node_num; ++i){
                         const auto& n = b->parent->nodes[i];
-                        const size_t f_id = il.F_id_map.at(n->id);
+                        const auto f_id = il.F_id_map.at(n->id);
                         for(size_t j = 0; j < dof; ++j){
                             const size_t p = n->id*dof + j;
                             u_pos[i*dof + j] = node_positions[p];
                         }
-                        for(size_t j = 0; j < dof; ++j){
-                            const size_t fp = f_id*dof + j;
-                            f_pos[i*dof + j] = il.il2_offset + fp;
+                        if(f_id >= 0){
+                            for(size_t j = 0; j < dof; ++j){
+                                const size_t fp = f_id*dof + j;
+                                f_pos[i*dof + j] = il.il2_offset + fp;
+                            }
+                        } else {
+                            for(size_t j = 0; j < dof; ++j){
+                                f_pos[i*dof + j] = -1;
+                            }
                         }
                     }
                     this->reserve_element_matrix(F, f_pos);
                     //this->reserve_block_symmetric(F, u_pos, f_pos);
                     //this->reserve_block_symmetric(M, s_pos, u_pos);
-                    this->reserve_block_symmetric(M, s_pos2, u_pos);
+                    //this->reserve_block_symmetric(M, s_pos2, u_pos);
                 }
             }
         }
@@ -148,18 +156,39 @@ void GlobalStiffnessMatrix::generate_base(const Meshing * const mesh, const size
         const size_t dof      = mesh->elem_info->get_dof_per_node();
         const size_t node_num = mesh->elem_info->get_nodes_per_element();
         const size_t s_size   = mesh->elem_info->get_D_dimension();
-        //const auto prob_type = mesh->elem_info->get_problem_type();
-        //const size_t dim = (prob_type == utils::PROBLEM_TYPE_2D) ? 2 : 3;
+        const auto prob_type = mesh->elem_info->get_problem_type();
+        const size_t dim = (prob_type == utils::PROBLEM_TYPE_2D) ? 2 : 3;
 
         std::vector<long> u_pos(dof*node_num);
         std::vector<long> f_pos(dof*node_num);
         std::vector<long> s_pos(s_size);
         std::vector<long> s_pos2(s_size);
+        std::vector<long> c_pos(dim);
+        std::vector<long> cs_pos(dim);
+        std::vector<long> n_pos(1);
         for(const auto& il:*(mesh->internal_loads2)){
-            for(size_t i = 0; i < 6; ++i){
+            const math::Matrix n({il.normal.X(), il.normal.Y(), il.normal.Z()}, 1, 3);
+
+            size_t coord_id = 0;
+            for(size_t i = 0; i < dim; ++i){
+                if(!il.assume_xc[i]){
+                    c_pos[i] = il.xc_offset + coord_id;
+                    ++coord_id;
+                } else {
+                    c_pos[i] = -1;
+                }
+                cs_pos[i] = il.constraint_offset;
+            }
+            cs_pos[0] += 0;
+            cs_pos[1] += 1;
+            cs_pos[2] += 3;
+            n_pos[0] = il.n_offset;
+            for(size_t i = 0; i < s_size; ++i){
                 s_pos[i] = il.constraint_offset + i;
                 s_pos2[i] = il.constraint_offset + s_size + i;
             }
+            this->insert_block_symmetric(il.Mc, cs_pos, c_pos);
+            this->insert_block_symmetric(n, n_pos, c_pos);
             for(const auto& b:il.submesh){
                 for(size_t i = 0; i < node_num; ++i){
                     const auto& n = b->parent->nodes[i];
@@ -184,11 +213,11 @@ void GlobalStiffnessMatrix::generate_base(const Meshing * const mesh, const size
                 const auto K = il.get_K_mat(b);
                 const auto F = il.get_F_mat(b);
                 const auto M = il.get_constr(b);
-                const auto M2 = il.get_constr2(b);
+                //const auto M2 = il.get_constr2(b);
                 this->insert_element_matrix(K, f_pos);
                 this->insert_block_symmetric(F, u_pos, f_pos);
                 this->insert_block_symmetric(M, s_pos, f_pos);
-                this->insert_block_symmetric(M2, s_pos2, u_pos);
+                //this->insert_block_symmetric(M2, s_pos2, u_pos);
             }
         }
     }
@@ -204,8 +233,19 @@ void GlobalStiffnessMatrix::add_geometry(const Meshing* const mesh, const std::v
     const size_t dof      = mesh->elem_info->get_dof_per_node();
     const size_t node_num = mesh->elem_info->get_nodes_per_element();
     std::vector<long> u_pos(dof*node_num);
-    const auto D = g->materials.get_D(g->mesh.front().get(), g->mesh.front()->get_centroid());
-    for(auto& e : g->mesh){
+
+    std::vector<math::Matrix> ke(g->mesh.size());
+
+    // TODO: topopt support
+    #pragma omp parallel for
+    for(size_t i = 0; i < g->mesh.size(); ++i){
+        const auto& e = g->mesh[i];
+
+        ke[i] = e->get_k(g->materials, t);
+    }
+
+    for(size_t i = 0; i < g->mesh.size(); ++i){
+        const auto& e = g->mesh[i];
         for(size_t i = 0; i < node_num; ++i){
             const auto& n = e->nodes[i];
             for(size_t j = 0; j < dof; ++j){
@@ -213,8 +253,7 @@ void GlobalStiffnessMatrix::add_geometry(const Meshing* const mesh, const std::v
                 u_pos[i*dof + j] = node_positions[p];
             }
         }
-        math::Matrix k(e->get_k(D, t));
-        this->insert_element_matrix(k, u_pos);
+        this->insert_element_matrix(ke[i], u_pos);
     }
 }
 
@@ -224,7 +263,10 @@ void GlobalStiffnessMatrix::add_geometry(const Meshing* const mesh, const std::v
     const size_t node_num = mesh->elem_info->get_nodes_per_element();
     std::vector<long> u_pos(dof*node_num);
 
-    size_t it = 0;
+    (void) D_offset;
+    (void) D_cache;
+
+    //size_t it = 0;
     for(const auto& e:g->mesh){
         for(size_t i = 0; i < node_num; ++i){
             const auto& n = e->nodes[i];
@@ -233,10 +275,10 @@ void GlobalStiffnessMatrix::add_geometry(const Meshing* const mesh, const std::v
                 u_pos[i*dof + j] = node_positions[p];
             }
         }
-        const auto& D = D_cache[D_offset + it];
-        const math::Matrix k(e->get_k(D, t));
+        //const auto& D = D_cache[D_offset + it];
+        math::Matrix k(e->get_k(g->materials, t));
         this->insert_element_matrix(k, u_pos);
-        ++it;
+        //++it;
     }
 }
 
@@ -248,13 +290,9 @@ void GlobalStiffnessMatrix::add_springs(const Meshing * const mesh, const std::v
 
     std::vector<gp_Pnt> points(bnode_num);
     for(size_t it = 0; it < mesh->springs->size(); ++it){
-        for(const auto& b : mesh->springs->at(it).submesh){
-            const auto c = b->get_centroid(bnode_num);
-            const auto& K = mesh->springs->at(it).get_K(b->parent, c);
+        const auto& s = mesh->springs->at(it);
+        for(const auto& b : s.submesh){
             const auto& e = b->parent;
-            for(size_t i = 0; i < bnode_num; ++i){
-                points[i] = b->nodes[i]->point;
-            }
             for(size_t i = 0; i < node_num; ++i){
                 const auto& n = e->nodes[i];
                 for(size_t j = 0; j < dof; ++j){
@@ -262,7 +300,7 @@ void GlobalStiffnessMatrix::add_springs(const Meshing * const mesh, const std::v
                     u_pos[i*dof + j] = node_positions[p];
                 }
             }
-            const math::Matrix R(e->get_R(K, mesh->thickness, points));
+            const math::Matrix R(s.get_K(b));
             this->insert_element_matrix(R, u_pos);
         }
     }
@@ -303,33 +341,6 @@ void GlobalStiffnessMatrix::add_nonlinear_bcs(const Meshing * const mesh, const 
             this->insert_element_matrix(R, u_pos);
         }
     }
-
-    // // Internal loads 2
-    // if(mesh->internal_loads2->size() > 0){
-    //     const size_t dof      = mesh->elem_info->get_dof_per_node();
-    //     const size_t node_num = mesh->elem_info->get_nodes_per_element();
-
-    //     std::vector<long> u_pos(dof*node_num + 6);
-    //     const size_t il_offset = mesh->load_vector[0].size() - mesh->internal_loads2->size()*6;
-    //     size_t il_id = 0;
-    //     for(const auto& il:*(mesh->internal_loads2)){
-    //         for(size_t i = 0; i < 6; ++i){
-    //             u_pos[dof*node_num + i] = il_offset + 6*il_id + i;
-    //         }
-    //         for(const auto& b:il.submesh){
-    //             for(size_t i = 0; i < node_num; ++i){
-    //                 const auto& n = b->parent->nodes[i];
-    //                 for(size_t j = 0; j < dof; ++j){
-    //                     const size_t p = n->id*dof + j;
-    //                     u_pos[i*dof + j] = node_positions[p];
-    //                 }
-    //             }
-    //             const auto M = il.get_hess(b);
-    //             this->insert_element_matrix(M, u_pos);
-    //         }
-    //         ++il_id;
-    //     }
-    // }
 }
 
 void GlobalStiffnessMatrix::append_Ku_nl_bcs(const Meshing* const mesh, const std::vector<long>& node_positions, const std::vector<double>& u_ext, std::vector<double>& Ku) const{
@@ -367,37 +378,6 @@ void GlobalStiffnessMatrix::append_Ku_nl_bcs(const Meshing* const mesh, const st
             }
         }
     }
-
-    // // Internal loads 2
-    // if(mesh->internal_loads2->size() > 0){
-    //     //const size_t dof      = mesh->elem_info->get_dof_per_node();
-    //     //const size_t node_num = mesh->elem_info->get_nodes_per_element();
-
-    //     const size_t il_offset = mesh->load_vector[0].size() - mesh->internal_loads2->size()*6;
-    //     size_t il_id = 0;
-    //     for(const auto& il:*(mesh->internal_loads2)){
-    //         const auto mult = il.calculate_multipliers(u_ext);
-    //         //for(const auto& b:il.submesh){
-    //         //    const math::Vector Kue(il.get_grad(b, mult));
-    //         //    for(size_t i = 0; i < node_num; ++i){
-    //         //        for(size_t j = 0; j < dof; ++j){
-    //         //            const size_t p = b->parent->nodes[i]->id*dof + j;
-    //         //            const auto pos = node_positions[p];
-    //         //            if(pos >= 0){
-    //         //                Ku[pos] += Kue[i*dof + j];
-    //         //            }
-    //         //        }
-    //         //    }
-    //         //    for(size_t i = 0; i < 6; ++i){
-    //         //        Ku[il_offset + 6*il_id + i] += Kue[dof*node_num + i];
-    //         //    }
-    //         //}
-    //         for(size_t i = 0; i < 6; ++i){
-    //             Ku[il_offset + 6*il_id + i] += mult[i];
-    //         }
-    //         ++il_id;
-    //     }
-    // }
 }
 
 void GlobalStiffnessMatrix::append_dKu_nl_bcs(const Meshing* const mesh, const std::vector<long>& node_positions, const std::vector<double>& u_ext, const std::vector<double>& du_ext, const std::vector<double>& du, std::vector<double>& Ku) const{
@@ -435,62 +415,6 @@ void GlobalStiffnessMatrix::append_dKu_nl_bcs(const Meshing* const mesh, const s
             }
         }
     }
-
-    // // Internal loads 2
-    // if(mesh->internal_loads2->size() > 0){
-    //     const size_t dof      = mesh->elem_info->get_dof_per_node();
-    //     const size_t node_num = mesh->elem_info->get_nodes_per_element();
-
-    //     const size_t il_offset = mesh->load_vector[0].size() - mesh->internal_loads2->size()*6;
-    //     size_t il_id = 0;
-    //     math::Vector duv_ext(dof*node_num + 6);
-    //     for(const auto& il:*(mesh->internal_loads2)){
-    //         // for(size_t i = 0; i < 6; ++i){
-    //         //     duv_ext[dof*node_num + i] = du[il_offset + il_id*6 + i];
-    //         // }
-    //         // for(const auto& b:il.submesh){
-    //         //     math::VectorSliceGeneralView duv(du_ext, math::slicer::from_node_upos(b->parent->nodes, node_num, dof));
-    //         //     for(size_t i = 0; i < dof*node_num; ++i){
-    //         //         duv_ext[i] = duv[i];
-    //         //     }
-    //         //     const math::Vector Kue(il.get_hess(b)*duv_ext);
-    //         //     for(size_t i = 0; i < node_num; ++i){
-    //         //         for(size_t j = 0; j < dof; ++j){
-    //         //             const size_t p = b->parent->nodes[i]->id*dof + j;
-    //         //             const auto pos = node_positions[p];
-    //         //             if(pos >= 0){
-    //         //                 Ku[pos] += Kue[i*dof + j];
-    //         //             }
-    //         //         }
-    //         //     }
-    //         //     for(size_t i = 0; i < 6; ++i){
-    //         //         Ku[il_offset + 6*il_id + i] += Kue[dof*node_num + i];
-    //         //     }
-    //         // }
-    //         (void) il;
-    //         for(size_t i = 0; i < 6; ++i){
-    //             Ku[il_offset + 6*il_id + i] += du[il_offset + il_id*6 + i];
-    //         }
-    //         ++il_id;
-    //     }
-    // }
-}
-
-void GlobalStiffnessMatrix::append_il2_f(const Meshing* const mesh, std::vector<double>& f) const{
-    // Internal loads 2
-    //if(mesh->internal_loads2->size() > 0){
-    //    //const size_t dof      = mesh->elem_info->get_dof_per_node();
-    //    //const size_t node_num = mesh->elem_info->get_nodes_per_element();
-
-    //    size_t il_id = 0;
-    //    for(const auto& il:*(mesh->internal_loads2)){
-    //        const auto mult = il.get_loads();
-    //        for(size_t i = 0; i < 6; ++i){
-    //            f[mesh->il2_offset+ 6*il_id + i] += mult[i];
-    //        }
-    //        ++il_id;
-    //    }
-    //}
 }
 
 void GlobalStiffnessMatrix::calculate_dimensions(const Meshing* const mesh, const std::vector<long>& node_positions, const size_t matrix_width){

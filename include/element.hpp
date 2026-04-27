@@ -31,6 +31,7 @@
 
 class BoundaryElement;
 class InternalLoads2;
+class MultiMaterial;
 
 /**
  * Basic node superclass.
@@ -333,6 +334,11 @@ class MeshElement : public Element{
 
     virtual math::Vector stress_to_force(const math::Matrix& D, const gp_Dir& n, const math::Vector& ue, const double t, const std::vector<gp_Pnt>& points) const = 0;
 
+
+    virtual math::Matrix internal_loads_hess(const math::Vector& c, const math::Matrix& Rm, const math::Matrix& RD, const math::Matrix& D, const gp_Dir& n, const std::vector<gp_Pnt>& bounds) const = 0;
+
+    virtual math::Matrix constraint_matrix_alt(const math::Vector& c, const math::Matrix& Rm, const std::vector<gp_Pnt>& bounds) const = 0;
+
     /**
      * Creates and returns the elemental stiffness matrix.
      *
@@ -341,40 +347,11 @@ class MeshElement : public Element{
      *
      * @return Internal loads evaluated matrix at a point p.
      */
-    virtual math::Matrix internal_loads_matrix(const gp_Pnt& p, const math::Vector& c, const math::Matrix& Rm, const math::Matrix& RD) const = 0;
+    virtual math::Matrix constraint_matrix(const math::Vector& c, const math::Matrix& Rm, const math::Matrix& RD, const MultiMaterial& mat, const std::vector<gp_Pnt>& bounds) const = 0;
 
-    virtual math::Matrix constraint_matrix_alt(const math::Vector& c, const math::Matrix& Rm, const std::vector<gp_Pnt>& bounds) const = 0;
+    virtual math::Vector calculate_internal_loads(const math::Vector& c, const math::Matrix& Rm, const math::Matrix& RD, const MultiMaterial& mat, const gp_Dir& n, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds) const = 0;
 
-    virtual math::Matrix constraint_matrix(const math::Vector& c, const math::Matrix& Rm, const math::Matrix& RD, const math::Matrix& D, const std::vector<gp_Pnt>& bounds) const = 0;
-
-    virtual math::Vector calculate_internal_loads(const math::Vector& c, const math::Matrix& Rm, const math::Matrix& RD, const math::Matrix& D, const gp_Dir& n, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds) const = 0;
-
-    virtual math::Matrix il2_strain_matrix(const math::Vector& c, const math::Matrix& Rm, const math::Matrix& RD, const math::Matrix& D, const std::vector<gp_Pnt>& bounds) const = 0;
-
-    virtual math::Matrix il2_param_load(const math::Vector& c, const math::Matrix& Rm, const math::Matrix& RD, const math::Matrix& D, const gp_Dir& n, const std::vector<gp_Pnt>& bounds) const = 0;
-
-    virtual math::Vector il2_strain_load(const math::Vector& c, const math::Matrix& Rm, const math::Matrix& RD, const math::Matrix& D, const math::Vector& base_strain, const std::vector<gp_Pnt>& bounds) const = 0;
-
-    virtual math::Vector internal_loads_grad(const math::Vector& mult, const math::Vector& c, const math::Matrix& RD, const math::Matrix& Rt, const math::Matrix& D, const std::vector<gp_Pnt>& bounds) const = 0;
-
-    virtual math::Matrix internal_loads_hess(const math::Vector& c, const math::Matrix& Rm, const math::Matrix& RD, const math::Matrix& D, const gp_Dir& n, const std::vector<gp_Pnt>& bounds) const = 0;
-
-    inline math::Matrix il2_M(const gp_Pnt& p, const math::Vector& c, const math::Matrix& Rm) const {
-        const math::Vector pv({p.X(), p.Y(), p.Z()});
-        const math::Vector p2 = Rm*pv - c;
-        const double x = p2[0];
-        const double y = p2[1];
-        const math::Matrix M({
-             0, 0, 0, 0, 0,  0,
-             0, 0, 0, 0, 0,  0,
-             1, 0, 0, x, y,  0,
-             0, 0, 0, 0, 0,  0,
-             0, 0, x*x, 0, 0, -y,
-             0, y*y, 0, 0, 0,  x
-        }, 6, 6);
-
-        return M;
-    }
+    virtual math::Matrix il2_F(const math::Matrix& RS, const MultiMaterial& mat, const std::vector<gp_Pnt>& bounds, double t) const = 0;
 
     /**
      * Creates and returns the elemental stiffness matrix.
@@ -385,6 +362,7 @@ class MeshElement : public Element{
      * @return The element stiffness matrix.
      */
     virtual math::Matrix get_k(const math::Matrix& D, const double t) const = 0;
+    virtual math::Matrix get_k(const MultiMaterial& mat, const double t) const = 0;
     /**
      * Creates and returns the elemental Robin matrix.
      *
@@ -394,6 +372,7 @@ class MeshElement : public Element{
      * @return The element stiffness matrix.
      */
     virtual math::Matrix get_R(const math::Matrix& K, const double t, const std::vector<gp_Pnt>& points) const = 0;
+    virtual math::Matrix get_R_spring(const MultiMaterial& mat, const math::Matrix RS, const math::Matrix Rm, const std::array<double, 3> L, const double t, const std::vector<gp_Pnt>& points) const = 0;
     /**
      * Creates and returns the elemental Robin matrix (contact spring).
      *

@@ -1493,7 +1493,7 @@ std::ostream& operator<<(std::ostream& output, const VectorAgnostic& v){
 /////////////////////////////////// EIGEN /////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-Eigen::Eigen(Matrix A):
+Eigen::Eigen(Matrix A, double tol):
     eigenvectors(A.get_H(), A.get_W()), eigenvalues(A.get_W()){
 
     logger::log_assert(A.get_H() == A.get_W(), logger::ERROR,
@@ -1513,7 +1513,7 @@ Eigen::Eigen(Matrix A):
         fedisableexcept(FE_ALL_EXCEPT);
     }
 
-    int info = LAPACKE_dsyevr(LAPACK_ROW_MAJOR, 'V', 'A', 'L', N, A.data(), N, 0, 0, 0, 0, 1e-14, &M,
+    int info = LAPACKE_dsyevr(LAPACK_ROW_MAJOR, 'V', 'A', 'L', N, A.data(), N, 0, 0, 0, 0, tol, &M,
          eigenvalues.data(), eigenvectors.data(), N, ISUPPZ.data());
 
 

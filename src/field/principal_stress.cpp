@@ -172,6 +172,21 @@ void PrincipalStress::generate(){
 
         fem->calculate_displacements_global(mesh, mesh->load_vector, u_tmp);
 
+        double c = 0;
+        for(const auto& g:proj_data->geometries){
+            const auto t = mesh->thickness;
+
+            #pragma omp parallel for reduction(+:c)
+            for(size_t i = 0; i < g->mesh.size(); ++i){
+                const auto& e = g->mesh[i];
+
+                const math::VectorSliceGeneralView uv(u_tmp, math::slicer::from_node_upos(e->nodes, NODES_PER_ELEM, DOF));
+                const auto K = e->get_k(g->materials, t);
+
+                c += 0.5*((K*uv).dot(uv));
+            }
+        }
+
         du = 0;
         for(size_t i = 0; i < mesh->max_dofs; ++i){
             u[i] = u_tmp[i];
@@ -179,16 +194,6 @@ void PrincipalStress::generate(){
             u_old[i] = u[i];
         }
 
-        double c = 0;
-        for(const auto& g:this->geoms){
-            for(const auto& e:g->mesh){
-                const math::VectorSliceGeneralView uv(this->u, math::slicer::from_node_upos(e->nodes, NODES_PER_ELEM, DOF));
-                const auto D = g->materials.get_D(e.get(), e->get_centroid());
-                const auto K = e->get_k(D, this->proj_data->thickness);
-
-                c += 0.5*((K*uv).dot(uv));
-            }
-        }
         //for(size_t i = 0; i < this->u.size(); ++i){
         //    c += this->u[i]*mesh->global_load_vector[i];
         //}
@@ -319,7 +324,7 @@ math::Matrix PrincipalStress::get_matrix(const MeshElement* e, const gp_Pnt& p) 
                 tensor = e->get_stress_tensor(D, p, this->u);
             }
         }
-        math::Eigen eigen(tensor);
+        math::Eigen eigen(tensor, 1e-3);
         //logger::log_assert(std::abs(eigen.eigenvectors.determinant()) > 1e-7,
         //        logger::ERROR,
         //        "eigen vector singular");
@@ -331,7 +336,7 @@ math::Matrix PrincipalStress::get_matrix(const MeshElement* e, const gp_Pnt& p) 
         for(size_t i = 0; i < DIM; ++i){
             abs_sort[i] = std::abs(eigen.eigenvalues[i]);
         }
-        std::sort(abs_sort.begin(), abs_sort.end(), std::greater<double>());
+        std::sort(abs_sort.begin(), abs_sort.end(), std::less<double>());
         std::vector<size_t> pos(DIM);
         for(size_t i = 0; i < DIM; ++i){
             for(size_t j = 0; j < DIM; ++j){

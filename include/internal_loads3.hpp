@@ -27,6 +27,7 @@
 #include "general_solver/petsc_general_pcg.hpp"
 #include "material.hpp"
 #include "math/matrix.hpp"
+#include "multimaterial.hpp"
 #include "utils.hpp"
 #include "cross_section.hpp"
 #include "element_factory.hpp"
@@ -84,6 +85,7 @@ class InternalLoads3{
     math::Vector center = math::Vector(3);
     const MeshElementFactory* elem_info;
     size_t BOUNDARY_NODE_NUM;
+    MultiMaterial mmat;
     
     void calculate_force_distribution();
 

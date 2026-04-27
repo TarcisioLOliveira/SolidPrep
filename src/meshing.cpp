@@ -241,7 +241,6 @@ void Meshing::apply_boundary_conditions(const std::vector<Force>& forces,
     this->generate_load_vector();
 
     if(internal_loads2.size() > 0){
-        logger::quick_log("internal_loads2");
         for(auto& i:internal_loads2){
             i.apply_constraints(this->load_vector[0]);
         }

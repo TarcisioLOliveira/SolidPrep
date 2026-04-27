@@ -59,15 +59,6 @@
 class ProjectData {
     public:
 
-    //enum DataType{
-    //    TYPE_NULL,
-    //    TYPE_BOOL,
-    //    TYPE_INT,
-    //    TYPE_DOUBLE,
-    //    TYPE_STRING,
-    //    TYPE_ARRAY,
-    //    TYPE_OBJECT
-    //};
     /**
      * Loads project data file.
      *

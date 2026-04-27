@@ -106,36 +106,74 @@ MarginalBoneLoss::Range MarginalBoneLoss::get_K_g (const Range& s) const{
 
 void MarginalBoneLoss::initialize_views(Visualization* viz){
     this->stress_view = viz->add_view("Von Mises Stress", spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::STRESS);
-    this->density_view = viz->add_view("Elemental Density", spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::OTHER);
-    this->growth_view = viz->add_view("Growth (Element Density)", spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::OTHER);
-    this->strain_view = viz->add_view("Microstrains", spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::OTHER);
+    this->density_view = viz->add_view("Density", spview::defs::ViewType::NODAL, spview::defs::DataType::OTHER);
+    this->growth_view = viz->add_view("Growth (Density)", spview::defs::ViewType::NODAL, spview::defs::DataType::OTHER);
+    this->strain_view = viz->add_view("Microstrains", spview::defs::ViewType::NODAL, spview::defs::DataType::OTHER);
+    this->reactions_view = viz->add_view("Reactions", spview::defs::ViewType::VECTOR, spview::defs::DataType::OTHER);
 }
 void MarginalBoneLoss::initialize(){
 
 }
 void MarginalBoneLoss::run(){
+    //size_t total_node_num = this->mesh->node_list.size();
     if(this->elem_num == 0){
         size_t id = 0;
         for(const auto& g:mesh->geometries){
             if(id == this->geom_id){
                 mand_geom_offset = elem_num;
-                density_num = g->mesh.size();
-                this->v.resize(density_num);
-                for(size_t i = 0; i < density_num; ++i){
-                    this->v[i] = g->mesh[i]->get_volume(this->mesh->thickness);
-                }
+                density_num = g->node_list.size();
+                //this->v.resize(density_num);
+                //for(size_t i = 0; i < density_num; ++i){
+                //    this->v[i] = g->mesh[i]->get_volume(this->mesh->thickness);
+                //}
             }
             elem_num += g->mesh.size();
             ++id;
         }
-        this->v_ref = std::accumulate(this->v.begin(), this->v.end(), 0.0)/density_num;
+        //this->v_ref = std::accumulate(this->v.begin(), this->v.end(), 0.0)/density_num;
     }
 
-    std::vector<double> density, max_density;
-    std::vector<double> density_vector_view(this->elem_num, std::numeric_limits<double>::quiet_NaN());
+    const auto NODES_PER_ELEM = this->proj->topopt_element->get_nodes_per_element();
+    const auto elem_shape = this->proj->topopt_element->get_shape_type();
+    const auto integ_order = this->proj->topopt_element->get_element_order();
+    const auto S_SIZE = this->proj->topopt_element->get_D_dimension();
+
+
+    std::map<const Node*, const MeshElement*> node_to_elem;
+    std::map<size_t, size_t> id_pos_map;
+    std::vector<math::Vector> nodal_strains;
+    std::vector<double> nodal_divisors;
+    {
+        size_t new_id = 0;
+        std::set<size_t> node_ids;
+        for(auto& n:this->mandible->node_list){
+            node_ids.insert(n->id);
+        }
+        for(auto& n:node_ids){
+            id_pos_map[n] = new_id;
+            ++new_id;
+        }
+    }
+    if(!(elem_shape == Element::Shape::TRI && integ_order == 1)){
+        for(auto& e:this->mandible->mesh){
+            for(size_t i = 0; i < NODES_PER_ELEM; ++i){
+                node_to_elem[e->nodes[i]] = e.get();
+            }
+        }
+    } else {
+        nodal_strains.resize(density_num, math::Vector(S_SIZE));
+        nodal_divisors.resize(density_num);
+        for(auto& e:this->mandible->mesh){
+            for(size_t i = 0; i < NODES_PER_ELEM; ++i){
+                nodal_divisors[id_pos_map[e->nodes[i]->id]] += 1;
+            }
+        }
+    }
+
+    std::vector<double> density;
     std::vector<double> stress(this->elem_num, std::numeric_limits<double>::quiet_NaN());
-    std::vector<double> growth(this->elem_num, std::numeric_limits<double>::quiet_NaN());
-    std::vector<double> strains(this->elem_num, std::numeric_limits<double>::quiet_NaN());
+    std::vector<double> growth (density_num, std::numeric_limits<double>::quiet_NaN());
+    std::vector<double> strains(density_num, std::numeric_limits<double>::quiet_NaN());
 
     std::vector<double> u(this->mesh->max_dofs);
 
@@ -155,10 +193,8 @@ void MarginalBoneLoss::run(){
         }
     }
     logger::log_assert(field != nullptr, logger::ERROR, "marginal_bone_loss simulation requires an implant_region field");
-    field->freeze(density, max_density);
-    max_density.clear();
-    std::copy(density.begin(), density.end(), density_vector_view.begin() + mand_geom_offset);
-    this->density_view->update_view(density_vector_view);
+    field->freeze(density);
+    this->density_view->update_view(density, {this->mandible->id});
 
     dir_field->set_max_it(1);
 
@@ -170,7 +206,7 @@ void MarginalBoneLoss::run(){
         logger::quick_log("");
         logger::quick_log("Time:", time_count);
 
-        this->mesh->apply_boundary_conditions(this->proj->forces, this->proj->supports, this->proj->springs, this->proj->internal_loads, this->proj->contact_springs, this->proj->internal_loads2, this->proj->internal_loads3, this->proj->sub_problems);
+        //this->mesh->apply_boundary_conditions(this->proj->forces, this->proj->supports, this->proj->springs, this->proj->internal_loads, this->proj->contact_springs, this->proj->internal_loads2, this->proj->internal_loads3, this->proj->sub_problems);
         dir_field->generate();
         this->fem->generate_matrix(this->mesh);
         this->fem->calculate_displacements_global(this->mesh, this->mesh->load_vector, u);
@@ -184,30 +220,67 @@ void MarginalBoneLoss::run(){
             this->stress_view->update_view(stress);
         }
 
-        for(size_t i = 0; i < density_num; ++i){
-            const auto& e = this->mandible->mesh[i];
-            const auto strain = 1e6*e->get_strain_vector(e->get_centroid(), u);
-            const double gi = this->get_density_variation(strain)*this->time_step;
-            const double old_d = density[i];
-            // Scale proportionally to volume
-            density[i] += gi;
-            if(density[i] < MIN_DENSITY){
-                density[i] = MIN_DENSITY;
-            } else if(density[i] > this->MAX_RHO){
-                density[i] = this->MAX_RHO;
+        if(elem_shape == Element::Shape::TRI && integ_order == 1){
+            #pragma omp parallel for
+            for(auto& v:nodal_strains){
+                v.fill(0);
             }
-            growth[this->mand_geom_offset + i] = density[i] - old_d;
-            density_vector_view[i + this->mand_geom_offset] = density[i];
-            strains[i + this->mand_geom_offset] = this->c[3]*this->LHS_3D(3, strain);
+            for(auto& e:this->mandible->mesh){
+                for(size_t i = 0; i < NODES_PER_ELEM; ++i){
+                    const auto& n = e->nodes[i];
+                    const auto id = id_pos_map[n->id];
+                    nodal_strains[id] += 1e6*e->get_strain_vector(n->point, u);
+                }
+            }
+            #pragma omp parallel for
+            for(size_t i = 0; i < density_num; ++i){
+                nodal_strains[i] /= nodal_divisors[i];
+
+                const auto& strain = nodal_strains[i];
+                const double gi = this->get_density_variation(strain)*this->time_step;
+                const double old_d = density[i];
+
+                density[i] += gi;
+                if(density[i] < MIN_DENSITY){
+                    density[i] = MIN_DENSITY;
+                } else if(density[i] > this->MAX_RHO){
+                    density[i] = this->MAX_RHO;
+                }
+                growth[i] = density[i] - old_d;
+                strains[i] = this->c[3]*this->LHS_3D(3, strain);
+            }
+        } else {
+            #pragma omp parallel for
+            for(size_t i = 0; i < density_num; ++i){
+                const auto& n = this->mandible->node_list[i];
+                const auto& e = node_to_elem[n];
+                const auto strain = 1e6*e->get_strain_vector(n->point, u);
+                const double gi = this->get_density_variation(strain)*this->time_step;
+                const double old_d = density[i];
+
+                density[i] += gi;
+                if(density[i] < MIN_DENSITY){
+                    density[i] = MIN_DENSITY;
+                } else if(density[i] > this->MAX_RHO){
+                    density[i] = this->MAX_RHO;
+                }
+                growth[n->id] = density[i] - old_d;
+                strains[n->id] = this->c[3]*this->LHS_3D(3, strain);
+            }
         }
         field->set_values(density);
-        this->density_view->update_view(density_vector_view);
+        this->density_view->update_view(density, {this->mandible->id});
 
-        this->growth_view->update_view(growth);
-        this->strain_view->update_view(strains);
+        this->growth_view->update_view(growth, {this->mandible->id});
+        this->strain_view->update_view(strains, {this->mandible->id});
 
         time_count += this->time_step;
+        
+        sleep(5);
     }
+    
+    auto reactions = proj->topopt_fea->calculate_reactions(proj->topopt_mesher.get(), u);
+    this->reactions_view->update_view(reactions);
 }
 
 double MarginalBoneLoss::get_density_variation(const StrainVector3D& eps) const{

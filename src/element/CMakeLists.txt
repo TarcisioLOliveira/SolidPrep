@@ -5,7 +5,6 @@ set(SOURCES_ELEMENT
     GT9.cpp
     TRI3.cpp
     Q4.cpp
-    Q4S.cpp
     TET4.cpp
     H8.cpp
     TET10.cpp

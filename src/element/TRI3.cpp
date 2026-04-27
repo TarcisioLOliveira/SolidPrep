@@ -51,12 +51,6 @@ TRI3::TRI3(ElementShape s):
     this->delta = 0.5*std::abs(deltaM.Determinant());
 }
 
-math::Matrix TRI3::get_k(const math::Matrix& D, const double t) const{
-    math::Matrix B(this->get_B(gp_Pnt(0,0,0)));
-
-    return (t*delta)*(B.T()*D*B);
-}
-
 math::Matrix TRI3::get_B_base(const gp_Pnt& point) const{
     (void)point;
     math::Matrix B({

@@ -103,9 +103,12 @@ void PETScPCG::solve(std::vector<double>& load){
             KSPSetInitialGuessNonzero(this->ksp, PETSC_FALSE);
         } else {
             //KSPSetTolerances(this->ksp, 1e-10, 1e-50, 1e10, 1e6);
-            KSPSetTolerances(this->ksp, 1e-5, 1e-50, 1e20, 1e6);
+            //KSPSetTolerances(this->ksp, 1e-7, 1e-50, 1e10, 7e4);
+            KSPSetTolerances(this->ksp, 1e-8, 1e-50, 1e10, 1e6);
             PCJacobiSetType(this->pc, PC_JACOBI_ROWMAX);
+            //PCJacobiSetType(this->pc, PC_JACOBI_DIAGONAL);
 
+            //KSPSetInitialGuessNonzero(this->ksp, PETSC_FALSE);
             KSPSetType(this->ksp, KSPMINRES);
 
             //KSPSetType(this->ksp, KSPSYMMLQ);
@@ -113,7 +116,7 @@ void PETScPCG::solve(std::vector<double>& load){
 
             //KSPSetType(this->ksp, KSPCGNE);
 
-            //PCSetType(this->pc, PCICC);
+            //PCSetType(this->pc, PCLU);
             //PCFactorSetLevels(this->pc, 0);
 
             //KSPSetPCSide(this->ksp, PC_RIGHT);
@@ -128,7 +131,7 @@ void PETScPCG::solve(std::vector<double>& load){
 
             //KSPSetType(this->ksp, KSPDGMRES); // Already a bit better than GMRES
             //KSPGMRESSetPreAllocateVectors(this->ksp);
-            //KSPGMRESSetRestart(this->ksp, 600);
+            //KSPGMRESSetRestart(this->ksp, 500);
             //KSPGMRESSetCGSRefinementType(this->ksp, KSP_GMRES_CGS_REFINE_IFNEEDED);
             //
             //KSPSetTolerances(this->ksp, 1e-5, 1e-50, 1e10, 1e5);
@@ -142,14 +145,10 @@ void PETScPCG::solve(std::vector<double>& load){
             //}
             //VecRestoreArray(this->u, &u_data);
 
-            //PetscViewerAndFormat *vf;
-            //PetscViewerAndFormatCreate(PETSC_VIEWER_STDOUT_WORLD, PETSC_VIEWER_DEFAULT, &vf);
-            //KSPMonitorSet(this->ksp, (PetscErrorCode (*)(KSP, PetscInt, PetscReal, void *))KSPMonitorResidual, vf, (PetscCtxDestroyFn *)PetscViewerAndFormatDestroy);
         }
-
-        // Setting this to true may make the solver diverge
-        //KSPSetInitialGuessNonzero(this->ksp, PETSC_FALSE);
-
+        //PetscViewerAndFormat *vf;
+        //PetscViewerAndFormatCreate(PETSC_VIEWER_STDOUT_WORLD, PETSC_VIEWER_DEFAULT, &vf);
+        //KSPMonitorSet(this->ksp, (PetscErrorCode (*)(KSP, PetscInt, PetscReal, void *))KSPMonitorResidual, vf, (PetscCtxDestroyFn *)PetscViewerAndFormatDestroy);
 
         //PCSetType(this->pc, PCHYPRE);
         //PCSetType(this->pc, PCKACZMARZ);

@@ -48,7 +48,7 @@ std::unique_ptr<ShapeMeshElementFactory> H8::get_shape_element_info() {
     //return std::unique_ptr<ShapeMeshElementFactory>(new ShapeMeshElementFactoryImpl<shape_element::SQ4>());
 }
 
-math::Matrix H8::get_k(const math::Matrix & D, const double t) const{
+math::Matrix H8::get_k(const MultiMaterial& mat, const double t) const{
     (void)t;
     constexpr size_t N = H8::NODES_PER_ELEM;
     std::array<double, N> x, y, z;
@@ -60,12 +60,15 @@ math::Matrix H8::get_k(const math::Matrix & D, const double t) const{
     }
 
     math::Matrix k(K_DIM, K_DIM);
-    constexpr size_t GN = 3;
+    constexpr size_t GN = 5;
     const auto& GL = utils::GaussLegendre<GN>::get();
 
     for(auto xi = GL.begin(); xi < GL.end(); ++xi){
         for(auto eta = GL.begin(); eta < GL.end(); ++eta){
             for(auto zeta = GL.begin(); zeta < GL.end(); ++zeta){
+                const auto pv = this->norm_to_nat(xi->x, eta->x, zeta->x, x, y, z);
+                const gp_Pnt pi(pv[0], pv[1], pv[2]);
+                const auto D = mat.get_D(this, pi);
                 const auto B = this->B_mat_norm(xi->x, eta->x, zeta->x, x, y, z);
                 const double detJ = this->J(xi->x, eta->x, zeta->x, x, y, z).determinant();
 

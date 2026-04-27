@@ -25,6 +25,7 @@
 #include "element_factory.hpp"
 #include "material.hpp"
 #include "math/matrix.hpp"
+#include "multimaterial.hpp"
 #include "utils.hpp"
 #include "cross_section.hpp"
 #include "utils/delayed_pointer.hpp"
@@ -41,7 +42,7 @@ class Spring{
     Spring(Spring&&) = default;
     void generate_mesh(std::vector<BoundaryElement>& boundary_elements);
 
-    math::Matrix get_K(const MeshElement* const e, const gp_Pnt& p) const;
+    math::Matrix get_K(const BoundaryElement* const b) const;
     math::Matrix get_dK(const math::Matrix& S, const math::Matrix& dS) const;
 
     const CrossSection S;
@@ -49,6 +50,8 @@ class Spring{
     const double thickness;
     const math::Matrix rot2D;
     const math::Matrix rot3D;
+    const math::Matrix rot2D_S;
+    const math::Matrix rot3D_S;
     utils::DelayedPointerView<Material> mat;
     const gp_Dir normal;
     const MeshElementFactory* elem_info;
@@ -59,6 +62,7 @@ class Spring{
     const gp_Dir w;
     const std::array<double, 3> L;
     const utils::ProblemType type;
+    MultiMaterial mmat;
 };
 
 #endif

@@ -73,6 +73,7 @@ class MarginalBoneLoss : public Simulation{
     ViewHandler* density_view = nullptr;
     ViewHandler* growth_view = nullptr;
     ViewHandler* strain_view = nullptr;
+    ViewHandler* reactions_view = nullptr;
 
     Range get_K_e1(const Range& t, const Range& c) const;
     Range get_K_e2(const Range& t, const Range& c) const;

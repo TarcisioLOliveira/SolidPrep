@@ -56,7 +56,6 @@ class TRI3 : public MeshElementCommon2DTri<TRI3>{
 
     TRI3(ElementShape s);
 
-    virtual math::Matrix get_k(const math::Matrix& D, const double t) const override;
     virtual math::Matrix get_nodal_density_gradient(gp_Pnt p) const override;
     virtual math::Matrix get_B_base(const gp_Pnt& point) const override;
 

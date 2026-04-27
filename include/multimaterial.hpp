@@ -40,6 +40,15 @@ class MultiMaterial{
         return math::Matrix();
     }
 
+    inline math::Matrix get_S(const MeshElement* e, const gp_Pnt& p) const{
+        if(this->problem_type == utils::PROBLEM_TYPE_2D){
+            return this->materials[0]->stiffness_inverse_2D(e, p);
+        } else if(this->problem_type == utils::PROBLEM_TYPE_3D){
+            return this->materials[0]->stiffness_inverse_3D(e, p);
+        }
+        return math::Matrix();
+    }
+
     void get_D(std::vector<double>::const_iterator rho, const double mix, const MeshElement* e, const gp_Pnt& p, math::Matrix& D) const;
 
     void get_gradD(std::vector<double>::const_iterator rho, const double mix, const MeshElement* e, const gp_Pnt& p, std::vector<math::Matrix>& gradD) const;
@@ -55,6 +64,11 @@ class MultiMaterial{
     inline const std::vector<utils::DelayedPointerView<Material>>& get_materials() const{
         return this->materials;
     }
+
+    void set_use_gradient(bool use, size_t rho_num);
+    void set_penalization(std::function<double(const gp_Pnt&)> f, std::function<double(const gp_Pnt&)> df);
+    void set_rho(const std::vector<double>& rho);
+    void set_psi(double psi);
 
     private:
     std::vector<utils::DelayedPointerView<Material>> materials;

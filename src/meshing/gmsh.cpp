@@ -192,20 +192,28 @@ void Gmsh::mesh(const std::vector<Force>& forces,
 
     const size_t order = this->elem_info->get_element_order();
     gmsh::option::setNumber("Mesh.ElementOrder", order);
-    //if(order > 1){
-    //    gmsh::option::setNumber("Mesh.HighOrderOptimize", 2);
-    //}
+    if(order > 1){
+        //gmsh::option::setNumber("Mesh.HighOrderDistCAD", 1);
+        //gmsh::option::setNumber("Mesh.HighOrderFixBoundaryNodes", 1);
+        //gmsh::option::setNumber("Mesh.HighOrderNumLayers", 20);
+        //gmsh::option::setNumber("Mesh.HighOrderPrimSurfMesh", 1);
+        //gmsh::option::setNumber("Mesh.HighOrderCurveOuterBL", 1);
+        //gmsh::option::setNumber("Mesh.HighOrderThresholdMin", 0.1);
+        //gmsh::option::setNumber("Mesh.HighOrderThresholdMax", 2);
+
+        //gmsh::option::setNumber("Mesh.HighOrderOptimize", 3);
+    }
     //gmsh::option::setNumber("Mesh.Optimize", 1);
     //gmsh::option::setNumber("Mesh.OptimizeNetgen", 1);
-    gmsh::option::setNumber("Mesh.OptimizeThreshold", 0.3);
-    gmsh::option::setNumber("Geometry.Tolerance", 1e-4);
-    gmsh::option::setNumber("Mesh.Smoothing", 200);
+    gmsh::option::setNumber("Mesh.OptimizeThreshold", 0.5);
+    gmsh::option::setNumber("Geometry.Tolerance", 1e-6);
+    gmsh::option::setNumber("Mesh.Smoothing", 300);
     gmsh::option::setNumber("Mesh.AnisoMax", 1e1);
-    gmsh::option::setNumber("Mesh.AllowSwapAngle", 90);
+    gmsh::option::setNumber("Mesh.AllowSwapAngle", 10);
     gmsh::option::setNumber("Mesh.RandomFactor", 1e-7);
-    gmsh::option::setNumber("Mesh.RefineSteps", 100);
+    gmsh::option::setNumber("Mesh.RefineSteps", 200);
 
-    gmsh::option::setNumber("Mesh.AngleToleranceFacetOverlap", 1);
+    gmsh::option::setNumber("Mesh.AngleToleranceFacetOverlap", 0);
     gmsh::option::setNumber("Mesh.MeshSizeExtendFromBoundary", 0);
     gmsh::option::setNumber("Mesh.MeshSizeFromPoints", 0);
     gmsh::option::setNumber("Mesh.MeshSizeFromCurvature", this->size_from_curvature);
@@ -214,8 +222,8 @@ void Gmsh::mesh(const std::vector<Force>& forces,
 
     //gmsh::option::setNumber("General.Verbosity", 99);
 
-    //gmsh::option::setNumber("Geometry.OCCFixDegenerated", 1);
-    //gmsh::option::setString("Geometry.OCCTargetUnit", "mm");
+    gmsh::option::setNumber("Geometry.OCCFixDegenerated", 1);
+    gmsh::option::setString("Geometry.OCCTargetUnit", "mm");
 
     // Quad/hex recombination
     if(this->elem_info->get_shape_type() == Element::Shape::QUAD){
@@ -280,16 +288,67 @@ std::unordered_map<size_t, MeshNode*> Gmsh::gmsh_meshing(bool has_condition_insi
     std::vector<double> node_coords;
     geom_elem_mapping.resize(geometries.size(),0);
 
-    if(geometries.size() == 1){
-        gmsh::model::add("base");
-        gmsh::vectorpair vec;
-        gmsh::model::occ::importShapesNativePointer(static_cast<const void*>(&sh), vec);
-        gmsh::model::occ::synchronize();
+    gmsh::model::add("base");
+    gmsh::vectorpair vec;
+    gmsh::model::occ::importShapesNativePointer(static_cast<const void*>(&sh), vec);
+    gmsh::model::occ::removeAllDuplicates();
+    gmsh::model::occ::synchronize();
 
+    // Refine mesh close to contact boundary (optional)
+    if(this->geometries.size() > 1 && this->bound_ref.defined()){
+        //const size_t N = vec.size()-1;
+        //const size_t num_pairs = N*(N+1)/2;
+        std::vector<double> result = this->bound_ref.get_faces(vec);
+
+        gmsh::model::mesh::field::add("Distance", 1);
+        gmsh::model::mesh::field::setNumber(1, "Sampling", 100);
+        gmsh::model::mesh::field::setNumbers(1, "SurfacesList", result);
+
+        //this->contact_size = 0.2; // temp
+        gmsh::model::mesh::field::add("Threshold", 2);
+        gmsh::model::mesh::field::setNumber(2, "InField", 1);
+        gmsh::model::mesh::field::setNumber(2, "SizeMin", this->bound_ref.min_size);
+        gmsh::model::mesh::field::setNumber(2, "SizeMax", this->size);
+        gmsh::model::mesh::field::setNumber(2, "DistMin", this->bound_ref.min_dist);
+        gmsh::model::mesh::field::setNumber(2, "DistMax", this->bound_ref.max_dist);
+
+        //gmsh::model::mesh::field::add("AutomaticMeshSizeField", 3);
+        //gmsh::model::mesh::field::setNumber(3, "hMax", this->size);
+        //gmsh::model::mesh::field::setNumber(3, "hMin", 0);
+        //gmsh::model::mesh::field::setNumber(3, "nPointsPerCircle", this->size_from_curvature);
+
+        //gmsh::model::mesh::field::add("Min", 100);
+        //gmsh::model::mesh::field::setNumbers(100, "FieldsList", {2, 3});
+
+        gmsh::model::mesh::field::setAsBackgroundMesh(2);
+        // https://gitlab.onelab.info/gmsh/gmsh/blob/gmsh_4_15_0/tutorials/c++/t10.cpp#L48
+    }
+
+
+
+    if(order == 1){
+        gmsh::model::mesh::generate(2);
+        gmsh::model::mesh::optimize("Laplace2D");
+        gmsh::model::mesh::optimize("Relocate2D");
+
+        if(dim == 3){
+            gmsh::model::mesh::generate(3);
+            gmsh::model::mesh::optimize("UntangleMeshGeometry");
+            gmsh::model::mesh::optimize("Relocate3D");
+            gmsh::model::mesh::optimize();
+        }
+    } else {
         gmsh::model::mesh::generate(dim);
+        // //gmsh::model::mesh::optimize("UntangleMeshGeometry");
+        //if(dim == 3){
+        //    gmsh::model::mesh::optimize("Relocate3D");
+        //}
+        //gmsh::model::mesh::optimize("HighOrderFastCurving");
+        // //gmsh::model::mesh::optimize("HighOrderElastic");
+        // //gmsh::model::mesh::optimize("HighOrder"); //Too slow
+    }
 
-        //gmsh::write("mesh.msh");
-
+    if(geometries.size() == 1){
         std::vector<int> elem_types;
         gmsh::model::mesh::getElementTypes(elem_types);
         // Check if meshing went well
@@ -311,56 +370,7 @@ std::unordered_map<size_t, MeshNode*> Gmsh::gmsh_meshing(bool has_condition_insi
         elem_tags.clear();
         gmsh::model::mesh::getElementsByType(bound_type, elem_tags, bound_elem_node_tags);
 
-        gmsh::clear();
     } else {
-        gmsh::model::add("base");
-        gmsh::vectorpair vec;
-        gmsh::model::occ::importShapesNativePointer(static_cast<const void*>(&sh), vec);
-        gmsh::model::occ::removeAllDuplicates();
-        gmsh::model::occ::synchronize();
-
-        // Refine mesh close to contact boundary (optional)
-        if(this->geometries.size() > 1 && this->bound_ref.defined()){
-            //const size_t N = vec.size()-1;
-            //const size_t num_pairs = N*(N+1)/2;
-            std::vector<double> result = this->bound_ref.get_faces(vec);
-
-            gmsh::model::mesh::field::add("Distance", 1);
-            gmsh::model::mesh::field::setNumber(1, "Sampling", 100);
-            gmsh::model::mesh::field::setNumbers(1, "SurfacesList", result);
-
-            //this->contact_size = 0.2; // temp
-            gmsh::model::mesh::field::add("Threshold", 2);
-            gmsh::model::mesh::field::setNumber(2, "InField", 1);
-            gmsh::model::mesh::field::setNumber(2, "SizeMin", this->bound_ref.min_size);
-            gmsh::model::mesh::field::setNumber(2, "SizeMax", this->size);
-            gmsh::model::mesh::field::setNumber(2, "DistMin", this->bound_ref.min_dist);
-            gmsh::model::mesh::field::setNumber(2, "DistMax", this->bound_ref.max_dist);
-
-            //gmsh::model::mesh::field::add("AutomaticMeshSizeField", 3);
-            //gmsh::model::mesh::field::setNumber(3, "hMax", this->size);
-            //gmsh::model::mesh::field::setNumber(3, "hMin", 0);
-            //gmsh::model::mesh::field::setNumber(3, "nPointsPerCircle", this->size_from_curvature);
-
-            //gmsh::model::mesh::field::add("Min", 100);
-            //gmsh::model::mesh::field::setNumbers(100, "FieldsList", {2, 3});
-
-            gmsh::model::mesh::field::setAsBackgroundMesh(2);
-            // https://gitlab.onelab.info/gmsh/gmsh/blob/gmsh_4_15_0/tutorials/c++/t10.cpp#L48
-        }
-
-
-        gmsh::model::mesh::generate(dim);
-        if(order == 1){
-            gmsh::model::mesh::optimize();
-            gmsh::model::mesh::optimize("Relocate3D");
-            gmsh::model::mesh::optimize("UntangleMeshGeometry");
-        } else {
-            //gmsh::model::mesh::optimize();
-            gmsh::model::mesh::optimize("Relocate3D");
-            //gmsh::model::mesh::optimize("HighOrder");
-            gmsh::model::mesh::optimize("HighOrderFastCurving");
-        }
 
         std::vector<int> elem_types;
         gmsh::model::mesh::getElementTypes(elem_types);
@@ -496,9 +506,9 @@ std::unordered_map<size_t, MeshNode*> Gmsh::gmsh_meshing(bool has_condition_insi
                 }
             }
         }
-
-        gmsh::clear();
     }
+
+    gmsh::clear();
 
     gmsh::finalize();
 

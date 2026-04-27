@@ -35,6 +35,7 @@
 #include <Standard_Handle.hxx>
 #include <vector>
 #include <BRepOffsetAPI_Sewing.hxx>
+#include <lapacke.h>
 
 #include "element.hpp"
 #include "logger.hpp"
@@ -43,13 +44,14 @@
 #include "math/vector_view.hpp"
 #include "utils.hpp"
 #include "utils/gauss_legendre.hpp"
-#include <lapacke.h>
-#include "internal_loads2.hpp"
+#include "multimaterial.hpp"
 
 template<class T>
 class MeshElementCommon : public MeshElement{
     public:
     virtual ~MeshElementCommon() = default;
+
+    static constexpr size_t MAX_GN = 17;
 
     inline gp_Pnt GL_point_tri(double c1, double c2, double c3, const std::vector<gp_Pnt>& p) const{
         return gp_Pnt(
@@ -182,16 +184,27 @@ class MeshElementCommon : public MeshElement{
         }
     }
 
-    size_t get_KW_ext() const{
+    virtual math::Matrix get_k(const MultiMaterial& mat, const double t) const override{
         const size_t KW = T::K_DIM;
-        return KW;
+
+        constexpr size_t GN = MAX_GN;
+
+        math::Matrix k(KW, KW);
+
+        this->volume_integral<GN>(k, [&](const gp_Pnt& pi){
+                const auto B = this->get_B(pi);
+                const auto D = mat.get_D(this, pi);
+                return B.T()*D*B;
+            }, t);
+
+        return k;
     }
 
     virtual math::Matrix get_k(const math::Matrix& D, const double t) const override{
-        const size_t KW = this->get_KW_ext();
+        const size_t KW = T::K_DIM;
         const size_t ORDER = T::INTEG_ORDER;
 
-        constexpr size_t GN = 2*(ORDER - 1);
+        constexpr size_t GN = 2*(ORDER-1);
 
         math::Matrix k(KW, KW);
 
@@ -204,7 +217,7 @@ class MeshElementCommon : public MeshElement{
     }
 
     virtual math::Matrix get_k_face(const math::Matrix& D, const double t, const std::vector<gp_Pnt>& points) const override{
-        const size_t KW = this->get_KW_ext();
+        const size_t KW = T::K_DIM;
         const size_t ORDER = T::INTEG_ORDER;
 
         constexpr size_t GN = 2*(ORDER - 1);
@@ -220,7 +233,7 @@ class MeshElementCommon : public MeshElement{
     }
 
     virtual math::Vector stress_to_force(const math::Matrix& D, const gp_Dir& n, const math::Vector& ue, const double t, const std::vector<gp_Pnt>& points) const override{
-        const size_t KW = this->get_KW_ext();
+        const size_t KW = T::K_DIM;
         const size_t ORDER = T::INTEG_ORDER;
 
         constexpr size_t GN = ORDER + (ORDER - 1);
@@ -245,7 +258,7 @@ class MeshElementCommon : public MeshElement{
     }
 
     virtual math::Vector get_f(const double t, const math::Vector& vec, const std::vector<gp_Pnt>& points) const override{
-        const size_t KW = this->get_KW_ext();
+        const size_t KW = T::K_DIM;
         const size_t ORDER = T::INTEG_ORDER;
 
         constexpr size_t GN = ORDER;
@@ -259,39 +272,47 @@ class MeshElementCommon : public MeshElement{
         return Nf.T()*vec;
     }
 
-    virtual math::Matrix internal_loads_matrix(const gp_Pnt& p, const math::Vector& c, const math::Matrix& Rm, const math::Matrix& RD) const override{
-        if constexpr(T::DIM == 3){
-            const auto M(this->il2_M(p, c, Rm));
-            const auto eps_ext = RD.T()*M;
-            auto eps = this->get_B(p);
-            const size_t KW = eps.get_W();
-            math::Matrix eps_full(6, KW + 6);
-            for(size_t i = 0; i < 6; ++i){
-                for(size_t j = 0; j < KW; ++j){
-                    eps_full(i,j) = eps(i,j);
-                }
-                for(size_t j = 0; j < 6; ++j){
-                    eps_full(i,KW+j) = eps_ext(i,j);
-                }
-            }
-
-            const auto result = eps_full;
-            return result;
-        }
-        
-        return math::Matrix(3, T::K_DIM);
-    }
-    virtual math::Matrix constraint_matrix_alt(const math::Vector& c, const math::Matrix& Rm, const std::vector<gp_Pnt>& bounds) const override{
-        const size_t ORDER = T::INTEG_ORDER;
+    virtual math::Matrix il2_F(const math::Matrix& RS, const MultiMaterial& mat, const std::vector<gp_Pnt>& bounds, double t) const override{
         const size_t K_DIM = T::K_DIM;
 
-        constexpr size_t GN = 1 + ORDER;
+        constexpr size_t GN = MAX_GN;
+        math::Matrix result(K_DIM, K_DIM);
+        const math::Matrix M(
+                {0, 0, 0,
+                 0, 0, 0,
+                 0, 0, 1,
+                 0, 0, 0,
+                 1, 0, 0,
+                 0, 1, 0}, 6, 3);
+
+        this->area_integral<GN>(result,
+            [&](const gp_Pnt& pi){
+                const auto S = mat.get_S(this, pi);
+                const auto Sr = M.T()*RS*S*RS.T()*M;
+                const auto NN = this->get_Ni(pi);
+
+                return NN.T()*Sr*NN;
+
+                //const auto B = this->get_B(pi);
+                //const auto Sr = RS*S*RS.T()*M;
+                //return B.T()*Sr*NN;
+            },
+            bounds, t);
+
+        return result;
+
+    }
+
+    virtual math::Matrix constraint_matrix_alt(const math::Vector& c, const math::Matrix& Rm, const std::vector<gp_Pnt>& bounds) const override{
+        const size_t K_DIM = T::K_DIM;
+
+        constexpr size_t GN = MAX_GN;
         math::Matrix result(6, K_DIM);
 
         this->area_integral<GN>(result,
             [&](const gp_Pnt& pi){
                 const math::Vector pv({pi.X(), pi.Y(), pi.Z()});
-                const math::Vector p2 = Rm.T()*pv - c;
+                const math::Vector p2 = Rm.T()*pv;// - c;
                 const double x = p2[0];
                 const double y = p2[1];
                 //const math::Matrix Ms({
@@ -319,17 +340,16 @@ class MeshElementCommon : public MeshElement{
 
         return result;
     }
-    virtual math::Matrix constraint_matrix(const math::Vector& c, const math::Matrix& Rm, const math::Matrix& RD, const math::Matrix& D, const std::vector<gp_Pnt>& bounds) const override{
-        const size_t ORDER = T::INTEG_ORDER;
+    virtual math::Matrix constraint_matrix(const math::Vector& c, const math::Matrix& Rm, const math::Matrix& RD, const MultiMaterial& mat, const std::vector<gp_Pnt>& bounds) const override{
         const size_t K_DIM = T::K_DIM;
 
-        constexpr size_t GN = 1 + (ORDER - 1);
+        constexpr size_t GN = MAX_GN;
         math::Matrix result(6, K_DIM);
 
         this->area_integral<GN>(result,
             [&](const gp_Pnt& pi){
                 const math::Vector pv({pi.X(), pi.Y(), pi.Z()});
-                const math::Vector p2 = Rm.T()*pv - c;
+                const math::Vector p2 = Rm.T()*pv;// - c;
                 const double x = p2[0];
                 const double y = p2[1];
                 const math::Matrix Ms({
@@ -342,24 +362,37 @@ class MeshElementCommon : public MeshElement{
                 }, 6, 6);
 
 
-                //const auto I = this->internal_loads_matrix(pi, c, Rm, RD);
+                const auto D = mat.get_D(this, pi);
                 auto I = this->get_B(pi);
 
                 return Ms*RD*D*I;
+
+                //const math::Matrix Ms({
+                //      0, 0, x,
+                //      0, 0, y,
+                //      0, 0, 1,
+                //     -y, x, 0,
+                //      1, 0, 0,
+                //      0, 1, 0
+                //}, 6, 3);
+
+                //const auto D = mat.get_D(this, pi);
+                //auto I = this->get_B(pi);
+                //const auto N = this->get_Ni(pi);
+                //return Ms*N*I.T()*RD*D*I;
             },
             bounds, 1.0);
 
         return result;
     }
 
-    virtual math::Vector calculate_internal_loads(const math::Vector& c, const math::Matrix& Rm, const math::Matrix& RD, const math::Matrix& D, const gp_Dir& n, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds) const override{
-        const size_t ORDER = T::INTEG_ORDER;
+    virtual math::Vector calculate_internal_loads(const math::Vector& c, const math::Matrix& Rm, const math::Matrix& RD, const MultiMaterial& mat, const gp_Dir& n, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds) const override{
         const size_t NODES_PER_ELEM = T::NODES_PER_ELEM;
         const size_t DOF = T::NODE_DOF;
 
         math::VectorSliceGeneralView uv(u_ext, math::slicer::from_node_upos(this->nodes, NODES_PER_ELEM, DOF));
 
-        constexpr size_t GN = 1 + (ORDER - 1);
+        constexpr size_t GN = MAX_GN;
 
         math::Vector result(6);
 
@@ -385,34 +418,8 @@ class MeshElementCommon : public MeshElement{
                      0, 0, 0, 0,  1, 0,
                      0, 0, 0, 0,  0, 1
                 }, 6, 6);
-                //const math::Matrix Ms({
-                //      0, 0, x,
-                //      0, 0, y,
-                //      0, 0, 1,
-                //     -y, x, 0,
-                //      1, 0, 0,
-                //      0, 1, 0
-                //}, 6, 3);
-                // const auto M(this->il2_M(pi, c, Rm));
-                // const auto N = this->get_Ni(pi);
 
-                // const auto I = this->internal_loads_matrix(pi, c, Rm, RD, C);
-
-                // return M.T()*RD*C*D*I*mult + (N.T()*Mn*D*C*RD.T()*M).T()*uv;
-
-                //const math::Vector pv({pi.X(), pi.Y(), pi.Z()});
-                //const math::Vector p2 = Rm*pv - c;
-                //const double x = p2[0];
-                //const double y = p2[1];
-
-                //const auto S = this->get_stress_tensor(D, pi, u_ext);
-                //const auto Sn = Rm*S*nv;
-
-                //return math::Vector({Sn[2], Sn[0], Sn[1], Sn[2]*x, Sn[2]*y, Sn[1]*x - Sn[0]*y});
-                //const auto M(this->il2_M(pi, c, Rm));
-                //const auto S = this->_get_stress_vector(D, pi, u_ext);
-                //const auto Sn = Ms*RD*S;
-
+                const auto D = mat.get_D(this, pi);
                 const auto S = this->_get_stress_vector(D, pi, u_ext);
                 const auto Sn = Ms*RD*S;
 
@@ -422,32 +429,14 @@ class MeshElementCommon : public MeshElement{
 
         return result;
     }
-    virtual math::Vector internal_loads_grad(const math::Vector& mult, const math::Vector& c, const math::Matrix& Rm, const math::Matrix& RD, const math::Matrix& D, const std::vector<gp_Pnt>& bounds) const override{
-        const size_t ORDER = T::INTEG_ORDER;
-        const size_t K_DIM = T::K_DIM;
-        //const size_t NODES_PER_ELEM = T::NODES_PER_ELEM;
-        //const size_t DOF = T::NODE_DOF;
 
-        constexpr size_t GN = 1*(1 + (ORDER - 1));
-
-        math::Vector result(K_DIM + 6);
-
-        this->area_integral<GN>(result,
-            [&](const gp_Pnt& pi){
-                auto I = this->internal_loads_matrix(pi, c, Rm, RD);
-
-                return I.T()*mult;
-            },
-            bounds, 1.0);
-
-        return result;
-    }
-    
     virtual math::Matrix internal_loads_hess(const math::Vector& c, const math::Matrix& Rm, const math::Matrix& RD, const math::Matrix& D, const gp_Dir& n, const std::vector<gp_Pnt>& bounds) const override{
         const size_t ORDER = T::INTEG_ORDER;
         const size_t K_DIM = T::K_DIM;
-        //const size_t NODES_PER_ELEM = T::NODES_PER_ELEM;
-        //const size_t DOF = T::NODE_DOF;
+
+        (void) c;
+        (void) Rm;
+        (void) RD;
 
         constexpr size_t GN = ORDER + (ORDER - 1);
 
@@ -472,98 +461,7 @@ class MeshElementCommon : public MeshElement{
         return result;
     }
 
-    virtual math::Matrix il2_param_load(const math::Vector& c, const math::Matrix& Rm, const math::Matrix& RD, const math::Matrix& D, const gp_Dir& n, const std::vector<gp_Pnt>& bounds) const override{
-
-        const size_t ORDER = T::INTEG_ORDER;
-        const size_t K_DIM = T::K_DIM;
-        //const size_t NODES_PER_ELEM = T::NODES_PER_ELEM;
-        //const size_t DOF = T::NODE_DOF;
-
-        constexpr size_t GN = 1 + ORDER;
-
-        math::Matrix result(K_DIM, 6);
-
-        auto C = math::Matrix::identity(6);
-        //const auto Dr = RD*D*RD.T();
-        //const auto S = Dr.get_inverted_cholesky();
-        //C(2,2) = 1.0/(S(2,2)*Dr(2,2));
-        //C = RD.T()*C*RD;
-
-        const math::Matrix Mn({
-            n.X(),     0,     0, n.Y(), n.Z(),     0,
-                0, n.Y(),     0, n.X(),     0, n.Z(),
-                0,     0, n.Z(),     0, n.X(), n.Y()
-            }, 3, 6);
-
-        this->area_integral<GN>(result,
-            [&](const gp_Pnt& pi){
-                const auto M(this->il2_M(pi, c, Rm));
-
-                const auto N = this->get_Ni(pi);
-
-                return N.T()*Mn*D*C*RD.T()*M;
-            },
-            bounds, 1.0);
-
-        return result;
-    }
-
-    virtual math::Matrix il2_strain_matrix(const math::Vector& c, const math::Matrix& Rm, const math::Matrix& RD, const math::Matrix& D, const std::vector<gp_Pnt>& bounds) const override{
-
-        //const size_t ORDER = T::INTEG_ORDER;
-        //const size_t K_DIM = T::K_DIM;
-        //const size_t NODES_PER_ELEM = T::NODES_PER_ELEM;
-        //const size_t DOF = T::NODE_DOF;
-
-        constexpr size_t GN = 2;
-
-        math::Matrix result(6, 6);
-
-        this->area_integral<GN>(result,
-            [&](const gp_Pnt& pi){
-                const auto M(this->il2_M(pi, c, Rm));
-
-                return M.T()*RD*D*RD.T()*M;
-            },
-            bounds, 1.0);
-
-        return result;
-    }
-
-    virtual math::Vector il2_strain_load(const math::Vector& c, const math::Matrix& Rm, const math::Matrix& RD, const math::Matrix& D, const math::Vector& base_strain, const std::vector<gp_Pnt>& bounds) const override {
-
-        const size_t ORDER = T::INTEG_ORDER;
-        const size_t K_DIM = T::K_DIM;
-        //const size_t NODES_PER_ELEM = T::NODES_PER_ELEM;
-        //const size_t DOF = T::NODE_DOF;
-
-        constexpr size_t GN = 1 + (ORDER - 1);
-
-        math::Vector result(K_DIM);
-
-        const math::Vector n({-1, 0, 0});
-
-        this->area_integral<GN>(result,
-            [&](const gp_Pnt& pi){
-                const auto M(this->il2_M(pi, c, Rm));
-                //const auto eps = this->get_B_il2(pi, Rm);
-                //return eps.T()*D*RD.T()*M*base_strain;
-
-                const auto N = this->get_Ni(pi);
-                const auto S = D*RD.T()*M*base_strain;
-                const math::Matrix St({
-                    S[0], S[3], S[4],
-                    S[3], S[1], S[5],
-                    S[4], S[5], S[2]
-                }, 3, 3);
-                return N.T()*St*n;
-            },
-            bounds, 1.0);
-
-        return result;
-    }
-
-    math::Matrix get_R(const math::Matrix& K, const double t, const std::vector<gp_Pnt>& points) const{
+    virtual math::Matrix get_R(const math::Matrix& K, const double t, const std::vector<gp_Pnt>& points) const override{
         const size_t ORDER = T::INTEG_ORDER;
         const size_t K_DIM = T::K_DIM;
 
@@ -581,6 +479,51 @@ class MeshElementCommon : public MeshElement{
         return R;
     }
 
+    virtual math::Matrix get_R_spring(const MultiMaterial& mat, const math::Matrix RS, const math::Matrix Rm, const std::array<double, 3> L, const double t, const std::vector<gp_Pnt>& points) const override{
+        const size_t K_DIM = T::K_DIM;
+        constexpr size_t DIM = T::DIM;
+
+        math::Matrix R(K_DIM, K_DIM);
+
+        constexpr size_t GN = MAX_GN;
+
+        if constexpr(DIM == 2){
+            this->area_integral<GN>(R,
+            [&](const gp_Pnt& pi){
+                const auto NN = this->get_Ni(pi);
+                const auto S = RS*mat.get_S(this, pi)*RS.T();
+                const math::Vector EG({1.0/S(0,0), 1.0/S(2,2)});
+
+                math::Matrix Korig({EG[0]/(L[0]*L[0]), 0,
+                                    0, EG[1]/(L[1]*L[1])}, 2, 2);
+
+                const auto K = Rm*Korig*Rm.T();
+
+                return NN.T()*K*NN;
+            },
+            points, t);
+
+        } else {
+            this->area_integral<GN>(R,
+            [&](const gp_Pnt& pi){
+                const auto NN = this->get_Ni(pi);
+                const auto S = RS*mat.get_S(this, pi)*RS.T();
+                const math::Vector EG({1.0/S(0,0), 1.0/S(3,3), 1.0/S(4,4)});
+
+                math::Matrix Korig({EG[0]/(L[0]*L[0]), 0, 0,
+                                    0, EG[1]/(L[1]*L[1]), 0,
+                                    0, 0, EG[2]/(L[2]*L[2])}, 3, 3);
+
+                const auto K = Rm*Korig*Rm.T();
+
+                return NN.T()*K*NN;
+            },
+            points, t);
+        }
+
+        return R;
+    }
+
     math::Matrix get_R_contact(const math::Matrix& K, const double t, const std::vector<gp_Pnt>& points, const math::Vector normal, const std::vector<double>& u_ext) const override{
         //const size_t ORDER = T::INTEG_ORDER;
         const size_t NODES_PER_ELEM = T::NODES_PER_ELEM;
@@ -592,7 +535,7 @@ class MeshElementCommon : public MeshElement{
         math::Matrix R(K_DIM, K_DIM);
         math::Matrix empty(K_DIM, K_DIM);
 
-        constexpr size_t GN = 3 + 8; //3*ORDER + 8;
+        constexpr size_t GN = MAX_GN;
 
         this->area_integral<GN>(R,
             [&](const gp_Pnt& pi){
@@ -1105,7 +1048,7 @@ class MeshElementCommon2D : public MeshElementCommon<T>{
     virtual double get_strain_VM(const gp_Pnt& p, const std::vector<double>& u, const double eps = 0) const override{
         auto results = this->_get_strain_vector(p, u);
 
-        return std::sqrt(results[0]*results[0] - results[0]*results[1] + results[1]*results[1] + 3*results[2]*results[2] + eps);
+        return std::sqrt(results[0]*results[0] - results[0]*results[1] + results[1]*results[1] + 3*results[2]*results[2]/4.0 + eps);
     }
 
     virtual math::Matrix get_stress_tensor(const math::Matrix& D, const gp_Pnt& p, const std::vector<double>& u) const override{
@@ -1440,7 +1383,7 @@ class MeshElementCommon3D : public MeshElementCommon<T>{
         const double ds2 = s[1] - s[2];
         const double ds3 = s[2] - s[0];
 
-        return std::sqrt(0.5*(ds1*ds1 + ds2*ds2 + ds3*ds3 + 6*(s[3]*s[3] + s[4]*s[4] + s[5]*s[5])) + eps);
+        return std::sqrt(0.5*(ds1*ds1 + ds2*ds2 + ds3*ds3 + 6*(s[3]*s[3] + s[4]*s[4] + s[5]*s[5])/4.0) + eps);
     }
     virtual math::Vector get_principal_strains(const gp_Pnt& p, const std::vector<double>& u) const override{
         auto s = this->get_strain_tensor(p, u);
