@@ -59,7 +59,50 @@ void PETScPCG::generate_matrix_base(const Meshing* const mesh, const size_t u_si
     this->setup = false;
 }
 
-void PETScPCG::solve(std::vector<double>& load){
+void PETScPCG::solve_init(size_t M){
+    auto K = this->gsm->get_K();
+
+    long n = 0, m = 0;
+    MatGetLocalSize(K, &n, &m);
+    MPI_Bcast(&M, 1, MPI_LONG, 0, MPI_COMM_WORLD);
+
+    VecCreateMPI(PETSC_COMM_WORLD, m, M, &this->u);
+    VecSetType(this->u, this->vec_type.c_str());
+    VecSetUp(this->u);
+
+    VecCreateMPI(PETSC_COMM_WORLD, m, M, &this->f);
+    VecSetType(this->f, this->vec_type.c_str());
+    VecSetUp(this->f);
+
+    KSPCreate(PETSC_COMM_WORLD, &this->ksp);
+    KSPSetNormType(this->ksp, KSP_NORM_UNPRECONDITIONED);
+
+    KSPGetPC(this->ksp, &this->pc);
+    PCFactorSetUseInPlace(this->pc, PETSC_TRUE);
+    KSPSetInitialGuessNonzero(this->ksp, PETSC_FALSE);
+    PCFactorSetReuseOrdering(this->pc, PETSC_TRUE);
+
+    PCSetType(this->pc, PCJACOBI);
+    PCJacobiSetType(this->pc, PC_JACOBI_DIAGONAL);
+    PCJacobiSetUseAbs(this->pc, PETSC_TRUE);
+    PCJacobiSetFixDiagonal(this->pc, PETSC_TRUE);
+
+    if(this->spd_matrix){
+        KSPSetType(this->ksp, KSPCG);
+        KSPCGSetType(this->ksp, KSP_CG_SYMMETRIC);
+        KSPSetTolerances(this->ksp, 1e-5, 1e-50, 1e10, 1e5);
+    } else {
+        KSPSetTolerances(this->ksp, 1e-8, 1e-50, 1e10, 2e5);
+        PCJacobiSetType(this->pc, PC_JACOBI_ROWMAX);
+        KSPSetType(this->ksp, KSPMINRES);
+    }
+
+    //PetscViewerAndFormat *vf;
+    //PetscViewerAndFormatCreate(PETSC_VIEWER_STDOUT_WORLD, PETSC_VIEWER_DEFAULT, &vf);
+    //KSPMonitorSet(this->ksp, (PetscErrorCode (*)(KSP, PetscInt, PetscReal, void *))KSPMonitorResidual, vf, (PetscCtxDestroyFn *)PetscViewerAndFormatDestroy);
+}
+
+void PETScPCG::solve_exec(std::vector<double>& load){
     int mpi_id = 0;
     int mpi_size = 0;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi_id);
@@ -68,162 +111,6 @@ void PETScPCG::solve(std::vector<double>& load){
     auto K = this->gsm->get_K();
 
     long M = load.size();
-    long n = 0, m = 0;
-    MatGetLocalSize(K, &n, &m);
-    MPI_Bcast(&M, 1, MPI_LONG, 0, MPI_COMM_WORLD);
-    if(this->first_time){
-
-        VecCreateMPI(PETSC_COMM_WORLD, m, M, &this->u);
-        VecSetType(this->u, this->vec_type.c_str());
-        VecSetUp(this->u);
-
-        VecCreateMPI(PETSC_COMM_WORLD, m, M, &this->f);
-        VecSetType(this->f, this->vec_type.c_str());
-        VecSetUp(this->f);
-
-        KSPCreate(PETSC_COMM_WORLD, &this->ksp);
-        KSPSetNormType(this->ksp, KSP_NORM_UNPRECONDITIONED);
-
-        KSPGetPC(this->ksp, &this->pc);
-        PCFactorSetUseInPlace(this->pc, PETSC_TRUE);
-        KSPSetInitialGuessNonzero(this->ksp, PETSC_FALSE);
-        PCFactorSetReuseOrdering(this->pc, PETSC_TRUE);
-
-        PCSetType(this->pc, PCJACOBI);
-        PCJacobiSetType(this->pc, PC_JACOBI_DIAGONAL);
-        PCJacobiSetUseAbs(this->pc, PETSC_TRUE);
-        PCJacobiSetFixDiagonal(this->pc, PETSC_TRUE);
-
-        KSPSetInitialGuessNonzero(this->ksp, PETSC_TRUE);
-
-        if(this->spd_matrix){
-            KSPSetType(this->ksp, KSPCG);
-            KSPCGSetType(this->ksp, KSP_CG_SYMMETRIC);
-            KSPSetTolerances(this->ksp, 1e-5, 1e-50, 1e10, 1e5);
-            KSPSetInitialGuessNonzero(this->ksp, PETSC_FALSE);
-        } else {
-            //KSPSetTolerances(this->ksp, 1e-10, 1e-50, 1e10, 1e6);
-            //KSPSetTolerances(this->ksp, 1e-7, 1e-50, 1e10, 7e4);
-            KSPSetTolerances(this->ksp, 1e-8, 1e-50, 1e10, 1e6);
-            PCJacobiSetType(this->pc, PC_JACOBI_ROWMAX);
-            //PCJacobiSetType(this->pc, PC_JACOBI_DIAGONAL);
-
-            //KSPSetInitialGuessNonzero(this->ksp, PETSC_FALSE);
-            KSPSetType(this->ksp, KSPMINRES);
-
-            //KSPSetType(this->ksp, KSPSYMMLQ);
-            //KSPSetNormType(this->ksp, KSP_NORM_PRECONDITIONED);
-
-            //KSPSetType(this->ksp, KSPCGNE);
-
-            //PCSetType(this->pc, PCLU);
-            //PCFactorSetLevels(this->pc, 0);
-
-            //KSPSetPCSide(this->ksp, PC_RIGHT);
-
-            //KSPSetType(this->ksp, KSPBCGS);
-            
-            //KSPSetType(this->ksp, KSPBCGSL);
-            //KSPBCGSLSetEll(this->ksp, 20);
-            //KSPBCGSLSetUsePseudoinverse(this->ksp, PETSC_TRUE);
-            //KSPBCGSLSetPol(this->ksp, PETSC_TRUE);
-            //KSPSetType(this->ksp, KSPIBCGS);
-
-            //KSPSetType(this->ksp, KSPDGMRES); // Already a bit better than GMRES
-            //KSPGMRESSetPreAllocateVectors(this->ksp);
-            //KSPGMRESSetRestart(this->ksp, 500);
-            //KSPGMRESSetCGSRefinementType(this->ksp, KSP_GMRES_CGS_REFINE_IFNEEDED);
-            //
-            //KSPSetTolerances(this->ksp, 1e-5, 1e-50, 1e10, 1e5);
-            
-            //long begin = 0, end = 0;
-            //VecGetOwnershipRange(this->u, &begin, &end);
-            //double* u_data = nullptr;
-            //VecGetArray(this->u, &u_data);
-            //for(auto d = 0; d < end - begin; ++d){
-            //    *(u_data+d) = 0.001;
-            //}
-            //VecRestoreArray(this->u, &u_data);
-
-        }
-        //PetscViewerAndFormat *vf;
-        //PetscViewerAndFormatCreate(PETSC_VIEWER_STDOUT_WORLD, PETSC_VIEWER_DEFAULT, &vf);
-        //KSPMonitorSet(this->ksp, (PetscErrorCode (*)(KSP, PetscInt, PetscReal, void *))KSPMonitorResidual, vf, (PetscCtxDestroyFn *)PetscViewerAndFormatDestroy);
-
-        //PCSetType(this->pc, PCHYPRE);
-        //PCSetType(this->pc, PCKACZMARZ);
-        //PCHYPRESetType(this->pc, "ams");
-        //PetscOptionsSetValue(NULL, "-pc_hypre_boomeramg_nodal_coarsen", "6");
-        //MPI_Comm mc = MPI_COMM_WORLD;
-        //PCMGSetLevels(this->pc, 1, &mc);
-        //PCGAMGSetProcEqLim(this->pc, 1000);
-        //PCGAMGSetCoarseEqLim(this->pc, 1000);
-        //PCGAMGSetLowMemoryFilter(this->pc, PETSC_TRUE);
-        //
-        if(this->contact_data.contact_type == FiniteElement::ContactType::FRICTIONLESS_DISPL_LOG || this->nonlinear_boundary_conditions){
-            KSPSetTolerances(this->ksp, 1e-4, 1e-50, 1e10, 1e5);
-            KSPSetInitialGuessNonzero(this->ksp, PETSC_FALSE);
-
-            //PCJacobiSetUseAbs(this->pc, PETSC_TRUE);
-            //PCJacobiSetFixDiagonal(this->pc, PETSC_TRUE);
-            //PCJacobiSetType(this->pc, PC_JACOBI_ROWMAX);
-            //KSPSetType(this->ksp, KSPMINRES);
-            //KSPMINRESSetUseQLP(this->ksp, PETSC_TRUE);
-        } else if(this->contact_data.contact_type >= FiniteElement::ContactType::FRICTIONLESS_DISPL_SIMPLE){
-            KSPSetTolerances(this->ksp, 1e-3, 1e-50, 1e10, 1e5);
-            KSPSetInitialGuessNonzero(this->ksp, PETSC_FALSE);
-
-            PCJacobiSetUseAbs(this->pc, PETSC_TRUE);
-            PCJacobiSetFixDiagonal(this->pc, PETSC_TRUE);
-            PCJacobiSetType(this->pc, PC_JACOBI_ROWMAX);
-
-            KSPSetType(this->ksp, KSPMINRES);
-            //KSPMINRESSetUseQLP(this->ksp, PETSC_TRUE);
-
-            //KSPSetInitialGuessNonzero(this->ksp, PETSC_TRUE);
-            //long begin = 0, end = 0;
-            //VecGetOwnershipRange(this->u, &begin, &end);
-            //double* u_data = nullptr;
-            //VecGetArray(this->u, &u_data);
-            //for(auto d = 0; d < end - begin; ++d){
-            //    *(u_data+d) = 0.1;
-            //}
-            //VecRestoreArray(this->u, &u_data);
-
-            //KSPSetType(this->ksp, KSPBCGS);
-
-            //KSPSetInitialGuessNonzero(this->ksp, PETSC_TRUE);
-            //long begin = 0, end = 0;
-            //VecGetOwnershipRange(this->u, &begin, &end);
-
-            //double* u_data = nullptr;
-            //VecGetArray(this->u, &u_data);
-            //for(auto d = 0; d < end - begin; ++d){
-            //    *(u_data+d) = 0.1;
-            //}
-            //VecRestoreArray(this->u, &u_data);
-
-            //KSPSetNormType(this->ksp, KSP_NORM_UNPRECONDITIONED);
-            //KSPSetTolerances(this->ksp, 1e-10, 1e-50, 1e5, 1e5);
-        }
-        //PCJacobiSetUseAbs(this->pc, PETSC_TRUE);
-        //PCJacobiSetFixDiagonal(this->pc, PETSC_TRUE);
-
-        //KSPSetTolerances(this->ksp, 1e-3, 1e-50, 1e5, 1e5);
-        //
-        //KSPSetPCSide(this->ksp, PC_SYMMETRIC);
-        //PCSetType(this->pc, PCSOR);
-        //PCSORSetSymmetric(this->pc, SOR_SYMMETRIC_SWEEP);
-        //PCSetType(this->pc, PCCHOLESKY);
-
-        //this->first_time = false;
-    //} else {
-    //    if(!this->setup){
-    //        PCSetType(this->pc, PCASM);
-    //    }
-    }
-
-    MPI_Bcast(load.data(), load.size(), MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
     long begin = 0, end = 0;
     VecGetOwnershipRange(this->f, &begin, &end);
@@ -245,13 +132,13 @@ void PETScPCG::solve(std::vector<double>& load){
     //MatIsSymmetric(K, 1e-7, &is_sym);
     //logger::quick_log("is symmetric?", is_sym);
 
-    //if(!this->setup){
+    if(!this->setup){
         KSPSetOperators(this->ksp, K, K);
 
         KSPSetUp(this->ksp);
         PCSetUp(this->pc);
         this->setup = true;
-    //}
+    }
 
     KSPSolve(this->ksp, this->f, this->u);
     KSPConvergedReason r;
@@ -273,6 +160,9 @@ void PETScPCG::solve(std::vector<double>& load){
 
     VecGetArrayRead(u, &load_data);
 
+    long n = 0, m = 0;
+    MatGetLocalSize(K, &n, &m);
+    MPI_Bcast(&M, 1, MPI_LONG, 0, MPI_COMM_WORLD);
     if(mpi_size > 1){
         if(mpi_id == 0){
             std::copy(load_data, load_data + m, load.begin());
@@ -299,19 +189,58 @@ void PETScPCG::solve(std::vector<double>& load){
     MPI_Barrier(MPI_COMM_WORLD);
 
     VecRestoreArrayRead(this->u, &load_data);
+}
 
+void PETScPCG::solve(std::vector<double>& load, const std::vector<double>& u0){
+    long M = load.size();
     if(this->first_time){
-        //long begin = 0, end = 0;
-        //VecGetOwnershipRange(this->u, &begin, &end);
+        this->solve_init(M);
 
-        //double* u_data = nullptr;
-        //VecGetArray(this->u, &u_data);
-        //for(auto d = 0; d < end - begin; ++d){
-        //    *(u_data+d) = 0;
-        //}
-        //VecRestoreArray(this->u, &u_data);
+        KSPSetInitialGuessNonzero(this->ksp, PETSC_TRUE);
+        
         this->first_time = false;
     }
+
+    MPI_Bcast(load.data(), load.size(), MPI_DOUBLE, 0, MPI_COMM_WORLD);
+
+    long begin = 0, end = 0;
+    VecGetOwnershipRange(this->u, &begin, &end);
+    double* u_data = nullptr;
+    VecGetArray(this->u, &u_data);
+    for(auto d = 0; d < end - begin; ++d){
+        *(u_data+d) = u0[d + begin];
+    }
+    VecRestoreArray(this->u, &u_data);
+    
+    this->solve_exec(load);
+}
+void PETScPCG::solve(std::vector<double>& load){
+    long M = load.size();
+    if(this->first_time){
+        this->solve_init(M);
+
+        KSPSetInitialGuessNonzero(this->ksp, PETSC_FALSE);
+
+        if(this->contact_data.contact_type == FiniteElement::ContactType::FRICTIONLESS_DISPL_LOG || this->nonlinear_boundary_conditions){
+            KSPSetTolerances(this->ksp, 1e-4, 1e-50, 1e10, 1e5);
+            KSPSetInitialGuessNonzero(this->ksp, PETSC_FALSE);
+        } else if(this->contact_data.contact_type >= FiniteElement::ContactType::FRICTIONLESS_DISPL_SIMPLE){
+            KSPSetTolerances(this->ksp, 1e-3, 1e-50, 1e10, 1e5);
+            KSPSetInitialGuessNonzero(this->ksp, PETSC_FALSE);
+
+            PCJacobiSetUseAbs(this->pc, PETSC_TRUE);
+            PCJacobiSetFixDiagonal(this->pc, PETSC_TRUE);
+            PCJacobiSetType(this->pc, PC_JACOBI_ROWMAX);
+
+            KSPSetType(this->ksp, KSPMINRES);
+        }
+
+        this->first_time = false;
+    }
+
+    MPI_Bcast(load.data(), load.size(), MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    
+    this->solve_exec(load);
 }
 void PETScPCG::reset_hessian(){
     this->gsm->reset_hessian();

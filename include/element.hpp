@@ -559,6 +559,8 @@ class MeshElement : public Element{
      */
     virtual math::Matrix get_nodal_density_gradient(gp_Pnt p) const = 0;
 
+    virtual math::Matrix sh_normal_constraint(const math::Vector& n, const double t, const std::vector<gp_Pnt>& points) const = 0;
+
     virtual math::Matrix get_dk_sh(const math::Matrix& D, const double t, const size_t n, const size_t dof) const{
         (void) D;
         (void) t;

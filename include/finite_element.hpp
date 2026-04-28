@@ -58,9 +58,9 @@ class FiniteElement{
 
     void generate_matrix(const Meshing* const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<math::Matrix>& D_cache, const std::vector<double>& u_ext, const std::vector<double>& lambda);
 
-    void calculate_displacements(const Meshing* const mesh, std::vector<double>& load, const std::vector<double>& u0, std::vector<double>& lambda);
+    void calculate_displacements(const Meshing* const mesh, std::vector<double>& load, const std::vector<double>& u0_ext, const std::vector<double>& u0, std::vector<double>& lambda);
 
-    void calculate_adjoint(const Meshing* const mesh, std::vector<double>& load, const std::vector<double>& u0, std::vector<double>& lambda);
+    void calculate_adjoint(const Meshing* const mesh, std::vector<double>& load, const std::vector<double>& u0_ext, const std::vector<double>& u0, std::vector<double>& lambda);
 
     virtual std::vector<double> calculate_forces(const Meshing* const mesh, const std::vector<double>& displacements) const;
 
@@ -81,9 +81,13 @@ class FiniteElement{
     virtual void generate_matrix_base(const Meshing* const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<math::Matrix>& D_cache, const std::vector<double>& u_ext, const std::vector<double>& lambda, const ContactType type) = 0;
 
     virtual void solve(std::vector<double>& load) = 0;
+    virtual void solve(std::vector<double>& load, const std::vector<double>& u0){
+        (void) u0;
+        return this->solve(load);
+    }
     virtual void reset_hessian() = 0;
 
-    void solve_rigid(const Meshing* const mesh, std::vector<double>& load);
+    void solve_rigid(std::vector<double>& load, const std::vector<double>& u0);
     void solve_rigid_nonlinear(const Meshing* const mesh, std::vector<double>& load, const std::vector<double>& u0);
     void solve_frictionless_displ_simple(const Meshing* const mesh, std::vector<double>& load, std::vector<double>& lambda, const std::vector<double>& u0);
     void solve_frictionless_displ_log(const Meshing* const mesh, std::vector<double>& load, std::vector<double>& lambda, const std::vector<double>& u0);

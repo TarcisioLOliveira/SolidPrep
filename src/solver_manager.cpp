@@ -37,6 +37,8 @@ void SolverManager::generate_matrix(const Meshing* const mesh, const std::vector
         this->lambdas.resize(mesh->sub_problems->size());
         this->split_u.resize(mesh->sub_problems->size());
         this->split_u[0].resize(mesh->max_dofs, 0);
+        this->u0.emplace_back();
+        this->u0[0].resize(mesh->load_vector[0].size(), 0);
     }
     for(size_t i = 0; i < mesh->sub_problems->size(); ++i){
         if(this->iteration == 0){
@@ -70,8 +72,9 @@ void SolverManager::calculate_displacements_global(const Meshing* const mesh, co
 
 
         auto& ui = this->split_u[i];
-        this->solvers[i]->calculate_displacements(mesh, l, ui, this->lambdas[i][0]);
+        this->solvers[i]->calculate_displacements(mesh, l, ui, this->u0[0], this->lambdas[i][0]);
         mesh->extend_vector(i, l, ui);
+        std::copy(l.begin(), l.end(), this->u0[0].begin());
         if(mesh->internal_loads2 != nullptr){
             for(size_t i = 0; i < mesh->internal_loads2->size(); ++i){
                 auto& il = mesh->internal_loads2->at(i);
@@ -97,7 +100,10 @@ void SolverManager::calculate_displacements_adjoint(const Meshing* const mesh, c
     }
     std::fill(u.begin(), u.end(), 0);
     std::vector<double> u_tmp(mesh->max_dofs, 0);
-    std::vector<double> ui(load.size(), 0);
+    if(this->u0.size() == this->solve_step){
+        this->u0.emplace_back();
+        this->u0[this->solve_step].resize(mesh->load_vector[0].size(), 0);
+    }
     for(size_t i = 0; i < mesh->sub_problems->size(); ++i){
         if(this->lambdas[i].size() <= this->solve_step){
             if(needs_lambda){
@@ -106,17 +112,18 @@ void SolverManager::calculate_displacements_adjoint(const Meshing* const mesh, c
                 this->lambdas[i].emplace_back();
             }
         }
+        auto& ui = this->split_u[i];
         std::vector<double> l(mesh->load_vector[i].size());
-        std::fill(ui.begin(), ui.end(), 0.0);
         if(load[i].size() == mesh->max_dofs){
             mesh->de_extend_vector(i, load[i], l);
-            this->solvers[i]->calculate_adjoint(mesh, l, ui, this->lambdas[i][this->solve_step]);
+            this->solvers[i]->calculate_adjoint(mesh, l, ui, this->u0[this->solve_step], this->lambdas[i][this->solve_step]);
         } else if(load[i].size() == mesh->dofs_per_subproblem[i]){
             std::copy(load[i].begin(), load[i].end(), l.begin());
-            this->solvers[i]->calculate_adjoint(mesh, l, ui, this->lambdas[i][this->solve_step]);
+            this->solvers[i]->calculate_adjoint(mesh, l, ui, this->u0[this->solve_step], this->lambdas[i][this->solve_step]);
         } else {
             logger::log_assert(false, logger::ERROR, "incorrect load vector size, must be equal to mesh->max_dofs OR mesh->dofs_per_subproblem[i]");
         }
+        std::copy(l.begin(), l.end(), this->u0[this->solve_step].begin());
         mesh->extend_vector(i, l, u_tmp);
         #pragma omp parallel for
         for(size_t j = 0; j < u.size(); ++j){

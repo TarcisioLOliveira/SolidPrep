@@ -41,7 +41,11 @@ class PETScPCG : public FiniteElement{
     virtual void generate_matrix_base(const Meshing* const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<math::Matrix>& D_cache, const std::vector<double>& u_ext, const std::vector<double>& lambda, const ContactType type) override;
 
     virtual void solve(std::vector<double>& load) override;
+    virtual void solve(std::vector<double>& load, const std::vector<double>& u0) override;
     virtual void reset_hessian() override;
+
+    void solve_init(size_t M);
+    void solve_exec(std::vector<double>& load);
 
     std::unique_ptr<global_stiffness_matrix::PETScSparseSymmetric> gsm;
     Vec u = 0;

@@ -90,6 +90,8 @@ class ShapeHandler{
         size_t matrix_width;
         std::unique_ptr<general_solver::PETScGeneralPCG> solver;
         std::vector<double> b;
+        std::vector<BoundaryElement*> elem_lambda_mapping;
+        std::map<size_t, long> nodal_lambda_mapping;
     };
     std::set<SuperimposedNodes*> apply_op(shape_op::ShapeOp* op) const;
 

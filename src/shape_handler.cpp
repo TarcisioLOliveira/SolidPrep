@@ -447,6 +447,22 @@ void ShapeHandler::obtain_affected_nodes(){
                     }
                 }
                 if(!fixed_node[bid]){
+                    for(const auto& f:this->mesh->proj_data->internal_loads2){
+                        if(f.S.is_inside(b->point)){
+                            fixed_node[bid] = true;
+                            break;
+                        }
+                    }
+                }
+                if(!fixed_node[bid]){
+                    for(const auto& f:this->mesh->proj_data->internal_loads3){
+                        if(f.S.is_inside(b->point)){
+                            fixed_node[bid] = true;
+                            break;
+                        }
+                    }
+                }
+                if(!fixed_node[bid]){
                     bool found = false;
                     for(const auto& f:this->optimized_nodes){
                         for(auto& n:f.node_ids){
@@ -506,7 +522,61 @@ void ShapeHandler::obtain_affected_nodes(){
         }
 
         cluster.matrix_width = dof*idm;
-        cluster.solver->initialize_matrix(true, cluster.matrix_width);
+    }
+
+    // Get nodes to apply normal movement constraint
+    const size_t bnum = this->mesh->elem_info->get_boundary_nodes_per_element();
+    const size_t nnum = this->mesh->elem_info->get_nodes_per_element();
+    for(auto& cluster:this->clusters){
+        std::set<BoundaryElement*> non_opt;
+        for(const auto& g:cluster.geometries){
+            for(const auto& b:g->boundary_mesh){
+                // Check if:
+                // - Not in optimization region
+                // - Not in fixed region
+                // - Not in intergeometry boundary (merged boundaries
+                //   within cluster are not subject to it, even if not
+                //   being optimized)
+                const auto found_pos = std::find(this->mesh->inter_geometry_boundary.begin(), this->mesh->inter_geometry_boundary.end(), b);
+                const bool is_in_intergeom = (found_pos != this->mesh->inter_geometry_boundary.end());
+                bool is_optimized = false;
+                if(this->elem_to_affected_node_mapping.contains(b->parent)){
+                    const auto& nodes = this->elem_to_affected_node_mapping[b->parent];
+                    if(nodes.size() == bnum){
+                        is_optimized = true;
+                    }
+                }
+                if(!is_in_intergeom && !is_optimized){
+                    non_opt.insert(b);
+                    for(size_t i = 0; i < nnum; ++i){
+                        cluster.nodal_lambda_mapping[b->parent->nodes[i]->id] = -1;
+                    }
+                    // present only on boundary
+                    for(size_t i = 0; i < bnum; ++i){
+                        // not optimized nor fixed
+                        if(!this->optimized_nodes_mapping.contains(b->nodes[i]->id) && !(cluster.id_mapping[b->nodes[i]->id] < 0)){
+                            cluster.nodal_lambda_mapping[b->nodes[i]->id] = 0;
+                        } else {
+                            cluster.nodal_lambda_mapping[b->nodes[i]->id] = -1;
+                        }
+                    }
+                }
+            }
+        }
+        cluster.elem_lambda_mapping.insert(cluster.elem_lambda_mapping.begin(), non_opt.begin(), non_opt.end());
+        non_opt.clear();
+        long lid = cluster.matrix_width;
+        for(auto& m:cluster.nodal_lambda_mapping){
+            if(m.second == 0){
+                m.second = lid;
+                ++lid;
+            }
+        }
+        cluster.matrix_width = lid;
+    }
+
+    for(auto& cluster:this->clusters){
+        cluster.solver->initialize_matrix(false, cluster.matrix_width);
         cluster.b.resize(cluster.matrix_width);
     }
 
@@ -515,7 +585,6 @@ void ShapeHandler::obtain_affected_nodes(){
 
     this->helmholtz_solver = std::make_unique<general_solver::MUMPSGeneral>();
     this->helmholtz_solver->initialize_matrix(true, this->optimized_nodes.size()*dof);
-    //this->helmholtz_solver->initialize_matrix(true, this->optimized_nodes.size());
 
     this->generate_helmholtz();
 }
@@ -542,7 +611,6 @@ void ShapeHandler::generate_helmholtz(){
         const auto k = (this->r*this->r)*e->diffusion_Ndof(D) + a;
         this->helmholtz_solver->add_element(k, bpos);
     }
-    logger::quick_log("Smoothing...");
     this->helmholtz_solver->compute();
 }
 
@@ -611,6 +679,7 @@ void ShapeHandler::update_nodes(const std::vector<double>& dx){
     math::Vector Fe(dof*num, 0);
     std::vector<gp_Pnt> pnts(bnum);
     std::vector<long> pos(num*dof);
+    std::vector<long> lpos(num);
     for(auto& cluster:this->clusters){
         std::fill(cluster.b.begin(), cluster.b.end(), 0);
 
@@ -651,45 +720,26 @@ void ShapeHandler::update_nodes(const std::vector<double>& dx){
                     bn_vals.fill(0);
                 }
             }
-            // Apply outer boundary constraint
-            for(const auto& b:g->boundary_mesh){
-                // Check if:
-                // - Not in optimization region
-                // - Not in intergeometry boundary (merged boundaries
-                //   within cluster are not subject to it, even if not
-                //   being optimized)
-                const auto found_pos = std::find(this->mesh->inter_geometry_boundary.begin(), this->mesh->inter_geometry_boundary.end(), b);
-                const bool is_in_intergeom = (found_pos != this->mesh->inter_geometry_boundary.end());
-                bool is_optimized = false;
-                if(this->elem_to_affected_node_mapping.contains(b->parent)){
-                    const auto& nodes = this->elem_to_affected_node_mapping[b->parent];
-                    if(nodes.size() == bnum){
-                        is_optimized = true;
-                    }
-                }
-                if(!is_in_intergeom && !is_optimized){
-                    for(size_t i = 0; i < bnum; ++i){
-                        pnts[i] = b->nodes[i]->point;
-                    }
-                    for(size_t dim_i = 0; dim_i < dim; ++dim_i){
-                        for(size_t dim_j = 0; dim_j < dim; ++dim_j){
-                            A(dim_i,dim_j) = b->normal.Coord(1+dim_i)*b->normal.Coord(1+dim_j);
-                        }
-                    }
-                    for(size_t i = 0; i < num; ++i){
-                        const auto id = cluster.id_mapping[b->parent->nodes[i]->id];
-                        for(size_t dim_i = 0; dim_i < dof; ++dim_i){
-                            if(id < 0){
-                                pos[i*dof + dim_i] = -1;
-                            } else {
-                                pos[i*dof + dim_i] = dof*id + dim_i;
-                            }
-                        }
-                    }
-                    const auto k = this->MU*b->parent->get_R(A, this->mesh->thickness, pnts);
-                    cluster.solver->add_element(k, pos);
-                }
+        }
+        // Apply outer boundary constraint
+        for(const auto& b:cluster.elem_lambda_mapping){
+            const math::Vector n({b->normal.X(), b->normal.Y(), b->normal.Z()});
+            for(size_t i = 0; i < bnum; ++i){
+                pnts[i] = b->nodes[i]->point;
             }
+            for(size_t i = 0; i < num; ++i){
+                const auto id = cluster.id_mapping[b->parent->nodes[i]->id];
+                for(size_t dim_i = 0; dim_i < dof; ++dim_i){
+                    if(id < 0){
+                        pos[i*dof + dim_i] = -1;
+                    } else {
+                        pos[i*dof + dim_i] = dof*id + dim_i;
+                    }
+                }
+                lpos[i] = cluster.nodal_lambda_mapping[b->parent->nodes[i]->id];
+            }
+            const auto k = b->parent->sh_normal_constraint(n, this->mesh->thickness, pnts);
+            cluster.solver->add_element_symmetric(k, lpos, pos);
         }
         
         cluster.solver->compute();

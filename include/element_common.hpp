@@ -184,6 +184,26 @@ class MeshElementCommon : public MeshElement{
         }
     }
 
+    virtual math::Matrix sh_normal_constraint(const math::Vector& n, const double t, const std::vector<gp_Pnt>& points) const override{
+        const size_t ORDER = T::INTEG_ORDER;
+        const size_t K_DIM = T::K_DIM;
+        const size_t NODES_PER_ELEM = T::NODES_PER_ELEM;
+
+        math::Matrix R(NODES_PER_ELEM, K_DIM);
+
+        constexpr size_t GN = 2*ORDER;
+
+        this->area_integral<GN>(R,
+        [&](const gp_Pnt& pi){
+            const auto NN = this->get_Ni(pi);
+            const auto nn = this->get_Ni_1dof(pi);
+            return nn*(n.T()*NN);
+        },
+        points, t);
+
+        return R;
+    }
+
     virtual math::Matrix get_k(const MultiMaterial& mat, const double t) const override{
         const size_t KW = T::K_DIM;
 

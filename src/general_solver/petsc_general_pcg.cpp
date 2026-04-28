@@ -73,7 +73,7 @@ void PETScGeneralPCG::initialize_matrix(bool spd, size_t L){
 
         KSPSetTolerances(this->ksp, 1e-7, 1e-50, 1e10, 1e5);
     }
-    KSPSetInitialGuessNonzero(this->ksp, PETSC_FALSE);
+    KSPSetInitialGuessNonzero(this->ksp, PETSC_TRUE);
     KSPSetNormType(this->ksp, KSP_NORM_UNPRECONDITIONED);
     
     KSPGetPC(this->ksp, &this->pc);
@@ -83,8 +83,7 @@ void PETScGeneralPCG::initialize_matrix(bool spd, size_t L){
     if(spd){
         PCJacobiSetType(this->pc, PC_JACOBI_DIAGONAL);
     } else {
-        //PCJacobiSetType(this->pc, PC_JACOBI_ROWMAX);
-        PCJacobiSetType(this->pc, PC_JACOBI_ROWL1);
+        PCJacobiSetType(this->pc, PC_JACOBI_ROWMAX);
         PCJacobiSetFixDiagonal(this->pc, PETSC_TRUE); 
     }
 

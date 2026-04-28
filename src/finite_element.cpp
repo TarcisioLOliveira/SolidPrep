@@ -40,33 +40,33 @@ void FiniteElement::generate_matrix(const Meshing* const mesh, const size_t u_si
 
 }
 
-void FiniteElement::calculate_displacements(const Meshing* const mesh, std::vector<double>& load, const std::vector<double>& u0, std::vector<double>& lambda){
+void FiniteElement::calculate_displacements(const Meshing* const mesh, std::vector<double>& load, const std::vector<double>& u0_ext, const std::vector<double>& u0, std::vector<double>& lambda){
     switch(this->contact_data.contact_type){
         case RIGID:
             if(!mesh->nonlinear_boundary_conditions){
-                this->solve_rigid(mesh, load);
+                this->solve_rigid(load, u0);
             } else {
-                this->solve_rigid_nonlinear(mesh, load, u0);
+                this->solve_rigid_nonlinear(mesh, load, u0_ext);
             }
             break;
         case FRICTIONLESS_PENALTY:
-            this->solve_frictionless_penalty(mesh, load, u0);
+            this->solve_frictionless_penalty(mesh, load, u0_ext);
             break;
         case FRICTIONLESS_DISPL_LOG:
-            this->solve_frictionless_displ_log(mesh, load, lambda, u0);
+            this->solve_frictionless_displ_log(mesh, load, lambda, u0_ext);
             break;
         case FRICTIONLESS_DISPL_SIMPLE:
-            this->solve_frictionless_displ_simple(mesh, load, lambda, u0);
+            this->solve_frictionless_displ_simple(mesh, load, lambda, u0_ext);
             break;
     }
 }
 
-void FiniteElement::calculate_adjoint(const Meshing* const mesh, std::vector<double>& load, const std::vector<double>& u0, std::vector<double>& lambda){
+void FiniteElement::calculate_adjoint(const Meshing* const mesh, std::vector<double>& load, const std::vector<double>& u0_ext, const std::vector<double>& u0, std::vector<double>& lambda){
     (void) lambda;
     switch(this->contact_data.contact_type){
         case RIGID:
             if(!mesh->nonlinear_boundary_conditions){
-                this->solve_rigid(mesh, load);
+                this->solve_rigid(load, u0);
             } else {
                 logger::log_assert(false, logger::ERROR, "adjoint equation for nonlinear BCs not implemented");
                 //this->solve_rigid_nonlinear(mesh, load, u0);
@@ -77,7 +77,7 @@ void FiniteElement::calculate_adjoint(const Meshing* const mesh, std::vector<dou
             //this->solve_frictionless_penalty(mesh, load, u0);
             break;
         case FRICTIONLESS_DISPL_LOG:
-            this->adjoint_frictionless_displ_log(mesh, load, lambda, u0);
+            this->adjoint_frictionless_displ_log(mesh, load, lambda, u0_ext);
             break;
         case FRICTIONLESS_DISPL_SIMPLE:
             logger::log_assert(false, logger::ERROR, "adjoint equation for displ_simple contact not implemented");
@@ -86,22 +86,8 @@ void FiniteElement::calculate_adjoint(const Meshing* const mesh, std::vector<dou
     }
 }
 
-void FiniteElement::solve_rigid(const Meshing* const mesh, std::vector<double>& load){
-    this->solve(load);
-
-    //std::vector<double> u_ext(mesh->max_dofs);
-    //mesh->extend_vector(0, load, u_ext);
-
-    //size_t il_id = 0;
-    //math::Vector pdiff(6);
-    //for(auto& il:*(mesh->internal_loads2)){
-    //    for(size_t i = 0; i < 6; ++i){
-    //        pdiff[i] = load[mesh->il2_offset + il_id*6 + i];
-    //    }
-    //    il.update_multipliers(pdiff, 1.0, true);
-
-    //    ++il_id;
-    //}
+void FiniteElement::solve_rigid(std::vector<double>& load, const std::vector<double>& u0){
+    this->solve(load, u0);
 }
 
 void FiniteElement::solve_rigid_nonlinear(const Meshing* const mesh, std::vector<double>& load, const std::vector<double>& u0){
