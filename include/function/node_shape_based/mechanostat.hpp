@@ -22,6 +22,7 @@
 #define NODE_SHAPE_BASED_FUNCTION_MECHANOSTAT_HPP
 
 #include "function.hpp"
+#include "math/matrix.hpp"
 #include "meshing.hpp"
 #include "project_specification/data_map.hpp"
 #include "solver_manager.hpp"
@@ -91,7 +92,7 @@ class Mechanostat: public NodeShapeBasedFunction{
         const double dezx = e[0];
         const double ex = e[0];
         const double ey = e[1];
-        const double gxy = e[2];
+        const double gxy = e[2]/2.0;
 
         return std::sqrt(K_e1[i]*(dexy*dexy + deyz*deyz + dezx*dezx) + 2*K_g[i]*(gxy*gxy) + lhs_eps)
                 + K_e2[i]*(ex + ey);
@@ -102,7 +103,7 @@ class Mechanostat: public NodeShapeBasedFunction{
         const double dezx = e[0];
         const double ex = e[0];
         const double ey = e[1];
-        const double gxy = e[2];
+        const double gxy = e[2]/2.0;
 
         const double eVe = std::sqrt(K_e1[i]*(dexy*dexy + deyz*deyz + dezx*dezx) + 2*K_g[i]*(gxy*gxy) + lhs_eps);
 
@@ -117,9 +118,9 @@ class Mechanostat: public NodeShapeBasedFunction{
         const double ex = e[0];
         const double ey = e[1];
         const double ez = e[2];
-        const double gxy = e[3];
-        const double gyz = e[4];
-        const double gxz = e[5];
+        const double gxy = e[3]/2.0;
+        const double gyz = e[4]/2.0;
+        const double gxz = e[5]/2.0;
 
         return std::sqrt(K_e1[i]*(dexy*dexy + deyz*deyz + dezx*dezx) + 2*K_g[i]*(gxy*gxy + gyz*gyz + gxz*gxz) + lhs_eps)
                 + K_e2[i]*(ex + ey + ez);
@@ -131,9 +132,9 @@ class Mechanostat: public NodeShapeBasedFunction{
         const double ex = e[0];
         const double ey = e[1];
         const double ez = e[2];
-        const double gxy = e[3];
-        const double gyz = e[4];
-        const double gxz = e[5];
+        const double gxy = e[3]/2.0;
+        const double gyz = e[4]/2.0;
+        const double gxz = e[5]/2.0;
 
         const double eVe = std::sqrt(K_e1[i]*(dexy*dexy + deyz*deyz + dezx*dezx) + 2*K_g[i]*(gxy*gxy + gyz*gyz + gxz*gxz) + lhs_eps);
 
@@ -145,6 +146,66 @@ class Mechanostat: public NodeShapeBasedFunction{
                 2*K_g[i]*gxz/eVe};
     }
 
+    inline double Ud_3D(const size_t i, const StrainVector3D& eps, const math::Matrix& D0, const math::Matrix& D) const{
+        const double A = D0(0,0) + 2*D0(1,2) + D0(1,1);
+        const double B = 2*(D0(0,2) + D0(1,2));
+        const double C = D0(2,2);
+
+        const double e_min = t[i];
+        const double e_max = c[i];
+
+        const double K1 = A + B + C;
+        const double K2 = -(B + 2*C);
+        const double K3 = C;
+
+        const double alpha = 0.5*(1.0/e_min - 1.0/e_max);
+        const double se = (1/e_min + 1/e_max);
+        const double beta = (se*se)/(4*(K1 + 3*K2 + 9*K3));
+
+        const auto eps_tr = (eps[0] + eps[1] + eps[2]);
+        const auto eps_h = eps_tr/3.0;
+        const math::Vector eps_1({eps[0] - eps_h, eps[1] - eps_h, eps[2] - eps_h, eps[3], eps[4], eps[5]});
+        //const math::Vector eps_2({1.0/3.0 - alpha*eps_h, 1.0/3.0 - alpha*eps_h, 1.0/3.0 - alpha*eps_h, 0, 0, 0});
+
+        return 3*std::sqrt(beta*(eps_1.T()*D*eps_1)) + alpha*eps_tr;
+    }
+
+    inline StrainVector3D dUd_3D(const size_t i, const StrainVector3D& eps, const math::Matrix& D0, const math::Matrix& D) const{
+        const double A = D0(0,0) + 2*D0(1,2) + D0(1,1);
+        const double B = 2*(D0(0,2) + D0(1,2));
+        const double C = D0(2,2);
+
+        const double e_min = t[i];
+        const double e_max = c[i];
+
+        const double K1 = A + B + C;
+        const double K2 = -(B + 2*C);
+        const double K3 = C;
+
+        const double alpha = 0.5*(1.0/e_min - 1.0/e_max);
+        const double se = (1/e_min + 1/e_max);
+        const double beta = (se*se)/(4*(K1 + 3*K2 + 9*K3));
+
+        const auto eps_tr = (eps[0] + eps[1] + eps[2]);
+        const auto eps_h = eps_tr/3.0;
+        const math::Vector eps_1({eps[0] - eps_h, eps[1] - eps_h, eps[2] - eps_h, eps[3], eps[4], eps[5]});
+        //const math::Vector eps_2({1.0/3.0 - alpha*eps_h, 1.0/3.0 - alpha*eps_h, 1.0/3.0 - alpha*eps_h, 0, 0, 0});
+
+        const math::Vector k({1, 1, 1, 0, 0, 0});
+        const auto eDe = std::sqrt(beta*(eps_1.T()*D*eps_1));
+
+        const math::Matrix I = math::Matrix::identity(6);
+        const math::Matrix k2 = (1.0/3.0)*math::Matrix({
+                1, 1, 1, 0, 0, 0,
+                1, 1, 1, 0, 0, 0,
+                1, 1, 1, 0, 0, 0,
+                0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0
+                }, 6, 6);
+
+        return 3*beta*((I - k2)*D*eps_1)/eDe + alpha*k;
+    }
 };
 
 }

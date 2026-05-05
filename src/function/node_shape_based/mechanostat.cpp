@@ -101,6 +101,9 @@ double Mechanostat::calculate_with_gradient(const NodeShapeBasedOptimizer* const
 
                 const auto B = e->get_B(c);
 
+                const auto D = g->materials.get_D(e.get(), c);
+                const auto D0 = g->materials.get_D_orig(e.get(), c);
+
                 double H_e = 0;
                 for(size_t it = 0; it < fl.size(); ++it){
                     const auto& ui = fem->sub_u[it];
@@ -127,10 +130,10 @@ double Mechanostat::calculate_with_gradient(const NodeShapeBasedOptimizer* const
                             }
                         }
                     } else if(this->problem_type == utils::PROBLEM_TYPE_3D){
-                        const double eps_lhs1 = this->LHS_3D(0, eps);
-                        const double eps_lhs2 = this->LHS_3D(1, eps);
-                        const StrainVector3D deps_lhs1 = this->dLHS_3D(0, eps);
-                        const StrainVector3D deps_lhs2 = this->dLHS_3D(1, eps);
+                        const double eps_lhs1 = this->Ud_3D(0, eps, D0, D);
+                        const double eps_lhs2 = this->Ud_3D(1, eps, D0, D);
+                        const StrainVector3D deps_lhs1 = this->dUd_3D(0, eps, D0, D);
+                        const StrainVector3D deps_lhs2 = this->dUd_3D(1, eps, D0, D);
                         const double H1 = Hm(eps_lhs1);
                         const double H2 = Hp(eps_lhs2);
                         const double Hr = H1*eps_lhs1 + H2*eps_lhs2;
@@ -169,6 +172,7 @@ double Mechanostat::calculate_with_gradient(const NodeShapeBasedOptimizer* const
         math::Vector ue(kw);
         math::Vector le(kw);
         math::Matrix D;
+        math::Matrix D0;
 
         for(size_t i = 0; i < nodes.size(); ++i){
             const auto& shn = nodes[i];
@@ -176,6 +180,7 @@ double Mechanostat::calculate_with_gradient(const NodeShapeBasedOptimizer* const
                 const auto& g = this->mesh->elem_geom_mapping.at(e.e);
                 const auto c = e.e->get_centroid();
                 D = g->materials.get_D(e.e, c);
+                D0 = g->materials.get_D_orig(e.e, c);
 
                 const math::Vector eps(1e6*e.e->get_strain_vector(c, u));
 
@@ -199,10 +204,10 @@ double Mechanostat::calculate_with_gradient(const NodeShapeBasedOptimizer* const
 
                     dH_e = std::move(dH);
                 } else if(this->problem_type == utils::PROBLEM_TYPE_3D){
-                    const double eps_lhs1 = this->LHS_3D(0, eps);
-                    const double eps_lhs2 = this->LHS_3D(1, eps);
-                    const StrainVector3D deps_lhs1 = this->dLHS_3D(0, eps);
-                    const StrainVector3D deps_lhs2 = this->dLHS_3D(1, eps);
+                    const double eps_lhs1 = this->Ud_3D(0, eps, D0, D);
+                    const double eps_lhs2 = this->Ud_3D(1, eps, D0, D);
+                    const StrainVector3D deps_lhs1 = this->dUd_3D(0, eps, D0, D);
+                    const StrainVector3D deps_lhs2 = this->dUd_3D(1, eps, D0, D);
                     const double H1 = Hm(eps_lhs1);
                     const double H2 = Hp(eps_lhs2);
                     StrainVector3D dH = (dHm(eps_lhs1)*eps_lhs1 + H1)*deps_lhs1 +
