@@ -58,14 +58,17 @@ MarginalBoneLoss::MarginalBoneLoss(const projspec::DataMap& data):
     StrainVector3D eps(6);
 
     this->coeff = math::Vector(3);
-    this->coeff[2] = rho_d;
+    this->coeff[2] = this->rho_d;
 
-    eps[0] = -this->c[0];
-    this->x0 = this->LHS_3D(3, eps);
-    eps[0] = -this->c[1];
-    this->x1 = this->LHS_3D(3, eps);
-    eps[0] = -this->c[2];
-    this->x2 = this->LHS_3D(3, eps);
+    //eps[0] = -this->c[0];
+    //this->x0 = this->LHS_3D(3, eps);
+    //eps[0] = -this->c[1];
+    //this->x1 = this->LHS_3D(3, eps);
+    //eps[0] = -this->c[2];
+    //this->x2 = this->LHS_3D(3, eps);
+    this->x0 = this->c[0]/this->c[3];
+    this->x1 = this->c[1]/this->c[3];
+    this->x2 = this->c[2]/this->c[3];
 
     const double xm = (x1 + x2)/2.0;
     math::Matrix A(
@@ -165,6 +168,7 @@ void MarginalBoneLoss::run(){
         nodal_divisors.resize(density_num);
         for(auto& e:this->mandible->mesh){
             for(size_t i = 0; i < NODES_PER_ELEM; ++i){
+                node_to_elem[e->nodes[i]] = e.get();
                 nodal_divisors[id_pos_map[e->nodes[i]->id]] += 1;
             }
         }
@@ -235,10 +239,15 @@ void MarginalBoneLoss::run(){
             #pragma omp parallel for
             for(size_t i = 0; i < density_num; ++i){
                 nodal_strains[i] /= nodal_divisors[i];
+                const auto& n = this->mandible->node_list[i];
+                const auto& e = node_to_elem[n];
 
                 const auto& strain = nodal_strains[i];
                 const double gi = this->get_density_variation(strain)*this->time_step;
                 const double old_d = density[i];
+
+                const auto& D = this->mandible->materials.get_D(e, n->point);
+                const auto& D0 = this->mandible->materials.get_D_orig(e, n->point);
 
                 density[i] += gi;
                 if(density[i] < MIN_DENSITY){
@@ -247,7 +256,7 @@ void MarginalBoneLoss::run(){
                     density[i] = this->MAX_RHO;
                 }
                 growth[i] = density[i] - old_d;
-                strains[i] = this->c[3]*this->LHS_3D(3, strain);
+                strains[i] = this->c[3]*this->Ud(3, strain, D0, D);
             }
         } else {
             #pragma omp parallel for
@@ -258,6 +267,9 @@ void MarginalBoneLoss::run(){
                 const double gi = this->get_density_variation(strain)*this->time_step;
                 const double old_d = density[i];
 
+                const auto& D = this->mandible->materials.get_D(e, n->point);
+                const auto& D0 = this->mandible->materials.get_D_orig(e, n->point);
+
                 density[i] += gi;
                 if(density[i] < MIN_DENSITY){
                     density[i] = MIN_DENSITY;
@@ -265,7 +277,7 @@ void MarginalBoneLoss::run(){
                     density[i] = this->MAX_RHO;
                 }
                 growth[n->id] = density[i] - old_d;
-                strains[n->id] = this->c[3]*this->LHS_3D(3, strain);
+                strains[n->id] = this->c[3]*this->Ud(3, strain, D0, D);
             }
         }
         field->set_values(density);
@@ -292,6 +304,17 @@ double MarginalBoneLoss::get_density_variation(const StrainVector3D& eps) const{
         return 0;
     } else {
         return (this->coeff[0] + this->coeff[1]*lhs + this->coeff[2]*lhs*lhs);
+    }
+}
+double MarginalBoneLoss::get_density_variation(const StrainVector3D& eps, const math::Matrix& D0, const math::Matrix& D) const{
+    const double U = this->Ud(3, eps, D0, D);
+
+    if(U < x0){
+        return dv0*(U - x0);
+    } else if(U < x1){
+        return 0;
+    } else {
+        return (this->coeff[0] + this->coeff[1]*U + this->coeff[2]*U*U);
     }
 }
 

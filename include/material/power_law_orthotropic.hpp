@@ -44,6 +44,25 @@ class PowerLawOrthotropic : public Material{
     virtual std::array<double, 2> beam_EG_2D(const MeshElement* const e, const gp_Pnt& p, const math::Matrix& R) const override;
     virtual std::array<double, 4> beam_EG_3D(const MeshElement* const e, const gp_Pnt& p, const math::Matrix& R) const override;
 
+    virtual math::Matrix stiffness_2D_orig(const MeshElement* const e, const gp_Pnt& p) const override{
+        auto D = this->S_2D_base(e, p);
+        D.invert_cholesky();
+
+        return D;
+    }
+    virtual math::Matrix stiffness_3D_orig(const MeshElement* const e, const gp_Pnt& p) const override{
+        auto D = this->S_3D_base(e, p);
+        D.invert_cholesky();
+
+        return D;
+    }
+    virtual math::Matrix stiffness_inverse_2D_orig(const MeshElement* const e, const gp_Pnt& p) const override{
+        return this->S_2D_base(e, p);
+    }
+    virtual math::Matrix stiffness_inverse_3D_orig(const MeshElement* const e, const gp_Pnt& p) const override{
+        return this->S_3D_base(e, p);
+    }
+
     virtual Class get_class() const override{ return this->ORTHOTROPIC; }
     virtual Type get_type() const override{ return this->POWER_LAW_ORTHOTROPIC; }
     virtual bool is_homogeneous() const override{ return false; }

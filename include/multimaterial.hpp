@@ -49,6 +49,24 @@ class MultiMaterial{
         return math::Matrix();
     }
 
+    inline math::Matrix get_D_orig(const MeshElement* e, const gp_Pnt& p) const{
+        if(this->problem_type == utils::PROBLEM_TYPE_2D){
+            return this->materials[0]->stiffness_2D_orig(e, p);
+        } else if(this->problem_type == utils::PROBLEM_TYPE_3D){
+            return this->materials[0]->stiffness_3D_orig(e, p);
+        }
+        return math::Matrix();
+    }
+
+    inline math::Matrix get_S_orig(const MeshElement* e, const gp_Pnt& p) const{
+        if(this->problem_type == utils::PROBLEM_TYPE_2D){
+            return this->materials[0]->stiffness_inverse_2D_orig(e, p);
+        } else if(this->problem_type == utils::PROBLEM_TYPE_3D){
+            return this->materials[0]->stiffness_inverse_3D_orig(e, p);
+        }
+        return math::Matrix();
+    }
+
     void get_D(std::vector<double>::const_iterator rho, const double mix, const MeshElement* e, const gp_Pnt& p, math::Matrix& D) const;
 
     void get_gradD(std::vector<double>::const_iterator rho, const double mix, const MeshElement* e, const gp_Pnt& p, std::vector<math::Matrix>& gradD) const;

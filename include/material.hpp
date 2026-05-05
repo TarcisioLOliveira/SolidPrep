@@ -81,6 +81,19 @@ class Material{
     virtual bool is_homogeneous() const{ return true; }
     virtual Field* get_field() const{ return nullptr; }
 
+    virtual math::Matrix stiffness_2D_orig(const MeshElement* const e, const gp_Pnt& p) const{
+        return this->stiffness_2D(e, p);
+    }
+    virtual math::Matrix stiffness_3D_orig(const MeshElement* const e, const gp_Pnt& p) const{
+        return this->stiffness_3D(e, p);
+    }
+    virtual math::Matrix stiffness_inverse_2D_orig(const MeshElement* const e, const gp_Pnt& p) const{
+        return this->stiffness_inverse_2D(e, p);
+    }
+    virtual math::Matrix stiffness_inverse_3D_orig(const MeshElement* const e, const gp_Pnt& p) const{
+        return this->stiffness_inverse_3D(e, p);
+    }
+
     /**
      * Considers each beam node as representing maximum stresses at its cross
      * section. Therefore, returns stresses acting on the plane with normal
