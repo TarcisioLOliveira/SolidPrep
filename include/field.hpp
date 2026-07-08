@@ -42,6 +42,9 @@ class Field{
         PROJECTION,   // Limited to the volumetric projection of a cross-section
         BOUNDARY      // Limited to the boundary of the union of geometries
     };
+    Field(bool regen = false):
+        regenerate_every_iteration(regen)
+    {}
     virtual ~Field() = default;
     virtual void generate() = 0;
     virtual void initialize_views(Visualization* viz) = 0;
@@ -49,6 +52,19 @@ class Field{
     virtual Type get_type() const = 0;
     virtual SubType get_sub_type() const = 0;
     virtual bool is_fea_dependent() const{ return false; }
+
+    void regenerate(){
+        if(this->regenerate_every_iteration){
+            this->regenerate_internal();
+        }
+    }
+
+    protected:
+    bool regenerate_every_iteration;
+
+    virtual void regenerate_internal(){
+    }
+
 };
 
 class ScalarField : public Field{
@@ -58,11 +74,27 @@ class ScalarField : public Field{
         IMPLANT_REGION,
         TRABECULAR_CUTOFF
     };
+    ScalarField(bool regen = false):
+        Field(regen)
+    {}
     inline virtual Type get_type() const override{
         return Type::SCALAR;
     };
     virtual ~ScalarField() = default;
     virtual double get(const MeshElement* e, const gp_Pnt& p) const = 0;
+    virtual double get(const Node* n) const{
+        (void) n;
+
+        return 0;
+    }
+    virtual double get_dsh(const MeshElement* e, const gp_Pnt& p, const size_t n, const size_t dof) const{
+        (void) e;
+        (void) p;
+        (void) n;
+        (void) dof;
+
+        return 0;
+    }
     virtual Class get_class() const = 0;
 };
 
@@ -71,17 +103,39 @@ class VectorField : public Field{
     inline virtual Type get_type() const override{
         return Type::VECTOR;
     };
+    VectorField(bool regen = false):
+        Field(regen)
+    {}
     virtual ~VectorField() = default;
     virtual gp_Vec get(const MeshElement* e, const gp_Pnt& p) const = 0;
+    virtual gp_Vec get_dsh(const MeshElement* e, const gp_Pnt& p, const size_t n, const size_t dof) const{
+        (void) e;
+        (void) p;
+        (void) n;
+        (void) dof;
+
+        return gp_Vec(0,0,0);
+    }
 };
 
 class DirectionField : public Field{
     public:
+    DirectionField(bool regen = false):
+        Field(regen)
+    {}
     inline virtual Type get_type() const override{
         return Type::DIRECTION;
     };
     virtual ~DirectionField() = default;
     virtual gp_Dir get(const MeshElement* e, const gp_Pnt& p) const = 0;
+    virtual gp_Dir get_dsh(const MeshElement* e, const gp_Pnt& p, const size_t n, const size_t dof) const{
+        (void) e;
+        (void) p;
+        (void) n;
+        (void) dof;
+
+        return gp_Dir(0,0,0);
+    }
 };
 
 class CoordinateField : public Field{
@@ -91,12 +145,23 @@ class CoordinateField : public Field{
         PRINCIPAL_STRESS,
         MINIMUM_ENERGY_ORIENTATION
     };
+    CoordinateField(bool regen = false):
+        Field(regen)
+    {}
     virtual ~CoordinateField() = default;
     inline virtual Type get_type() const override{
         return Type::COORDINATE;
     };
     virtual std::array<gp_Dir, 3> get_array(const MeshElement* e, const gp_Pnt& p) const = 0;
     virtual math::Matrix get_matrix(const MeshElement* e, const gp_Pnt& p) const = 0;
+    virtual math::Matrix get_dsh(const MeshElement* e, const gp_Pnt& p, const size_t n, const size_t dof) const{
+        (void) e;
+        (void) p;
+        (void) n;
+        (void) dof;
+
+        return math::Matrix(3, 3, 0);
+    }
     virtual Class get_class() const = 0;
 };
 

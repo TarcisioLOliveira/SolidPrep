@@ -21,6 +21,7 @@
 #ifndef MULTIMATERIAL_HPP
 #define MULTIMATERIAL_HPP
 
+#include "logger.hpp"
 #include "material.hpp"
 #include "math/matrix.hpp"
 #include "utils.hpp"
@@ -39,12 +40,29 @@ class MultiMaterial{
         }
         return math::Matrix();
     }
+    inline math::Matrix get_D_dsh(const MeshElement* e, const gp_Pnt& p, const size_t n, const size_t dof) const{
+        if(this->problem_type == utils::PROBLEM_TYPE_2D){
+            return this->materials[0]->stiffness_2D_dsh(e, p, n, dof);
+        } else if(this->problem_type == utils::PROBLEM_TYPE_3D){
+            return this->materials[0]->stiffness_3D_dsh(e, p, n, dof);
+        }
+        return math::Matrix();
+    }
 
     inline math::Matrix get_S(const MeshElement* e, const gp_Pnt& p) const{
         if(this->problem_type == utils::PROBLEM_TYPE_2D){
             return this->materials[0]->stiffness_inverse_2D(e, p);
         } else if(this->problem_type == utils::PROBLEM_TYPE_3D){
             return this->materials[0]->stiffness_inverse_3D(e, p);
+        }
+        return math::Matrix();
+    }
+
+    inline math::Matrix get_S_dsh(const MeshElement* e, const gp_Pnt& p, const size_t n, const size_t dof) const{
+        if(this->problem_type == utils::PROBLEM_TYPE_2D){
+            return this->materials[0]->stiffness_inverse_2D_dsh(e, p, n, dof);
+        } else if(this->problem_type == utils::PROBLEM_TYPE_3D){
+            return this->materials[0]->stiffness_inverse_3D_dsh(e, p, n, dof);
         }
         return math::Matrix();
     }
@@ -58,11 +76,29 @@ class MultiMaterial{
         return math::Matrix();
     }
 
+    inline math::Matrix get_D_orig_dsh(const MeshElement* e, const gp_Pnt& p, const size_t n, const size_t dof) const{
+        if(this->problem_type == utils::PROBLEM_TYPE_2D){
+            return this->materials[0]->stiffness_2D_orig_dsh(e, p, n, dof);
+        } else if(this->problem_type == utils::PROBLEM_TYPE_3D){
+            return this->materials[0]->stiffness_3D_orig_dsh(e, p, n, dof);
+        }
+        return math::Matrix();
+    }
+
     inline math::Matrix get_S_orig(const MeshElement* e, const gp_Pnt& p) const{
         if(this->problem_type == utils::PROBLEM_TYPE_2D){
             return this->materials[0]->stiffness_inverse_2D_orig(e, p);
         } else if(this->problem_type == utils::PROBLEM_TYPE_3D){
             return this->materials[0]->stiffness_inverse_3D_orig(e, p);
+        }
+        return math::Matrix();
+    }
+
+    inline math::Matrix get_S_orig_dsh(const MeshElement* e, const gp_Pnt& p, const size_t n, const size_t dof) const{
+        if(this->problem_type == utils::PROBLEM_TYPE_2D){
+            return this->materials[0]->stiffness_inverse_2D_orig_dsh(e, p, n, dof);
+        } else if(this->problem_type == utils::PROBLEM_TYPE_3D){
+            return this->materials[0]->stiffness_inverse_3D_orig_dsh(e, p, n, dof);
         }
         return math::Matrix();
     }

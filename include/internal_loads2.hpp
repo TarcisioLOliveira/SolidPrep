@@ -40,7 +40,7 @@ class InternalLoads2{
     // ASSUMES CROSS SECTION IS PLANE
     // ASSUMES this->normal == this->S.normal
 
-    InternalLoads2(CrossSection cross_section, double thickness, gp_Dir normal, gp_Dir v, gp_Dir w, utils::DelayedPointerView<Material> mat, std::array<double, 3> F, std::array<double, 3> M, std::array<double, 3> P_last, bool inverted, bool calculate, utils::ProblemType type);
+    InternalLoads2(CrossSection cross_section, double thickness, gp_Dir normal, gp_Dir v, gp_Dir w, utils::DelayedPointerView<Material> mat, std::array<double, 3> F, std::array<double, 3> M, bool use_M, std::array<double, 3> P_last, bool inverted, bool calculate, utils::ProblemType type);
     InternalLoads2(InternalLoads2&&) = default;
 
     void initialize(const Meshing* const mesh, size_t& max_dofs);
@@ -75,10 +75,12 @@ class InternalLoads2{
     const math::Matrix rot3D_S;
     math::Vector F;
     math::Vector M;
+    const bool use_M;
     utils::DelayedPointerView<Material> mat;
     const gp_Dir normal;
     std::vector<const BoundaryElement*> submesh;
     double D;
+    size_t il_constr_num;
 
     std::unordered_map<size_t, long> F_id_map;
 

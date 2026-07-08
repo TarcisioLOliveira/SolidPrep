@@ -21,7 +21,6 @@
 #include "global_stiffness_matrix.hpp"
 #include "logger.hpp"
 #include "math/matrix.hpp"
-#include "math/slicer.hpp"
 #include "utils.hpp"
 #include <limits>
 
@@ -110,8 +109,8 @@ void GlobalStiffnessMatrix::generate_base(const Meshing * const mesh, const size
             const size_t dof      = mesh->elem_info->get_dof_per_node();
             const size_t node_num = mesh->elem_info->get_nodes_per_element();
             const size_t s_size   = mesh->elem_info->get_D_dimension();
-            const auto prob_type = mesh->elem_info->get_problem_type();
-            const size_t dim = (prob_type == utils::PROBLEM_TYPE_2D) ? 2 : 3;
+            //const auto prob_type = mesh->elem_info->get_problem_type();
+            //const size_t dim = (prob_type == utils::PROBLEM_TYPE_2D) ? 2 : 3;
 
             std::vector<long> u_pos(dof*node_num);
             std::vector<long> f_pos(dof*node_num);
@@ -120,9 +119,18 @@ void GlobalStiffnessMatrix::generate_base(const Meshing * const mesh, const size
             math::Matrix M(s_size, u_pos.size(), 1);
             math::Matrix F(u_pos.size(), u_pos.size(), 1);
             for(const auto& il:*(mesh->internal_loads2)){
-                for(size_t i = 0; i < s_size; ++i){
-                    s_pos[i] = il.constraint_offset + i;
-                    s_pos2[i] = il.constraint_offset + s_size + i;
+                if(il.use_M){
+                    for(size_t i = 0; i < il.il_constr_num; ++i){
+                        s_pos[i] = il.constraint_offset + i;
+                        s_pos2[i] = il.constraint_offset + il.il_constr_num + i;
+                    }
+                } else {
+                    s_pos[0] = -1;
+                    s_pos[1] = -1;
+                    s_pos[2] = il.constraint_offset + 0;
+                    s_pos[3] = -1;
+                    s_pos[4] = il.constraint_offset + 1;
+                    s_pos[5] = il.constraint_offset + 2;
                 }
                 for(const auto& b:il.submesh){
                     for(size_t i = 0; i < node_num; ++i){
@@ -167,28 +175,37 @@ void GlobalStiffnessMatrix::generate_base(const Meshing * const mesh, const size
         std::vector<long> cs_pos(dim);
         std::vector<long> n_pos(1);
         for(const auto& il:*(mesh->internal_loads2)){
-            const math::Matrix n({il.normal.X(), il.normal.Y(), il.normal.Z()}, 1, 3);
-
-            size_t coord_id = 0;
-            for(size_t i = 0; i < dim; ++i){
-                if(!il.assume_xc[i]){
-                    c_pos[i] = il.xc_offset + coord_id;
-                    ++coord_id;
-                } else {
-                    c_pos[i] = -1;
+            if(il.use_M){
+                const math::Matrix n({il.normal.X(), il.normal.Y(), il.normal.Z()}, 1, 3);
+                size_t coord_id = 0;
+                for(size_t i = 0; i < dim; ++i){
+                    if(!il.assume_xc[i]){
+                        c_pos[i] = il.xc_offset + coord_id;
+                        ++coord_id;
+                    } else {
+                        c_pos[i] = -1;
+                    }
+                    cs_pos[i] = il.constraint_offset;
                 }
-                cs_pos[i] = il.constraint_offset;
+                cs_pos[0] += 3;
+                cs_pos[1] += 0;
+                cs_pos[2] += 1;
+                n_pos[0] = il.n_offset;
+                for(size_t i = 0; i < il.il_constr_num; ++i){
+                    s_pos[i] = il.constraint_offset + i;
+                    s_pos2[i] = il.constraint_offset + il.il_constr_num + i;
+                }
+                this->insert_block_symmetric(il.Mc, cs_pos, c_pos);
+                this->insert_block_symmetric(n, n_pos, c_pos);
+            } else {
+                s_pos[0] = -1;
+                s_pos[1] = -1;
+                s_pos[2] = il.constraint_offset + 0;
+                s_pos[3] = -1;
+                s_pos[4] = il.constraint_offset + 1;
+                s_pos[5] = il.constraint_offset + 2;
             }
-            cs_pos[0] += 0;
-            cs_pos[1] += 1;
-            cs_pos[2] += 3;
-            n_pos[0] = il.n_offset;
-            for(size_t i = 0; i < s_size; ++i){
-                s_pos[i] = il.constraint_offset + i;
-                s_pos2[i] = il.constraint_offset + s_size + i;
-            }
-            this->insert_block_symmetric(il.Mc, cs_pos, c_pos);
-            this->insert_block_symmetric(n, n_pos, c_pos);
+
             for(const auto& b:il.submesh){
                 for(size_t i = 0; i < node_num; ++i){
                     const auto& n = b->parent->nodes[i];
@@ -217,7 +234,31 @@ void GlobalStiffnessMatrix::generate_base(const Meshing * const mesh, const size
                 this->insert_element_matrix(K, f_pos);
                 this->insert_block_symmetric(F, u_pos, f_pos);
                 this->insert_block_symmetric(M, s_pos, f_pos);
-                //this->insert_block_symmetric(M2, s_pos2, u_pos);
+                //this->insert_block_symmetric(M2, u_pos, f_pos);
+            }
+        }
+    }
+    // Reaction sum
+    if(mesh->reaction_sum != nullptr && mesh->reaction_sum->size() > 0){
+        const size_t dof      = mesh->elem_info->get_dof_per_node();
+        const size_t node_num = mesh->elem_info->get_nodes_per_element();
+
+        std::vector<long> u_pos(dof*node_num);
+        for(const auto& il:*(mesh->reaction_sum)){
+            std::vector<long> f_pos(il.F_dim);
+            for(size_t i = 0; i < il.F_dim; ++i){
+                f_pos[i] = il.offset + i;
+            }
+            for(const auto& b:il.submesh){
+                for(size_t i = 0; i < node_num; ++i){
+                    const auto& n = b->parent->nodes[i];
+                    for(size_t j = 0; j < dof; ++j){
+                        const size_t p = n->id*dof + j;
+                        u_pos[i*dof + j] = node_positions[p];
+                    }
+                }
+                const auto K = il.get_constr(mesh, b);
+                this->insert_block_symmetric(K, f_pos, u_pos);
             }
         }
     }

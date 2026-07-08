@@ -191,6 +191,9 @@ ProjectData::ProjectData(std::string project_file){
     if(this->log_data(settings, "internal_loads3", projspec::TYPE_ARRAY, false)){
         this->internal_loads3 = this->get_internal_loads3(settings["internal_loads3"]);
     }
+    if(this->log_data(settings, "reaction_sum", projspec::TYPE_ARRAY, false)){
+        this->reaction_sum = this->get_reaction_sum(settings["reaction_sum"]);
+    }
     if(this->log_data(settings, "sub_problems", projspec::TYPE_ARRAY, false)){
         this->sub_problems = this->load_sub_problems(settings);
     } else {
@@ -1365,14 +1368,18 @@ std::vector<InternalLoads2> ProjectData::get_internal_loads2(const Json::Value& 
     for(auto& f : doc){
         logger::log_assert(f.isObject(), logger::ERROR, "Each load must be stored as a JSON object");
         this->log_data(f, "F", projspec::TYPE_ARRAY, true);
-        this->log_data(f, "M", projspec::TYPE_ARRAY, true);
+        bool use_M = this->log_data(f, "M", projspec::TYPE_ARRAY, false);
         this->log_data(f, "normal", projspec::TYPE_ARRAY, true);
         this->log_data(f, "v", projspec::TYPE_ARRAY, true);
 
-        this->log_data(f, "calculate_from_last_point", projspec::TYPE_BOOL, true);
-        bool calc = f["calculate_from_last_point"].asBool();
-        this->log_data(f, "P_prev", projspec::TYPE_ARRAY, calc);
-        this->log_data(f, "inverted", projspec::TYPE_BOOL, calc);
+        bool calc = false;
+        if(use_M){
+            this->log_data(f, "calculate_from_last_point", projspec::TYPE_BOOL, true);
+            calc = f["calculate_from_last_point"].asBool();
+            this->log_data(f, "P_prev", projspec::TYPE_ARRAY, calc);
+            this->log_data(f, "inverted", projspec::TYPE_BOOL, calc);
+        }
+
         if(this->type == utils::PROBLEM_TYPE_3D) {
             this->log_data(f, "w", projspec::TYPE_ARRAY, true);
         }
@@ -1386,28 +1393,36 @@ std::vector<InternalLoads2> ProjectData::get_internal_loads2(const Json::Value& 
         bool inverted = f["inverted"].asBool();
 
         std::array<double, 3> F{Fa[0].asDouble(), Fa[1].asDouble(), 0};
-        std::array<double, 3> M{Ma[0].asDouble(), Ma[1].asDouble(), 0};
+        std::array<double, 3> M;
+        if(use_M){
+            M[0] = Ma[0].asDouble();
+            M[1] = Ma[1].asDouble();
+        }
         std::array<double, 3> P;
         if(calc){
             P[0] = Pa[0].asDouble();
             P[1] = Pa[1].asDouble();
         }
-        gp_Dir nv(normal[0].asDouble(), normal[1].asDouble(), 0);
-        gp_Dir vv(v[0].asDouble(), v[1].asDouble(), 0);
-        gp_Dir wv(0, 0, 1);
+        gp_Vec nv(normal[0].asDouble(), normal[1].asDouble(), 0);
+        gp_Vec vv(v[0].asDouble(), v[1].asDouble(), 0);
+        gp_Vec wv(0, 0, 1);
 
         if(this->type == utils::PROBLEM_TYPE_2D){
             logger::log_assert(normal.size() == 2, logger::ERROR, "Normal vector must have exactly two dimensions in 2D problems");
             logger::log_assert(v.size() == 2, logger::ERROR, "'v' vector must have exactly two dimensions in 2D problems");
             logger::log_assert(Fa.size() == 2, logger::ERROR, "Force vector must have exactly two dimensions in 2D problems");
-            logger::log_assert(Ma.size() == 2, logger::ERROR, "Moment vector must have exactly two dimensions in 2D problems");
+            if(use_M){
+                logger::log_assert(Ma.size() == 2, logger::ERROR, "Moment vector must have exactly two dimensions in 2D problems");
+            }
             if(calc)
-            logger::log_assert(Pa.size() == 2, logger::ERROR, "Previous point must have exactly two dimensions in 2D problems");
+                logger::log_assert(Pa.size() == 2, logger::ERROR, "Previous point must have exactly two dimensions in 2D problems");
         } else if(this->type == utils::PROBLEM_TYPE_3D) {
             logger::log_assert(normal.size() == 3, logger::ERROR, "Normal vector must have exactly three dimensions in 3D problems");
             logger::log_assert(v.size() == 3, logger::ERROR, "'v' vector must have exactly three dimensions in 3D problems");
             logger::log_assert(Fa.size() == 3, logger::ERROR, "Force vector must have exactly three dimensions in 3D problems");
-            logger::log_assert(Ma.size() == 3, logger::ERROR, "Moment vector must have exactly three dimensions in 3D problems");
+            if(use_M){
+                logger::log_assert(Ma.size() == 3, logger::ERROR, "Moment vector must have exactly three dimensions in 3D problems");
+            }
             if(calc)
                 logger::log_assert(Pa.size() == 3, logger::ERROR, "Previous point must have exactly three dimensions in 3D problems");
 
@@ -1417,7 +1432,9 @@ std::vector<InternalLoads2> ProjectData::get_internal_loads2(const Json::Value& 
             nv.SetZ(normal[2].asDouble());
             vv.SetZ(v[2].asDouble());
             F[2] = Fa[2].asDouble();
-            M[2] = Ma[2].asDouble();
+            if(use_M){
+                M[2] = Ma[2].asDouble();
+            }
             if(calc){
                 P[2] = Pa[2].asDouble();
             }
@@ -1429,9 +1446,33 @@ std::vector<InternalLoads2> ProjectData::get_internal_loads2(const Json::Value& 
 
         this->log_data(f, "region", projspec::TYPE_OBJECT, true);
         auto S = this->get_cross_section(f["region"]);
-        internal_loads.emplace_back(S, this->thickness, nv, vv, wv, mat, F, M, P, inverted, calc, this->type);
+        internal_loads.emplace_back(S, this->thickness, nv, vv, wv, mat, F, M, use_M, P, inverted, calc, this->type);
     }
     return internal_loads;
+}
+
+std::vector<ReactionSum> ProjectData::get_reaction_sum(const Json::Value& doc){
+    std::vector<ReactionSum> react;
+    for(auto& f : doc){
+        logger::log_assert(f.isObject(), logger::ERROR, "Each load must be stored as a JSON object");
+        this->log_data(f, "F", projspec::TYPE_ARRAY, true);
+
+        auto Fa = f["F"];
+
+        std::array<double, 3> F{Fa[0].asDouble(), Fa[1].asDouble(), 0};
+
+        if(this->type == utils::PROBLEM_TYPE_2D){
+            logger::log_assert(Fa.size() == 2, logger::ERROR, "Force vector must have exactly two dimensions in 2D problems");
+        } else if(this->type == utils::PROBLEM_TYPE_3D) {
+            logger::log_assert(Fa.size() == 3, logger::ERROR, "Force vector must have exactly three dimensions in 3D problems");
+            F[2] = Fa[2].asDouble();
+        }
+
+        this->log_data(f, "region", projspec::TYPE_OBJECT, true);
+        auto S = this->get_cross_section(f["region"]);
+        react.emplace_back(S, this->thickness, F, this->type);
+    }
+    return react;
 }
 
 std::vector<InternalLoads3> ProjectData::get_internal_loads3(const Json::Value& doc){

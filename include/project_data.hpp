@@ -87,6 +87,7 @@ class ProjectData {
     std::vector<InternalLoads> internal_loads;
     std::vector<InternalLoads2> internal_loads2;
     std::vector<InternalLoads3> internal_loads3;
+    std::vector<ReactionSum> reaction_sum;
     std::unique_ptr<FiniteElement> sizer_fea;
     std::unique_ptr<TopologyOptimization> topopt;
     std::unique_ptr<SolverManager> topopt_fea;
@@ -166,6 +167,8 @@ class ProjectData {
     std::vector<InternalLoads2> get_internal_loads2(const Json::Value& doc);
 
     std::vector<InternalLoads3> get_internal_loads3(const Json::Value& doc);
+
+    std::vector<ReactionSum> get_reaction_sum(const Json::Value& doc);
 
     std::vector<SubProblem> load_sub_problems(const Json::Value& doc);
 

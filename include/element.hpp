@@ -353,6 +353,8 @@ class MeshElement : public Element{
 
     virtual math::Matrix il2_F(const math::Matrix& RS, const MultiMaterial& mat, const std::vector<gp_Pnt>& bounds, double t) const = 0;
 
+    virtual math::Matrix il2_R2(const math::Matrix& Rm, const math::Matrix& RD, const MultiMaterial& mat, const std::vector<gp_Pnt>& bounds) const = 0;
+
     /**
      * Creates and returns the elemental stiffness matrix.
      *
@@ -561,8 +563,8 @@ class MeshElement : public Element{
 
     virtual math::Matrix sh_normal_constraint(const math::Vector& n, const double t, const std::vector<gp_Pnt>& points) const = 0;
 
-    virtual math::Matrix get_dk_sh(const math::Matrix& D, const double t, const size_t n, const size_t dof) const{
-        (void) D;
+    virtual math::Matrix get_dk_sh(const MultiMaterial& mat, const double t, const size_t n, const size_t dof) const{
+        (void) mat;
         (void) t;
         (void) n;
         (void) dof;
@@ -575,6 +577,7 @@ class MeshElement : public Element{
 
         return 0;
     }
+    virtual math::Matrix get_strain_tensor_sh(const gp_Pnt& p, const std::vector<double>& u_ext, const size_t n, const size_t dof) const = 0;
     virtual math::Matrix get_dB_sh(const gp_Pnt& p, const size_t n, const size_t dof) const{
         (void) p;
         (void) n;

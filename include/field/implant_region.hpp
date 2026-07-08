@@ -36,6 +36,8 @@ class ImplantRegion : public ScalarField {
     virtual void initialize_views(Visualization* viz) override;
     virtual void display_views() const override;
     virtual double get(const MeshElement* e, const gp_Pnt& p) const override;
+    virtual double get(const Node* n) const override;
+    virtual double get_dsh(const MeshElement* e, const gp_Pnt& p, const size_t n, const size_t dof) const override;
 
     inline virtual SubType get_sub_type() const override{
         return SubType::DOMAIN;
@@ -61,6 +63,13 @@ class ImplantRegion : public ScalarField {
         }
         return sum;
     }
+    inline double r(const double l) const{
+        double sum = p[0];
+        for(size_t i = 1; i < p.size(); ++i){
+            sum += p[i]*std::pow(l, i);
+        }
+        return sum;
+    }
     double get_implant_multiplier(const gp_Pnt& p) const;
 
     const MeshElementFactory* elem_info;
@@ -68,8 +77,10 @@ class ImplantRegion : public ScalarField {
     double thickness;
     gp_Pnt center_1;
     gp_Pnt center_2;
+    gp_Pnt center_3;
     double r1;
     double r2;
+    double r3;
     gp_Dir normal;
     double decay_distance;
     std::vector<double> a;
@@ -78,6 +89,8 @@ class ImplantRegion : public ScalarField {
     size_t a_len;
     double max_l;
     ScalarField* density_field;
+    bool is_shape_opt = false;
+    std::array<double, 3> p;
 
     // Value freezing
     bool frozen = false;

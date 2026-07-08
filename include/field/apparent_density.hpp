@@ -62,6 +62,7 @@ class ApparentDensity : public ScalarField {
     virtual void initialize_views(Visualization* viz) override;
     virtual void display_views() const override;
     virtual double get(const MeshElement* e, const gp_Pnt& p) const override;
+    virtual double get(const Node* n) const override;
 
     inline virtual SubType get_sub_type() const override{
         return SubType::DOMAIN;

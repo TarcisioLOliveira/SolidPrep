@@ -161,6 +161,7 @@ void Meshing::apply_boundary_conditions(const std::vector<Force>& forces,
                                         std::vector<ContactSpring>& contact_springs,
                                         std::vector<InternalLoads2>& internal_loads2,
                                         std::vector<InternalLoads3>& internal_loads3,
+                                        std::vector<ReactionSum>& reaction_sum,
                                         std::vector<SubProblem>& sub_problems){
     (void) forces;
 
@@ -234,6 +235,16 @@ void Meshing::apply_boundary_conditions(const std::vector<Force>& forces,
             i.initialize(this, current);
         }
     }
+
+    if(reaction_sum.size() > 0){
+        logger::quick_log("reaction_sum");
+        this->reaction_sum = &reaction_sum;
+
+        for(auto& i:reaction_sum){
+            i.initialize(this, current);
+        }
+    }
+
     this->dofs_per_subproblem[0] = current;
     this->load_vector[0].resize(current, 0);
 
@@ -242,6 +253,12 @@ void Meshing::apply_boundary_conditions(const std::vector<Force>& forces,
 
     if(internal_loads2.size() > 0){
         for(auto& i:internal_loads2){
+            i.apply_constraints(this->load_vector[0]);
+        }
+    }
+
+    if(reaction_sum.size() > 0){
+        for(auto& i:reaction_sum){
             i.apply_constraints(this->load_vector[0]);
         }
     }

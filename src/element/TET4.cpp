@@ -216,16 +216,29 @@ math::Matrix TET4::get_Ni_base(const gp_Pnt& p) const{
     return this->N_mat(p.X(), p.Y(), p.Z(), this->C);
 }
 
-math::Matrix TET4::get_dk_sh(const math::Matrix& D, const double t, const size_t n, const size_t dof) const{
+math::Matrix TET4::get_dk_sh(const MultiMaterial& mat, const double t, const size_t n, const size_t dof) const{
     (void)t;
     const auto C2 = this->get_C_derivative(n, dof);
 
     const auto B1 = this->B(this->C);
     const auto B2 = this->B(C2);
 
-    math::Matrix K(this->V*(B2.T()*D*B1 + B1.T()*D*B2));
+    //math::Matrix K(this->V*(B2.T()*D*B1 + B1.T()*D*B2));
 
-    return K;
+    const size_t KW = K_DIM;
+
+    constexpr size_t GN = MAX_GN;
+
+    math::Matrix k(KW, KW);
+
+    this->volume_integral<GN>(k, [&](const gp_Pnt& pi){
+            const auto B = this->get_B(pi);
+            const auto D = mat.get_D(this, pi);
+            const auto dD = mat.get_D_dsh(this, pi, n, dof);
+            return B2.T()*D*B1 + B1.T()*dD*B1 + B1.T()*D*B2;
+        }, t);
+
+    return k;
 }
 
 math::Matrix TET4::get_C_derivative(const size_t n, const size_t dof) const{

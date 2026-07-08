@@ -107,6 +107,52 @@ math::Matrix PowerLawOrthotropic::S_3D_base(const MeshElement* const e, const gp
 
     return S_3D;
 }
+math::Matrix PowerLawOrthotropic::S_2D_base_dsh(const MeshElement* const e, const gp_Pnt& p, const size_t n, const size_t dof) const{
+    // TODO
+    (void) e;
+    (void) p;
+    (void) n;
+    (void) dof;
+
+    return math::Matrix(3, 3, 0);
+}
+math::Matrix PowerLawOrthotropic::S_3D_base_dsh(const MeshElement* const e, const gp_Pnt& p, const size_t n, const size_t dof) const{
+    math::Matrix S_3D(6,6);
+    const double rho = this->density_field->get(e, p);
+    const double drho = this->density_field->get_dsh(e, p, n, dof);
+    const std::array<double, 3> E = {
+        E1[0]*std::pow(rho, E1[1]), 
+        E2[0]*std::pow(rho, E2[1]),
+        E3[0]*std::pow(rho, E3[1])
+    };
+    const std::array<double, 3> G = {
+        G12[0]*std::pow(rho, G12[1]), 
+        G13[0]*std::pow(rho, G13[1]),
+        G23[0]*std::pow(rho, G23[1])
+    };
+    const std::array<double, 3> dE = {
+        E1[1]*E1[0]*std::pow(rho, E1[1] - 1.0)*drho, 
+        E2[1]*E2[0]*std::pow(rho, E2[1] - 1.0)*drho,
+        E3[1]*E3[0]*std::pow(rho, E3[1] - 1.0)*drho
+    };
+    const std::array<double, 3> dG = {
+        G12[1]*G12[0]*std::pow(rho, G12[1] - 1.0)*drho, 
+        G13[1]*G13[0]*std::pow(rho, G13[1] - 1.0)*drho,
+        G23[1]*G23[0]*std::pow(rho, G23[1] - 1.0)*drho
+    };
+    const double dSxy = -nu[0]*dE[0]/(E[0]*E[0]);
+    const double dSxz = -nu[1]*dE[0]/(E[0]*E[0]);
+    const double dSyz = -nu[2]*dE[1]/(E[1]*E[1]);
+
+    S_3D.data()[ 0] = -dE[0]/(E[0]*E[0]); S_3D.data()[ 1] = dSxy; S_3D.data()[ 2] = dSxz;
+    S_3D.data()[ 6] = dSxy; S_3D.data()[ 7] = -dE[1]/(E[1]*E[1]); S_3D.data()[ 8] = dSyz;
+    S_3D.data()[12] = dSxz; S_3D.data()[13] = dSyz; S_3D.data()[14] = -dE[2]/(E[2]*E[2]);
+    S_3D.data()[21] = -dG[0]/(G[0]*G[0]);
+    S_3D.data()[28] = -dG[1]/(G[1]*G[1]);
+    S_3D.data()[35] = -dG[2]/(G[2]*G[2]);
+
+    return S_3D;
+}
 math::Matrix PowerLawOrthotropic::stiffness_2D(const MeshElement* const e, const gp_Pnt& p) const{
     auto D_2D = this->S_2D_base(e, p);
     D_2D.invert_cholesky();
@@ -155,6 +201,57 @@ math::Matrix PowerLawOrthotropic::stiffness_inverse_3D(const MeshElement* const 
         return R*S_3D*R.T();
     } else {
         return S_3D;
+    }
+}
+
+math::Matrix PowerLawOrthotropic::stiffness_inverse_2D_dsh(const MeshElement* const e, const gp_Pnt& p, const size_t n, const size_t dof) const{
+    // TODO
+    (void) e;
+    (void) p;
+    (void) n;
+    (void) dof;
+
+    return math::Matrix(3, 3, 0);
+}
+math::Matrix PowerLawOrthotropic::stiffness_inverse_3D_dsh(const MeshElement* const e, const gp_Pnt& p, const size_t n, const size_t dof) const{
+    const auto S_3D = this->S_3D_base(e, p);
+    const auto dS_3D = this->S_3D_base_dsh(e, p, n, dof);
+
+    if(this->direction_field != nullptr){
+        const auto M = this->direction_field->get_matrix(e, p);
+        const auto dM = this->direction_field->get_dsh(e, p, n, dof);
+        const auto R = utils::basis_tensor_3D_inv_T(M.T());
+        const auto dR = utils::basis_tensor_3D_inv_T_d1(M.T(), dM.T());
+        
+        return dR*S_3D*R.T() + R*dS_3D*R.T() + R*S_3D*dR.T();
+    } else {
+        return dS_3D;
+    }
+}
+math::Matrix PowerLawOrthotropic::stiffness_2D_dsh(const MeshElement* const e, const gp_Pnt& p, const size_t n, const size_t dof) const{
+    // TODO
+    (void) e;
+    (void) p;
+    (void) n;
+    (void) dof;
+
+    return math::Matrix(3, 3, 0);
+}
+math::Matrix PowerLawOrthotropic::stiffness_3D_dsh(const MeshElement* const e, const gp_Pnt& p, const size_t n, const size_t dof) const{
+    const auto S_3D = this->S_3D_base(e, p);
+    const auto dS_3D = this->S_3D_base_dsh(e, p, n, dof);
+    const auto D_3D = S_3D.get_inverted_cholesky();
+    const auto dD_3D = -D_3D*dS_3D*D_3D;
+
+    if(this->direction_field != nullptr){
+        const auto M = this->direction_field->get_matrix(e, p);
+        const auto dM = this->direction_field->get_dsh(e, p, n, dof);
+        const auto R = utils::basis_tensor_3D_inv_T(M.T());
+        const auto dR = utils::basis_tensor_3D_inv_T_d1(M.T(), dM.T());
+        
+        return dR*D_3D*R.T() + R*dD_3D*R.T() + R*D_3D*dR.T();
+    } else {
+        return dD_3D;
     }
 }
 

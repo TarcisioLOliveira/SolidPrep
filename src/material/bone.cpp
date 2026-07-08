@@ -43,7 +43,7 @@ Bone::Bone(const projspec::DataMap& data):
 }
 math::Matrix Bone::stiffness_2D(const MeshElement* const e, const gp_Pnt& p) const{
     const auto t = this->trabecular_field->get(e, p);
-    if(t == 1){
+    if(t > 0.5){
         return this->inner->stiffness_2D(e, p);
     } else {
         return this->outer->stiffness_2D(e, p);
@@ -51,7 +51,7 @@ math::Matrix Bone::stiffness_2D(const MeshElement* const e, const gp_Pnt& p) con
 }
 math::Matrix Bone::stiffness_3D(const MeshElement* const e, const gp_Pnt& p) const{
     const auto t = this->trabecular_field->get(e, p);
-    if(t == 1){
+    if(t > 0.5){
         return this->inner->stiffness_3D(e, p);
     } else {
         return this->outer->stiffness_3D(e, p);
@@ -59,7 +59,7 @@ math::Matrix Bone::stiffness_3D(const MeshElement* const e, const gp_Pnt& p) con
 }
 math::Matrix Bone::stiffness_inverse_2D(const MeshElement* const e, const gp_Pnt& p) const{
     const auto t = this->trabecular_field->get(e, p);
-    if(t == 1){
+    if(t > 0.5){
         return this->inner->stiffness_inverse_2D(e, p);
     } else {
         return this->outer->stiffness_inverse_2D(e, p);
@@ -67,15 +67,82 @@ math::Matrix Bone::stiffness_inverse_2D(const MeshElement* const e, const gp_Pnt
 }
 math::Matrix Bone::stiffness_inverse_3D(const MeshElement* const e, const gp_Pnt& p) const{
     const auto t = this->trabecular_field->get(e, p);
-    if(t == 1){
+    if(t > 0.5){
         return this->inner->stiffness_inverse_3D(e, p);
     } else {
         return this->outer->stiffness_inverse_3D(e, p);
     }
 }
+
+math::Matrix Bone::stiffness_inverse_2D_dsh(const MeshElement* const e, const gp_Pnt& p, const size_t n, const size_t dof) const{
+    const auto t = this->trabecular_field->get(e, p);
+    if(t > 0.5){
+        return this->inner->stiffness_inverse_2D_dsh(e, p, n, dof);
+    } else {
+        return this->outer->stiffness_inverse_2D_dsh(e, p, n, dof);
+    }
+}
+math::Matrix Bone::stiffness_inverse_3D_dsh(const MeshElement* const e, const gp_Pnt& p, const size_t n, const size_t dof) const{
+    const auto t = this->trabecular_field->get(e, p);
+    if(t > 0.5){
+        return this->inner->stiffness_inverse_3D_dsh(e, p, n, dof);
+    } else {
+        return this->outer->stiffness_inverse_3D_dsh(e, p, n, dof);
+    }
+}
+math::Matrix Bone::stiffness_2D_dsh(const MeshElement* const e, const gp_Pnt& p, const size_t n, const size_t dof) const{
+    const auto t = this->trabecular_field->get(e, p);
+    if(t > 0.5){
+        return this->inner->stiffness_2D_dsh(e, p, n, dof);
+    } else {
+        return this->outer->stiffness_2D_dsh(e, p, n, dof);
+    }
+}
+math::Matrix Bone::stiffness_3D_dsh(const MeshElement* const e, const gp_Pnt& p, const size_t n, const size_t dof) const{
+    const auto t = this->trabecular_field->get(e, p);
+    if(t > 0.5){
+        return this->inner->stiffness_3D_dsh(e, p, n, dof);
+    } else {
+        return this->outer->stiffness_3D_dsh(e, p, n, dof);
+    }
+}
+
+math::Matrix Bone::stiffness_inverse_2D_orig_dsh(const MeshElement* const e, const gp_Pnt& p, const size_t n, const size_t dof) const{
+    const auto t = this->trabecular_field->get(e, p);
+    if(t > 0.5){
+        return this->inner->stiffness_inverse_2D_orig_dsh(e, p, n, dof);
+    } else {
+        return this->outer->stiffness_inverse_2D_orig_dsh(e, p, n, dof);
+    }
+}
+math::Matrix Bone::stiffness_inverse_3D_orig_dsh(const MeshElement* const e, const gp_Pnt& p, const size_t n, const size_t dof) const{
+    const auto t = this->trabecular_field->get(e, p);
+    if(t > 0.5){
+        return this->inner->stiffness_inverse_3D_orig_dsh(e, p, n, dof);
+    } else {
+        return this->outer->stiffness_inverse_3D_orig_dsh(e, p, n, dof);
+    }
+}
+math::Matrix Bone::stiffness_2D_orig_dsh(const MeshElement* const e, const gp_Pnt& p, const size_t n, const size_t dof) const{
+    const auto t = this->trabecular_field->get(e, p);
+    if(t > 0.5){
+        return this->inner->stiffness_2D_orig_dsh(e, p, n, dof);
+    } else {
+        return this->outer->stiffness_2D_orig_dsh(e, p, n, dof);
+    }
+}
+math::Matrix Bone::stiffness_3D_orig_dsh(const MeshElement* const e, const gp_Pnt& p, const size_t n, const size_t dof) const{
+    const auto t = this->trabecular_field->get(e, p);
+    if(t > 0.5){
+        return this->inner->stiffness_3D_orig_dsh(e, p, n, dof);
+    } else {
+        return this->outer->stiffness_3D_orig_dsh(e, p, n, dof);
+    }
+}
+
 double Bone::get_density(const MeshElement* const e, const gp_Pnt& p) const{
     const auto t = this->trabecular_field->get(e, p);
-    if(t == 1){
+    if(t > 0.5){
         return this->inner->get_density(e, p);
     } else {
         return this->outer->get_density(e, p);
@@ -84,7 +151,7 @@ double Bone::get_density(const MeshElement* const e, const gp_Pnt& p) const{
 
 double Bone::beam_E_2D(const MeshElement* const e, const gp_Pnt& p, const math::Matrix& R) const{
     const auto t = this->trabecular_field->get(e, p);
-    if(t == 1){
+    if(t > 0.5){
         return this->inner->beam_E_2D(e, p, R);
     } else {
         return this->outer->beam_E_2D(e, p, R);
@@ -92,7 +159,7 @@ double Bone::beam_E_2D(const MeshElement* const e, const gp_Pnt& p, const math::
 }
 double Bone::beam_E_3D(const MeshElement* const e, const gp_Pnt& p, const math::Matrix& R) const{
     const auto t = this->trabecular_field->get(e, p);
-    if(t == 1){
+    if(t > 0.5){
         return this->inner->beam_E_3D(e, p, R);
     } else {
         return this->outer->beam_E_3D(e, p, R);
@@ -100,7 +167,7 @@ double Bone::beam_E_3D(const MeshElement* const e, const gp_Pnt& p, const math::
 }
 std::array<double, 2> Bone::beam_EG_2D(const MeshElement* const e, const gp_Pnt& p, const math::Matrix& R) const{
     const auto t = this->trabecular_field->get(e, p);
-    if(t == 1){
+    if(t > 0.5){
         return this->inner->beam_EG_2D(e, p, R);
     } else {
         return this->outer->beam_EG_2D(e, p, R);
@@ -108,7 +175,7 @@ std::array<double, 2> Bone::beam_EG_2D(const MeshElement* const e, const gp_Pnt&
 }
 std::array<double, 4> Bone::beam_EG_3D(const MeshElement* const e, const gp_Pnt& p, const math::Matrix& R) const{
     const auto t = this->trabecular_field->get(e, p);
-    if(t == 1){
+    if(t > 0.5){
         return this->inner->beam_EG_3D(e, p, R);
     } else {
         return this->outer->beam_EG_3D(e, p, R);

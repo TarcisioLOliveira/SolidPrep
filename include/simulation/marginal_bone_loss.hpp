@@ -53,8 +53,10 @@ class MarginalBoneLoss : public Simulation{
     const double lhs_eps = 1e-30;
     const Range K_e1, K_g, K_e2;
     const utils::ProblemType problem_type;
-    const double MAX_RHO = 2.5;
-    double rho_d = MAX_RHO/360.0;
+    const double MAX_RHO = 2.4;
+    const double MAX_RHO_TRAB = 1.55;
+    const double rho_d = MAX_RHO/360.0;
+    const double rho_d_t = MAX_RHO_TRAB/360.0;
 
     size_t elem_num = 0;
     size_t mand_geom_offset = 0;
@@ -66,8 +68,10 @@ class MarginalBoneLoss : public Simulation{
     Geometry* mandible;
     const double time_step, time_limit;
     double dv0;
+    double dv0t;
     double x0, x1, x2;
     math::Vector coeff;
+    math::Vector coeff2;
 
     ViewHandler* stress_view = nullptr;
     ViewHandler* density_view = nullptr;
@@ -89,8 +93,8 @@ class MarginalBoneLoss : public Simulation{
 
     typedef math::Vector StrainVector3D;
 
-    double get_density_variation(const StrainVector3D& eps) const;
-    double get_density_variation(const StrainVector3D& eps, const math::Matrix& D0, const math::Matrix& D) const;
+    double get_density_variation(const StrainVector3D& eps, bool trabecular) const;
+    //double get_density_variation(const StrainVector3D& eps, const math::Matrix& D0, const math::Matrix& D, bool trabecular) const;
 
     inline double LHS_3D(const size_t i, const StrainVector3D& e) const{
         const double dexy = e[0] - e[1];
@@ -108,7 +112,7 @@ class MarginalBoneLoss : public Simulation{
     }
 
     inline double Ud(const size_t i, const StrainVector3D& eps, const math::Matrix& D0, const math::Matrix& D) const{
-        const double A = D0(0,0) + 2*D0(1,2) + D0(1,1);
+        const double A = D0(0,0) + 2*D0(0,1) + D0(1,1);
         const double B = 2*(D0(0,2) + D0(1,2));
         const double C = D0(2,2);
 
@@ -126,7 +130,7 @@ class MarginalBoneLoss : public Simulation{
         const auto eps_tr = (eps[0] + eps[1] + eps[2]);
         const auto eps_h = eps_tr/3.0;
         const math::Vector eps_1({eps[0] - eps_h, eps[1] - eps_h, eps[2] - eps_h, eps[3], eps[4], eps[5]});
-        const math::Vector eps_2({1.0/3.0 - alpha*eps_h, 1.0/3.0 - alpha*eps_h, 1.0/3.0 - alpha*eps_h, 0, 0, 0});
+        //const math::Vector eps_2({1.0/3.0 - alpha*eps_h, 1.0/3.0 - alpha*eps_h, 1.0/3.0 - alpha*eps_h, 0, 0, 0});
 
         return 3*std::sqrt(beta*(eps_1.T()*D*eps_1)) + alpha*eps_tr;
     }

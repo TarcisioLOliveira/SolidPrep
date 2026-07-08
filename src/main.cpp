@@ -104,7 +104,7 @@ int main(int argc, char* argv[]){
                 f->generate();
             }
         }
-        proj->topopt_mesher->apply_boundary_conditions(proj->forces, proj->supports, proj->springs, proj->internal_loads, proj->contact_springs, proj->internal_loads2, proj->internal_loads3, proj->sub_problems);
+        proj->topopt_mesher->apply_boundary_conditions(proj->forces, proj->supports, proj->springs, proj->internal_loads, proj->contact_springs, proj->internal_loads2, proj->internal_loads3, proj->reaction_sum, proj->sub_problems);
         for(auto& f:proj->fields){
             if(f->is_fea_dependent()){
                 f->generate();
@@ -458,9 +458,33 @@ int main(int argc, char* argv[]){
                         logger::quick_log(rf);
                     }
 
+                    for(const auto& s:proj->reaction_sum){
+                        std::set<const MeshNode*> snodes;
+                        for(const auto& e:s.submesh){
+                            for(size_t i = 0; i < 3; ++i){
+                                snodes.insert(e->nodes[i]);
+                            }
+                        }
+                        math::Vector rf(3);
+                        for(const auto& n:snodes){
+                            for(size_t i = 0; i < 3; ++i){
+                                rf[i] += reactions[n->id*3 + i];
+                            }
+                        }
+                        logger::quick_log("RS REACTION");
+                        logger::quick_log(rf);
+                    }
+
                     for(auto& f:proj->fields){
                         f->initialize_views(v.get());
                     }
+
+                    //for(size_t i = 0; i < proj->topopt_mesher->node_list.size(); ++i){
+                    //    const auto nid = proj->topopt_mesher->node_list[i]->id;
+                    //    reactions[3*nid] = 0;
+                    //    //reactions[3*nid + 1] = 0;
+                    //    //reactions[3*nid + 2] = 0;
+                    //}
 
                     meshview->update_view(stresses);
                     stressview_VM->update_view(stresses);

@@ -44,6 +44,7 @@ class MMA : public NodeShapeBasedOptimizer{
     const double minfac, maxfac;
     const double c;
     const bool save_result;
+    const size_t iter_max;
 
     Visualization* viz;
 

@@ -171,17 +171,26 @@ ApparentDensity::ApparentDensity(const projspec::DataMap& data):
 }
 
 void ApparentDensity::generate(){
-    std::set<size_t> node_ids;
-    for(auto& g:this->geoms){
-        for(auto& n:g->node_list){
-            node_ids.insert(n->id);
+    for(const auto& g:this->geoms){
+        for(const auto& n:g->node_list){
+            this->id_pos_map[n->id] = 0;
         }
     }
-    size_t new_id = 0;
-    for(auto& n:node_ids){
-        id_pos_map[n] = new_id;
-        ++new_id;
+
+    size_t new_id = 1;
+    for(const auto& g:this->geoms){
+        for(const auto& n:g->node_list){
+            auto& idi = this->id_pos_map[n->id];
+            if(idi == 0){
+                idi = new_id;
+                ++new_id;
+            }
+        }
     }
+    for(auto& i:id_pos_map){
+        --i.second;
+    }
+    --new_id;
     this->nodal_densities.resize(new_id, 0);
     // // Test run
     // for(auto& g:this->geoms){
@@ -295,15 +304,15 @@ void ApparentDensity::display_views() const{
         for(auto& g:geoms){
             gi.push_back(g->id);
         }
-        auto nodal_rho = this->nodal_densities;
-        for(auto& r:nodal_rho){
-            auto r_bkp = r;
-            r = this->scaler[0];
-            for(size_t j = 1; j < 5; ++j){
-                r += scaler[j]*std::pow(r_bkp, j);
-            }
-        }
-        this->density->update_view(nodal_rho, gi);
+        //auto nodal_rho = this->nodal_densities;
+        //for(auto& r:nodal_rho){
+        //    auto r_bkp = r;
+        //    r = this->scaler[0];
+        //    for(size_t j = 1; j < 5; ++j){
+        //        r += scaler[j]*std::pow(r_bkp, j);
+        //    }
+        //}
+        this->density->update_view(this->nodal_densities, gi);
     }
 }
 double ApparentDensity::get(const MeshElement* e, const gp_Pnt& p) const{
@@ -319,6 +328,10 @@ double ApparentDensity::get(const MeshElement* e, const gp_Pnt& p) const{
     //}
 
     return v;
+}
+double ApparentDensity::get(const Node* n) const{
+    const auto id = this->id_pos_map.at(n->id);
+    return this->nodal_densities[id];
 }
 
 using namespace projspec;

@@ -98,6 +98,7 @@ class TrabecularCutoff : public ScalarField {
 
     private:
     static const bool reg;
+    bool generated = false;
 
     std::vector<Geometry*> geoms;
 

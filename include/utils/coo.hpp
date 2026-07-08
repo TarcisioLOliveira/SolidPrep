@@ -368,7 +368,7 @@ class COO{
 
     inline void coo_add_row(const long i, const size_t row, const std::vector<size_t>& P, const std::vector<long>& pos, const math::Matrix& M){
         size_t j = 0;
-        while(pos[P[j]] < 0){
+        while(j < pos.size() && pos[P[j]] < 0){
             ++j;
         }
         if(j >= pos.size()){

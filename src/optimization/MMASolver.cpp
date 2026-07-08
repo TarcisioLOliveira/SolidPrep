@@ -32,10 +32,11 @@
 
 namespace optimization{
 
-MMASolver::MMASolver(int nn, int mm, double ai, double ci, double di)
+MMASolver::MMASolver(int nn, int mm, double ai, double ci, double di, bool shape_opt)
 	: n(nn)
 	, m(mm)
 	, iter(0)
+    , shape_opt(shape_opt)
 	, xmamieps(1.0e-5)
 	//, epsimin(1e-7)
 	, epsimin(std::sqrt(n + m) * 1e-9)
@@ -92,14 +93,21 @@ void MMASolver::Update(double *xval, const double *dfdx, const double *gx, const
 	GenSub(xval, dfdx, gx, dgdx, xmin, xmax);
 
 	// Update xolds
-    std::copy(xold1.begin(), xold1.end(), xold2.begin());
-	std::copy_n(xval, n, xold1.data());
+    if(!this->shape_opt){
+        std::copy(xold1.begin(), xold1.end(), xold2.begin());
+        std::copy_n(xval, n, xold1.data());
+    }
 
 	// Solve the dual with an interior point method
 	SolveDIP(xval);
 
 	// Solve the dual with a steepest ascent method
 	// SolveDSA(xval);
+
+    if(this->shape_opt){
+        std::copy(xold1.begin(), xold1.end(), xold2.begin());
+        std::copy_n(xval, n, xold1.data());
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -396,7 +404,12 @@ void MMASolver::GenSub(const double *xval, const double *dfdx, const double *gx,
             #pragma omp for
             #endif
             for (int i = 0; i < n; i++) {
-                double zzz = (xval[i] - xold1[i]) * (xold1[i] - xold2[i]);
+                double zzz = 0;
+                if(!this->shape_opt){
+                    zzz = (xval[i] - xold1[i]) * (xold1[i] - xold2[i]);
+                } else {
+                    zzz = xold1[i] * xold2[i];
+                }
                 double gamma;
                 if (zzz < 0.0) {
                     gamma = asymdec;
@@ -455,13 +468,13 @@ void MMASolver::GenSub(const double *xval, const double *dfdx, const double *gx,
             // Objective function
             {
                 double dfdxp = std::max(0.0, dfdx[i]);
-                double dfdxm = std::max(0.0, -1.0 * dfdx[i]);
+                double dfdxm = std::max(0.0, -dfdx[i]);
                 double xmamiinv = 1.0 / std::max(xmamieps, xmax[i] - xmin[i]);
                 //double pq = 0.001 * std::abs(dfdx[i]) + raa0 * xmamiinv;
                 //p0[i] = std::pow(upp[i] - xval[i], 2.0) * (dfdxp + pq);
                 //q0[i] = std::pow(xval[i] - low[i], 2.0) * (dfdxm + pq);
-                const double mult = std::atan(std::abs(dfdx[i]))*2/std::numbers::pi_v<double> + 1e-28;
-                const double m2 = 1.0/mult;
+                const double mult = std::atan(std::abs(dfdx[i]))*2.0/std::numbers::pi_v<double> + 1e-28;
+                const double m2 = 0.1/mult;
                 const double m1 = 1.0 + m2;
                 p0[i] = std::pow(upp[i] - xval[i], 2.0) * (m1*dfdxp + m2*dfdxm + raa0 * xmamiinv);
                 q0[i] = std::pow(xval[i] - low[i], 2.0) * (m2*dfdxp + m1*dfdxm + raa0 * xmamiinv);
@@ -470,13 +483,13 @@ void MMASolver::GenSub(const double *xval, const double *dfdx, const double *gx,
             // Constraints
             for (int j = 0; j < m; j++) {
                 double dgdxp = std::max(0.0, dgdx[i * m + j]);
-                double dgdxm = std::max(0.0, -1.0 * dgdx[i * m + j]);
+                double dgdxm = std::max(0.0, -dgdx[i * m + j]);
                 double xmamiinv = 1.0 / std::max(xmamieps, xmax[i] - xmin[i]);
                 //double pq = 0.001 * std::abs(dgdx[i * m + j]) + raa0 * xmamiinv;
                 //pij[i * m + j] = std::pow(upp[i] - xval[i], 2.0) * (dgdxp + pq);
                 //qij[i * m + j] = std::pow(xval[i] - low[i], 2.0) * (dgdxm + pq);
-                const double mult = std::atan(std::abs(dgdx[i * m + j]))*2/std::numbers::pi_v<double> + 1e-28;
-                const double m2 = 1.0/mult;
+                const double mult = std::atan(std::abs(dgdx[i * m + j]))*2.0/std::numbers::pi_v<double> + 1e-28;
+                const double m2 = 0.1/mult;
                 const double m1 = 1.0 + m2;
                 pij[i * m + j] = std::pow(upp[i] - xval[i], 2.0) * (m1*dgdxp + m2*dgdxm + raa0 * xmamiinv);
                 qij[i * m + j] = std::pow(xval[i] - low[i], 2.0) * (m2*dgdxp + m1*dgdxm + raa0 * xmamiinv);

@@ -39,6 +39,11 @@ class PowerLawOrthotropic : public Material{
         return this->density_field->get(e, p);
     }
 
+    virtual math::Matrix stiffness_inverse_2D_dsh(const MeshElement* const e, const gp_Pnt& p, const size_t n, const size_t dof) const override;
+    virtual math::Matrix stiffness_inverse_3D_dsh(const MeshElement* const e, const gp_Pnt& p, const size_t n, const size_t dof) const override;
+    virtual math::Matrix stiffness_2D_dsh(const MeshElement* const e, const gp_Pnt& p, const size_t n, const size_t dof) const override;
+    virtual math::Matrix stiffness_3D_dsh(const MeshElement* const e, const gp_Pnt& p, const size_t n, const size_t dof) const override;
+
     virtual double beam_E_2D(const MeshElement* const e, const gp_Pnt& p, const math::Matrix& R) const override;
     virtual double beam_E_3D(const MeshElement* const e, const gp_Pnt& p, const math::Matrix& R) const override;
     virtual std::array<double, 2> beam_EG_2D(const MeshElement* const e, const gp_Pnt& p, const math::Matrix& R) const override;
@@ -63,6 +68,29 @@ class PowerLawOrthotropic : public Material{
         return this->S_3D_base(e, p);
     }
 
+    virtual math::Matrix stiffness_2D_orig_dsh(const MeshElement* const e, const gp_Pnt& p, const size_t n, const size_t dof) const override{
+        const auto S_2D = this->S_2D_base(e, p);
+        const auto dS_2D = this->S_2D_base_dsh(e, p, n, dof);
+        const auto D_2D = S_2D.get_inverted_cholesky();
+        const auto dD_2D = -D_2D*dS_2D*D_2D;
+
+        return dD_2D;
+    }
+    virtual math::Matrix stiffness_3D_orig_dsh(const MeshElement* const e, const gp_Pnt& p, const size_t n, const size_t dof) const override{
+        const auto S_3D = this->S_3D_base(e, p);
+        const auto dS_3D = this->S_3D_base_dsh(e, p, n, dof);
+        const auto D_3D = S_3D.get_inverted_cholesky();
+        const auto dD_3D = -D_3D*dS_3D*D_3D;
+
+        return dD_3D;
+    }
+    virtual math::Matrix stiffness_inverse_2D_orig_dsh(const MeshElement* const e, const gp_Pnt& p, const size_t n, const size_t dof) const override{
+        return this->S_2D_base_dsh(e, p, n, dof);
+    }
+    virtual math::Matrix stiffness_inverse_3D_orig_dsh(const MeshElement* const e, const gp_Pnt& p, const size_t n, const size_t dof) const override{
+        return this->S_3D_base_dsh(e, p, n, dof);
+    }
+
     virtual Class get_class() const override{ return this->ORTHOTROPIC; }
     virtual Type get_type() const override{ return this->POWER_LAW_ORTHOTROPIC; }
     virtual bool is_homogeneous() const override{ return false; }
@@ -82,6 +110,8 @@ class PowerLawOrthotropic : public Material{
     private:
     math::Matrix S_2D_base(const MeshElement* const e, const gp_Pnt& p) const;
     math::Matrix S_3D_base(const MeshElement* const e, const gp_Pnt& p) const;
+    math::Matrix S_2D_base_dsh(const MeshElement* const e, const gp_Pnt& p, const size_t n, const size_t dof) const;
+    math::Matrix S_3D_base_dsh(const MeshElement* const e, const gp_Pnt& p, const size_t n, const size_t dof) const;
     static const bool reg;
     ScalarField* density_field;
     CoordinateField* direction_field;

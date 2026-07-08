@@ -115,7 +115,7 @@ double GlobalStressHeaviside::calculate_with_gradient(const NodeShapeBasedOptimi
                     }
                 }
                 for(size_t j = 0; j < dof; ++j){
-                    const double ldKu = le.T()*e.e->get_dk_sh(D, this->mesh->thickness, e.node_num, j)*ue;
+                    const double ldKu = le.T()*e.e->get_dk_sh(g->materials, this->mesh->thickness, e.node_num, j)*ue;
 
                     const double dS = e.e->von_Mises_derivative_sh(D, mult, c, u, e.node_num, j);
 

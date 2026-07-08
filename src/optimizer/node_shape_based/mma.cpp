@@ -38,6 +38,7 @@ MMA::MMA(const projspec::DataMap& data):
     maxfac  (data.get_double("maxfac")),
     c(data.get_double("c")),
     save_result(data.get_bool("save_result", false)),
+    iter_max(data.get_int("iter_max", 0)),
     viz(nullptr)
 {
 
@@ -96,7 +97,7 @@ TopoDS_Shape MMA::optimize(SolverManager* fem, Meshing* mesh){
         }
     }
 
-    optimization::MMASolver mma(x_size, M, 0, c, 1);
+    optimization::MMASolver mma(x_size, M, 0, c, 1, true);
     mma.SetAsymptotes(this->asyminit, this->asymdec, this->asyminc);
     mma.SetBoundFactors(this->minfac, this->maxfac);
 
@@ -120,11 +121,16 @@ TopoDS_Shape MMA::optimize(SolverManager* fem, Meshing* mesh){
 
     // int max_innerit = 30;
     double ch = 1.0;
-    int iter;
-	for (iter = 0; (ch > this->xtol_abs && (this->objective_weights.front() == 0 || std::abs((ff-fnew)/ff) > this->ftol_rel)); ++iter){
+    size_t iter;
+	for (iter = 0; (ch > this->xtol_abs && (iter_max == 0 || iter < iter_max) && (this->objective_weights.front() == 0 || std::abs((ff-fnew)/ff) > this->ftol_rel)); ++iter){
 
         fnew = ff;
 
+        if(iter > 0){
+            for(auto& f:this->data->fields){
+                f->regenerate();
+            }
+        }
         fem->generate_matrix(mesh);
         for(size_t i = 0; i < mesh->node_positions.size(); ++i){
             auto& lv = mesh->load_vector[i];
@@ -293,6 +299,7 @@ const bool MMA::reg = Factory<NodeShapeBasedOptimizer>::add(
         {
             DataEntry{.name = "xtol_abs", .type = TYPE_DOUBLE, .required = false},
             DataEntry{.name = "ftol_rel", .type = TYPE_DOUBLE, .required = false},
+            DataEntry{.name = "iter_max", .type = TYPE_INT, .required = false},
             DataEntry{.name = "save_result", .type = TYPE_BOOL, .required = false},
             DataEntry{.name = "asyminit", .type = TYPE_DOUBLE, .required = true},
             DataEntry{.name = "asymdec", .type = TYPE_DOUBLE, .required = true},

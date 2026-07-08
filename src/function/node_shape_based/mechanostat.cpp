@@ -55,7 +55,7 @@ Mechanostat::Mechanostat(const projspec::DataMap& data):
 
 void Mechanostat::initialize_views(Visualization* viz){
     this->shadow_view = viz->add_view("Normalized Strain", spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::OTHER);
-    this->gradient_view = viz->add_view("Normalized Strain Gradient", spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::OTHER);
+    //this->gradient_view = viz->add_view("Normalized Strain Gradient", spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::OTHER);
 }
 
 void Mechanostat::initialize(const NodeShapeBasedOptimizer* const op){
@@ -93,66 +93,83 @@ double Mechanostat::calculate_with_gradient(const NodeShapeBasedOptimizer* const
 
     double result = 0;
 
+    //const auto& clusters = op->shape_handler.get_clusters();
+    //std::vector<std::vector<double>> shape_fl;
+    //shape_fl.resize(clusters.size());
+    //for(size_t i = 0; i < clusters.size(); ++i){
+    //    shape_fl[i].resize(clusters[i].matrix_width, 0);
+    //}
+
     if(mpi_id == 0){
         auto He_it = this->He.begin();
+        //math::Vector ue(kw);
         for(const auto& g:this->mesh->geometries){
+            //const auto& cluster = op->shape_handler.get_cluster(g);
+            //auto& sfl = shape_fl[cluster->id];
             for(const auto& e:g->mesh){
                 const auto c = e->get_centroid();
 
                 const auto B = e->get_B(c);
 
-                const auto D = g->materials.get_D(e.get(), c);
-                const auto D0 = g->materials.get_D_orig(e.get(), c);
+                //const auto D = g->materials.get_D(e.get(), c);
+                //const auto D0 = g->materials.get_D_orig(e.get(), c);
 
                 double H_e = 0;
-                for(size_t it = 0; it < fl.size(); ++it){
-                    const auto& ui = fem->sub_u[it];
-                    const math::Vector eps(1e6*e->get_strain_vector(c, ui));
-                    if(this->problem_type == utils::PROBLEM_TYPE_2D){
-                        const double eps_lhs1 = this->LHS_2D(0, eps);
-                        const double eps_lhs2 = this->LHS_2D(1, eps);
-                        const StrainVector2D deps_lhs1 = this->dLHS_2D(0, eps);
-                        const StrainVector2D deps_lhs2 = this->dLHS_2D(1, eps);
-                        const double H1 = Hm(eps_lhs1);
-                        const double H2 = Hp(eps_lhs2);
-                        const double Hr = H1*eps_lhs1 + H2*eps_lhs2;
-                        const StrainVector2D dH = (dHm(eps_lhs1)*eps_lhs1 + H1)*deps_lhs1 +
-                                                  (dHp(eps_lhs2)*eps_lhs2 + H2)*deps_lhs2;
+                math::Vector dH_e;
+                const size_t it = 0;
 
-                        H_e = Hr;
-                        math::Vector dHB(dH.T()*B);
-                        for(size_t i = 0; i < num_nodes; ++i){
-                            for(size_t j = 0; j < dof; ++j){
-                                const long pos = e->nodes[i]->u_pos[j];
-                                if(pos > -1){
-                                    fl[it][pos] += dHB[i*dof + j];
-                                }
-                            }
-                        }
-                    } else if(this->problem_type == utils::PROBLEM_TYPE_3D){
-                        const double eps_lhs1 = this->Ud_3D(0, eps, D0, D);
-                        const double eps_lhs2 = this->Ud_3D(1, eps, D0, D);
-                        const StrainVector3D deps_lhs1 = this->dUd_3D(0, eps, D0, D);
-                        const StrainVector3D deps_lhs2 = this->dUd_3D(1, eps, D0, D);
-                        const double H1 = Hm(eps_lhs1);
-                        const double H2 = Hp(eps_lhs2);
-                        const double Hr = H1*eps_lhs1 + H2*eps_lhs2;
-                        const StrainVector3D dH = (dHm(eps_lhs1)*eps_lhs1 + H1)*deps_lhs1 +
-                                                  (dHp(eps_lhs2)*eps_lhs2 + H2)*deps_lhs2;
+                const auto& ui = fem->sub_u[it];
+                const math::Vector eps(1e6*e->get_strain_vector(c, ui));
+                if(this->problem_type == utils::PROBLEM_TYPE_2D){
+                    const double eps_lhs1 = this->LHS_2D(0, eps);
+                    const double eps_lhs2 = this->LHS_2D(1, eps);
+                    const StrainVector2D deps_lhs1 = this->dLHS_2D(0, eps);
+                    const StrainVector2D deps_lhs2 = this->dLHS_2D(1, eps);
+                    const double H1 = Hm(eps_lhs1);
+                    const double H2 = Hp(eps_lhs2);
+                    const double Hr = H1*eps_lhs1 + H2*eps_lhs2;
+                    const StrainVector2D dH = (dHm(eps_lhs1)*eps_lhs1 + H1)*deps_lhs1 +
+                                              (dHp(eps_lhs2)*eps_lhs2 + H2)*deps_lhs2;
 
-                        H_e = Hr;
-                        math::Vector dHB(dH.T()*B);
+                    H_e = Hr;
+                    dH_e = std::move(dH);
+                } else if(this->problem_type == utils::PROBLEM_TYPE_3D){
+                    const double eps_lhs1 = this->LHS_3D(0, eps);
+                    const double eps_lhs2 = this->LHS_3D(1, eps);
+                    const StrainVector3D deps_lhs1 = this->dLHS_3D(0, eps);
+                    const StrainVector3D deps_lhs2 = this->dLHS_3D(1, eps);
+                    const double H1 = Hm(eps_lhs1);
+                    const double H2 = Hp(eps_lhs2);
+                    const double Hr = H1*eps_lhs1 + H2*eps_lhs2;
+                    const StrainVector3D dH = (dHm(eps_lhs1)*eps_lhs1 + H1)*deps_lhs1 +
+                                              (dHp(eps_lhs2)*eps_lhs2 + H2)*deps_lhs2;
 
-                        for(size_t i = 0; i < num_nodes; ++i){
-                            for(size_t j = 0; j < dof; ++j){
-                                const long pos = e->nodes[i]->u_pos[j];
-                                if(pos > -1){
-                                    fl[it][pos] += dHB[i*dof + j];
-                                }
-                            }
-                        }
+                    H_e = Hr;
+                    dH_e = std::move(dH);
+                }
+                math::Vector dHB(1e6*(dH_e.T()*B));
+                for(size_t i = 0; i < num_nodes; ++i){
+                    for(size_t j = 0; j < dof; ++j){
+                        const long pos = e->nodes[i]->u_pos[j];
+                        fl[it][pos] += dHB[i*dof + j];
                     }
                 }
+
+                //for(size_t n = 0; n < node_num; ++n){
+                //    for(size_t j = 0; j < dof; ++j){
+                //        ue[n*dof + j] = u[e->nodes[n]->u_pos[j]];
+                //    }
+                //}
+                //for(size_t i = 0; i < node_num; ++i){
+                //    const auto id = cluster->id_mapping.at(e->nodes[i]->id);
+                //    if(id >= 0){
+                //        for(size_t j = 0; j < dof; ++j){
+                //            const auto dB(e->get_dB_sh(c, i, j));
+                //            const auto dHxi(1e6*(dH_e.T()*dB*ue));
+                //            sfl[id*dof + j] += dHxi;
+                //        }
+                //    }
+                //}
 
                 *He_it = H_e;
                 result += H_e;
@@ -169,67 +186,113 @@ double Mechanostat::calculate_with_gradient(const NodeShapeBasedOptimizer* const
 
         logger::quick_log("Calculating stress gradient...");
 
-        math::Vector ue(kw);
-        math::Vector le(kw);
-        math::Matrix D;
-        math::Matrix D0;
+        #pragma omp parallel
+        {
+            math::Vector ue(kw);
+            math::Vector le(kw);
+            //math::Matrix D;
+            //math::Matrix D0;
+            //math::Matrix dD;
+            //math::Matrix dD0;
+            #pragma omp for
+            for(size_t i = 0; i < nodes.size(); ++i){
+                const auto& shn = nodes[i];
+                for(const auto& e:shn.elements){
+                    const auto& g = this->mesh->elem_geom_mapping.at(e.e);
+                    const auto c = e.e->get_centroid();
+                    //D = g->materials.get_D(e.e, c);
+                    //D0 = g->materials.get_D_orig(e.e, c);
 
-        for(size_t i = 0; i < nodes.size(); ++i){
-            const auto& shn = nodes[i];
-            for(const auto& e:shn.elements){
-                const auto& g = this->mesh->elem_geom_mapping.at(e.e);
-                const auto c = e.e->get_centroid();
-                D = g->materials.get_D(e.e, c);
-                D0 = g->materials.get_D_orig(e.e, c);
+                    const math::Vector eps(1e6*e.e->get_strain_vector(c, u));
 
-                const math::Vector eps(1e6*e.e->get_strain_vector(c, u));
-
-                for(size_t n = 0; n < node_num; ++n){
-                    for(size_t j = 0; j < dof; ++j){
-                        ue[n*dof + j] = u[e.e->nodes[n]->u_pos[j]];
-                        le[n*dof + j] = l[e.e->nodes[n]->u_pos[j]];
+                    for(size_t n = 0; n < node_num; ++n){
+                        for(size_t j = 0; j < dof; ++j){
+                            ue[n*dof + j] = u[e.e->nodes[n]->u_pos[j]];
+                            le[n*dof + j] = l[e.e->nodes[n]->u_pos[j]];
+                        }
                     }
-                }
 
-                math::Vector dH_e;
-                if(this->problem_type == utils::PROBLEM_TYPE_2D){
-                    const double eps_lhs1 = this->LHS_2D(0, eps);
-                    const double eps_lhs2 = this->LHS_2D(1, eps);
-                    const StrainVector2D deps_lhs1 = this->dLHS_2D(0, eps);
-                    const StrainVector2D deps_lhs2 = this->dLHS_2D(1, eps);
-                    const double H1 = Hm(eps_lhs1);
-                    const double H2 = Hp(eps_lhs2);
-                    StrainVector2D dH = (dHm(eps_lhs1)*eps_lhs1 + H1)*deps_lhs1 +
-                                        (dHp(eps_lhs2)*eps_lhs2 + H2)*deps_lhs2;
+                    for(size_t j = 0; j < dof; ++j){
+                        //dD = g->materials.get_D_dsh(e.e, c, e.node_num, j);
+                        //dD0 = g->materials.get_D_orig_dsh(e.e, c, e.node_num, j);
 
-                    dH_e = std::move(dH);
-                } else if(this->problem_type == utils::PROBLEM_TYPE_3D){
-                    const double eps_lhs1 = this->Ud_3D(0, eps, D0, D);
-                    const double eps_lhs2 = this->Ud_3D(1, eps, D0, D);
-                    const StrainVector3D deps_lhs1 = this->dUd_3D(0, eps, D0, D);
-                    const StrainVector3D deps_lhs2 = this->dUd_3D(1, eps, D0, D);
-                    const double H1 = Hm(eps_lhs1);
-                    const double H2 = Hp(eps_lhs2);
-                    StrainVector3D dH = (dHm(eps_lhs1)*eps_lhs1 + H1)*deps_lhs1 +
-                                        (dHp(eps_lhs2)*eps_lhs2 + H2)*deps_lhs2;
+                        const double ldKu = le.T()*e.e->get_dk_sh(g->materials, this->mesh->thickness, e.node_num, j)*ue;
 
-                    dH_e = std::move(dH);
-                }
+                        const auto dB(e.e->get_dB_sh(c, e.node_num, j));
+                        const auto deps(1e6*dB*ue);
 
-                for(size_t j = 0; j < dof; ++j){
-                    const double ldKu = le.T()*e.e->get_dk_sh(D, this->mesh->thickness, e.node_num, j)*ue;
+                        double dH_e = 0;
+                        if(this->problem_type == utils::PROBLEM_TYPE_2D){
+                            const double eps_lhs1 = this->LHS_2D(0, eps);
+                            const double eps_lhs2 = this->LHS_2D(1, eps);
+                            const auto deps_lhs1 = this->dLHS_2D(0, eps).T()*deps;
+                            const auto deps_lhs2 = this->dLHS_2D(1, eps).T()*deps;
+                            const double H1 = Hm(eps_lhs1);
+                            const double H2 = Hp(eps_lhs2);
+                            const auto dH = (dHm(eps_lhs1)*eps_lhs1 + H1)*deps_lhs1 +
+                                            (dHp(eps_lhs2)*eps_lhs2 + H2)*deps_lhs2;
 
-                    auto dB(e.e->get_dB_sh(c, e.node_num, j));
+                            dH_e = dH;
+                        } else if(this->problem_type == utils::PROBLEM_TYPE_3D){
+                            const double eps_lhs1 = this->LHS_3D(0, eps);
+                            const double eps_lhs2 = this->LHS_3D(1, eps);
+                            //const auto deps_lhs1 = this->dUd_3D_full(0, eps, deps, D0, D, dD0, dD);
+                            //const auto deps_lhs2 = this->dUd_3D_full(1, eps, deps, D0, D, dD0, dD);
+                            const auto deps_lhs1 = this->dLHS_3D(0, eps).T()*deps;
+                            const auto deps_lhs2 = this->dLHS_3D(1, eps).T()*deps;
+                            const double H1 = Hm(eps_lhs1);
+                            const double H2 = Hp(eps_lhs2);
+                            const auto dH = (dHm(eps_lhs1)*eps_lhs1 + H1)*deps_lhs1 +
+                                            (dHp(eps_lhs2)*eps_lhs2 + H2)*deps_lhs2;
 
-                    const double mult = dH_e.T()*dB*ue;
+                            dH_e = dH;
+                        }
 
-                    const double dS = e.e->von_Mises_derivative_sh(D, mult, c, u, e.node_num, j);
-
-                    grad[i*dof + j] += dS - ldKu;
+                        grad[i*dof + j] += dH_e - ldKu;
+                    }
                 }
             }
         }
+        //for(const auto& g:this->mesh->geometries){
+        //    const auto& cluster = op->shape_handler.get_cluster(g);
+        //    auto& sfl = shape_fl[cluster->id];
+        //    std::vector<math::Matrix> dk(g->mesh.size());
+        //    logger::quick_log("geom", g->id);
+        //    for(size_t i = 0; i < node_num; ++i){
+        //        for(size_t j = 0; j < dof; ++j){
+        //            logger::quick_log("node", i, "dof", j);
+        //            #pragma omp parallel for
+        //            for(size_t ei = 0; ei < g->mesh.size(); ++ei){
+        //                const auto& e = g->mesh[ei];
+        //                const auto id = cluster->id_mapping.at(e->nodes[i]->id);
+        //                if(id >= 0){
+        //                    dk[ei] = e->get_dk_sh(g->materials, this->mesh->thickness, i, j);
+        //                }
+        //            }
+        //            math::Vector ue(kw);
+        //            math::Vector le(kw);
+        //            for(size_t ei = 0; ei < g->mesh.size(); ++ei){
+        //                const auto& e = g->mesh[ei];
+        //                const auto id = cluster->id_mapping.at(e->nodes[i]->id);
+        //                if(id >= 0){
+        //                    for(size_t ni = 0; ni < node_num; ++ni){
+        //                        for(size_t nj = 0; nj < dof; ++nj){
+        //                            ue[ni*dof + nj] = u[e->nodes[ni]->u_pos[nj]];
+        //                            le[ni*dof + nj] = l[e->nodes[ni]->u_pos[nj]];
+        //                        }
+        //                    }
+        //                    const double ldKu = le.T()*dk[ei]*ue;
+        //                    sfl[id*dof + j] -= ldKu;
+        //                }
+        //            }
+        //        }
+        //    }
+        //}
         op->contact_gradient(mesh, fem, u, l, grad);
+        //for(size_t i = 0; i < clusters.size(); ++i){
+        //    clusters[i].solver->solve_adjoint(shape_fl[i]);
+        //}
+        //op->shape_handler.adjoint_grad_append(grad, shape_fl);
         logger::quick_log("Done.");
     }
 

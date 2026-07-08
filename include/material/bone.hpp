@@ -37,6 +37,16 @@ class Bone : public Material{
     virtual math::Matrix stiffness_inverse_3D(const MeshElement* const e, const gp_Pnt& p) const override;
     virtual double get_density(const MeshElement* const e, const gp_Pnt& p) const override;
 
+    virtual math::Matrix stiffness_inverse_2D_dsh(const MeshElement* const e, const gp_Pnt& p, const size_t n, const size_t dof) const override;
+    virtual math::Matrix stiffness_inverse_3D_dsh(const MeshElement* const e, const gp_Pnt& p, const size_t n, const size_t dof) const override;
+    virtual math::Matrix stiffness_2D_dsh(const MeshElement* const e, const gp_Pnt& p, const size_t n, const size_t dof) const override;
+    virtual math::Matrix stiffness_3D_dsh(const MeshElement* const e, const gp_Pnt& p, const size_t n, const size_t dof) const override;
+
+    virtual math::Matrix stiffness_inverse_2D_orig_dsh(const MeshElement* const e, const gp_Pnt& p, const size_t n, const size_t dof) const override;
+    virtual math::Matrix stiffness_inverse_3D_orig_dsh(const MeshElement* const e, const gp_Pnt& p, const size_t n, const size_t dof) const override;
+    virtual math::Matrix stiffness_2D_orig_dsh(const MeshElement* const e, const gp_Pnt& p, const size_t n, const size_t dof) const override;
+    virtual math::Matrix stiffness_3D_orig_dsh(const MeshElement* const e, const gp_Pnt& p, const size_t n, const size_t dof) const override;
+
     virtual double beam_E_2D(const MeshElement* const e, const gp_Pnt& p, const math::Matrix& R) const override;
     virtual double beam_E_3D(const MeshElement* const e, const gp_Pnt& p, const math::Matrix& R) const override;
     virtual std::array<double, 2> beam_EG_2D(const MeshElement* const e, const gp_Pnt& p, const math::Matrix& R) const override;

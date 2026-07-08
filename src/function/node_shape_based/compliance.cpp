@@ -50,7 +50,6 @@ double Compliance::calculate_with_gradient(const NodeShapeBasedOptimizer* const 
     const size_t dof = this->mesh->elem_info->get_dof_per_node();
     const size_t node_num = this->mesh->elem_info->get_nodes_per_element();
     const size_t kw = this->mesh->elem_info->get_k_dimension();
-    math::Matrix D;
     std::fill(grad.begin(), grad.end(), 0);
 
     std::vector<double> ue(kw, 0);
@@ -62,15 +61,13 @@ double Compliance::calculate_with_gradient(const NodeShapeBasedOptimizer* const 
         const auto& shn = nodes[i];
         for(const auto& e:shn.elements){
             const auto& g = this->mesh->elem_geom_mapping.at(e.e);
-            const auto c = e.e->get_centroid();
-            D = g->materials.get_D(e.e, c);
             for(size_t n = 0; n < node_num; ++n){
                 for(size_t j = 0; j < dof; ++j){
                     ue[n*dof + j] = u[e.e->nodes[n]->u_pos[j]];
                 }
             }
             for(size_t j = 0; j < dof; ++j){
-                const auto dK = e.e->get_dk_sh(D, this->mesh->thickness, e.node_num, j);
+                const auto dK = e.e->get_dk_sh(g->materials, this->mesh->thickness, e.node_num, j);
                 cblas_dgemv(CblasRowMajor, CblasNoTrans, kw, kw, 1, dK.data(), kw, ue.data(), 1, 0, dKu.data(), 1);
                 const double udKu = cblas_ddot(kw, ue.data(), 1, dKu.data(), 1);
 

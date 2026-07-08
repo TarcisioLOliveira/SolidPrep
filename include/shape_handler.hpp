@@ -59,6 +59,19 @@ class ShapeHandler{
         std::vector<MeshNode*> nodes;
     };
 
+    struct GeometryCluster{
+        size_t id;
+        std::set<Geometry*> geometries;
+        std::map<size_t, long> id_mapping;
+        size_t matrix_width;
+        std::unique_ptr<general_solver::PETScGeneralPCG> solver;
+        //std::unique_ptr<general_solver::MUMPSGeneral> solver;
+        std::vector<double> b;
+        std::vector<BoundaryElement*> elem_lambda_mapping;
+        std::map<const BoundaryElement*, std::vector<size_t>> bound_lambda_mapping;
+        std::map<size_t, long> nodal_lambda_mapping;
+    };
+
     ShapeHandler() = default;
     ShapeHandler(Meshing* mesh, std::vector<Geometry*> geometries, std::unique_ptr<shape_op::ShapeOp> root_op, double smoothing_radius);
 
@@ -67,6 +80,14 @@ class ShapeHandler{
     void filter_displacement(std::vector<double>& dx);
     void filter_gradient(std::vector<double>& df);
 
+    void adjoint_grad_append(std::vector<double>& grad, const std::vector<std::vector<double>>& sfl) const;
+
+    inline const std::vector<GeometryCluster>& get_clusters() const{
+        return this->clusters;
+    }
+    inline const GeometryCluster* get_cluster(const Geometry* g) const{
+        return this->geom_to_cluster.at(g);
+    }
     inline const std::vector<double>& get_shape_displacement() const{
         return this->shape_displacement;
     }
@@ -84,18 +105,12 @@ class ShapeHandler{
     }
 
     private:
-    struct GeometryCluster{
-        std::set<Geometry*> geometries;
-        std::map<size_t, long> id_mapping;
-        size_t matrix_width;
-        std::unique_ptr<general_solver::PETScGeneralPCG> solver;
-        std::vector<double> b;
-        std::vector<BoundaryElement*> elem_lambda_mapping;
-        std::map<size_t, long> nodal_lambda_mapping;
-    };
+    void generate_cluster_matrix();
+
     std::set<SuperimposedNodes*> apply_op(shape_op::ShapeOp* op) const;
 
-    std::unique_ptr<general_solver::MUMPSGeneral> helmholtz_solver;
+    //std::unique_ptr<general_solver::MUMPSGeneral> helmholtz_solver;
+    std::unique_ptr<general_solver::PETScGeneralPCG> helmholtz_solver;
 
     void generate_helmholtz();
 
@@ -105,6 +120,8 @@ class ShapeHandler{
     std::map<size_t, size_t> optimized_nodes_mapping;
     std::map<const MeshElement*, std::vector<size_t>> elem_to_affected_node_mapping;
     std::map<size_t, size_t> bound_to_shape_mapping;
+    std::map<const Geometry*, GeometryCluster*> geom_to_cluster;
+    std::map<const MeshElement*, std::vector<BoundaryElement*>> elem_to_bound;
 
     std::vector<AffectedNode> optimized_nodes;
     std::vector<AffectedContactNode> optimized_contact_nodes;

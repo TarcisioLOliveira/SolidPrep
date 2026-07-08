@@ -28,6 +28,7 @@ set(SOURCES
     contact_spring.cpp
     internal_loads2.cpp
     internal_loads3.cpp
+    reaction_sum.cpp
 )
 
 add_subdirectory(pathfinding)

@@ -30,7 +30,7 @@ PETScGeneralPCG::~PETScGeneralPCG(){
 }
 
 
-void PETScGeneralPCG::initialize_matrix(bool spd, size_t L){
+void PETScGeneralPCG::initialize_matrix(bool spd, size_t L, bool reuse_x){
     this->spd = spd;
     this->L = L;
 
@@ -73,7 +73,11 @@ void PETScGeneralPCG::initialize_matrix(bool spd, size_t L){
 
         KSPSetTolerances(this->ksp, 1e-7, 1e-50, 1e10, 1e5);
     }
-    KSPSetInitialGuessNonzero(this->ksp, PETSC_TRUE);
+    if(reuse_x){
+        KSPSetInitialGuessNonzero(this->ksp, PETSC_TRUE);
+    } else {
+        KSPSetInitialGuessNonzero(this->ksp, PETSC_FALSE);
+    }
     KSPSetNormType(this->ksp, KSP_NORM_UNPRECONDITIONED);
     
     KSPGetPC(this->ksp, &this->pc);
@@ -196,17 +200,21 @@ void PETScGeneralPCG::solve_adjoint(std::vector<double>& b){
     KSPSetUp(this->ksp);
     PCSetUp(this->pc);
 
-    KSPSolveTranspose(this->ksp, this->f, this->u);
+    //KSPSolveTranspose(this->ksp, this->f, this->u);
+    KSPSolve(this->ksp, this->f, this->u);
     KSPConvergedReason r;
     KSPGetConvergedReason(this->ksp, &r);
     logger::quick_log("Adjoint Converged?", r);
     {
         double tmp = 0;
         PetscInt its = 0;
+        PetscInt total_its = 0;
         KSPGetResidualNorm(this->ksp, &tmp);
-        KSPGetTotalIterations(this->ksp, &its);
+        KSPGetTotalIterations(this->ksp, &total_its);
+        KSPGetIterationNumber(this->ksp, &its);
         logger::quick_log("Residual norm", tmp);
-        logger::quick_log("Total iterations", its);
+        logger::quick_log("Iterations", its);
+        logger::quick_log("Total iterations", total_its);
     }
 
     auto mat = M.get_matrix();

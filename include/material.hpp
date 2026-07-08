@@ -71,6 +71,39 @@ class Material{
     virtual math::Matrix stiffness_inverse_3D(const MeshElement* const e, const gp_Pnt& p) const = 0;
     virtual double get_density(const MeshElement* const e, const gp_Pnt& p) const = 0;
 
+    virtual math::Matrix stiffness_inverse_2D_dsh(const MeshElement* const e, const gp_Pnt& p, const size_t n, const size_t dof) const{
+        (void) e;
+        (void) p;
+        (void) n;
+        (void) dof;
+
+        return math::Matrix(3, 3, 0);
+    }
+    virtual math::Matrix stiffness_inverse_3D_dsh(const MeshElement* const e, const gp_Pnt& p, const size_t n, const size_t dof) const{
+        (void) e;
+        (void) p;
+        (void) n;
+        (void) dof;
+
+        return math::Matrix(6, 6, 0);
+    }
+    virtual math::Matrix stiffness_2D_dsh(const MeshElement* const e, const gp_Pnt& p, const size_t n, const size_t dof) const{
+        (void) e;
+        (void) p;
+        (void) n;
+        (void) dof;
+
+        return math::Matrix(3, 3, 0);
+    }
+    virtual math::Matrix stiffness_3D_dsh(const MeshElement* const e, const gp_Pnt& p, const size_t n, const size_t dof) const{
+        (void) e;
+        (void) p;
+        (void) n;
+        (void) dof;
+
+        return math::Matrix(6, 6, 0);
+    }
+
     virtual double beam_E_2D(const MeshElement* const e, const gp_Pnt& p, const math::Matrix& R) const = 0;
     virtual double beam_E_3D(const MeshElement* const e, const gp_Pnt& p, const math::Matrix& R) const = 0;
     virtual std::array<double, 2> beam_EG_2D(const MeshElement* const e, const gp_Pnt& p, const math::Matrix& R) const = 0;
@@ -92,6 +125,18 @@ class Material{
     }
     virtual math::Matrix stiffness_inverse_3D_orig(const MeshElement* const e, const gp_Pnt& p) const{
         return this->stiffness_inverse_3D(e, p);
+    }
+    virtual math::Matrix stiffness_2D_orig_dsh(const MeshElement* const e, const gp_Pnt& p, const size_t n, const size_t dof) const{
+        return this->stiffness_2D_dsh(e, p, n, dof);
+    }
+    virtual math::Matrix stiffness_3D_orig_dsh(const MeshElement* const e, const gp_Pnt& p, const size_t n, const size_t dof) const{
+        return this->stiffness_3D_dsh(e, p, n, dof);
+    }
+    virtual math::Matrix stiffness_inverse_2D_orig_dsh(const MeshElement* const e, const gp_Pnt& p, const size_t n, const size_t dof) const{
+        return this->stiffness_inverse_2D_dsh(e, p, n, dof);
+    }
+    virtual math::Matrix stiffness_inverse_3D_orig_dsh(const MeshElement* const e, const gp_Pnt& p, const size_t n, const size_t dof) const{
+        return this->stiffness_inverse_3D_dsh(e, p, n, dof);
     }
 
     /**

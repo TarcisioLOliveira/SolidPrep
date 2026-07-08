@@ -29,6 +29,7 @@
 #include <vector>
 #include "internal_loads2.hpp"
 #include "internal_loads3.hpp"
+#include "reaction_sum.hpp"
 #include "support.hpp"
 #include "force.hpp"
 #include "spring.hpp"
@@ -163,6 +164,7 @@ class Meshing{
                                            std::vector<ContactSpring>& contact_springs,
                                            std::vector<InternalLoads2>& internal_loads2,
                                            std::vector<InternalLoads3>& internal_loads3,
+                                           std::vector<ReactionSum>& reaction_sum,
                                            std::vector<SubProblem>& sub_problems);
 
     /**
@@ -203,6 +205,7 @@ class Meshing{
     std::vector<InternalLoads>* internal_loads;
     std::vector<InternalLoads2>* internal_loads2 = nullptr;
     std::vector<InternalLoads3>* internal_loads3;
+    std::vector<ReactionSum>* reaction_sum = nullptr;
     std::vector<ContactSpring>* contact_springs;
     std::vector<SubProblem>* sub_problems;
     std::vector<BoundaryElement*> inter_geometry_boundary;

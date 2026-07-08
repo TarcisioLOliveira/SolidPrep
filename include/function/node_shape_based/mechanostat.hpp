@@ -147,7 +147,7 @@ class Mechanostat: public NodeShapeBasedFunction{
     }
 
     inline double Ud_3D(const size_t i, const StrainVector3D& eps, const math::Matrix& D0, const math::Matrix& D) const{
-        const double A = D0(0,0) + 2*D0(1,2) + D0(1,1);
+        const double A = D0(0,0) + 2*D0(0,1) + D0(1,1);
         const double B = 2*(D0(0,2) + D0(1,2));
         const double C = D0(2,2);
 
@@ -171,7 +171,7 @@ class Mechanostat: public NodeShapeBasedFunction{
     }
 
     inline StrainVector3D dUd_3D(const size_t i, const StrainVector3D& eps, const math::Matrix& D0, const math::Matrix& D) const{
-        const double A = D0(0,0) + 2*D0(1,2) + D0(1,1);
+        const double A = D0(0,0) + 2*D0(0,1) + D0(1,1);
         const double B = 2*(D0(0,2) + D0(1,2));
         const double C = D0(2,2);
 
@@ -205,6 +205,47 @@ class Mechanostat: public NodeShapeBasedFunction{
                 }, 6, 6);
 
         return 3*beta*((I - k2)*D*eps_1)/eDe + alpha*k;
+    }
+
+    inline double dUd_3D_full(const size_t i, const StrainVector3D& eps, const StrainVector3D& deps, const math::Matrix& D0, const math::Matrix& D, const math::Matrix& dD0, const math::Matrix& dD) const{
+        const double A = D0(0,0) + 2*D0(0,1) + D0(1,1);
+        const double B = 2*(D0(0,2) + D0(1,2));
+        const double C = D0(2,2);
+
+        const double dA = dD0(0,0) + 2*dD0(0,1) + dD0(1,1);
+        const double dB = 2*(dD0(0,2) + dD0(1,2));
+        const double dC = dD0(2,2);
+
+        const double e_min = t[i];
+        const double e_max = c[i];
+
+        const double K1 = A + B + C;
+        const double K2 = -(B + 2*C);
+        const double K3 = C;
+
+        const double dK1 = dA + dB + dC;
+        const double dK2 = -(dB + 2*dC);
+        const double dK3 = dC;
+
+        const double alpha = 0.5*(1.0/e_min - 1.0/e_max);
+        const double se = (1/e_min + 1/e_max);
+        const double b_tmp = (4*(K1 + 3*K2 + 9*K3));
+        const double beta = (se*se)/b_tmp;
+        const double beta_dsh = (se*se)*(4*(dK1 + 3*dK2 + 9*dK3))/(b_tmp*b_tmp);
+
+        const auto eps_tr = (eps[0] + eps[1] + eps[2]);
+        const auto eps_h = eps_tr/3.0;
+        const math::Vector eps_1({eps[0] - eps_h, eps[1] - eps_h, eps[2] - eps_h, eps[3], eps[4], eps[5]});
+
+        const auto deps_tr = (deps[0] + deps[1] + deps[2]);
+        const auto deps_h = deps_tr/3.0;
+        const math::Vector deps_1({deps[0] - deps_h, deps[1] - deps_h, deps[2] - deps_h, deps[3], deps[4], deps[5]});
+
+        const auto eDe = std::sqrt(beta*(eps_1.T()*D*eps_1));
+
+        //return 3*beta*((I - k2)*D*eps_1)/eDe + alpha*k;
+        return 3*(beta_dsh*(eps_1.T()*D*eps_1) + beta*(eps_1.T()*dD*eps_1) + 2*beta*(eps_1.T()*D*deps_1))/(2*eDe) + alpha*deps_tr;
+
     }
 };
 

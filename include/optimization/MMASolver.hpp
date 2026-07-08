@@ -62,7 +62,7 @@ namespace optimization{
 class MMASolver {
 
   public:
-	MMASolver(int n, int m, double a = 0.0, double c = 1000.0, double d = 0.0);
+	MMASolver(int n, int m, double a = 0.0, double c = 1000.0, double d = 0.0, bool shape_opt = false);
 
 	void SetAsymptotes(double init, double decrease, double increase);
 
@@ -77,6 +77,8 @@ class MMASolver {
 
   private:
 	int n, m, iter;
+
+    const bool shape_opt;
 
 	const double xmamieps;
 	const double epsimin;

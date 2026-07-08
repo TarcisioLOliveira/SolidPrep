@@ -21,6 +21,8 @@
 #include "simulation/marginal_bone_loss.hpp"
 #include "field/implant_region.hpp"
 #include "field/principal_stress.hpp"
+#include "field/trabecular_cutoff.hpp"
+#include "field/apparent_density.hpp"
 #include "logger.hpp"
 #include "math/matrix.hpp"
 #include <algorithm>
@@ -41,6 +43,10 @@ MarginalBoneLoss::MarginalBoneLoss(const projspec::DataMap& data):
     K_g(this->get_K_g(s)),
     K_e2(this->get_K_e2(t, c)),
     problem_type(data.proj->type),
+    MAX_RHO(data.get_double("rho_max_cort")),
+    MAX_RHO_TRAB(data.get_double("rho_max_trab")),
+    rho_d(data.get_double("growth_cort")),
+    rho_d_t(data.get_double("growth_trab")),
     geom_id(data.get_int("mandible_geometry")),
     mandible(data.proj->geometries[geom_id].get()),
     time_step(data.get_double("time_step")),
@@ -59,6 +65,8 @@ MarginalBoneLoss::MarginalBoneLoss(const projspec::DataMap& data):
 
     this->coeff = math::Vector(3);
     this->coeff[2] = this->rho_d;
+    this->coeff2 = math::Vector(3);
+    this->coeff2[2] = this->rho_d_t;
 
     //eps[0] = -this->c[0];
     //this->x0 = this->LHS_3D(3, eps);
@@ -79,8 +87,10 @@ MarginalBoneLoss::MarginalBoneLoss(const projspec::DataMap& data):
 
     math::LU LU(A);
     LU.solve(this->coeff);
+    LU.solve(this->coeff2);
 
     this->dv0 = coeff[1] + 2*coeff[2]*x1;
+    this->dv0t = coeff2[1] + 2*coeff2[2]*x1;
 }
 
 
@@ -141,19 +151,49 @@ void MarginalBoneLoss::run(){
     const auto integ_order = this->proj->topopt_element->get_element_order();
     const auto S_SIZE = this->proj->topopt_element->get_D_dimension();
 
+    field::ImplantRegion* field = nullptr;
+    field::PrincipalStress* dir_field = nullptr;
+    const field::ApparentDensity* ref_field = nullptr;
+    const field::TrabecularCutoff* trab_field = nullptr;
+    for(auto& f:this->proj->fields){
+        if(f->get_type() == Field::Type::SCALAR){
+            ScalarField* sf = static_cast<ScalarField*>(f.get());
+            if(sf->get_class() == ScalarField::Class::IMPLANT_REGION){
+                field = static_cast<field::ImplantRegion*>(sf);
+            } else if(sf->get_class() == ScalarField::Class::APPARENT_DENSITY){
+                ref_field = static_cast<field::ApparentDensity*>(sf);
+            } else if(sf->get_class() == ScalarField::Class::TRABECULAR_CUTOFF){
+                trab_field = static_cast<field::TrabecularCutoff*>(sf);
+            }
+        } else if(f->get_type() == Field::Type::COORDINATE){
+            CoordinateField* cf = static_cast<CoordinateField*>(f.get());
+            if(cf->get_class() == CoordinateField::Class::PRINCIPAL_STRESS){
+                dir_field = static_cast<field::PrincipalStress*>(cf);
+            }
+        }
+    }
+
+    std::vector<double> density;
+    std::vector<double> stress(this->elem_num, std::numeric_limits<double>::quiet_NaN());
+    std::vector<double> growth (density_num, std::numeric_limits<double>::quiet_NaN());
+    std::vector<double> strains(density_num, std::numeric_limits<double>::quiet_NaN());
+
+    std::vector<double> u(this->mesh->max_dofs);
+
+    logger::log_assert(field != nullptr, logger::ERROR, "marginal_bone_loss simulation requires an implant_region field");
+    field->freeze(density);
+    this->density_view->update_view(density, {this->mandible->id});
+
 
     std::map<const Node*, const MeshElement*> node_to_elem;
     std::map<size_t, size_t> id_pos_map;
     std::vector<math::Vector> nodal_strains;
     std::vector<double> nodal_divisors;
+    std::vector<bool> nodal_trab;
     {
         size_t new_id = 0;
-        std::set<size_t> node_ids;
         for(auto& n:this->mandible->node_list){
-            node_ids.insert(n->id);
-        }
-        for(auto& n:node_ids){
-            id_pos_map[n] = new_id;
+            id_pos_map[n->id] = new_id;
             ++new_id;
         }
     }
@@ -166,39 +206,28 @@ void MarginalBoneLoss::run(){
     } else {
         nodal_strains.resize(density_num, math::Vector(S_SIZE));
         nodal_divisors.resize(density_num);
+        nodal_trab.resize(density_num);
+        for(size_t i = 0; i < density_num; ++i){
+            const auto n = this->mandible->node_list[i];
+            node_to_elem[n] = nullptr;
+            const double ref_rho = ref_field->get(n);
+            nodal_trab[i] = (ref_rho <= MAX_RHO_TRAB);
+        }
         for(auto& e:this->mandible->mesh){
+            const auto c = e->get_centroid();
+            const bool center_trab = (trab_field->get(e.get(), c) > 0.5);
             for(size_t i = 0; i < NODES_PER_ELEM; ++i){
-                node_to_elem[e->nodes[i]] = e.get();
-                nodal_divisors[id_pos_map[e->nodes[i]->id]] += 1;
+                const auto& n = e->nodes[i];
+                auto& ei = node_to_elem[n];
+                const auto id = id_pos_map[n->id];
+                nodal_divisors[id] += 1;
+
+                if(ei == nullptr && center_trab == nodal_trab[id]){
+                    ei = e.get();
+                }
             }
         }
     }
-
-    std::vector<double> density;
-    std::vector<double> stress(this->elem_num, std::numeric_limits<double>::quiet_NaN());
-    std::vector<double> growth (density_num, std::numeric_limits<double>::quiet_NaN());
-    std::vector<double> strains(density_num, std::numeric_limits<double>::quiet_NaN());
-
-    std::vector<double> u(this->mesh->max_dofs);
-
-    field::ImplantRegion* field = nullptr;
-    field::PrincipalStress* dir_field = nullptr;
-    for(auto& f:this->proj->fields){
-        if(f->get_type() == Field::Type::SCALAR){
-            ScalarField* sf = static_cast<ScalarField*>(f.get());
-            if(sf->get_class() == ScalarField::Class::IMPLANT_REGION){
-                field = static_cast<field::ImplantRegion*>(sf);
-            }
-        } else if(f->get_type() == Field::Type::COORDINATE){
-            CoordinateField* cf = static_cast<CoordinateField*>(f.get());
-            if(cf->get_class() == CoordinateField::Class::PRINCIPAL_STRESS){
-                dir_field = static_cast<field::PrincipalStress*>(cf);
-            }
-        }
-    }
-    logger::log_assert(field != nullptr, logger::ERROR, "marginal_bone_loss simulation requires an implant_region field");
-    field->freeze(density);
-    this->density_view->update_view(density, {this->mandible->id});
 
     dir_field->set_max_it(1);
 
@@ -230,33 +259,43 @@ void MarginalBoneLoss::run(){
                 v.fill(0);
             }
             for(auto& e:this->mandible->mesh){
+                const auto s = e->get_strain_vector(e->get_centroid(), u);
                 for(size_t i = 0; i < NODES_PER_ELEM; ++i){
                     const auto& n = e->nodes[i];
                     const auto id = id_pos_map[n->id];
-                    nodal_strains[id] += 1e6*e->get_strain_vector(n->point, u);
+                    nodal_strains[id] += 1e6*s;
                 }
             }
             #pragma omp parallel for
             for(size_t i = 0; i < density_num; ++i){
+                //const auto& n = this->mandible->node_list[i];
+                //const auto& e = node_to_elem[n];
                 nodal_strains[i] /= nodal_divisors[i];
-                const auto& n = this->mandible->node_list[i];
-                const auto& e = node_to_elem[n];
 
                 const auto& strain = nodal_strains[i];
-                const double gi = this->get_density_variation(strain)*this->time_step;
                 const double old_d = density[i];
 
-                const auto& D = this->mandible->materials.get_D(e, n->point);
-                const auto& D0 = this->mandible->materials.get_D_orig(e, n->point);
+                //const auto& D = this->mandible->materials.get_D(e, n->point);
+                //const auto& D0 = this->mandible->materials.get_D_orig(e, n->point);
+
+                const bool is_trab = nodal_trab[i];
+
+                //const double gi = this->get_density_variation(strain, D0, D, is_trab)*this->time_step;
+                const double gi = this->get_density_variation(strain, is_trab)*this->time_step;
 
                 density[i] += gi;
                 if(density[i] < MIN_DENSITY){
                     density[i] = MIN_DENSITY;
-                } else if(density[i] > this->MAX_RHO){
-                    density[i] = this->MAX_RHO;
+                } else {
+                    if(is_trab){
+                        density[i] = std::min(density[i], this->MAX_RHO_TRAB);
+                    } else {
+                        density[i] = std::min(density[i], this->MAX_RHO);
+                    }
                 }
                 growth[i] = density[i] - old_d;
-                strains[i] = this->c[3]*this->Ud(3, strain, D0, D);
+                //strains[i] = this->c[3]*this->Ud(3, strain, D0, D);
+                strains[i] = this->c[3]*this->LHS_3D(3, strain);
             }
         } else {
             #pragma omp parallel for
@@ -264,20 +303,30 @@ void MarginalBoneLoss::run(){
                 const auto& n = this->mandible->node_list[i];
                 const auto& e = node_to_elem[n];
                 const auto strain = 1e6*e->get_strain_vector(n->point, u);
-                const double gi = this->get_density_variation(strain)*this->time_step;
                 const double old_d = density[i];
 
-                const auto& D = this->mandible->materials.get_D(e, n->point);
-                const auto& D0 = this->mandible->materials.get_D_orig(e, n->point);
+                //const auto& D = this->mandible->materials.get_D(e, n->point);
+                //const auto& D0 = this->mandible->materials.get_D_orig(e, n->point);
+
+                const auto trab_num = trab_field->get(e, n->point);
+                const bool is_trab = (trab_num > 0.5);
+
+                //const double gi = this->get_density_variation(strain, D0, D, is_trab)*this->time_step;
+                const double gi = this->get_density_variation(strain, is_trab)*this->time_step;
 
                 density[i] += gi;
                 if(density[i] < MIN_DENSITY){
                     density[i] = MIN_DENSITY;
-                } else if(density[i] > this->MAX_RHO){
-                    density[i] = this->MAX_RHO;
+                } else {
+                    if(is_trab){
+                        density[i] = std::min(density[i], this->MAX_RHO_TRAB);
+                    } else {
+                        density[i] = std::min(density[i], this->MAX_RHO);
+                    }
                 }
                 growth[n->id] = density[i] - old_d;
-                strains[n->id] = this->c[3]*this->Ud(3, strain, D0, D);
+                //strains[n->id] = this->c[3]*this->Ud(3, strain, D0, D);
+                strains[i] = this->c[3]*this->LHS_3D(3, strain);
             }
         }
         field->set_values(density);
@@ -295,28 +344,48 @@ void MarginalBoneLoss::run(){
     this->reactions_view->update_view(reactions);
 }
 
-double MarginalBoneLoss::get_density_variation(const StrainVector3D& eps) const{
+double MarginalBoneLoss::get_density_variation(const StrainVector3D& eps, bool trabecular) const{
     const double lhs = this->LHS_3D(3, eps);
 
-    if(lhs < x0){
-        return dv0*(lhs - x0);
-    } else if(lhs < x1){
-        return 0;
+    if(!trabecular){
+        if(lhs < x0){
+            return dv0*(lhs - x0);
+        } else if(lhs < x1){
+            return 0;
+        } else {
+            return (this->coeff[0] + this->coeff[1]*lhs + this->coeff[2]*lhs*lhs);
+        }
     } else {
-        return (this->coeff[0] + this->coeff[1]*lhs + this->coeff[2]*lhs*lhs);
+        if(lhs < x0){
+            return dv0t*(lhs - x0);
+        } else if(lhs < x1){
+            return 0;
+        } else {
+            return (this->coeff2[0] + this->coeff2[1]*lhs + this->coeff2[2]*lhs*lhs);
+        }
     }
 }
-double MarginalBoneLoss::get_density_variation(const StrainVector3D& eps, const math::Matrix& D0, const math::Matrix& D) const{
-    const double U = this->Ud(3, eps, D0, D);
-
-    if(U < x0){
-        return dv0*(U - x0);
-    } else if(U < x1){
-        return 0;
-    } else {
-        return (this->coeff[0] + this->coeff[1]*U + this->coeff[2]*U*U);
-    }
-}
+//double MarginalBoneLoss::get_density_variation(const StrainVector3D& eps, const math::Matrix& D0, const math::Matrix& D, bool trabecular) const{
+//    const double U = this->Ud(3, eps, D0, D);
+//
+//    if(!trabecular){
+//        if(U < x0){
+//            return dv0*(U - x0);
+//        } else if(U < x1){
+//            return 0;
+//        } else {
+//            return (this->coeff[0] + this->coeff[1]*U + this->coeff[2]*U*U);
+//        }
+//    } else {
+//        if(U < x0){
+//            return dv0t*(U - x0);
+//        } else if(U < x1){
+//            return 0;
+//        } else {
+//            return (this->coeff2[0] + this->coeff2[1]*U + this->coeff2[2]*U*U);
+//        }
+//    }
+//}
 
 using namespace projspec;
 const bool MarginalBoneLoss::reg = Factory<Simulation>::add(
@@ -340,6 +409,10 @@ const bool MarginalBoneLoss::reg = Factory<Simulation>::add(
             DataEntry{.name = "compression", .type = TYPE_DOUBLE, .required = true,},
             DataEntry{.name = "traction", .type = TYPE_DOUBLE, .required = true,},
             DataEntry{.name = "shear", .type = TYPE_DOUBLE, .required = true,},
+            DataEntry{.name = "rho_max_cort", .type = TYPE_DOUBLE, .required = true},
+            DataEntry{.name = "rho_max_trab", .type = TYPE_DOUBLE, .required = true},
+            DataEntry{.name = "growth_cort", .type = TYPE_DOUBLE, .required = true},
+            DataEntry{.name = "growth_trab", .type = TYPE_DOUBLE, .required = true},
         }
     }
 );

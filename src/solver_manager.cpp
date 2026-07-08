@@ -123,7 +123,7 @@ void SolverManager::calculate_displacements_adjoint(const Meshing* const mesh, c
         } else {
             logger::log_assert(false, logger::ERROR, "incorrect load vector size, must be equal to mesh->max_dofs OR mesh->dofs_per_subproblem[i]");
         }
-        std::copy(l.begin(), l.end(), this->u0[this->solve_step].begin());
+        //std::copy(l.begin(), l.end(), this->u0[this->solve_step].begin());
         mesh->extend_vector(i, l, u_tmp);
         #pragma omp parallel for
         for(size_t j = 0; j < u.size(); ++j){

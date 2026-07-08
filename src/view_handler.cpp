@@ -63,24 +63,42 @@ void ViewHandler::update_view(const std::vector<double>& data, const std::vector
         tags.resize(this->node_num);
         std::iota(tags.begin(), tags.end(), 0);
     } else {
-        std::set<size_t> node_ids;
+        std::vector<Geometry*> geoms;
+        geoms.reserve(geometries.size());
         for(size_t i = 0; i < this->mesh->geometries.size(); ++i){
             const auto pos = std::find(geometries.begin(), geometries.end(), i);
             if(pos < geometries.end()){
-                const auto& g = this->mesh->geometries[i];
-                for(const auto& n:g->node_list){
-                    node_ids.insert(n->id);
-                }
+                geoms.push_back(this->mesh->geometries[i]);
             }
         }
 
-        size_t num_nodes = node_ids.size();
+        std::map<size_t, size_t> id_pos_map;
+        for(const auto& g:geoms){
+            for(const auto& n:g->node_list){
+                id_pos_map[n->id] = 0;
+            }
+        }
 
-        tags.resize(num_nodes);
-        auto tag_it = tags.begin();
-        for(auto& n:node_ids){
-            *tag_it = n;
-            ++tag_it;
+        size_t new_id = 1;
+        for(const auto& g:geoms){
+            for(const auto& n:g->node_list){
+                auto& idi = id_pos_map[n->id];
+                if(idi == 0){
+                    id_pos_map[n->id] = new_id;
+                    ++new_id;
+                }
+            }
+        }
+        for(auto& i:id_pos_map){
+            --i.second;
+        }
+        --new_id;
+
+        tags.resize(new_id);
+        for(const auto& g:geoms){
+            for(const auto& n:g->node_list){
+                tags[id_pos_map[n->id]] = n->id;
+            }
         }
     }
 

@@ -41,6 +41,7 @@ class PrincipalStress : public CoordinateField {
 
     virtual std::array<gp_Dir, 3> get_array(const MeshElement* e, const gp_Pnt& p) const override;
     virtual math::Matrix get_matrix(const MeshElement* e, const gp_Pnt& p) const override;
+    virtual math::Matrix get_dsh(const MeshElement* e, const gp_Pnt& p, const size_t n, const size_t dof) const override;
 
     inline void set_max_it(size_t m){
         this->max_it = m;
@@ -53,6 +54,12 @@ class PrincipalStress : public CoordinateField {
         return SubType::DOMAIN;
     }
     inline virtual bool is_fea_dependent() const override{ return true; }
+
+    protected:
+    virtual void regenerate_internal() override{
+        this->max_it = 1;
+        this->generate();
+    }
 
     private:
     static const bool reg;

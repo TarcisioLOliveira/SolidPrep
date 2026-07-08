@@ -33,7 +33,7 @@ class PETScGeneralPCG{
         M(insert_all)
     {}
 
-    void initialize_matrix(bool spd, size_t L);
+    void initialize_matrix(bool spd, size_t L, bool reuse_x = false);
 
     void solve(std::vector<double>& b);
     
