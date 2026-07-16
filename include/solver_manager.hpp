@@ -59,11 +59,11 @@ class SolverManager{
         return this->solvers[subp]->view_matrix();
     }
 
+    std::vector<std::vector<double>> u0;
     private:
     size_t iteration = 0;
     size_t solve_step = 0;
     std::vector<std::vector<double>> split_u;
-    std::vector<std::vector<double>> u0;
     std::vector<std::unique_ptr<FiniteElement>> solvers;
     std::vector<double> old_densities;
     std::vector<math::Matrix> D_matrices;

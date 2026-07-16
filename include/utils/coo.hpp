@@ -40,9 +40,12 @@ class COO{
 
         size_t i, j;
         bool operator<(const Point &other) const {
-            if (i < other.i) return true;
-            if (other.i < i) return false;
-            return j < other.j;
+            if (i < other.i) {
+                return true;
+            } else if (i == other.i){
+                return j < other.j;
+            }
+            return false;
         }
         bool operator==(const Point &other) const{
             return this->i == other.i && this->j == other.j;
@@ -349,7 +352,7 @@ class COO{
     std::vector<INT> cooColInd;
     std::vector<double> cooVal;
     std::vector<double> cooVal_bkp;
-    const double ZERO_TOL = 1e-6;
+    const double ZERO_TOL = 1e-13;
     const bool insert_all;
 
     inline std::vector<size_t> index_sort(const std::vector<long>& pos) const{
@@ -489,9 +492,12 @@ void COO<INT>::generate_coo(INT n){
         ++r;
         for(const auto& p:this->data){
             if(p.first.i != cur_row){
-                *r = count;
-                ++cur_row;
-                ++r;
+                logger::log_assert(p.first.i - cur_row == 1, logger::WARNING, "A row was skipped while generating COO: current row: {}, next row: {}", cur_row, p.first.i);
+                while(cur_row < p.first.i){
+                    *r = count;
+                    ++cur_row;
+                    ++r;
+                }
                 //if(r >= this->cooRowPtr.end()){
                 //    break;
                 //}

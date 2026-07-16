@@ -106,48 +106,48 @@ void GlobalStiffnessMatrix::generate_base(const Meshing * const mesh, const size
         }
         // Internal loads 2
         if(mesh->internal_loads2 != nullptr && mesh->internal_loads2->size() > 0){
-            const size_t dof      = mesh->elem_info->get_dof_per_node();
+            //const size_t dof      = mesh->elem_info->get_dof_per_node();
+            //const size_t s_size   = mesh->elem_info->get_D_dimension();
             const size_t node_num = mesh->elem_info->get_nodes_per_element();
-            const size_t s_size   = mesh->elem_info->get_D_dimension();
             //const auto prob_type = mesh->elem_info->get_problem_type();
             //const size_t dim = (prob_type == utils::PROBLEM_TYPE_2D) ? 2 : 3;
 
             std::vector<long> u_pos(dof*node_num);
-            std::vector<long> f_pos(dof*node_num);
-            std::vector<long> s_pos(s_size);
-            std::vector<long> s_pos2(s_size);
-            math::Matrix M(s_size, u_pos.size(), 1);
-            math::Matrix F(u_pos.size(), u_pos.size(), 1);
+            //std::vector<long> s_pos(s_size);
+            //std::vector<long> s_pos2(s_size);
+            //math::Matrix M(s_size, u_pos.size(), 1);
             for(const auto& il:*(mesh->internal_loads2)){
-                if(il.use_M){
-                    for(size_t i = 0; i < il.il_constr_num; ++i){
-                        s_pos[i] = il.constraint_offset + i;
-                        s_pos2[i] = il.constraint_offset + il.il_constr_num + i;
-                    }
-                } else {
-                    s_pos[0] = -1;
-                    s_pos[1] = -1;
-                    s_pos[2] = il.constraint_offset + 0;
-                    s_pos[3] = -1;
-                    s_pos[4] = il.constraint_offset + 1;
-                    s_pos[5] = il.constraint_offset + 2;
-                }
+                std::vector<long> f_pos(il.f_node_dof*node_num);
+                math::Matrix F(f_pos.size(), f_pos.size(), 1);
+                //if(il.use_M){
+                //    for(size_t i = 0; i < il.il_constr_num; ++i){
+                //        s_pos[i] = il.constraint_offset + i;
+                //        s_pos2[i] = il.constraint_offset + il.il_constr_num + i;
+                //    }
+                //} else {
+                //    s_pos[0] = -1;
+                //    s_pos[1] = -1;
+                //    s_pos[2] = il.constraint_offset + 0;
+                //    s_pos[3] = -1;
+                //    s_pos[4] = il.constraint_offset + 1;
+                //    s_pos[5] = il.constraint_offset + 2;
+                //}
                 for(const auto& b:il.submesh){
                     for(size_t i = 0; i < node_num; ++i){
                         const auto& n = b->parent->nodes[i];
                         const auto f_id = il.F_id_map.at(n->id);
-                        for(size_t j = 0; j < dof; ++j){
-                            const size_t p = n->id*dof + j;
-                            u_pos[i*dof + j] = node_positions[p];
-                        }
+                        //for(size_t j = 0; j < dof; ++j){
+                        //    const size_t p = n->id*dof + j;
+                        //    u_pos[i*dof + j] = node_positions[p];
+                        //}
                         if(f_id >= 0){
-                            for(size_t j = 0; j < dof; ++j){
-                                const size_t fp = f_id*dof + j;
-                                f_pos[i*dof + j] = il.il2_offset + fp;
+                            for(size_t j = 0; j < il.f_node_dof; ++j){
+                                const size_t fp = f_id*il.f_node_dof + j;
+                                f_pos[i*il.f_node_dof + j] = il.node_pos[fp];
                             }
                         } else {
-                            for(size_t j = 0; j < dof; ++j){
-                                f_pos[i*dof + j] = -1;
+                            for(size_t j = 0; j < il.f_node_dof; ++j){
+                                f_pos[i*il.f_node_dof + j] = -1;
                             }
                         }
                     }
@@ -163,40 +163,54 @@ void GlobalStiffnessMatrix::generate_base(const Meshing * const mesh, const size
     if(mesh->internal_loads2 != nullptr && mesh->internal_loads2->size() > 0){
         const size_t dof      = mesh->elem_info->get_dof_per_node();
         const size_t node_num = mesh->elem_info->get_nodes_per_element();
-        const size_t s_size   = mesh->elem_info->get_D_dimension();
+        //const size_t s_size   = mesh->elem_info->get_D_dimension();
         const auto prob_type = mesh->elem_info->get_problem_type();
         const size_t dim = (prob_type == utils::PROBLEM_TYPE_2D) ? 2 : 3;
 
+        const double MULT = 1e5;
+
         std::vector<long> u_pos(dof*node_num);
-        std::vector<long> f_pos(dof*node_num);
-        std::vector<long> s_pos(s_size);
-        std::vector<long> s_pos2(s_size);
+        //std::vector<long> ds_pos(dof*node_num);
+        std::vector<long> bc_pos(dof*node_num);
         std::vector<long> c_pos(dim);
         std::vector<long> cs_pos(dim);
         std::vector<long> n_pos(1);
+        //std::vector<long> t1t2_pos(1);
         for(const auto& il:*(mesh->internal_loads2)){
+            std::vector<long> s_pos(il.max_constr_num);
+            std::vector<long> s_pos2(il.max_constr_num);
+            std::vector<long> f_pos(il.f_node_dof*node_num);
+            std::vector<long> f2_pos(il.f_node_dof*node_num);
+            std::vector<long> ds_pos(il.f_node_dof*node_num);
             if(il.use_M){
-                const math::Matrix n({il.normal.X(), il.normal.Y(), il.normal.Z()}, 1, 3);
-                size_t coord_id = 0;
-                for(size_t i = 0; i < dim; ++i){
-                    if(!il.assume_xc[i]){
-                        c_pos[i] = il.xc_offset + coord_id;
-                        ++coord_id;
-                    } else {
-                        c_pos[i] = -1;
-                    }
-                    cs_pos[i] = il.constraint_offset;
-                }
-                cs_pos[0] += 3;
-                cs_pos[1] += 0;
-                cs_pos[2] += 1;
-                n_pos[0] = il.n_offset;
+                //const math::Matrix n({il.normal.X(), il.normal.Y(), il.normal.Z()}, 1, 3);
+                //size_t coord_id = 0;
+                //for(size_t i = 0; i < dim; ++i){
+                //    if(!il.assume_xc[i]){
+                //        c_pos[i] = il.xc_offset + coord_id;
+                //        ++coord_id;
+                //    } else {
+                //        c_pos[i] = -1;
+                //    }
+                //    cs_pos[i] = il.constraint_offset;
+                //}
+                //cs_pos[0] += 3;
+                //cs_pos[1] += 0;
+                //cs_pos[2] += 1;
+                //n_pos[0] = il.n_offset;
+                //t1t2_pos[0] = il.n_offset + 1;
                 for(size_t i = 0; i < il.il_constr_num; ++i){
                     s_pos[i] = il.constraint_offset + i;
                     s_pos2[i] = il.constraint_offset + il.il_constr_num + i;
                 }
-                this->insert_block_symmetric(il.Mc, cs_pos, c_pos);
-                this->insert_block_symmetric(n, n_pos, c_pos);
+                //this->insert_block_symmetric(il.Mc, cs_pos, c_pos);
+                //this->insert_block_symmetric(n, n_pos, c_pos);
+
+                //logger::quick_log(c_pos);
+                //logger::quick_log(cs_pos);
+                //logger::quick_log(n_pos);
+                //logger::quick_log(il.Mc);
+                //logger::quick_log(n);
             } else {
                 s_pos[0] = -1;
                 s_pos[1] = -1;
@@ -204,6 +218,7 @@ void GlobalStiffnessMatrix::generate_base(const Meshing * const mesh, const size
                 s_pos[3] = -1;
                 s_pos[4] = il.constraint_offset + 1;
                 s_pos[5] = il.constraint_offset + 2;
+                //t1t2_pos[0] = il.n_offset;
             }
 
             for(const auto& b:il.submesh){
@@ -213,28 +228,81 @@ void GlobalStiffnessMatrix::generate_base(const Meshing * const mesh, const size
                     for(size_t j = 0; j < dof; ++j){
                         const size_t p = n->id*dof + j;
                         u_pos[i*dof + j] = node_positions[p];
+                        ds_pos[i*dof + j] = il.ds_offset + f_id*dof + j;
                     }
                     if(f_id >= 0){
-                        for(size_t j = 0; j < dof; ++j){
-                            const size_t fp = f_id*dof + j;
-                            f_pos[i*dof + j] = il.il2_offset + fp;
+                        for(size_t j = 0; j < il.f_node_dof; ++j){
+                            const size_t fp = f_id*il.f_node_dof + j;
+                            f_pos[i*il.f_node_dof + j] = il.node_pos[fp];
+                            f2_pos[i*il.f_node_dof + j] = il.node_pos[fp] + il.F_total_dof;
+                            ds_pos[i*il.f_node_dof + j] = il.node_pos[fp] + il.F_total_dof;
                         }
+                        //for(size_t j = 0; j < dof; ++j){
+                        //    ds_pos[i*dof + j] = il.ds_offset + f_id*dof + j;
+                        //}
                     } else {
-                        for(size_t j = 0; j < dof; ++j){
-                            f_pos[i*dof + j] = -1;
+                        for(size_t j = 0; j < il.f_node_dof; ++j){
+                            f_pos[i*il.f_node_dof + j] = -1;
+                            f2_pos[i*il.f_node_dof + j] = -1;
+                            ds_pos[i*il.f_node_dof + j] = -1;
                         }
+                        //for(size_t j = 0; j < dof; ++j){
+                        //    ds_pos[i*dof + j] = il.ds_offset + f_id*dof + j;
+                        //}
                     }
                 }
                 //const auto H = il.get_hess(b);
                 //this->insert_element_matrix(H, u_pos);
-                const auto K = il.get_K_mat(b);
+                const auto K = MULT*il.get_K_mat(b);
+                //const auto K = il.get_K_mat(b);
                 const auto F = il.get_F_mat(b);
                 const auto M = il.get_constr(b);
+                //const auto t = il.get_t1t2(b);
                 //const auto M2 = il.get_constr2(b);
                 this->insert_element_matrix(K, f_pos);
+                //this->insert_block_symmetric(K, ds_pos, f_pos);
+                //this->insert_block_symmetric(K, f2_pos, f_pos);
                 this->insert_block_symmetric(F, u_pos, f_pos);
                 this->insert_block_symmetric(M, s_pos, f_pos);
+                //this->insert_block_symmetric(t, t1t2_pos, f_pos);
                 //this->insert_block_symmetric(M2, u_pos, f_pos);
+            }
+            for(const auto& b:il.edge_mesh){
+                for(size_t i = 0; i < node_num; ++i){
+                    const auto& n = b.parent->parent->nodes[i];
+                    const auto f_id = il.F_id_map.at(n->id);
+                    const auto bc_id = il.line_id_map.at(n->id);
+                    if(bc_id >= 0){
+                        for(size_t j = 0; j < dof; ++j){
+                            bc_pos[i*dof + j] = il.bc_offset + bc_id*dof + j;
+                            //bc_pos[i*dof + j] = -1;
+                        }
+                        //bc_pos[i*dof + 0] = il.bc_offset + bc_id;
+                    } else {
+                        for(size_t j = 0; j < dof; ++j){
+                            bc_pos[i*dof + j] = -1;
+                        }
+                    }
+                    if(f_id >= 0){
+                        for(size_t j = 0; j < il.f_node_dof; ++j){
+                            const size_t fp = f_id*il.f_node_dof + j;
+                            f_pos[i*il.f_node_dof + j] = il.node_pos[fp];
+                        }
+                    } else {
+                        for(size_t j = 0; j < il.f_node_dof; ++j){
+                            f_pos[i*il.f_node_dof + j] = -1;
+                        }
+                    }
+                }
+                const auto bc = il.get_bc(&b);
+                //if(print){
+                //    logger::quick_log(bc_pos);
+                //    logger::quick_log(b.bounds[0].X(), b.bounds[0].Y(), b.bounds[0].Z());
+                //    logger::quick_log(b.bounds[1].X(), b.bounds[1].Y(), b.bounds[1].Z());
+                //    logger::quick_log(b.transformed_normal[0], b.transformed_normal[1], b.transformed_normal[2]);
+                //    logger::quick_log(bc);
+                //}
+                this->insert_block_symmetric(bc, bc_pos, f_pos);
             }
         }
     }

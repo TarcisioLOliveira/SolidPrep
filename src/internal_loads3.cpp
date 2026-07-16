@@ -47,10 +47,10 @@ InternalLoads3::InternalLoads3(CrossSection cross_section, double thickness, gp_
         {normal.X(), v.X(), w.X(),
          normal.Y(), v.Y(), w.Y(),
          normal.Z(), v.Z(), w.Z()}, 3, 3))),
-    rot2D_D(utils::basis_tensor_2D(rot2D.T())),
-    rot2D_S(utils::basis_tensor_2D_inv_T(rot2D.T())),
-    rot3D_D(utils::basis_tensor_3D(rot3D.T())),
-    rot3D_S(utils::basis_tensor_3D_inv_T(rot3D.T())),
+    rot2D_D(utils::basis_tensor_2D(rot2D)),
+    rot2D_S(utils::basis_tensor_2D_inv_T(rot2D)),
+    rot3D_D(utils::basis_tensor_3D(rot3D)),
+    rot3D_S(utils::basis_tensor_3D_inv_T(rot3D)),
     F({F[0], F[1], F[2]}), M({M[0], M[1], M[2]}),
     mat(mat),
     normal(normal),
@@ -217,15 +217,15 @@ void InternalLoads3::calculate_force_distribution(){
             //Fe = -b->parent->get_R(this->rot2D, this->thickness, bounds);
             //M1 = b->parent->constraint_matrix_alt(this->center, this->rot2D, bounds);
             Fe = b->parent->internal_loads_hess(this->center, this->rot2D, this->rot2D_D, D, this->normal, bounds);
-            M1 = b->parent->constraint_matrix(this->center, this->rot2D, this->rot2D_D, this->mmat, bounds);
-            M2 = b->parent->constraint_matrix(this->center, this->rot2D, this->rot2D_D, this->mmat, bounds);
+            M1 = b->parent->constraint_matrix(this->rot2D, this->rot2D_D, this->mmat, bounds);
+            M2 = b->parent->constraint_matrix(this->rot2D, this->rot2D_D, this->mmat, bounds);
         } else {
             D = this->mat->stiffness_3D(b->parent, c);
             //Fe = -b->parent->get_R(this->rot3D, this->thickness, bounds);
             //M1 = b->parent->constraint_matrix_alt(this->center, this->rot3D, bounds);
             Fe = b->parent->internal_loads_hess(this->center, this->rot3D, this->rot3D_D, D, this->normal, bounds);
-            M1 = b->parent->constraint_matrix(this->center, this->rot3D, this->rot3D_D, this->mmat, bounds);
-            M2 = b->parent->constraint_matrix(this->center, this->rot3D, this->rot3D_D, this->mmat, bounds);
+            M1 = b->parent->constraint_matrix(this->rot3D, this->rot3D_D, this->mmat, bounds);
+            M2 = b->parent->constraint_matrix(this->rot3D, this->rot3D_D, this->mmat, bounds);
         }
 
         //Fe = -b->parent->get_R(I, this->thickness, bounds);

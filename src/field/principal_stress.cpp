@@ -204,10 +204,17 @@ void PrincipalStress::generate(){
 
             du = 0;
             for(size_t i = 0; i < mesh->max_dofs; ++i){
-                u[i] = u_tmp[i];
-                du = std::max(du, std::abs(u[i] - u_old[i]));
-                u_old[i] = u[i];
+                this->u[i] = u_tmp[i];
+                du = std::max(du, std::abs(this->u[i] - u_old[i]));
+                u_old[i] = this->u[i];
             }
+
+            //if(this->use_strain && it == 0){
+            //    for(size_t i = 0; i < this->geoms.size(); ++i){
+            //        auto& g = this->geoms[i];
+            //        g->set_materials(materials_backup[i]);
+            //    }
+            //}
 
             //for(size_t i = 0; i < this->u.size(); ++i){
             //    c += this->u[i]*mesh->global_load_vector[i];

@@ -478,6 +478,9 @@ int main(int argc, char* argv[]){
                     for(auto& f:proj->fields){
                         f->initialize_views(v.get());
                     }
+                    for(auto& f:proj->internal_loads2){
+                        f.initialize_views(v.get());
+                    }
 
                     //for(size_t i = 0; i < proj->topopt_mesher->node_list.size(); ++i){
                     //    const auto nid = proj->topopt_mesher->node_list[i]->id;
@@ -509,6 +512,9 @@ int main(int argc, char* argv[]){
 
                     for(auto& f:proj->fields){
                         f->display_views();
+                    }
+                    for(auto& f:proj->internal_loads2){
+                        f.display_views(proj->topopt_fea->u0[0]);
                     }
 
                     stresses  .clear();

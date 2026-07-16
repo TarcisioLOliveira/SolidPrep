@@ -33,9 +33,18 @@
 #include "utils/gauss_legendre.hpp"
 
 class Meshing;
+class Visualization;
+class ViewHandler;
 
 class InternalLoads2{
     public:
+
+    class EdgeElement{
+        public:
+        std::vector<gp_Pnt> bounds;
+        math::Vector transformed_normal;
+        const BoundaryElement* parent;
+    };
 
     // ASSUMES CROSS SECTION IS PLANE
     // ASSUMES this->normal == this->S.normal
@@ -43,11 +52,15 @@ class InternalLoads2{
     InternalLoads2(CrossSection cross_section, double thickness, gp_Dir normal, gp_Dir v, gp_Dir w, utils::DelayedPointerView<Material> mat, std::array<double, 3> F, std::array<double, 3> M, bool use_M, std::array<double, 3> P_last, bool inverted, bool calculate, utils::ProblemType type);
     InternalLoads2(InternalLoads2&&) = default;
 
+    void initialize_views(Visualization* v);
     void initialize(const Meshing* const mesh, size_t& max_dofs);
     void apply_constraints(std::vector<double>& load) const;
+    void display_views(const std::vector<double>& u) const;
 
     math::Matrix get_F_mat(const BoundaryElement* b) const;
     math::Matrix get_K_mat(const BoundaryElement* b) const;
+    math::Matrix get_t1t2(const BoundaryElement* b) const;
+    math::Matrix get_bc(const EdgeElement* b) const;
 
     math::Vector calculate_internal_loads(const std::vector<double>& u_ext) const;
     math::Vector calculate_constraints(const std::vector<double>& u_ext, bool print = false) const;
@@ -66,6 +79,7 @@ class InternalLoads2{
     const CrossSection S;
     const double A;
     const double thickness;
+    const math::Matrix R0;
     const math::Matrix rot2D;
     const math::Matrix Lek_basis;
     const math::Matrix rot3D;
@@ -79,12 +93,21 @@ class InternalLoads2{
     utils::DelayedPointerView<Material> mat;
     const gp_Dir normal;
     std::vector<const BoundaryElement*> submesh;
+    std::vector<EdgeElement> edge_mesh;
     double D;
     size_t il_constr_num;
+    std::vector<long> node_pos;
+    const size_t f_node_dof = 6;
+    size_t max_constr_num;
+    size_t u_dof;
 
     std::unordered_map<size_t, long> F_id_map;
+    std::unordered_map<size_t, long> line_id_map;
 
     size_t F_total_dof;
+    size_t f2_offset;
+    size_t ds_offset = 0;
+    size_t bc_offset;
     size_t constraint_offset;
     size_t xc_offset;
     size_t n_offset;
@@ -102,11 +125,14 @@ class InternalLoads2{
     const MeshElementFactory* elem_info;
     size_t BOUNDARY_NODE_NUM;
 
+    math::Vector F_orig;
     math::Vector M_orig;
     math::Vector P_prev;
     bool inverted_calc;
     bool calculate_from_last_point;
     MultiMaterial mmat;
+
+    ViewHandler* force_view = nullptr;
     
 
     math::Vector integrate_surface_3D(const Meshing* const mesh, const std::vector<std::function<double(const math::Matrix& S, const gp_Pnt& px)>>& fn) const;

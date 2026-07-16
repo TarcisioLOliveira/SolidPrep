@@ -337,7 +337,11 @@ class MeshElement : public Element{
 
     virtual math::Matrix internal_loads_hess(const math::Vector& c, const math::Matrix& Rm, const math::Matrix& RD, const math::Matrix& D, const gp_Dir& n, const std::vector<gp_Pnt>& bounds) const = 0;
 
-    virtual math::Matrix constraint_matrix_alt(const math::Vector& c, const math::Matrix& Rm, const std::vector<gp_Pnt>& bounds) const = 0;
+    virtual math::Matrix constraint_matrix_alt(const math::Vector& c, const math::Matrix& Rm, const std::vector<gp_Pnt>& bounds, const bool use_c, const double t) const = 0;
+
+    virtual math::Matrix il2_f_vec(const math::Matrix& Rm, const gp_Pnt& p) const = 0;
+
+    virtual math::Matrix il2_t1t2(const math::Matrix& Rm, double t, const std::vector<gp_Pnt>& bounds) const = 0;
 
     /**
      * Creates and returns the elemental stiffness matrix.
@@ -347,13 +351,17 @@ class MeshElement : public Element{
      *
      * @return Internal loads evaluated matrix at a point p.
      */
-    virtual math::Matrix constraint_matrix(const math::Vector& c, const math::Matrix& Rm, const math::Matrix& RD, const MultiMaterial& mat, const std::vector<gp_Pnt>& bounds) const = 0;
+    virtual math::Matrix constraint_matrix(const math::Matrix& Rm, const math::Matrix& RD, const MultiMaterial& mat, const std::vector<gp_Pnt>& bounds) const = 0;
 
     virtual math::Vector calculate_internal_loads(const math::Vector& c, const math::Matrix& Rm, const math::Matrix& RD, const MultiMaterial& mat, const gp_Dir& n, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds) const = 0;
 
-    virtual math::Matrix il2_F(const math::Matrix& RS, const MultiMaterial& mat, const std::vector<gp_Pnt>& bounds, double t) const = 0;
+    virtual math::Matrix il2_F(const math::Matrix& Rm, const math::Matrix& RS, const MultiMaterial& mat, const std::vector<gp_Pnt>& bounds, double t) const = 0;
 
-    virtual math::Matrix il2_R2(const math::Matrix& Rm, const math::Matrix& RD, const MultiMaterial& mat, const std::vector<gp_Pnt>& bounds) const = 0;
+    virtual math::Matrix il2_F_alt(const math::Matrix& Rm, const std::vector<gp_Pnt>& bounds, double t) const = 0;
+
+    virtual math::Matrix il2_R2(const math::Matrix& Rm, const math::Matrix& RD, const gp_Dir& n, double thickness, const std::vector<gp_Pnt>& bounds) const = 0;
+
+    virtual math::Matrix il2_bc(const math::Matrix& Rm, const math::Vector& n, const std::vector<gp_Pnt>& bounds) const = 0;
 
     /**
      * Creates and returns the elemental stiffness matrix.
@@ -396,7 +404,7 @@ class MeshElement : public Element{
      *
      * @return Internal loads at node.
      */
-    virtual math::Vector get_internal_loads(const math::Matrix& D, const double t, const std::vector<double>& u) const = 0;
+    virtual math::Vector get_internal_loads(const MultiMaterial& mat, const double t, const std::vector<double>& u) const = 0;
     /** 
      * Calculates the Von Mises stresses at a point within the element.
      *

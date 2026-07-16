@@ -18,8 +18,10 @@
  *
  */
 
+#include <map>
 #include <set>
 #include "internal_loads2.hpp"
+#include "visualization.hpp"
 #include "math/matrix.hpp"
 #include "meshing.hpp"
 #include "logger.hpp"
@@ -28,42 +30,68 @@
 
 inline math::Matrix Lek_rot3D(math::Matrix L, math::Matrix R){
     return R*L;//L*R;
+    //return L*R;
 }
 
 InternalLoads2::InternalLoads2(CrossSection cross_section, double thickness, gp_Dir normal, gp_Dir v, gp_Dir w, utils::DelayedPointerView<Material> mat, std::array<double, 3> F, std::array<double, 3> M, bool use_M, std::array<double, 3> P_last, bool inverted, bool calculate, utils::ProblemType type):
     S(std::move(cross_section)), 
     A(S.get_area()),
     thickness(thickness),
+    R0({normal.X(), v.X(), w.X(),
+         normal.Y(), v.Y(), w.Y(),
+         normal.Z(), v.Z(), w.Z()}, 3, 3),
     rot2D({normal.X(), v.X(),
            normal.Y(), v.Y()}, 2, 2),
     Lek_basis(
         {0, 0, 1,
          0, 1, 0,
          -1, 0, 0}, 3, 3),
-    rot3D(Lek_rot3D(Lek_basis,
-        math::Matrix(
-        {normal.X(), v.X(), w.X(),
-         normal.Y(), v.Y(), w.Y(),
-         normal.Z(), v.Z(), w.Z()}, 3, 3))),
-    rot2D_D(utils::basis_tensor_2D(rot2D.T())),
-    rot2D_S(utils::basis_tensor_2D_inv_T(rot2D.T())),
-    rot3D_D(utils::basis_tensor_3D(rot3D.T())),
-    rot3D_S(utils::basis_tensor_3D_inv_T(rot3D.T())),
-    F({F[0], F[1], F[2]}), M(3),
+    rot3D(Lek_rot3D(Lek_basis, R0)),
+    rot2D_D(utils::basis_tensor_2D(rot2D)),
+    rot2D_S(utils::basis_tensor_2D_inv_T(rot2D)),
+    rot3D_D(utils::basis_tensor_3D(rot3D)),
+    rot3D_S(utils::basis_tensor_3D_inv_T(rot3D)),
+    F(3), M(3),
     use_M(use_M),
     mat(mat),
     normal(normal),
     v(v), w(w),
     type(type),
-    M_orig({M[0], M[1], M[2]}),
+    F_orig(R0*math::Vector({F[0], F[1], F[2]})),
+    M_orig(R0*math::Vector({M[0], M[1], M[2]})),
     P_prev({P_last[0], P_last[1], P_last[2]}),
     inverted_calc(inverted),
     calculate_from_last_point(calculate),
     mmat({mat}, type, false)
 {
-
+    this->F = rot3D.T()*this->F_orig;
 }
 
+class Edge{
+    public:
+    Edge(const Node* n1, const Node* n2, const BoundaryElement* e):
+        n1( (n1->id < n2->id) ? n1 : n2), 
+        n2( (n1->id < n2->id) ? n2 : n1),
+        e(e)
+    {}
+
+    bool operator<(const Edge& e) const{
+        if(n1->id < e.n1->id){
+            return true;
+        } else if(n1->id == e.n1->id){
+            return n2->id < e.n2->id;
+        }
+        return false;
+    }
+
+    const Node* n1;
+    const Node* n2;
+    const BoundaryElement* e;
+};
+
+void InternalLoads2::initialize_views(Visualization* v){
+        this->force_view = v->add_view("Internal Loads", spview::defs::ViewType::VECTOR, spview::defs::DataType::OTHER);
+}
 
 void InternalLoads2::initialize(const Meshing* const mesh, size_t& max_dofs){
     size_t bound_nodes_per_elem = mesh->elem_info->get_boundary_nodes_per_element();
@@ -73,11 +101,18 @@ void InternalLoads2::initialize(const Meshing* const mesh, size_t& max_dofs){
     this->elem_info = mesh->elem_info;
     this->BOUNDARY_NODE_NUM = elem_info->get_boundary_nodes_per_element();
     const size_t node_num = elem_info->get_nodes_per_element();
+    const size_t dof = elem_info->get_dof_per_node();
     const size_t s_size = elem_info->get_D_dimension();
     const size_t dim = (this->type == utils::PROBLEM_TYPE_2D) ? 2 : 3;
+    const auto elem_type = elem_info->get_shape_type();
+    const size_t vert_node_num = (elem_type == Element::Shape::TRI) ? 3 : 4;
+    const size_t order = elem_info->get_element_order();
 
+    this->u_dof = mesh->node_list.size()*dof;
+
+    this->max_constr_num = s_size;
     if(this->use_M){
-        this->il_constr_num = s_size;
+        this->il_constr_num = this->max_constr_num;
     } else {
         this->il_constr_num = dim;
     }
@@ -118,6 +153,81 @@ void InternalLoads2::initialize(const Meshing* const mesh, size_t& max_dofs){
             }
         }
 
+        std::map<Edge, size_t> edge_count;
+        for(const auto& e:this->submesh){
+            for(size_t i = 0; i < vert_node_num; ++i){
+                const size_t j = (i + 1) % BOUNDARY_NODE_NUM;
+                const Edge edge(e->nodes[i], e->nodes[j], e);
+                auto it = edge_count.find(edge);
+                if(it != edge_count.end()){
+                    it->second += 1;
+                } else {
+                    edge_count[edge] = 1;
+                }
+            }
+        }
+
+        std::set<const Node*> line_nodes;
+        size_t bound_count = 0;
+        for(const auto& e:edge_count){
+            if(e.second == 1){
+                line_nodes.insert(e.first.n1);
+                line_nodes.insert(e.first.n2);
+                ++bound_count;
+            }
+        }
+        if(order > 1){
+            for(const auto& e:edge_count){
+                if(e.second == 1){
+                    const auto p1 = e.first.n1->point;
+                    const auto p2 = e.first.n2->point;
+                    const gp_Vec v1(p1, p2);
+                    for(size_t i = vert_node_num; i < BOUNDARY_NODE_NUM; ++i){
+                        const auto p3 = e.first.e->nodes[i]->point;
+                        const gp_Vec v2(p1, p3);
+                        if((v1.Crossed(v2)).Magnitude() < 1e-10){
+                            line_nodes.insert(e.first.e->nodes[i]);
+                            ++bound_count;
+                        }
+                    }
+                }
+            }
+        }
+        this->edge_mesh.resize(bound_count);
+        size_t ei = 0;
+        for(const auto& e:edge_count){
+            if(e.second == 1){
+                auto& emi = edge_mesh[ei];
+                emi.bounds.resize(2);
+                emi.bounds[0] = e.first.n1->point;
+                emi.bounds[1] = e.first.n2->point;
+                emi.parent = e.first.e;
+
+                gp_Vec v1(e.first.e->nodes[1]->point, e.first.e->nodes[0]->point);
+                gp_Vec v2(e.first.e->nodes[2]->point, e.first.e->nodes[0]->point);
+                gp_Ax1 ax(e.first.e->nodes[0]->point, v1.Crossed(v2));
+                gp_Vec d(emi.bounds[1], emi.bounds[0]);
+                d.Rotate(ax, M_PI/2.0);
+
+                gp_Pnt bc = e.first.e->get_centroid(this->BOUNDARY_NODE_NUM);
+                gp_Pnt lc = emi.bounds[0];
+                lc.BaryCenter(1, emi.bounds[1], 1);
+                gp_Vec bclc(bc, lc);
+
+                double dir = bclc.Dot(d);
+                if(dir > 0){
+                    d.Reverse();
+                }
+
+                math::Vector dv({d.X(), d.Y(), d.Z()});
+                dv.normalize();
+                emi.transformed_normal = this->rot3D.T()*dv;
+
+                ++ei;
+            }
+        }
+        //logger::quick_log("edge mesh size", edge_mesh.size());
+
 
         size_t cur_id = 0;
         for(auto& n:F_id_map){
@@ -126,23 +236,122 @@ void InternalLoads2::initialize(const Meshing* const mesh, size_t& max_dofs){
                 ++cur_id;
             }
         }
-        this->il2_offset = max_dofs;
-        this->F_total_dof = cur_id*dim;
-        this->xc_offset = this->il2_offset + this->F_total_dof;
-        if(use_M){
-            this->constraint_offset = this->xc_offset + dim;
-        } else {
-            this->constraint_offset = this->xc_offset;
+        this->node_pos.resize(cur_id*this->f_node_dof, 0);
+
+        //for(auto& n:line_nodes){
+        //    const auto id = F_id_map[n->id];
+        //    if(id >= 0){
+
+        //        // psi
+        //        this->node_pos[id*this->f_node_dof + 4] = -1;
+        //        this->node_pos[id*this->f_node_dof + 5] = -1;
+        //    }
+        //}
+        //for(const auto& e:edge_count){
+        //    if(e.second == 1){
+        //        const auto po1 = e.first.n1->point;
+        //        const auto po2 = e.first.n2->point;
+        //        math::Vector v1({po1.X(), po1.Y(), po1.Z()});
+        //        math::Vector v2({po2.X(), po2.Y(), po2.Z()});
+        //        math::Vector p1(rot3D.T()*v1);
+        //        math::Vector p2(rot3D.T()*v2);
+        //        const auto id1 = F_id_map[e.first.n1->id];
+        //        const auto id2 = F_id_map[e.first.n2->id];
+        //        // tau_1
+        //        if(std::abs(p1[1] - p2[1]) > 1e-10){
+        //            this->node_pos[id1*this->f_node_dof + 4] = -1;
+        //            this->node_pos[id2*this->f_node_dof + 4] = -1;
+        //        }
+        //        // tau_2
+        //        if(std::abs(p1[0] - p2[0]) > 1e-10){
+        //            this->node_pos[id1*this->f_node_dof + 5] = -1;
+        //            this->node_pos[id2*this->f_node_dof + 5] = -1;
+        //        }
+        //        //this->node_pos[id1*this->f_node_dof + 0] = -1;
+        //        //this->node_pos[id2*this->f_node_dof + 0] = -1;
+        //        //this->node_pos[id1*this->f_node_dof + 1] = -1;
+        //        //this->node_pos[id2*this->f_node_dof + 1] = -1;
+        //        //this->node_pos[id1*this->f_node_dof + 2] = -1;
+        //        //this->node_pos[id2*this->f_node_dof + 2] = -1;
+        //        //this->node_pos[id1*this->f_node_dof + 3] = -1;
+        //        //this->node_pos[id2*this->f_node_dof + 3] = -1;
+        //        //this->node_pos[id1*this->f_node_dof + 4] = -1;
+        //        //this->node_pos[id2*this->f_node_dof + 4] = -1;
+        //        //this->node_pos[id1*this->f_node_dof + 5] = -1;
+        //        //this->node_pos[id2*this->f_node_dof + 5] = -1;
+        //    }
+        //}
+
+        //for(auto& n:F_id_map){
+        //    const auto id = n.second;
+        //    if(id >= 0){
+        //        this->node_pos[id*this->f_node_dof + 0] = -1;
+        //        this->node_pos[id*this->f_node_dof + 1] = -1;
+        //        this->node_pos[id*this->f_node_dof + 3] = -1;
+        //    }
+        //}
+        long dof_id = 0;
+        for(size_t i = 0; i < this->node_pos.size(); ++i){
+            auto& pi = this->node_pos[i];
+            if(pi > -1){
+                pi = dof_id + max_dofs;
+                ++dof_id;
+            }
         }
-        //this->n_offset = this->constraint_offset + s_size;
-        this->n_offset = this->constraint_offset + il_constr_num;
+
+        for(const auto& l:edge_mesh){
+            for(size_t n = 0; n < node_num; ++n){
+                this->line_id_map[l.parent->parent->nodes[n]->id] = -1;
+            }
+        }
+        for(const auto& n:line_nodes){
+            this->line_id_map[n->id] = 0;
+        }
+        size_t line_id = 0;
+        for(auto& n:line_id_map){
+            if(n.second == 0){
+                n.second = line_id;
+                ++line_id;
+            }
+        }
+
+
+        this->il2_offset = max_dofs;
+        //this->F_total_dof = cur_id*dim;
+        this->F_total_dof = dof_id;
+        //this->xc_offset = this->ds_offset + cur_id*dim;
+        
+        //this->ds_offset = this->il2_offset + this->F_total_dof;
+        //this->constraint_offset = this->ds_offset + cur_id*dim;
+
+        //this->ds_offset = this->il2_offset + this->F_total_dof;
+        //this->constraint_offset = this->ds_offset + this->F_total_dof;
+                                                  
+        this->bc_offset = this->il2_offset + this->F_total_dof;
+        this->constraint_offset = this->bc_offset + line_id*dim;
+        //this->constraint_offset = this->bc_offset + line_id;
+
+        //this->f2_offset = this->il2_offset + this->F_total_dof;
+        //this->constraint_offset = this->f2_offset + this->F_total_dof;
+
+        //this->constraint_offset = this->il2_offset + this->F_total_dof;
+
+        //this->xc_offset = this->constraint_offset + il_constr_num;
+
+        //if(use_M){
+        //    this->n_offset = this->xc_offset + dim;
+        //} else {
+        //    this->n_offset = this->xc_offset;
+        //}
+        this->xc_offset = this->constraint_offset + il_constr_num;
+        this->n_offset = this->xc_offset;
     }
-    //max_dofs += this->F_total_dof + dim + s_size + 1;
-    if(use_M){
-        max_dofs += this->F_total_dof + dim + il_constr_num + 1;
-    } else {
-        max_dofs += this->F_total_dof + il_constr_num;
-    }
+    //if(use_M){
+    //    max_dofs = this->n_offset + 1;//2;
+    //} else {
+    //    max_dofs = this->n_offset;// + 1;
+    //}
+    max_dofs = this->n_offset;// + 1;
 
     const auto fn_A =
         [this](const math::Matrix& S, const gp_Pnt& px)->double{
@@ -178,9 +387,9 @@ void InternalLoads2::initialize(const Meshing* const mesh, size_t& max_dofs){
 
     if(this->use_M){
         this->D = 0;
-        for(size_t i = 0; i < dim; ++i){
-            this->D += this->center[i]*this->normal.Coord(1+i);
-        }
+        //for(size_t i = 0; i < dim; ++i){
+        //    this->D += this->center[i]*this->normal.Coord(1+i);
+        //}
 
         //math::Matrix Mc_tmp(3, 3, 0);
 
@@ -196,60 +405,76 @@ void InternalLoads2::initialize(const Meshing* const mesh, size_t& max_dofs){
         //    Mc_tmp(2,i) = -F[0]*R_conv(1,i);
         //}
 
-        math::Matrix Mc_tmp({
-                0, -F[2], -F[1],
-                0,     0, -F[0],
-                0, -F[0],     0,
-            }, 3, 3);
 
-        // The first line does need to have inverted signs due to get_loads()
+        math::Matrix Mc_tmp(
+                {-F[1],  F[0], 0,
+                     0, -F[2], 0,
+                 -F[2],     0, 0}, 3, 3);
+
+        // here rot3D transforms x_c, not F
+        Mc_tmp = Mc_tmp*this->rot3D.T();
+
+        // The second line does need to have inverted signs due to get_loads()
         const math::Matrix M_skew(
             {
-                 0, -F[2],  F[1],
-             -F[2],     0,  F[0],
-              F[1], -F[0],     0
+                      0, -F_orig[2],  F_orig[1],
+             -F_orig[2],          0,  F_orig[0],
+             -F_orig[1],  F_orig[0],     0
             }, 3, 3);
+
+        //logger::quick_log(Mc_tmp);
+        //logger::quick_log(this->rot3D.T()*M_skew);
+        //exit(0);
         
 
+        // Calculated using the global coordinate system
         if(this->calculate_from_last_point){
             if(!this->inverted_calc){
                 //this->M = -((this->center - this->P_prev).cross(this->F) + this->M_orig);
-                this->M = (this->M_orig - (-this->P_prev).cross(this->F));
+                this->M = this->rot3D.T()*(this->M_orig - (-this->P_prev).cross(this->F_orig));
                 // This is (apparently) correct due to the signs used in M_skew
                 // and in get_loads()
-                Mc_tmp -= M_skew;
+                Mc_tmp += this->rot3D.T()*M_skew;
             } else {
                 //this->M = ((this->center - this->P_prev).cross(this->F) + this->M_orig);
-                this->M = -(this->M_orig - (-this->P_prev).cross(this->F));
+                this->M = this->rot3D.T()*(-(this->M_orig - (-this->P_prev).cross(this->F_orig)));
                 // This is (apparently) correct due to the signs used in M_skew
                 // and in get_loads()
-                Mc_tmp += M_skew;
+                Mc_tmp -= this->rot3D.T()*M_skew;
             }
         } else {
-            this->M = this->M_orig;
+            this->M = this->rot3D.T()*this->M_orig;
         }
 
         //this->center = this->rot3D.T()*this->center;
 
-        this->Mc = std::move(Mc_tmp);
+        //this->Mc = std::move(Mc_tmp);
 
-        this->assume_xc.resize(dim, false);
-        for(size_t i = 0; i < dim; ++i){
-            bool all_zero = true;
-            for(size_t j = 0; j < dim; ++j){
-                if(std::abs(this->Mc(j,i)) > 1e-10){
-                    all_zero = false;
-                    break;
-                }
-            }
-            if(all_zero && std::abs(this->normal.Coord(1+i)) < 1e-10){
-                this->assume_xc[i] = true;
-                --max_dofs;
-                --this->constraint_offset;
-                --this->n_offset;
-            }
-        }
+        this->assume_xc.resize(dim, true);
+        //this->assume_xc.resize(dim, false);
+        //for(size_t i = 0; i < dim; ++i){
+        //    bool all_zero = true;
+        //    for(size_t j = 0; j < dim; ++j){
+        //        if(std::abs(this->Mc(j,i)) > 1e-10){
+        //            all_zero = false;
+        //            break;
+        //        }
+        //    }
+        //    if(all_zero && std::abs(this->normal.Coord(1+i)) < 1e-10){
+        //        this->assume_xc[i] = true;
+        //        --max_dofs;
+        //        //--this->constraint_offset;
+        //        --this->n_offset;
+        //    }
+        //}
     }
+    logger::quick_log("il2_offset", il2_offset);
+    //logger::quick_log("bc_offset", bc_offset);
+    logger::quick_log("constraint_offset", constraint_offset);
+    //logger::quick_log("xc_offset", xc_offset);
+    //logger::quick_log("n_offset", n_offset);
+    //logger::quick_log("assume_xc");
+    //logger::quick_log(assume_xc);
 
     logger::quick_log("A: ", A);
     logger::quick_log("EA: ", EA);
@@ -264,10 +489,98 @@ void InternalLoads2::initialize(const Meshing* const mesh, size_t& max_dofs){
         logger::quick_log("M");
         logger::quick_log(this->M);
 
-        logger::quick_log("Neutral axis matrix");
-        logger::quick_log(Mc);
+        //logger::quick_log("Neutral axis matrix");
+        //logger::quick_log(Mc);
     }
 
+}
+
+void InternalLoads2::display_views(const std::vector<double>& u) const{
+    std::vector<double> uf(this->u_dof, 0); 
+
+    const size_t dof      = elem_info->get_dof_per_node();
+    const size_t node_num = elem_info->get_nodes_per_element();
+
+    //for(const auto& b:submesh){
+    //    std::vector<long> u_pos(dof*node_num);
+    //    std::vector<long> f_pos(f_node_dof*node_num);
+    //    for(size_t i = 0; i < node_num; ++i){
+    //        const auto& n = b->parent->nodes[i];
+    //        const auto f_id = F_id_map.at(n->id);
+    //        for(size_t j = 0; j < dof; ++j){
+    //            const size_t p = n->id*dof + j;
+    //            u_pos[i*dof + j] = p;
+    //        }
+    //        if(f_id >= 0){
+    //            for(size_t j = 0; j < f_node_dof; ++j){
+    //                const size_t fp = f_id*f_node_dof + j;
+    //                f_pos[i*f_node_dof + j] = node_pos[fp];
+    //            }
+    //        } else {
+    //            for(size_t j = 0; j < f_node_dof; ++j){
+    //                f_pos[i*f_node_dof + j] = -1;
+    //            }
+    //        }
+    //    }
+    //    const auto F = get_F_mat(b);
+    //    
+    //    for(size_t i = 0; i < u_pos.size(); ++i){
+    //        for(size_t j = 0; j < f_pos.size(); ++j){
+    //            if(f_pos[j] > -1){
+    //                uf[u_pos[i]] -= F(i,j)*u[f_pos[j]];
+    //            }
+    //        }
+    //    }
+    //}
+    
+    double energy = 0;
+    for(const auto& b:submesh){
+        math::Vector f_pos(f_node_dof*node_num);
+        for(size_t i = 0; i < node_num; ++i){
+            const auto& n = b->parent->nodes[i];
+            const auto f_id = F_id_map.at(n->id);
+            if(f_id >= 0){
+                for(size_t j = 0; j < f_node_dof; ++j){
+                    const size_t fp = f_id*f_node_dof + j;
+                    f_pos[i*f_node_dof + j] = u[node_pos[fp]];
+                }
+            } else {
+                for(size_t j = 0; j < f_node_dof; ++j){
+                    f_pos[i*f_node_dof + j] = -1;
+                }
+            }
+        }
+        const auto F = get_K_mat(b);
+
+        energy += 0.5*(f_pos.T()*F*f_pos);
+    }
+    logger::quick_log("IL2 strain energy", energy);
+    
+    const auto& n = this->normal;
+    const math::Matrix M({
+            n.X(), 0, 0, n.Y(), n.Z(), 0,
+            0, n.Y(), 0, n.X(), 0, n.Z(),
+            0, 0, n.Z(), 0, n.X(), n.Y()}, 3, 6);
+    for(const auto& b:submesh){
+        math::Vector f_pos(f_node_dof);
+        for(size_t i = 0; i < this->BOUNDARY_NODE_NUM; ++i){
+            const auto& n = b->nodes[i];
+            const auto f_id = F_id_map.at(n->id);
+            if(f_id >= 0){
+                for(size_t j = 0; j < f_node_dof; ++j){
+                    const size_t fp = f_id*f_node_dof + j;
+                    f_pos[j] = u[node_pos[fp]];
+                }
+                const auto fi = M*this->rot3D_D.T()*f_pos;
+                for(size_t j = 0; j < dof; ++j){
+                    const size_t p = n->id*dof + j;
+                    uf[p] = fi[j];
+                }
+            }
+        }
+    }
+
+    this->force_view->update_view(uf);
 }
 
 void InternalLoads2::apply_constraints(std::vector<double>& load) const{
@@ -279,9 +592,9 @@ void InternalLoads2::apply_constraints(std::vector<double>& load) const{
             load[this->constraint_offset + i] = V[i];
             //load[this->constraint_offset + 6 + i] = V[i];
         }
-        if(this->use_M){
-            load[this->n_offset] = this->D;
-        }
+        //if(this->use_M){
+        //    load[this->n_offset] = this->D;
+        //}
     }
 }
 
@@ -292,12 +605,14 @@ math::Matrix InternalLoads2::get_F_mat(const BoundaryElement* b) const{
     }
 
     if(this->type == utils::PROBLEM_TYPE_2D){
-        auto NN = -b->parent->get_R(this->rot2D, this->thickness, bounds);
+        //auto NN = -b->parent->get_R(this->rot2D, this->thickness, bounds);
+        auto NN = -b->parent->il2_R2(this->rot2D, this->rot3D_D, this->normal, this->thickness, bounds);
 
         return NN; 
     } else {
-        auto NN = -b->parent->get_R(this->rot3D, this->thickness, bounds);
-        //auto NN = -b->parent->il2_R2(this->rot3D, this->rot3D_D, this->mmat, bounds);
+        //auto NN = -b->parent->get_R(this->rot3D, this->thickness, bounds);
+        // Use of rot3D_S follows TCT Ting
+        auto NN = -b->parent->il2_R2(this->rot3D, this->rot3D_S, this->normal, this->thickness, bounds);
 
         return NN; 
     }
@@ -310,11 +625,42 @@ math::Matrix InternalLoads2::get_K_mat(const BoundaryElement* b) const{
     }
 
     if(this->type == utils::PROBLEM_TYPE_2D){
-        auto NN = b->parent->il2_F(this->rot2D_S, this->mmat, bounds, this->thickness);
+        auto NN = b->parent->il2_F(this->rot2D, this->rot2D_S, this->mmat, bounds, this->thickness);
 
         return NN; 
     } else {
-        auto NN = b->parent->il2_F(this->rot3D_S, this->mmat, bounds, this->thickness);
+        auto NN = b->parent->il2_F(this->rot3D, this->rot3D_S, this->mmat, bounds, this->thickness);
+        //auto NN = b->parent->il2_F_alt(this->rot3D, bounds, this->thickness);
+
+        return NN; 
+    }
+}
+
+math::Matrix InternalLoads2::get_bc(const EdgeElement* b) const{
+
+    if(this->type == utils::PROBLEM_TYPE_2D){
+        auto NN = b->parent->parent->il2_bc(this->rot2D, b->transformed_normal, b->bounds);
+
+        return NN; 
+    } else {
+        auto NN = b->parent->parent->il2_bc(this->rot3D, b->transformed_normal, b->bounds);
+
+        return NN; 
+    }
+}
+
+math::Matrix InternalLoads2::get_t1t2(const BoundaryElement* b) const{
+    std::vector<gp_Pnt> bounds(BOUNDARY_NODE_NUM);
+    for(size_t i = 0; i < BOUNDARY_NODE_NUM; ++i){
+        bounds[i] = b->nodes[i]->point;
+    }
+
+    if(this->type == utils::PROBLEM_TYPE_2D){
+        auto NN = b->parent->il2_t1t2(this->rot2D, thickness, bounds);
+
+        return NN; 
+    } else {
+        auto NN = b->parent->il2_t1t2(this->rot3D, thickness, bounds);
 
         return NN; 
     }
@@ -366,9 +712,9 @@ void InternalLoads2::check_results(const std::vector<double>& u) const{
         if(this->calculate_from_last_point){
             logger::quick_log("IL2 resulting moments");
             if(!this->inverted_calc){
-                logger::quick_log((this->M_orig - (xc - this->P_prev).cross(this->F)));
+                logger::quick_log((this->M_orig - (xc - this->P_prev).cross(this->F_orig)));
             } else {
-                logger::quick_log(-(this->M_orig - (xc - this->P_prev).cross(this->F)));
+                logger::quick_log(-(this->M_orig - (xc - this->P_prev).cross(this->F_orig)));
             }
         }
     }
@@ -406,16 +752,19 @@ math::Vector InternalLoads2::get_loads() const{
     if(this->use_M){
         return {
             -m[1],
-            -m[2],
-             f[0],
              m[0],
-            -f[2],
-             f[1]
+             f[2],
+             m[2],
+             f[0],
+             f[1],
+            //    0,
+            //-f[2],
+            // f[1]
         };
     } else {
         return {
+             f[2],
              f[0],
-            -f[2],
              f[1]
         };
     }
@@ -426,7 +775,7 @@ math::Matrix InternalLoads2::get_constr(const BoundaryElement* b) const{
     for(size_t i = 0; i < BOUNDARY_NODE_NUM; ++i){
         bounds[i] = b->nodes[i]->point;
     }
-    return b->parent->constraint_matrix_alt(this->center, this->rot3D, bounds);
+    return b->parent->constraint_matrix_alt(this->center, this->rot3D, bounds, !this->calculate_from_last_point, this->thickness);
 }
 math::Matrix InternalLoads2::get_constr2(const BoundaryElement* b) const{
     std::vector<gp_Pnt> bounds(BOUNDARY_NODE_NUM);
@@ -434,7 +783,7 @@ math::Matrix InternalLoads2::get_constr2(const BoundaryElement* b) const{
         bounds[i] = b->nodes[i]->point;
     }
     const auto D = this->mat->stiffness_3D(b->parent, b->parent->get_centroid());
-    return b->parent->constraint_matrix(this->center, this->rot3D, this->rot3D_D, this->mmat, bounds);
+    return b->parent->constraint_matrix(this->rot3D, this->rot3D_D, this->mmat, bounds);
 }
 
 class VectorWrapper{

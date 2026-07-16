@@ -350,7 +350,7 @@ TopoDS_Shape StandardSizing::expansion_2D(const meshing::StandardBeamMesher& mes
                     continue;
                 }
 
-                math::Vector force = e->get_internal_loads(D, mesh.thickness, u);
+                math::Vector force = e->get_internal_loads(g->materials, mesh.thickness, u);
                 for(size_t j = 0; j < num_nodes; ++j){
                     auto& ne = e->nodes[j];
                     double line_pos_rel = nn.Dot(gp_Vec(ne->point, n.node->point));

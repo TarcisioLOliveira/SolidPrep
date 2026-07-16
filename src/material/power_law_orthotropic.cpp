@@ -159,7 +159,7 @@ math::Matrix PowerLawOrthotropic::stiffness_2D(const MeshElement* const e, const
 
     if(this->direction_field != nullptr){
         const auto M = this->direction_field->get_matrix(e, p);
-        const auto R = utils::basis_tensor_2D(M.T());
+        const auto R = utils::basis_tensor_2D(M);
         
         return R*D_2D*R.T();
     } else {
@@ -172,7 +172,7 @@ math::Matrix PowerLawOrthotropic::stiffness_3D(const MeshElement* const e, const
 
     if(this->direction_field != nullptr){
         const auto M = this->direction_field->get_matrix(e, p);
-        const auto R = utils::basis_tensor_3D(M.T());
+        const auto R = utils::basis_tensor_3D(M);
         
         return R*D_3D*R.T();
     } else {
@@ -184,7 +184,7 @@ math::Matrix PowerLawOrthotropic::stiffness_inverse_2D(const MeshElement* const 
 
     if(this->direction_field != nullptr){
         const auto M = this->direction_field->get_matrix(e, p);
-        const auto R = utils::basis_tensor_2D_inv_T(M.T());
+        const auto R = utils::basis_tensor_2D_inv_T(M);
         
         return R*S_2D*R.T();
     } else {
@@ -196,7 +196,7 @@ math::Matrix PowerLawOrthotropic::stiffness_inverse_3D(const MeshElement* const 
 
     if(this->direction_field != nullptr){
         const auto M = this->direction_field->get_matrix(e, p);
-        const auto R = utils::basis_tensor_3D_inv_T(M.T());
+        const auto R = utils::basis_tensor_3D_inv_T(M);
         
         return R*S_3D*R.T();
     } else {
@@ -220,8 +220,8 @@ math::Matrix PowerLawOrthotropic::stiffness_inverse_3D_dsh(const MeshElement* co
     if(this->direction_field != nullptr){
         const auto M = this->direction_field->get_matrix(e, p);
         const auto dM = this->direction_field->get_dsh(e, p, n, dof);
-        const auto R = utils::basis_tensor_3D_inv_T(M.T());
-        const auto dR = utils::basis_tensor_3D_inv_T_d1(M.T(), dM.T());
+        const auto R = utils::basis_tensor_3D_inv_T(M);
+        const auto dR = utils::basis_tensor_3D_inv_T_d1(M, dM);
         
         return dR*S_3D*R.T() + R*dS_3D*R.T() + R*S_3D*dR.T();
     } else {
@@ -246,8 +246,8 @@ math::Matrix PowerLawOrthotropic::stiffness_3D_dsh(const MeshElement* const e, c
     if(this->direction_field != nullptr){
         const auto M = this->direction_field->get_matrix(e, p);
         const auto dM = this->direction_field->get_dsh(e, p, n, dof);
-        const auto R = utils::basis_tensor_3D_inv_T(M.T());
-        const auto dR = utils::basis_tensor_3D_inv_T_d1(M.T(), dM.T());
+        const auto R = utils::basis_tensor_3D_inv_T(M);
+        const auto dR = utils::basis_tensor_3D_inv_T_d1(M, dM);
         
         return dR*D_3D*R.T() + R*dD_3D*R.T() + R*D_3D*dR.T();
     } else {
@@ -260,7 +260,7 @@ double PowerLawOrthotropic::beam_E_2D(const MeshElement* const e, const gp_Pnt& 
     // (Ting, 1996)
 
     const auto S = this->stiffness_inverse_2D(e, p);
-    const auto Rt = utils::basis_tensor_2D_inv_T(R.T());
+    const auto Rt = utils::basis_tensor_2D_inv_T(R);
 
     return 1.0/(Rt*S*Rt.T())(0,0);
 }
@@ -269,7 +269,7 @@ double PowerLawOrthotropic::beam_E_3D(const MeshElement* const e, const gp_Pnt& 
     // (Ting, 1996)
 
     auto S = this->stiffness_inverse_3D(e, p);
-    const auto Rt = utils::basis_tensor_3D_inv_T(R.T());
+    const auto Rt = utils::basis_tensor_3D_inv_T(R);
 
     return 1.0/(Rt*S*Rt.T())(0,0);
 }
@@ -278,7 +278,7 @@ std::array<double, 2> PowerLawOrthotropic::beam_EG_2D(const MeshElement* const e
     // (Ting, 1996)
 
     auto S = this->stiffness_inverse_2D(e, p);
-    const auto Rt = utils::basis_tensor_2D_inv_T(R.T());
+    const auto Rt = utils::basis_tensor_2D_inv_T(R);
     const auto Sr = Rt*S*Rt.T();
 
     return {1.0/Sr(0,0), 1.0/Sr(2,2)};
@@ -288,7 +288,7 @@ std::array<double, 4> PowerLawOrthotropic::beam_EG_3D(const MeshElement* const e
     // (Ting, 1996)
 
     auto S = this->stiffness_inverse_3D(e, p);
-    const auto Rt = utils::basis_tensor_3D_inv_T(R.T());
+    const auto Rt = utils::basis_tensor_3D_inv_T(R);
     const auto Sr = Rt*S*Rt.T();
 
     return {1.0/Sr(0,0), 1.0/Sr(3,3), 1.0/Sr(4,4), 1.0/Sr(5,5)};

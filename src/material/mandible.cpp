@@ -145,26 +145,26 @@ double Mandible::get_density(const MeshElement* const e, const gp_Pnt& p) const{
 }
 double Mandible::beam_E_2D(const MeshElement* const e, const gp_Pnt& p, const math::Matrix& R) const{
     const auto S = this->stiffness_inverse_2D(e, p);
-    const auto Rt = utils::basis_tensor_2D_inv_T(R.T());
+    const auto Rt = utils::basis_tensor_2D_inv_T(R);
 
     return 1.0/(Rt*S*Rt.T())(0,0);
 }
 double Mandible::beam_E_3D(const MeshElement* const e, const gp_Pnt& p, const math::Matrix& R) const{
     auto S = this->stiffness_inverse_3D(e, p);
-    const auto Rt = utils::basis_tensor_3D_inv_T(R.T());
+    const auto Rt = utils::basis_tensor_3D_inv_T(R);
 
     return 1.0/(Rt*S*Rt.T())(0,0);
 }
 std::array<double, 2> Mandible::beam_EG_2D(const MeshElement* const e, const gp_Pnt& p, const math::Matrix& R) const{
     auto S = this->stiffness_inverse_2D(e, p);
-    const auto Rt = utils::basis_tensor_2D_inv_T(R.T());
+    const auto Rt = utils::basis_tensor_2D_inv_T(R);
     const auto Sr = Rt*S*Rt.T();
 
     return {1.0/Sr(0,0), 1.0/S(2,2)};
 }
 std::array<double, 4> Mandible::beam_EG_3D(const MeshElement* const e, const gp_Pnt& p, const math::Matrix& R) const{
     auto S = this->stiffness_inverse_3D(e, p);
-    const auto Rt = utils::basis_tensor_3D_inv_T(R.T());
+    const auto Rt = utils::basis_tensor_3D_inv_T(R);
     const auto Sr = Rt*S*Rt.T();
 
     return {1.0/S(0,0), 1.0/S(3,3), 1.0/S(4,4), 1.0/S(5,5)};

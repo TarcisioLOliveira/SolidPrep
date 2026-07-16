@@ -92,7 +92,7 @@ void PETScPCG::solve_init(size_t M){
         KSPCGSetType(this->ksp, KSP_CG_SYMMETRIC);
         KSPSetTolerances(this->ksp, 1e-5, 1e-50, 1e10, 1e5);
     } else {
-        KSPSetTolerances(this->ksp, 1e-9, 1e-50, 1e10, 2e5);
+        KSPSetTolerances(this->ksp, 1e-7, 1e-50, 1e10, 1e6);
         PCJacobiSetType(this->pc, PC_JACOBI_ROWMAX);
         KSPSetType(this->ksp, KSPMINRES);
     }
@@ -102,7 +102,7 @@ void PETScPCG::solve_init(size_t M){
     //KSPMonitorSet(this->ksp, (PetscErrorCode (*)(KSP, PetscInt, PetscReal, void *))KSPMonitorResidual, vf, (PetscCtxDestroyFn *)PetscViewerAndFormatDestroy);
 }
 
-void PETScPCG::solve_exec(std::vector<double>& load){
+bool PETScPCG::solve_exec(std::vector<double>& load){
     int mpi_id = 0;
     int mpi_size = 0;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi_id);
@@ -156,6 +156,10 @@ void PETScPCG::solve_exec(std::vector<double>& load){
         logger::quick_log("Total iterations", total_its);
     }
 
+    if(r == KSP_CONVERGED_STEP_LENGTH){
+        return false;
+    }
+
     const double* load_data;
 
     VecGetArrayRead(u, &load_data);
@@ -189,6 +193,8 @@ void PETScPCG::solve_exec(std::vector<double>& load){
     MPI_Barrier(MPI_COMM_WORLD);
 
     VecRestoreArrayRead(this->u, &load_data);
+
+    return true;
 }
 
 void PETScPCG::solve(std::vector<double>& load, const std::vector<double>& u0){
@@ -212,7 +218,18 @@ void PETScPCG::solve(std::vector<double>& load, const std::vector<double>& u0){
     }
     VecRestoreArray(this->u, &u_data);
     
-    this->solve_exec(load);
+    if(!this->solve_exec(load)){
+        long begin = 0, end = 0;
+        VecGetOwnershipRange(this->u, &begin, &end);
+        double* u_data = nullptr;
+        VecGetArray(this->u, &u_data);
+        for(auto d = 0; d < end - begin; ++d){
+            *(u_data+d) = 0;
+        }
+        VecRestoreArray(this->u, &u_data);
+
+        this->solve_exec(load);
+    }
 }
 void PETScPCG::solve(std::vector<double>& load){
     long M = load.size();

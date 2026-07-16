@@ -244,11 +244,11 @@ void MinimumEnergyOrientation::generate(){
 
                 const auto D0 = g->materials.get_D(e.get(), e->get_centroid());
                 
-                const auto T(utils::basis_tensor_3D(R.T()));
+                const auto T(utils::basis_tensor_3D(R));
 
-                const auto dTdt(utils::basis_tensor_3D_d1(R.T(), dRdt.T()));
-                const auto dTdo(utils::basis_tensor_3D_d1(R.T(), dRdo.T()));
-                const auto dTdp(utils::basis_tensor_3D_d1(R.T(), dRdp.T()));
+                const auto dTdt(utils::basis_tensor_3D_d1(R, dRdt));
+                const auto dTdo(utils::basis_tensor_3D_d1(R, dRdo));
+                const auto dTdp(utils::basis_tensor_3D_d1(R, dRdp));
 
                 const auto dTDTdt = sum_transpose(T*D0*dTdt.T());
                 const auto dTDTdo = sum_transpose(T*D0*dTdo.T());
@@ -287,15 +287,15 @@ void MinimumEnergyOrientation::generate(){
                 const auto S0 = il.mat->stiffness_inverse_3D(e, e->get_centroid());
                 const auto D0 = S0.get_inverted_cholesky();
                 
-                const auto T(utils::basis_tensor_3D(R.T()));
-                const auto Tinv(utils::basis_tensor_3D_inv_T(R.T()));
+                const auto T(utils::basis_tensor_3D(R));
+                const auto Tinv(utils::basis_tensor_3D_inv_T(R));
 
-                const auto dTdt(utils::basis_tensor_3D_d1(R.T(), dRdt.T()));
-                const auto dTinvdt(utils::basis_tensor_3D_inv_T_d1(R.T(), dRdt.T()));
-                const auto dTdo(utils::basis_tensor_3D_d1(R.T(), dRdo.T()));
-                const auto dTinvdo(utils::basis_tensor_3D_inv_T_d1(R.T(), dRdo.T()));
-                const auto dTdp(utils::basis_tensor_3D_d1(R.T(), dRdp.T()));
-                const auto dTinvdp(utils::basis_tensor_3D_inv_T_d1(R.T(), dRdp.T()));
+                const auto dTdt(utils::basis_tensor_3D_d1(R, dRdt));
+                const auto dTinvdt(utils::basis_tensor_3D_inv_T_d1(R, dRdt));
+                const auto dTdo(utils::basis_tensor_3D_d1(R, dRdo));
+                const auto dTinvdo(utils::basis_tensor_3D_inv_T_d1(R, dRdo));
+                const auto dTdp(utils::basis_tensor_3D_d1(R, dRdp));
+                const auto dTinvdp(utils::basis_tensor_3D_inv_T_d1(R, dRdp));
 
                 const auto TDT = T*D0*T.T();
                 const auto TST = Tinv*S0*Tinv.T();
@@ -342,11 +342,11 @@ void MinimumEnergyOrientation::generate(){
 
                 const auto S0 = spr.mat->stiffness_inverse_3D(e, e->get_centroid());
                 
-                const auto Tinv(utils::basis_tensor_3D_inv_T(R.T()));
+                const auto Tinv(utils::basis_tensor_3D_inv_T(R));
 
-                const auto dTinvdt(utils::basis_tensor_3D_inv_T_d1(R.T(), dRdt.T()));
-                const auto dTinvdo(utils::basis_tensor_3D_inv_T_d1(R.T(), dRdo.T()));
-                const auto dTinvdp(utils::basis_tensor_3D_inv_T_d1(R.T(), dRdp.T()));
+                const auto dTinvdt(utils::basis_tensor_3D_inv_T_d1(R, dRdt));
+                const auto dTinvdo(utils::basis_tensor_3D_inv_T_d1(R, dRdo));
+                const auto dTinvdp(utils::basis_tensor_3D_inv_T_d1(R, dRdp));
 
                 const auto TST = Rspr*Tinv*S0*Tinv.T()*Rspr.T();
 

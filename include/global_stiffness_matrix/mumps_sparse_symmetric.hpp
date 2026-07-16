@@ -25,6 +25,7 @@
 #include "utils/coo.hpp"
 #include "meshing.hpp"
 #include "global_stiffness_matrix.hpp"
+#include <limits>
 
 namespace global_stiffness_matrix{
 
@@ -57,8 +58,27 @@ class MUMPSSparseSymmetric : public GlobalStiffnessMatrix{
     size_t u_size, l_num;
     bool spd = true;
 
+    inline long min_pos(const std::vector<long>& pos){
+        long min = std::numeric_limits<long>::max();
+        for(auto p:pos){
+            if(p < min && p > -1){
+                min = p;
+            }
+        }
+        if(min < std::numeric_limits<long>::max()){
+            return min;
+        } else {
+            return -1;
+        }
+    }
+
     inline virtual void insert_block_symmetric(const math::Matrix& k, const std::vector<long>& posi, const std::vector<long>& posj) override{
-        if(posi[0] > posj[0]){
+        const auto min_i = min_pos(posi);
+        const auto min_j = min_pos(posj);
+        if(min_i == -1 || min_j == -1){
+            return;
+        }
+        if(min_i > min_j){
             this->sK.insert_block(k, posi, posj, false);
         } else {
             this->sK.insert_block(k, posi, posj, true);
@@ -68,7 +88,12 @@ class MUMPSSparseSymmetric : public GlobalStiffnessMatrix{
         this->sK.insert_matrix_symmetric(k, pos);
     }
     inline virtual void reserve_block_symmetric(const math::Matrix& k, const std::vector<long>& posi, const std::vector<long>& posj) override{
-        if(posi[0] > posj[0]){
+        const auto min_i = min_pos(posi);
+        const auto min_j = min_pos(posj);
+        if(min_i == -1 || min_j == -1){
+            return;
+        }
+        if(min_i > min_j){
             this->sK.reserve_block(k, posi, posj, false);
         } else {
             this->sK.reserve_block(k, posi, posj, true);
