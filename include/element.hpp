@@ -362,6 +362,7 @@ class MeshElement : public Element{
     virtual math::Matrix il2_R2(const math::Matrix& Rm, const math::Matrix& RD, const gp_Dir& n, double thickness, const std::vector<gp_Pnt>& bounds) const = 0;
 
     virtual math::Matrix il2_bc(const math::Matrix& Rm, const math::Vector& n, const std::vector<gp_Pnt>& bounds) const = 0;
+    virtual math::Matrix il2_bc2(const math::Matrix& Rm, const math::Vector& n, const std::vector<gp_Pnt>& bounds) const = 0;
 
     /**
      * Creates and returns the elemental stiffness matrix.

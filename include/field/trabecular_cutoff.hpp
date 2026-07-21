@@ -85,8 +85,9 @@ class TrabecularCutoff : public ScalarField {
     virtual void initialize_views(Visualization* viz) override;
     virtual void display_views() const override;
     virtual double get(const MeshElement* e, const gp_Pnt& p) const override{
-        (void) p;
-        return this->trabecular_map.at(e->id);
+        return (this->density->get(e, p) <= this->cutoff) ? 1.0 : 0.0;
+        //(void) p;
+        //return this->trabecular_map.at(e->id);
     }
 
     inline virtual SubType get_sub_type() const override{

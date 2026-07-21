@@ -187,7 +187,6 @@ void InternalLoads2::initialize(const Meshing* const mesh, size_t& max_dofs){
                         const gp_Vec v2(p1, p3);
                         if((v1.Crossed(v2)).Magnitude() < 1e-10){
                             line_nodes.insert(e.first.e->nodes[i]);
-                            ++bound_count;
                         }
                     }
                 }
@@ -327,14 +326,13 @@ void InternalLoads2::initialize(const Meshing* const mesh, size_t& max_dofs){
         //this->ds_offset = this->il2_offset + this->F_total_dof;
         //this->constraint_offset = this->ds_offset + this->F_total_dof;
                                                   
-        this->bc_offset = this->il2_offset + this->F_total_dof;
-        this->constraint_offset = this->bc_offset + line_id*dim;
-        //this->constraint_offset = this->bc_offset + line_id;
+        //this->bc_offset = this->il2_offset + this->F_total_dof;
+        //this->constraint_offset = this->bc_offset + line_id*dim;
 
         //this->f2_offset = this->il2_offset + this->F_total_dof;
         //this->constraint_offset = this->f2_offset + this->F_total_dof;
 
-        //this->constraint_offset = this->il2_offset + this->F_total_dof;
+        this->constraint_offset = this->il2_offset + this->F_total_dof;
 
         //this->xc_offset = this->constraint_offset + il_constr_num;
 
@@ -471,7 +469,7 @@ void InternalLoads2::initialize(const Meshing* const mesh, size_t& max_dofs){
     logger::quick_log("il2_offset", il2_offset);
     //logger::quick_log("bc_offset", bc_offset);
     logger::quick_log("constraint_offset", constraint_offset);
-    //logger::quick_log("xc_offset", xc_offset);
+    logger::quick_log("xc_offset", xc_offset);
     //logger::quick_log("n_offset", n_offset);
     //logger::quick_log("assume_xc");
     //logger::quick_log(assume_xc);
@@ -643,7 +641,8 @@ math::Matrix InternalLoads2::get_bc(const EdgeElement* b) const{
 
         return NN; 
     } else {
-        auto NN = b->parent->parent->il2_bc(this->rot3D, b->transformed_normal, b->bounds);
+        //auto NN = b->parent->parent->il2_bc(this->rot3D, b->transformed_normal, b->bounds);
+        auto NN = b->parent->parent->il2_bc2(this->rot3D, b->transformed_normal, b->bounds);
 
         return NN; 
     }

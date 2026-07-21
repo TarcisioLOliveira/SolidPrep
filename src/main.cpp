@@ -317,8 +317,8 @@ int main(int argc, char* argv[]){
                     //std::vector<double> stressesXZ;
                     //std::vector<double> stressesYZ;
                     std::vector<double> strainVM;
-                    std::vector<double> strainMa;
-                    std::vector<double> strainMi;
+                    //std::vector<double> strainMa;
+                    //std::vector<double> strainMi;
                     //std::vector<double> strainX;
                     //std::vector<double> strainY;
                     //std::vector<double> strainZ;
@@ -333,8 +333,8 @@ int main(int argc, char* argv[]){
                     //stressesXZ.reserve(s_size);
                     //stressesYZ.reserve(s_size);
                     strainVM.reserve(s_size);
-                    strainMa.reserve(s_size);
-                    strainMi.reserve(s_size);
+                    //strainMa.reserve(s_size);
+                    //strainMi.reserve(s_size);
                     //strainX .reserve(s_size);
                     //strainY .reserve(s_size);
                     //strainZ .reserve(s_size);
@@ -361,9 +361,9 @@ int main(int argc, char* argv[]){
                             //stressesYZ.push_back(tensor.data()[5]);
                             tensor = e->get_strain_tensor(c, u);
                             strainVM.push_back(e->get_strain_VM(c, u));
-                            auto principal = e->get_principal_strains(c, u);
-                            strainMa.push_back(principal[2]);
-                            strainMi.push_back(principal[0]);
+                            //auto principal = e->get_principal_strains(c, u);
+                            //strainMa.push_back(principal[2]);
+                            //strainMi.push_back(principal[0]);
                             //strainX.push_back(tensor.data()[0]);
                             //strainY.push_back(tensor.data()[4]);
                             //strainZ.push_back(tensor.data()[8]);
@@ -388,9 +388,10 @@ int main(int argc, char* argv[]){
 
                     // Display results
                     v->load_mesh(proj->topopt_mesher.get(), proj->type);
+                    //proj->topopt_fea.reset();
 
                     auto meshview = v->add_view("Mesh",        spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::MESH);
-                    auto stressview_VM = v->add_view("Von Mises Stress",        spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::STRESS);
+                    //auto stressview_VM = v->add_view("Von Mises Stress",        spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::STRESS);
                     //auto stressview_X  = v->add_view("Normal Stress (X axis)",  spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::STRESS);
                     //auto stressview_Y  = v->add_view("Normal Stress (Y axis)",  spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::STRESS);
                     //auto stressview_Z  = v->add_view("Normal Stress (Z axis)",  spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::STRESS);
@@ -398,8 +399,8 @@ int main(int argc, char* argv[]){
                     //auto stressview_XZ = v->add_view("Shear Stress (XZ plane)", spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::STRESS);
                     //auto stressview_YZ = v->add_view("Shear Stress (YZ plane)", spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::STRESS);
                     auto strainview_VM  = v->add_view("Von Mises Strain",  spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::STRESS);
-                    auto strainview_Ma  = v->add_view("Maximum Principal Strain",  spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::STRESS);
-                    auto strainview_Mi  = v->add_view("Minimum Principal Strain",  spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::STRESS);
+                    //auto strainview_Ma  = v->add_view("Maximum Principal Strain",  spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::STRESS);
+                    //auto strainview_Mi  = v->add_view("Minimum Principal Strain",  spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::STRESS);
                     //auto strainview_X  = v->add_view("Normal Strain (X axis)",  spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::STRESS);
                     //auto strainview_Y  = v->add_view("Normal Strain (Y axis)",  spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::STRESS);
                     //auto strainview_Z  = v->add_view("Normal Strain (Z axis)",  spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::STRESS);
@@ -407,9 +408,10 @@ int main(int argc, char* argv[]){
                     //auto strainview_XZ = v->add_view("Shear Strain (XZ plane)", spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::STRESS);
                     //auto strainview_YZ = v->add_view("Shear Strain (YZ plane)", spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::STRESS);
                     auto displ = v->add_view("Displacement",           spview::defs::ViewType::VECTOR, spview::defs::DataType::DISPLACEMENT);
-                    auto force = v->add_view("Force",           spview::defs::ViewType::VECTOR, spview::defs::DataType::OTHER);
+                    //auto force = v->add_view("Force",           spview::defs::ViewType::VECTOR, spview::defs::DataType::OTHER);
                     auto react = v->add_view("Reactions",           spview::defs::ViewType::VECTOR, spview::defs::DataType::OTHER);
 
+                    const auto bound_node_num = proj->topopt_element->get_boundary_nodes_per_element();
                     for(const auto& s:proj->supports){
                         std::set<const MeshNode*> snodes;
                         math::Vector rf(3);
@@ -427,7 +429,7 @@ int main(int argc, char* argv[]){
                     for(const auto& s:proj->internal_loads2){
                         std::set<const MeshNode*> snodes;
                         for(const auto& e:s.submesh){
-                            for(size_t i = 0; i < 3; ++i){
+                            for(size_t i = 0; i < bound_node_num; ++i){
                                 snodes.insert(e->nodes[i]);
                             }
                         }
@@ -444,7 +446,7 @@ int main(int argc, char* argv[]){
                     for(const auto& s:proj->springs){
                         std::set<const MeshNode*> snodes;
                         for(const auto& e:s.submesh){
-                            for(size_t i = 0; i < 3; ++i){
+                            for(size_t i = 0; i < bound_node_num; ++i){
                                 snodes.insert(e->nodes[i]);
                             }
                         }
@@ -461,7 +463,7 @@ int main(int argc, char* argv[]){
                     for(const auto& s:proj->reaction_sum){
                         std::set<const MeshNode*> snodes;
                         for(const auto& e:s.submesh){
-                            for(size_t i = 0; i < 3; ++i){
+                            for(size_t i = 0; i < bound_node_num; ++i){
                                 snodes.insert(e->nodes[i]);
                             }
                         }
@@ -490,7 +492,7 @@ int main(int argc, char* argv[]){
                     //}
 
                     meshview->update_view(stresses);
-                    stressview_VM->update_view(stresses);
+                    //stressview_VM->update_view(stresses);
                     //stressview_X ->update_view(stressesX);
                     //stressview_Y ->update_view(stressesY);
                     //stressview_Z ->update_view(stressesZ);
@@ -498,8 +500,8 @@ int main(int argc, char* argv[]){
                     //stressview_XZ->update_view(stressesXZ);
                     //stressview_YZ->update_view(stressesYZ);
                     strainview_VM->update_view(strainVM);
-                    strainview_Ma->update_view(strainMa);
-                    strainview_Mi->update_view(strainMi);
+                    //strainview_Ma->update_view(strainMa);
+                    //strainview_Mi->update_view(strainMi);
                     //strainview_X ->update_view(strainX);
                     //strainview_Y ->update_view(strainY);
                     //strainview_Z ->update_view(strainZ);
@@ -507,7 +509,7 @@ int main(int argc, char* argv[]){
                     //strainview_XZ->update_view(strainXZ);
                     //strainview_YZ->update_view(strainYZ);
                     displ->update_view(u);
-                    force->update_view(proj->topopt_mesher->global_load_vector);
+                    //force->update_view(proj->topopt_mesher->global_load_vector);
                     react->update_view(reactions);
 
                     for(auto& f:proj->fields){
@@ -525,8 +527,8 @@ int main(int argc, char* argv[]){
                     //stressesXZ.clear();
                     //stressesYZ.clear();
                     strainVM.clear();
-                    strainMa.clear();
-                    strainMi.clear();
+                    //strainMa.clear();
+                    //strainMi.clear();
                     //strainX .clear();
                     //strainY .clear();
                     //strainZ .clear();

@@ -92,7 +92,7 @@ void PETScPCG::solve_init(size_t M){
         KSPCGSetType(this->ksp, KSP_CG_SYMMETRIC);
         KSPSetTolerances(this->ksp, 1e-5, 1e-50, 1e10, 1e5);
     } else {
-        KSPSetTolerances(this->ksp, 1e-7, 1e-50, 1e10, 1e6);
+        KSPSetTolerances(this->ksp, 1e-9, 1e-50, 1e10, 1e5);
         PCJacobiSetType(this->pc, PC_JACOBI_ROWMAX);
         KSPSetType(this->ksp, KSPMINRES);
     }

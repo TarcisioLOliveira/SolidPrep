@@ -434,12 +434,38 @@ class MeshElementCommon : public MeshElement{
             bounds);
 
         return result;
+    }
+
+    virtual math::Matrix il2_bc2(const math::Matrix& Rm, const math::Vector& n, const std::vector<gp_Pnt>& bounds) const override{
+        const size_t NODES_PER_ELEM = T::NODES_PER_ELEM;
+
+        constexpr size_t GN = 2*T::INTEG_ORDER;
+
+        const math::Vector v1({0, 0, 0, 0, n[0], n[1]});
+        const math::Vector v2({n[0], 0, 0, n[1], 0, 0});
+        const math::Vector v3({0, n[1], 0, n[0], 0, 0});
+
+        math::Matrix result(IL2_F_DIM*NODES_PER_ELEM, IL2_F_DIM*NODES_PER_ELEM);
+
+        this->line_integral<GN>(result,
+            [&](const gp_Pnt& pi){
+                const auto NN = this->get_Ni(pi);
+                const auto Nf = this->il2_f_vec(Rm, pi);
+
+                return 
+                    Nf.T()*v1*v1.T()*Nf +
+                    Nf.T()*v2*v2.T()*Nf +
+                    Nf.T()*v3*v3.T()*Nf;
+            },
+            bounds);
+
+        return result;
 
     }
     virtual math::Matrix il2_F_alt(const math::Matrix& Rm, const std::vector<gp_Pnt>& bounds, double t) const override{
         const size_t NODES_PER_ELEM = T::NODES_PER_ELEM;
         const size_t K_DIM = T::K_DIM;
-        //const size_t DOF = T::NODE_DOF;
+        const size_t DOF = T::NODE_DOF;
 
         constexpr size_t GN = T::INTEG_ORDER*(T::INTEG_ORDER - 1);
         math::Matrix result(K_DIM, IL2_F_DIM*NODES_PER_ELEM);
@@ -447,29 +473,29 @@ class MeshElementCommon : public MeshElement{
         this->area_integral<GN>(result,
             [&](const gp_Pnt& pi){
 
-                //math::Matrix r(DOF, IL2_F_DIM*NODES_PER_ELEM);
-                //const auto NN = this->get_Ni(pi);
-                //const auto dN = Rm.T()*this->get_nodal_density_gradient(pi);
-                //for(size_t i = 0; i < NODES_PER_ELEM; ++i){
-                //    r(0, 0 + i*IL2_F_DIM) = dN(0,i);
-                //    r(0, 3 + i*IL2_F_DIM) = dN(1,i);
-                //    r(0, 4 + i*IL2_F_DIM) = dN(2,i);
+                math::Matrix r(DOF, IL2_F_DIM*NODES_PER_ELEM);
+                const auto NN = this->get_Ni(pi);
+                const auto dN = Rm.T()*this->get_nodal_density_gradient(pi);
+                for(size_t i = 0; i < NODES_PER_ELEM; ++i){
+                    r(0, 0 + i*IL2_F_DIM) = dN(0,i);
+                    r(0, 3 + i*IL2_F_DIM) = dN(1,i);
+                    r(0, 4 + i*IL2_F_DIM) = dN(2,i);
 
-                //    r(1, 3 + i*IL2_F_DIM) = dN(0,i);
-                //    r(1, 1 + i*IL2_F_DIM) = dN(1,i);
-                //    r(1, 5 + i*IL2_F_DIM) = dN(2,i);
+                    r(1, 3 + i*IL2_F_DIM) = dN(0,i);
+                    r(1, 1 + i*IL2_F_DIM) = dN(1,i);
+                    r(1, 5 + i*IL2_F_DIM) = dN(2,i);
 
-                //    r(2, 4 + i*IL2_F_DIM) = dN(0,i);
-                //    r(2, 5 + i*IL2_F_DIM) = dN(1,i);
-                //    r(2, 2 + i*IL2_F_DIM) = dN(2,i);
-                //}
+                    r(2, 4 + i*IL2_F_DIM) = dN(0,i);
+                    r(2, 5 + i*IL2_F_DIM) = dN(1,i);
+                    r(2, 2 + i*IL2_F_DIM) = dN(2,i);
+                }
 
-                //return NN.T()*r;
+                return NN.T()*r;
 
-                const auto Nf = this->il2_f_vec(Rm, pi);
-                const auto B = this->get_B(pi);
+                //const auto Nf = this->il2_f_vec(Rm, pi);
+                //const auto B = this->get_B(pi);
 
-                return B.T()*Nf;
+                //return B.T()*Nf;
             },
             bounds, t);
 

@@ -118,7 +118,7 @@ MarginalBoneLoss::Range MarginalBoneLoss::get_K_g (const Range& s) const{
 }
 
 void MarginalBoneLoss::initialize_views(Visualization* viz){
-    this->stress_view = viz->add_view("Von Mises Stress", spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::STRESS);
+    //this->stress_view = viz->add_view("Von Mises Stress", spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::STRESS);
     this->density_view = viz->add_view("Density", spview::defs::ViewType::NODAL, spview::defs::DataType::OTHER);
     this->growth_view = viz->add_view("Growth (Density)", spview::defs::ViewType::NODAL, spview::defs::DataType::OTHER);
     this->strain_view = viz->add_view("Microstrains", spview::defs::ViewType::NODAL, spview::defs::DataType::OTHER);
@@ -198,9 +198,27 @@ void MarginalBoneLoss::run(){
         }
     }
     if(!(elem_shape == Element::Shape::TRI && integ_order == 1)){
+        nodal_trab.resize(density_num);
+        for(size_t i = 0; i < density_num; ++i){
+            const auto n = this->mandible->node_list[i];
+            node_to_elem[n] = nullptr;
+            const double ref_rho = ref_field->get(n);
+            nodal_trab[i] = (ref_rho <= MAX_RHO_TRAB);
+        }
         for(auto& e:this->mandible->mesh){
+            //const auto c = e->get_centroid();
+            //const bool center_trab = (trab_field->get(e.get(), c) > 0.5);
             for(size_t i = 0; i < NODES_PER_ELEM; ++i){
-                node_to_elem[e->nodes[i]] = e.get();
+                const auto& n = e->nodes[i];
+                auto& ei = node_to_elem[n];
+                //const auto id = id_pos_map[n->id];
+
+                if(ei == nullptr){
+                    ei = e.get();
+                }
+                //if(ei == nullptr && center_trab == nodal_trab[id]){
+                //    ei = e.get();
+                //}
             }
         }
     } else {
@@ -244,14 +262,14 @@ void MarginalBoneLoss::run(){
         this->fem->generate_matrix(this->mesh);
         this->fem->calculate_displacements_global(this->mesh, this->mesh->load_vector, u);
 
-        {
-            auto s_it = stress.begin();
-            size_t D_offset = 0;
-            for(const auto& g:this->mesh->geometries){
-                g->get_stresses(u, false, D_offset, this->fem->D_vec, s_it);
-            }
-            this->stress_view->update_view(stress);
-        }
+        //{
+        //    auto s_it = stress.begin();
+        //    size_t D_offset = 0;
+        //    for(const auto& g:this->mesh->geometries){
+        //        g->get_stresses(u, false, D_offset, this->fem->D_vec, s_it);
+        //    }
+        //    this->stress_view->update_view(stress);
+        //}
 
         if(elem_shape == Element::Shape::TRI && integ_order == 1){
             #pragma omp parallel for
@@ -308,8 +326,9 @@ void MarginalBoneLoss::run(){
                 //const auto& D = this->mandible->materials.get_D(e, n->point);
                 //const auto& D0 = this->mandible->materials.get_D_orig(e, n->point);
 
-                const auto trab_num = trab_field->get(e, n->point);
-                const bool is_trab = (trab_num > 0.5);
+                //const auto trab_num = trab_field->get(e, n->point);
+                //const bool is_trab = (trab_num > 0.5);
+                const bool is_trab = nodal_trab[i];
 
                 //const double gi = this->get_density_variation(strain, D0, D, is_trab)*this->time_step;
                 const double gi = this->get_density_variation(strain, is_trab)*this->time_step;
@@ -324,7 +343,7 @@ void MarginalBoneLoss::run(){
                         density[i] = std::min(density[i], this->MAX_RHO);
                     }
                 }
-                growth[n->id] = density[i] - old_d;
+                growth[i] = density[i] - old_d;
                 //strains[n->id] = this->c[3]*this->Ud(3, strain, D0, D);
                 strains[i] = this->c[3]*this->LHS_3D(3, strain);
             }

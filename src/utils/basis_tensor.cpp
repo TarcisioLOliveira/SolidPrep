@@ -27,14 +27,14 @@ math::Matrix basis_tensor_2D(const math::Matrix& R){
     return math::Matrix(
         {R(0,0)*R(0,0), R(0,1)*R(0,1), 2*R(0,0)*R(0,1),
          R(1,0)*R(1,0), R(1,1)*R(1,1), 2*R(1,0)*R(1,1),
-         R(0,0)*R(1,0), R(0,1)*R(1,1),   R(0,0)*R(1,1)+R(0,1)*R(1,0)}, 3, 3);
+         R(0,0)*R(1,0), R(0,1)*R(1,1),   R(0,0)*R(1,1)+R(0,1)*R(1,0)}, 3, 3).T();
 }
 
 math::Matrix basis_tensor_2D_inv_T(const math::Matrix& R){
     return math::Matrix(
         {  R(0,0)*R(0,0),   R(0,1)*R(0,1), R(0,0)*R(0,1),
            R(1,0)*R(1,0),   R(1,1)*R(1,1), R(1,0)*R(1,1),
-         2*R(0,0)*R(1,0), 2*R(0,1)*R(1,1), R(0,0)*R(1,1)+R(0,1)*R(1,0)}, 3, 3);
+         2*R(0,0)*R(1,0), 2*R(0,1)*R(1,1), R(0,0)*R(1,1)+R(0,1)*R(1,0)}, 3, 3).T();
 }
 
 inline std::array<math::Matrix, 4> get_Ki_3D(const math::Matrix& R){
@@ -156,7 +156,7 @@ math::Matrix basis_tensor_3D_d1(const math::Matrix& R, const math::Matrix& dR){
         }
     }
 
-    return K;
+    return K.T();
 }
 
 math::Matrix basis_tensor_3D_inv_T_d1(const math::Matrix& R, const math::Matrix& dR){
@@ -176,7 +176,7 @@ math::Matrix basis_tensor_3D_inv_T_d1(const math::Matrix& R, const math::Matrix&
         }
     }
 
-    return K;
+    return K.T();
 }
 
 

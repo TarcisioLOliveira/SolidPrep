@@ -116,6 +116,7 @@ void GlobalStiffnessMatrix::generate_base(const Meshing * const mesh, const size
             //std::vector<long> s_pos(s_size);
             //std::vector<long> s_pos2(s_size);
             //math::Matrix M(s_size, u_pos.size(), 1);
+
             for(const auto& il:*(mesh->internal_loads2)){
                 std::vector<long> f_pos(il.f_node_dof*node_num);
                 math::Matrix F(f_pos.size(), f_pos.size(), 1);
@@ -167,10 +168,11 @@ void GlobalStiffnessMatrix::generate_base(const Meshing * const mesh, const size
         const auto prob_type = mesh->elem_info->get_problem_type();
         const size_t dim = (prob_type == utils::PROBLEM_TYPE_2D) ? 2 : 3;
 
-        const double MULT = 1e5;
+        const double MULT = 1e8;//1e9;
+        const double MULT_BC = 1e3;//1e4;
 
         std::vector<long> u_pos(dof*node_num);
-        //std::vector<long> ds_pos(dof*node_num);
+        std::vector<long> ds_pos(dof*node_num);
         std::vector<long> bc_pos(dof*node_num);
         std::vector<long> c_pos(dim);
         std::vector<long> cs_pos(dim);
@@ -181,7 +183,7 @@ void GlobalStiffnessMatrix::generate_base(const Meshing * const mesh, const size
             std::vector<long> s_pos2(il.max_constr_num);
             std::vector<long> f_pos(il.f_node_dof*node_num);
             std::vector<long> f2_pos(il.f_node_dof*node_num);
-            std::vector<long> ds_pos(il.f_node_dof*node_num);
+            //std::vector<long> ds_pos(il.f_node_dof*node_num);
             if(il.use_M){
                 //const math::Matrix n({il.normal.X(), il.normal.Y(), il.normal.Z()}, 1, 3);
                 //size_t coord_id = 0;
@@ -228,27 +230,26 @@ void GlobalStiffnessMatrix::generate_base(const Meshing * const mesh, const size
                     for(size_t j = 0; j < dof; ++j){
                         const size_t p = n->id*dof + j;
                         u_pos[i*dof + j] = node_positions[p];
-                        ds_pos[i*dof + j] = il.ds_offset + f_id*dof + j;
                     }
                     if(f_id >= 0){
                         for(size_t j = 0; j < il.f_node_dof; ++j){
                             const size_t fp = f_id*il.f_node_dof + j;
                             f_pos[i*il.f_node_dof + j] = il.node_pos[fp];
                             f2_pos[i*il.f_node_dof + j] = il.node_pos[fp] + il.F_total_dof;
-                            ds_pos[i*il.f_node_dof + j] = il.node_pos[fp] + il.F_total_dof;
+                            //ds_pos[i*il.f_node_dof + j] = il.node_pos[fp] + il.F_total_dof;
                         }
-                        //for(size_t j = 0; j < dof; ++j){
-                        //    ds_pos[i*dof + j] = il.ds_offset + f_id*dof + j;
-                        //}
+                        for(size_t j = 0; j < dof; ++j){
+                            ds_pos[i*dof + j] = il.ds_offset + f_id*dof + j;
+                        }
                     } else {
                         for(size_t j = 0; j < il.f_node_dof; ++j){
                             f_pos[i*il.f_node_dof + j] = -1;
                             f2_pos[i*il.f_node_dof + j] = -1;
-                            ds_pos[i*il.f_node_dof + j] = -1;
+                            //ds_pos[i*il.f_node_dof + j] = -1;
                         }
-                        //for(size_t j = 0; j < dof; ++j){
-                        //    ds_pos[i*dof + j] = il.ds_offset + f_id*dof + j;
-                        //}
+                        for(size_t j = 0; j < dof; ++j){
+                            ds_pos[i*dof + j] = -1;
+                        }
                     }
                 }
                 //const auto H = il.get_hess(b);
@@ -271,18 +272,22 @@ void GlobalStiffnessMatrix::generate_base(const Meshing * const mesh, const size
                 for(size_t i = 0; i < node_num; ++i){
                     const auto& n = b.parent->parent->nodes[i];
                     const auto f_id = il.F_id_map.at(n->id);
-                    const auto bc_id = il.line_id_map.at(n->id);
-                    if(bc_id >= 0){
-                        for(size_t j = 0; j < dof; ++j){
-                            bc_pos[i*dof + j] = il.bc_offset + bc_id*dof + j;
-                            //bc_pos[i*dof + j] = -1;
-                        }
-                        //bc_pos[i*dof + 0] = il.bc_offset + bc_id;
-                    } else {
-                        for(size_t j = 0; j < dof; ++j){
-                            bc_pos[i*dof + j] = -1;
-                        }
-                    }
+                    //for(size_t j = 0; j < dof; ++j){
+                    //    const size_t p = n->id*dof + j;
+                    //    u_pos[i*dof + j] = node_positions[p];
+                    //}
+                    //const auto bc_id = il.line_id_map.at(n->id);
+                    //if(bc_id >= 0){
+                    //    for(size_t j = 0; j < dof; ++j){
+                    //        bc_pos[i*dof + j] = il.bc_offset + bc_id*dof + j;
+                    //        //bc_pos[i*dof + j] = -1;
+                    //    }
+                    //    //bc_pos[i*dof + 0] = il.bc_offset + bc_id;
+                    //} else {
+                    //    for(size_t j = 0; j < dof; ++j){
+                    //        bc_pos[i*dof + j] = -1;
+                    //    }
+                    //}
                     if(f_id >= 0){
                         for(size_t j = 0; j < il.f_node_dof; ++j){
                             const size_t fp = f_id*il.f_node_dof + j;
@@ -294,7 +299,7 @@ void GlobalStiffnessMatrix::generate_base(const Meshing * const mesh, const size
                         }
                     }
                 }
-                const auto bc = il.get_bc(&b);
+                const auto bc = MULT_BC*il.get_bc(&b);
                 //if(print){
                 //    logger::quick_log(bc_pos);
                 //    logger::quick_log(b.bounds[0].X(), b.bounds[0].Y(), b.bounds[0].Z());
@@ -302,7 +307,9 @@ void GlobalStiffnessMatrix::generate_base(const Meshing * const mesh, const size
                 //    logger::quick_log(b.transformed_normal[0], b.transformed_normal[1], b.transformed_normal[2]);
                 //    logger::quick_log(bc);
                 //}
-                this->insert_block_symmetric(bc, bc_pos, f_pos);
+                //this->insert_block_symmetric(bc, bc_pos, f_pos);
+                //this->insert_block_symmetric(bc, u_pos, f_pos);
+                this->insert_element_matrix(bc, f_pos);
             }
         }
     }
