@@ -335,47 +335,7 @@ math::Matrix PrincipalStress::get_matrix(const MeshElement* e, const gp_Pnt& p) 
                     0, 0, 1
                 }, 3, 3);
     } else {
-        math::Matrix tensor;
-        if(this->use_strain){
-            tensor = e->get_strain_tensor(p, this->u);
-        } else {
-            if(this->DIM == 3){
-                const auto D = this->initial_material->stiffness_3D(e, p);
-                tensor = e->get_stress_tensor(D, p, this->u);
-            } else {
-                const auto D = this->initial_material->stiffness_2D(e, p);
-                tensor = e->get_stress_tensor(D, p, this->u);
-            }
-        }
-        math::Eigen eigen(tensor, 1e-14);
-        //logger::log_assert(std::abs(eigen.eigenvectors.determinant()) > 1e-7,
-        //        logger::ERROR,
-        //        "eigen vector singular");
-        //logger::log_assert(
-        //        (eigen.eigenvectors*eigen.eigenvectors.T()).is_equal(math::Matrix::identity(DIM)),
-        //        logger::ERROR,
-        //        "eigen vector not orthonormal");
-        std::vector<double> abs_sort(DIM);
-        for(size_t i = 0; i < DIM; ++i){
-            abs_sort[i] = std::abs(eigen.eigenvalues[i]);
-        }
-        std::sort(abs_sort.begin(), abs_sort.end(), std::less<double>());
-        std::vector<size_t> pos(DIM);
-        for(size_t i = 0; i < DIM; ++i){
-            for(size_t j = 0; j < DIM; ++j){
-                if(abs_sort[i] == std::abs(eigen.eigenvalues[j])){
-                    pos[i] = j;
-                    break;
-                }
-            }
-        }
-        math::Matrix dirs(DIM, DIM);
-        for(size_t i = 0; i < DIM; ++i){
-            for(size_t j = 0; j < DIM; ++j){
-                dirs(i, j) = eigen.eigenvectors(i, pos[j]);
-            }
-        }
-        return dirs;
+        return this->get_eigen(e, p);
     }
 }
 

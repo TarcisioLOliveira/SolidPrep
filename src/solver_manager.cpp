@@ -47,11 +47,6 @@ void SolverManager::generate_matrix(const Meshing* const mesh, const std::vector
             } else {
                 this->lambdas[i].emplace_back();
             }
-        //} else {
-        //    if(needs_lambda && mesh->proj_data->contact_data.contact_type != FiniteElement::ContactType::FRICTIONLESS_DISPL_LOG){
-        //        std::fill(this->split_u[i].begin(), this->split_u[i].end(), 0.0);
-        //        std::fill(this->lambdas[i][0].begin(), this->lambdas[i][0].end(), 0.0);
-        //    }
         }
         auto& n = mesh->node_positions[i];
         auto& l = mesh->load_vector[i];
@@ -72,9 +67,9 @@ void SolverManager::calculate_displacements_global(const Meshing* const mesh, co
 
 
         auto& ui = this->split_u[i];
-        this->solvers[i]->calculate_displacements(mesh, l, ui, this->u0[0], this->lambdas[i][0]);
+        this->solvers[i]->calculate_displacements(mesh, l, ui, this->u0[i], this->lambdas[i][0]);
         mesh->extend_vector(i, l, ui);
-        std::copy(l.begin(), l.end(), this->u0[0].begin());
+        std::copy(l.begin(), l.end(), this->u0[i].begin());
         if(mesh->internal_loads2 != nullptr){
             for(size_t i = 0; i < mesh->internal_loads2->size(); ++i){
                 auto& il = mesh->internal_loads2->at(i);
@@ -123,7 +118,7 @@ void SolverManager::calculate_displacements_adjoint(const Meshing* const mesh, c
         } else {
             logger::log_assert(false, logger::ERROR, "incorrect load vector size, must be equal to mesh->max_dofs OR mesh->dofs_per_subproblem[i]");
         }
-        //std::copy(l.begin(), l.end(), this->u0[this->solve_step].begin());
+        std::copy(l.begin(), l.end(), this->u0[this->solve_step].begin());
         mesh->extend_vector(i, l, u_tmp);
         #pragma omp parallel for
         for(size_t j = 0; j < u.size(); ++j){
@@ -341,6 +336,53 @@ std::vector<double> SolverManager::calculate_reactions(const Meshing* const mesh
     //    }
     //}
     logger::quick_log("Force equilibrium:");
+    logger::quick_log(F);
+    logger::quick_log("");
+
+    return f;
+}
+
+std::vector<double> SolverManager::calculate_reaction_moments(const Meshing* const mesh, const std::vector<double>& u) const{
+    const double t = mesh->thickness;
+    const size_t dof       = mesh->elem_info->get_dof_per_node();
+    const size_t node_num  = mesh->elem_info->get_nodes_per_element();
+    const size_t k_size    = mesh->elem_info->get_k_dimension();
+    std::vector<double> f(u.size(),0);
+
+    std::vector<long> u_pos(k_size);
+    std::vector<double> F(dof);
+    for(auto& g : mesh->geometries){
+        std::vector<math::Matrix> k(g->mesh.size());
+        #pragma omp parallel for
+        for(size_t i = 0; i < g->mesh.size(); ++i){
+            const auto& e = g->mesh[i];
+            k[i] = e->get_k_M(g->materials, t);
+        }
+
+        for(size_t ei = 0; ei < g->mesh.size(); ++ei){
+            const auto& e = g->mesh[ei];
+            for(size_t i = 0; i < node_num; ++i){
+                const auto& n = e->nodes[i];
+                for(size_t j = 0; j < dof; ++j){
+                    u_pos[i*dof + j] = n->u_pos[j];
+                }
+            }
+            const auto& ke = k[ei];
+            for(size_t i = 0; i < k_size; ++i){
+                if(u_pos[i] < 0){
+                    continue;
+                }
+                for(size_t j = 0; j < k_size; ++j){
+                    if(u_pos[j] > -1){
+                        const double val = ke(i, j)*u[u_pos[j]];
+                        f[u_pos[i]] += val;
+                        F[i % dof] += val;
+                    }
+                }                    
+            }
+        }
+    }
+    logger::quick_log("Moment equilibrium:");
     logger::quick_log(F);
     logger::quick_log("");
 

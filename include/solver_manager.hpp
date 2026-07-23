@@ -38,6 +38,8 @@ class SolverManager{
 
     std::vector<double> calculate_reactions(const Meshing* const mesh, const std::vector<double>& u) const;
 
+    std::vector<double> calculate_reaction_moments(const Meshing* const mesh, const std::vector<double>& u) const;
+
     void get_latest_global_displ(const Meshing* const mesh, std::vector<double>& global_u) const;
 
     const std::vector<std::vector<double>>& sub_u = this->split_u;

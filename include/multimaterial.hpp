@@ -32,7 +32,7 @@ class MultiMaterial{
     MultiMaterial() = default;
     MultiMaterial(std::vector<utils::DelayedPointerView<Material>> materials, utils::ProblemType type, bool has_void);
 
-    inline math::Matrix get_D(const MeshElement* e, const gp_Pnt& p) const{
+    inline math::Matrix get_D(const MeshElement* const e, const gp_Pnt& p) const{
         if(this->problem_type == utils::PROBLEM_TYPE_2D){
             return this->materials[0]->stiffness_2D(e, p);
         } else if(this->problem_type == utils::PROBLEM_TYPE_3D){
@@ -40,7 +40,7 @@ class MultiMaterial{
         }
         return math::Matrix();
     }
-    inline math::Matrix get_D_dsh(const MeshElement* e, const gp_Pnt& p, const size_t n, const size_t dof) const{
+    inline math::Matrix get_D_dsh(const MeshElement* const e, const gp_Pnt& p, const size_t n, const size_t dof) const{
         if(this->problem_type == utils::PROBLEM_TYPE_2D){
             return this->materials[0]->stiffness_2D_dsh(e, p, n, dof);
         } else if(this->problem_type == utils::PROBLEM_TYPE_3D){
@@ -49,7 +49,7 @@ class MultiMaterial{
         return math::Matrix();
     }
 
-    inline math::Matrix get_S(const MeshElement* e, const gp_Pnt& p) const{
+    inline math::Matrix get_S(const MeshElement* const e, const gp_Pnt& p) const{
         if(this->problem_type == utils::PROBLEM_TYPE_2D){
             return this->materials[0]->stiffness_inverse_2D(e, p);
         } else if(this->problem_type == utils::PROBLEM_TYPE_3D){
@@ -58,7 +58,7 @@ class MultiMaterial{
         return math::Matrix();
     }
 
-    inline math::Matrix get_S_dsh(const MeshElement* e, const gp_Pnt& p, const size_t n, const size_t dof) const{
+    inline math::Matrix get_S_dsh(const MeshElement* const e, const gp_Pnt& p, const size_t n, const size_t dof) const{
         if(this->problem_type == utils::PROBLEM_TYPE_2D){
             return this->materials[0]->stiffness_inverse_2D_dsh(e, p, n, dof);
         } else if(this->problem_type == utils::PROBLEM_TYPE_3D){
@@ -67,7 +67,7 @@ class MultiMaterial{
         return math::Matrix();
     }
 
-    inline math::Matrix get_D_orig(const MeshElement* e, const gp_Pnt& p) const{
+    inline math::Matrix get_D_orig(const MeshElement* const e, const gp_Pnt& p) const{
         if(this->problem_type == utils::PROBLEM_TYPE_2D){
             return this->materials[0]->stiffness_2D_orig(e, p);
         } else if(this->problem_type == utils::PROBLEM_TYPE_3D){
@@ -76,7 +76,7 @@ class MultiMaterial{
         return math::Matrix();
     }
 
-    inline math::Matrix get_D_orig_dsh(const MeshElement* e, const gp_Pnt& p, const size_t n, const size_t dof) const{
+    inline math::Matrix get_D_orig_dsh(const MeshElement* const e, const gp_Pnt& p, const size_t n, const size_t dof) const{
         if(this->problem_type == utils::PROBLEM_TYPE_2D){
             return this->materials[0]->stiffness_2D_orig_dsh(e, p, n, dof);
         } else if(this->problem_type == utils::PROBLEM_TYPE_3D){
@@ -85,7 +85,7 @@ class MultiMaterial{
         return math::Matrix();
     }
 
-    inline math::Matrix get_S_orig(const MeshElement* e, const gp_Pnt& p) const{
+    inline math::Matrix get_S_orig(const MeshElement* const e, const gp_Pnt& p) const{
         if(this->problem_type == utils::PROBLEM_TYPE_2D){
             return this->materials[0]->stiffness_inverse_2D_orig(e, p);
         } else if(this->problem_type == utils::PROBLEM_TYPE_3D){
@@ -94,7 +94,7 @@ class MultiMaterial{
         return math::Matrix();
     }
 
-    inline math::Matrix get_S_orig_dsh(const MeshElement* e, const gp_Pnt& p, const size_t n, const size_t dof) const{
+    inline math::Matrix get_S_orig_dsh(const MeshElement* const e, const gp_Pnt& p, const size_t n, const size_t dof) const{
         if(this->problem_type == utils::PROBLEM_TYPE_2D){
             return this->materials[0]->stiffness_inverse_2D_orig_dsh(e, p, n, dof);
         } else if(this->problem_type == utils::PROBLEM_TYPE_3D){

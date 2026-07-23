@@ -79,7 +79,8 @@ MUMPSSolver::~MUMPSSolver(){
 void MUMPSSolver::generate_matrix_base(const Meshing* const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<math::Matrix>& D_cache, const std::vector<double>& u_ext, const std::vector<double>& lambda, const ContactType type){
     int mpi_id = 0;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi_id);
-    this->spd_matrix = (mesh->internal_loads2 == nullptr || mesh->internal_loads2->size() == 0);
+    //this->spd_matrix = (mesh->internal_loads2 == nullptr || mesh->internal_loads2->size() == 0);
+    this->spd_matrix = true;
 
     if(this->spd_matrix){
         this->config.sym = 1; // SPD matrix

@@ -42,6 +42,7 @@ class TET4 : public MeshElementCommon3DTet<TET4>{
     static std::unique_ptr<BoundaryMeshElementFactory> get_boundary_element_info();
     static std::unique_ptr<ContactMeshElementFactory> get_contact_element_info();
     static std::unique_ptr<ShapeMeshElementFactory> get_shape_element_info();
+    static std::unique_ptr<PrismMeshElementFactory> get_prism_element_info();
 
     static const spview::defs::ElementType SPVIEW_CODE = spview::defs::TET4;
 

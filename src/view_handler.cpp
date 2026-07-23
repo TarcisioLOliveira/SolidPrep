@@ -34,6 +34,21 @@ ViewHandler::ViewHandler(const Meshing* const mesh, spview::Server* server, cons
       server(server){
 
     this->server->add_view(view_type, data_type, view_name);
+
+    if(this->data_type == spview::defs::MESH){
+        std::vector<size_t> tags;
+        tags.resize(this->elem_num);
+        std::iota(tags.begin(), tags.end(), 0);
+        std::vector<double> mat(tags.size());
+        size_t mat_pos = 0;
+        size_t geom_id = 0;
+        for(const auto& g:this->mesh->geometries){
+            std::fill(mat.begin()+mat_pos, mat.begin()+mat_pos+g->mesh.size(), geom_id);
+            mat_pos += g->mesh.size();
+            ++geom_id;
+        }
+        this->server->update_data(this->view_id, tags, mat);
+    }
 }
 
 
@@ -166,15 +181,7 @@ void ViewHandler::update_view(const std::vector<double>& data, const std::vector
             this->server->update_data(this->view_id, tags, mat);
         }
     } else if(this->data_type == spview::defs::MESH){
-        std::vector<double> mat(tags.size());
-        size_t mat_pos = 0;
-        size_t geom_id = 0;
-        for(const auto& g:this->mesh->geometries){
-            std::fill(mat.begin()+mat_pos, mat.begin()+mat_pos+g->mesh.size(), geom_id);
-            mat_pos += g->mesh.size();
-            ++geom_id;
-        }
-        this->server->update_data(this->view_id, tags, mat);
+        return;
     } else if(this->view_type == spview::defs::NODAL && this->data_type == spview::defs::MATERIAL){
         if(this->mat_color_num == 2){
             this->server->update_data(this->view_id, tags, data);

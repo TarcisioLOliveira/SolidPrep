@@ -26,6 +26,7 @@
 #include "logger.hpp"
 #include "math/matrix.hpp"
 #include <algorithm>
+#include <limits>
 #include <numeric>
 #include "project_data.hpp"
 
@@ -360,7 +361,13 @@ void MarginalBoneLoss::run(){
     }
     
     auto reactions = proj->topopt_fea->calculate_reactions(proj->topopt_mesher.get(), u);
+    for(auto& ri:reactions){
+        if(std::abs(ri) < 1e-8){
+            ri = 0;
+        }
+    }
     this->reactions_view->update_view(reactions);
+    logger::quick_log("Finished.");
 }
 
 double MarginalBoneLoss::get_density_variation(const StrainVector3D& eps, bool trabecular) const{

@@ -22,6 +22,7 @@
 #include "boundary_element/BTRI3.hpp"
 #include "contact_element/CTRI3.hpp"
 #include "shape_element/STRI3.hpp"
+#include "prism_element/PTRI3.hpp"
 #include "logger.hpp"
 #include "math/matrix.hpp"
 #include "utils/gauss_legendre.hpp"
@@ -48,6 +49,10 @@ std::unique_ptr<ContactMeshElementFactory> TET4::get_contact_element_info() {
 
 std::unique_ptr<ShapeMeshElementFactory> TET4::get_shape_element_info() {
     return std::unique_ptr<ShapeMeshElementFactory>(new ShapeMeshElementFactoryImpl<shape_element::STRI3>());
+}
+
+std::unique_ptr<PrismMeshElementFactory> TET4::get_prism_element_info() {
+    return std::unique_ptr<PrismMeshElementFactory>(new PrismMeshElementFactoryImpl<prism_element::PTRI3>());
 }
 
 void TET4::calculate_coefficients(){

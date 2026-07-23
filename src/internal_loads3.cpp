@@ -217,15 +217,15 @@ void InternalLoads3::calculate_force_distribution(){
             //Fe = -b->parent->get_R(this->rot2D, this->thickness, bounds);
             //M1 = b->parent->constraint_matrix_alt(this->center, this->rot2D, bounds);
             Fe = b->parent->internal_loads_hess(this->center, this->rot2D, this->rot2D_D, D, this->normal, bounds);
-            M1 = b->parent->constraint_matrix(this->rot2D, this->rot2D_D, this->mmat, bounds);
-            M2 = b->parent->constraint_matrix(this->rot2D, this->rot2D_D, this->mmat, bounds);
+            M1 = b->parent->constraint_matrix(this->center, this->rot2D, this->rot2D_D, this->mmat, bounds, true);
+            M2 = b->parent->constraint_matrix(this->center, this->rot2D, this->rot2D_D, this->mmat, bounds, true);
         } else {
             D = this->mat->stiffness_3D(b->parent, c);
             //Fe = -b->parent->get_R(this->rot3D, this->thickness, bounds);
             //M1 = b->parent->constraint_matrix_alt(this->center, this->rot3D, bounds);
             Fe = b->parent->internal_loads_hess(this->center, this->rot3D, this->rot3D_D, D, this->normal, bounds);
-            M1 = b->parent->constraint_matrix(this->rot3D, this->rot3D_D, this->mmat, bounds);
-            M2 = b->parent->constraint_matrix(this->rot3D, this->rot3D_D, this->mmat, bounds);
+            M1 = b->parent->constraint_matrix(this->center, this->rot3D, this->rot3D_D, this->mmat, bounds, true);
+            M2 = b->parent->constraint_matrix(this->center, this->rot3D, this->rot3D_D, this->mmat, bounds, true);
         }
 
         //Fe = -b->parent->get_R(I, this->thickness, bounds);
@@ -340,7 +340,7 @@ math::Vector InternalLoads3::calculate_internal_loads(const std::vector<double>&
                 bounds[i] = e->nodes[i]->point;
             }
             const auto D = this->mat->stiffness_2D(e->parent, e->parent->get_centroid());
-            result += e->parent->calculate_internal_loads(this->center, this->rot2D, this->rot2D_D, this->mmat, this->normal, u_ext, bounds);
+            result += e->parent->calculate_internal_loads(this->rot2D, this->rot2D_D, this->mmat, u_ext, bounds);
         }
     } else {
         for(const auto& e:this->submesh){
@@ -348,7 +348,7 @@ math::Vector InternalLoads3::calculate_internal_loads(const std::vector<double>&
                 bounds[i] = e->nodes[i]->point;
             }
             const auto D = this->mat->stiffness_3D(e->parent, e->parent->get_centroid());
-            result += e->parent->calculate_internal_loads(this->center, this->rot3D, this->rot3D_D, this->mmat, this->normal, u_ext, bounds);
+            result += e->parent->calculate_internal_loads(this->rot3D, this->rot3D_D, this->mmat, u_ext, bounds);
         }
     }
 

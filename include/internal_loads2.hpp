@@ -62,6 +62,11 @@ class InternalLoads2{
     math::Matrix get_t1t2(const BoundaryElement* b) const;
     math::Matrix get_bc(const EdgeElement* b) const;
 
+    math::Matrix get_K2(const PrismMeshElement* b) const;
+    math::Vector get_F2(const PrismMeshElement* b) const;
+
+    void recalculate_input_force();
+
     math::Vector calculate_internal_loads(const std::vector<double>& u_ext) const;
     math::Vector calculate_constraints(const std::vector<double>& u_ext, bool print = false) const;
     math::Vector calculate_multipliers(const std::vector<double>& u_ext, bool print = false) const;
@@ -93,16 +98,22 @@ class InternalLoads2{
     utils::DelayedPointerView<Material> mat;
     const gp_Dir normal;
     std::vector<const BoundaryElement*> submesh;
+    std::vector<std::unique_ptr<PrismMeshElement>> prism_mesh;
+    std::vector<std::unique_ptr<MeshNode>> prism_nodes;
     std::vector<EdgeElement> edge_mesh;
     double D;
     size_t il_constr_num;
     std::vector<long> node_pos;
-    const size_t f_node_dof = 6;
+    const size_t f_node_dof = 3;
     size_t max_constr_num;
     size_t u_dof;
 
     std::unordered_map<size_t, long> F_id_map;
     std::unordered_map<size_t, long> line_id_map;
+
+    math::Matrix V;
+    math::Matrix Nz;
+    math::Vector vv;
 
     size_t F_total_dof;
     size_t f2_offset;
@@ -123,6 +134,7 @@ class InternalLoads2{
     const utils::ProblemType type;
     math::Vector center = math::Vector(3);
     const MeshElementFactory* elem_info;
+    std::unique_ptr<PrismMeshElementFactory> prism_elem_info;
     size_t BOUNDARY_NODE_NUM;
 
     math::Vector F_orig;
@@ -138,6 +150,9 @@ class InternalLoads2{
     math::Vector integrate_surface_3D(const Meshing* const mesh, const std::vector<std::function<double(const math::Matrix& S, const gp_Pnt& px)>>& fn) const;
     void GS_tri(const MeshElement* const e, const std::array<gp_Pnt, 3>& p, const std::vector<std::function<double(const math::Matrix& S, const gp_Pnt& px)>>& fn, math::Vector& result) const;
     void GS_quad(const MeshElement* const e, const std::array<gp_Pnt, 4>& p, const std::vector<std::function<double(const math::Matrix& S, const gp_Pnt& px)>>& fn, math::Vector& result) const;
+
+    math::Matrix integrate_vv_mat(const Meshing* const mesh) const;
+    void GS_vv_mat(const MeshElement* const e, const std::array<gp_Pnt, 3>& p, math::Matrix& result) const;
 
     inline double make_A_base_3D(const math::Matrix& S, const gp_Pnt& px) const{
         (void)S;
@@ -156,6 +171,33 @@ class InternalLoads2{
     }
     inline double make_EA_w_base_3D(const math::Matrix& S, const gp_Pnt& px) const{
         return px.Z()/S(2,2);
+    }
+
+    inline math::Matrix make_vv_mat_3D(const math::Matrix& D, const gp_Pnt& px) const{
+        const math::Vector pv{px.X(), px.Y(), px.Z()};
+        const auto pi = this->rot3D.T()*(pv - this->center);
+        const double x = pi[0];
+        const double y = pi[1];
+        const math::Matrix M(
+                {0, 0, 0,
+                 0, 0, 0,
+                 0, 0, 1,
+                 0, 0, 0,
+                 1, 0, 0,
+                 0, 1, 0}, 6, 3);
+        const math::Matrix Ms({
+             0, 0, x, 0,  0, 0,
+             0, 0, y, 0,  0, 0,
+             0, 0, 1, 0,  0, 0,
+             0, 0, 0, 0, -y, x,
+             0, 0, 0, 0,  1, 0,
+             0, 0, 0, 0,  0, 1
+        }, 6, 6);
+        const math::Matrix Vm({
+            1, 0, -y, 0, 0, 0,
+            0, 1,  x, 0, 0, 0,
+            0, 0,  0, x, y, 1}, 3, 6);
+        return Ms*D*M*Vm;
     }
 
     inline gp_Pnt GLT_point(const utils::GLPointTri& glp, const std::array<gp_Pnt, 3>& px) const{

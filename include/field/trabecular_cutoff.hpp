@@ -104,7 +104,7 @@ class TrabecularCutoff : public ScalarField {
     std::vector<Geometry*> geoms;
 
     ScalarField* density;
-    std::unordered_map<size_t, double> trabecular_map; // 1 == trabecular; 0 == cortical
+    //std::unordered_map<size_t, double> trabecular_map; // 1 == trabecular; 0 == cortical
 
     bool show;
     const double cutoff;

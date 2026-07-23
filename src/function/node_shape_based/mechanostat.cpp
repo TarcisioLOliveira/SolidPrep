@@ -131,6 +131,7 @@ double Mechanostat::calculate_with_gradient(const NodeShapeBasedOptimizer* const
                     const StrainVector2D dH = (dHm(eps_lhs1)*eps_lhs1 + H1)*deps_lhs1 +
                                               (dHp(eps_lhs2)*eps_lhs2 + H2)*deps_lhs2;
 
+                    *He_it = this->c[1]*eps_lhs2;
                     H_e = Hr;
                     dH_e = std::move(dH);
                 } else if(this->problem_type == utils::PROBLEM_TYPE_3D){
@@ -144,6 +145,7 @@ double Mechanostat::calculate_with_gradient(const NodeShapeBasedOptimizer* const
                     const StrainVector3D dH = (dHm(eps_lhs1)*eps_lhs1 + H1)*deps_lhs1 +
                                               (dHp(eps_lhs2)*eps_lhs2 + H2)*deps_lhs2;
 
+                    *He_it = this->c[1]*eps_lhs2;
                     H_e = Hr;
                     dH_e = std::move(dH);
                 }
@@ -171,7 +173,7 @@ double Mechanostat::calculate_with_gradient(const NodeShapeBasedOptimizer* const
                 //    }
                 //}
 
-                *He_it = H_e;
+                //*He_it = H_e;
                 result += H_e;
 
                 ++He_it;

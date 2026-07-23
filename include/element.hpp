@@ -28,6 +28,7 @@
 #include <TopoDS_Edge.hxx>
 #include "material.hpp"
 #include "math/matrix.hpp"
+#include "utils/gauss_legendre.hpp"
 
 class BoundaryElement;
 class InternalLoads2;
@@ -351,9 +352,9 @@ class MeshElement : public Element{
      *
      * @return Internal loads evaluated matrix at a point p.
      */
-    virtual math::Matrix constraint_matrix(const math::Matrix& Rm, const math::Matrix& RD, const MultiMaterial& mat, const std::vector<gp_Pnt>& bounds) const = 0;
+    virtual math::Matrix constraint_matrix(const math::Vector& c, const math::Matrix& Rm, const math::Matrix& RD, const MultiMaterial& mat, const std::vector<gp_Pnt>& bounds, const bool use_c) const = 0;
 
-    virtual math::Vector calculate_internal_loads(const math::Vector& c, const math::Matrix& Rm, const math::Matrix& RD, const MultiMaterial& mat, const gp_Dir& n, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds) const = 0;
+    virtual math::Vector calculate_internal_loads(const math::Matrix& Rm, const math::Matrix& RD, const MultiMaterial& mat, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds) const = 0;
 
     virtual math::Matrix il2_F(const math::Matrix& Rm, const math::Matrix& RS, const MultiMaterial& mat, const std::vector<gp_Pnt>& bounds, double t) const = 0;
 
@@ -374,6 +375,7 @@ class MeshElement : public Element{
      */
     virtual math::Matrix get_k(const math::Matrix& D, const double t) const = 0;
     virtual math::Matrix get_k(const MultiMaterial& mat, const double t) const = 0;
+    virtual math::Matrix get_k_M(const MultiMaterial& mat, const double t) const = 0;
     /**
      * Creates and returns the elemental Robin matrix.
      *
@@ -892,5 +894,66 @@ class ShapeMeshElement : public Element{
         Element(std::vector<Node*>(nodes.begin(), nodes.end()))
         {}
 };
+
+class PrismMeshElement : public Element{
+    public:
+    virtual ~PrismMeshElement() = default;
+
+    virtual math::Vector il2_f_ext(const math::Vector& c, const gp_Dir& n, const math::Matrix& Rm, const math::Matrix& RD, const MultiMaterial& mat, const math::Vector& v) const = 0;
+    virtual math::Matrix il2_k_ext(const math::Matrix& Rm, const math::Matrix& RD, const MultiMaterial& mat, const math::Matrix& V, const math::Matrix& Nz) const = 0;
+    virtual double prism_volume(const math::Matrix& V) const = 0;
+
+    
+    virtual math::Matrix get_Ni(const gp_Pnt& p) const = 0;
+    virtual math::Vector get_Ni_1dof(const gp_Pnt& p) const = 0;
+    virtual math::Matrix get_nodal_density_gradient(const gp_Pnt& p) const = 0;
+
+    protected:
+    inline gp_Pnt GL_point_tri(double c1, double c2, double c3) const{
+        const auto& p0 = this->nodes[0]->point;
+        const auto& p1 = this->nodes[1]->point;
+        const auto& p2 = this->nodes[2]->point;
+        return gp_Pnt(
+            c1*p0.X() + c2*p1.X() + c3*p2.X(),
+            c1*p0.Y() + c2*p1.Y() + c3*p2.Y(),
+            c1*p0.Z() + c2*p1.Z() + c3*p2.Z()
+        );
+    }
+
+    inline double N_norm(double x, double y, size_t i) const{
+        switch(i){
+            case 0:
+                return 0.25*(1-x)*(1-y);
+            case 1:
+                return 0.25*(1+x)*(1-y);
+            case 2:
+                return 0.25*(1+x)*(1+y);
+            case 3:
+                return 0.25*(1-x)*(1+y);
+        }
+        return 0;
+    }
+    inline gp_Pnt norm_to_nat(double xi, double eta) const{
+        double X = 0, Y = 0;
+        for(size_t i = 0; i < 4; ++i){
+            const double Ni = N_norm(xi, eta, i);
+            X += Ni*this->nodes[i]->point.X();
+            Y += Ni*this->nodes[i]->point.Y();
+        }
+
+        return gp_Pnt(X, Y, 0);
+    }
+
+    const MeshElement* const parent;
+    /**
+     * Creates an element with the specified nodes.
+     *
+     * @param nodes List of nodes.
+     */
+    PrismMeshElement(const std::vector<MeshNode*>& nodes, const MeshElement* const parent):
+        Element(std::vector<Node*>(nodes.begin(), nodes.end())), parent(parent)
+        {}
+};
+
 
 #endif

@@ -50,6 +50,12 @@ std::unique_ptr<ShapeMeshElementFactory> TET10::get_shape_element_info() {
     //return std::unique_ptr<ShapeMeshElementFactory>(new ShapeMeshElementFactoryImpl<shape_element::STRI6>());
 }
 
+std::unique_ptr<PrismMeshElementFactory> TET10::get_prism_element_info() {
+    logger::log_assert(false, logger::ERROR, "PTRI6 ELEMENT TYPE NOT IMPLEMENTED");
+    return std::unique_ptr<PrismMeshElementFactory>();
+    //return std::unique_ptr<PrismMeshElementFactory>(new PrismMeshElementFactoryImpl<prism_element::STRI6>());
+}
+
 void TET10::get_coeffs(){
     constexpr size_t N = 4;
     std::array<double, N> x, y, z;

@@ -54,6 +54,7 @@ add_subdirectory(math)
 add_subdirectory(simulation)
 add_subdirectory(project_specification)
 add_subdirectory(shape_element)
+add_subdirectory(prism_element)
 
 add_executable(${PROJECT_NAME} ${SOURCES})
 
@@ -70,6 +71,7 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
     boundary_element
     contact_element
     shape_element
+    prism_element
     material
     field
     density_filter

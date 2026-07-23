@@ -49,13 +49,13 @@ PETScPCG::~PETScPCG(){
     VecDestroy(&this->f);
     VecDestroy(&this->u);
     KSPDestroy(&this->ksp);
-    PCDestroy(&this->pc);
 }
 
 void PETScPCG::generate_matrix_base(const Meshing* const mesh, const size_t u_size, const size_t l_num, const std::vector<long>& node_positions, bool topopt, const std::vector<math::Matrix>& D_cache, const std::vector<double>& u_ext, const std::vector<double>& lambda, const ContactType type){
     this->gsm->generate(mesh, u_size, l_num, node_positions, topopt, D_cache, u_ext, lambda, type);
     this->nonlinear_boundary_conditions = mesh->nonlinear_boundary_conditions;
-    this->spd_matrix = (mesh->internal_loads2 == nullptr || mesh->internal_loads2->size() == 0);
+    //this->spd_matrix = (mesh->internal_loads2 == nullptr || mesh->internal_loads2->size() == 0);
+    this->spd_matrix = true;
     this->setup = false;
 }
 
@@ -90,9 +90,9 @@ void PETScPCG::solve_init(size_t M){
     if(this->spd_matrix){
         KSPSetType(this->ksp, KSPCG);
         KSPCGSetType(this->ksp, KSP_CG_SYMMETRIC);
-        KSPSetTolerances(this->ksp, 1e-5, 1e-50, 1e10, 1e5);
+        KSPSetTolerances(this->ksp, 1e-7, 1e-50, 1e10, 1e5);
     } else {
-        KSPSetTolerances(this->ksp, 1e-9, 1e-50, 1e10, 1e5);
+        KSPSetTolerances(this->ksp, 1e-6, 1e-50, 1e10, 1e5);
         PCJacobiSetType(this->pc, PC_JACOBI_ROWMAX);
         KSPSetType(this->ksp, KSPMINRES);
     }

@@ -47,6 +47,11 @@ std::unique_ptr<ShapeMeshElementFactory> H8::get_shape_element_info() {
     return std::unique_ptr<ShapeMeshElementFactory>();
     //return std::unique_ptr<ShapeMeshElementFactory>(new ShapeMeshElementFactoryImpl<shape_element::SQ4>());
 }
+std::unique_ptr<PrismMeshElementFactory> H8::get_prism_element_info() {
+    logger::log_assert(false, logger::ERROR, "PQ4 ELEMENT TYPE NOT IMPLEMENTED");
+    return std::unique_ptr<PrismMeshElementFactory>();
+    //return std::unique_ptr<PrismMeshElementFactory>(new PrismMeshElementFactoryImpl<prism_element::STRI6>());
+}
 
 math::Matrix H8::get_k(const MultiMaterial& mat, const double t) const{
     (void)t;

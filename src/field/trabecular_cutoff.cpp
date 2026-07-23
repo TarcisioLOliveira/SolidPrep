@@ -222,31 +222,31 @@ TrabecularCutoff::TrabecularCutoff(const projspec::DataMap& data):
 
 void TrabecularCutoff::generate() {
     if(!this->generated){
-        size_t elem_num = 0;
-        for(auto& g:this->geoms){
-            elem_num += g->mesh.size();
-        }
-        std::vector<double> map_tmp(elem_num, 0);
-        size_t elem_offset = 0;
-        for(auto& g:this->geoms){
-            for(size_t i = 0; i < g->mesh.size(); ++i){
-                const size_t map_pos = i + elem_offset;
-                const auto& e = g->mesh[i];
-                const auto p = e->get_centroid();
-                const double rho = this->density->get(e.get(), p);
-                if(rho <= this->cutoff && this->inner_bounds.is_inside(p)){
-                    map_tmp[map_pos] = 1;
-                }
-            }
-            elem_offset += g->mesh.size();
-        }
-        size_t ei = 0;
-        for(auto& g:this->geoms){
-            for(auto& e:g->mesh){
-                this->trabecular_map[e->id] = map_tmp[ei];
-                ++ei;
-            }
-        }
+        //size_t elem_num = 0;
+        //for(auto& g:this->geoms){
+        //    elem_num += g->mesh.size();
+        //}
+        //std::vector<double> map_tmp(elem_num, 0);
+        //size_t elem_offset = 0;
+        //for(auto& g:this->geoms){
+        //    for(size_t i = 0; i < g->mesh.size(); ++i){
+        //        const size_t map_pos = i + elem_offset;
+        //        const auto& e = g->mesh[i];
+        //        const auto p = e->get_centroid();
+        //        const double rho = this->density->get(e.get(), p);
+        //        if(rho <= this->cutoff && this->inner_bounds.is_inside(p)){
+        //            map_tmp[map_pos] = 1;
+        //        }
+        //    }
+        //    elem_offset += g->mesh.size();
+        //}
+        //size_t ei = 0;
+        //for(auto& g:this->geoms){
+        //    for(auto& e:g->mesh){
+        //        this->trabecular_map[e->id] = map_tmp[ei];
+        //        ++ei;
+        //    }
+        //}
 
         this->generated = true;
     } 
@@ -270,7 +270,8 @@ void TrabecularCutoff::display_views() const {
         vals.reserve(vals_size);
         for(auto& g:geoms){
             for(auto& e:g->mesh){
-                vals.push_back(this->trabecular_map.at(e->id));
+                //vals.push_back(this->trabecular_map.at(e->id));
+                vals.push_back(this->get(e.get(), e->get_centroid()));
             }
         }
         this->distr->update_view(vals, gi);

@@ -51,7 +51,7 @@ class MeshElementCommon : public MeshElement{
     public:
     virtual ~MeshElementCommon() = default;
 
-    static constexpr size_t MAX_GN = 17; //17;
+    static constexpr size_t MAX_GN = 13;//17;
     static constexpr size_t IL2_F_DIM = 6;
 
     inline gp_Pnt GL_point_tri(double c1, double c2, double c3, const std::vector<gp_Pnt>& p) const{
@@ -93,7 +93,7 @@ class MeshElementCommon : public MeshElement{
     }
     inline gp_Pnt norm_to_nat(double xi, double eta) const{
         double X = 0, Y = 0;
-        for(size_t i = 0; i < T::NODES_PER_ELEM; ++i){
+        for(size_t i = 0; i < 4; ++i){
             const double Ni = N_norm(xi, eta, i);
             X += Ni*this->nodes[i]->point.X();
             Y += Ni*this->nodes[i]->point.Y();
@@ -175,6 +175,49 @@ class MeshElementCommon : public MeshElement{
                     result += it->w*func(p);
                 }
                 result *= drnorm;
+            } else if constexpr(SHAPE_TYPE == Element::Shape::QUAD){
+                logger::log_assert(false, logger::ERROR, "H8 integration not implemented");
+            }
+        }
+    }
+
+    template<size_t ORDER, size_t Z_ORDER, typename R, typename F>
+    inline void prism_integral(R& result, F func, const std::vector<gp_Pnt>& points, const math::Matrix& V) const{
+        constexpr utils::ProblemType PROBLEM_TYPE = T::PROBLEM_TYPE;
+        constexpr Element::Shape SHAPE_TYPE = T::SHAPE_TYPE;
+
+        constexpr size_t P = (ORDER + 1)/2 + (ORDER + 1)%2;
+        constexpr size_t PZ = (4*Z_ORDER + 1)/2 + (4*Z_ORDER + 1)%2;
+
+        if constexpr(PROBLEM_TYPE == utils::PROBLEM_TYPE_2D){
+            // TODO
+        } else if constexpr(PROBLEM_TYPE == utils::PROBLEM_TYPE_3D){
+            if constexpr(SHAPE_TYPE == Element::Shape::TRI){
+                const auto& p = points;
+                gp_Vec v1(p[1], p[0]);
+                gp_Vec v2(p[2], p[0]);
+                const double drnorm = (v1.Crossed(v2)).Magnitude()/2;
+                const double drnormz = 0.5;
+
+                math::Vector dt(Z_ORDER - 1);
+
+                auto& gl = utils::GaussLegendreTri<P>::get();
+                auto& glz = utils::GaussLegendre<PZ>::get();
+                for(auto itz = glz.begin(); itz < glz.end(); ++itz){
+                    const double s = itz->x;
+                    const double t = 0.5*(0*(1-s) + 1*(1+s));
+
+                    for(size_t i = 0; i < dt.get_N(); ++ i){
+                        dt[i] = (i + 1.0)*std::pow(t, i);
+                    }
+                    const double dV = (V*dt).norm();
+
+                    for(auto it = gl.begin(); it < gl.end(); ++it){
+                        const gp_Pnt p = this->GL_point_tri(it->a, it->b, it->c, points);
+                        result += itz->w*it->w*func(p, t)*dV;
+                    }
+                }
+                result *= drnorm*drnormz;
             } else if constexpr(SHAPE_TYPE == Element::Shape::QUAD){
                 logger::log_assert(false, logger::ERROR, "H8 integration not implemented");
             }
@@ -273,6 +316,40 @@ class MeshElementCommon : public MeshElement{
                 const auto B = this->get_B(pi);
                 const auto D = mat.get_D(this, pi);
                 return B.T()*D*B;
+            }, t);
+
+        return k;
+    }
+
+    virtual math::Matrix get_k_M(const MultiMaterial& mat, const double t) const override{
+        const size_t KW = T::K_DIM;
+        const size_t NODES_PER_ELEM = T::NODES_PER_ELEM;
+        const size_t DOF = T::NODE_DOF;
+
+        constexpr size_t GN = MAX_GN;
+
+        math::Matrix k(KW, KW);
+        math::Matrix M(KW, KW);
+
+        this->volume_integral<GN>(k, [&](const gp_Pnt& pi){
+                const double x = pi.X();
+                const double y = pi.Y();
+                const double z = pi.Z();
+                const math::Matrix Mi({
+                         0, -z,  y,
+                         z,  0, -x,
+                        -y,  x,  0
+                    }, 3, 3);
+                for(size_t i = 0; i < NODES_PER_ELEM; ++i){
+                    for(size_t j = 0; j < DOF; ++j){
+                        for(size_t l = 0; l < DOF; ++l){
+                            M(i*DOF + j, i*DOF + l) = Mi(j,l);
+                        }
+                    }
+                }
+                const auto B = this->get_B(pi);
+                const auto D = mat.get_D(this, pi);
+                return M*B.T()*D*B;
             }, t);
 
         return k;
@@ -684,79 +761,121 @@ class MeshElementCommon : public MeshElement{
         return result;
     }
 
-    virtual math::Matrix constraint_matrix(const math::Matrix& Rm, const math::Matrix& RD, const MultiMaterial& mat, const std::vector<gp_Pnt>& bounds) const override{
+    virtual math::Matrix constraint_matrix(const math::Vector& c, const math::Matrix& Rm, const math::Matrix& RD, const MultiMaterial& mat, const std::vector<gp_Pnt>& bounds, const bool use_c) const override{
         const size_t K_DIM = T::K_DIM;
 
         constexpr size_t GN = MAX_GN;
         math::Matrix result(6, K_DIM);
 
-        this->area_integral<GN>(result,
-            [&](const gp_Pnt& pi){
-                const math::Vector pv({pi.X(), pi.Y(), pi.Z()});
-                const math::Vector p2 = Rm.T()*pv;// - c;
-                const double x = p2[0];
-                const double y = p2[1];
-                const math::Matrix Ms({
-                     0, 0, x, 0,  0, 0,
-                     0, 0, y, 0,  0, 0,
-                     0, 0, 1, 0,  0, 0,
-                     0, 0, 0, 0, -y, x,
-                     0, 0, 0, 0,  1, 0,
-                     0, 0, 0, 0,  0, 1
-                }, 6, 6);
+        if(!use_c){
+            this->area_integral<GN>(result,
+                [&](const gp_Pnt& pi){
+                    const math::Vector pv({pi.X(), pi.Y(), pi.Z()});
+                    const math::Vector p2 = Rm.T()*pv;// - c;
+                    const double x = p2[0];
+                    const double y = p2[1];
+                    const double z = p2[2];
+                    const math::Matrix Ms({
+                         0, 0, x, 0, -z, 0,
+                         0, 0, y, 0,  0,-z,
+                         0, 0, 1, 0,  0, 0,
+                         0, 0, 0, 0, -y, x,
+                         0, 0, 0, 0,  1, 0,
+                         0, 0, 0, 0,  0, 1
+                    }, 6, 6);
 
 
-                const auto D = mat.get_D(this, pi);
-                auto I = this->get_B(pi);
+                    const auto D = mat.get_D(this, pi);
+                    auto I = this->get_B(pi);
 
-                return Ms*RD*D*I;
+                    return Ms*RD.T()*D*I;
 
-                //const math::Matrix Ms({
-                //      0, 0, x,
-                //      0, 0, y,
-                //      0, 0, 1,
-                //     -y, x, 0,
-                //      1, 0, 0,
-                //      0, 1, 0
-                //}, 6, 3);
+                    //const math::Matrix Ms({
+                    //      0, 0, x,
+                    //      0, 0, y,
+                    //      0, 0, 1,
+                    //     -y, x, 0,
+                    //      1, 0, 0,
+                    //      0, 1, 0
+                    //}, 6, 3);
 
-                //const auto D = mat.get_D(this, pi);
-                //auto I = this->get_B(pi);
-                //const auto N = this->get_Ni(pi);
-                //return Ms*N*I.T()*RD*D*I;
-            },
-            bounds, 1.0);
+                    //const auto D = mat.get_D(this, pi);
+                    //auto I = this->get_B(pi);
+                    //const auto N = this->get_Ni(pi);
+                    //return Ms*N*I.T()*RD*D*I;
+                },
+                bounds, 1.0);
+        } else {
+            this->area_integral<GN>(result,
+                [&](const gp_Pnt& pi){
+                    const math::Vector pv({pi.X(), pi.Y(), pi.Z()});
+                    const math::Vector p2 = Rm.T()*(pv - c);
+                    const double x = p2[0];
+                    const double y = p2[1];
+                    const double z = p2[2];
+                    const math::Matrix Ms({
+                         0, 0, x, 0, -z, 0,
+                         0, 0, y, 0,  0,-z,
+                         0, 0, 1, 0,  0, 0,
+                         0, 0, 0, 0, -y, x,
+                         0, 0, 0, 0,  1, 0,
+                         0, 0, 0, 0,  0, 1
+                    }, 6, 6);
+
+
+                    const auto D = mat.get_D(this, pi);
+                    auto I = this->get_B(pi);
+
+                    return Ms*RD.T()*D*I;
+
+                    //const math::Matrix Ms({
+                    //      0, 0, x,
+                    //      0, 0, y,
+                    //      0, 0, 1,
+                    //     -y, x, 0,
+                    //      1, 0, 0,
+                    //      0, 1, 0
+                    //}, 6, 3);
+
+                    //const auto D = mat.get_D(this, pi);
+                    //auto I = this->get_B(pi);
+                    //const auto N = this->get_Ni(pi);
+                    //return Ms*N*I.T()*RD*D*I;
+                },
+                bounds, 1.0);
+        }
 
         return result;
     }
 
-    virtual math::Vector calculate_internal_loads(const math::Vector& c, const math::Matrix& Rm, const math::Matrix& RD, const MultiMaterial& mat, const gp_Dir& n, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds) const override{
-        const size_t NODES_PER_ELEM = T::NODES_PER_ELEM;
-        const size_t DOF = T::NODE_DOF;
+    virtual math::Vector calculate_internal_loads(const math::Matrix& Rm, const math::Matrix& RD, const MultiMaterial& mat, const std::vector<double>& u_ext, const std::vector<gp_Pnt>& bounds) const override{
+        //const size_t NODES_PER_ELEM = T::NODES_PER_ELEM;
+        //const size_t DOF = T::NODE_DOF;
 
-        math::VectorSliceGeneralView uv(u_ext, math::slicer::from_node_upos(this->nodes, NODES_PER_ELEM, DOF));
+        //math::VectorSliceGeneralView uv(u_ext, math::slicer::from_node_upos(this->nodes, NODES_PER_ELEM, DOF));
 
         constexpr size_t GN = MAX_GN;
 
         math::Vector result(6);
 
-        const math::Matrix Mn({
-            n.X(),     0,     0, n.Y(), n.Z(),     0,
-                0, n.Y(),     0, n.X(),     0, n.Z(),
-                0,     0, n.Z(),     0, n.X(), n.Y()
-            }, 3, 6);
+        //const math::Matrix Mn({
+        //    n.X(),     0,     0, n.Y(), n.Z(),     0,
+        //        0, n.Y(),     0, n.X(),     0, n.Z(),
+        //        0,     0, n.Z(),     0, n.X(), n.Y()
+        //    }, 3, 6);
 
-        const math::Vector nv({n.X(), n.Y(), n.Z()});
+        //const math::Vector nv({n.X(), n.Y(), n.Z()});
 
         this->area_integral<GN>(result,
             [&](const gp_Pnt& pi){
                 const math::Vector pv({pi.X(), pi.Y(), pi.Z()});
-                const math::Vector p2 = Rm.T()*pv - c;
+                const math::Vector p2 = Rm.T()*pv;
                 const double x = p2[0];
                 const double y = p2[1];
+                const double z = p2[2];
                 const math::Matrix Ms({
-                     0, 0, x, 0,  0, 0,
-                     0, 0, y, 0,  0, 0,
+                     0, 0, x, 0, -z, 0,
+                     0, 0, y, 0,  0,-z,
                      0, 0, 1, 0,  0, 0,
                      0, 0, 0, 0, -y, x,
                      0, 0, 0, 0,  1, 0,
@@ -2221,4 +2340,294 @@ class MeshElementCommon3DHex : public MeshElementCommon3D<T>{
         return so;
     }
 };
+
+template<class T>
+class PrismMeshElementCommon : public PrismMeshElement{
+    public:
+    static constexpr size_t MAX_GN = 13;//17;
+
+    template<size_t ORDER, typename R, typename F>
+    inline void area_integral(R& result, F func, const double t) const{
+        constexpr utils::ProblemType PROBLEM_TYPE = T::PROBLEM_TYPE;
+        constexpr Element::Shape SHAPE_TYPE = T::SHAPE_TYPE;
+
+        constexpr size_t P = (ORDER + 1)/2 + (ORDER + 1)%2;
+
+        if constexpr(PROBLEM_TYPE == utils::PROBLEM_TYPE_2D){
+            const double x[]{this->nodes[0]->point.X(), this->nodes[1]->point.X()};
+            const double y[]{this->nodes[0]->point.Y(), this->nodes[1]->point.Y()};
+            const double rnorm = 0.5*this->nodes[0]->point.Distance(this->nodes[1]->point);
+
+            auto& gl = utils::GaussLegendre<P>::get();
+
+            for(auto xi = gl.begin(); xi < gl.end(); ++xi){
+                const double s = xi->x;
+                const double X = 0.5*(x[0]*(1-s) + x[1]*(1+s));
+                const double Y = 0.5*(y[0]*(1-s) + y[1]*(1+s));
+                result += xi->w*func(gp_Pnt(X, Y, 0));
+            }
+            result *= rnorm*t;
+        } else if constexpr(PROBLEM_TYPE == utils::PROBLEM_TYPE_3D){
+            if constexpr(SHAPE_TYPE == Element::Shape::TRI){
+                gp_Vec v1(this->nodes[1]->point, this->nodes[0]->point);
+                gp_Vec v2(this->nodes[2]->point, this->nodes[0]->point);
+                const double drnorm = (v1.Crossed(v2)).Magnitude()/2;
+
+                auto& gl = utils::GaussLegendreTri<P>::get();
+                for(auto it = gl.begin(); it < gl.end(); ++it){
+                    const gp_Pnt p = this->GL_point_tri(it->a, it->b, it->c);
+                    result += it->w*func(p);
+                }
+                result *= drnorm;
+            } else if constexpr(SHAPE_TYPE == Element::Shape::QUAD){
+                logger::log_assert(false, logger::ERROR, "H8 integration not implemented");
+            }
+        }
+    }
+
+    template<size_t ORDER, typename R, typename F>
+    inline void prism_integral(R& result, F func, const math::Matrix& V) const{
+        constexpr utils::ProblemType PROBLEM_TYPE = T::PROBLEM_TYPE;
+        constexpr Element::Shape SHAPE_TYPE = T::SHAPE_TYPE;
+        constexpr size_t Z_ORDER = T::Z_ORDER;
+
+        constexpr size_t P = (ORDER + 1)/2 + (ORDER + 1)%2;
+        constexpr size_t PZ = (4*Z_ORDER + 1)/2 + (4*Z_ORDER + 1)%2;
+
+        if constexpr(PROBLEM_TYPE == utils::PROBLEM_TYPE_2D){
+            // TODO
+        } else if constexpr(PROBLEM_TYPE == utils::PROBLEM_TYPE_3D){
+            if constexpr(SHAPE_TYPE == Element::Shape::TRI){
+                gp_Vec v1(this->nodes[1]->point, this->nodes[0]->point);
+                gp_Vec v2(this->nodes[2]->point, this->nodes[0]->point);
+                const double drnorm = (v1.Crossed(v2)).Magnitude()/2.0;
+                const double drnormz = 0.5;
+
+                math::Vector dt(Z_ORDER - 1);
+
+                auto& gl = utils::GaussLegendreTri<P>::get();
+                auto& glz = utils::GaussLegendre<PZ>::get();
+                R r1 = result;
+                for(auto itz = glz.begin(); itz < glz.end(); ++itz){
+                    const double s = itz->x;
+                    const double t = 0.5*(0*(1-s) + 1*(1+s));
+                    R r2 = result;
+
+                    for(size_t i = 0; i < dt.get_N(); ++ i){
+                        dt[i] = (i + 1.0)*std::pow(t, i);
+                    }
+                    const double dV = (V*dt).norm();
+
+                    for(auto it = gl.begin(); it < gl.end(); ++it){
+                        const gp_Pnt p = this->GL_point_tri(it->a, it->b, it->c);
+
+                        r2 += it->w*func(p, t);
+                    }
+                    r1 += itz->w*r2*dV;
+                }
+                result = r1*drnorm*drnormz;
+            } else if constexpr(SHAPE_TYPE == Element::Shape::QUAD){
+                logger::log_assert(false, logger::ERROR, "H8 integration not implemented");
+            }
+        }
+    }
+    virtual math::Vector il2_f_ext(const math::Vector& c, const gp_Dir& n, const math::Matrix& Rm, const math::Matrix& RD, const MultiMaterial& mat, const math::Vector& v) const override{
+        //const size_t NODES_PER_ELEM = T::NODES_PER_ELEM;
+        //const size_t DOF = T::NODE_DOF;
+        const size_t KW = T::K_DIM;
+        const math::Matrix M(
+                {0, 0, 0,
+                 0, 0, 0,
+                 0, 0, 1,
+                 0, 0, 0,
+                 1, 0, 0,
+                 0, 1, 0}, 6, 3);
+
+        constexpr size_t GN = MAX_GN;
+        math::Vector result(KW, 0);
+
+        const math::Matrix Mn({
+                n.X(), 0, 0, n.Y(), n.Z(), 0,
+                0, n.Y(), 0, n.X(), 0, n.Z(),
+                0, 0, n.Z(), 0, n.X(), n.Y()}, 3, 6);
+
+        this->area_integral<GN>(result,
+            [&](const gp_Pnt& pi){
+                gp_Pnt p;
+                for(size_t i = 0; i < 3; ++i){
+                    double xi = 0;
+                    for(size_t j = 0; j < 3; ++j){
+                        xi += Rm(i,j)*pi.Coord(1+j);
+                    }
+                    p.SetCoord(1+i, xi);
+                }
+                const auto D = mat.get_D(this->parent, p);
+
+                const math::Vector pv({pi.X(), pi.Y(), pi.Z()});
+                const math::Vector p2 = pv - Rm.T()*c;
+                const double x = p2[0];
+                const double y = p2[1];
+                const auto N = this->get_Ni(pi);
+
+                const math::Vector vxy({
+                        v[0] - v[2]*y,
+                        v[1] + v[2]*x,
+                        v[3]*x + v[4]*y + v[5]
+                    });
+
+                return N.T()*Mn*D*Mn.T()*Rm*vxy;
+            }, 1.0);
+
+        //return MULT*result;
+        return result;
+    }
+    virtual double prism_volume(const math::Matrix& V) const override{
+
+        constexpr size_t GN = MAX_GN;
+
+        //std::vector<math::Matrix> ki(10, math::Matrix(KW, KW));
+        double vi = 0;
+
+        this->prism_integral<GN>(vi, [&](const gp_Pnt& pi, const double t){
+                (void) pi;
+                (void) t;
+                return 1;
+            }, V);
+
+
+        return vi;
+    }
+    virtual math::Matrix il2_k_ext(const math::Matrix& Rm, const math::Matrix& RD, const MultiMaterial& mat, const math::Matrix& V, const math::Matrix& Nz) const override{
+        const size_t KW = T::K_DIM;
+        const size_t DOF = T::NODE_DOF;
+        const size_t NODES_PER_ELEM = T::NODES_PER_ELEM;
+
+        constexpr size_t GN = MAX_GN;
+        constexpr size_t Z_ORDER = 4;
+
+        //std::vector<math::Matrix> ki(10, math::Matrix(KW, KW));
+        math::Matrix ki(Z_ORDER*KW, Z_ORDER*KW, 0);
+
+        this->prism_integral<GN>(ki, [&](const gp_Pnt& pi, const double t){
+                math::Matrix B(6, Z_ORDER*KW, 0);
+
+
+                const math::Vector tv({1, t, t*t, t*t*t});
+                const math::Vector dtv({0, 1, 2*t, 3*t*t});
+                const math::Vector dtv2({1, 2*t, 3*t*t});
+
+                const auto Nzi = Nz*tv;
+                const auto dNzi = Nz*dtv;
+                const auto dV = V*dtv2;
+
+                math::Matrix dXI({
+                    1, 0, dV[0],
+                    0, 1, dV[1],
+                    0, 0, dV[2]}, 3, 3);
+                //const auto det_dXI = dXI.determinant();
+                dXI.invert_LU();
+
+                const math::Matrix Mf({
+                        1, 0, 0,
+                        0, 1, 0}, 2, 3);
+
+                math::Matrix dNtmp(3, Z_ORDER*NODES_PER_ELEM, 0);
+                for(size_t i = 0; i < Z_ORDER; ++i){
+                    const double ti = i/3.0;
+                    const math::Vector tvi({ti, ti*ti, ti*ti*ti});
+                    const auto Vi = V*tvi;
+
+                    const auto N = this->get_Ni_1dof(pi);
+                    const auto dN0 = this->get_nodal_density_gradient(pi);
+
+                    //const auto dVdN = (Mf*dV).T()*dN0;
+                    for(size_t j = 0; j < NODES_PER_ELEM; ++j){
+                        dNtmp(0, i*NODES_PER_ELEM + j) = dN0(0,j)*Nzi[i];
+                        dNtmp(1, i*NODES_PER_ELEM + j) = dN0(1,j)*Nzi[i];
+                        //dNtmp(2, i*NODES_PER_ELEM + j) = dVdN[j]*Nzi[i] + N[j]*dNzi[i];
+                        dNtmp(2, i*NODES_PER_ELEM + j) = N[j]*dNzi[i];
+                    }
+                }
+                const auto dN = Rm*dXI.T()*dNtmp;
+
+                for(size_t i = 0; i < Z_ORDER; ++i){
+                    for(size_t j = 0; j < NODES_PER_ELEM; ++j){
+                        B(0, 0 + i*KW + j*DOF) = dN(0, i*NODES_PER_ELEM + j);
+                        B(1, 1 + i*KW + j*DOF) = dN(1, i*NODES_PER_ELEM + j);
+                        B(2, 2 + i*KW + j*DOF) = dN(2, i*NODES_PER_ELEM + j);
+
+                        B(3, 0 + i*KW + j*DOF) = dN(1, i*NODES_PER_ELEM + j);
+                        B(3, 1 + i*KW + j*DOF) = dN(0, i*NODES_PER_ELEM + j);
+                                                                              
+                        B(4, 0 + i*KW + j*DOF) = dN(2, i*NODES_PER_ELEM + j);
+                        B(4, 2 + i*KW + j*DOF) = dN(0, i*NODES_PER_ELEM + j);
+                                                                              
+                        B(5, 1 + i*KW + j*DOF) = dN(2, i*NODES_PER_ELEM + j);
+                        B(5, 2 + i*KW + j*DOF) = dN(1, i*NODES_PER_ELEM + j);
+
+                        //for(size_t k = 0; k < DOF; ++k){
+                        //    B(0, k + i*KW + j*DOF) = Rm(0,k)*dN(0, i*NODES_PER_ELEM + j);
+                        //    B(1, k + i*KW + j*DOF) = Rm(1,k)*dN(1, i*NODES_PER_ELEM + j);
+                        //    B(2, k + i*KW + j*DOF) = Rm(2,k)*dN(2, i*NODES_PER_ELEM + j);
+
+                        //    B(3, k + i*KW + j*DOF) += Rm(0,k)*dN(1, i*NODES_PER_ELEM + j);
+                        //    B(3, k + i*KW + j*DOF) += Rm(1,k)*dN(0, i*NODES_PER_ELEM + j);
+
+                        //    B(4, k + i*KW + j*DOF) += Rm(0,k)*dN(2, i*NODES_PER_ELEM + j);
+                        //    B(4, k + i*KW + j*DOF) += Rm(2,k)*dN(0, i*NODES_PER_ELEM + j);
+
+                        //    B(5, k + i*KW + j*DOF) += Rm(1,k)*dN(2, i*NODES_PER_ELEM + j);
+                        //    B(5, k + i*KW + j*DOF) += Rm(2,k)*dN(1, i*NODES_PER_ELEM + j);
+
+                        //    //B(0, k + i*KW + j*DOF) = Rm(0,k)*(N[j]*dNzit(0,i) + dN(0,j)*Nzi[i]);
+                        //    //B(1, k + i*KW + j*DOF) = Rm(1,k)*(N[j]*dNzit(1,i) + dN(1,j)*Nzi[i]);
+                        //    //B(2, k + i*KW + j*DOF) = Rm(2,k)*(N[j]*dNzit(2,i));// + dN(2,j)*Nzi[i]);
+
+                        //    //B(3, k + i*KW + j*DOF) += Rm(0,k)*(N[j]*dNzit(1,i) + dN(1,j)*Nzi[i]);
+                        //    //B(3, k + i*KW + j*DOF) += Rm(1,k)*(N[j]*dNzit(0,i) + dN(0,j)*Nzi[i]);
+
+                        //    //B(4, k + i*KW + j*DOF) += Rm(0,k)*(N[j]*dNzit(2,i));// + dN(2,j)*Nzi[i]);
+                        //    //B(4, k + i*KW + j*DOF) += Rm(2,k)*(N[j]*dNzit(0,i) + dN(0,j)*Nzi[i]);
+
+                        //    //B(5, k + i*KW + j*DOF) += Rm(1,k)*(N[j]*dNzit(2,i));// + dN(2,j)*Nzi[i]);
+                        //    //B(5, k + i*KW + j*DOF) += Rm(2,k)*(N[j]*dNzit(1,i) + dN(1,j)*Nzi[i]);
+                        //}
+                        //B(0, 0 + i*KW + j*DOF) = N[j]*dNzit(0,i) + dN(0,j)*Nzi[i];
+                        //B(1, 1 + i*KW + j*DOF) = N[j]*dNzit(1,i) + dN(1,j)*Nzi[i];
+                        //B(2, 2 + i*KW + j*DOF) = N[j]*dNzit(2,i);// + dN(2,j)*Nzi[i];
+
+                        //B(3, 0 + i*KW + j*DOF) = N[j]*dNzit(1,i) + dN(1,j)*Nzi[i];
+                        //B(3, 1 + i*KW + j*DOF) = N[j]*dNzit(0,i) + dN(0,j)*Nzi[i];
+
+                        //B(4, 0 + i*KW + j*DOF) = N[j]*dNzit(2,i);// + dN(2,j)*Nzi[i];
+                        //B(4, 2 + i*KW + j*DOF) = N[j]*dNzit(0,i) + dN(0,j)*Nzi[i];
+
+                        //B(5, 1 + i*KW + j*DOF) = N[j]*dNzit(2,i);// + dN(2,j)*Nzi[i];
+                        //B(5, 2 + i*KW + j*DOF) = N[j]*dNzit(1,i) + dN(1,j)*Nzi[i];
+                    }
+                }
+
+                gp_Pnt p;
+                for(size_t i = 0; i < 3; ++i){
+                    double xi = 0;
+                    for(size_t j = 0; j < 3; ++j){
+                        xi += Rm(i,j)*pi.Coord(1+j);
+                    }
+                    p.SetCoord(1+i, xi);
+                }
+                const auto D = mat.get_D(this->parent, p);
+                //return B.T()*RD*D*RD.T()*B;
+                return B.T()*D*B;//*det_dXI;
+            }, V);
+
+
+        return ki;
+    }
+
+    protected:
+    PrismMeshElementCommon(const std::vector<MeshNode*>& nodes, const MeshElement* const parent):
+        PrismMeshElement(nodes, parent)
+        {}
+};
+
 #endif
