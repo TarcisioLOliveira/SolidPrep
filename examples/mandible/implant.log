@@ -1,0 +1,39 @@
+STEP translation to Solid Edge
+Date: terça-feira,setembro 15,2026 08:48
+Source File: C:\Users\Tarcisio\Dropbox\Programming\SolidPrep-main\mandible4\implant.step
+Author: Unknown
+Organization: Unknown
+Source System: FreeCAD
+
+Hardware:
+Processor: 11th Gen Intel(R) Core(TM) i7-11800H @ 2.30GHz
+Operating System: Windows 8 Home
+Installed Memory: 15.78 GB
+
+Software Information
+Parasolid Version: 28.0.143
+PSBodyShop Version: 28.0.80
+Step Adapter Version: 1.0.820
+Solid Edge Version: 108.00.00.091 x64
+
+Step Import Options
+Import Faceted Bodies: On
+Import Check Bodies: Off
+Import Curves: On
+Import DoNotSave: On
+Import Multiple Bodies As Single Part File: On
+Import Stitch Surfaces: On
+Import Boolean Solids: On
+Make Base Feature: On
+Simplify Geometry: On
+Import Imprint Curves: On
+Import Drive: C:
+Import Stitch Surfaces: On
+Import Surfaces: On
+Import Output Path: C:\Users\Tarcisio\Dropbox\Programming\SolidPrep-main\mandible4
+Import Enable Default Output Path: On
+Import Path: 
+
+Translating to Parasolid data types...
+Translation process completed
+Total time required to translate and post process:00 : 00 : 04

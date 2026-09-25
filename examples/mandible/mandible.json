@@ -1,0 +1,315 @@
+{
+    "solid_type": "3D", 
+    "analysis":{
+        "meshing": false,
+        "gen": false,
+        "topopt": false,
+        "fea": true,
+        "shape_opt": false,
+        "simulation": false
+    },
+    "contact_type":{
+        "type": "rigid"
+    },
+    "material":[
+        {
+            "name": "titanium",
+            "type": "linear_elastic_isotropic",
+            "Smax": 100.0,
+            "Tmax": 75.0,
+            "E": 102.7,
+            "nu": 0.34,
+            "density": 4500,
+            "plane_stress": true
+        },
+        {
+            "name": "tooth",
+            "type": "linear_elastic_isotropic",
+            "E": 70,
+            "nu": 0.28,
+            "density": 2650,
+            "plane_stress": true
+        },
+        {
+            "name": "cortical_iso",
+            "type": "power_law_isotropic",
+            "E": [2.362, 2.90], // [0]*rho^[1]
+            "nu": 0.28,
+            "density_field": 1,
+            "plane_stress": true
+        },
+        {
+            "name": "trabecular_iso",
+            "type": "power_law_isotropic",
+            "E": [2.708, 1.14], // [0]*rho^[1]
+            "nu": 0.2,
+            "density_field": 1,
+            "plane_stress": true
+        },
+        {
+            "name": "cortical_ortho",
+            "type": "power_law_orthotropic",
+            //"E1": [0.219, 6.24], // [0]*rho^[1]
+            "E1": [1.762, 3.04], // [0]*rho^[1]
+            "E2": [2.362, 2.90], // [0]*rho^[1]
+            //"E3": [3.167, 2.77], // [0]*rho^[1]
+            "E3": [2.850, 2.77], // [0]*rho^[1]
+            //"G12": [0.638, 3.02], // [0]*rho^[1]
+            //"G13": [0.975, 2.73], // [0]*rho^[1]
+            //"G23": [3.202, 1.02], // [0]*rho^[1]
+            "G12": [0.319, 3.02], // [0]*rho^[1]
+            "G13": [0.487, 2.73], // [0]*rho^[1]
+            "G23": [1.601, 1.02], // [0]*rho^[1]
+            "nu": [0.18, 0.31, 0.28],
+            "density_field": 1,
+            "direction_field": 2,
+            "plane_stress": true
+        },
+        {
+            "name": "trabecular_ortho",
+            "type": "power_law_orthotropic",
+            "E1": [1.570, 1.16], // [0]*rho^[1]
+            "E2": [2.708, 1.14], // [0]*rho^[1]
+            "E3": [4.606, 1.07], // [0]*rho^[1]
+            "G12": [0.482, 1.26], // [0]*rho^[1]
+            "G13": [0.620, 1.15], // [0]*rho^[1]
+            "G23": [0.712, 1.13], // [0]*rho^[1]
+            "nu": [0.055, 0.055, 0.322],
+            "density_field": 1,
+            "direction_field": 2,
+            "plane_stress": true
+        },
+        {
+            "name": "mandible_iso",
+            "type": "bone",
+            "material_outer": "cortical_iso",
+            "material_inner": "trabecular_iso",
+            "trabecular_map": 3
+        },
+        {
+            "name": "mandible_ortho",
+            "type": "bone",
+            "material_outer": "cortical_ortho",
+            "material_inner": "trabecular_ortho",
+            "trabecular_map": 3
+        }
+    ],
+    "geometry":[
+        {
+            "file_path": "mandible.step", // Relative path from problem definition file's path
+            "scale": 1, // [mm]
+            "material": "mandible_ortho", 
+            "alt_materials": [],
+            "do_topopt": true
+        },
+        {
+            "file_path": "implant.step", // Relative path from problem definition file's path
+            "scale": 1, // [mm]
+            "material": "titanium",
+            "do_topopt": false,
+            "alt_materials": []
+        }
+    ],
+    "fields":[
+        {
+            "type": "apparent_density",
+            "nrrd_path": "roi_crop.nrrd",
+            "display": false,
+            "geometries": [0],
+            "smoothing_radius": 0.45,//0.4,
+            "HU_to_density": [9.99e-4, 1], // rho = [0]*HU + [1]
+            "R":[[ 0.030225  ,  0.06930156,  0.99713778],
+                 [-0.999306  ,  0.0238236 ,  0.02863498],
+                 [-0.02177096, -0.99731125,  0.06997353]],
+            "t": [-2.5, 0.8, 0.15]
+        },
+        {
+            "type": "implant_region",
+            "display": false,
+            "density_field": 0,
+            "geometries": [0],
+            "center1":[-61.091, -26.675, -24.381],
+            "center2":[-61.091, -26.675, -29.881],
+            "center3":[-61.091, -26.675, -35.381],
+            "r1": 1.75,
+            "r2": 1.75,
+            "r3": 1.75,
+            "decay_distance": 1.0,
+            //"coefficients": [0.7959575, 0.0, 4.45831992, -14.86029416, 20.87721896, -13.78258009, 3.51137788]  // (Huja et al., 1998)
+            //"coefficients": [0.70195325, 0.0, 6.40964958, -21.24121063, 29.69521304, -19.51711199, 4.95150675] // 70% min
+            //"coefficients": [0.61763467, 0.0, 8.09192068, -26.65680142, 37.07557552, -24.25423754, 6.12590809] // 60% min
+            //"coefficients": [0.55503076, 0.0, 9.29253411, -30.4586978, 42.17910289, -27.48243341, 6.91446344] // 55% min
+            //"coefficients": [0.50684321, 0.0, 10.18451832, -33.23977967, 45.85792399, -29.77564153, 7.46613568] // 50% min
+            //"coefficients": [0.39951283, 0.0, 12.05207199, -38.89599754, 53.12851435, -34.17440105, 8.49029941] // 40% min
+            "coefficients": [0.31118558, 0.0, 13.43575228, -42.85982088, 57.92723599, -36.88513192, 9.07077895] // 30% min
+            //"coefficients": [0.25377613, 0.0, 14.23957462, -45.00599158, 60.30932244, -38.0816254, 9.28494379] // 25% min
+        },
+        {
+            "type": "principal_stress",
+            "display": false,
+            "use_strain": true,
+            "initial_material": "mandible_iso",
+            "alpha": 0.3,
+            "max_it": 10
+        },
+        {
+            "type": "trabecular_cutoff",
+            "display": false,
+            "cutoff": 1.7,
+            "density_field": 0,
+            "geometries": [0]
+        }
+    ],
+    "finite_element":{
+        "type": "petsc_pcg",
+        "eps": 1e-5,
+        "solver": "mma",
+        "preconditioner": "jacobi",
+        "backend": "cuda"
+    },
+    "mesher":{
+        "type": "gmsh",
+
+        "file_path": "mandible_mesh.spm",
+        "element_type": "TET4",
+        "element_size": 0.23,
+        "size_from_curvature": 0,
+        "boundary_refinement":{
+            "min_dist": 0.5,
+            "max_dist": 1.0,
+            "min_size": 0.11,
+            "region":{
+                "type": "intersection",
+                "shape1":{
+                    "type": "geometry",
+                    "id": 0
+                },
+                "shape2":{
+                    "type": "geometry",
+                    "id": 1
+                }
+            }
+        },
+        "algorithm2D": 5, // Gmsh meshing algorithm2D, optional
+        "algorithm3D": 10  // Gmsh meshing algorithm3D, optional
+
+        //"file_path": "mandible_mesh_lowpoly.spm",
+        //"element_type": "TET4",
+        //"element_size": 0.55,
+        //"size_from_curvature": 0,
+        //"algorithm2D": 5, // Gmsh meshing algorithm2D, optional
+        //"algorithm3D": 10  // Gmsh meshing algorithm3D, optional
+    },
+    "simulation":{
+        "type": "marginal_bone_loss",
+        "mandible_geometry": 0,
+        "time_step": 1, // days
+        "time_limit": 360, // days
+
+        "rho_max_cort": 3.1,
+        "rho_max_trab": 1.7,
+
+        // 40% 3.1 1.7
+        //"growth_cort": 0.005170861742, // RHO_MAX*(1 - p[0])/360
+        //"growth_trab": 0.002835633858, // RHO_MAX*(1 - p[0])/360
+        // 30% 3.1 1.7
+        "growth_cort": 0.005931457506, // RHO_MAX*(1 - p[0])/360
+        "growth_trab": 0.003252734761, // RHO_MAX*(1 - p[0])/360
+        // 25% 3.1 1.7
+        //"growth_cort": 0.006425816658, // RHO_MAX*(1 - p[0])/360
+        //"growth_trab": 0.003523834942, // RHO_MAX*(1 - p[0])/360
+
+
+        "intervals": [100, 1250, 3000, 25000],
+        "compression": 1.0,
+        "traction": 0.7,
+        "shear": 0.35
+    },
+    "shape_opt":{
+        "type": "mma",
+        "xtol_abs": 1e-8, // Convergence criterium, absolute maximum design variable change
+        "ftol_rel": -1e-10, // Convergence criterium, relative maximum compliance change
+        "save_result": false, // Save result as STEP file
+        "asyminit": 0.01,
+        "asymdec": 0.7,
+        "asyminc": 1.1,
+        "maxfac": 0.5,
+        "minfac": 1e-8,
+        "c": 1e3,
+        "iter_max": 50,
+        "update_fields": false,
+
+        "smoothing_radius": 0.2,
+        "shape_set":{
+            "type": "geometry",
+            "id": 1
+        },
+        "objective":[
+            {
+                "type": "mechanostat",
+                "beta": 500,
+                "compression": [100, 3000],
+                "traction": [70, 2100],
+                "shear": [35, 1050]
+            }
+        ],
+        "constraints":[]
+    },
+    "springs":[
+        {
+            "L": [1, 1, 1],
+            "normal": [0, 0, 1],
+            "v": [0, 1, 0],
+            "w": [-1, 0, 0],
+            "material": "tooth",
+            "region":{
+                "file":{
+                    "path": "implant_top.step",
+                    "scale": 1
+                }
+            }
+        }
+    ],
+    "internal_loads2":[
+        {
+            "material": "mandible_ortho",
+            // Right-handed orthonormal basis vectors
+            "normal": [-1, 0, 0],
+            "v": [0, -1, 0],
+            "w": [0, 0, 1],
+            "calculate_from_last_point": true,
+            "inverted": false,
+            "P_prev": [-68.007, -21.801, -35.439],
+            // Unilateral Kikuchi 1 (1.0x)
+            "F": [-3.686, 6.313, 34.458],
+            "M": [-2454.046, -1454.676, -726.847],
+
+            "region":{
+                "file":{
+                    "path": "mandible_side_1.step",
+                    "scale": 1
+                }
+            }
+        },
+        {
+            "material": "mandible_ortho",
+            // Right-handed orthonormal basis vectors
+            "normal": [1, 0, 0],
+            "v": [0, 1, 0],
+            "w": [0, 0, 1],
+            "calculate_from_last_point": true,
+            "inverted": false,
+            "P_prev": [-49.533, -25.772, -33.740],
+            // Unilateral Kikuchi 1 (1.0x)
+            "F": [-3.686, 6.313, 66.977],
+            "M": [-2671.726, -912.583, 624.861],
+
+            "region":{
+                "file":{
+                    "path": "mandible_side_2.step",
+                    "scale": 1
+                }
+            }
+        }
+    ]
+}
