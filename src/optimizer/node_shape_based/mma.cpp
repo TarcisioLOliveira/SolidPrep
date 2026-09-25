@@ -21,6 +21,7 @@
 #include <mpi.h>
 #include "optimizer/node_shape_based/mma.hpp"
 #include "logger.hpp"
+#include "math/matrix.hpp"
 #include "optimization/MMASolver.hpp"
 #include "project_data.hpp"
 
@@ -39,6 +40,7 @@ MMA::MMA(const projspec::DataMap& data):
     c(data.get_double("c")),
     save_result(data.get_bool("save_result", false)),
     iter_max(data.get_int("iter_max", 0)),
+    update_fields(data.get_bool("update_fields", true)),
     viz(nullptr)
 {
 
@@ -61,6 +63,8 @@ void MMA::initialize_views(Visualization* viz){
 TopoDS_Shape MMA::optimize(SolverManager* fem, Meshing* mesh){
     int mpi_id = 0;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi_id);
+
+    const size_t DOF = mesh->elem_info->get_dof_per_node();
 
     if(mpi_id == 0){
         logger::quick_log("Preparing for optimization...");
@@ -85,6 +89,8 @@ TopoDS_Shape MMA::optimize(SolverManager* fem, Meshing* mesh){
     auto start_to = std::chrono::high_resolution_clock::now();
 
     std::vector<double> x(x_size, 0);
+    std::vector<double> alpha(x_size/DOF, 0);
+    std::vector<math::Vector> dir(x_size/DOF, math::Vector(DOF, 0));
 
     size_t M = 0;
     for(auto& f:this->constraints){
@@ -97,9 +103,9 @@ TopoDS_Shape MMA::optimize(SolverManager* fem, Meshing* mesh){
         }
     }
 
-    optimization::MMASolver mma(x_size, M, 0, c, 1, true);
+    optimization::MMASolver mma(alpha.size(), M, 0, c, 1, true);
     mma.SetAsymptotes(this->asyminit, this->asymdec, this->asyminc);
-    mma.SetBoundFactors(this->minfac, this->maxfac);
+    mma.SetBoundFactors(this->minfac, this->maxfac*0.9);
 
     double ff = 1e-7;
     std::vector<double> dftmp(x.size());
@@ -108,8 +114,11 @@ TopoDS_Shape MMA::optimize(SolverManager* fem, Meshing* mesh){
     std::vector<double> dg(x.size()*M);
     std::vector<double> g(M);
 
-    std::vector<double> xmin(x.size(), -1.0);
-    std::vector<double> xmax(x.size(),  1.0);
+    std::vector<double> df_a(alpha.size());
+    std::vector<double> dg_a(alpha.size()*M);
+
+    std::vector<double> xmin(alpha.size(), -1.0);
+    std::vector<double> xmax(alpha.size(),  1.0);
 
     if(mpi_id == 0){
         logger::quick_log("Done.");
@@ -126,7 +135,7 @@ TopoDS_Shape MMA::optimize(SolverManager* fem, Meshing* mesh){
 
         fnew = ff;
 
-        if(iter > 0){
+        if(iter > 0 && this->update_fields){
             for(auto& f:this->data->fields){
                 f->regenerate();
             }
@@ -232,7 +241,31 @@ TopoDS_Shape MMA::optimize(SolverManager* fem, Meshing* mesh){
                 f.fun->update();
             }
 
-            mma.Update(x.data(), df.data(), g.data(), dg.data(), xmin.data(), xmax.data());
+            for(size_t i = 0; i < alpha.size(); ++i){
+                for(size_t j = 0; j < DOF; ++j){
+                    dir[i][j] = df[i*DOF + j];
+                }
+                dir[i].normalize();
+                for(size_t j = 0; j < DOF; ++j){
+                    df_a[i] += df[i*DOF + j]*dir[i][j];
+                }
+                if(this->constraints.size() > 0){
+                    for(size_t j = 0; j < DOF; ++j){
+                        for(size_t k = 0; k < M; ++k){
+                            dg_a[M*i + k] += dg[M*(i*DOF + j) + k]*dir[i][j];
+                        }
+                    }
+                }
+            }
+
+            //mma.Update(x.data(), df.data(), g.data(), dg.data(), xmin.data(), xmax.data());
+            mma.Update(alpha.data(), df_a.data(), g.data(), dg_a.data(), xmin.data(), xmax.data());
+
+            for(size_t i = 0; i < alpha.size(); ++i){
+                for(size_t j = 0; j < DOF; ++j){
+                    x[i*DOF + j] = alpha[i]*dir[i][j];
+                }
+            }
 
             ch = 0.0;
             for(size_t i = 0; i < x.size(); ++i){
@@ -253,22 +286,26 @@ TopoDS_Shape MMA::optimize(SolverManager* fem, Meshing* mesh){
             // Update volumes after resizing elements
             this->get_volumes(mesh->geometries, mesh->thickness, this->volumes);
 
-            std::fill(x.begin(), x.end(), 0);
-        }
-        MPI_Bcast(&ch, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+            //std::fill(x.begin(), x.end(), 0);
+            std::fill(alpha.begin(), alpha.end(), 0);
+            std::fill(df_a.begin(), df_a.end(), 0);
+            std::fill(dg_a.begin(), dg_a.end(), 0);
 
-        if(mpi_id == 0){
-            logger::quick_log("");
-            logger::quick_log("");
-            logger::quick_log("Iteration: ", iter);
-            logger::quick_log("Results: ", ff);
-            logger::quick_log(g);
-            logger::quick_log("");
-            logger::quick_log("Design var change: ", ch);
-            logger::quick_log("fobj change: ", std::abs((ff-fnew)/ff));
-            logger::quick_log("");
+            MPI_Bcast(&ch, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+
+            if(mpi_id == 0){
+                logger::quick_log("");
+                logger::quick_log("");
+                logger::quick_log("Iteration: ", iter);
+                logger::quick_log("Results: ", ff);
+                logger::quick_log(g);
+                logger::quick_log("");
+                logger::quick_log("Design var change: ", ch);
+                logger::quick_log("fobj change: ", ff-fnew);
+                logger::quick_log("");
+            }
         }
-	}
+    }
 
     if(mpi_id == 0){
         logger::quick_log("");
@@ -307,6 +344,7 @@ const bool MMA::reg = Factory<NodeShapeBasedOptimizer>::add(
             DataEntry{.name = "minfac", .type = TYPE_DOUBLE, .required = true},
             DataEntry{.name = "maxfac", .type = TYPE_DOUBLE, .required = true},
             DataEntry{.name = "c", .type = TYPE_DOUBLE, .required = true},
+            DataEntry{.name = "update_fields", .type = TYPE_BOOL, .required = false},
         }
     }
 );

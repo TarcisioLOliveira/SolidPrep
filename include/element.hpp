@@ -581,6 +581,11 @@ class MeshElement : public Element{
         (void) dof;
         return math::Matrix();
     }
+    virtual std::vector<math::Matrix> get_dk_sh_full(const MultiMaterial& mat, const double t) const{
+        (void) mat;
+        (void) t;
+        return std::vector<math::Matrix>();
+    }
     virtual double get_dV_sh(const double t, const size_t n, const size_t dof) const{
         (void) t;
         (void) n;

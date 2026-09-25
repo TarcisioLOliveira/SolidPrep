@@ -45,6 +45,10 @@ class SolverManager{
     const std::vector<std::vector<double>>& sub_u = this->split_u;
     const std::vector<math::Matrix>& D_vec = this->D_matrices;
 
+    const std::vector<double>& get_sub_u(size_t subp) const{
+        return this->split_u[subp];
+    }
+
     inline void update_materials(){
         this->force_update_materials = true;
     }

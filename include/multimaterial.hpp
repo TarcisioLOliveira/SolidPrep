@@ -48,6 +48,14 @@ class MultiMaterial{
         }
         return math::Matrix();
     }
+    inline std::vector<math::Matrix> get_D_dsh_full(const MeshElement* const e, const gp_Pnt& p, const size_t n, const size_t dof) const{
+        if(this->problem_type == utils::PROBLEM_TYPE_2D){
+            return this->materials[0]->stiffness_2D_dsh_full(e, p, n, dof);
+        } else if(this->problem_type == utils::PROBLEM_TYPE_3D){
+            return this->materials[0]->stiffness_3D_dsh_full(e, p, n, dof);
+        }
+        return std::vector<math::Matrix>();
+    }
 
     inline math::Matrix get_S(const MeshElement* const e, const gp_Pnt& p) const{
         if(this->problem_type == utils::PROBLEM_TYPE_2D){

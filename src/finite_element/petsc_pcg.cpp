@@ -240,10 +240,8 @@ void PETScPCG::solve(std::vector<double>& load){
 
         if(this->contact_data.contact_type == FiniteElement::ContactType::FRICTIONLESS_DISPL_LOG || this->nonlinear_boundary_conditions){
             KSPSetTolerances(this->ksp, 1e-4, 1e-50, 1e10, 1e5);
-            KSPSetInitialGuessNonzero(this->ksp, PETSC_FALSE);
         } else if(this->contact_data.contact_type >= FiniteElement::ContactType::FRICTIONLESS_DISPL_SIMPLE){
             KSPSetTolerances(this->ksp, 1e-3, 1e-50, 1e10, 1e5);
-            KSPSetInitialGuessNonzero(this->ksp, PETSC_FALSE);
 
             PCJacobiSetUseAbs(this->pc, PETSC_TRUE);
             PCJacobiSetFixDiagonal(this->pc, PETSC_TRUE);

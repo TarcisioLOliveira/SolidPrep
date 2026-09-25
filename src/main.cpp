@@ -99,7 +99,7 @@ int main(int argc, char* argv[]){
         proj->topopt_mesher->mesh(proj->forces, proj->supports, proj->springs);
         // Workaround. Gmsh sets this to 1, for some reason.
         omp_set_num_threads(OMP_NUM);
-        //feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
+        feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
         for(auto& f:proj->fields){
             if(!f->is_fea_dependent()){
                 f->generate();
@@ -409,12 +409,11 @@ int main(int argc, char* argv[]){
                     // Display results
                     v->load_mesh(proj->topopt_mesher.get(), proj->type);
 
-                    //auto meshview = v->add_view("Mesh",        spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::MESH);
-                    //(void) meshview;
-
+                    auto meshview = v->add_view("Mesh",        spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::MESH);
+                    (void) meshview;
                     //auto stressview_VM = v->add_view("Von Mises Stress",        spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::STRESS);
                     auto strainview_VM  = v->add_view("Von Mises Strain",  spview::defs::ViewType::ELEMENTAL, spview::defs::DataType::STRESS);
-                    //auto displ = v->add_view("Displacement",           spview::defs::ViewType::VECTOR, spview::defs::DataType::DISPLACEMENT);
+                    auto displ = v->add_view("Displacement",           spview::defs::ViewType::VECTOR, spview::defs::DataType::DISPLACEMENT);
                     auto react = v->add_view("Reactions",           spview::defs::ViewType::VECTOR, spview::defs::DataType::OTHER);
 
                     for(auto& f:proj->fields){
@@ -424,7 +423,7 @@ int main(int argc, char* argv[]){
                     //stressview_VM->update_view(stresses);
                     strainview_VM->update_view(strainVM);
                     strainVM.clear();
-                    //displ->update_view(u);
+                    displ->update_view(u);
                     u.clear();
                     react->update_view(reactions);
                     reactions.clear();

@@ -43,6 +43,8 @@ class PowerLawOrthotropic : public Material{
     virtual math::Matrix stiffness_inverse_3D_dsh(const MeshElement* const e, const gp_Pnt& p, const size_t n, const size_t dof) const override;
     virtual math::Matrix stiffness_2D_dsh(const MeshElement* const e, const gp_Pnt& p, const size_t n, const size_t dof) const override;
     virtual math::Matrix stiffness_3D_dsh(const MeshElement* const e, const gp_Pnt& p, const size_t n, const size_t dof) const override;
+    virtual std::vector<math::Matrix> stiffness_2D_dsh_full(const MeshElement* const e, const gp_Pnt& p, const size_t n, const size_t dof) const override;
+    virtual std::vector<math::Matrix> stiffness_3D_dsh_full(const MeshElement* const e, const gp_Pnt& p, const size_t n, const size_t dof) const override;
 
     virtual double beam_E_2D(const MeshElement* const e, const gp_Pnt& p, const math::Matrix& R) const override;
     virtual double beam_E_3D(const MeshElement* const e, const gp_Pnt& p, const math::Matrix& R) const override;
@@ -112,6 +114,8 @@ class PowerLawOrthotropic : public Material{
     math::Matrix S_3D_base(const MeshElement* const e, const gp_Pnt& p) const;
     math::Matrix S_2D_base_dsh(const MeshElement* const e, const gp_Pnt& p, const size_t n, const size_t dof) const;
     math::Matrix S_3D_base_dsh(const MeshElement* const e, const gp_Pnt& p, const size_t n, const size_t dof) const;
+    std::vector<math::Matrix> S_2D_base_dsh_full(const MeshElement* const e, const gp_Pnt& p, const size_t n, const size_t dof) const;
+    std::vector<math::Matrix> S_3D_base_dsh_full(const MeshElement* const e, const gp_Pnt& p, const size_t n, const size_t dof) const;
     static const bool reg;
     ScalarField* density_field;
     CoordinateField* direction_field;

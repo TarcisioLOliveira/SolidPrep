@@ -27,7 +27,6 @@
 #include "math/matrix.hpp"
 #include <algorithm>
 #include <limits>
-#include <numeric>
 #include "project_data.hpp"
 
 namespace simulation{
@@ -356,8 +355,6 @@ void MarginalBoneLoss::run(){
         this->strain_view->update_view(strains, {this->mandible->id});
 
         time_count += this->time_step;
-        
-        sleep(5);
     }
     
     auto reactions = proj->topopt_fea->calculate_reactions(proj->topopt_mesher.get(), u);

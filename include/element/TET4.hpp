@@ -52,6 +52,7 @@ class TET4 : public MeshElementCommon3DTet<TET4>{
     virtual math::Matrix get_B_base(const gp_Pnt& point) const override;
 
     virtual math::Matrix get_dk_sh(const MultiMaterial& mat, const double t, const size_t n, const size_t dof) const override;
+    virtual std::vector<math::Matrix> get_dk_sh_full(const MultiMaterial& mat, const double t) const override;
     virtual math::Matrix get_dB_sh(const gp_Pnt& p, const size_t n, const size_t dof) const override;
     virtual math::Matrix get_dN_sh(const gp_Pnt& p, const size_t n, const size_t dof) const override;
     virtual math::Vector get_dN_1dof_sh(const gp_Pnt& p, const size_t n, const size_t dof) const override;

@@ -146,6 +146,7 @@ class Mechanostat: public NodeShapeBasedFunction{
                 2*K_g[i]*gxz/eVe};
     }
 
+    /*
     inline double Ud_3D(const size_t i, const StrainVector3D& eps, const math::Matrix& D0, const math::Matrix& D) const{
         const double A = D0(0,0) + 2*D0(0,1) + D0(1,1);
         const double B = 2*(D0(0,2) + D0(1,2));
@@ -247,6 +248,7 @@ class Mechanostat: public NodeShapeBasedFunction{
         return 3*(beta_dsh*(eps_1.T()*D*eps_1) + beta*(eps_1.T()*dD*eps_1) + 2*beta*(eps_1.T()*D*deps_1))/(2*eDe) + alpha*deps_tr;
 
     }
+    */
 };
 
 }

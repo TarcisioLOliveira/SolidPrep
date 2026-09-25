@@ -46,13 +46,17 @@
 #include "utils/gauss_legendre.hpp"
 #include "multimaterial.hpp"
 
+namespace element{
+    static constexpr size_t MAX_GN = 17;//21;
+}
+
 template<class T>
 class MeshElementCommon : public MeshElement{
     public:
     virtual ~MeshElementCommon() = default;
 
-    static constexpr size_t MAX_GN = 13;//17;
     static constexpr size_t IL2_F_DIM = 6;
+    static constexpr size_t MAX_GN = element::MAX_GN;
 
     inline gp_Pnt GL_point_tri(double c1, double c2, double c3, const std::vector<gp_Pnt>& p) const{
         return gp_Pnt(
@@ -2344,7 +2348,7 @@ class MeshElementCommon3DHex : public MeshElementCommon3D<T>{
 template<class T>
 class PrismMeshElementCommon : public PrismMeshElement{
     public:
-    static constexpr size_t MAX_GN = 13;//17;
+    static constexpr size_t MAX_GN = element::MAX_GN;
 
     template<size_t ORDER, typename R, typename F>
     inline void area_integral(R& result, F func, const double t) const{
@@ -2392,7 +2396,7 @@ class PrismMeshElementCommon : public PrismMeshElement{
         constexpr size_t Z_ORDER = T::Z_ORDER;
 
         constexpr size_t P = (ORDER + 1)/2 + (ORDER + 1)%2;
-        constexpr size_t PZ = (4*Z_ORDER + 1)/2 + (4*Z_ORDER + 1)%2;
+        constexpr size_t PZ = (5*Z_ORDER + 1)/2 + (5*Z_ORDER + 1)%2;
 
         if constexpr(PROBLEM_TYPE == utils::PROBLEM_TYPE_2D){
             // TODO
@@ -2432,6 +2436,7 @@ class PrismMeshElementCommon : public PrismMeshElement{
         }
     }
     virtual math::Vector il2_f_ext(const math::Vector& c, const gp_Dir& n, const math::Matrix& Rm, const math::Matrix& RD, const MultiMaterial& mat, const math::Vector& v) const override{
+        (void) RD;
         //const size_t NODES_PER_ELEM = T::NODES_PER_ELEM;
         //const size_t DOF = T::NODE_DOF;
         const size_t KW = T::K_DIM;
@@ -2498,6 +2503,7 @@ class PrismMeshElementCommon : public PrismMeshElement{
         return vi;
     }
     virtual math::Matrix il2_k_ext(const math::Matrix& Rm, const math::Matrix& RD, const MultiMaterial& mat, const math::Matrix& V, const math::Matrix& Nz) const override{
+        (void) RD;
         const size_t KW = T::K_DIM;
         const size_t DOF = T::NODE_DOF;
         const size_t NODES_PER_ELEM = T::NODES_PER_ELEM;
@@ -2505,7 +2511,6 @@ class PrismMeshElementCommon : public PrismMeshElement{
         constexpr size_t GN = MAX_GN;
         constexpr size_t Z_ORDER = 4;
 
-        //std::vector<math::Matrix> ki(10, math::Matrix(KW, KW));
         math::Matrix ki(Z_ORDER*KW, Z_ORDER*KW, 0);
 
         this->prism_integral<GN>(ki, [&](const gp_Pnt& pi, const double t){
@@ -2524,7 +2529,6 @@ class PrismMeshElementCommon : public PrismMeshElement{
                     1, 0, dV[0],
                     0, 1, dV[1],
                     0, 0, dV[2]}, 3, 3);
-                //const auto det_dXI = dXI.determinant();
                 dXI.invert_LU();
 
                 const math::Matrix Mf({
@@ -2532,19 +2536,12 @@ class PrismMeshElementCommon : public PrismMeshElement{
                         0, 1, 0}, 2, 3);
 
                 math::Matrix dNtmp(3, Z_ORDER*NODES_PER_ELEM, 0);
+                const auto N = this->get_Ni_1dof(pi);
+                const auto dN0 = this->get_nodal_density_gradient(pi);
                 for(size_t i = 0; i < Z_ORDER; ++i){
-                    const double ti = i/3.0;
-                    const math::Vector tvi({ti, ti*ti, ti*ti*ti});
-                    const auto Vi = V*tvi;
-
-                    const auto N = this->get_Ni_1dof(pi);
-                    const auto dN0 = this->get_nodal_density_gradient(pi);
-
-                    //const auto dVdN = (Mf*dV).T()*dN0;
                     for(size_t j = 0; j < NODES_PER_ELEM; ++j){
                         dNtmp(0, i*NODES_PER_ELEM + j) = dN0(0,j)*Nzi[i];
                         dNtmp(1, i*NODES_PER_ELEM + j) = dN0(1,j)*Nzi[i];
-                        //dNtmp(2, i*NODES_PER_ELEM + j) = dVdN[j]*Nzi[i] + N[j]*dNzi[i];
                         dNtmp(2, i*NODES_PER_ELEM + j) = N[j]*dNzi[i];
                     }
                 }
@@ -2564,46 +2561,6 @@ class PrismMeshElementCommon : public PrismMeshElement{
                                                                               
                         B(5, 1 + i*KW + j*DOF) = dN(2, i*NODES_PER_ELEM + j);
                         B(5, 2 + i*KW + j*DOF) = dN(1, i*NODES_PER_ELEM + j);
-
-                        //for(size_t k = 0; k < DOF; ++k){
-                        //    B(0, k + i*KW + j*DOF) = Rm(0,k)*dN(0, i*NODES_PER_ELEM + j);
-                        //    B(1, k + i*KW + j*DOF) = Rm(1,k)*dN(1, i*NODES_PER_ELEM + j);
-                        //    B(2, k + i*KW + j*DOF) = Rm(2,k)*dN(2, i*NODES_PER_ELEM + j);
-
-                        //    B(3, k + i*KW + j*DOF) += Rm(0,k)*dN(1, i*NODES_PER_ELEM + j);
-                        //    B(3, k + i*KW + j*DOF) += Rm(1,k)*dN(0, i*NODES_PER_ELEM + j);
-
-                        //    B(4, k + i*KW + j*DOF) += Rm(0,k)*dN(2, i*NODES_PER_ELEM + j);
-                        //    B(4, k + i*KW + j*DOF) += Rm(2,k)*dN(0, i*NODES_PER_ELEM + j);
-
-                        //    B(5, k + i*KW + j*DOF) += Rm(1,k)*dN(2, i*NODES_PER_ELEM + j);
-                        //    B(5, k + i*KW + j*DOF) += Rm(2,k)*dN(1, i*NODES_PER_ELEM + j);
-
-                        //    //B(0, k + i*KW + j*DOF) = Rm(0,k)*(N[j]*dNzit(0,i) + dN(0,j)*Nzi[i]);
-                        //    //B(1, k + i*KW + j*DOF) = Rm(1,k)*(N[j]*dNzit(1,i) + dN(1,j)*Nzi[i]);
-                        //    //B(2, k + i*KW + j*DOF) = Rm(2,k)*(N[j]*dNzit(2,i));// + dN(2,j)*Nzi[i]);
-
-                        //    //B(3, k + i*KW + j*DOF) += Rm(0,k)*(N[j]*dNzit(1,i) + dN(1,j)*Nzi[i]);
-                        //    //B(3, k + i*KW + j*DOF) += Rm(1,k)*(N[j]*dNzit(0,i) + dN(0,j)*Nzi[i]);
-
-                        //    //B(4, k + i*KW + j*DOF) += Rm(0,k)*(N[j]*dNzit(2,i));// + dN(2,j)*Nzi[i]);
-                        //    //B(4, k + i*KW + j*DOF) += Rm(2,k)*(N[j]*dNzit(0,i) + dN(0,j)*Nzi[i]);
-
-                        //    //B(5, k + i*KW + j*DOF) += Rm(1,k)*(N[j]*dNzit(2,i));// + dN(2,j)*Nzi[i]);
-                        //    //B(5, k + i*KW + j*DOF) += Rm(2,k)*(N[j]*dNzit(1,i) + dN(1,j)*Nzi[i]);
-                        //}
-                        //B(0, 0 + i*KW + j*DOF) = N[j]*dNzit(0,i) + dN(0,j)*Nzi[i];
-                        //B(1, 1 + i*KW + j*DOF) = N[j]*dNzit(1,i) + dN(1,j)*Nzi[i];
-                        //B(2, 2 + i*KW + j*DOF) = N[j]*dNzit(2,i);// + dN(2,j)*Nzi[i];
-
-                        //B(3, 0 + i*KW + j*DOF) = N[j]*dNzit(1,i) + dN(1,j)*Nzi[i];
-                        //B(3, 1 + i*KW + j*DOF) = N[j]*dNzit(0,i) + dN(0,j)*Nzi[i];
-
-                        //B(4, 0 + i*KW + j*DOF) = N[j]*dNzit(2,i);// + dN(2,j)*Nzi[i];
-                        //B(4, 2 + i*KW + j*DOF) = N[j]*dNzit(0,i) + dN(0,j)*Nzi[i];
-
-                        //B(5, 1 + i*KW + j*DOF) = N[j]*dNzit(2,i);// + dN(2,j)*Nzi[i];
-                        //B(5, 2 + i*KW + j*DOF) = N[j]*dNzit(1,i) + dN(1,j)*Nzi[i];
                     }
                 }
 
@@ -2616,8 +2573,7 @@ class PrismMeshElementCommon : public PrismMeshElement{
                     p.SetCoord(1+i, xi);
                 }
                 const auto D = mat.get_D(this->parent, p);
-                //return B.T()*RD*D*RD.T()*B;
-                return B.T()*D*B;//*det_dXI;
+                return B.T()*D*B;
             }, V);
 
 

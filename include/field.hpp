@@ -95,6 +95,14 @@ class ScalarField : public Field{
 
         return 0;
     }
+    virtual std::vector<double> get_dsh_full(const MeshElement* e, const gp_Pnt& p, const size_t n, const size_t dof) const{
+        (void) e;
+        (void) p;
+        (void) n;
+        (void) dof;
+
+        return std::vector<double>();
+    }
     virtual Class get_class() const = 0;
 };
 
@@ -116,6 +124,14 @@ class VectorField : public Field{
 
         return gp_Vec(0,0,0);
     }
+    virtual std::vector<gp_Vec> get_dsh_full(const MeshElement* e, const gp_Pnt& p, const size_t n, const size_t dof) const{
+        (void) e;
+        (void) p;
+        (void) n;
+        (void) dof;
+
+        return std::vector<gp_Vec>();
+    }
 };
 
 class DirectionField : public Field{
@@ -135,6 +151,14 @@ class DirectionField : public Field{
         (void) dof;
 
         return gp_Dir(0,0,0);
+    }
+    virtual std::vector<gp_Dir> get_dsh_full(const MeshElement* e, const gp_Pnt& p, const size_t n, const size_t dof) const{
+        (void) e;
+        (void) p;
+        (void) n;
+        (void) dof;
+
+        return std::vector<gp_Dir>();
     }
 };
 
@@ -161,6 +185,14 @@ class CoordinateField : public Field{
         (void) dof;
 
         return math::Matrix(3, 3, 0);
+    }
+    virtual std::vector<math::Matrix> get_dsh_full(const MeshElement* e, const gp_Pnt& p, const size_t n, const size_t dof) const{
+        (void) e;
+        (void) p;
+        (void) n;
+        (void) dof;
+
+        return std::vector<math::Matrix>();
     }
     virtual Class get_class() const = 0;
 };

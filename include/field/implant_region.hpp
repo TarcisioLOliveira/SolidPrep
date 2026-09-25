@@ -38,6 +38,7 @@ class ImplantRegion : public ScalarField {
     virtual double get(const MeshElement* e, const gp_Pnt& p) const override;
     virtual double get(const Node* n) const override;
     virtual double get_dsh(const MeshElement* e, const gp_Pnt& p, const size_t n, const size_t dof) const override;
+    virtual std::vector<double> get_dsh_full(const MeshElement* e, const gp_Pnt& p, const size_t n, const size_t dof) const override;
 
     inline virtual SubType get_sub_type() const override{
         return SubType::DOMAIN;

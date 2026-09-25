@@ -573,6 +573,21 @@ void ShapeHandler::obtain_affected_nodes(){
         }
 
         cluster.matrix_width = dof*idm;
+
+        std::set<const MeshElement*> elems_tmp;
+        for(auto& oi:this->optimized_nodes){
+            for(auto& ei:oi.elements){
+                auto e = ei.e;
+                const auto& g = this->mesh->elem_geom_mapping.at(e);
+                for(auto& gi:cluster.geometries){
+                    if(gi->id == g->id){
+                        elems_tmp.insert(e);
+                        break;
+                    }
+                }
+            }
+        }
+        cluster.affected_elems.insert(cluster.affected_elems.begin(), elems_tmp.begin(), elems_tmp.end());
     }
 
     // Get nodes to apply normal movement constraint
@@ -608,6 +623,15 @@ void ShapeHandler::obtain_affected_nodes(){
                     }
                     if(use_constraint){
                         non_opt.insert(b);
+                        for(size_t i = 0; i < bnum; ++i){
+                            auto is_opt = this->optimized_nodes_mapping.find(b->nodes[i]->id);
+                            if(is_opt != this->optimized_nodes_mapping.end()){
+                                auto& v = this->optimized_nodes[is_opt->second].bound_norm;
+                                for(size_t j = 0; j < 3; ++j){
+                                    v[j] += b->normal.Coord(1+j);
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -623,6 +647,16 @@ void ShapeHandler::obtain_affected_nodes(){
         }
         cluster.matrix_width = lid;
     }
+
+    std::set<AffectedNode*> hlm_tmp;
+    for(auto& opt:this->optimized_nodes){
+        if(opt.bound_norm.norm() > 1e-14){
+            opt.bound_norm.normalize();
+            hlm_tmp.insert(&opt);
+        }
+    }
+    this->helmholtz_lambda.insert(this->helmholtz_lambda.begin(), hlm_tmp.begin(), hlm_tmp.end());
+    hlm_tmp.clear();
 
     for(auto& cluster:this->clusters){
         cluster.solver->initialize_matrix(false, cluster.matrix_width);
@@ -647,7 +681,9 @@ void ShapeHandler::obtain_affected_nodes(){
     this->merged_nodes.clear();
 
     this->helmholtz_solver = std::make_unique<general_solver::PETScGeneralPCG>();
-    this->helmholtz_solver->initialize_matrix(true, this->optimized_nodes.size()*dof, false);
+
+    this->helmholtz_size = this->optimized_nodes.size()*dof + this->helmholtz_lambda.size();
+    this->helmholtz_solver->initialize_matrix(this->helmholtz_lambda.size() == 0, this->helmholtz_size, false);
 
     this->generate_helmholtz();
 }
@@ -661,19 +697,41 @@ void ShapeHandler::generate_helmholtz(){
 
     const math::Matrix D(math::Matrix::identity(dim*dim));
 
+    const size_t offset = this->optimized_nodes.size()*dof;
+
     std::vector<long> bpos(bnum*dof);
     this->helmholtz_solver->make_zero();
     for(const auto& e:this->shape_mesh){
         for(size_t i = 0; i < bnum; ++i){
-            const auto id = this->optimized_nodes_mapping[e->nodes[i]->id];
-            for(size_t dim_i = 0; dim_i < dof; ++dim_i){
-                bpos[i*dof + dim_i] = dof*id + dim_i;
+            const auto id_it = this->optimized_nodes_mapping.find(e->nodes[i]->id);
+            if(id_it != this->optimized_nodes_mapping.end()){
+                for(size_t dim_i = 0; dim_i < dof; ++dim_i){
+                    bpos[i*dof + dim_i] = dof*id_it->second + dim_i;
+                }
+            } else {
+                for(size_t dim_i = 0; dim_i < dof; ++dim_i){
+                    bpos[i*dof + dim_i] = -1;
+                }
             }
         }
         const auto a = e->absorption_Ndof();
         const auto k = (this->r*this->r)*e->diffusion_Ndof(D) + a;
         this->helmholtz_solver->add_element(k, bpos);
     }
+    for(size_t i = 0; i < this->helmholtz_lambda.size(); ++i){
+        const auto& ni = this->helmholtz_lambda[i];
+        for(size_t nii = 0; nii < ni->node_ids.size(); ++nii){
+            const auto& n = this->mesh->node_list[ni->node_ids[nii]];
+            const auto id_it = this->optimized_nodes_mapping.find(n->id);
+            if(id_it != this->optimized_nodes_mapping.end()){
+                for(size_t j = 0; j < dof; ++j){
+                    this->helmholtz_solver->add_value(offset + i, id_it->second*dof + j, ni->bound_norm[j]);
+                    this->helmholtz_solver->add_value(id_it->second*dof + j, offset + i, ni->bound_norm[j]);
+                }
+            }
+        }
+    }
+
     this->helmholtz_solver->compute();
 }
 
@@ -687,35 +745,40 @@ void ShapeHandler::filter_displacement(std::vector<double>& dx){
 
     // Update other nodes
     const math::Matrix D(math::Matrix::identity(dim*dim));
-    //math::Matrix D(dim*dim, dim*dim, 0);
-    //D(0,0) = 1;
-    //D(4,4) = 1;
-    //D(8,8) = 1;
     auto A = math::Matrix::identity(dim);
     /**
      * Smoothen displacements
      */
+    logger::quick_log("Smoothing...");
+
     math::Vector dx_be(bnum*dof);
-    std::vector<double> dx_f(dx.size(), 0);
+    std::vector<double> dx_f(this->helmholtz_size, 0);
     for(const auto& e:this->shape_mesh){
         for(size_t i = 0; i < bnum; ++i){
-            const auto id = this->optimized_nodes_mapping[e->nodes[i]->id];
-            for(size_t dim_i = 0; dim_i < dof; ++dim_i){
-                dx_be[i*dof + dim_i] = dx[dof*id + dim_i];
+            const auto id_it = this->optimized_nodes_mapping.find(e->nodes[i]->id);
+            if(id_it != this->optimized_nodes_mapping.end()){
+                for(size_t dim_i = 0; dim_i < dof; ++dim_i){
+                    dx_be[i*dof + dim_i] = dx[dof*id_it->second + dim_i];
+                }
+            } else {
+                for(size_t dim_i = 0; dim_i < dof; ++dim_i){
+                    dx_be[i*dof + dim_i] = 0;
+                }
             }
         }
         const auto a = e->absorption_Ndof();
         const auto f = a*dx_be;
         for(size_t i = 0; i < bnum; ++i){
-            const auto id = this->optimized_nodes_mapping[e->nodes[i]->id];
-            for(size_t dim_i = 0; dim_i < dof; ++dim_i){
-                dx_f[dof*id + dim_i] += f[i*dof + dim_i];
+            const auto id_it = this->optimized_nodes_mapping.find(e->nodes[i]->id);
+            if(id_it != this->optimized_nodes_mapping.end()){
+                for(size_t dim_i = 0; dim_i < dof; ++dim_i){
+                    dx_f[dof*id_it->second + dim_i] += f[i*dof + dim_i];
+                }
             }
         }
     }
-    logger::quick_log("Smoothing...");
     this->helmholtz_solver->solve(dx_f);
-    std::copy(dx_f.begin(), dx_f.end(), dx.begin());
+    std::copy(dx_f.begin(), dx_f.begin() + dx.size(), dx.begin());
 }
 
 void ShapeHandler::generate_cluster_matrix(){
@@ -791,10 +854,11 @@ void ShapeHandler::adjoint_grad_append(std::vector<double>& grad, const std::vec
         (this->mesh->elem_info->get_problem_type() == utils::ProblemType::PROBLEM_TYPE_2D)
         ? 2 : 3;
 
-    const auto& nodes = this->optimized_nodes;
 
     const math::Matrix D(math::Matrix::identity(dim*dim));
     
+    // Differentiate boundary condition
+    const auto& nodes = this->optimized_nodes;
     #pragma omp parallel
     {
         math::Vector ue(kw);
@@ -828,11 +892,14 @@ void ShapeHandler::adjoint_grad_append(std::vector<double>& grad, const std::vec
 
                     const double ldKu = le.T()*k*ue;
 
-                    grad[i*dof + j] -= ldKu;
+                    grad[i*dof + j] += ldKu;
                 }
             }
         }
     }
+
+
+    // Differentiate lambda
     math::Vector ue(kw);
     math::Vector lle(node_num);
     std::vector<gp_Pnt> pnts(bnum);
@@ -841,6 +908,17 @@ void ShapeHandler::adjoint_grad_append(std::vector<double>& grad, const std::vec
         for(auto& it:cluster.bound_lambda_mapping){
             const auto& b = it.first;
             const auto& nodes = it.second;
+
+            bool usable = false;
+            for(const auto& ni:nodes){
+                if(this->optimized_nodes_mapping.contains(b->parent->nodes[ni]->id)){
+                    usable = true;
+                    break;
+                }
+            }
+            if(!usable){
+                continue;
+            }
 
             for(size_t i = 0; i < node_num; ++i){
                 const auto lid = cluster.nodal_lambda_mapping.at(b->parent->nodes[i]->id);
@@ -856,14 +934,16 @@ void ShapeHandler::adjoint_grad_append(std::vector<double>& grad, const std::vec
             }
             const auto kl = b->parent->sh_normal_constraint(n, this->mesh->thickness, pnts);
             for(const auto& ni:nodes){
-                const auto id = this->optimized_nodes_mapping.at(b->parent->nodes[ni]->id);
-                for(size_t j = 0; j < dof; ++j){
-                    ue.fill(0);
-                    ue[ni*dof + j] = 1;
+                if(this->optimized_nodes_mapping.contains(b->parent->nodes[ni]->id)){
+                    const auto id = this->optimized_nodes_mapping.at(b->parent->nodes[ni]->id);
+                    for(size_t j = 0; j < dof; ++j){
+                        ue.fill(0);
+                        ue[ni*dof + j] = 1;
 
-                    const double ldKu = lle.T()*kl*ue;
+                        const double ldKu = lle.T()*kl*ue;
 
-                    grad[id*dof + j] -= ldKu;
+                        grad[id*dof + j] += ldKu;
+                    }
                 }
             }
         }
@@ -914,9 +994,15 @@ void ShapeHandler::update_nodes(const std::vector<double>& dx){
             auto k = e.e->diffusion_dim_dof(this->mesh->thickness, D);
 
             const auto& n = e.e->nodes[e.node_num];
-            const auto opt_id = this->optimized_nodes_mapping[n->id];
-            for(size_t dim_i = 0; dim_i < dof; ++dim_i){
-                bn_vals[dof*e.node_num + dim_i] = dx[dof*opt_id + dim_i];
+            const auto opt_id = this->optimized_nodes_mapping.find(n->id);
+            if(opt_id != this->optimized_nodes_mapping.end()){
+                for(size_t dim_i = 0; dim_i < dof; ++dim_i){
+                    bn_vals[dof*e.node_num + dim_i] = dx[dof*opt_id->second + dim_i];
+                }
+            } else {
+                for(size_t dim_i = 0; dim_i < dof; ++dim_i){
+                    bn_vals[dof*e.node_num + dim_i] = 0;
+                }
             }
 
             const auto Fe = k*bn_vals;
@@ -943,9 +1029,15 @@ void ShapeHandler::update_nodes(const std::vector<double>& dx){
 
             for(auto& nn:nodes){
                 const auto& node = b->parent->nodes[nn];
-                const auto opt_id = this->optimized_nodes_mapping[node->id];
-                for(size_t dim_i = 0; dim_i < dof; ++dim_i){
-                    bn_vals[dof*nn + dim_i] = dx[dof*opt_id + dim_i];
+                const auto opt_id = this->optimized_nodes_mapping.find(node->id);
+                if(opt_id != this->optimized_nodes_mapping.end()){
+                    for(size_t dim_i = 0; dim_i < dof; ++dim_i){
+                        bn_vals[dof*nn + dim_i] = dx[dof*opt_id->second + dim_i];
+                    }
+                } else {
+                    for(size_t dim_i = 0; dim_i < dof; ++dim_i){
+                        bn_vals[dof*nn + dim_i] = 0;
+                    }
                 }
             }
 
@@ -1018,25 +1110,34 @@ void ShapeHandler::filter_gradient(std::vector<double>& df){
     const size_t bnum = this->mesh->elem_info->get_boundary_nodes_per_element();
 
     math::Vector dx_be(bnum*dof);
-    std::vector<double> dx_f(df.size(), 0);
-    this->helmholtz_solver->solve(df);
+    std::vector<double> dx_f(this->helmholtz_size, 0);
+    std::copy(df.begin(), df.end(), dx_f.begin());
+    this->helmholtz_solver->solve(dx_f);
+    std::fill(df.begin(), df.end(), 0);
     for(const auto& e:this->shape_mesh){
         for(size_t i = 0; i < bnum; ++i){
-            const auto id = this->optimized_nodes_mapping[e->nodes[i]->id];
-            for(size_t dim_i = 0; dim_i < dof; ++dim_i){
-                dx_be[i*dof + dim_i] = df[dof*id + dim_i];
+            const auto id_it = this->optimized_nodes_mapping.find(e->nodes[i]->id);
+            if(id_it != this->optimized_nodes_mapping.end()){
+                for(size_t dim_i = 0; dim_i < dof; ++dim_i){
+                    dx_be[i*dof + dim_i] = dx_f[dof*id_it->second + dim_i];
+                }
+            } else {
+                for(size_t dim_i = 0; dim_i < dof; ++dim_i){
+                    dx_be[i*dof + dim_i] = 0;
+                }
             }
         }
         const auto a = e->absorption_Ndof();
         const auto f = a*dx_be;
         for(size_t i = 0; i < bnum; ++i){
-            const auto id = this->optimized_nodes_mapping[e->nodes[i]->id];
-            for(size_t dim_i = 0; dim_i < dof; ++dim_i){
-                dx_f[dof*id + dim_i] += f[i*dof + dim_i];
+            const auto id_it = this->optimized_nodes_mapping.find(e->nodes[i]->id);
+            if(id_it != this->optimized_nodes_mapping.end()){
+                for(size_t dim_i = 0; dim_i < dof; ++dim_i){
+                    df[dof*id_it->second + dim_i] += f[i*dof + dim_i];
+                }
             }
         }
     }
-    std::copy(dx_f.begin(), dx_f.end(), df.begin());
 }
 
 std::set<ShapeHandler::SuperimposedNodes*> ShapeHandler::apply_op(shape_op::ShapeOp* op) const{

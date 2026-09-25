@@ -213,8 +213,8 @@ TrabecularCutoff::TrabecularCutoff(const projspec::DataMap& data):
         logger::log_assert(f->get_sub_type() == Field::SubType::DOMAIN || f->get_sub_type() == Field::SubType::PROJECTION, logger::ERROR, "field subtype for trabecular cutoff field material must be DOMAIN or PROJECTION");
 
         this->density = static_cast<ScalarField*>(f);
-        this->shell = utils::load_shape(data.get_string("shell"), 1);
         if(data.exists_object("inner_bounds")){
+            this->shell = utils::load_shape(data.get_string("shell"), 1);
             this->inner_bounds = BoundaryApproximation(data.get_object("inner_bounds"), this->shell);
         }
     }
@@ -289,7 +289,7 @@ const bool TrabecularCutoff::reg = Factory<Field>::add(
             DataEntry{.name = "display", .type = TYPE_BOOL, .required = false},
             DataEntry{.name = "cutoff", .type = TYPE_DOUBLE, .required = true},
             DataEntry{.name = "density_field", .type = TYPE_INT, .required = true},
-            DataEntry{.name = "shell", .type = TYPE_RELATIVE_PATH, .required = true},
+            DataEntry{.name = "shell", .type = TYPE_RELATIVE_PATH, .required = false},
             DataEntry{.name = "geometries", .type = TYPE_ARRAY, .required = true,
                          .array_data = std::shared_ptr<ArrayRequirements>(
                              new ArrayRequirements{

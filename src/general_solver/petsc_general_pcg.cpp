@@ -71,7 +71,7 @@ void PETScGeneralPCG::initialize_matrix(bool spd, size_t L, bool reuse_x){
         //KSPGMRESSetCGSRefinementType(this->ksp, KSP_GMRES_CGS_REFINE_ALWAYS);
         //KSPSetType(this->ksp, KSPBCGS);
 
-        KSPSetTolerances(this->ksp, 1e-7, 1e-50, 1e10, 1e5);
+        KSPSetTolerances(this->ksp, 1e-9, 1e-50, 1e10, 1e5);
     }
     if(reuse_x){
         KSPSetInitialGuessNonzero(this->ksp, PETSC_TRUE);

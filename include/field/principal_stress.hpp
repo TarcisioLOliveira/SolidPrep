@@ -24,6 +24,7 @@
 #include <map>
 #include <vector>
 #include "field.hpp"
+#include "logger.hpp"
 #include "math/matrix.hpp"
 #include "project_specification/data_map.hpp"
 #include "utils/delayed_pointer.hpp"
@@ -42,6 +43,7 @@ class PrincipalStress : public CoordinateField {
     virtual std::array<gp_Dir, 3> get_array(const MeshElement* e, const gp_Pnt& p) const override;
     virtual math::Matrix get_matrix(const MeshElement* e, const gp_Pnt& p) const override;
     virtual math::Matrix get_dsh(const MeshElement* e, const gp_Pnt& p, const size_t n, const size_t dof) const override;
+    virtual std::vector<math::Matrix> get_dsh_full(const MeshElement* e, const gp_Pnt& p, const size_t n, const size_t dof) const override;
 
     inline void set_max_it(size_t m){
         this->max_it = m;
@@ -72,7 +74,32 @@ class PrincipalStress : public CoordinateField {
             return this->node->id < n.node->id;
         }
     };
+    void generate_vectors();
     inline math::Matrix get_eigen(const MeshElement* e, const gp_Pnt& p) const{
+        math::Matrix tensor;
+        if(!this->use_smooth){
+            tensor = this->get_tensor_base(e, p);
+        } else {
+            tensor = this->get_tensor_interp(e, p);
+        }
+        math::Eigen eigen(tensor, 1e-14);
+        std::vector<size_t> pos(DIM);
+        std::iota(pos.begin(), pos.end(), 0);
+        std::vector<double> abs_sort(DIM);
+        for(size_t i = 0; i < DIM; ++i){
+            abs_sort[i] = std::abs(eigen.eigenvalues[i]);
+        }
+        std::sort(pos.begin(), pos.end(), [&](size_t i, size_t j){ return abs_sort[i] < abs_sort[j]; });
+
+        math::Matrix dirs(DIM, DIM);
+        for(size_t i = 0; i < DIM; ++i){
+            for(size_t j = 0; j < DIM; ++j){
+                dirs(i, j) = eigen.eigenvectors(i, pos[j]);
+            }
+        }
+        return dirs;
+    }
+    inline math::Matrix get_tensor_base(const MeshElement* e, const gp_Pnt& p) const{
         math::Matrix tensor;
         if(this->use_strain){
             tensor = e->get_strain_tensor(p, this->u);
@@ -85,29 +112,31 @@ class PrincipalStress : public CoordinateField {
                 tensor = e->get_stress_tensor(D, p, this->u);
             }
         }
-        math::Eigen eigen(tensor, 1e-14);
-        std::vector<double> abs_sort(DIM);
-        for(size_t i = 0; i < DIM; ++i){
-            abs_sort[i] = std::abs(eigen.eigenvalues[i]);
-        }
-        std::sort(abs_sort.begin(), abs_sort.end(), std::less<double>());
-        std::vector<size_t> pos(DIM);
-        for(size_t i = 0; i < DIM; ++i){
-            for(size_t j = 0; j < DIM; ++j){
-                if(abs_sort[i] == std::abs(eigen.eigenvalues[j])){
-                    pos[i] = j;
-                    break;
+        return tensor;
+    }
+    inline math::Matrix get_tensor_interp(const MeshElement* e, const gp_Pnt& p) const{
+        math::Matrix tensor(3, 3, 0);
+        const auto N = e->get_Ni_1dof(p);
+
+        for(size_t i = 0; i < N.get_N(); ++i){
+            const size_t id = this->id_pos_map.at(e->nodes[i]->id);
+            size_t count = 0;
+            for(size_t j = 0; j < 3; ++j){
+                for(size_t k = 0; k <= j; ++k){
+                    if(j == k){
+                        tensor(j,k) += N[i]*this->nodal_strains[6*id + count];
+                    } else {
+                        tensor(j,k) += N[i]*this->nodal_strains[6*id + count];
+                        tensor(k,j) += N[i]*this->nodal_strains[6*id + count];
+                    }
+                    ++count;
                 }
             }
         }
-        math::Matrix dirs(DIM, DIM);
-        for(size_t i = 0; i < DIM; ++i){
-            for(size_t j = 0; j < DIM; ++j){
-                dirs(i, j) = eigen.eigenvectors(i, pos[j]);
-            }
-        }
-        return dirs;
+        return tensor;
     }
+    math::Matrix get_tensor_dsh(const MeshElement* e, const gp_Pnt& p, const size_t n, const size_t dof) const;
+
     ProjectData* proj_data;
     utils::DelayedPointerView<Material> initial_material;
     const MeshElementFactory* elem_info;
@@ -118,14 +147,20 @@ class PrincipalStress : public CoordinateField {
     size_t NODES_PER_ELEM;
     size_t DOF;
     bool first_run = true;
+    bool use_smooth = false;
     std::vector<double> u;
     size_t max_it;
     const bool use_strain;
+    std::unordered_multimap<size_t, MeshElement*> inverse_mesh;
+    const double ALPHA;
 
     std::map<size_t, size_t> id_pos_map;
     std::vector<UniqueNodeForView> node_view_list;
 
     Visualization* viz;
+
+    std::vector<double> nodal_weights;
+    std::vector<double> nodal_strains;
 
     ViewHandler* L_view = nullptr;
     ViewHandler* R_view = nullptr;

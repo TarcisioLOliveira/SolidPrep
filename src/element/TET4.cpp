@@ -27,6 +27,7 @@
 #include "math/matrix.hpp"
 #include "utils/gauss_legendre.hpp"
 #include "project_specification/registry.hpp"
+#include "utils/vec_wrap.hpp"
 
 namespace element{
 
@@ -237,13 +238,50 @@ math::Matrix TET4::get_dk_sh(const MultiMaterial& mat, const double t, const siz
     math::Matrix k(KW, KW);
 
     this->volume_integral<GN>(k, [&](const gp_Pnt& pi){
-            const auto B = this->get_B(pi);
             const auto D = mat.get_D(this, pi);
             const auto dD = mat.get_D_dsh(this, pi, n, dof);
             return B2.T()*D*B1 + B1.T()*dD*B1 + B1.T()*D*B2;
         }, t);
 
     return k;
+}
+std::vector<math::Matrix> TET4::get_dk_sh_full(const MultiMaterial& mat, const double t) const{
+    (void)t;
+
+    const auto B1 = this->B(this->C);
+    std::vector<math::Matrix> B2(NODE_DOF*NODES_PER_ELEM);
+
+    for(size_t i = 0; i < NODES_PER_ELEM; ++i){
+        for(size_t j = 0; j < NODE_DOF; ++j){
+            const auto C2 = this->get_C_derivative(i, j);
+            B2[i*NODE_DOF + j] = this->B(C2);
+        }
+    }
+
+    //math::Matrix K(this->V*(B2.T()*D*B1 + B1.T()*D*B2));
+
+    const size_t KW = K_DIM;
+
+    constexpr size_t GN = MAX_GN;
+
+    std::vector<math::Matrix> k(NODE_DOF*NODES_PER_ELEM, math::Matrix(KW, KW));
+    std::vector<math::Matrix> ki(NODE_DOF*NODES_PER_ELEM, math::Matrix(KW, KW));
+
+    utils::VectorWrapper kw(k);
+    utils::VectorWrapper kwi(ki);
+
+    this->volume_integral<GN>(kw, [&](const gp_Pnt& pi){
+            const auto D = mat.get_D(this, pi);
+            const auto dD = mat.get_D_dsh_full(this, pi, NODES_PER_ELEM, NODE_DOF);
+            for(size_t i = 0; i < NODE_DOF*NODES_PER_ELEM; ++i){
+                ki[i] = B2[i].T()*D*B1 + B1.T()*dD[i]*B1 + B1.T()*D*B2[i];
+            }
+
+            return kwi;
+        }, t);
+
+    return k;
+
 }
 
 math::Matrix TET4::get_C_derivative(const size_t n, const size_t dof) const{

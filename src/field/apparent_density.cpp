@@ -69,8 +69,21 @@ void NRRDReader::load(const std::string& file_path){
             this->R(j, i) = file->axis[i].spaceDirection[j];
         }
     }
+    //if(this->file->space == nrrdSpaceRightAnteriorSuperior){
+    //    const math::Matrix Ir(
+    //            {-1, 0, 0,
+    //              0,-1, 0,
+    //              0, 0, 1}, 3, 3);
+    //    this->R = Ir*R;
+    //}
+    //if(this->file->space == 5){
+    //    const math::Matrix Ir(
+    //            { 1, 0, 0,
+    //              0, 1, 0,
+    //              0, 0,-1}, 3, 3);
+    //    this->R = Ir*R;
+    //}
     this->Rinv = this->R.get_inverted_LU();
-
 }
 
 double NRRDReader::get_data(const std::vector<size_t>& p) const{
@@ -80,6 +93,8 @@ double NRRDReader::get_data(const std::vector<size_t>& p) const{
         pos *= this->len[j];
         pos += p[j];
     }
+
+    logger::log_assert(pos < len[0]*len[1]*len[2], logger::ERROR, "WTF??? {} {} {}", p[0], p[1], p[2]);
 
     return this->lup(this->file->data, pos);
 }
@@ -105,15 +120,18 @@ double NRRDReader::get_averaged(const math::Vector& point) const{
         }
     }
     if(!within){
-        logger::quick_log("NRRD Origin:");
-        logger::quick_log(this->origin);
-        logger::quick_log("NRRD R:");
-        logger::quick_log(this->R);
-        logger::quick_log("NRRD sizes:");
-        logger::quick_log(this->len);
-        logger::quick_log("NRRD ijk:");
-        logger::quick_log(ijk);
-        logger::log_assert(within, logger::ERROR, "position out of bounds in NRRD: {} {} {}", point[0], point[1], point[2]);
+        //logger::quick_log("NRRD Origin:");
+        //logger::quick_log(this->origin);
+        //logger::quick_log("NRRD space:");
+        //logger::quick_log(this->file->space);
+        //logger::quick_log("NRRD R:");
+        //logger::quick_log(this->R);
+        //logger::quick_log("NRRD sizes:");
+        //logger::quick_log(this->len);
+        //logger::quick_log("NRRD ijk:");
+        //logger::quick_log(ijk);
+        //logger::log_assert(within, logger::ERROR, "position out of bounds in NRRD: {} {} {}", point[0], point[1], point[2]);
+        return 0.05;
     }
     std::vector<size_t> ijk_uint(this->DIM);
 
@@ -144,7 +162,7 @@ double NRRDReader::get_averaged(const math::Vector& point) const{
         avg += wi*this->get_data(pui); 
     }
 
-    return avg/w_sum;
+    return std::max(avg/w_sum, 0.05);
 }
 
 ApparentDensity::ApparentDensity(const projspec::DataMap& data):

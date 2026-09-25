@@ -127,8 +127,11 @@ void MMASolver::SolveDIP(double *x) {
 	int loop;
 
     XYZofLAMBDA(x);
-	while (epsi > tol) {
+    if(m < 1){
+        return;
+    }
 
+	while (epsi > tol) {
 		loop = 0;
 		while (err > 0.9 * epsi && loop < 100) {
 			++loop;
@@ -293,40 +296,40 @@ void MMASolver::DualHess(double *x) {
     }
     #endif
 
-	double lamai = 0.0;
-	for (int j = 0; j < m; j++) {
-		if (lam[j] < 0.0) {
-			lam[j] = 0.0;
-		}
-		lamai += lam[j] * a[j];
-		if (lam[j] > c[j]) {
-			hess[j * m + j] += -1.0;
-		}
-		hess[j * m + j] += -mu[j] / lam[j];
-	}
+    double lamai = 0.0;
+    for (int j = 0; j < m; j++) {
+        if (lam[j] < 0.0) {
+            lam[j] = 0.0;
+        }
+        lamai += lam[j] * a[j];
+        if (lam[j] > c[j]) {
+            hess[j * m + j] += -1.0;
+        }
+        hess[j * m + j] += -mu[j] / lam[j];
+    }
 
-	if (lamai > 0.0) {
-		for (int j = 0; j < m; j++) {
-			for (int k = 0; k < m; k++) {
-				hess[j * m + k] += -10.0 * a[j] * a[k];
-			}
-		}
-	}
+    if (lamai > 0.0) {
+        for (int j = 0; j < m; j++) {
+            for (int k = 0; k < m; k++) {
+                hess[j * m + k] += -10.0 * a[j] * a[k];
+            }
+        }
+    }
 
-	// pos def check
-	double HessTrace = 0.0;
-	for (int i = 0; i < m; i++) {
-		HessTrace += hess[i * m + i];
-	}
-	double HessCorr = 1e-4 * HessTrace / m;
+    // pos def check
+    double HessTrace = 0.0;
+    for (int i = 0; i < m; i++) {
+        HessTrace += hess[i * m + i];
+    }
+    double HessCorr = 1e-4 * HessTrace / m;
 
-	if (-1.0 * HessCorr < 1.0e-7) {
-		HessCorr = -1.0e-7;
-	}
+    if (-1.0 * HessCorr < 1.0e-7) {
+        HessCorr = -1.0e-7;
+    }
 
-	for (int i = 0; i < m; i++) {
-		hess[i * m + i] += HessCorr;
-	}
+    for (int i = 0; i < m; i++) {
+        hess[i * m + i] += HessCorr;
+    }
 }
 
 void MMASolver::DualGrad(double *x) {

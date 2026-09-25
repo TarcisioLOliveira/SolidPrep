@@ -23,6 +23,7 @@
 
 #include <set>
 #include "general_solver/petsc_general_pcg.hpp"
+#include "math/matrix.hpp"
 #include "meshing.hpp"
 #include "general_solver/mumps_general.hpp"
 #include "shape_operations.hpp"
@@ -38,6 +39,7 @@ class ShapeHandler{
         public:
         const std::vector<size_t> node_ids;
         const std::vector<AffectedElement> elements;
+        math::Vector bound_norm = math::Vector(3, 0);
     };
     struct AffectedPairedBoundary{
         public:
@@ -51,6 +53,11 @@ class ShapeHandler{
         public:
         const size_t id;
         const std::vector<AffectedPairedBoundary> elements;
+    };
+    struct NonAffectedNodesContactElem{
+        public:
+        const MeshElement* e;
+        std::vector<size_t> en;
     };
 
     struct SuperimposedNodes{
@@ -70,6 +77,7 @@ class ShapeHandler{
         std::vector<BoundaryElement*> elem_lambda_mapping;
         std::map<const BoundaryElement*, std::vector<size_t>> bound_lambda_mapping;
         std::map<size_t, long> nodal_lambda_mapping;
+        std::vector<const MeshElement*> affected_elems;
     };
 
     ShapeHandler() = default;
@@ -128,6 +136,9 @@ class ShapeHandler{
     std::vector<BoundaryElement*> boundary_elements;
     std::vector<GeometryCluster> clusters;
     std::vector<ShapeMeshElement*> shape_mesh;
+
+    std::vector<AffectedNode*> helmholtz_lambda;
+    size_t helmholtz_size;
 
     std::map<size_t, SuperimposedNodes*> merged_nodes_mapping;
     std::vector<SuperimposedNodes> merged_nodes;

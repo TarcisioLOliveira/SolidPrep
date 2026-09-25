@@ -27,13 +27,14 @@
 #include "logger.hpp"
 #include "utils.hpp"
 #include "utils/basis_tensor.hpp"
+#include "element_common.hpp" // Get MAX_GN
 
 inline math::Matrix Lek_rot3D(math::Matrix L, math::Matrix R){
     return R*L;//L*R;
     //return L*R;
 }
 
-const static size_t MAX_GN = (13+1)/2;
+const static size_t MAX_GN = (element::MAX_GN+1)/2;
 
 InternalLoads2::InternalLoads2(CrossSection cross_section, double thickness, gp_Dir normal, gp_Dir v, gp_Dir w, utils::DelayedPointerView<Material> mat, std::array<double, 3> F, std::array<double, 3> M, bool use_M, std::array<double, 3> P_last, bool inverted, bool calculate, utils::ProblemType type):
     S(std::move(cross_section)), 
@@ -410,6 +411,13 @@ void InternalLoads2::initialize(const Meshing* const mesh, size_t& max_dofs){
     this->center[0] = EA_u/EA;
     this->center[1] = EA_v/EA;
     this->center[2] = EA_w/EA;
+
+    logger::quick_log("A", A);
+    logger::quick_log("EA", EA);
+    logger::quick_log("EA_u", EA_u);
+    logger::quick_log("EA_v", EA_v);
+    logger::quick_log("EA_w", EA_w);
+    logger::quick_log(this->center);
 
     {
         // 0 to 1

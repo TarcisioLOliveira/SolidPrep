@@ -175,6 +175,7 @@ void MinimumEnergyOrientation::generate(){
 
     double du = 1.0;
     size_t it = 0;
+    double c0 = 0;
 
     const auto run_mma = 
         [&](std::vector<double>& x, std::vector<double>& s, const std::vector<double>& dfdx,
@@ -380,14 +381,15 @@ void MinimumEnergyOrientation::generate(){
         //}
 
         double c = 0;
-        for(size_t i = 0; i < u.size(); ++i){
-            c += u[i]*mesh->global_load_vector[i];
+        for(size_t i = 0; i < fem->u0[0].size(); ++i){
+            c += fem->u0[0][i]*mesh->load_vector[0][i];
         }
 
         if(it == 0){
+            c0 = c;
             this->first_run = false;
         }
-        logger::quick_log("Iteration:", it, "du:", du, "c:", c, "dc:", std::abs(c - c_old), "dc/c:", std::abs(c - c_old)/std::abs(c));
+        logger::quick_log("Iteration:", it, "du:", du, "c:", c, "dc:", std::abs(c - c_old), "c/c0:", c/c0);
         c_old = c;
 
         if(update_boundary_conditions){

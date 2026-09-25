@@ -209,15 +209,33 @@ double ImplantRegion::get(const Node* n) const{
 }
 double ImplantRegion::get_dsh(const MeshElement* e, const gp_Pnt& p, const size_t n, const size_t dof) const{
     if(this->frozen){
-        const auto Ni = e->get_dN_1dof_sh(p, n, dof);
+        const auto dNi = e->get_dN_1dof_sh(p, n, dof);
         double v = 0;
         for(size_t i = 0; i < NODES_PER_ELEM; ++i){
             const auto n = this->id_pos_map.at(e->nodes[i]->id);
-            v += Ni[i]*this->frozen_values[n];
+            v += dNi[i]*this->frozen_values[n];
         }
         return v;
     }
     return 0;
+}
+std::vector<double> ImplantRegion::get_dsh_full(const MeshElement* e, const gp_Pnt& p, const size_t n, const size_t dof) const{
+    std::vector<double> dri(n*dof, 0);
+    if(this->frozen){
+        std::vector<size_t> npos(n, 0);
+        for(size_t i = 0; i < n; ++i){
+            npos[i] = this->id_pos_map.at(e->nodes[i]->id);
+        }
+        for(size_t i = 0; i < n; ++i){
+            for(size_t j = 0; j < dof; ++j){
+                const auto dNi = e->get_dN_1dof_sh(p, i, j);
+                for(size_t k = 0; k < n; ++k){
+                    dri[i*dof + j] += dNi[k]*this->frozen_values[npos[k]];
+                }
+            }
+        }
+    }
+    return dri;
 }
 
 

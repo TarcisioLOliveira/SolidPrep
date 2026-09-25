@@ -93,12 +93,16 @@ double Mechanostat::calculate_with_gradient(const NodeShapeBasedOptimizer* const
 
     double result = 0;
 
-    //const auto& clusters = op->shape_handler.get_clusters();
-    //std::vector<std::vector<double>> shape_fl;
-    //shape_fl.resize(clusters.size());
-    //for(size_t i = 0; i < clusters.size(); ++i){
-    //    shape_fl[i].resize(clusters[i].matrix_width, 0);
-    //}
+    #define CONSIDER_SPREAD 1
+
+    #ifdef CONSIDER_SPREAD
+        const auto& clusters = op->shape_handler.get_clusters();
+        std::vector<std::vector<double>> shape_fl;
+        shape_fl.resize(clusters.size());
+        for(size_t i = 0; i < clusters.size(); ++i){
+            shape_fl[i].resize(clusters[i].matrix_width, 0);
+        }
+    #endif
 
     if(mpi_id == 0){
         auto He_it = this->He.begin();
@@ -118,8 +122,8 @@ double Mechanostat::calculate_with_gradient(const NodeShapeBasedOptimizer* const
                 math::Vector dH_e;
                 const size_t it = 0;
 
-                const auto& ui = fem->sub_u[it];
-                const math::Vector eps(1e6*e->get_strain_vector(c, ui));
+                //const auto& ui = fem->get_sub_u(it);
+                const math::Vector eps(1e6*e->get_strain_vector(c, u));
                 if(this->problem_type == utils::PROBLEM_TYPE_2D){
                     const double eps_lhs1 = this->LHS_2D(0, eps);
                     const double eps_lhs2 = this->LHS_2D(1, eps);
@@ -179,6 +183,7 @@ double Mechanostat::calculate_with_gradient(const NodeShapeBasedOptimizer* const
                 ++He_it;
             }
         }
+
         logger::quick_log("Calculating adjoint problem...{");
     }
     this->shadow_view->update_view(this->He);
@@ -253,48 +258,102 @@ double Mechanostat::calculate_with_gradient(const NodeShapeBasedOptimizer* const
                         grad[i*dof + j] += dH_e - ldKu;
                     }
                 }
+                // Remove normal component from external boundary-adjacent nodes
+                // double dot = 0;
+                // for(size_t j = 0; j < dof; ++j){
+                //     dot += grad[i*dof + j]*shn.bound_norm[j];
+                // }
+                // for(size_t j = 0; j < dof; ++j){
+                //     grad[i*dof + j] -= dot*shn.bound_norm[j];
+                // }
             }
         }
-        //for(const auto& g:this->mesh->geometries){
-        //    const auto& cluster = op->shape_handler.get_cluster(g);
-        //    auto& sfl = shape_fl[cluster->id];
-        //    std::vector<math::Matrix> dk(g->mesh.size());
-        //    logger::quick_log("geom", g->id);
-        //    for(size_t i = 0; i < node_num; ++i){
-        //        for(size_t j = 0; j < dof; ++j){
-        //            logger::quick_log("node", i, "dof", j);
-        //            #pragma omp parallel for
-        //            for(size_t ei = 0; ei < g->mesh.size(); ++ei){
-        //                const auto& e = g->mesh[ei];
-        //                const auto id = cluster->id_mapping.at(e->nodes[i]->id);
-        //                if(id >= 0){
-        //                    dk[ei] = e->get_dk_sh(g->materials, this->mesh->thickness, i, j);
-        //                }
-        //            }
-        //            math::Vector ue(kw);
-        //            math::Vector le(kw);
-        //            for(size_t ei = 0; ei < g->mesh.size(); ++ei){
-        //                const auto& e = g->mesh[ei];
-        //                const auto id = cluster->id_mapping.at(e->nodes[i]->id);
-        //                if(id >= 0){
-        //                    for(size_t ni = 0; ni < node_num; ++ni){
-        //                        for(size_t nj = 0; nj < dof; ++nj){
-        //                            ue[ni*dof + nj] = u[e->nodes[ni]->u_pos[nj]];
-        //                            le[ni*dof + nj] = l[e->nodes[ni]->u_pos[nj]];
-        //                        }
-        //                    }
-        //                    const double ldKu = le.T()*dk[ei]*ue;
-        //                    sfl[id*dof + j] -= ldKu;
-        //                }
-        //            }
-        //        }
-        //    }
-        //}
+        #ifdef CONSIDER_SPREAD
+            // dK
+            for(const auto& g:this->mesh->geometries){
+                const auto& cluster = op->shape_handler.get_cluster(g);
+                auto& sfl = shape_fl[cluster->id];
+                std::vector<double> ldku(g->mesh.size()*dof*node_num);
+                logger::quick_log("geom", g->id);
+                #pragma omp parallel
+                {
+                    math::Vector ue(kw);
+                    math::Vector le(kw);
+                    #pragma omp for
+                    for(size_t ei = 0; ei < g->mesh.size(); ++ei){
+                        const auto& e = g->mesh[ei];
+                        for(size_t ni = 0; ni < node_num; ++ni){
+                            for(size_t nj = 0; nj < dof; ++nj){
+                                ue[ni*dof + nj] = u[e->nodes[ni]->u_pos[nj]];
+                                le[ni*dof + nj] = l[e->nodes[ni]->u_pos[nj]];
+                            }
+                        }
+                        const auto dk = e->get_dk_sh_full(g->materials, this->mesh->thickness);
+                        for(size_t i = 0; i < node_num; ++i){
+                            for(size_t j = 0; j < dof; ++j){
+                                ldku[ei*kw + i*dof + j] = le.T()*dk[i*dof + j]*ue;
+                            }
+                        }
+                    }
+                }
+                math::Vector ue(kw);
+                for(size_t ei = 0; ei < g->mesh.size(); ++ei){
+                    const auto& e = g->mesh[ei];
+                    for(size_t ni = 0; ni < node_num; ++ni){
+                        for(size_t nj = 0; nj < dof; ++nj){
+                            ue[ni*dof + nj] = u[e->nodes[ni]->u_pos[nj]];
+                        }
+                    }
+                    for(size_t i = 0; i < node_num; ++i){
+                        const auto id = cluster->id_mapping.at(e->nodes[i]->id);
+                        if(id >= 0){
+                            for(size_t j = 0; j < dof; ++j){
+                                const auto c = e->get_centroid();
+                                const math::Vector eps(1e6*e->get_strain_vector(c, u));
+
+
+                                const auto dB(e->get_dB_sh(c, i, j));
+                                const auto deps(1e6*dB*ue);
+
+                                double dH_e = 0;
+                                if(this->problem_type == utils::PROBLEM_TYPE_2D){
+                                    const double eps_lhs1 = this->LHS_2D(0, eps);
+                                    const double eps_lhs2 = this->LHS_2D(1, eps);
+                                    const auto deps_lhs1 = this->dLHS_2D(0, eps).T()*deps;
+                                    const auto deps_lhs2 = this->dLHS_2D(1, eps).T()*deps;
+                                    const double H1 = Hm(eps_lhs1);
+                                    const double H2 = Hp(eps_lhs2);
+                                    const auto dH = (dHm(eps_lhs1)*eps_lhs1 + H1)*deps_lhs1 +
+                                                    (dHp(eps_lhs2)*eps_lhs2 + H2)*deps_lhs2;
+
+                                    dH_e = dH;
+                                } else if(this->problem_type == utils::PROBLEM_TYPE_3D){
+                                    const double eps_lhs1 = this->LHS_3D(0, eps);
+                                    const double eps_lhs2 = this->LHS_3D(1, eps);
+                                    const auto deps_lhs1 = this->dLHS_3D(0, eps).T()*deps;
+                                    const auto deps_lhs2 = this->dLHS_3D(1, eps).T()*deps;
+                                    const double H1 = Hm(eps_lhs1);
+                                    const double H2 = Hp(eps_lhs2);
+                                    const auto dH = (dHm(eps_lhs1)*eps_lhs1 + H1)*deps_lhs1 +
+                                                    (dHp(eps_lhs2)*eps_lhs2 + H2)*deps_lhs2;
+
+                                    dH_e = dH;
+                                }
+
+                                sfl[id*dof + j] += dH_e - ldku[ei*kw + i*dof + j];
+                            }
+                        }
+                    }
+                }
+            }
+        #endif
         op->contact_gradient(mesh, fem, u, l, grad);
-        //for(size_t i = 0; i < clusters.size(); ++i){
-        //    clusters[i].solver->solve_adjoint(shape_fl[i]);
-        //}
-        //op->shape_handler.adjoint_grad_append(grad, shape_fl);
+        #ifdef CONSIDER_SPREAD
+            for(size_t i = 0; i < clusters.size(); ++i){
+                clusters[i].solver->solve_adjoint(shape_fl[i]);
+            }
+            op->shape_handler.adjoint_grad_append(grad, shape_fl);
+        #endif
         logger::quick_log("Done.");
     }
 

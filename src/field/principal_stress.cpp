@@ -40,7 +40,8 @@ PrincipalStress::PrincipalStress(const projspec::DataMap& data):
     NODES_PER_ELEM(elem_info->get_nodes_per_element()),
     DOF(elem_info->get_dof_per_node()),
     max_it(data.get_int("max_it")),
-    use_strain(data.get_bool("use_strain"))
+    use_strain(data.get_bool("use_strain")),
+    ALPHA(data.get_double("alpha"))
     {
    
     if(!data.get_bool("STUB")){ 
@@ -85,20 +86,21 @@ void PrincipalStress::generate(){
         }
     }
 
-    if(this->show && this->first_run){
-        if(!(this->elem_info->get_element_order() == 1 && 
-             this->elem_info->get_shape_type() == Element::Shape::TRI)){
+    if((this->elem_info->get_element_order() == 1 && 
+        this->elem_info->get_shape_type() == Element::Shape::TRI)){
 
-            std::set<UniqueNodeForView> uniques;
-            for(const auto& g:this->geoms){
-                for(const auto& e:g->mesh){
-                    for(size_t i = 0; i < num_nodes; ++i){
-                        uniques.insert(UniqueNodeForView{e->nodes[i], e.get()});
-                    }
+        this->use_smooth = true;
+    }
+    if((this->show || this->use_smooth) && this->first_run){
+        std::set<UniqueNodeForView> uniques;
+        for(const auto& g:this->geoms){
+            for(const auto& e:g->mesh){
+                for(size_t i = 0; i < num_nodes; ++i){
+                    uniques.insert(UniqueNodeForView{e->nodes[i], e.get()});
                 }
             }
-            this->node_view_list.insert(this->node_view_list.begin(), uniques.begin(), uniques.end());
         }
+        this->node_view_list.insert(this->node_view_list.begin(), uniques.begin(), uniques.end());
 
         for(const auto& g:this->geoms){
             for(const auto& n:g->node_list){
@@ -118,6 +120,28 @@ void PrincipalStress::generate(){
         }
         for(auto& i:id_pos_map){
             --i.second;
+        }
+        if(this->use_smooth){
+            const size_t node_num = this->id_pos_map.size();
+            const size_t nodes_per_elem = elem_info->get_nodes_per_element();
+
+            this->nodal_weights.resize(node_num, 0);
+            this->nodal_strains.resize(6*node_num, 0);
+            for(const auto& g:geoms){
+                for(const auto& e:g->mesh){
+                    for(size_t i = 0; i < nodes_per_elem; ++i){
+                        const size_t id = this->id_pos_map.at(e->nodes[i]->id);
+                        this->nodal_weights[id] += 1;
+                    }
+                }
+            }
+            for(const auto& g:this->geoms){
+                for(const auto& e:g->mesh){
+                    for(size_t i = 0; i < nodes_per_elem; ++i){
+                        this->inverse_mesh.emplace(e->nodes[i]->id, e.get());
+                    }
+                }
+            }
         }
     }
 
@@ -168,10 +192,10 @@ void PrincipalStress::generate(){
         }
     }
 
+    //const double ALPHA = 0.4;
 
-    this->u.resize(mesh->max_dofs, 0);
-    fem->get_latest_global_displ(mesh, this->u);
     if(this->first_run){
+        this->u.resize(mesh->max_dofs, 0);
         auto u_old = this->u;
         auto u_tmp = this->u;
         double c_old = 0;
@@ -188,38 +212,41 @@ void PrincipalStress::generate(){
             fem->calculate_displacements_global(mesh, mesh->load_vector, u_tmp);
 
             double c = 0;
-            for(const auto& g:proj_data->geometries){
-                const auto t = mesh->thickness;
+            //for(const auto& g:proj_data->geometries){
+            //    const auto t = mesh->thickness;
 
-                #pragma omp parallel for reduction(+:c)
-                for(size_t i = 0; i < g->mesh.size(); ++i){
-                    const auto& e = g->mesh[i];
+            //    #pragma omp parallel for reduction(+:c)
+            //    for(size_t i = 0; i < g->mesh.size(); ++i){
+            //        const auto& e = g->mesh[i];
 
-                    const math::VectorSliceGeneralView uv(u_tmp, math::slicer::from_node_upos(e->nodes, NODES_PER_ELEM, DOF));
-                    const auto K = e->get_k(g->materials, t);
+            //        const math::VectorSliceGeneralView uv(u_tmp, math::slicer::from_node_upos(e->nodes, NODES_PER_ELEM, DOF));
+            //        const auto K = e->get_k(g->materials, t);
 
-                    c += 0.5*((K*uv).dot(uv));
-                }
+            //        c += 0.5*((K*uv).dot(uv));
+            //    }
+            //}
+            for(size_t i = 0; i < fem->u0[0].size(); ++i){
+                c += fem->u0[0][i]*mesh->load_vector[0][i];
             }
 
             du = 0;
-            for(size_t i = 0; i < mesh->max_dofs; ++i){
-                this->u[i] = u_tmp[i];
-                du = std::max(du, std::abs(this->u[i] - u_old[i]));
-                u_old[i] = this->u[i];
+            if(it == 0){
+                for(size_t i = 0; i < mesh->max_dofs; ++i){
+                    this->u[i] = u_tmp[i];
+                    du = std::max(du, std::abs(this->u[i] - u_old[i]));
+                    u_old[i] = this->u[i];
+                }
+            } else {
+                for(size_t i = 0; i < mesh->max_dofs; ++i){
+                    this->u[i] = (1.0 - ALPHA)*this->u[i] + ALPHA*u_tmp[i];
+                    du = std::max(du, std::abs(this->u[i] - u_old[i]));
+                    u_old[i] = this->u[i];
+                }
             }
 
-            //if(this->use_strain && it == 0){
-            //    for(size_t i = 0; i < this->geoms.size(); ++i){
-            //        auto& g = this->geoms[i];
-            //        g->set_materials(materials_backup[i]);
-            //    }
-            //}
-
-            //for(size_t i = 0; i < this->u.size(); ++i){
-            //    c += this->u[i]*mesh->global_load_vector[i];
-            //}
-
+            if(this->use_smooth){
+                this->generate_vectors();
+            }
             if(it == 0){
                 c0 = c;
                 this->first_run = false;
@@ -243,6 +270,15 @@ void PrincipalStress::generate(){
         fem->update_materials();
         logger::quick_log("");
         logger::quick_log("Finished.");
+    } else {
+        std::vector<double> u_tmp(mesh->max_dofs, 0);
+        fem->get_latest_global_displ(mesh, u_tmp);
+        for(size_t i = 0; i < mesh->max_dofs; ++i){
+            this->u[i] = (1.0 - ALPHA)*this->u[i] + ALPHA*u_tmp[i];
+        }
+        if(this->use_smooth){
+            this->generate_vectors();
+        }
     }
 }
 
@@ -251,7 +287,6 @@ void PrincipalStress::display_views() const{
         return;
     }
     if(this->show){
-        const size_t nodes_per_elem = elem_info->get_nodes_per_element();
         const size_t node_num = this->id_pos_map.size();
 
         std::vector<size_t> ids(this->geoms.size(), 0);
@@ -261,51 +296,50 @@ void PrincipalStress::display_views() const{
         std::vector<double> L_vecs(node_num*3, 0);
         std::vector<double> R_vecs(node_num*3, 0);
         std::vector<double> T_vecs(node_num*3, 0);
-        if(this->node_view_list.size() > 0){
-            for(auto& n:this->node_view_list){
-                const auto dirs = this->get_array(n.element, n.node->point);
-                const size_t id = this->id_pos_map.at(n.node->id);
-                for(size_t i = 0; i < 3; ++i){
-                    R_vecs[id*3 + i] = dirs[0].Coord(1+i);
-                    T_vecs[id*3 + i] = dirs[1].Coord(1+i);
-                    L_vecs[id*3 + i] = dirs[2].Coord(1+i);
-                }
-            }
-        } else {
-            for(const auto& g:geoms){
-                for(const auto& e:g->mesh){
-                    const auto dirs = this->get_array(e.get(), e->get_centroid());
-                    for(size_t i = 0; i < nodes_per_elem; ++i){
-                        const auto n = e->nodes[i];
-                        const size_t id = this->id_pos_map.at(n->id);
-                        for(size_t j = 0; j < 3; ++j){
-                            R_vecs[id*3 + j] = dirs[0].Coord(1+j);
-                            T_vecs[id*3 + j] = dirs[1].Coord(1+j);
-                            L_vecs[id*3 + j] = dirs[2].Coord(1+j);
-                        }
-                    }
-                }
-            }
-            for(size_t i = 0; i < node_num; ++i){
-                double L = 0, R = 0, T = 0;
-                for(size_t j = 0; j < 3; ++j){
-                    L += L_vecs[i*3 + j]*L_vecs[i*3 + j];
-                    R += R_vecs[i*3 + j]*R_vecs[i*3 + j];
-                    T += T_vecs[i*3 + j]*T_vecs[i*3 + j];
-                }
-                L = std::sqrt(L);
-                R = std::sqrt(R);
-                T = std::sqrt(T);
-                for(size_t j = 0; j < 3; ++j){
-                    L_vecs[i*3 + j] /= L;
-                    R_vecs[i*3 + j] /= R;
-                    T_vecs[i*3 + j] /= T;
-                }
+        for(auto& n:this->node_view_list){
+            const auto dirs = this->get_array(n.element, n.node->point);
+            const size_t id = this->id_pos_map.at(n.node->id);
+            for(size_t i = 0; i < 3; ++i){
+                R_vecs[id*3 + i] = dirs[0].Coord(1+i);
+                T_vecs[id*3 + i] = dirs[1].Coord(1+i);
+                L_vecs[id*3 + i] = dirs[2].Coord(1+i);
             }
         }
         this->L_view->update_view(L_vecs, ids);
         this->R_view->update_view(R_vecs, ids);
         this->T_view->update_view(T_vecs, ids);
+    }
+}
+void PrincipalStress::generate_vectors(){
+    const size_t nodes_per_elem = elem_info->get_nodes_per_element();
+
+    std::fill(this->nodal_strains.begin(), this->nodal_strains.end(), 0);
+    
+    for(const auto& g:geoms){
+        for(const auto& e:g->mesh){
+            const auto p = e->get_centroid();
+            math::Matrix tensor = this->get_tensor_base(e.get(), p);
+            for(size_t i = 0; i < nodes_per_elem; ++i){
+                const auto n = e->nodes[i];
+                const size_t id = this->id_pos_map.at(n->id);
+                size_t count = 0;
+                for(size_t j = 0; j < 3; ++j){
+                    for(size_t k = 0; k <= j; ++k){
+                        this->nodal_strains[6*id + count] += tensor(j, k);
+                        ++count;
+                    }
+                }
+            }
+        }
+    }
+    for(const auto& g:geoms){
+        #pragma omp parallel for
+        for(const auto& n:g->node_list){
+            const size_t id = this->id_pos_map.at(n->id);
+            for(size_t i = 0; i < 6; ++i){
+                this->nodal_strains[6*id + i] /= this->nodal_weights[id];
+            }
+        }
     }
 }
 
@@ -342,25 +376,25 @@ math::Matrix PrincipalStress::get_matrix(const MeshElement* e, const gp_Pnt& p) 
 math::Matrix PrincipalStress::get_dsh(const MeshElement* e, const gp_Pnt& p, const size_t n, const size_t dof) const{
     if(!this->first_run){
         if(this->use_strain){
-            math::Matrix tensor = e->get_strain_tensor(p, this->u);
-            math::Matrix tensor_dsh = e->get_strain_tensor_sh(p, this->u, n, dof);
+            math::Matrix tensor;
+            math::Matrix tensor_dsh;
+            if(!this->use_smooth){
+                tensor = e->get_strain_tensor(p, this->u);
+                tensor_dsh = e->get_strain_tensor_sh(p, this->u, n, dof);
+            } else {
+                tensor = this->get_tensor_interp(e, p);
+                tensor_dsh = this->get_tensor_dsh(e, p, n, dof);
+            }
 
-
-            math::Eigen eigen(tensor, 1e-3);
+            math::Eigen eigen(tensor, 1e-14);
+            std::vector<size_t> pos(DIM);
+            std::iota(pos.begin(), pos.end(), 0);
             std::vector<double> abs_sort(DIM);
             for(size_t i = 0; i < DIM; ++i){
                 abs_sort[i] = std::abs(eigen.eigenvalues[i]);
             }
-            std::sort(abs_sort.begin(), abs_sort.end(), std::less<double>());
-            std::vector<size_t> pos(DIM);
-            for(size_t i = 0; i < DIM; ++i){
-                for(size_t j = 0; j < DIM; ++j){
-                    if(abs_sort[i] == std::abs(eigen.eigenvalues[j])){
-                        pos[i] = j;
-                        break;
-                    }
-                }
-            }
+            std::sort(pos.begin(), pos.end(), [&](size_t i, size_t j){ return abs_sort[i] < abs_sort[j]; });
+
             std::vector<math::Vector> n(3, math::Vector(3));
             for(size_t i = 0; i < DIM; ++i){
                 for(size_t j = 0; j < DIM; ++j){
@@ -373,10 +407,12 @@ math::Matrix PrincipalStress::get_dsh(const MeshElement* e, const gp_Pnt& p, con
             for(size_t i = 0; i < DIM; ++i){
                 math::Vector dni(3, 0);
                 for(size_t j = 0; j < DIM; ++j){
-                    const double alpha = n[i].T()*tensor_dsh*n[j];
-                    const double dl = l[pos[i]] - l[pos[j]];
-                    if(i != j && std::abs(dl) > 1e-14){
-                        dni += (alpha/dl)*n[j];
+                    if(i != j){
+                        const double dl = l[pos[i]] - l[pos[j]];
+                        if(std::abs(dl) > 1e-14){
+                            const double mult = n[i].T()*tensor_dsh*n[j];
+                            dni += (mult/dl)*n[j];
+                        }
                     }
                 }
                 for(size_t k = 0; k < DIM; ++k){
@@ -387,6 +423,114 @@ math::Matrix PrincipalStress::get_dsh(const MeshElement* e, const gp_Pnt& p, con
         }
     }
     return math::Matrix(3, 3, 0);
+}
+std::vector<math::Matrix> PrincipalStress::get_dsh_full(const MeshElement* e, const gp_Pnt& p, const size_t nodes, const size_t dof) const{
+    std::vector<math::Matrix> ddi(nodes*dof, math::Matrix(3, 3, 0));
+    if(!this->first_run){
+        if(this->use_strain){
+            math::Matrix tensor;
+            if(!this->use_smooth){
+                tensor = e->get_strain_tensor(p, this->u);
+            } else {
+                tensor = this->get_tensor_interp(e, p);
+            }
+
+            math::Eigen eigen(tensor, 1e-14);
+            std::vector<size_t> pos(DIM);
+            std::iota(pos.begin(), pos.end(), 0);
+            std::vector<double> abs_sort(DIM);
+            for(size_t i = 0; i < DIM; ++i){
+                abs_sort[i] = std::abs(eigen.eigenvalues[i]);
+            }
+            std::sort(pos.begin(), pos.end(), [&](size_t i, size_t j){ return abs_sort[i] < abs_sort[j]; });
+
+            std::vector<math::Vector> n(3, math::Vector(3));
+            for(size_t i = 0; i < DIM; ++i){
+                for(size_t j = 0; j < DIM; ++j){
+                    n[j][i] = eigen.eigenvectors(i, pos[j]);
+                }
+            }
+            const auto& l = eigen.eigenvalues;
+            // https://mathoverflow.net/questions/229425/derivative-of-eigenvectors-of-a-matrix-with-respect-to-its-components
+            math::Matrix dirs_dsh(DIM, DIM);
+            math::Matrix tensor_dsh;
+            for(size_t di = 0; di < nodes; ++di){
+                for(size_t dj = 0; dj < dof; ++dj){
+
+                    if(!this->use_smooth){
+                        tensor_dsh = e->get_strain_tensor_sh(p, this->u, di, dj);
+                    } else {
+                        tensor_dsh = this->get_tensor_dsh(e, p, di, dj);
+                    }
+                    
+                    for(size_t i = 0; i < DIM; ++i){
+                        math::Vector dni(3, 0);
+                        for(size_t j = 0; j < DIM; ++j){
+                            if(i != j){
+                                const double dl = l[pos[i]] - l[pos[j]];
+                                if(std::abs(dl) > 1e-14){
+                                    const double mult = n[i].T()*tensor_dsh*n[j];
+                                    dni += (mult/dl)*n[j];
+                                }
+                            }
+                        }
+                        for(size_t k = 0; k < DIM; ++k){
+                            dirs_dsh(k, i) = dni[k];
+                        }
+                    }
+
+                    ddi[di*dof + dj] = dirs_dsh;
+                }
+            }
+        }
+    }
+    return ddi;
+}
+
+math::Matrix PrincipalStress::get_tensor_dsh(const MeshElement* e, const gp_Pnt& p, const size_t n, const size_t dof) const{
+    math::Matrix tensor(3, 3, 0);
+    const auto N = e->get_Ni_1dof(p);
+    const auto dN = e->get_dN_1dof_sh(p, n, dof);
+
+    std::vector<size_t> uv(N.get_N()*3);
+    for(size_t i = 0; i < N.get_N(); ++i){
+        const size_t id = this->id_pos_map.at(e->nodes[i]->id);
+        const auto& node = e->nodes[i];
+        const auto elem_list = this->inverse_mesh.equal_range(node->id);
+        math::Vector eps(6, 0);
+        for(auto ei = elem_list.first; ei != elem_list.second; ++ei){
+            math::slicer::from_node_id(ei->second->nodes, N.get_N(), 3, uv);
+            const math::VectorSliceView uview(this->u, uv);
+            eps += ei->second->get_dB_sh(node->point, n, dof)*uview;
+        }
+        eps = eps/this->nodal_weights[id];
+        tensor(0,0) += N[i]*eps[0];
+        tensor(1,1) += N[i]*eps[1];
+        tensor(2,2) += N[i]*eps[2];
+
+        tensor(0,1) += 0.5*N[i]*eps[3];
+        tensor(1,0) += 0.5*N[i]*eps[3];
+
+        tensor(0,2) += 0.5*N[i]*eps[4];
+        tensor(2,0) += 0.5*N[i]*eps[4];
+
+        tensor(1,2) += 0.5*N[i]*eps[5];
+        tensor(2,1) += 0.5*N[i]*eps[5];
+
+        size_t count = 0;
+        for(size_t j = 0; j < 3; ++j){
+            for(size_t k = 0; k <= j; ++k){
+                if(j == k){
+                    tensor(j,k) += dN[i]*this->nodal_strains[6*id + count];
+                } else {
+                    tensor(j,k) += dN[i]*this->nodal_strains[6*id + count];
+                    tensor(k,j) += dN[i]*this->nodal_strains[6*id + count];
+                }
+                ++count;
+            }
+        }
+    }
+    return tensor;
 }
 
 using namespace projspec;
@@ -401,6 +545,7 @@ const bool PrincipalStress::reg = Factory<Field>::add(
             DataEntry{.name = "display", .type = TYPE_BOOL, .required = false},
             DataEntry{.name = "use_strain", .type = TYPE_BOOL, .required = false},
             DataEntry{.name = "max_it", .type = TYPE_INT, .required = true},
+            DataEntry{.name = "alpha", .type = TYPE_DOUBLE, .required = true},
         }
     }
 );
